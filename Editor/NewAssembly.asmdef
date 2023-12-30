@@ -1,0 +1,16 @@
+{
+    "name": "WallstopStudios.UnityHelpers.Editor",
+    "rootNamespace": "",
+    "references": [
+        "GUID:63a0f107903545b4fae68b24d4dd4b41"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
