@@ -23,4 +23,7 @@ public static class Buffers<T>
 {
     public static readonly List<T> List = new();
     public static readonly HashSet<T> HashSet = new();
+    public static readonly Queue<T> Queue = new();
+    public static readonly Stack<T> Stack = new();
+    public static readonly LinkedList<T> LinkedList = new();
 }
