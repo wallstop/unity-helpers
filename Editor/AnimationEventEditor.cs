@@ -60,13 +60,13 @@ public class AnimationEventEditor : EditorWindow
         public bool overrideEnumValues;
     }
 
-    private IReadOnlyDictionary<Type, IReadOnlyList<MethodInfo>> Lookup => _restrictedMode ? AnimationEventHelpers.TypesToMethods : TypesToMethods;
+    private IReadOnlyDictionary<Type, IReadOnlyList<MethodInfo>> Lookup => _explicitMode ? AnimationEventHelpers.TypesToMethods : TypesToMethods;
     private int MaxFrameIndex => _currentClip == null ? 0 : (int)Math.Round(_currentClip.frameRate * _currentClip.length);
 
     private Vector2 _scrollPosition;
     private Animator _sourceAnimator;
     private AnimationClip _currentClip;
-    private bool _restrictedMode = true;
+    private bool _explicitMode = true;
     private bool _controlFrameTime = false;
     private string _animationSearchString = string.Empty;
     private List<ObjectReferenceKeyframe> _referenceCurve;
@@ -94,7 +94,7 @@ public class AnimationEventEditor : EditorWindow
             _currentClip = null;
         }
 
-        _restrictedMode = EditorGUILayout.Toggle(new GUIContent("Explicit Mode", "If true, restricts results to only those that explicitly with [AnimationEvent]"), _restrictedMode);
+        _explicitMode = EditorGUILayout.Toggle(new GUIContent("Explicit Mode", "If true, restricts results to only those that explicitly with [AnimationEvent]"), _explicitMode);
         _controlFrameTime = EditorGUILayout.Toggle(new GUIContent("Control Frame Time", "Select to edit precise time of animation events instead of snapping to nearest frame"), _controlFrameTime);
 
         AnimationClip selectedClip = DrawAndFilterAnimationClips();
@@ -207,12 +207,12 @@ public class AnimationEventEditor : EditorWindow
 
         if (ReferenceEquals(null, rhs))
         {
-            return 1;
+            return -1;
         }
 
         if (ReferenceEquals(null, lhs))
         {
-            return -1;
+            return 1;
         }
 
         return AnimationEventEqualityComparer.Instance.Compare(lhs.animationEvent, rhs.animationEvent);
@@ -338,7 +338,7 @@ public class AnimationEventEditor : EditorWindow
     {
         AnimationEvent animEvent = item.animationEvent;
         animEvent.functionName = EditorGUILayout.TextField("FunctionName", animEvent.functionName ?? string.Empty);
-        if (!_restrictedMode)
+        if (!_explicitMode)
         {
             item.search = EditorGUILayout.TextField("Search", item.search);
         }
@@ -469,7 +469,7 @@ public class AnimationEventEditor : EditorWindow
     private IReadOnlyDictionary<Type, IReadOnlyList<MethodInfo>> FilterLookup(AnimationEventItem item)
     {
         IReadOnlyDictionary<Type, IReadOnlyList<MethodInfo>> lookup;
-        if (!_restrictedMode)
+        if (!_explicitMode)
         {
             if (!_lastSeenSearch.TryGetValue(item, out string lastSearch) || !string.Equals(
                     lastSearch, item.search, StringComparison.InvariantCultureIgnoreCase) ||

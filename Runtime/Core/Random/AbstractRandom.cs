@@ -134,11 +134,17 @@
                 throw new ArgumentException($"Max {max} cannot be less-than or equal-to 0");
             }
 
-            long withinRange;
-            while (max < (withinRange = NextLong()))
+            if (max < int.MaxValue)
             {
-                // Hot-loop
+                return Next((int)max);
             }
+
+            long withinRange;
+            do
+            {
+                withinRange = NextLong();
+            }
+            while (withinRange < 0 || max <= withinRange);
             return withinRange;
         }
 
@@ -213,7 +219,14 @@
 
         public virtual double NextDouble()
         {
-            return NextUint() * MagicDouble;
+            double value;
+            do
+            {
+                value = NextUint() * MagicDouble;
+            }
+            while (value < 0 || 1 <= value);
+
+            return value;
         }
 
         public double NextDouble(double max)
@@ -270,8 +283,15 @@
 
         public virtual float NextFloat()
         {
-            uint floatAsInt = NextUint();
-            return (floatAsInt >> 8) * MagicFloat;
+            float value;
+            do
+            {
+                uint floatAsInt = NextUint();
+                value = (floatAsInt >> 8) * MagicFloat;
+            }
+            while (value < 0 || 1 <= value);
+
+            return value;
         }
 
         public float NextFloat(float max)
