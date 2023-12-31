@@ -1,4 +1,4 @@
-﻿namespace Core.DataStructure
+﻿namespace UnityHelpers.Core.DataStructure
 {
     using Helper;
     using System;

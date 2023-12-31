@@ -1,4 +1,4 @@
-﻿namespace Core.DataStructure.Adapters
+﻿namespace UnityHelpers.Core.DataStructure.Adapters
 {
     using System;
     using System.Runtime.CompilerServices;

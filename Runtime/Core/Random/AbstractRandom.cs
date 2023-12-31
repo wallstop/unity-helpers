@@ -1,4 +1,4 @@
-﻿namespace Core.Random
+﻿namespace UnityHelpers.Core.Random
 {
     using System;
     using System.Collections.Concurrent;
@@ -26,10 +26,14 @@
 
         public int Next()
         {
-            unchecked
+            int result;
+            do
             {
-                return (int)NextUint();
+                result = unchecked((int)NextUint());
             }
+            while (result < 0);
+
+            return result;
         }
 
         public int Next(int max)
@@ -136,7 +140,7 @@
 
             if (max < int.MaxValue)
             {
-                return Next((int)max);
+                return Next(unchecked((int)max));
             }
 
             long withinRange;

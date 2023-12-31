@@ -1,4 +1,4 @@
-﻿namespace Core.OneOf
+﻿namespace UnityHelpers.Core.OneOf
 {
     using System;
     using System.Collections.Generic;

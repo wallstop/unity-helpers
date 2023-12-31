@@ -1,4 +1,4 @@
-﻿namespace Core.Attributes
+﻿namespace UnityHelpers.Core.Attributes
 {
     using System;
     using System.Collections;

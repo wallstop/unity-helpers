@@ -2,7 +2,7 @@
 #define ENABLE_UBERLOGGING
 #endif
 
-namespace Core.Extension
+namespace UnityHelpers.Core.Extension
 {
     using System;
     using System.Diagnostics;

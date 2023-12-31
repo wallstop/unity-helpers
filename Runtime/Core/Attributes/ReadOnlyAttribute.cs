@@ -1,6 +1,6 @@
 ﻿using PropertyAttribute = UnityEngine.PropertyAttribute;
 
-namespace Core.Attributes
+namespace UnityHelpers.Core.Attributes
 {
     public sealed class ReadOnlyAttribute : PropertyAttribute
     {

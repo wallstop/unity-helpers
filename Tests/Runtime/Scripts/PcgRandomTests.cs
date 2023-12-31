@@ -1,4 +1,4 @@
-namespace Tests.Runtime.Scripts
+namespace UnityHelpers.Tests
 {
     using Core.Random;
 

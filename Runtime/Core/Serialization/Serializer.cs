@@ -1,4 +1,4 @@
-﻿namespace Core.Serialization
+﻿namespace UnityHelpers.Core.Serialization
 {
     using System;
     using System.ComponentModel;

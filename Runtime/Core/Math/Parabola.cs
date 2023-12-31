@@ -1,4 +1,4 @@
-﻿namespace Core.Math
+﻿namespace UnityHelpers.Core.Math
 {
     using System;
     using System.Runtime.Serialization;

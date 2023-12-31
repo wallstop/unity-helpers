@@ -1,4 +1,4 @@
-﻿namespace Core.Serialization.JsonConverters
+﻿namespace UnityHelpers.Core.Serialization.JsonConverters
 {
     using Extension;
     using Newtonsoft.Json;

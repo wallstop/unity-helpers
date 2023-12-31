@@ -1,4 +1,4 @@
-﻿namespace Core.Extension
+﻿namespace UnityHelpers.Core.Extension
 {
     using UnityEngine;
 
