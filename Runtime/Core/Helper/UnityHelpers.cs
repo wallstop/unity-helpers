@@ -643,22 +643,29 @@
         {
             bool usedJitter = false;
             WaitForSeconds wait = Buffers.WaitForSeconds.GetOrAdd(updateRate, time => new WaitForSeconds(time));
+
             while (true)
             {
                 if (waitBefore)
                 {
+                    // Copy-pasta the code, no way to unify in a performant way without generating garbage
                     yield return wait;
+                    if (useJitter && !usedJitter)
+                    {
+                        yield return new WaitForSeconds(PcgRandom.Instance.NextFloat(updateRate));
+                        usedJitter = true;
+                    }
                 }
+
                 action();
                 if (!waitBefore)
                 {
                     yield return wait;
-                }
-
-                if (useJitter && !usedJitter)
-                {
-                    yield return new WaitForSeconds(PcgRandom.Instance.NextFloat(updateRate));
-                    usedJitter = true;
+                    if (useJitter && !usedJitter)
+                    {
+                        yield return new WaitForSeconds(PcgRandom.Instance.NextFloat(updateRate));
+                        usedJitter = true;
+                    }
                 }
             }
         }
