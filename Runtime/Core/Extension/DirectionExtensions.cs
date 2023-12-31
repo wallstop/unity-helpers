@@ -1,10 +1,10 @@
 ﻿namespace UnityHelpers.Core.Extension
 {
-    using Gameplay.Models;
     using System;
     using System.Collections.Generic;
     using System.Linq;
     using Helper;
+    using Model;
     using UnityEngine;
 
     public static class DirectionExtensions
