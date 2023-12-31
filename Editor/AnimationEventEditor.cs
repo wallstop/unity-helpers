@@ -4,10 +4,10 @@
     using System.Linq;
     using System.Collections.Generic;
     using System.Reflection;
+    using Core.Attributes;
     using Core.Helper;
     using UnityEngine;
     using UnityEditor;
-    using Utilities;
     using Utils;
 
     // https://gist.githubusercontent.com/yujen/5e1cd78e2a341260b38029de08a449da/raw/ac60c1002e0e14375de5b2b0a167af00df3f74b4/SeniaAnimationEventEditor.cs
@@ -17,9 +17,9 @@
 
         static AnimationEventEditor()
         {
-            Dictionary<Type, IReadOnlyList<MethodInfo>> typesToMethods = Assembly
-                .GetAssembly(typeof(AnimationEventAttribute))
-                .GetTypes()
+            Dictionary<Type, IReadOnlyList<MethodInfo>> typesToMethods = AppDomain.CurrentDomain
+                .GetAssemblies()
+                .SelectMany(assembly => assembly.GetTypes())
                 .Where(type => type.IsClass)
                 .Where(type => typeof(MonoBehaviour).IsAssignableFrom(type))
                 .ToDictionary(

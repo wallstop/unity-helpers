@@ -1,4 +1,4 @@
-﻿namespace Utilities
+﻿namespace UnityHelpers.Core.Attributes
 {
     using System;
     using System.Collections.Generic;
