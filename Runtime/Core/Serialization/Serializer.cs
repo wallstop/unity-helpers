@@ -34,10 +34,6 @@
 
     public static class Serializer
     {
-        static Serializer()
-        {
-        }
-
         public static T Deserialize<T>(byte[] serialized, SerializationType serializationType)
         {
             switch (serializationType)

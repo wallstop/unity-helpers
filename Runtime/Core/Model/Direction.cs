@@ -1,4 +1,4 @@
-﻿namespace Gameplay.Models
+﻿namespace UnityHelpers.Core.Model
 {
     using System;
     using System.Runtime.Serialization;

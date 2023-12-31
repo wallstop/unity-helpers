@@ -1,6 +1,6 @@
 {
     "name": "com.wallstop-studios.unity-helpers",
-    "version": "1.0.0-rc1",
+    "version": "1.0.0-rc2",
     "displayName": "Unity Helpers",
     "description": "Various Unity Helper Library",
     "unity": "2022.1",
@@ -10,7 +10,9 @@
         "quad tree",
         "extension",
         "helpers",
-        "receive"
+        "random",
+        "pcg random",
+        "protobuf"
     ],
     "license": "MIT",
     "repository": {
