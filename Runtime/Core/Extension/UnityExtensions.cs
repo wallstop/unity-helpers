@@ -1,7 +1,6 @@
 ﻿namespace UnityHelpers.Core.Extension
 {
     using System;
-    using System.Collections;
     using System.Collections.Generic;
     using System.Linq;
     using DataStructure;
@@ -12,7 +11,7 @@
     using UnityEngine;
     using UnityEngine.UI;
 
-    public static class UnityExtensions
+    public static partial class UnityExtensions
     {
         public static Bounds Bounds(this Rect rect)
         {

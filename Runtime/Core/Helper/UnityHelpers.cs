@@ -16,7 +16,7 @@
     using UnityEngine.SceneManagement;
     using Object = UnityEngine.Object;
 
-    public static class UnityHelpers
+    public static partial class UnityHelpers
     {
         private static readonly WaitForEndOfFrame WaitForEndOfFrame = new();
         private static readonly Dictionary<Type, MethodInfo> AwakeMethodsByType = new();

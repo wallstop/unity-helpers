@@ -5,7 +5,7 @@
     using System.Runtime.CompilerServices;
     using Object = System.Object;
 
-    public static class Objects
+    public static partial class Objects
     {
         private const int HashBase = 839;
         private const int HashMultiplier = 4021;
