@@ -12,7 +12,7 @@
     using UnityEngine.UI;
     using Utils;
 
-    public static partial class UnityExtensions
+    public static class UnityExtensions
     {
         public static Bounds Bounds(this Rect rect)
         {

@@ -11,7 +11,7 @@
         {
             get
             {
-                if (!_lastRead.HasValue || UnityHelpers.HasEnoughTimePassed(_lastRead.Value, _cacheTtl))
+                if (!_lastRead.HasValue || Helpers.HasEnoughTimePassed(_lastRead.Value, _cacheTtl))
                 {
                     Reset();
                 }

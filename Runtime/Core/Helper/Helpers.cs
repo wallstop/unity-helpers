@@ -17,7 +17,7 @@
     using Utils;
     using Object = UnityEngine.Object;
 
-    public static partial class UnityHelpers
+    public static class Helpers
     {
         private static readonly WaitForEndOfFrame WaitForEndOfFrame = new();
         private static readonly Dictionary<Type, MethodInfo> AwakeMethodsByType = new();
