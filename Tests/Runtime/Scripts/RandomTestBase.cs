@@ -1,4 +1,4 @@
-﻿namespace Tests.Runtime.Scripts
+﻿namespace UnityHelpers.Tests
 {
     using Core.Random;
     using System;
@@ -90,11 +90,10 @@
                 }
             }
 
-            // https://stackoverflow.com/questions/5336457/how-to-calculate-a-standard-deviation-array
-            int sampleLength = maxLength ?? _samples.Length;
+            int sampleLength = Math.Min(_samples.Length, maxLength ?? _samples.Length);
             double average = SampleCount * 1.0 / sampleLength;
             double deviationAllowed = average * 0.05;
-            List<int> zeroCountIndexes = new ();
+            List<int> zeroCountIndexes = new();
             List<int> outsideRange = new();
             for (int i = 0; i < sampleLength; i++)
             {

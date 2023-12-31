@@ -1,4 +1,4 @@
-﻿namespace Core.DataStructure
+﻿namespace UnityHelpers.Core.DataStructure
 {
     using System;
     using System.Collections.Generic;

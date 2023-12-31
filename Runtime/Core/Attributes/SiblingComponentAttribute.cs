@@ -1,4 +1,4 @@
-﻿namespace Core.Attributes
+﻿namespace UnityHelpers.Core.Attributes
 {
     using Extension;
     using JetBrains.Annotations;

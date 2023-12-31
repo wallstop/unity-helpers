@@ -1,4 +1,4 @@
-﻿namespace Utils
+﻿namespace UnityHelpers.Utils
 {
     using Core.Attributes;
     using Core.Extension;

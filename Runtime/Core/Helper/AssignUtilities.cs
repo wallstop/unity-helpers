@@ -1,4 +1,4 @@
-﻿namespace Core.Helper
+﻿namespace UnityHelpers.Core.Helper
 {
     public static class AssignUtilities
     {

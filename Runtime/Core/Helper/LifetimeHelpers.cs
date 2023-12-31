@@ -1,4 +1,4 @@
-﻿namespace Core.Helper
+﻿namespace UnityHelpers.Core.Helper
 {
     using Object = UnityEngine.Object;
 

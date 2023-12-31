@@ -1,4 +1,4 @@
-﻿namespace Core.Random
+﻿namespace UnityHelpers.Core.Random
 {
     using System;
 

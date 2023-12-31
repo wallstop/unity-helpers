@@ -1,4 +1,4 @@
-﻿namespace Core.Math
+﻿namespace UnityHelpers.Core.Math
 {
     using Extension;
     using UnityEngine;

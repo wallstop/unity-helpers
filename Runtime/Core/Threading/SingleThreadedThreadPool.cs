@@ -1,4 +1,4 @@
-﻿namespace Core.Threading
+﻿namespace UnityHelpers.Core.Threading
 {
     using System;
     using System.Collections.Concurrent;
