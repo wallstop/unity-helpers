@@ -14,6 +14,7 @@
 #endif
     using UnityEngine;
     using UnityEngine.SceneManagement;
+    using Utils;
     using Object = UnityEngine.Object;
 
     public static partial class UnityHelpers

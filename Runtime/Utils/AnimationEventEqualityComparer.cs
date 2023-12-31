@@ -1,4 +1,4 @@
-﻿namespace Utilities
+﻿namespace UnityHelpers.Utils
 {
     using System;
     using System.Collections.Generic;
