@@ -101,6 +101,12 @@
 
                 if (field.FieldType.IsArray)
                 {
+                    if (fieldValue == null)
+                    {
+                        component.LogError("Field {0} (array) was null.", field.Name);
+                        continue;
+                    }
+
                     Array array = (Array)fieldValue;
                     foreach (object thing in array)
                     {
