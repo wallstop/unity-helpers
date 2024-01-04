@@ -1,4 +1,4 @@
-﻿namespace Editor
+﻿namespace UnityHelpers.Editor
 {
     using System;
     using System.Collections;
@@ -7,9 +7,9 @@
     using System.Reflection;
     using UnityEditor;
     using UnityEngine;
-    using UnityHelpers.Core.Extension;
-    using UnityHelpers.Core.Helper;
-    using UnityHelpers.Utils;
+    using Core.Extension;
+    using Core.Helper;
+    using Utils;
     using Object = UnityEngine.Object;
 
     public sealed class PrefabCheckWizard : ScriptableWizard
