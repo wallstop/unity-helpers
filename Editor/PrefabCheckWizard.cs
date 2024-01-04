@@ -5,6 +5,7 @@
     using System.Collections.Generic;
     using System.Linq;
     using System.Reflection;
+    using Core.Attributes;
     using UnityEditor;
     using UnityEngine;
     using Core.Extension;
@@ -69,10 +70,13 @@
 
         private static void ValidateNoNullsInLists(Object component)
         {
-
             foreach (FieldInfo field in FieldsByType.GetOrAdd(
                          component.GetType(), type => type
-                             .GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                             .GetFields(BindingFlags.Instance | BindingFlags.Public)
+                             .Concat(
+                                 type.GetFields(BindingFlags.Instance | BindingFlags.NonPublic).Where(
+                                     field => field.GetCustomAttributes(typeof(SerializeField)).Any() ||
+                                              field.GetCustomAttributes(typeof(ValidateAssignmentAttribute)).Any()))
                              .Where(field => typeof(IEnumerable).IsAssignableFrom(field.FieldType) || field.FieldType.IsArray)
                              .Where(field => !typeof(Transform).IsAssignableFrom(field.FieldType))
                              .Where(field => !typeof(Object).IsAssignableFrom(field.FieldType))
