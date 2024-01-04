@@ -935,11 +935,11 @@
         }
 
 #if UNITY_EDITOR
-        public static IEnumerable<GameObject> EnumeratePrefabs(string[] assetPaths = null)
+        public static IEnumerable<GameObject> EnumeratePrefabs(IEnumerable<string> assetPaths = null)
         {
             assetPaths ??= new[] {"Assets/Prefabs", "Assets/Resources"};
 
-            foreach (string assetGuid in AssetDatabase.FindAssets("t:prefab", assetPaths))
+            foreach (string assetGuid in AssetDatabase.FindAssets("t:prefab", assetPaths.ToArray()))
             {
                 string path = AssetDatabase.GUIDToAssetPath(assetGuid);
                 GameObject go = AssetDatabase.LoadAssetAtPath<GameObject>(path);
