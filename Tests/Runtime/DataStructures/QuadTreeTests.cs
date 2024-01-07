@@ -11,11 +11,13 @@
 
     public sealed class QuadTreeTests
     {
+        private IRandom Random => PcgRandom.Instance;
+
         [Test]
         public void SimpleWithinCircle()
         {
-            Vector2 center = new(PcgRandom.Instance.NextFloat(-100, 100), PcgRandom.Instance.NextFloat(-100, 100));
-            float radius = PcgRandom.Instance.NextFloat(5, 25f);
+            Vector2 center = new(Random.NextFloat(-100, 100), Random.NextFloat(-100, 100));
+            float radius = Random.NextFloat(5, 25f);
 
             const int numPoints = 1_000;
             HashSet<Vector2> points = new(numPoints);
@@ -42,6 +44,13 @@
             Assert.AreEqual(
                 0, pointsInRange.Count, "Found {0} points within {1} range of {2} (original center {3})",
                 pointsInRange.Count, radius, offset, center);
+        }
+
+        [Test]
+        public void SimplePointOutsideRange()
+        {
+            Vector2 point = new(Random.NextFloat(-100, 100), Random.NextFloat(-100, 100));
+            // TODO
         }
     }
 }
