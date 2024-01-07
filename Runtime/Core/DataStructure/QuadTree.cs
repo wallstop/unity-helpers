@@ -8,9 +8,11 @@
 
     public sealed class QuadTree<T>
     {
+        private const int NumChildren = 4;
+
         private readonly struct QuadTreeNode<V>
         {
-            public const int NumChildren = 4;
+            private static readonly List<V> Buffer = new();
 
             public readonly Bounds boundary;
             public readonly QuadTreeNode<V>[] children;
@@ -41,19 +43,19 @@
                     new Bounds(new Vector3(boundary.center.x - halfQuadrantSize.x, boundary.center.y - halfQuadrantSize.y, boundary.center.z), quadrantSize),
                 };
 
-                for (int i = 0; i < quadrants.Length; i++)
+                for (int i = 0; i < quadrants.Length; ++i)
                 {
                     Bounds quadrant = quadrants[i];
-                    List<V> pointsInRange = new();
+                    Buffer.Clear();
                     foreach (V element in elements)
                     {
                         if (quadrant.FastContains2D(elementTransformer(element)))
                         {
-                            pointsInRange.Add(element);
+                            Buffer.Add(element);
                         }
                     }
 
-                    children[i] = new QuadTreeNode<V>(pointsInRange.ToArray(), elementTransformer, quadrant, bucketSize);
+                    children[i] = new QuadTreeNode<V>(Buffer.ToArray(), elementTransformer, quadrant, bucketSize);
                 }
             }
         }
@@ -159,7 +161,7 @@
             QuadTreeNode<T> current = _head;
             Stack<QuadTreeNode<T>> stack = new();
             stack.Push(_head);
-            List<QuadTreeNode<T>> childrenCopy = new(QuadTreeNode<T>.NumChildren);
+            List<QuadTreeNode<T>> childrenCopy = new(NumChildren);
             HashSet<T> nearestNeighborsSet = new(count);
 
             int Comparison(QuadTreeNode<T> lhs, QuadTreeNode<T> rhs) => ((Vector2)lhs.boundary.center - position).sqrMagnitude.CompareTo(((Vector2)rhs.boundary.center - position).sqrMagnitude);

@@ -1,12 +1,8 @@
 ﻿namespace UnityHelpers.Tests.DataStructures
 {
-    using System;
     using System.Collections.Generic;
-    using System.Diagnostics;
     using System.Linq;
-    using System.Numerics;
     using Core.DataStructure;
-    using Core.Extension;
     using Core.Helper;
     using Core.Random;
     using NUnit.Framework;
@@ -65,6 +61,44 @@
             pointsInRange = quadTree.GetElementsInRange(point, range).ToList();
             Assert.AreEqual(1, pointsInRange.Count);
             Assert.AreEqual(testPoint, pointsInRange[0]);
+        }
+
+        [Test]
+        public void SimpleANN()
+        {
+            List<Vector2> points = new();
+            for (int x = 0; x < 100; ++x)
+            {
+                for (int y = 0; y < 100; ++y)
+                {
+                    Vector2 point = new(x, y);
+                    points.Add(point);
+                }
+            }
+
+            QuadTree<Vector2> quadTree = new(points, _ => _);
+            Vector2 center = quadTree.Bounds.center;
+
+            List<Vector2> nearestNeighbors = new();
+            int nearestNeighborCount = 1;
+            quadTree.GetApproximateNearestNeighbors(center, nearestNeighborCount, nearestNeighbors);
+            Assert.AreEqual(nearestNeighborCount, nearestNeighbors.Count);
+            Assert.IsTrue(nearestNeighbors.All(neighbor => (neighbor - center).magnitude <= 2f));
+
+            nearestNeighborCount = 4;
+            quadTree.GetApproximateNearestNeighbors(center, nearestNeighborCount, nearestNeighbors);
+            Assert.AreEqual(nearestNeighborCount, nearestNeighbors.Count);
+            Assert.IsTrue(nearestNeighbors.All(neighbor => (neighbor - center).magnitude <= 2.2f));
+
+            nearestNeighborCount = 16;
+            quadTree.GetApproximateNearestNeighbors(center, nearestNeighborCount, nearestNeighbors);
+            Assert.AreEqual(nearestNeighborCount, nearestNeighbors.Count);
+            Assert.IsTrue(nearestNeighbors.All(neighbor => (neighbor - center).magnitude <= 5.6f), "Max: {0}", nearestNeighbors.Select(neighbor => (neighbor - center).magnitude).Max());
+
+            center = new Vector2(-100, -100);
+
+            quadTree.GetApproximateNearestNeighbors(center, nearestNeighborCount, nearestNeighbors);
+            Assert.AreEqual(nearestNeighborCount, nearestNeighbors.Count);
         }
     }
 }
