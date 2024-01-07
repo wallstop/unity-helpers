@@ -3,6 +3,7 @@
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Xml.Linq;
     using DataStructure;
     using DataStructure.Adapters;
     using Helper;
@@ -163,6 +164,32 @@
             Vector3 center = new((xMax + xMin) / 2f, (yMax + yMin) / 2f);
             Vector3 size = new(xMax - xMin, yMax - yMin);
             return new Bounds(center, size);
+        }
+
+        public static Bounds? GetBounds(this IEnumerable<Bounds> boundaries)
+        {
+            float minX = float.MaxValue;
+            float minY = float.MaxValue;
+            float maxX = float.MinValue;
+            float maxY = float.MinValue;
+            bool any = false;
+            foreach (Bounds boundary in boundaries)
+            {
+                any = true;
+                Vector3 min = boundary.min;
+                Vector3 max = boundary.max;
+                minX = Math.Min(minX, min.x);
+                maxX = Math.Max(maxX, max.x);
+                minY = Math.Min(minY, min.y);
+                maxY = Math.Max(maxY, max.y);
+            }
+
+            if (!any)
+            {
+                return null;
+            }
+
+            return new Bounds(new Vector3(minX + (maxX - minX) / 2, minY + (maxY - minY) / 2), new Vector3(maxX - minX, maxY - minY));
         }
 
         // https://www.habrador.com/tutorials/math/8-convex-hull/

@@ -52,6 +52,7 @@
 
         public readonly ImmutableArray<T> elements;
         public Bounds Boundary => _bounds;
+        public Func<T, Vector2> ElementTransformer => _elementTransformer;
 
         private readonly Bounds _bounds;
         private readonly Func<T, Vector2> _elementTransformer;
@@ -63,29 +64,6 @@
             elements = points?.ToImmutableArray() ?? throw new ArgumentNullException(nameof(points));
             _bounds = elements.Select(elementTransformer).GetBounds() ?? new Bounds();
             _head = new KDTreeNode<T>(elements.ToList(), elementTransformer, bucketSize, true);
-        }
-
-        public IEnumerable<T> GetElementsInRange(Vector2 position, float range, float minimumRange = 0f)
-        {
-            Circle area = new(position, range);
-            Circle minimumArea = new(position, minimumRange);
-            return GetElementsInBounds(new Bounds(new Vector3(position.x, position.y, 0f),
-                    new Vector3(range * 2f, range * 2f, 1f)))
-                .Where(element =>
-                {
-                    Vector2 elementPosition = _elementTransformer(element);
-                    if (!area.Contains(elementPosition))
-                    {
-                        return false;
-                    }
-
-                    if (minimumRange != 0f)
-                    {
-                        return !minimumArea.Contains(elementPosition);
-                    }
-
-                    return true;
-                });
         }
 
         public IEnumerable<T> GetElementsInBounds(Bounds bounds)
@@ -155,6 +133,7 @@
                     ((Vector2)right.boundary.center - position).sqrMagnitude)
                 {
                     stack.Push(left);
+                    current = left;
                     if (left.elements.Length <= count)
                     {
                         break;
@@ -163,6 +142,7 @@
                 else
                 {
                     stack.Push(right);
+                    current = right;
                     if (right.elements.Length <= count)
                     {
                         break;

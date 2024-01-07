@@ -8,7 +8,7 @@
     using UnityEngine;
 
     [Serializable]
-    public sealed class RTree<T> : ISpatialTree<T>
+    public sealed class RTree<T>
     {
         [Serializable]
         private sealed class RTreeNode<V>
@@ -18,9 +18,25 @@
             public readonly V[] elements;
             public readonly bool isTerminal;
 
-            public RTreeNode(List<V> elements, Func<V, Vector2> elementTransformer, int bucketSize, int branchFactor)
+            public RTreeNode(List<V> elements, Func<V, Bounds> elementTransformer, int bucketSize, int branchFactor)
             {
-                boundary = elements.Select(elementTransformer).GetBounds() ?? new Bounds();
+                float minX = float.MaxValue;
+                float minY = float.MaxValue;
+                float maxX = float.MinValue;
+                float maxY = float.MinValue;
+                foreach (V element in elements)
+                {
+                    Bounds rectangle = elementTransformer(element);
+                    Vector3 min = rectangle.min;
+                    Vector3 max = rectangle.max;
+                    minX = Math.Min(minX, min.x);
+                    maxX = Math.Max(maxX, max.x);
+                    minY = Math.Min(minY, min.y);
+                    maxY = Math.Max(maxY, max.y);
+                }
+
+                boundary = new Bounds(new Vector3(minX + (maxX - minX) / 2, minY + (maxY - minY) / 2), new Vector3(maxX - minX, maxY - minY));
+
                 this.elements = elements.ToArray();
                 isTerminal = elements.Count <= bucketSize;
                 if (isTerminal)
@@ -48,12 +64,12 @@
 
                 int XAxis(V lhs, V rhs)
                 {
-                    return elementTransformer(lhs).x.CompareTo(elementTransformer(rhs).x);
+                    return elementTransformer(lhs).center.x.CompareTo(elementTransformer(rhs).center.x);
                 }
 
                 int YAxis(V lhs, V rhs)
                 {
-                    return elementTransformer(lhs).y.CompareTo(elementTransformer(rhs).y);
+                    return elementTransformer(lhs).center.y.CompareTo(elementTransformer(rhs).center.y);
                 }
 
                 elements.Sort(XAxis);
@@ -78,11 +94,11 @@
         public Bounds Boundary => _bounds;
 
         private readonly Bounds _bounds;
-        private readonly Func<T, Vector2> _elementTransformer;
+        private readonly Func<T, Bounds> _elementTransformer;
         private readonly RTreeNode<T> _head;
 
         public RTree(
-            IEnumerable<T> points, Func<T, Vector2> elementTransformer, int bucketSize = DefaultBucketSize,
+            IEnumerable<T> points, Func<T, Bounds> elementTransformer, int bucketSize = DefaultBucketSize,
             int branchFactor = DefaultBranchFactor)
         {
             _elementTransformer = elementTransformer ?? throw new ArgumentNullException(nameof(elementTransformer));
@@ -94,24 +110,40 @@
         public IEnumerable<T> GetElementsInRange(Vector2 position, float range, float minimumRange = 0f)
         {
             Circle area = new(position, range);
-            Circle minimumArea = new(position, minimumRange);
-            return GetElementsInBounds(new Bounds(new Vector3(position.x, position.y, 0f),
-                    new Vector3(range * 2f, range * 2f, 1f)))
-                .Where(element =>
-                {
-                    Vector2 elementPosition = _elementTransformer(element);
-                    if (!area.Contains(elementPosition))
-                    {
-                        return false;
-                    }
+            if (0 < minimumRange)
+            {
+                Circle minimumArea = new(position, minimumRange);
+                return GetElementsInBounds(
+                        new Bounds(
+                            new Vector3(position.x, position.y, 0f),
+                            new Vector3(range * 2f, range * 2f, 1f)))
+                    .Where(
+                        element =>
+                        {
+                            Bounds elementBoundary = _elementTransformer(element);
+                            if (!area.Intersects(elementBoundary))
+                            {
+                                return false;
+                            }
 
-                    if (minimumRange != 0f)
+                            return !minimumArea.Intersects(elementBoundary);
+                        });
+            }
+            return GetElementsInBounds(
+                    new Bounds(
+                        new Vector3(position.x, position.y, 0f),
+                        new Vector3(range * 2f, range * 2f, 1f)))
+                .Where(
+                    element =>
                     {
-                        return !minimumArea.Contains(elementPosition);
-                    }
+                        Bounds elementBoundary = _elementTransformer(element);
+                        if (!area.Intersects(elementBoundary))
+                        {
+                            return false;
+                        }
 
-                    return true;
-                });
+                        return true;
+                    });
         }
 
         public IEnumerable<T> GetElementsInBounds(Bounds bounds)
@@ -130,7 +162,7 @@
                 {
                     foreach (T element in currentNode.elements)
                     {
-                        if (bounds.FastContains2D(_elementTransformer(element)))
+                        if (bounds.FastIntersects2D(_elementTransformer(element)))
                         {
                             yield return element;
                         }
@@ -207,7 +239,7 @@
             nearestNeighbors.AddRange(nearestNeighborsSet);
             if (count < nearestNeighbors.Count)
             {
-                int NearestComparison(T lhs, T rhs) => (_elementTransformer(lhs) - position).sqrMagnitude.CompareTo((_elementTransformer(rhs) - position).sqrMagnitude);
+                int NearestComparison(T lhs, T rhs) => ((Vector2)_elementTransformer(lhs).center - position).sqrMagnitude.CompareTo(((Vector2)_elementTransformer(rhs).center - position).sqrMagnitude);
                 nearestNeighbors.Sort(NearestComparison);
                 nearestNeighbors.RemoveRange(count, nearestNeighbors.Count - count);
             }
