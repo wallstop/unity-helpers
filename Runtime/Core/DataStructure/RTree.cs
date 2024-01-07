@@ -8,77 +8,87 @@
     using UnityEngine;
 
     [Serializable]
-    public sealed class QuadTree<T> : ISpatialTree<T>
+    public sealed class RTree<T> : ISpatialTree<T>
     {
-        private const int NumChildren = 4;
-
         [Serializable]
-        private sealed class QuadTreeNode<V>
+        private sealed class RTreeNode<V>
         {
-            private static readonly List<V> Buffer = new();
-
             public readonly Bounds boundary;
-            public readonly QuadTreeNode<V>[] children;
+            public readonly RTreeNode<V>[] children;
             public readonly V[] elements;
             public readonly bool isTerminal;
 
-            public QuadTreeNode(V[] elements, Func<V, Vector2> elementTransformer, Bounds boundary,
-                int bucketSize)
+            public RTreeNode(List<V> elements, Func<V, Vector2> elementTransformer, int bucketSize, int branchFactor)
             {
-                this.boundary = boundary;
-                this.elements = elements;
-                isTerminal = elements.Length <= bucketSize;
+                boundary = elements.Select(elementTransformer).GetBounds() ?? new Bounds();
+                this.elements = elements.ToArray();
+                isTerminal = elements.Count <= bucketSize;
                 if (isTerminal)
                 {
-                    children = Array.Empty<QuadTreeNode<V>>();
+                    children = Array.Empty<RTreeNode<V>>();
                     return;
                 }
-                children = new QuadTreeNode<V>[NumChildren];
-                
-                Vector3 quadrantSize = boundary.size / 2f;
-                Vector2 halfQuadrantSize = quadrantSize / 2f;
 
-                Bounds[] quadrants =
+                /*
+                    http://www.dtic.mil/get-tr-doc/pdf?AD=ADA324493
+                    var targetSize = rectangles.Count / (double) branchFactor;
+                    P = branchFactor;
+                    S = Math.sqrt(P);
+                    N = targetSize;
+
+                    Ugh.
+                */
+                double targetSize = elements.Count / (double)branchFactor;
+                int intTargetSize = (int)Math.Ceiling(targetSize);
+
+                List<RTreeNode<V>> tempChildren = new(intTargetSize);
+
+                double slicesPerAxis = Math.Sqrt(branchFactor);
+                int rectanglesPerPagePerAxis = (int)(slicesPerAxis * targetSize);
+
+                int XAxis(V lhs, V rhs)
                 {
-                    new Bounds(new Vector3(boundary.center.x - halfQuadrantSize.x, boundary.center.y + halfQuadrantSize.y, boundary.center.z), quadrantSize),
-                    new Bounds(new Vector3(boundary.center.x + halfQuadrantSize.x, boundary.center.y + halfQuadrantSize.y, boundary.center.z), quadrantSize),
-                    new Bounds(new Vector3(boundary.center.x + halfQuadrantSize.x, boundary.center.y - halfQuadrantSize.y, boundary.center.z), quadrantSize),
-                    new Bounds(new Vector3(boundary.center.x - halfQuadrantSize.x, boundary.center.y - halfQuadrantSize.y, boundary.center.z), quadrantSize),
-                };
-
-                for (int i = 0; i < quadrants.Length; ++i)
-                {
-                    Bounds quadrant = quadrants[i];
-                    Buffer.Clear();
-                    foreach (V element in elements)
-                    {
-                        if (quadrant.FastContains2D(elementTransformer(element)))
-                        {
-                            Buffer.Add(element);
-                        }
-                    }
-
-                    children[i] = new QuadTreeNode<V>(Buffer.ToArray(), elementTransformer, quadrant, bucketSize);
+                    return elementTransformer(lhs).x.CompareTo(elementTransformer(rhs).x);
                 }
+
+                int YAxis(V lhs, V rhs)
+                {
+                    return elementTransformer(lhs).y.CompareTo(elementTransformer(rhs).y);
+                }
+
+                elements.Sort(XAxis);
+                foreach (List<V> xSlice in elements.Partition(rectanglesPerPagePerAxis).Select(enumerable => enumerable as List<V> ?? enumerable.ToList()))
+                {
+                    xSlice.Sort(YAxis);
+                    foreach (List<V> ySlice in xSlice.Partition(intTargetSize).Select(enumerable => enumerable as List<V> ?? enumerable.ToList()))
+                    {
+                        RTreeNode<V> node = new(ySlice, elementTransformer, bucketSize, branchFactor);
+                        tempChildren.Add(node);
+                    }
+                }
+
+                children = tempChildren.ToArray();
             }
         }
 
-        public const int DefaultBucketSize = 12;
+        public const int DefaultBucketSize = 10;
+        public const int DefaultBranchFactor = 4;
 
         public readonly ImmutableArray<T> elements;
         public Bounds Boundary => _bounds;
 
         private readonly Bounds _bounds;
         private readonly Func<T, Vector2> _elementTransformer;
-        private readonly QuadTreeNode<T> _head;
+        private readonly RTreeNode<T> _head;
 
-        public QuadTree(IEnumerable<T> points, Func<T, Vector2> elementTransformer, Bounds? boundary = null,
-            int bucketSize = DefaultBucketSize)
+        public RTree(
+            IEnumerable<T> points, Func<T, Vector2> elementTransformer, int bucketSize = DefaultBucketSize,
+            int branchFactor = DefaultBranchFactor)
         {
             _elementTransformer = elementTransformer ?? throw new ArgumentNullException(nameof(elementTransformer));
             elements = points?.ToImmutableArray() ?? throw new ArgumentNullException(nameof(points));
-            _bounds = boundary ?? elements.Select(elementTransformer).GetBounds() ?? new Bounds();
-            _head = new QuadTreeNode<T>(elements.ToArray(), elementTransformer, _bounds, bucketSize);
+            _bounds = elements.Select(elementTransformer).GetBounds() ?? new Bounds();
+            _head = new RTreeNode<T>(elements.ToList(), elementTransformer, bucketSize, branchFactor);
         }
 
         public IEnumerable<T> GetElementsInRange(Vector2 position, float range, float minimumRange = 0f)
@@ -111,10 +121,10 @@
                 yield break;
             }
 
-            Stack<QuadTreeNode<T>> nodesToVisit = new();
+            Stack<RTreeNode<T>> nodesToVisit = new();
             nodesToVisit.Push(_head);
 
-            while (nodesToVisit.TryPop(out QuadTreeNode<T> currentNode))
+            while (nodesToVisit.TryPop(out RTreeNode<T> currentNode))
             {
                 if (currentNode.isTerminal)
                 {
@@ -139,7 +149,7 @@
                     continue;
                 }
 
-                foreach (QuadTreeNode<T> child in currentNode.children)
+                foreach (RTreeNode<T> child in currentNode.children)
                 {
                     if (child.elements.Length <= 0)
                     {
@@ -161,14 +171,14 @@
         {
             nearestNeighbors.Clear();
 
-            QuadTreeNode<T> current = _head;
-            Stack<QuadTreeNode<T>> stack = new();
+            RTreeNode<T> current = _head;
+            Stack<RTreeNode<T>> stack = new();
             stack.Push(_head);
-            List<QuadTreeNode<T>> childrenCopy = new(NumChildren);
+            List<RTreeNode<T>> childrenCopy = new();
             HashSet<T> nearestNeighborsSet = new(count);
 
-            int Comparison(QuadTreeNode<T> lhs, QuadTreeNode<T> rhs) => ((Vector2)lhs.boundary.center - position).sqrMagnitude.CompareTo(((Vector2)rhs.boundary.center - position).sqrMagnitude);
-            
+            int Comparison(RTreeNode<T> lhs, RTreeNode<T> rhs) => ((Vector2)lhs.boundary.center - position).sqrMagnitude.CompareTo(((Vector2)rhs.boundary.center - position).sqrMagnitude);
+
             while (!current.isTerminal)
             {
                 childrenCopy.Clear();
@@ -186,7 +196,7 @@
                 }
             }
 
-            while (nearestNeighborsSet.Count < count && stack.TryPop(out QuadTreeNode<T> selected))
+            while (nearestNeighborsSet.Count < count && stack.TryPop(out RTreeNode<T> selected))
             {
                 foreach (T element in selected.elements)
                 {

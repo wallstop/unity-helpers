@@ -1094,24 +1094,6 @@
             return new Bounds(new Vector3(xMin + width / 2, yMin + height / 2), new Vector3(width, height) * scaleFactor + new Vector3(0.001f, 0.001f));
         }
 
-        public static Bounds? GetBoundary(this IEnumerable<Vector2> pointsInput)
-        {
-            List<Vector2> points = pointsInput.ToList();
-            if (points.Count <= 0)
-            {
-                return null;
-            }
-
-            float xMin = points.Select(point => point.x).Min();
-            float yMin = points.Select(point => point.y).Min();
-            float xMax = points.Select(point => point.x).Max();
-            float yMax = points.Select(point => point.y).Max();
-
-            float width = xMax - xMin + 0.001f;
-            float height = yMax - yMin + 0.001f;
-            return new Bounds(new Vector3(xMin + width / 2, yMin + height / 2), new Vector3(width, height));
-        }
-
 
         // https://www.geeksforgeeks.org/how-to-check-if-a-given-point-lies-inside-a-polygon/#
 

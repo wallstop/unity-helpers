@@ -1,10 +1,10 @@
-﻿namespace UnityHelpers.Tests.DataStructures
+﻿namespace UnityHelpers.Tests.Performance
 {
     using System.Collections.Generic;
     using UnityEngine;
     using Core.DataStructure;
 
-    public sealed class QuadTreeTests : SpatialTreeTests<QuadTree<Vector2>>
+    public sealed class QuadTreePerformanceTests : SpatialTreePerformanceTest<QuadTree<Vector2>>
     {
         protected override QuadTree<Vector2> CreateTree(IEnumerable<Vector2> points)
         {

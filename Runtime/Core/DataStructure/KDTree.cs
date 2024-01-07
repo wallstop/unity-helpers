@@ -8,58 +8,43 @@
     using UnityEngine;
 
     [Serializable]
-    public sealed class QuadTree<T> : ISpatialTree<T>
+    public sealed class KDTree<T> : ISpatialTree<T>
     {
-        private const int NumChildren = 4;
+        public delegate float Axis<in V>(V element);
 
         [Serializable]
-        private sealed class QuadTreeNode<V>
+        private sealed class KDTreeNode<V>
         {
-            private static readonly List<V> Buffer = new();
-
             public readonly Bounds boundary;
-            public readonly QuadTreeNode<V>[] children;
+            public readonly KDTreeNode<V> left;
+            public readonly KDTreeNode<V> right;
             public readonly V[] elements;
             public readonly bool isTerminal;
 
-            public QuadTreeNode(V[] elements, Func<V, Vector2> elementTransformer, Bounds boundary,
-                int bucketSize)
+            public KDTreeNode(List<V> elements, Func<V, Vector2> elementTransformer, int bucketSize, bool isXAxis)
             {
-                this.boundary = boundary;
-                this.elements = elements;
-                isTerminal = elements.Length <= bucketSize;
+                boundary = elements.Select(elementTransformer).GetBounds() ?? new Bounds();
+                this.elements = elements.ToArray();
+                isTerminal = elements.Count <= bucketSize;
                 if (isTerminal)
                 {
-                    children = Array.Empty<QuadTreeNode<V>>();
                     return;
                 }
-                children = new QuadTreeNode<V>[NumChildren];
-                
-                Vector3 quadrantSize = boundary.size / 2f;
-                Vector2 halfQuadrantSize = quadrantSize / 2f;
 
-                Bounds[] quadrants =
+                Axis<V> axisFunction = isXAxis
+                    ? element => elementTransformer(element).x
+                    : element => elementTransformer(element).y;
+
+                int Comparison(V lhs, V rhs)
                 {
-                    new Bounds(new Vector3(boundary.center.x - halfQuadrantSize.x, boundary.center.y + halfQuadrantSize.y, boundary.center.z), quadrantSize),
-                    new Bounds(new Vector3(boundary.center.x + halfQuadrantSize.x, boundary.center.y + halfQuadrantSize.y, boundary.center.z), quadrantSize),
-                    new Bounds(new Vector3(boundary.center.x + halfQuadrantSize.x, boundary.center.y - halfQuadrantSize.y, boundary.center.z), quadrantSize),
-                    new Bounds(new Vector3(boundary.center.x - halfQuadrantSize.x, boundary.center.y - halfQuadrantSize.y, boundary.center.z), quadrantSize),
-                };
-
-                for (int i = 0; i < quadrants.Length; ++i)
-                {
-                    Bounds quadrant = quadrants[i];
-                    Buffer.Clear();
-                    foreach (V element in elements)
-                    {
-                        if (quadrant.FastContains2D(elementTransformer(element)))
-                        {
-                            Buffer.Add(element);
-                        }
-                    }
-
-                    children[i] = new QuadTreeNode<V>(Buffer.ToArray(), elementTransformer, quadrant, bucketSize);
+                    return axisFunction(lhs).CompareTo(axisFunction(rhs));
                 }
+
+                elements.Sort(Comparison);
+
+                int cutoff = elements.Count / 2;
+                left = new KDTreeNode<V>(elements.Take(cutoff).ToList(), elementTransformer, bucketSize, !isXAxis);
+                right = new KDTreeNode<V>(elements.Skip(cutoff).ToList(), elementTransformer, bucketSize, !isXAxis);
             }
         }
 
@@ -70,15 +55,14 @@
 
         private readonly Bounds _bounds;
         private readonly Func<T, Vector2> _elementTransformer;
-        private readonly QuadTreeNode<T> _head;
+        private readonly KDTreeNode<T> _head;
 
-        public QuadTree(IEnumerable<T> points, Func<T, Vector2> elementTransformer, Bounds? boundary = null,
-            int bucketSize = DefaultBucketSize)
+        public KDTree(IEnumerable<T> points, Func<T, Vector2> elementTransformer, int bucketSize = DefaultBucketSize)
         {
             _elementTransformer = elementTransformer ?? throw new ArgumentNullException(nameof(elementTransformer));
             elements = points?.ToImmutableArray() ?? throw new ArgumentNullException(nameof(points));
-            _bounds = boundary ?? elements.Select(elementTransformer).GetBounds() ?? new Bounds();
-            _head = new QuadTreeNode<T>(elements.ToArray(), elementTransformer, _bounds, bucketSize);
+            _bounds = elements.Select(elementTransformer).GetBounds() ?? new Bounds();
+            _head = new KDTreeNode<T>(elements.ToList(), elementTransformer, bucketSize, true);
         }
 
         public IEnumerable<T> GetElementsInRange(Vector2 position, float range, float minimumRange = 0f)
@@ -111,10 +95,10 @@
                 yield break;
             }
 
-            Stack<QuadTreeNode<T>> nodesToVisit = new();
+            Stack<KDTreeNode<T>> nodesToVisit = new();
             nodesToVisit.Push(_head);
 
-            while (nodesToVisit.TryPop(out QuadTreeNode<T> currentNode))
+            while (nodesToVisit.TryPop(out KDTreeNode<T> currentNode))
             {
                 if (currentNode.isTerminal)
                 {
@@ -139,19 +123,16 @@
                     continue;
                 }
 
-                foreach (QuadTreeNode<T> child in currentNode.children)
+                KDTreeNode<T> leftNode = currentNode.left;
+                if (0 < leftNode.elements.Length && bounds.FastIntersects2D(leftNode.boundary))
                 {
-                    if (child.elements.Length <= 0)
-                    {
-                        continue;
-                    }
+                    nodesToVisit.Push(leftNode);
+                }
 
-                    if (!bounds.FastIntersects2D(child.boundary))
-                    {
-                        continue;
-                    }
-
-                    nodesToVisit.Push(child);
+                KDTreeNode<T> rightNode = currentNode.right;
+                if (0 < rightNode.elements.Length && bounds.FastIntersects2D(rightNode.boundary))
+                {
+                    nodesToVisit.Push(rightNode);
                 }
             }
         }
@@ -161,32 +142,35 @@
         {
             nearestNeighbors.Clear();
 
-            QuadTreeNode<T> current = _head;
-            Stack<QuadTreeNode<T>> stack = new();
+            KDTreeNode<T> current = _head;
+            Stack<KDTreeNode<T>> stack = new();
             stack.Push(_head);
-            List<QuadTreeNode<T>> childrenCopy = new(NumChildren);
             HashSet<T> nearestNeighborsSet = new(count);
 
-            int Comparison(QuadTreeNode<T> lhs, QuadTreeNode<T> rhs) => ((Vector2)lhs.boundary.center - position).sqrMagnitude.CompareTo(((Vector2)rhs.boundary.center - position).sqrMagnitude);
-            
             while (!current.isTerminal)
             {
-                childrenCopy.Clear();
-                childrenCopy.AddRange(current.children);
-                childrenCopy.Sort(Comparison);
-                for (int i = childrenCopy.Count - 1; 0 <= i; --i)
+                KDTreeNode<T> left = current.left;
+                KDTreeNode<T> right = current.right;
+                if (((Vector2)left.boundary.center - position).sqrMagnitude <
+                    ((Vector2)right.boundary.center - position).sqrMagnitude)
                 {
-                    stack.Push(childrenCopy[i]);
+                    stack.Push(left);
+                    if (left.elements.Length <= count)
+                    {
+                        break;
+                    }
                 }
-
-                current = childrenCopy[0];
-                if (current.elements.Length <= count)
+                else
                 {
-                    break;
+                    stack.Push(right);
+                    if (right.elements.Length <= count)
+                    {
+                        break;
+                    }
                 }
             }
 
-            while (nearestNeighborsSet.Count < count && stack.TryPop(out QuadTreeNode<T> selected))
+            while (nearestNeighborsSet.Count < count && stack.TryPop(out KDTreeNode<T> selected))
             {
                 foreach (T element in selected.elements)
                 {
