@@ -35,8 +35,7 @@
                     maxY = Math.Max(maxY, max.y);
                 }
 
-                boundary = new Bounds(new Vector3(minX + (maxX - minX) / 2, minY + (maxY - minY) / 2), new Vector3(maxX - minX, maxY - minY));
-
+                boundary = elements.Count <= 0 ? new Bounds() : new Bounds(new Vector3(minX + (maxX - minX) / 2, minY + (maxY - minY) / 2), new Vector3(maxX - minX, maxY - minY));
                 this.elements = elements.ToArray();
                 isTerminal = elements.Count <= bucketSize;
                 if (isTerminal)
