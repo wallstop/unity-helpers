@@ -2,15 +2,18 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.Collections.Immutable;
     using System.Linq;
     using Extension;
     using UnityEngine;
 
-    public sealed class QuadTree<T>
+    [Serializable]
+    public sealed class QuadTree<T> : ISpatialTree<T>
     {
         private const int NumChildren = 4;
 
-        private readonly struct QuadTreeNode<V>
+        [Serializable]
+        private sealed class QuadTreeNode<V>
         {
             private static readonly List<V> Buffer = new();
 
@@ -23,8 +26,8 @@
                 int bucketSize)
             {
                 this.boundary = boundary;
-                isTerminal = elements.Length <= bucketSize;
                 this.elements = elements;
+                isTerminal = elements.Length <= bucketSize;
                 if (isTerminal)
                 {
                     children = Array.Empty<QuadTreeNode<V>>();
@@ -60,10 +63,11 @@
             }
         }
 
-        private const int DefaultBucketSize = 12;
+        public const int DefaultBucketSize = 12;
 
-        public readonly T[] elements;
-        public Bounds Bounds => _bounds;
+        public readonly ImmutableArray<T> elements;
+        public Bounds Boundary => _bounds;
+        public Func<T, Vector2> ElementTransformer => _elementTransformer;
 
         private readonly Bounds _bounds;
         private readonly Func<T, Vector2> _elementTransformer;
@@ -72,33 +76,10 @@
         public QuadTree(IEnumerable<T> points, Func<T, Vector2> elementTransformer, Bounds? boundary = null,
             int bucketSize = DefaultBucketSize)
         {
-            _elementTransformer = elementTransformer;
-            elements = points.ToArray();
+            _elementTransformer = elementTransformer ?? throw new ArgumentNullException(nameof(elementTransformer));
+            elements = points?.ToImmutableArray() ?? throw new ArgumentNullException(nameof(points));
             _bounds = boundary ?? elements.Select(elementTransformer).GetBounds() ?? new Bounds();
-            _head = new QuadTreeNode<T>(elements, elementTransformer, _bounds, bucketSize);
-        }
-
-        public IEnumerable<T> GetElementsInRange(Vector2 position, float range, float minimumRange = 0f)
-        {
-            Circle area = new(position, range);
-            Circle minimumArea = new(position, minimumRange);
-            return GetElementsInBounds(new Bounds(new Vector3(position.x, position.y, 0f),
-                    new Vector3(range * 2f, range * 2f, 1f)))
-                .Where(element =>
-                {
-                    Vector2 elementPosition = _elementTransformer(element);
-                    if (!area.Contains(elementPosition))
-                    {
-                        return false;
-                    }
-
-                    if (minimumRange != 0f)
-                    {
-                        return !minimumArea.Contains(elementPosition);
-                    }
-
-                    return true;
-                });
+            _head = new QuadTreeNode<T>(elements.ToArray(), elementTransformer, _bounds, bucketSize);
         }
 
         public IEnumerable<T> GetElementsInBounds(Bounds bounds)

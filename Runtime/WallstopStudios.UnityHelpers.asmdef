@@ -1,6 +1,6 @@
 {
     "name": "WallstopStudios.UnityHelpers",
-    "rootNamespace": "",
+    "rootNamespace": "UnityHelpers",
     "references": [],
     "includePlatforms": [],
     "excludePlatforms": [],

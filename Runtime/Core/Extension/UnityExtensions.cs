@@ -165,6 +165,32 @@
             return new Bounds(center, size);
         }
 
+        public static Bounds? GetBounds(this IEnumerable<Bounds> boundaries)
+        {
+            float minX = float.MaxValue;
+            float minY = float.MaxValue;
+            float maxX = float.MinValue;
+            float maxY = float.MinValue;
+            bool any = false;
+            foreach (Bounds boundary in boundaries)
+            {
+                any = true;
+                Vector3 min = boundary.min;
+                Vector3 max = boundary.max;
+                minX = Math.Min(minX, min.x);
+                maxX = Math.Max(maxX, max.x);
+                minY = Math.Min(minY, min.y);
+                maxY = Math.Max(maxY, max.y);
+            }
+
+            if (!any)
+            {
+                return null;
+            }
+
+            return new Bounds(new Vector3(minX + (maxX - minX) / 2, minY + (maxY - minY) / 2), new Vector3(maxX - minX, maxY - minY));
+        }
+
         // https://www.habrador.com/tutorials/math/8-convex-hull/
         public static List<Vector3Int> BuildConvexHull(this IEnumerable<Vector3Int> pointsSet, Grid grid, IRandom random = null, bool includeColinearPoints = true)
         {
@@ -1092,24 +1118,6 @@
             float width = xMax - xMin;
             float height = yMax - yMin;
             return new Bounds(new Vector3(xMin + width / 2, yMin + height / 2), new Vector3(width, height) * scaleFactor + new Vector3(0.001f, 0.001f));
-        }
-
-        public static Bounds? GetBoundary(this IEnumerable<Vector2> pointsInput)
-        {
-            List<Vector2> points = pointsInput.ToList();
-            if (points.Count <= 0)
-            {
-                return null;
-            }
-
-            float xMin = points.Select(point => point.x).Min();
-            float yMin = points.Select(point => point.y).Min();
-            float xMax = points.Select(point => point.x).Max();
-            float yMax = points.Select(point => point.y).Max();
-
-            float width = xMax - xMin + 0.001f;
-            float height = yMax - yMin + 0.001f;
-            return new Bounds(new Vector3(xMin + width / 2, yMin + height / 2), new Vector3(width, height));
         }
 
 

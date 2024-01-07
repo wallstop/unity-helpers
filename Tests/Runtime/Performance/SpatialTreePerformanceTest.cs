@@ -4,40 +4,52 @@
     using System.Collections.Generic;
     using System.Diagnostics;
     using System;
+    using System.Collections;
     using System.Linq;
+    using System.Threading.Tasks;
     using UnityEngine;
     using Core.DataStructure;
+    using UnityEngine.TestTools;
 
-    public sealed class QuadTree
+    public abstract class SpatialTreePerformanceTest<TTree> where TTree : ISpatialTree<Vector2>
     {
-        [Test]
-        public void Performance()
+        protected abstract TTree CreateTree(IEnumerable<Vector2> points);
+
+        [UnityTest]
+        public IEnumerator Performance()
         {
-            List<Vector2> points = new();
+            UnityEngine.Debug.Log("| Operation | Operations / Second |");
+            UnityEngine.Debug.Log("| --------- | ------------------- |");
+
+            Vector2[] points = new Vector2[1_000_000];
             float radius = 500;
-            for (int x = 0; x < 1_000; ++x)
+            ParallelLoopResult result = Parallel.For(0, 1_000_000, index =>
             {
-                for (int y = 0; y < 1_000; ++y)
-                {
-                    Vector2 point = new(x, y);
-                    points.Add(point);
-                }
+                // ReSharper disable once PossibleLossOfFraction
+                points[index] = new Vector2(index % 1_000, index / 1_000);
+            });
+
+            while (!result.IsCompleted)
+            {
+                yield return null;
             }
 
-            QuadTree<Vector2> quadTree = new(points, _ => _);
-            Vector2 center = quadTree.Bounds.center;
+            Stopwatch timer = Stopwatch.StartNew();
+            TTree tree = CreateTree(points);
+            timer.Stop();
+            UnityEngine.Debug.Log($"| Construction (1 million points) | {(int)Math.Floor(1 / timer.Elapsed.TotalSeconds)} ({timer.Elapsed.TotalSeconds} total) |");
+            Vector2 center = tree.Boundary.center;
             int count = 0;
             TimeSpan timeout = TimeSpan.FromSeconds(1);
-            Stopwatch timer = Stopwatch.StartNew();
+            timer.Restart();
             do
             {
-                _ = quadTree.GetElementsInRange(center, radius).Count();
+                int elementsInRange = tree.GetElementsInRange(center, radius).Count();
+                Assert.AreEqual(785456, elementsInRange);
                 ++count;
             }
             while (timer.Elapsed < timeout);
 
-            UnityEngine.Debug.Log("| Operation | Operations / Second |");
-            UnityEngine.Debug.Log("| ----- | ------------------- |");
             UnityEngine.Debug.Log($"| Elements In Range - Full | {(int)Math.Floor(count / timeout.TotalSeconds)} |");
 
             radius /= 2f;
@@ -45,7 +57,8 @@
             timer.Restart();
             do
             {
-                _ = quadTree.GetElementsInRange(center, radius).Count();
+                int elementsInRange = tree.GetElementsInRange(center, radius).Count();
+                Assert.AreEqual(196364, elementsInRange);
                 ++count;
             }
             while (timer.Elapsed < timeout);
@@ -56,7 +69,8 @@
             timer.Restart();
             do
             {
-                _ = quadTree.GetElementsInRange(center, radius).Count();
+                int elementsInRange = tree.GetElementsInRange(center, radius).Count();
+                Assert.AreEqual(49080, elementsInRange);
                 ++count;
             }
             while (timer.Elapsed < timeout);
@@ -67,7 +81,8 @@
             timer.Restart();
             do
             {
-                _ = quadTree.GetElementsInRange(center, radius).Count();
+                int elementsInRange = tree.GetElementsInRange(center, radius).Count();
+                Assert.AreEqual(4, elementsInRange);
                 ++count;
             }
             while (timer.Elapsed < timeout);
@@ -79,7 +94,7 @@
             timer.Restart();
             do
             {
-                quadTree.GetApproximateNearestNeighbors(center, nearestNeighborCount, nearestNeighbors);
+                tree.GetApproximateNearestNeighbors(center, nearestNeighborCount, nearestNeighbors);
                 Assert.IsTrue(nearestNeighbors.Count <= nearestNeighborCount);
                 ++count;
             }
@@ -91,7 +106,7 @@
             timer.Restart();
             do
             {
-                quadTree.GetApproximateNearestNeighbors(center, nearestNeighborCount, nearestNeighbors);
+                tree.GetApproximateNearestNeighbors(center, nearestNeighborCount, nearestNeighbors);
                 Assert.IsTrue(nearestNeighbors.Count <= nearestNeighborCount);
                 ++count;
             }
@@ -103,12 +118,24 @@
             timer.Restart();
             do
             {
-                quadTree.GetApproximateNearestNeighbors(center, nearestNeighborCount, nearestNeighbors);
+                tree.GetApproximateNearestNeighbors(center, nearestNeighborCount, nearestNeighbors);
                 Assert.IsTrue(nearestNeighbors.Count <= nearestNeighborCount);
                 ++count;
             }
             while (timer.Elapsed < timeout);
             UnityEngine.Debug.Log($"| ANN - 10 | {(int)Math.Floor(count / timeout.TotalSeconds)} |");
+
+            nearestNeighborCount = 1;
+            count = 0;
+            timer.Restart();
+            do
+            {
+                tree.GetApproximateNearestNeighbors(center, nearestNeighborCount, nearestNeighbors);
+                Assert.IsTrue(nearestNeighbors.Count <= nearestNeighborCount);
+                ++count;
+            }
+            while (timer.Elapsed < timeout);
+            UnityEngine.Debug.Log($"| ANN - 1 | {(int)Math.Floor(count / timeout.TotalSeconds)} |");
         }
     }
 }

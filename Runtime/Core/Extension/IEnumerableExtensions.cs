@@ -62,11 +62,25 @@
             }
         }
 
-        public static IEnumerable<IEnumerable<T>> Partition<T>(this IEnumerable<T> enumerable, int partitionSize)
+        public static IEnumerable<IEnumerable<T>> Partition<T>(this IEnumerable<T> items, int size)
         {
-            return enumerable.Select((item, index) => new {item, index})
-                .GroupBy(item => item.index / partitionSize)
-                .Select(group => group.Select(item => item.item));
+            using var enumerator = items.GetEnumerator();
+            bool hasNext = enumerator.MoveNext();
+
+            IEnumerable<T> NextPartitionOf()
+            {
+                int remainingCountForPartition = size;
+                while (remainingCountForPartition-- > 0 && hasNext)
+                {
+                    yield return enumerator.Current;
+                    hasNext = enumerator.MoveNext();
+                }
+            }
+
+            while (hasNext)
+            {
+                yield return NextPartitionOf().ToList();
+            }
         }
 
         public static List<T> ToList<T>(this IEnumerable<T> enumerable, int count)
