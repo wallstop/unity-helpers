@@ -37,7 +37,7 @@
         }
 
 
-        [MenuItem("Tools/AnimationEvent Editor")]
+        [MenuItem("Tools/Unity Helpers/AnimationEvent Editor")]
         private static void AnimationEventEditorMenu()
         {
             GetWindow(typeof(AnimationEventEditor));

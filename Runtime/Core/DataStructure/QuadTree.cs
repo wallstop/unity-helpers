@@ -8,28 +8,30 @@
 
     public sealed class QuadTree<T>
     {
-        private sealed class QuadTreeNode<V>
+        private const int NumChildren = 4;
+
+        private readonly struct QuadTreeNode<V>
         {
-            private const int NumChildren = 4;
+            private static readonly List<V> Buffer = new();
 
             public readonly Bounds boundary;
-            public readonly IReadOnlyList<QuadTreeNode<V>> children;
-            public readonly IReadOnlyList<V> elements;
+            public readonly QuadTreeNode<V>[] children;
+            public readonly V[] elements;
             public readonly bool isTerminal;
 
-            public QuadTreeNode(IReadOnlyList<V> elements, Func<V, Vector2> elementTransformer, Bounds boundary,
+            public QuadTreeNode(V[] elements, Func<V, Vector2> elementTransformer, Bounds boundary,
                 int bucketSize)
             {
                 this.boundary = boundary;
-                isTerminal = elements.Count <= bucketSize;
-                List<QuadTreeNode<V>> childrenList = new(isTerminal ? 0 : NumChildren);
-                children = childrenList;
+                isTerminal = elements.Length <= bucketSize;
                 this.elements = elements;
                 if (isTerminal)
                 {
+                    children = Array.Empty<QuadTreeNode<V>>();
                     return;
                 }
-
+                children = new QuadTreeNode<V>[NumChildren];
+                
                 Vector3 quadrantSize = boundary.size / 2f;
                 Vector2 halfQuadrantSize = quadrantSize / 2f;
 
@@ -41,31 +43,39 @@
                     new Bounds(new Vector3(boundary.center.x - halfQuadrantSize.x, boundary.center.y - halfQuadrantSize.y, boundary.center.z), quadrantSize),
                 };
 
-                foreach (Bounds quadrant in quadrants)
+                for (int i = 0; i < quadrants.Length; ++i)
                 {
-                    List<V> pointsInRange = elements
-                        .Where(element => quadrant.FastContains2D(elementTransformer(element))).ToList();
-                    QuadTreeNode<V> child = new(pointsInRange, elementTransformer, quadrant, bucketSize);
-                    childrenList.Add(child);
+                    Bounds quadrant = quadrants[i];
+                    Buffer.Clear();
+                    foreach (V element in elements)
+                    {
+                        if (quadrant.FastContains2D(elementTransformer(element)))
+                        {
+                            Buffer.Add(element);
+                        }
+                    }
+
+                    children[i] = new QuadTreeNode<V>(Buffer.ToArray(), elementTransformer, quadrant, bucketSize);
                 }
             }
         }
 
         private const int DefaultBucketSize = 12;
 
-        public readonly IReadOnlyList<T> elements;
+        public readonly T[] elements;
+        public Bounds Bounds => _bounds;
 
         private readonly Bounds _bounds;
         private readonly Func<T, Vector2> _elementTransformer;
         private readonly QuadTreeNode<T> _head;
 
-        public QuadTree(IEnumerable<T> points, Func<T, Vector2> elementTransformer, Bounds boundary,
+        public QuadTree(IEnumerable<T> points, Func<T, Vector2> elementTransformer, Bounds? boundary = null,
             int bucketSize = DefaultBucketSize)
         {
             _elementTransformer = elementTransformer;
-            _bounds = boundary;
-            elements = points.ToList();
-            _head = new QuadTreeNode<T>(elements, elementTransformer, boundary, bucketSize);
+            elements = points.ToArray();
+            _bounds = boundary ?? elements.Select(elementTransformer).GetBounds() ?? new Bounds();
+            _head = new QuadTreeNode<T>(elements, elementTransformer, _bounds, bucketSize);
         }
 
         public IEnumerable<T> GetElementsInRange(Vector2 position, float range, float minimumRange = 0f)
@@ -98,17 +108,11 @@
                 yield break;
             }
 
-            Queue<QuadTreeNode<T>> nodesToVisit = new();
-            nodesToVisit.Enqueue(_head);
+            Stack<QuadTreeNode<T>> nodesToVisit = new();
+            nodesToVisit.Push(_head);
 
-            do
+            while (nodesToVisit.TryPop(out QuadTreeNode<T> currentNode))
             {
-                QuadTreeNode<T> currentNode = nodesToVisit.Dequeue();
-                if (!bounds.FastIntersects2D(currentNode.boundary))
-                {
-                    continue;
-                }
-                
                 if (currentNode.isTerminal)
                 {
                     foreach (T element in currentNode.elements)
@@ -134,10 +138,19 @@
 
                 foreach (QuadTreeNode<T> child in currentNode.children)
                 {
-                    nodesToVisit.Enqueue(child);
+                    if (child.elements.Length <= 0)
+                    {
+                        continue;
+                    }
+
+                    if (!bounds.FastIntersects2D(child.boundary))
+                    {
+                        continue;
+                    }
+
+                    nodesToVisit.Push(child);
                 }
             }
-            while (0 < nodesToVisit.Count);
         }
 
         // Heavily adapted http://homepage.divms.uiowa.edu/%7Ekvaradar/sp2012/daa/ann.pdf
@@ -148,7 +161,7 @@
             QuadTreeNode<T> current = _head;
             Stack<QuadTreeNode<T>> stack = new();
             stack.Push(_head);
-            List<QuadTreeNode<T>> childrenCopy = new(4);
+            List<QuadTreeNode<T>> childrenCopy = new(NumChildren);
             HashSet<T> nearestNeighborsSet = new(count);
 
             int Comparison(QuadTreeNode<T> lhs, QuadTreeNode<T> rhs) => ((Vector2)lhs.boundary.center - position).sqrMagnitude.CompareTo(((Vector2)rhs.boundary.center - position).sqrMagnitude);
@@ -164,16 +177,18 @@
                 }
 
                 current = childrenCopy[0];
-                if (current.elements.Count <= count)
+                if (current.elements.Length <= count)
                 {
                     break;
                 }
             }
 
-            while (nearestNeighborsSet.Count < count && 0 < stack.Count)
+            while (nearestNeighborsSet.Count < count && stack.TryPop(out QuadTreeNode<T> selected))
             {
-                QuadTreeNode<T> selected = stack.Pop();
-                nearestNeighborsSet.UnionWith(selected.elements);
+                foreach (T element in selected.elements)
+                {
+                    _ = nearestNeighborsSet.Add(element);
+                }
             }
 
             nearestNeighbors.AddRange(nearestNeighborsSet);

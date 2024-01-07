@@ -1,7 +1,6 @@
-﻿namespace Tests.Runtime.Scripts
+﻿namespace UnityHelpers.Tests.Random
 {
     using UnityHelpers.Core.Random;
-    using UnityHelpers.Tests;
 
     public sealed class XorShiftRandomTests : RandomTestBase
     {
