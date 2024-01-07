@@ -61,6 +61,7 @@
         private const int DefaultBucketSize = 12;
 
         public readonly T[] elements;
+        public Bounds Bounds => _bounds;
 
         private readonly Bounds _bounds;
         private readonly Func<T, Vector2> _elementTransformer;
@@ -105,17 +106,11 @@
                 yield break;
             }
 
-            Queue<QuadTreeNode<T>> nodesToVisit = new();
-            nodesToVisit.Enqueue(_head);
+            Stack<QuadTreeNode<T>> nodesToVisit = new();
+            nodesToVisit.Push(_head);
 
-            do
+            while (nodesToVisit.TryPop(out QuadTreeNode<T> currentNode))
             {
-                QuadTreeNode<T> currentNode = nodesToVisit.Dequeue();
-                if (!bounds.FastIntersects2D(currentNode.boundary))
-                {
-                    continue;
-                }
-                
                 if (currentNode.isTerminal)
                 {
                     foreach (T element in currentNode.elements)
@@ -141,10 +136,19 @@
 
                 foreach (QuadTreeNode<T> child in currentNode.children)
                 {
-                    nodesToVisit.Enqueue(child);
+                    if (child.elements.Length <= 0)
+                    {
+                        continue;
+                    }
+
+                    if (!bounds.FastIntersects2D(child.boundary))
+                    {
+                        continue;
+                    }
+
+                    nodesToVisit.Push(child);
                 }
             }
-            while (0 < nodesToVisit.Count);
         }
 
         // Heavily adapted http://homepage.divms.uiowa.edu/%7Ekvaradar/sp2012/daa/ann.pdf
@@ -177,9 +181,8 @@
                 }
             }
 
-            while (nearestNeighborsSet.Count < count && 0 < stack.Count)
+            while (nearestNeighborsSet.Count < count && stack.TryPop(out QuadTreeNode<T> selected))
             {
-                QuadTreeNode<T> selected = stack.Pop();
                 foreach (T element in selected.elements)
                 {
                     _ = nearestNeighborsSet.Add(element);
