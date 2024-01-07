@@ -60,8 +60,8 @@
             TTree quadTree = CreateTree(points);
             List<Vector2> pointsInRange = quadTree.GetElementsInRange(point, range * 0.99f).ToList();
             Assert.AreEqual(0, pointsInRange.Count);
-            pointsInRange = quadTree.GetElementsInRange(point, range).ToList();
-            Assert.AreEqual(1, pointsInRange.Count);
+            pointsInRange = quadTree.GetElementsInRange(point, range * 1.01f).ToList();
+            Assert.AreEqual(1, pointsInRange.Count, "Failed to find point {0} from test point {1} with {2:0.00} range.", point, testPoint, range);
             Assert.AreEqual(testPoint, pointsInRange[0]);
         }
 

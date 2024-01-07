@@ -4,11 +4,11 @@
     using UnityEngine;
     using Core.DataStructure;
 
-    public sealed class BalancedKDTreeTests : SpatialTreeTests<KDTree<Vector2>>
+    public sealed class UnbalancedKDTreeTests : SpatialTreeTests<KDTree<Vector2>>
     {
         protected override KDTree<Vector2> CreateTree(IEnumerable<Vector2> points)
         {
-            return new KDTree<Vector2>(points, _ => _, balanced: true);
+            return new KDTree<Vector2>(points, _ => _, balanced: false);
         }
     }
 }
