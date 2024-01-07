@@ -43,8 +43,14 @@
 
                 foreach (Bounds quadrant in quadrants)
                 {
-                    List<V> pointsInRange = elements
-                        .Where(element => quadrant.FastContains2D(elementTransformer(element))).ToList();
+                    List<V> pointsInRange = new();
+                    foreach (V element in elements)
+                    {
+                        if (quadrant.FastContains2D(elementTransformer(element)))
+                        {
+                            pointsInRange.Add(element);
+                        }
+                    }
                     QuadTreeNode<V> child = new(pointsInRange, elementTransformer, quadrant, bucketSize);
                     childrenList.Add(child);
                 }

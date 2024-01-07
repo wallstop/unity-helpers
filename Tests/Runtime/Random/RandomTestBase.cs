@@ -1,11 +1,11 @@
-﻿namespace UnityHelpers.Tests
+﻿namespace UnityHelpers.Tests.Random
 {
-    using Core.Random;
     using System;
     using System.Collections.Generic;
     using System.Diagnostics;
     using System.Linq;
     using NUnit.Framework;
+    using UnityHelpers.Core.Random;
 
     public abstract class RandomTestBase
     {

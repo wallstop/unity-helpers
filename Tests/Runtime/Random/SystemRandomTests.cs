@@ -1,7 +1,7 @@
-﻿namespace UnityHelpers.Tests
+﻿namespace UnityHelpers.Tests.Random
 {
     using System;
-    using Core.Random;
+    using UnityHelpers.Core.Random;
 
     public sealed class SystemRandomTests : RandomTestBase
     {
