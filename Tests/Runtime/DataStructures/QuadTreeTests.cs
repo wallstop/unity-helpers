@@ -1,13 +1,16 @@
 ﻿namespace UnityHelpers.Tests.DataStructures
 {
+    using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.Linq;
+    using System.Numerics;
     using Core.DataStructure;
     using Core.Extension;
     using Core.Helper;
     using Core.Random;
     using NUnit.Framework;
-    using UnityEngine;
+    using Vector2 = UnityEngine.Vector2;
 
     public sealed class QuadTreeTests
     {
@@ -31,16 +34,16 @@
                 while (!points.Add(point));
             }
 
-            QuadTree<Vector2> quadTree = new(points, _ => _, points.GetBounds()!.Value);
+            QuadTree<Vector2> quadTree = new(points, _ => _);
 
-            HashSet<Vector2> pointsInRange = quadTree.GetElementsInRange(center, radius).ToHashSet();
+            List<Vector2> pointsInRange = quadTree.GetElementsInRange(center, radius).ToList();
             Assert.IsTrue(points.SetEquals(pointsInRange), "Found {0} points in range, expected {1}.", pointsInRange.Count, points.Count);
             // Translate by a unit-square - there should be no points in this range
             Vector2 offset = center;
             offset.x -= radius * 2;
             offset.y -= radius * 2;
 
-            pointsInRange = quadTree.GetElementsInRange(offset, radius).ToHashSet();
+            pointsInRange = quadTree.GetElementsInRange(offset, radius).ToList();
             Assert.AreEqual(
                 0, pointsInRange.Count, "Found {0} points within {1} range of {2} (original center {3})",
                 pointsInRange.Count, radius, offset, center);
@@ -50,7 +53,85 @@
         public void SimplePointOutsideRange()
         {
             Vector2 point = new(Random.NextFloat(-100, 100), Random.NextFloat(-100, 100));
-            // TODO
+
+            Vector2 direction = Helpers.GetRandomPointInCircle(Vector2.zero, 1f).normalized;
+            float range = Random.NextFloat(25, 1_000);
+            Vector2 testPoint = point + (direction * range);
+            List<Vector2> points = new(1) { testPoint };
+
+            QuadTree<Vector2> quadTree = new(points, _ => _);
+            List<Vector2> pointsInRange = quadTree.GetElementsInRange(point, range * 0.99f).ToList();
+            Assert.AreEqual(0, pointsInRange.Count);
+            pointsInRange = quadTree.GetElementsInRange(point, range).ToList();
+            Assert.AreEqual(1, pointsInRange.Count);
+            Assert.AreEqual(testPoint, pointsInRange[0]);
+        }
+
+        [Test]
+        public void Performance()
+        {
+            const int numPoints = 10_000;
+            Vector2 center = Vector2.zero;
+            HashSet<Vector2> points = new(numPoints);
+            float radius = 1_000f;
+            for (int i = 0; i < numPoints; ++i)
+            {
+                Vector2 point;
+                do
+                {
+                    point = Helpers.GetRandomPointInCircle(center, radius);
+                }
+                while (!points.Add(point));
+            }
+
+            QuadTree<Vector2> quadTree = new(points, _ => _);
+            int count = 0;
+            TimeSpan timeout = TimeSpan.FromSeconds(1);
+            Stopwatch timer = Stopwatch.StartNew();
+            do
+            {
+                int found = quadTree.GetElementsInRange(center, radius).Count();
+                Assert.AreEqual(numPoints, found);
+                ++count;
+            }
+            while (timer.Elapsed < timeout);
+
+            UnityEngine.Debug.Log("| Range | Operations / Second |");
+            UnityEngine.Debug.Log("| ----- | ------------------- |");
+            UnityEngine.Debug.Log($"| Full | {(int)Math.Floor(count / timeout.TotalSeconds)} |");
+
+            radius /= 2f;
+            count = 0;
+            timer.Restart();
+            do
+            {
+                _ = quadTree.GetElementsInRange(center, radius).Count();
+                ++count;
+            }
+            while (timer.Elapsed < timeout);
+            UnityEngine.Debug.Log($"| Half | {(int)Math.Floor(count / timeout.TotalSeconds)} |");
+
+            radius /= 2f;
+            count = 0;
+            timer.Restart();
+            do
+            {
+                _ = quadTree.GetElementsInRange(center, radius).Count();
+                ++count;
+            }
+            while (timer.Elapsed < timeout);
+            UnityEngine.Debug.Log($"| Quarter | {(int)Math.Floor(count / timeout.TotalSeconds)} |");
+
+            radius = 1f;
+            count = 0;
+            timer.Restart();
+            do
+            {
+                _ = quadTree.GetElementsInRange(center, radius).Count();
+                ++count;
+            }
+            while (timer.Elapsed < timeout);
+            UnityEngine.Debug.Log($"| 1 | {(int)Math.Floor(count / timeout.TotalSeconds)} |");
         }
     }
 }
