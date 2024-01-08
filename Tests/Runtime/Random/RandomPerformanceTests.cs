@@ -23,20 +23,49 @@
 
         private void RunTest<T>(T random, TimeSpan timeout) where T : IRandom
         {
-            int nextInt = RunTest(timeout, random, test => test.Next());
-            int nextFloat = RunTest(timeout, random, test => test.NextFloat());
-            int nextDouble = RunTest(timeout, random, test => test.NextDouble());
+            int nextInt = RunNext(timeout, random);
+            int nextFloat = RunNextFloat(timeout, random);
+            int nextDouble = RunNextDouble(timeout, random);
 
             UnityEngine.Debug.Log($"| {random.GetType().Name} | {(nextInt / timeout.TotalSeconds):N0} | {(nextFloat / timeout.TotalSeconds):N0} | {(nextDouble / timeout.TotalSeconds):N0} |");
         }
 
-        private int RunTest<T>(TimeSpan timeout, T random, Action<T> test) where T : IRandom
+        // Copy-pasta'd for maximum speed
+        private int RunNext<T>(TimeSpan timeout, T random) where T : IRandom
         {
             int count = 0;
             Stopwatch timer = Stopwatch.StartNew();
             do
             {
-                test(random);
+                _ = random.Next();
+                ++count;
+            }
+            while (timer.Elapsed < timeout);
+
+            return count;
+        }
+
+        private int RunNextFloat<T>(TimeSpan timeout, T random) where T : IRandom
+        {
+            int count = 0;
+            Stopwatch timer = Stopwatch.StartNew();
+            do
+            {
+                _ = random.NextFloat();
+                ++count;
+            }
+            while (timer.Elapsed < timeout);
+
+            return count;
+        }
+
+        private int RunNextDouble<T>(TimeSpan timeout, T random) where T : IRandom
+        {
+            int count = 0;
+            Stopwatch timer = Stopwatch.StartNew();
+            do
+            {
+                _ = random.NextDouble();
                 ++count;
             }
             while (timer.Elapsed < timeout);
