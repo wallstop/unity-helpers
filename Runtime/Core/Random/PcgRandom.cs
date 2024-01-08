@@ -46,7 +46,7 @@
             // Start with a nice prime
             _increment = 6554638469UL;
             _state = unchecked((ulong) seed);
-            _increment = NextUlong();
+            _increment = ((IRandom)this).NextUlong();
         }
 
         public override RandomState InternalState => new (_state, _increment, _cachedGaussian);

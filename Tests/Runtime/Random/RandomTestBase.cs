@@ -85,6 +85,10 @@
             do
             {
                 _ = random.Next();
+                // _ = random.NextFloat();
+                // _ = random.NextLong();
+                // _ = random.NextDouble();
+                // _ = random.NextUlong();
                 ++count;
             }
             while (timer.Elapsed < timeout);

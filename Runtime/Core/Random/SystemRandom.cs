@@ -5,7 +5,7 @@
     /// <summary>
     ///     Implementation dependent upon .Net's Random class.
     /// </summary>
-    public sealed class SystemRandom : AbstractRandom
+    public sealed class SystemRandom : AbstractRandom, IRandom
     {
         /*
             Copied from Random.cs source. Apparently it isn't guaranteed to be the
@@ -78,14 +78,14 @@
             return unchecked((uint) num);
         }
 
-        public override double NextDouble()
+        double IRandom.NextDouble()
         {
             return (int) NextUint() * 4.6566128752458E-10;
         }
 
-        public override float NextFloat()
+        float IRandom.NextFloat()
         {
-            return (float) NextDouble();
+            return (float) ((IRandom)this).NextDouble();
         }
 
         public override IRandom Copy()
