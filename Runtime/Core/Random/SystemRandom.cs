@@ -78,14 +78,21 @@
             return unchecked((uint) num);
         }
 
-        double IRandom.NextDouble()
+        public override double NextDouble()
         {
-            return (int) NextUint() * 4.6566128752458E-10;
+            double generated;
+            do
+            {
+                generated = unchecked((int)NextUint()) * 4.6566128752458E-10;
+            }
+            while (generated < 0 || 1 <= generated);
+
+            return generated;
         }
 
-        float IRandom.NextFloat()
+        public override float NextFloat()
         {
-            return (float) ((IRandom)this).NextDouble();
+            return (float) NextDouble();
         }
 
         public override IRandom Copy()

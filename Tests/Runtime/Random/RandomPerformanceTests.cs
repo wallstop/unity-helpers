@@ -23,18 +23,17 @@
 
         private void RunTest<T>(T random, TimeSpan timeout) where T : IRandom
         {
-            Stopwatch timer = Stopwatch.StartNew();
-            int nextInt = RunTest(timer, timeout, random, test => test.Next());
-            int nextFloat = RunTest(timer, timeout, random, test => test.NextFloat());
-            int nextDouble = RunTest(timer, timeout, random, test => test.NextDouble());
+            int nextInt = RunTest(timeout, random, test => test.Next());
+            int nextFloat = RunTest(timeout, random, test => test.NextFloat());
+            int nextDouble = RunTest(timeout, random, test => test.NextDouble());
 
             UnityEngine.Debug.Log($"| {random.GetType().Name} | {(nextInt / timeout.TotalSeconds):N0} | {(nextFloat / timeout.TotalSeconds):N0} | {(nextDouble / timeout.TotalSeconds):N0} |");
         }
 
-        private int RunTest<T>(Stopwatch timer, TimeSpan timeout, T random, Action<T> test) where T : IRandom
+        private int RunTest<T>(TimeSpan timeout, T random, Action<T> test) where T : IRandom
         {
             int count = 0;
-            timer.Restart();
+            Stopwatch timer = Stopwatch.StartNew();
             do
             {
                 test(random);
