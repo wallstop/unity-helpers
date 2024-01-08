@@ -1,8 +1,8 @@
-﻿namespace UnityHelpers.Tests.Random
+﻿namespace UnityHelpers.Tests.Performance
 {
-    using NUnit.Framework;
-    using System.Diagnostics;
     using System;
+    using System.Diagnostics;
+    using NUnit.Framework;
     using UnityHelpers.Core.Random;
 
     public sealed class RandomPerformanceTests

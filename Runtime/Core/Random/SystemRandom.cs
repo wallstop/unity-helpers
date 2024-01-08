@@ -5,7 +5,7 @@
     /// <summary>
     ///     Implementation dependent upon .Net's Random class.
     /// </summary>
-    public sealed class SystemRandom : AbstractRandom, IRandom
+    public sealed class SystemRandom : AbstractRandom
     {
         /*
             Copied from Random.cs source. Apparently it isn't guaranteed to be the

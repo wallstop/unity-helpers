@@ -4,7 +4,6 @@
     using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Linq;
-    using System.Runtime.CompilerServices;
     using System.Runtime.Serialization;
     using DataStructure.Adapters;
     using UnityEngine;
@@ -25,7 +24,6 @@
 
         public abstract RandomState InternalState { get; }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Next()
         {
             int result;
@@ -60,7 +58,6 @@
         }
 
         // Internal sampler
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public abstract uint NextUint();
 
         public uint NextUint(uint max)
