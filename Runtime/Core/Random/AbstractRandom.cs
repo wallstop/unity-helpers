@@ -468,10 +468,10 @@
                 float offsetY = Next(-100000, 100000);
                 octaveOffsets[i] = new Vector2(offsetX, offsetY);
             }
-            
+
             float maxNoiseHeight = float.MinValue;
             float minNoiseHeight = float.MaxValue;
-            
+
             float halfWidth = width / 2f;
             float halfHeight = height / 2f;
 

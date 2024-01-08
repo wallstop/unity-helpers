@@ -75,25 +75,6 @@
             TestAndVerify(random => (int)random.NextUlong(0, (ulong)_samples.Length));
         }
 
-        [Test]
-        public void Performance()
-        {
-            IRandom random = NewRandom();
-            TimeSpan timeout = TimeSpan.FromSeconds(5);
-            int count = 0;
-            Stopwatch timer = Stopwatch.StartNew();
-            do
-            {
-                _ = random.Next();
-                ++count;
-            }
-            while (timer.Elapsed < timeout);
-
-            UnityEngine.Debug.Log($"| Random | Operations / Second |");
-            UnityEngine.Debug.Log($"| ------ | ------------------- |");
-            UnityEngine.Debug.Log($"| {random.GetType().Name} | {(count / timeout.TotalSeconds):N0} |");
-        }
-
         protected void TestAndVerify(Func<IRandom, int> sample, int? maxLength = null)
         {
             IRandom random = NewRandom();
