@@ -3,6 +3,7 @@
     using Extension;
     using JetBrains.Annotations;
     using System;
+    using System.Collections;
     using System.Collections.Generic;
     using System.Linq;
     using System.Reflection;
@@ -46,6 +47,21 @@
                     Array correctTypedArray = Array.CreateInstance(siblingComponentType, siblingComponents.Length);
                     Array.Copy(siblingComponents, correctTypedArray, siblingComponents.Length);
                     field.SetValue(component, correctTypedArray);
+                }
+                else if (fieldType.IsGenericType && fieldType.GetGenericTypeDefinition() == typeof(List<>))
+                {
+                    siblingComponentType = fieldType.GenericTypeArguments[0];
+                    Type constructedListType = typeof(List<>).MakeGenericType(siblingComponentType);
+                    IList instance = (IList) Activator.CreateInstance(constructedListType);
+
+                    foundSibling = false;
+                    foreach (Component siblingComponent in component.GetComponents(siblingComponentType))
+                    {
+                        instance.Add(siblingComponent);
+                        foundSibling = true;
+                    }
+
+                    field.SetValue(component, instance);
                 }
                 else
                 {
