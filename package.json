@@ -1,10 +1,10 @@
 {
   "name": "com.wallstop-studios.unity-helpers",
-  "version": "1.0.0-rc5",
+  "version": "1.0.0-rc6",
   "displayName": "Unity Helpers",
   "description": "Various Unity Helper Library",
   "dependencies": {
-    "newtonsoft.json" : "1.0.1"
+    "com.unity.nuget.newtonsoft-json" : "3.2.1"
   },
   "unity": "2022.1",
   "keywords": [
