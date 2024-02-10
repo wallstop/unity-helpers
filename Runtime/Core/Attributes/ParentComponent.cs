@@ -1,6 +1,7 @@
 ﻿namespace UnityHelpers.Core.Attributes
 {
     using System;
+    using System.Collections;
     using System.Collections.Generic;
     using System.Linq;
     using System.Reflection;
@@ -45,6 +46,21 @@
                     Array correctTypedArray = Array.CreateInstance(parentComponentType, parentComponents.Length);
                     Array.Copy(parentComponents, correctTypedArray, parentComponents.Length);
                     field.SetValue(component, correctTypedArray);
+                }
+                else if (fieldType.IsGenericType && fieldType.GetGenericTypeDefinition() == typeof(List<>))
+                {
+                    parentComponentType = fieldType.GenericTypeArguments[0];
+                    Type constructedListType = typeof(List<>).MakeGenericType(parentComponentType);
+                    IList instance = (IList) Activator.CreateInstance(constructedListType);
+
+                    foundParent = false;
+                    foreach (Component parentComponent in component.GetComponentsInParent(parentComponentType, true))
+                    {
+                        instance.Add(parentComponent);
+                        foundParent = true;
+                    }
+
+                    field.SetValue(component, instance);
                 }
                 else
                 {

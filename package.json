@@ -1,34 +1,35 @@
 {
-    "name": "com.wallstop-studios.unity-helpers",
-    "version": "1.0.0-rc4",
-    "displayName": "Unity Helpers",
-    "description": "Various Unity Helper Library",
-    "unity": "2022.1",
-    "keywords": [
-        "helper",
-        "library",
-        "quad tree",
-        "extension",
-        "helpers",
-        "random",
-        "pcg random",
-        "protobuf",
-        "rtree",
-        "r tree",
-        "kd tree",
-        "kdtree"
-    ],
-    "license": "MIT",
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/wallstop/unity-helpers.git"
-    },
-    "bugs": {
-        "url": "https://github.com/wallstop/unity-helpers/issues"
-    },
-    "author": {
-        "name": "wallstop studios",
-        "email": "wallstop@wallstopstudios.com",
-        "url": "https://wallstopstudios.com"
-    }
+  "name": "com.wallstop-studios.unity-helpers",
+  "version": "1.0.0-rc4",
+  "displayName": "Unity Helpers",
+  "description": "Various Unity Helper Library",
+  "unity": "2022.1",
+  "keywords": [
+    "helper",
+    "library",
+    "quad tree",
+    "extension",
+    "helpers",
+    "random",
+    "pcg random",
+    "protobuf",
+    "rtree",
+    "r tree",
+    "kd tree",
+    "kdtree"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wallstop/unity-helpers.git"
+  },
+  "bugs": {
+    "url": "https://github.com/wallstop/unity-helpers/issues"
+  },
+  "author": "wallstop studios <wallstop@wallstopstudios.com> (https://wallstopstudios.com)",
+  "homepage": "https://github.com/wallstop/unity-helpers#readme",
+  "main": "README.md",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
 }
