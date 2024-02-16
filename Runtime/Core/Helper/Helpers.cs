@@ -642,7 +642,7 @@
         private static IEnumerator FunctionAsCoroutine(Action action, float updateRate, bool useJitter, bool waitBefore)
         {
             bool usedJitter = false;
-            WaitForSeconds wait = Buffers.WaitForSeconds.GetOrAdd(updateRate, time => new WaitForSeconds(time));
+            WaitForSeconds wait = new(updateRate);
 
             while (true)
             {
@@ -722,7 +722,11 @@
 
         private static IEnumerator FunctionDelayAsCoroutine(Action action, float delay)
         {
-            yield return Buffers.WaitForSeconds.GetOrAdd(delay, time => new WaitForSeconds(time));
+            float startTime = Time.time;
+            while (!HasEnoughTimePassed(startTime, delay))
+            {
+                yield return null;
+            }
             action();
         }
 
