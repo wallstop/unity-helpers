@@ -1,5 +1,6 @@
 ﻿namespace UnityHelpers.Editor
 {
+#if UNITY_EDITOR
     using System;
     using System.Collections;
     using System.Collections.Generic;
@@ -137,4 +138,5 @@
             }
         }
     }
+#endif
 }
