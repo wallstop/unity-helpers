@@ -1,5 +1,6 @@
 ﻿namespace UnityHelpers.Editor
 {
+#if UNITY_EDITOR
     using System;
     using System.Collections.Generic;
     using System.Linq;
@@ -14,14 +15,9 @@
         public const int DefaultFramesPerSecond = 12;
 
         public List<Texture2D> frames;
-        public int framesPerSecond;
+        public int framesPerSecond = DefaultFramesPerSecond;
         public string animationName;
         public string assetPath;
-
-        public AnimationData()
-        {
-            framesPerSecond = DefaultFramesPerSecond;
-        }
     }
 
     public sealed class AnimationCreator : ScriptableWizard
@@ -215,4 +211,5 @@
             }
         }
     }
+#endif
 }
