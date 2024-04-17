@@ -139,11 +139,14 @@
             }
 
             frameRate = _currentClip.frameRate = EditorGUILayout.FloatField("FrameRate", frameRate);
+            DrawGuiLine(height: 5, color: new Color(0f, 0.5f, 1f, 1f));
             _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
 
             // Need a copy because we might be mutating it
-            foreach (AnimationEventItem item in _state.ToList())
+            List<AnimationEventItem> stateCopy = _state.ToList();
+            for (int i = 0; i < stateCopy.Count; ++i)
             {
+                AnimationEventItem item = stateCopy[i];
                 AnimationEvent animEvent = item.animationEvent;
 
                 int frame = Mathf.RoundToInt(animEvent.time * oldFrameRate);
@@ -152,11 +155,15 @@
                 DrawSpritePreview(item);
 
                 EditorGUI.indentLevel++;
-
                 RenderAnimationEventItem(item, frame, frameRate);
-
+                
+                if (i != stateCopy.Count - 1)
+                {
+                    DrawGuiLine(height: 3, color: new Color(0f, 1f, 0.3f, 1f));
+                    EditorGUILayout.Space();
+                }
+                
                 EditorGUI.indentLevel--;
-                EditorGUILayout.Space();
             }
 
             EditorGUILayout.EndScrollView();
@@ -641,7 +648,7 @@
         private bool TryFindSpriteForEvent(AnimationEventItem item, out Sprite sprite)
         {
             sprite = null;
-            foreach (ObjectReferenceKeyframe keyFrame in _referenceCurve)
+            foreach (ObjectReferenceKeyframe keyFrame in _referenceCurve ?? Enumerable.Empty<ObjectReferenceKeyframe>())
             {
                 if (keyFrame.time <= item.animationEvent.time)
                 {
@@ -738,6 +745,15 @@
                     _baseClipEvents.Add(AnimationEventEqualityComparer.Instance.Copy(item.animationEvent));
                 }
             }
+        }
+
+        private void DrawGuiLine(int height = 1, Color? color = null)
+        {
+            Rect rect = EditorGUILayout.GetControlRect(false, height);
+            rect.height = height;
+            int minusWidth = EditorGUI.indentLevel * 16;
+            rect.xMin += minusWidth;
+            EditorGUI.DrawRect(rect, color ?? new Color(0.5f, 0.5f, 0.5f, 1f));
         }
     }
 #endif
