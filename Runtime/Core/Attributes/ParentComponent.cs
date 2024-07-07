@@ -18,18 +18,20 @@
 
     public static class ParentComponentExtensions
     {
-        private static readonly Dictionary<Type, List<FieldInfo>> FieldsByType = new();
+        private static readonly Dictionary<Type, FieldInfo[]> FieldsByType = new();
 
         public static void AssignParentComponents(this Component component)
         {
             Type componentType = component.GetType();
-            List<FieldInfo> fields = FieldsByType.GetOrAdd(componentType, type =>
-            {
-                FieldInfo[] fields = type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                return fields
-                    .Where(prop => Attribute.IsDefined(prop, typeof(ParentComponentAttribute)))
-                    .ToList();
-            });
+            FieldInfo[] fields = FieldsByType.GetOrAdd(
+                componentType, type =>
+                {
+                    FieldInfo[] fields = type.GetFields(
+                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                    return fields
+                        .Where(prop => Attribute.IsDefined(prop, typeof(ParentComponentAttribute)))
+                        .ToArray();
+                });
 
             foreach (FieldInfo field in fields)
             {
@@ -42,7 +44,7 @@
                 {
                     Component[] parentComponents = component.GetComponentsInParent(parentComponentType, true);
                     foundParent = 0 < parentComponents.Length;
- 
+
                     Array correctTypedArray = Array.CreateInstance(parentComponentType, parentComponents.Length);
                     Array.Copy(parentComponents, correctTypedArray, parentComponents.Length);
                     field.SetValue(component, correctTypedArray);
@@ -51,7 +53,7 @@
                 {
                     parentComponentType = fieldType.GenericTypeArguments[0];
                     Type constructedListType = typeof(List<>).MakeGenericType(parentComponentType);
-                    IList instance = (IList) Activator.CreateInstance(constructedListType);
+                    IList instance = (IList)Activator.CreateInstance(constructedListType);
 
                     foundParent = false;
                     foreach (Component parentComponent in component.GetComponentsInParent(parentComponentType, true))
@@ -74,7 +76,8 @@
 
                 if (!foundParent)
                 {
-                    if (field.GetCustomAttributes(typeof(ParentComponentAttribute), false)[0] is ParentComponentAttribute { optional: false } _)
+                    if (field.GetCustomAttributes(typeof(ParentComponentAttribute), false)[0] is
+                        ParentComponentAttribute { optional: false } _)
                     {
                         component.LogError($"Unable to find parent component of type {fieldType}");
                     }

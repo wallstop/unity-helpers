@@ -55,7 +55,9 @@
 
             if (log)
             {
-                component.LogWarn("Failed to find {0} on {1} (name: {2}), id [{3}].", typeof(T).Name, tag, gameObject.name, gameObject.GetInstanceID());
+                component.LogWarn(
+                    "Failed to find {0} on {1} (name: {2}), id [{3}].", typeof(T).Name, tag, gameObject.name,
+                    gameObject.GetInstanceID());
             }
 
             return default;
@@ -111,9 +113,9 @@
             }
         }
 
-        public static bool HasComponent<T>(this Object unityObject)
+        public static bool HasComponent<T>(this Object unityObject) where T : Object
         {
-            return (unityObject) switch
+            return unityObject switch
             {
                 GameObject go => go.HasComponent<T>(),
                 Component component => component.HasComponent<T>(),
@@ -121,12 +123,12 @@
             };
         }
 
-        public static bool HasComponent<T>(this Component component)
+        public static bool HasComponent<T>(this Component component) where T : Object
         {
             return component.TryGetComponent<T>(out _);
         }
 
-        public static bool HasComponent<T>(this GameObject gameObject)
+        public static bool HasComponent<T>(this GameObject gameObject) where T : Object
         {
             return gameObject.TryGetComponent<T>(out _);
         }
@@ -162,7 +164,8 @@
             }
         }
 
-        public static IEnumerable<GameObject> IterateOverChildGameObjectsRecursivelyIncludingSelf(this GameObject gameObject)
+        public static IEnumerable<GameObject> IterateOverChildGameObjectsRecursivelyIncludingSelf(
+            this GameObject gameObject)
         {
             yield return gameObject;
 
@@ -186,7 +189,8 @@
             }
         }
 
-        public static IEnumerable<GameObject> IterateOverParentGameObjectsRecursivelyIncludingSelf(this GameObject gameObject)
+        public static IEnumerable<GameObject> IterateOverParentGameObjectsRecursivelyIncludingSelf(
+            this GameObject gameObject)
         {
             yield return gameObject;
 
@@ -225,7 +229,8 @@
             }
         }
 
-        public static void EnableRendererRecursively<T>(this Component component, bool enabled,
+        public static void EnableRendererRecursively<T>(
+            this Component component, bool enabled,
             Func<T, bool> exclude = null) where T : Renderer
         {
             if (component == null)
@@ -388,31 +393,36 @@
             }
         }
 
-        public static void DestroyAllChildrenGameObjectsImmediatelyConditionally(this GameObject gameObject,
+        public static void DestroyAllChildrenGameObjectsImmediatelyConditionally(
+            this GameObject gameObject,
             Func<GameObject, bool> acceptancePredicate)
         {
-            InternalDestroyAllChildrenGameObjects(gameObject, toDestroy =>
-            {
-                if (!acceptancePredicate(toDestroy))
+            InternalDestroyAllChildrenGameObjects(
+                gameObject, toDestroy =>
                 {
-                    return;
-                }
+                    if (!acceptancePredicate(toDestroy))
+                    {
+                        return;
+                    }
 
-                Object.DestroyImmediate(toDestroy);
-            });
+                    Object.DestroyImmediate(toDestroy);
+                });
         }
 
-        public static void DestroyAllChildGameObjectsConditionally(this GameObject gameObject,
+        public static void DestroyAllChildGameObjectsConditionally(
+            this GameObject gameObject,
             Func<GameObject, bool> acceptancePredicate)
         {
-            InternalDestroyAllChildrenGameObjects(gameObject, toDestroy =>
-            {
-                if (!acceptancePredicate(toDestroy))
+            InternalDestroyAllChildrenGameObjects(
+                gameObject, toDestroy =>
                 {
-                    return;
-                }
-                toDestroy.Destroy();
-            });
+                    if (!acceptancePredicate(toDestroy))
+                    {
+                        return;
+                    }
+
+                    toDestroy.Destroy();
+                });
         }
 
         public static void DestroyAllChildrenGameObjectsImmediately(this GameObject gameObject) =>
@@ -424,7 +434,8 @@
         public static void EditorDestroyAllChildrenGameObjects(this GameObject gameObject) =>
             InternalDestroyAllChildrenGameObjects(gameObject, go => go.Destroy());
 
-        private static void InternalDestroyAllChildrenGameObjects(this GameObject gameObject,
+        private static void InternalDestroyAllChildrenGameObjects(
+            this GameObject gameObject,
             Action<GameObject> destroyFunction)
         {
             for (int i = gameObject.transform.childCount - 1; 0 <= i; --i)
@@ -441,8 +452,16 @@
             {
                 return true;
             }
-#endif
+
+            return PrefabUtility.GetPrefabAssetType(gameObject) switch
+            {
+                PrefabAssetType.NotAPrefab => false,
+                PrefabAssetType.MissingAsset => scene.rootCount == 0,
+                _ => true,
+            };
+#else
             return scene.rootCount == 0;
+#endif
         }
 
         public static bool IsPrefab(this Component component)
@@ -516,7 +535,9 @@
         }
 
         // https://gamedevelopment.tutsplus.com/tutorials/unity-solution-for-hitting-moving-targets--cms-29633
-        public static Vector2 PredictCurrentTarget(this GameObject currentTarget, Vector2 launchLocation, float projectileSpeed, bool predictiveFiring, Vector2 targetVelocity)
+        public static Vector2 PredictCurrentTarget(
+            this GameObject currentTarget, Vector2 launchLocation, float projectileSpeed, bool predictiveFiring,
+            Vector2 targetVelocity)
         {
             Vector2 target = currentTarget.transform.position;
 
@@ -530,8 +551,9 @@
                 return target;
             }
 
-            float a = (targetVelocity.x * targetVelocity.x) + (targetVelocity.y * targetVelocity.y) - (projectileSpeed * projectileSpeed);
-            
+            float a = (targetVelocity.x * targetVelocity.x) + (targetVelocity.y * targetVelocity.y) -
+                      (projectileSpeed * projectileSpeed);
+
             float b = 2 * (targetVelocity.x * (target.x - launchLocation.x) +
                            targetVelocity.y * (target.y - launchLocation.y));
 
@@ -593,7 +615,7 @@
             {
                 GameObject go => go,
                 Component c => c.gameObject,
-                _ => default
+                _ => null
             };
         }
 
@@ -610,10 +632,12 @@
 
         public static GameObject FindChildGameObjectWithTag(this GameObject gameObject, string tag)
         {
-            return gameObject.IterateOverChildGameObjectsRecursivelyIncludingSelf().FirstOrDefault(child => child.CompareTag(tag));
+            return gameObject.IterateOverChildGameObjectsRecursivelyIncludingSelf()
+                .FirstOrDefault(child => child.CompareTag(tag));
         }
 
-        public static bool HasLineOfSight(Vector2 initialLocation, Vector2 direction, Transform transform, float totalDistance, float delta)
+        public static bool HasLineOfSight(
+            Vector2 initialLocation, Vector2 direction, Transform transform, float totalDistance, float delta)
         {
             int hits = Physics2D.RaycastNonAlloc(initialLocation, direction, Buffers.RaycastHits);
             for (int i = 0; i < hits; ++i)
@@ -634,7 +658,9 @@
             return true;
         }
 
-        public static Coroutine StartFunctionAsCoroutine(this MonoBehaviour monoBehaviour, Action action, float updateRate, bool useJitter = false, bool waitBefore = false)
+        public static Coroutine StartFunctionAsCoroutine(
+            this MonoBehaviour monoBehaviour, Action action, float updateRate, bool useJitter = false,
+            bool waitBefore = false)
         {
             return monoBehaviour.StartCoroutine(FunctionAsCoroutine(action, updateRate, useJitter, waitBefore));
         }
@@ -642,29 +668,50 @@
         private static IEnumerator FunctionAsCoroutine(Action action, float updateRate, bool useJitter, bool waitBefore)
         {
             bool usedJitter = false;
-            WaitForSeconds wait = new(updateRate);
-
             while (true)
             {
+                float startTime;
                 if (waitBefore)
                 {
-                    // Copy-pasta the code, no way to unify in a performant way without generating garbage
-                    yield return wait;
                     if (useJitter && !usedJitter)
                     {
-                        yield return new WaitForSeconds(PcgRandom.Instance.NextFloat(updateRate));
+                        float delay = PcgRandom.Instance.NextFloat(updateRate);
+                        startTime = Time.time;
+                        while (!HasEnoughTimePassed(startTime, delay))
+                        {
+                            yield return null;
+                        }
+
                         usedJitter = true;
+                    }
+
+                    startTime = Time.time;
+                    while (!HasEnoughTimePassed(startTime, updateRate))
+                    {
+                        yield return null;
                     }
                 }
 
                 action();
+
                 if (!waitBefore)
                 {
-                    yield return wait;
                     if (useJitter && !usedJitter)
                     {
-                        yield return new WaitForSeconds(PcgRandom.Instance.NextFloat(updateRate));
+                        float delay = PcgRandom.Instance.NextFloat(updateRate);
+                        startTime = Time.time;
+                        while (!HasEnoughTimePassed(startTime, delay))
+                        {
+                            yield return null;
+                        }
+
                         usedJitter = true;
+                    }
+
+                    startTime = Time.time;
+                    while (!HasEnoughTimePassed(startTime, updateRate))
+                    {
+                        yield return null;
                     }
                 }
             }
@@ -727,6 +774,7 @@
             {
                 yield return null;
             }
+
             action();
         }
 
@@ -736,7 +784,8 @@
             action();
         }
 
-        public static bool HasEnoughTimePassed(float timestamp, float desiredDuration) => timestamp + desiredDuration < Time.time;
+        public static bool HasEnoughTimePassed(float timestamp, float desiredDuration) =>
+            timestamp + desiredDuration < Time.time;
 
         public static Vector2 Opposite(this Vector2 vector)
         {
@@ -774,12 +823,12 @@
 
         public static Vector3Int AsVector3Int(this (uint x, uint y, uint z) vector)
         {
-            return new Vector3Int((int) vector.x, (int) vector.y, (int) vector.z);
+            return new Vector3Int((int)vector.x, (int)vector.y, (int)vector.z);
         }
 
         public static Vector3Int AsVector3Int(this Vector3 vector)
         {
-            return new Vector3Int((int) Math.Round(vector.x), (int) Math.Round(vector.y), (int) Math.Round(vector.z));
+            return new Vector3Int((int)Math.Round(vector.x), (int)Math.Round(vector.y), (int)Math.Round(vector.z));
         }
 
         public static Vector3 AsVector3(this (uint x, uint y, uint z) vector)
@@ -829,7 +878,7 @@
             }
 
             foreach (FieldInfo field in type.GetFields(BindingFlags.Instance | BindingFlags.NonPublic)
-                .Where(field => Attribute.IsDefined(field, typeof(SerializeField))))
+                         .Where(field => Attribute.IsDefined(field, typeof(SerializeField))))
             {
                 try
                 {
@@ -881,13 +930,15 @@
 
         public static GameObject GetTagObjectInChildHierarchy(this GameObject gameObject, string tag)
         {
-            return gameObject.IterateOverChildGameObjectsRecursivelyIncludingSelf().FirstOrDefault(go => go.CompareTag(tag));
+            return gameObject.IterateOverChildGameObjectsRecursivelyIncludingSelf()
+                .FirstOrDefault(go => go.CompareTag(tag));
         }
 
         //https://answers.unity.com/questions/722748/refreshing-the-polygon-collider-2d-upon-sprite-cha.html
         public static void UpdateShapeToSprite(this Component component)
         {
-            if (!component.TryGetComponent(out SpriteRenderer spriteRenderer) || component.TryGetComponent(out PolygonCollider2D collider))
+            if (!component.TryGetComponent(out SpriteRenderer spriteRenderer) ||
+                component.TryGetComponent(out PolygonCollider2D collider))
             {
                 return;
             }
@@ -922,7 +973,8 @@
             return new Vector3Int(x, y, z);
         }
 
-        public static GameObject TryGetClosestParentWithComponentIncludingSelf<T>(this GameObject current) where T : Component
+        public static GameObject TryGetClosestParentWithComponentIncludingSelf<T>(this GameObject current)
+            where T : Component
         {
             while (current != null)
             {
@@ -941,7 +993,7 @@
 #if UNITY_EDITOR
         public static IEnumerable<GameObject> EnumeratePrefabs(IEnumerable<string> assetPaths = null)
         {
-            assetPaths ??= new[] {"Assets/Prefabs", "Assets/Resources"};
+            assetPaths ??= new[] { "Assets/Prefabs", "Assets/Resources" };
 
             foreach (string assetGuid in AssetDatabase.FindAssets("t:prefab", assetPaths.ToArray()))
             {
@@ -954,7 +1006,8 @@
             }
         }
 
-        public static IEnumerable<T> EnumerateScriptableObjects<T>(string[] assetPaths = null) where T : ScriptableObject
+        public static IEnumerable<T> EnumerateScriptableObjects<T>(string[] assetPaths = null)
+            where T : ScriptableObject
         {
             assetPaths ??= new[] { "Assets/Prefabs", "Assets/Resources", "Assets/TileMaps" };
 
@@ -1038,7 +1091,10 @@
         {
             foreach (MonoBehaviour script in gameObject.GetComponentsInChildren<MonoBehaviour>())
             {
-                MethodInfo awakeInfo = AwakeMethodsByType.GetOrAdd(script.GetType(), type => type.GetMethod("Awake", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic));
+                MethodInfo awakeInfo = AwakeMethodsByType.GetOrAdd(
+                    script.GetType(),
+                    type => type.GetMethod(
+                        "Awake", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic));
                 if (awakeInfo != null)
                 {
                     _ = awakeInfo.Invoke(script, null);
