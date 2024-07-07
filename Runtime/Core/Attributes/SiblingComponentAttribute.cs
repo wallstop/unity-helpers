@@ -18,18 +18,20 @@
 
     public static class SiblingComponentExtensions
     {
-        private static readonly Dictionary<Type, List<FieldInfo>> FieldsByType = new();
+        private static readonly Dictionary<Type, FieldInfo[]> FieldsByType = new();
 
         public static void AssignSiblingComponents(this Component component)
         {
             Type componentType = component.GetType();
-            List<FieldInfo> fields = FieldsByType.GetOrAdd(componentType,
+            FieldInfo[] fields = FieldsByType.GetOrAdd(
+                componentType,
                 type =>
                 {
-                    FieldInfo[] fields = type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                    FieldInfo[] fields = type.GetFields(
+                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
                     return fields
                         .Where(prop => Attribute.IsDefined(prop, typeof(SiblingComponentAttribute)))
-                        .ToList();
+                        .ToArray();
                 });
 
             foreach (FieldInfo field in fields)
@@ -52,7 +54,7 @@
                 {
                     siblingComponentType = fieldType.GenericTypeArguments[0];
                     Type constructedListType = typeof(List<>).MakeGenericType(siblingComponentType);
-                    IList instance = (IList) Activator.CreateInstance(constructedListType);
+                    IList instance = (IList)Activator.CreateInstance(constructedListType);
 
                     foundSibling = false;
                     foreach (Component siblingComponent in component.GetComponents(siblingComponentType))
@@ -78,7 +80,8 @@
 
                 if (!foundSibling)
                 {
-                    if (field.GetCustomAttributes(typeof(SiblingComponentAttribute), false)[0] is SiblingComponentAttribute {optional: false} _)
+                    if (field.GetCustomAttributes(typeof(SiblingComponentAttribute), false)[0] is
+                        SiblingComponentAttribute { optional: false } _)
                     {
                         component.LogError($"Unable to find sibling component of type {fieldType}");
                     }

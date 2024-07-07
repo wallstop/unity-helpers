@@ -2,7 +2,6 @@
 {
     using System;
     using System.Collections.Generic;
-    using System.Diagnostics;
     using System.Linq;
     using NUnit.Framework;
     using UnityHelpers.Core.Random;
@@ -11,7 +10,7 @@
     {
         protected const int SampleCount = 10_000_000;
 
-        protected int[] _samples = new int[1_000];
+        protected readonly int[] _samples = new int[1_000];
 
         protected abstract IRandom NewRandom();
 
@@ -48,19 +47,23 @@
         [Test]
         public void Byte()
         {
-            TestAndVerify(random => random.NextByte(0, (byte)(_samples.Length < byte.MaxValue ? _samples.Length : byte.MaxValue)), byte.MaxValue);
+            TestAndVerify(
+                random => random.NextByte(0, (byte)(_samples.Length < byte.MaxValue ? _samples.Length : byte.MaxValue)),
+                byte.MaxValue);
         }
 
         [Test]
         public void Float()
         {
-            TestAndVerify(random => (int)Math.Floor(random.NextFloat(0, _samples.Length)));
+            TestAndVerify(
+                random => Math.Clamp((int)Math.Floor(random.NextFloat(0, _samples.Length)), 0, _samples.Length - 1));
         }
 
         [Test]
         public void Double()
         {
-            TestAndVerify(random => (int)Math.Floor(random.NextDouble(0, _samples.Length)));
+            TestAndVerify(
+                random => Math.Clamp((int)Math.Floor(random.NextDouble(0, _samples.Length)), 0, _samples.Length - 1));
         }
 
         [Test]
@@ -110,8 +113,13 @@
                 }
             }
 
-            Assert.AreEqual(0, zeroCountIndexes.Count, "No samples at {0} indices: [{1}]", zeroCountIndexes.Count, string.Join(",", zeroCountIndexes));
-            Assert.AreEqual(0, outsideRange.Count, "{0} indexes outside of dev {1:0.00}. Expected: {2:0.00}. Found: [{3}]", outsideRange.Count, deviationAllowed, average, string.Join(",", outsideRange.Select(index => _samples[index])));
+            Assert.AreEqual(
+                0, zeroCountIndexes.Count, "No samples at {0} indices: [{1}]", zeroCountIndexes.Count,
+                string.Join(",", zeroCountIndexes));
+            Assert.AreEqual(
+                0, outsideRange.Count, "{0} indexes outside of dev {1:0.00}. Expected: {2:0.00}. Found: [{3}]",
+                outsideRange.Count, deviationAllowed, average,
+                string.Join(",", outsideRange.Select(index => _samples[index])));
         }
     }
 }
