@@ -3,7 +3,7 @@
     using Core.Extension;
     using NUnit.Framework;
 
-    public class StringExtensionTests
+    public sealed class StringExtensionTests
     {
         [Test]
         public void ToPascalCaseNominal()
