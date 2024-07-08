@@ -181,7 +181,7 @@
         }
 
         public static bool ContentEquals<K, V>(
-            this IReadOnlyDictionary<K, V> dictionary, IReadOnlyDictionary<K, V> other)
+            this IReadOnlyDictionary<K, V> dictionary, IReadOnlyDictionary<K, V> other) where V : IEquatable<V>
         {
             if (ReferenceEquals(dictionary, other))
             {
@@ -193,12 +193,8 @@
                 return false;
             }
 
-            if (dictionary.Count != other.Count)
-            {
-                return false;
-            }
-
-            return !dictionary.Except(other).Any();
+            return dictionary.Count == other.Count && dictionary.All(
+                kvp => other.TryGetValue(kvp.Key, out V value) && kvp.Value.Equals(value));
         }
 
         public static void Deconstruct<K, V>(this KeyValuePair<K, V> kvp, out K key, out V value)
