@@ -1,6 +1,6 @@
 {
   "name": "com.wallstop-studios.unity-helpers",
-  "version": "1.0.0-rc9",
+  "version": "1.0.1-rc01",
   "displayName": "Unity Helpers",
   "description": "Various Unity Helper Library",
   "dependencies": {
@@ -16,6 +16,7 @@
     "random",
     "pcg random",
     "protobuf",
+    "pascal",
     "rtree",
     "r tree",
     "kd tree",
