@@ -17,6 +17,7 @@
             {
                 return;
             }
+
             TextureImporter tImporter = AssetImporter.GetAtPath(assetPath) as TextureImporter;
 
             if (tImporter == null)
@@ -42,13 +43,14 @@
             {
                 return;
             }
+
             TextureImporter tImporter = AssetImporter.GetAtPath(assetPath) as TextureImporter;
 
             if (tImporter == null)
             {
                 return;
             }
-            
+
             tImporter.isReadable = isReadable;
 
             TextureImporterPlatformSettings importerSettings = new TextureImporterPlatformSettings
