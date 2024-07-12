@@ -7,7 +7,7 @@
     {
         private static T _instance;
 
-        protected virtual bool DontDestroyOnLoad => true;
+        protected virtual bool Preserve => true;
 
         public static T Instance
         {
@@ -19,11 +19,11 @@
                 }
 
                 GameObject instance = new(typeof(T).Name + "Singleton", typeof(T));
-                _ = instance.TryGetComponent(out _instance);
-                if (_instance.DontDestroyOnLoad)
+                if (instance.TryGetComponent(out _instance) && _instance.Preserve)
                 {
                     DontDestroyOnLoad(instance);
                 }
+
                 return _instance;
             }
         }

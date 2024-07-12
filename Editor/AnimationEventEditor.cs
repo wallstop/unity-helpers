@@ -9,7 +9,7 @@
     using Core.Helper;
     using UnityEngine;
     using UnityEditor;
-    using Utils;
+    using UnityHelpers.Utils;
 
     // https://gist.githubusercontent.com/yujen/5e1cd78e2a341260b38029de08a449da/raw/ac60c1002e0e14375de5b2b0a167af00df3f74b4/SeniaAnimationEventEditor.cs
     public sealed class AnimationEventEditor : EditorWindow
