@@ -9,54 +9,56 @@
     using UnityEngine;
     using Utils;
 
-    public sealed class AnimationCopier : ScriptableWizard
+    public sealed class AnimatorControllerCopier : ScriptableWizard
     {
         private string _fullSourcePath;
         private string _fullDestinationPath;
 
         [ReadOnly]
-        public string animationSourcePath;
+        public string controllerSourcePath;
 
         [ReadOnly]
-        public string animationDestinationPath;
+        public string controllerDestinationpath;
 
-        [MenuItem("Tools/Unity Helpers/Animation Copier")]
+        [MenuItem("Tools/Unity Helpers/Animator Controller Copier")]
         public static void CopyAnimations()
         {
-            _ = DisplayWizard<AnimationCopier>("Animation Copier", "Copy");
+            _ = DisplayWizard<AnimatorControllerCopier>("Animator Controller Copier", "Copy");
         }
 
         protected override bool DrawWizardGUI()
         {
             bool returnValue = base.DrawWizardGUI();
 
-            if (GUILayout.Button("Set Animation Source Path"))
+            if (GUILayout.Button("Set Animator Controller Source Path"))
             {
                 string sourcePath = EditorUtility.OpenFolderPanel(
-                    "Select Animation Source Path", EditorUtilities.GetCurrentPathOfProjectWindow(), string.Empty);
+                    "Select Animator Controller Source Path", EditorUtilities.GetCurrentPathOfProjectWindow(),
+                    string.Empty);
                 int assetIndex = sourcePath?.IndexOf("Assets", StringComparison.Ordinal) ?? -1;
                 if (assetIndex < 0)
                 {
                     return false;
                 }
 
-                _fullSourcePath = animationSourcePath = sourcePath ?? string.Empty;
-                animationSourcePath = animationSourcePath.Substring(assetIndex);
+                _fullSourcePath = controllerSourcePath = sourcePath ?? string.Empty;
+                controllerSourcePath = controllerSourcePath.Substring(assetIndex);
                 return true;
             }
 
-            if (GUILayout.Button("Set Animation Destination Path"))
+            if (GUILayout.Button("Set Animator Controller Destination Path"))
             {
                 string sourcePath = EditorUtility.OpenFolderPanel(
-                    "Select Animation Destination Path", EditorUtilities.GetCurrentPathOfProjectWindow(), string.Empty);
+                    "Select Animator Controller Destination Path", EditorUtilities.GetCurrentPathOfProjectWindow(),
+                    string.Empty);
                 int assetIndex = sourcePath?.IndexOf("Assets", StringComparison.Ordinal) ?? -1;
                 if (assetIndex < 0)
                 {
                     return false;
                 }
 
-                _fullDestinationPath = animationDestinationPath = sourcePath ?? string.Empty;
-                animationDestinationPath = animationDestinationPath.Substring(assetIndex);
+                _fullDestinationPath = controllerDestinationpath = sourcePath ?? string.Empty;
+                controllerDestinationpath = controllerDestinationpath.Substring(assetIndex);
                 return true;
             }
 
@@ -70,29 +72,32 @@
                 return;
             }
 
-            if (string.IsNullOrEmpty(animationSourcePath) || string.IsNullOrEmpty(animationDestinationPath))
+            if (string.IsNullOrEmpty(controllerSourcePath) || string.IsNullOrEmpty(controllerDestinationpath))
             {
                 return;
             }
 
             int processed = 0;
-            foreach (string assetGuid in AssetDatabase.FindAssets("t:AnimationClip", new[] { animationSourcePath }))
+            foreach (string assetGuid in AssetDatabase.FindAssets(
+                         "t:AnimatorController", new[] { controllerSourcePath }))
             {
                 string path = AssetDatabase.GUIDToAssetPath(assetGuid);
 
-                AnimationClip animationClip = AssetDatabase.LoadAssetAtPath<AnimationClip>(path);
-                if (animationClip == null)
+                RuntimeAnimatorController animatorController =
+                    AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(path);
+                if (animatorController == null)
                 {
-                    this.LogError("Invalid AnimationClip (null) found at path '{0}', skipping.", path);
+                    this.LogError("Invalid Animator Controller (null) found at path '{0}', skipping.", path);
                     continue;
                 }
 
-                string prefix = animationClip.name;
-                string relativePath = path.Substring(animationSourcePath.Length);
+                string prefix = animatorController.name;
+                string relativePath = path.Substring(controllerSourcePath.Length);
                 int prefixIndex = relativePath.LastIndexOf(prefix, StringComparison.OrdinalIgnoreCase);
                 if (prefixIndex < 0)
                 {
-                    this.LogWarn("Unsupported animation at '{0}', expected to be prefixed by '{1}'.", path, prefix);
+                    this.LogWarn(
+                        "Unsupported AnimatorController at '{0}', expected to be prefixed by '{1}'.", path, prefix);
                     continue;
                 }
 
@@ -104,25 +109,25 @@
                     _ = Directory.CreateDirectory(outputPath);
                 }
 
-                string destination = animationDestinationPath + partialPath + relativePath.Substring(prefixIndex);
+                string destination = controllerDestinationpath + partialPath + relativePath.Substring(prefixIndex);
                 bool copySuccessful = AssetDatabase.CopyAsset(path, destination);
                 if (copySuccessful)
                 {
                     bool deleteSuccessful = AssetDatabase.DeleteAsset(path);
                     if (!deleteSuccessful)
                     {
-                        this.LogError("Failed to delete asset at path '{0}'.", path);
+                        this.LogError("Failed to delete Animator Controller asset at path '{0}'.", path);
                     }
 
                     ++processed;
                 }
                 else
                 {
-                    this.LogError("Failed to copy animation from '{0}' to '{1}'.", path, destination);
+                    this.LogError("Failed to copy Animator Controller from '{0}' to '{1}'.", path, destination);
                 }
             }
 
-            this.Log($"Processed {processed} AnimationClips.");
+            this.Log($"Processed {processed} Animator Controllers.");
         }
     }
 #endif
