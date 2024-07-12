@@ -17,7 +17,9 @@
         public bool isReadOnly = false;
         public bool applyMipMaps = false;
         public bool generateMipMaps = false;
+        public bool applyWrapMode = false;
         public TextureWrapMode wrapMode = TextureWrapMode.Clamp;
+        public bool applyFilterMode = false;
         public FilterMode filterMode = FilterMode.Trilinear;
         public TextureImporterCompression compression = TextureImporterCompression.CompressedHQ;
         public bool useCrunchCompression = true;
@@ -138,8 +140,16 @@
                 textureImporter.mipmapEnabled = generateMipMaps;
             }
 
-            textureImporter.wrapMode = wrapMode;
-            textureImporter.filterMode = filterMode;
+            if (applyWrapMode)
+            {
+                textureImporter.wrapMode = wrapMode;
+            }
+
+            if (applyFilterMode)
+            {
+                textureImporter.filterMode = filterMode;
+            }
+
             textureImporter.SaveAndReimport();
             return true;
         }
