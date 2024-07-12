@@ -17,7 +17,6 @@
         public List<Texture2D> frames;
         public int framesPerSecond = DefaultFramesPerSecond;
         public string animationName;
-        public string assetPath;
     }
 
     public sealed class AnimationCreator : ScriptableWizard
@@ -41,7 +40,7 @@
                 AnimationData data = animationData[0];
 
                 bool filled = false;
-                if (data.frames is {Count: 0} && GUILayout.Button("Fill Sprites From Animation Sources"))
+                if (data.frames is { Count: 0 } && GUILayout.Button("Fill Sprites From Animation Sources"))
                 {
                     List<string> animationPaths = new();
                     foreach (Object animationSource in animationSources)
@@ -49,7 +48,7 @@
                         string assetPath = AssetDatabase.GetAssetPath(animationSource);
                         animationPaths.Add(assetPath);
                     }
-                    
+
                     foreach (string assetGuid in AssetDatabase.FindAssets("t:sprite", animationPaths.ToArray()))
                     {
                         string path = AssetDatabase.GUIDToAssetPath(assetGuid);
@@ -63,14 +62,15 @@
                     filled = true;
                 }
 
-                if (data.frames is { Count: > 0} && (filled || GUILayout.Button("Auto Parse Sprites")))
+                if (data.frames is { Count: > 0 } && (filled || GUILayout.Button("Auto Parse Sprites")))
                 {
                     Dictionary<string, Dictionary<string, List<Texture2D>>> texturesByPrefixAndAssetPath = new();
                     foreach (Texture2D frame in data.frames)
                     {
                         string assetPathWithFrameName = AssetDatabase.GetAssetPath(frame);
                         string frameName = frame.name;
-                        string assetPath = assetPathWithFrameName.Substring(0, assetPathWithFrameName.LastIndexOf(frameName, StringComparison.Ordinal));
+                        string assetPath = assetPathWithFrameName.Substring(
+                            0, assetPathWithFrameName.LastIndexOf(frameName, StringComparison.Ordinal));
                         int lastNumericIndex = frameName.Length - 1;
                         for (int i = frameName.Length - 1; 0 <= i; --i)
                         {
@@ -87,7 +87,8 @@
                             : Math.Max(lastUnderscoreIndex, lastNumericIndex);
                         if (0 < lastIndex)
                         {
-                            Dictionary<string, List<Texture2D>> texturesByPrefix = texturesByPrefixAndAssetPath.GetOrAdd(assetPath);
+                            Dictionary<string, List<Texture2D>> texturesByPrefix =
+                                texturesByPrefixAndAssetPath.GetOrAdd(assetPath);
                             string key = frameName.Substring(0, lastIndex);
                             texturesByPrefix.GetOrAdd(key).Add(frame);
                         }
@@ -100,16 +101,16 @@
                     if (0 < texturesByPrefixAndAssetPath.Count)
                     {
                         animationData.Clear();
-                        foreach (KeyValuePair<string, Dictionary<string, List<Texture2D>>> assetPathAndTextures in texturesByPrefixAndAssetPath)
+                        foreach (KeyValuePair<string, Dictionary<string, List<Texture2D>>> assetPathAndTextures in
+                                 texturesByPrefixAndAssetPath)
                         {
-                            string assetPath = assetPathAndTextures.Key;
-                            foreach (KeyValuePair<string, List<Texture2D>> textureAndPrefix in assetPathAndTextures.Value)
+                            foreach (KeyValuePair<string, List<Texture2D>> textureAndPrefix in assetPathAndTextures
+                                         .Value)
                             {
                                 AnimationData newData = new()
                                 {
                                     frames = textureAndPrefix.Value,
                                     framesPerSecond = data.framesPerSecond,
-                                    assetPath = assetPath,
                                     animationName = $"Anim_{textureAndPrefix.Key}"
                                 };
                                 animationData.Add(newData);
@@ -165,7 +166,8 @@
                 int framesPerSecond = data.framesPerSecond;
                 if (framesPerSecond <= 0)
                 {
-                    this.LogWarn("Ignoring animationData with FPS of {0} with name {1}.", framesPerSecond, animationName);
+                    this.LogWarn(
+                        "Ignoring animationData with FPS of {0} with name {1}.", framesPerSecond, animationName);
                     continue;
                 }
 
@@ -205,7 +207,8 @@
                     animationClip,
                     EditorCurveBinding.PPtrCurve("", typeof(SpriteRenderer), "m_Sprite"), keyFrames.ToArray());
                 string assetPathWithFileNameAndExtension = AssetDatabase.GetAssetPath(frames[0]);
-                string assetPath = assetPathWithFileNameAndExtension.Substring(0, assetPathWithFileNameAndExtension.LastIndexOf("/", StringComparison.Ordinal) + 1);
+                string assetPath = assetPathWithFileNameAndExtension.Substring(
+                    0, assetPathWithFileNameAndExtension.LastIndexOf("/", StringComparison.Ordinal) + 1);
 
                 ProjectWindowUtil.CreateAsset(animationClip, assetPath + animationName + ".anim");
             }
