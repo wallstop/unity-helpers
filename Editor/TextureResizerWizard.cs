@@ -11,6 +11,7 @@
     using UnityEditor;
     using UnityEngine;
     using UnityEngine.Serialization;
+    using UnityHelpers.Utils;
     using Utils;
     using Object = UnityEngine.Object;
 
@@ -63,6 +64,11 @@
                 foreach (string assetGuid in AssetDatabase.FindAssets("t:texture2D", animationPaths.ToArray()))
                 {
                     string path = AssetDatabase.GUIDToAssetPath(assetGuid);
+                    if (string.IsNullOrEmpty(path))
+                    {
+                        continue;
+                    }
+
                     Texture2D texture = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
                     if (texture != null)
                     {
@@ -79,8 +85,9 @@
 
             for (int i = 0; i < numResizes; ++i)
             {
-                foreach (Texture2D texture in textures)
+                foreach (Texture2D inputTexture in textures)
                 {
+                    Texture2D texture = inputTexture;
                     string assetPath = AssetDatabase.GetAssetPath(texture);
                     if (string.IsNullOrEmpty(assetPath))
                     {
@@ -98,6 +105,8 @@
                     {
                         tImporter.isReadable = true;
                         tImporter.SaveAndReimport();
+                        AssetDatabase.Refresh();
+                        texture = AssetDatabase.LoadAssetAtPath<Texture2D>(assetPath);
                     }
 
                     Texture2D copy = Instantiate(texture);
@@ -111,7 +120,6 @@
                             continue;
                         }
 
-                        SetTextureImportData.SetTextureImporterFormat(copy);
                         switch (scalingResizeAlgorithm)
                         {
                             case ResizeAlgorithm.Bilinear:

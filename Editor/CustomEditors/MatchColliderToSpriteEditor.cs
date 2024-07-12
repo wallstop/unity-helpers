@@ -4,7 +4,7 @@
     using Core.Extension;
     using UnityEditor;
     using UnityEngine;
-    using Utils;
+    using UnityHelpers.Utils;
 
     [CustomEditor(typeof(MatchColliderToSprite))]
     public sealed class MatchColliderToSpriteEditor : Editor

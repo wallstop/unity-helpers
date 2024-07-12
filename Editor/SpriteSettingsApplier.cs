@@ -67,7 +67,7 @@
                         continue;
                     }
 
-                    int index = fullFilePath.IndexOf(directoryPath, StringComparison.OrdinalIgnoreCase);
+                    int index = fullFilePath.LastIndexOf(directoryPath, StringComparison.OrdinalIgnoreCase);
                     if (index < 0)
                     {
                         continue;
@@ -82,7 +82,7 @@
 
                 foreach (string subDirectory in Directory.EnumerateDirectories(directoryPath))
                 {
-                    int index = subDirectory.IndexOf(directoryPath, StringComparison.OrdinalIgnoreCase);
+                    int index = subDirectory.LastIndexOf(directoryPath, StringComparison.OrdinalIgnoreCase);
                     if (index < 0)
                     {
                         continue;

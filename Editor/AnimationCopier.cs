@@ -7,7 +7,7 @@
     using Core.Extension;
     using UnityEditor;
     using UnityEngine;
-    using Utilities;
+    using Utils;
 
     public sealed class AnimationCopier : ScriptableWizard
     {

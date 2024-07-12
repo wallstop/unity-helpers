@@ -11,7 +11,7 @@
     using UnityEngine;
     using Core.Extension;
     using Core.Helper;
-    using Utils;
+    using UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
     public sealed class PrefabCheckWizard : ScriptableWizard

@@ -8,7 +8,7 @@
     using Core.Extension;
     using UnityEditor;
     using UnityEngine;
-    using Utils;
+    using UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
     public sealed class TextureSettingsApplier : ScriptableWizard
