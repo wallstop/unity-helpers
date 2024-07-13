@@ -2,26 +2,25 @@
 {
     using System;
     using System.Collections.Generic;
-    using Core.Attributes;
-    using Core.Extension;
     using UnityEngine;
+    using UnityEngine.UI;
 
     [DisallowMultipleComponent]
     public sealed class MatchColliderToSprite : MonoBehaviour
     {
         [SerializeField]
-        [SiblingComponent]
         private SpriteRenderer _spriteRenderer;
-        
+
         [SerializeField]
-        [SiblingComponent]
+        private Image _image;
+
+        [SerializeField]
         private PolygonCollider2D _collider;
 
         private Sprite _lastHandled;
 
         private void Awake()
         {
-            this.AssignSiblingComponents();
             OnValidate();
         }
 
@@ -38,27 +37,26 @@
         // Visible for testing
         public void OnValidate()
         {
-            if (_spriteRenderer == null)
+            Sprite sprite;
+            if (_spriteRenderer != null || TryGetComponent(out _spriteRenderer))
             {
-                _spriteRenderer = GetComponent<SpriteRenderer>();
-                if (_spriteRenderer == null)
-                {
-                    this.LogError("No SpriteRenderer detected - cannot match collider shape.");
-                    return;
-                }
+                sprite = _spriteRenderer.sprite;
+            }
+            else if (_image != null || TryGetComponent(out _image))
+            {
+                sprite = _image.sprite;
+            }
+            else
+            {
+                sprite = null;
             }
 
-            if (_collider == null)
+            if (_collider == null || !TryGetComponent(out _collider))
             {
-                _collider = GetComponent<PolygonCollider2D>();
-                if (_collider == null)
-                {
-                    this.LogError("No PolygonCollider2D detected - cannot match collider shape.");
-                    return;
-                }
+                return;
             }
 
-            _lastHandled = _spriteRenderer.sprite;
+            _lastHandled = sprite;
             _collider.points = Array.Empty<Vector2>();
             if (_lastHandled == null)
             {
