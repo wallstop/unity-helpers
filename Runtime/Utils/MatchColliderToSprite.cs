@@ -26,7 +26,12 @@
 
         private void Update()
         {
-            if (_lastHandled == _spriteRenderer.sprite)
+            if (_spriteRenderer != null && _lastHandled == _spriteRenderer.sprite)
+            {
+                return;
+            }
+
+            if (_image != null && _lastHandled == _image.sprite)
             {
                 return;
             }
@@ -34,7 +39,6 @@
             OnValidate();
         }
 
-        // Visible for testing
         public void OnValidate()
         {
             Sprite sprite;
