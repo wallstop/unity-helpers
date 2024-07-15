@@ -129,7 +129,7 @@ namespace UnityHelpers.Core.Extension
             }
             if (Equals(Thread.CurrentThread, UnityMainThread))
             {
-                Debug.Log(Wrap(component, string.Format(message, args), e));
+                Debug.Log(Wrap(component, args.Length != 0 ? string.Format(message, args) : message, e));
             }
 #endif
         }
@@ -145,7 +145,7 @@ namespace UnityHelpers.Core.Extension
             }
             if (Equals(Thread.CurrentThread, UnityMainThread))
             {
-                Debug.LogWarning(Wrap(component, string.Format(message, args), e));
+                Debug.LogWarning(Wrap(component, args.Length != 0 ? string.Format(message, args) : message, e));
             }
 #endif
         }
@@ -161,7 +161,7 @@ namespace UnityHelpers.Core.Extension
             }
             if (Equals(Thread.CurrentThread, UnityMainThread))
             {
-                Debug.LogError(Wrap(component, string.Format(message, args), e));
+                Debug.LogError(Wrap(component, args.Length != 0 ? string.Format(message, args) : message, e));
             }
 #endif
         }
@@ -181,7 +181,7 @@ namespace UnityHelpers.Core.Extension
                 }
             }
 
-            string prepend = string.Format("{0}|{2}[{1}]|", now, componentType, gameObjectName);
+            string prepend = $"{now}|{gameObjectName}[{componentType}]|";
             if (e != null)
             {
                 return prepend + message + "\n    " + e;
