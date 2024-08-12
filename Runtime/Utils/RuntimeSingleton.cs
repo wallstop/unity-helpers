@@ -1,11 +1,12 @@
 ﻿namespace UnityHelpers.Utils
 {
+    using System;
     using UnityEngine;
 
     [DisallowMultipleComponent]
     public abstract class RuntimeSingleton<T> : MonoBehaviour where T : RuntimeSingleton<T>
     {
-        private static T _instance;
+        protected static T _instance;
 
         protected virtual bool Preserve => true;
 
@@ -18,7 +19,8 @@
                     return _instance;
                 }
 
-                GameObject instance = new(typeof(T).Name + "Singleton", typeof(T));
+                Type type = typeof(T);
+                GameObject instance = new($"{type.Name}-Singleton", type);
                 if (instance.TryGetComponent(out _instance) && _instance.Preserve)
                 {
                     DontDestroyOnLoad(instance);
