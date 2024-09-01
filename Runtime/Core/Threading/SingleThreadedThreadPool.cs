@@ -6,18 +6,22 @@
 
     public sealed class SingleThreadedThreadPool : IDisposable
     {
+        public ConcurrentQueue<Exception> Exceptions => _exceptions;
+
         private int _active;
         private int _working;
         private Thread _worker;
         private readonly ConcurrentQueue<Action> _work;
         private AutoResetEvent _waitHandle;
         private bool _disposed;
+        private readonly ConcurrentQueue<Exception> _exceptions;
 
         public SingleThreadedThreadPool()
         {
             _active = 1;
             _working = 1;
             _work = new ConcurrentQueue<Action>();
+            _exceptions = new ConcurrentQueue<Exception>();
             _waitHandle = new AutoResetEvent(false);
             _worker = new Thread(DoWork);
             _worker.Start();
@@ -40,15 +44,16 @@
                     {
                         workItem();
                     }
-                    catch
+                    catch (Exception e)
                     {
-                        // Ignore (TODO: Log to some output function? The downside here is that this is in another thread, which means standard Unity logging is a no-go)
+                        _exceptions.Enqueue(e);
                     }
                 }
                 else
                 {
                     _ = _waitHandle.WaitOne(TimeSpan.FromSeconds(1));
                 }
+
                 _ = Interlocked.Exchange(ref _working, 0);
             }
         }
@@ -92,6 +97,7 @@
                 {
                     // Swallow
                 }
+
                 _waitHandle = null;
                 _worker = null;
             }
