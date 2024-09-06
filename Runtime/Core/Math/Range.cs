@@ -10,22 +10,34 @@
     /// </summary>
     [Serializable]
     [DataContract]
-    public struct Range<T> : IEquatable<Range<T>> where T: IEquatable<T>, IComparable<T>
+    public struct Range<T> : IEquatable<Range<T>> where T : IEquatable<T>, IComparable<T>
     {
         [DataMember]
         public T min;
+
         [DataMember]
         public T max;
 
-        public Range(T min, T max)
+        [DataMember]
+        public bool startInclusive;
+
+        [DataMember]
+        public bool endInclusive;
+
+        public Range(T min, T max, bool startInclusive = true, bool endInclusive = true)
         {
             this.min = min;
             this.max = max;
+            this.startInclusive = startInclusive;
+            this.endInclusive = endInclusive;
         }
 
         public bool Equals(Range<T> other)
         {
-            return Equals(min, other.min) && Equals(max, other.max);
+            return min.Equals(other.min) &&
+                   max.Equals(other.max) &&
+                   startInclusive == other.startInclusive &&
+                   endInclusive == other.endInclusive;
         }
 
         public override bool Equals(object obj)
@@ -35,7 +47,7 @@
 
         public override int GetHashCode()
         {
-            return Objects.HashCode(min, max);
+            return Objects.HashCode(min, max, startInclusive, endInclusive);
         }
 
         public override string ToString()
@@ -45,12 +57,29 @@
 
         public bool WithinRange(T value)
         {
-            if (value.CompareTo(min) < 0)
+            int comparison = value.CompareTo(min);
+            if (comparison < 0)
             {
                 return false;
             }
 
-            return value.CompareTo(max) <= 0;
+            if (!startInclusive && comparison == 0)
+            {
+                return false;
+            }
+
+            comparison = value.CompareTo(max);
+            if (0 < comparison)
+            {
+                return false;
+            }
+
+            if (!endInclusive && comparison == 0)
+            {
+                return false;
+            }
+
+            return true;
         }
     }
 }

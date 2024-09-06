@@ -5,7 +5,7 @@
 
     [DataContract]
     [Serializable]
-    public sealed class Parabola
+    public readonly struct Parabola
     {
         public readonly float Length;
 
@@ -23,6 +23,7 @@
             {
                 throw new ArgumentException($"Expected a length greater than 0, but found: {length:0.00}.");
             }
+
             Length = length;
 
             A = -4 * max / (length * length);
