@@ -1,9 +1,13 @@
 ﻿namespace UnityHelpers.Core.Math
 {
+    using System;
+    using System.Runtime.Serialization;
     using Extension;
     using UnityEngine;
 
     // https://pastebin.com/iQDhQTFN
+    [Serializable]
+    [DataContract]
     public readonly struct Line
     {
         public readonly Vector2 from;
