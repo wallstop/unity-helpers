@@ -260,7 +260,6 @@
             if (GUILayout.Button("Save"))
             {
                 SaveAnimation();
-                AssetDatabase.SaveAssets();
             }
 
             GUI.color = oldColor;
@@ -739,6 +738,7 @@
             {
                 AnimationUtility.SetAnimationEvents(_currentClip, _state.Select(item => item.animationEvent).ToArray());
                 EditorUtility.SetDirty(_currentClip);
+                AssetDatabase.SaveAssetIfDirty(_currentClip);
                 _baseClipEvents.Clear();
                 foreach (AnimationEventItem item in _state)
                 {
