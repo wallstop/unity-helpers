@@ -6,8 +6,10 @@
     [DisallowMultipleComponent]
     public abstract class RuntimeSingleton<T> : MonoBehaviour where T : RuntimeSingleton<T>
     {
+        public static bool HasInstance => _instance != null;
+        
         protected static T _instance;
-
+        
         protected virtual bool Preserve => true;
 
         public static T Instance
