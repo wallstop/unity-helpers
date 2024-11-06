@@ -21,6 +21,9 @@
             Encoding = Encoding.UTF8;
             NormalJsonOptions = new JsonSerializerOptions
             {
+                IgnoreReadOnlyFields = false,
+                IgnoreReadOnlyProperties = false,
+                ReferenceHandler = ReferenceHandler.IgnoreCycles,
                 IncludeFields = true,
                 Converters =
                 {
@@ -32,6 +35,9 @@
 
             PrettyJsonOptions = new JsonSerializerOptions
             {
+                IgnoreReadOnlyFields = false,
+                IgnoreReadOnlyProperties = false,
+                ReferenceHandler = ReferenceHandler.IgnoreCycles,
                 IncludeFields = true,
                 Converters =
                 {
