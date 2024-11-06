@@ -2,6 +2,7 @@
 {
     using System;
     using System.Runtime.Serialization;
+    using System.Text.Json.Serialization;
     using Helper;
     using ProtoBuf;
 
@@ -16,40 +17,52 @@
          */
         [ProtoMember(1)]
         private int _a;
+
         [ProtoMember(2)]
         private short _b;
+
         [ProtoMember(3)]
         private short _c;
+
         [ProtoMember(4)]
         private byte _d;
+
         [ProtoMember(5)]
         private byte _e;
+
         [ProtoMember(6)]
         private byte _f;
+
         [ProtoMember(7)]
         private byte _g;
+
         [ProtoMember(8)]
         private byte _h;
+
         [ProtoMember(9)]
         private byte _i;
+
         [ProtoMember(10)]
         private byte _j;
+
         [ProtoMember(11)]
         private byte _k;
 
         private int _hashCode;
 
-        [DataMember] 
-        private string Guid => ((Guid) this).ToString();
+        [JsonInclude]
+        [DataMember]
+        private string Guid => ((Guid)this).ToString();
 
         public static KGuid NewGuid()
         {
             return new KGuid(System.Guid.NewGuid());
         }
-        
-        public KGuid(Guid guid) : this(guid.ToByteArray())
-        {
-        }
+
+        public KGuid(Guid guid) : this(guid.ToByteArray()) { }
+
+        [JsonConstructor]
+        public KGuid(string guid) : this(System.Guid.Parse(guid)) { }
 
         public KGuid(byte[] guidBytes)
         {
@@ -69,7 +82,8 @@
 
         public static implicit operator Guid(KGuid guid)
         {
-            return new Guid(guid._a, guid._b, guid._c, guid._d, guid._e, guid._f, guid._g, guid._h, guid._i, guid._j, guid._k);
+            return new Guid(
+                guid._a, guid._b, guid._c, guid._d, guid._e, guid._f, guid._g, guid._h, guid._i, guid._j, guid._k);
         }
 
         public static implicit operator KGuid(Guid guid)
@@ -244,16 +258,16 @@
 
         public byte[] ToByteArray()
         {
-            return new []
+            return new[]
             {
-                (byte) _a,
-                (byte) (_a >> 8),
-                (byte) (_a >> 16),
-                (byte) (_a >> 24),
-                (byte) _b,
-                (byte) ((uint) _b >> 8),
-                (byte) _c,
-                (byte) ((uint) _c >> 8),
+                (byte)_a,
+                (byte)(_a >> 8),
+                (byte)(_a >> 16),
+                (byte)(_a >> 24),
+                (byte)_b,
+                (byte)((uint)_b >> 8),
+                (byte)_c,
+                (byte)((uint)_c >> 8),
                 _d,
                 _e,
                 _f,

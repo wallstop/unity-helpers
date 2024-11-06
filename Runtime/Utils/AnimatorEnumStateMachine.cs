@@ -6,6 +6,7 @@
     using System.Globalization;
     using System.Linq;
     using System.Runtime.Serialization;
+    using System.Text.Json.Serialization;
     using UnityEngine;
 
     /// <summary>
@@ -19,13 +20,20 @@
     {
         private static readonly T[] Values = Enum.GetValues(typeof(T)).OfType<T>().ToArray();
 
-        [IgnoreDataMember] private readonly HashSet<string> _availableBools = new HashSet<string>();
+        [JsonIgnore]
+        [IgnoreDataMember]
+        private readonly HashSet<string> _availableBools = new HashSet<string>();
 
-        [IgnoreDataMember] public readonly Animator Animator;
+        [JsonIgnore]
+        [IgnoreDataMember]
+        public readonly Animator Animator;
 
-        [IgnoreDataMember] private T _value;
+        [JsonIgnore]
+        [IgnoreDataMember]
+        private T _value;
 
         [DataMember]
+        [JsonInclude]
         public T Value
         {
             get { return _value; }
@@ -45,6 +53,7 @@
         }
 
         [DataMember]
+        [JsonInclude]
         private string Type => typeof(T).Name;
 
         public AnimatorEnumStateMachine(Animator animator, T defaultValue = default(T))

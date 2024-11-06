@@ -2,6 +2,7 @@
 {
     using System;
     using System.Runtime.Serialization;
+    using System.Text.Json.Serialization;
 
     /// <summary>
     ///     Implementation based off of the reference PCG Random, found here: https://www.pcg-random.org/index.html
@@ -12,14 +13,17 @@
     {
         public static IRandom Instance => ThreadLocalRandom<PcgRandom>.Instance;
 
+        [JsonInclude]
+        [JsonPropertyName("Increment")]
         [DataMember(Name = "Increment")]
         internal readonly ulong _increment;
+
+        [JsonInclude]
+        [JsonPropertyName("State")]
         [DataMember(Name = "State")]
         internal ulong _state;
 
-        public PcgRandom() : this(Guid.NewGuid())
-        {
-        }
+        public PcgRandom() : this(Guid.NewGuid()) { }
 
         public PcgRandom(Guid guid)
         {
@@ -35,6 +39,7 @@
             _cachedGaussian = randomState.Gaussian;
         }
 
+        [JsonConstructor]
         public PcgRandom(ulong increment, ulong state)
         {
             _increment = increment;
@@ -45,11 +50,11 @@
         {
             // Start with a nice prime
             _increment = 6554638469UL;
-            _state = unchecked((ulong) seed);
+            _state = unchecked((ulong)seed);
             _increment = NextUlong();
         }
 
-        public override RandomState InternalState => new (_state, _increment, _cachedGaussian);
+        public override RandomState InternalState => new(_state, _increment, _cachedGaussian);
 
         public override uint NextUint()
         {
@@ -87,6 +92,7 @@
                 {
                     return 0;
                 }
+
                 if (_state < other._state)
                 {
                     return -1;
