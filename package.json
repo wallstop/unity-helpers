@@ -1,12 +1,10 @@
 {
   "name": "com.wallstop-studios.unity-helpers",
-  "version": "1.0.2",
+  "version": "2.0.0-rc01",
   "displayName": "Unity Helpers",
   "description": "Various Unity Helper Library",
-  "dependencies": {
-    "com.unity.nuget.newtonsoft-json" : "3.2.1"
-  },
-  "unity": "2022.1",
+  "dependencies": {},
+  "unity": "2021.3",
   "keywords": [
     "helper",
     "library",

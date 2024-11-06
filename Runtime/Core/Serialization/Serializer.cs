@@ -4,26 +4,44 @@
     using System.ComponentModel;
     using Extension;
     using JsonConverters;
-    using Newtonsoft.Json;
-    using Newtonsoft.Json.Converters;
     using System.IO;
     using System.Runtime.Serialization.Formatters.Binary;
     using System.Text;
-    using UnityEngine;
+    using System.Text.Json;
+    using System.Text.Json.Serialization;
 
     internal static class SerializerEncoding
     {
-        public static readonly Encoding Encoding = Encoding.Default;
+        public static readonly Encoding Encoding;
+        public static readonly JsonSerializerOptions NormalJsonOptions;
+        public static readonly JsonSerializerOptions PrettyJsonOptions;
 
-        public static readonly JsonConverter[] Converters =
-            {new StringEnumConverter(), Vector3Converter.Instance, Vector2Converter.Instance};
-
-        public static readonly JsonSerializerSettings Settings = new JsonSerializerSettings
+        static SerializerEncoding()
         {
-            ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
-            Converters = Converters
-        };
-        
+            Encoding = Encoding.UTF8;
+            NormalJsonOptions = new JsonSerializerOptions
+            {
+                IncludeFields = true,
+                Converters =
+                {
+                    new JsonStringEnumConverter(),
+                    Vector3Converter.Instance,
+                    Vector2Converter.Instance
+                },
+            };
+
+            PrettyJsonOptions = new JsonSerializerOptions
+            {
+                IncludeFields = true,
+                Converters =
+                {
+                    new JsonStringEnumConverter(),
+                    Vector3Converter.Instance,
+                    Vector2Converter.Instance
+                },
+                WriteIndented = true,
+            };
+        }
     }
 
     public enum SerializationType
@@ -43,7 +61,8 @@
                 case SerializationType.Protobuf:
                     return ProtoDeserialize<T>(serialized);
                 default:
-                    throw new InvalidEnumArgumentException(nameof(serializationType), (int)serializationType, typeof(SerializationType));
+                    throw new InvalidEnumArgumentException(
+                        nameof(serializationType), (int)serializationType, typeof(SerializationType));
             }
         }
 
@@ -56,7 +75,8 @@
                 case SerializationType.Protobuf:
                     return ProtoSerialize(instance);
                 default:
-                    throw new InvalidEnumArgumentException(nameof(serializationType), (int)serializationType, typeof(SerializationType));
+                    throw new InvalidEnumArgumentException(
+                        nameof(serializationType), (int)serializationType, typeof(SerializationType));
             }
         }
 
@@ -75,6 +95,7 @@
             binaryFormatter.Serialize(memoryStream, input);
             return memoryStream.ToArray();
         }
+
         public static T ProtoDeserialize<T>(byte[] data)
         {
             using MemoryStream memoryStream = new(data);
@@ -84,7 +105,7 @@
         public static T ProtoDeserialize<T>(byte[] data, Type type)
         {
             using MemoryStream memoryStream = new(data);
-            return (T) ProtoBuf.Serializer.Deserialize(type, memoryStream);
+            return (T)ProtoBuf.Serializer.Deserialize(type, memoryStream);
         }
 
         public static byte[] ProtoSerialize<T>(T input)
@@ -96,18 +117,26 @@
 
         public static T JsonDeserialize<T>(string data)
         {
-            return JsonConvert.DeserializeObject<T>(data);
+            return JsonSerializer.Deserialize<T>(data, SerializerEncoding.NormalJsonOptions);
         }
 
-        public static byte[] JsonSerialize(object input)
+        public static byte[] JsonSerialize<T>(T input)
         {
             return JsonStringify(input).GetBytes();
         }
 
-        public static string JsonStringify(object input, bool pretty = false)
+        public static string JsonStringify<T>(T input, bool pretty = false)
         {
-            return JsonConvert.SerializeObject(input, pretty ? Formatting.Indented : Formatting.None,
-                SerializerEncoding.Settings);
+            JsonSerializerOptions options =
+                pretty ? SerializerEncoding.PrettyJsonOptions : SerializerEncoding.NormalJsonOptions;
+            if (typeof(T) == typeof(object))
+            {
+                object data = input;
+                Type type = data?.GetType();
+                return JsonSerializer.Serialize(data, data?.GetType(), options);
+            }
+
+            return JsonSerializer.Serialize(input, options);
         }
 
         public static T ReadFromJsonFile<T>(string path)
@@ -116,9 +145,9 @@
             return JsonDeserialize<T>(settingsAsText);
         }
 
-        public static void WriteToJsonFile<T>(T input, string path)
+        public static void WriteToJsonFile<T>(T input, string path, bool pretty = true)
         {
-            string jsonAsText = JsonUtility.ToJson(input);
+            string jsonAsText = JsonStringify(input, pretty);
             File.WriteAllText(path, jsonAsText);
         }
     }
