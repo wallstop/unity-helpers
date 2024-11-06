@@ -25,6 +25,7 @@
                 IgnoreReadOnlyProperties = false,
                 ReferenceHandler = ReferenceHandler.IgnoreCycles,
                 IncludeFields = true,
+                PropertyNameCaseInsensitive = true,
                 Converters =
                 {
                     new JsonStringEnumConverter(),
@@ -38,6 +39,7 @@
                 IgnoreReadOnlyFields = false,
                 IgnoreReadOnlyProperties = false,
                 ReferenceHandler = ReferenceHandler.IgnoreCycles,
+                PropertyNameCaseInsensitive = true,
                 IncludeFields = true,
                 Converters =
                 {
