@@ -1,32 +1,65 @@
 ﻿namespace UnityHelpers.Core.Serialization.JsonConverters
 {
-    using Extension;
-    using Newtonsoft.Json;
-    using Newtonsoft.Json.Linq;
     using System;
+    using System.Text.Json;
+    using System.Text.Json.Serialization;
     using UnityEngine;
 
-    public sealed class Vector2Converter : JsonConverter
+    public sealed class Vector2Converter : JsonConverter<Vector2>
     {
-        public static readonly Vector2Converter Instance = new Vector2Converter();
+        public static readonly Vector2Converter Instance = new();
 
         private Vector2Converter() { }
 
-        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+        public override Vector2 Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
-            JToken.FromObject(((Vector2)value).ToJsonString()).WriteTo(writer);
+            if (reader.TokenType != JsonTokenType.StartObject)
+            {
+                throw new JsonException($"Invalid token type {reader.TokenType}");
+            }
+
+            float x = 0, y = 0;
+
+            while (reader.Read())
+            {
+                if (reader.TokenType == JsonTokenType.EndObject)
+                {
+                    return new Vector2(x, y);
+                }
+
+                if (reader.TokenType == JsonTokenType.PropertyName)
+                {
+                    string propertyName = reader.GetString();
+                    reader.Read();
+                    switch (propertyName)
+                    {
+                        case "x":
+                        {
+                            x = reader.GetSingle();
+                            break;
+                        }
+                        case "y":
+                        {
+                            y = reader.GetSingle();
+                            break;
+                        }
+                        default:
+                        {
+                            throw new JsonException($"Unknown property: {propertyName}");
+                        }
+                    }
+                }
+            }
+
+            throw new JsonException("Incomplete JSON for Vector2");
         }
 
-        public override object ReadJson(JsonReader reader, Type objectType, object existingValue,
-            JsonSerializer serializer)
+        public override void Write(Utf8JsonWriter writer, Vector2 value, JsonSerializerOptions options)
         {
-            object instance = serializer.Deserialize(reader);
-            return JsonConvert.DeserializeObject<Vector2>(instance.ToString());
-        }
-
-        public override bool CanConvert(Type objectType)
-        {
-            return objectType == typeof(Vector2);
+            writer.WriteStartObject();
+            writer.WriteNumber("x", value.x);
+            writer.WriteNumber("y", value.y);
+            writer.WriteEndObject();
         }
     }
 }

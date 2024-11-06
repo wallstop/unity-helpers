@@ -3,9 +3,7 @@
   "version": "1.0.2",
   "displayName": "Unity Helpers",
   "description": "Various Unity Helper Library",
-  "dependencies": {
-    "com.unity.nuget.newtonsoft-json" : "3.2.1"
-  },
+  "dependencies": {},
   "unity": "2022.1",
   "keywords": [
     "helper",
