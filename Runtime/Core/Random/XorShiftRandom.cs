@@ -2,25 +2,29 @@
 {
     using System;
     using System.Runtime.Serialization;
+    using System.Text.Json.Serialization;
 
     [Serializable]
+    [DataContract]
     public sealed class XorShiftRandom : AbstractRandom
     {
         public static IRandom Instance => ThreadLocalRandom<XorShiftRandom>.Instance;
+
+        [JsonPropertyName("State")]
+        [DataMember(Name = "State")]
         public override RandomState InternalState => new(_state, 0, _cachedGaussian);
 
-        [DataMember(Name = "State")]
         private uint _state;
 
-        public XorShiftRandom() : this(Guid.NewGuid().GetHashCode())
-        {
-        }
+        public XorShiftRandom()
+            : this(Guid.NewGuid().GetHashCode()) { }
 
         public XorShiftRandom(int state)
         {
             _state = unchecked((uint)state);
         }
 
+        [JsonConstructor]
         public XorShiftRandom(RandomState state)
         {
             _state = unchecked((uint)state.State1);

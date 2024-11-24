@@ -9,21 +9,22 @@
     /// </summary>
     [Serializable]
     [DataContract]
-    public sealed class PcgRandom : AbstractRandom, IEquatable<PcgRandom>, IComparable, IComparable<PcgRandom>
+    public sealed class PcgRandom
+        : AbstractRandom,
+            IEquatable<PcgRandom>,
+            IComparable,
+            IComparable<PcgRandom>
     {
+        [DataMember(Name = "State")]
+        [JsonPropertyName("State")]
         public static IRandom Instance => ThreadLocalRandom<PcgRandom>.Instance;
 
-        [JsonInclude]
-        [JsonPropertyName("Increment")]
-        [DataMember(Name = "Increment")]
         internal readonly ulong _increment;
 
-        [JsonInclude]
-        [JsonPropertyName("State")]
-        [DataMember(Name = "State")]
         internal ulong _state;
 
-        public PcgRandom() : this(Guid.NewGuid()) { }
+        public PcgRandom()
+            : this(Guid.NewGuid()) { }
 
         public PcgRandom(Guid guid)
         {
@@ -32,14 +33,14 @@
             _increment = BitConverter.ToUInt64(guidArray, sizeof(ulong));
         }
 
-        public PcgRandom(RandomState randomState)
+        [JsonConstructor]
+        public PcgRandom(RandomState state)
         {
-            _state = randomState.State1;
-            _increment = randomState.State2;
-            _cachedGaussian = randomState.Gaussian;
+            _state = state.State1;
+            _increment = state.State2;
+            _cachedGaussian = state.Gaussian;
         }
 
-        [JsonConstructor]
         public PcgRandom(ulong increment, ulong state)
         {
             _increment = increment;
@@ -76,7 +77,14 @@
             }
 
             // ReSharper disable once CompareOfFloatsByEqualityOperator
-            return _increment == other._increment && _state == other._state && _cachedGaussian == other._cachedGaussian;
+            return _increment == other._increment
+                && _state == other._state
+                && _cachedGaussian == other._cachedGaussian;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return Equals(obj as PcgRandom);
         }
 
         public int CompareTo(PcgRandom other)
@@ -120,9 +128,9 @@
             return _cachedGaussian.Value.CompareTo(other._cachedGaussian.Value);
         }
 
-        public override bool Equals(object other)
+        public int CompareTo(object obj)
         {
-            return Equals(other as PcgRandom);
+            return CompareTo(obj as PcgRandom);
         }
 
         public override int GetHashCode()
@@ -133,11 +141,6 @@
         public override string ToString()
         {
             return $"{{\"Increment\": {_increment}, \"State\": {_state}}}";
-        }
-
-        public int CompareTo(object other)
-        {
-            return CompareTo(other as PcgRandom);
         }
 
         public override IRandom Copy()
