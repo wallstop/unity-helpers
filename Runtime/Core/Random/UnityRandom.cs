@@ -1,16 +1,42 @@
 ﻿namespace UnityHelpers.Core.Random
 {
-    using System;
-
     public sealed class UnityRandom : AbstractRandom
     {
-        public static readonly UnityRandom Instance = new UnityRandom();
+        public static readonly UnityRandom Instance = new();
 
-        private UnityRandom()
+        public override RandomState InternalState
         {
+            get
+            {
+                unchecked
+                {
+                    return new RandomState(
+                        (ulong)(_seed ?? 0),
+                        gaussian: _seed != null ? 0.0f : null
+                    );
+                }
+            }
         }
 
-        public override RandomState InternalState => throw new NotSupportedException("Unity Random does not expose its internal state");
+        private readonly int? _seed;
+
+        public UnityRandom(int? seed = null)
+        {
+            if (seed != null)
+            {
+                _seed = seed.Value;
+                UnityEngine.Random.InitState(seed.Value);
+            }
+        }
+
+        public UnityRandom(RandomState state)
+        {
+            unchecked
+            {
+                _seed = state.Gaussian != null ? (int)state.State1 : null;
+            }
+        }
+
         public override uint NextUint()
         {
             return unchecked((uint)UnityEngine.Random.Range(int.MinValue, int.MaxValue));
@@ -18,7 +44,7 @@
 
         public override IRandom Copy()
         {
-            throw new NotSupportedException("Unity Random does not support copying / seeding");
+            return new UnityRandom(_seed);
         }
     }
 }

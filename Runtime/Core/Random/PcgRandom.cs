@@ -9,7 +9,11 @@
     /// </summary>
     [Serializable]
     [DataContract]
-    public sealed class PcgRandom : AbstractRandom, IEquatable<PcgRandom>, IComparable, IComparable<PcgRandom>
+    public sealed class PcgRandom
+        : AbstractRandom,
+            IEquatable<PcgRandom>,
+            IComparable,
+            IComparable<PcgRandom>
     {
         public static IRandom Instance => ThreadLocalRandom<PcgRandom>.Instance;
 
@@ -23,7 +27,8 @@
         [DataMember(Name = "State")]
         internal ulong _state;
 
-        public PcgRandom() : this(Guid.NewGuid()) { }
+        public PcgRandom()
+            : this(Guid.NewGuid()) { }
 
         public PcgRandom(Guid guid)
         {
@@ -76,7 +81,14 @@
             }
 
             // ReSharper disable once CompareOfFloatsByEqualityOperator
-            return _increment == other._increment && _state == other._state && _cachedGaussian == other._cachedGaussian;
+            return _increment == other._increment
+                && _state == other._state
+                && _cachedGaussian == other._cachedGaussian;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return Equals(obj as PcgRandom);
         }
 
         public int CompareTo(PcgRandom other)
@@ -120,9 +132,9 @@
             return _cachedGaussian.Value.CompareTo(other._cachedGaussian.Value);
         }
 
-        public override bool Equals(object other)
+        public int CompareTo(object obj)
         {
-            return Equals(other as PcgRandom);
+            return CompareTo(obj as PcgRandom);
         }
 
         public override int GetHashCode()
@@ -133,11 +145,6 @@
         public override string ToString()
         {
             return $"{{\"Increment\": {_increment}, \"State\": {_state}}}";
-        }
-
-        public int CompareTo(object other)
-        {
-            return CompareTo(other as PcgRandom);
         }
 
         public override IRandom Copy()
