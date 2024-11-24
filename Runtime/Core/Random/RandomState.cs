@@ -1,6 +1,7 @@
 ﻿namespace UnityHelpers.Core.Random
 {
     using System;
+    using System.Text.Json.Serialization;
     using Extension;
     using Helper;
     using ProtoBuf;
@@ -27,6 +28,7 @@
 
         [ProtoMember(1)]
         private ulong _state1;
+
         [ProtoMember(2)]
         private ulong _state2;
 
@@ -38,6 +40,7 @@
 
         private int _hashCode;
 
+        [JsonConstructor]
         public RandomState(ulong state1, ulong state2 = 0, double? gaussian = null)
         {
             _state1 = state1;
@@ -71,14 +74,22 @@
         public bool Equals(RandomState other)
         {
             // ReSharper disable once CompareOfFloatsByEqualityOperator
-            return _state1 == other._state1 && _state2 == other._state2 && _hasGaussian == other._hasGaussian && (!_hasGaussian || _gaussian == other._gaussian);
+            return _state1 == other._state1
+                && _state2 == other._state2
+                && _hasGaussian == other._hasGaussian
+                && (!_hasGaussian || _gaussian == other._gaussian);
         }
 
         public override int GetHashCode()
         {
             if (_hashCode == 0)
             {
-                return _hashCode = Objects.ValueTypeHashCode(_state1, _state2, _hasGaussian, _gaussian);
+                return _hashCode = Objects.ValueTypeHashCode(
+                    _state1,
+                    _state2,
+                    _hasGaussian,
+                    _gaussian
+                );
             }
 
             return _hashCode;

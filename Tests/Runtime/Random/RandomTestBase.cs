@@ -48,22 +48,37 @@
         public void Byte()
         {
             TestAndVerify(
-                random => random.NextByte(0, (byte)(_samples.Length < byte.MaxValue ? _samples.Length : byte.MaxValue)),
-                byte.MaxValue);
+                random =>
+                    random.NextByte(
+                        0,
+                        (byte)(_samples.Length < byte.MaxValue ? _samples.Length : byte.MaxValue)
+                    ),
+                byte.MaxValue
+            );
         }
 
         [Test]
         public void Float()
         {
-            TestAndVerify(
-                random => Math.Clamp((int)Math.Floor(random.NextFloat(0, _samples.Length)), 0, _samples.Length - 1));
+            TestAndVerify(random =>
+                Math.Clamp(
+                    (int)Math.Floor(random.NextFloat(0, _samples.Length)),
+                    0,
+                    _samples.Length - 1
+                )
+            );
         }
 
         [Test]
         public void Double()
         {
-            TestAndVerify(
-                random => Math.Clamp((int)Math.Floor(random.NextDouble(0, _samples.Length)), 0, _samples.Length - 1));
+            TestAndVerify(random =>
+                Math.Clamp(
+                    (int)Math.Floor(random.NextDouble(0, _samples.Length)),
+                    0,
+                    _samples.Length - 1
+                )
+            );
         }
 
         [Test]
@@ -78,7 +93,23 @@
             TestAndVerify(random => (int)random.NextUlong(0, (ulong)_samples.Length));
         }
 
-        protected void TestAndVerify(Func<IRandom, int> sample, int? maxLength = null)
+        [Test]
+        public void Copy()
+        {
+            IRandom random1 = NewRandom();
+            IRandom random2 = random1.Copy();
+            Assert.AreEqual(random1.InternalState, random2.InternalState);
+            // UnityRandom has shared state, the below test is not possible for it. We did all we could.
+            if (NewRandom() is not UnityRandom)
+            {
+                for (int i = 0; i < 100; ++i)
+                {
+                    Assert.AreEqual(random1.Next(), random2.Next());
+                }
+            }
+        }
+
+        private void TestAndVerify(Func<IRandom, int> sample, int? maxLength = null)
         {
             IRandom random = NewRandom();
             for (int i = 0; i < SampleCount; ++i)
@@ -114,12 +145,21 @@
             }
 
             Assert.AreEqual(
-                0, zeroCountIndexes.Count, "No samples at {0} indices: [{1}]", zeroCountIndexes.Count,
-                string.Join(",", zeroCountIndexes));
+                0,
+                zeroCountIndexes.Count,
+                "No samples at {0} indices: [{1}]",
+                zeroCountIndexes.Count,
+                string.Join(",", zeroCountIndexes)
+            );
             Assert.AreEqual(
-                0, outsideRange.Count, "{0} indexes outside of dev {1:0.00}. Expected: {2:0.00}. Found: [{3}]",
-                outsideRange.Count, deviationAllowed, average,
-                string.Join(",", outsideRange.Select(index => _samples[index])));
+                0,
+                outsideRange.Count,
+                "{0} indexes outside of dev {1:0.00}. Expected: {2:0.00}. Found: [{3}]",
+                outsideRange.Count,
+                deviationAllowed,
+                average,
+                string.Join(",", outsideRange.Select(index => _samples[index]))
+            );
         }
     }
 }
