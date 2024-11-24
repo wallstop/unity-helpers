@@ -96,15 +96,27 @@
         [Test]
         public void Copy()
         {
+            const int numGeneratorChecks = 1_000;
             IRandom random1 = NewRandom();
             IRandom random2 = random1.Copy();
             Assert.AreEqual(random1.InternalState, random2.InternalState);
             // UnityRandom has shared state, the below test is not possible for it. We did all we could.
             if (NewRandom() is not UnityRandom)
             {
-                for (int i = 0; i < 100; ++i)
+                for (int i = 0; i < numGeneratorChecks; ++i)
                 {
                     Assert.AreEqual(random1.Next(), random2.Next());
+                }
+            }
+
+            Assert.AreEqual(random1.InternalState, random2.InternalState);
+            IRandom random3 = random1.Copy();
+            Assert.AreEqual(random2.InternalState, random3.InternalState);
+            if (NewRandom() is not UnityRandom)
+            {
+                for (int i = 0; i < numGeneratorChecks; ++i)
+                {
+                    Assert.AreEqual(random1.Next(), random3.Next());
                 }
             }
         }
