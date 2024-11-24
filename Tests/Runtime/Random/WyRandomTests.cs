@@ -2,8 +2,8 @@
 {
     using Core.Random;
 
-    public sealed class WyRandomTests : RandomTestBase
+    public sealed class WyRandomTests : RandomTestBase<WyRandom>
     {
-        protected override IRandom NewRandom() => new WyRandom();
+        protected override WyRandom NewRandom() => new WyRandom();
     }
 }

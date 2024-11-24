@@ -3,16 +3,21 @@
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using Core.Extension;
+    using Core.Serialization;
     using NUnit.Framework;
+    using UnityEngine;
     using UnityHelpers.Core.Random;
 
-    public abstract class RandomTestBase
+    public abstract class RandomTestBase<T>
+        where T : IRandom
     {
+        private const int NumGeneratorChecks = 1_000;
         private const int SampleCount = 12_500_000;
 
         private readonly int[] _samples = new int[1_000];
 
-        protected abstract IRandom NewRandom();
+        protected abstract T NewRandom();
 
         [SetUp]
         public virtual void Setup()
@@ -96,14 +101,13 @@
         [Test]
         public void Copy()
         {
-            const int numGeneratorChecks = 1_000;
             IRandom random1 = NewRandom();
             IRandom random2 = random1.Copy();
             Assert.AreEqual(random1.InternalState, random2.InternalState);
             // UnityRandom has shared state, the below test is not possible for it. We did all we could.
             if (NewRandom() is not UnityRandom)
             {
-                for (int i = 0; i < numGeneratorChecks; ++i)
+                for (int i = 0; i < NumGeneratorChecks; ++i)
                 {
                     Assert.AreEqual(random1.Next(), random2.Next());
                     Assert.AreEqual(random1.InternalState, random2.InternalState);
@@ -115,10 +119,28 @@
             Assert.AreEqual(random1.InternalState, random3.InternalState);
             if (NewRandom() is not UnityRandom)
             {
-                for (int i = 0; i < numGeneratorChecks; ++i)
+                for (int i = 0; i < NumGeneratorChecks; ++i)
                 {
                     Assert.AreEqual(random1.Next(), random3.Next());
                     Assert.AreEqual(random1.InternalState, random3.InternalState);
+                }
+            }
+        }
+
+        [Test]
+        public void Json()
+        {
+            T random = NewRandom();
+            string json = random.ToJson();
+            T deserialized = Serializer.JsonDeserialize<T>(json);
+            Assert.AreEqual(random.InternalState, deserialized.InternalState);
+
+            if (NewRandom() is not UnityRandom)
+            {
+                for (int i = 0; i < NumGeneratorChecks; ++i)
+                {
+                    Assert.AreEqual(random.Next(), deserialized.Next());
+                    Assert.AreEqual(random.InternalState, deserialized.InternalState);
                 }
             }
         }
