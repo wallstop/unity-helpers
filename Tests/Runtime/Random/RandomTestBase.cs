@@ -8,9 +8,9 @@
 
     public abstract class RandomTestBase
     {
-        protected const int SampleCount = 10_000_000;
+        private const int SampleCount = 12_500_000;
 
-        protected readonly int[] _samples = new int[1_000];
+        private readonly int[] _samples = new int[1_000];
 
         protected abstract IRandom NewRandom();
 
