@@ -3,6 +3,7 @@
     using System;
     using System.Runtime.Serialization;
     using System.Text.Json.Serialization;
+    using Helper;
 
     /// <summary>
     ///     Implementation dependent upon .Net's Random class.
@@ -11,14 +12,18 @@
     [DataContract]
     public sealed class SystemRandom : AbstractRandom
     {
-        [JsonPropertyName("State")]
-        [DataMember(Name = "State")]
         public override RandomState InternalState =>
-            new(unchecked((ulong)inext), unchecked((ulong)inextp), _cachedGaussian);
+            new(
+                unchecked((ulong)inext),
+                unchecked((ulong)inextp),
+                _cachedGaussian,
+                ArrayConverter.IntArrayToByteArray_BlockCopy(SeedArray)
+            );
 
         /*
             Copied from Random.cs source. Apparently it isn't guaranteed to be the
-            same across platforms and we depend on that.
+            same across platforms, a fact which defeats the purpose of these serializable
+            randoms.
          */
         private int inext;
         private int inextp;
@@ -27,7 +32,7 @@
         public static IRandom Instance => ThreadLocalRandom<SystemRandom>.Instance;
 
         public SystemRandom()
-            : this(Environment.TickCount) { }
+            : this(Guid.NewGuid().GetHashCode()) { }
 
         public SystemRandom(int seed)
         {
@@ -57,11 +62,15 @@
         }
 
         [JsonConstructor]
-        public SystemRandom(RandomState randomState)
+        public SystemRandom(RandomState internalState)
         {
-            inext = unchecked((int)randomState.State1);
-            inextp = unchecked((int)randomState.State2);
-            _cachedGaussian = randomState.Gaussian;
+            unchecked
+            {
+                inext = (int)internalState.State1;
+                inextp = (int)internalState.State2;
+            }
+            _cachedGaussian = internalState.Gaussian;
+            SeedArray = ArrayConverter.ByteArrayToIntArray_BlockCopy(internalState.Payload);
         }
 
         public override uint NextUint()

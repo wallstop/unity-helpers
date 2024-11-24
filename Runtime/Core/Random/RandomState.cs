@@ -1,16 +1,20 @@
 ﻿namespace UnityHelpers.Core.Random
 {
     using System;
+    using System.Linq;
+    using System.Runtime.Serialization;
     using System.Text.Json.Serialization;
     using Extension;
     using Helper;
     using ProtoBuf;
 
     [Serializable]
+    [DataContract]
     [ProtoContract]
     public struct RandomState : IEquatable<RandomState>
     {
         public ulong State1 => _state1;
+
         public ulong State2 => _state2;
 
         public double? Gaussian
@@ -26,6 +30,8 @@
             }
         }
 
+        public byte[] Payload => _payload;
+
         [ProtoMember(1)]
         private ulong _state1;
 
@@ -38,16 +44,31 @@
         [ProtoMember(4)]
         private double _gaussian;
 
+        [ProtoMember(5)]
+        private byte[] _payload;
+
         private int _hashCode;
 
         [JsonConstructor]
-        public RandomState(ulong state1, ulong state2 = 0, double? gaussian = null)
+        public RandomState(
+            ulong state1,
+            ulong state2 = 0,
+            double? gaussian = null,
+            byte[] payload = null
+        )
         {
             _state1 = state1;
             _state2 = state2;
             _hasGaussian = gaussian.HasValue;
             _gaussian = gaussian ?? 0;
-            _hashCode = Objects.ValueTypeHashCode(state1, state2, _hasGaussian, _gaussian);
+            _payload = payload?.ToArray();
+            _hashCode = Objects.ValueTypeHashCode(
+                state1,
+                state2,
+                _hasGaussian,
+                _gaussian,
+                _payload != null
+            );
         }
 
         public RandomState(Guid guid)
@@ -57,7 +78,14 @@
             _state2 = BitConverter.ToUInt64(guidBytes, sizeof(ulong));
             _hasGaussian = false;
             _gaussian = 0;
-            _hashCode = Objects.ValueTypeHashCode(_state1, _state2, _hasGaussian, _gaussian);
+            _payload = null;
+            _hashCode = Objects.ValueTypeHashCode(
+                _state1,
+                _state2,
+                _hasGaussian,
+                _gaussian,
+                _payload != null
+            );
         }
 
         [ProtoAfterDeserialization]

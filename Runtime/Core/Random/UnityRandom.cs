@@ -10,8 +10,6 @@
     {
         public static readonly UnityRandom Instance = new();
 
-        [JsonPropertyName("State")]
-        [DataMember(Name = "State")]
         public override RandomState InternalState
         {
             get
@@ -38,11 +36,11 @@
         }
 
         [JsonConstructor]
-        public UnityRandom(RandomState state)
+        public UnityRandom(RandomState internalState)
         {
             unchecked
             {
-                _seed = state.Gaussian != null ? (int)state.State1 : null;
+                _seed = internalState.Gaussian != null ? (int)internalState.State1 : null;
             }
         }
 

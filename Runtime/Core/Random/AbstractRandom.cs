@@ -5,6 +5,7 @@
     using System.Collections.Generic;
     using System.Linq;
     using System.Runtime.Serialization;
+    using System.Text.Json.Serialization;
     using DataStructure.Adapters;
     using UnityEngine;
 
@@ -30,8 +31,7 @@
             do
             {
                 result = unchecked((int)NextUint());
-            }
-            while (result < 0);
+            } while (result < 0);
 
             return result;
         }
@@ -50,7 +50,9 @@
         {
             if (max <= min)
             {
-                throw new ArgumentException($"Min {min} cannot be larger-than or equal-to max {max}");
+                throw new ArgumentException(
+                    $"Min {min} cannot be larger-than or equal-to max {max}"
+                );
             }
 
             uint range = unchecked((uint)(max - min));
@@ -83,7 +85,9 @@
         {
             if (max <= min)
             {
-                throw new ArgumentException($"Min {min} cannot be larger-than or equal-to max {max}");
+                throw new ArgumentException(
+                    $"Min {min} cannot be larger-than or equal-to max {max}"
+                );
             }
 
             return min + NextUint(max - min);
@@ -147,8 +151,7 @@
             do
             {
                 withinRange = NextLong();
-            }
-            while (withinRange < 0 || max <= withinRange);
+            } while (withinRange < 0 || max <= withinRange);
             return withinRange;
         }
 
@@ -156,7 +159,9 @@
         {
             if (max <= min)
             {
-                throw new ArgumentException($"Min {min} cannot be larger-than or equal-to Max {max}");
+                throw new ArgumentException(
+                    $"Min {min} cannot be larger-than or equal-to Max {max}"
+                );
             }
 
             return min + NextLong(max - min);
@@ -176,7 +181,9 @@
         {
             if (max <= min)
             {
-                throw new ArgumentException($"Min {min} cannot be larger-than or equal-to max {max}");
+                throw new ArgumentException(
+                    $"Min {min} cannot be larger-than or equal-to max {max}"
+                );
             }
 
             return unchecked((ulong)NextLong(unchecked((long)min), unchecked((long)max)));
@@ -227,8 +234,7 @@
             do
             {
                 value = NextUint() * MagicDouble;
-            }
-            while (value < 0 || 1 <= value);
+            } while (value < 0 || 1 <= value);
 
             return value;
         }
@@ -247,7 +253,9 @@
         {
             if (max <= min)
             {
-                throw new ArgumentException($"Min {min} cannot be larger-than or equal-to max {max}");
+                throw new ArgumentException(
+                    $"Min {min} cannot be larger-than or equal-to max {max}"
+                );
             }
 
             double range = max - min;
@@ -277,8 +285,7 @@
                 x = 2 * NextDouble() - 1;
                 y = 2 * NextDouble() - 1;
                 square = x * x + y * y;
-            }
-            while (square > 1 || square == 0);
+            } while (square > 1 || square == 0);
 
             double fac = Math.Sqrt(-2 * Math.Log(square) / square);
             _cachedGaussian = x * fac;
@@ -292,8 +299,7 @@
             {
                 uint floatAsInt = NextUint();
                 value = (floatAsInt >> 8) * MagicFloat;
-            }
-            while (value < 0 || 1 <= value);
+            } while (value < 0 || 1 <= value);
 
             return value;
         }
@@ -312,7 +318,9 @@
         {
             if (max <= min)
             {
-                throw new ArgumentException($"Min {min} cannot be larger-than or equal-to max {max}");
+                throw new ArgumentException(
+                    $"Min {min} cannot be larger-than or equal-to max {max}"
+                );
             }
 
             return min + NextFloat(max - min);
@@ -397,7 +405,8 @@
             }
         }
 
-        public T Next<T>() where T : struct, Enum
+        public T Next<T>()
+            where T : struct, Enum
         {
             Type enumType = typeof(T);
             T[] enumValues;
@@ -413,7 +422,8 @@
             return RandomOf(enumValues);
         }
 
-        public T NextCachedEnum<T>() where T : struct, Enum
+        public T NextCachedEnum<T>()
+            where T : struct, Enum
         {
             Type enumType = typeof(T);
             T[] enumValues = (T[])EnumTypeCache.GetOrAdd(enumType, Enum.GetValues);
@@ -511,7 +521,11 @@
                 {
                     // Returns a value between 0f and 1f based on noiseMap value
                     // minNoiseHeight being 0f, and maxNoiseHeight being 1f
-                    noiseMap[x, y] = Mathf.InverseLerp(minNoiseHeight, maxNoiseHeight, noiseMap[x, y]);
+                    noiseMap[x, y] = Mathf.InverseLerp(
+                        minNoiseHeight,
+                        maxNoiseHeight,
+                        noiseMap[x, y]
+                    );
                 }
             }
             return noiseMap;
