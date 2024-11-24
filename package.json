@@ -1,6 +1,6 @@
 {
   "name": "com.wallstop-studios.unity-helpers",
-  "version": "2.0.0-rc05",
+  "version": "2.0.0-rc06",
   "displayName": "Unity Helpers",
   "description": "Various Unity Helper Library",
   "dependencies": {},
