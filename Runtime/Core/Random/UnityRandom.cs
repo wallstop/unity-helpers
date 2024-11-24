@@ -1,9 +1,17 @@
 ﻿namespace UnityHelpers.Core.Random
 {
+    using System;
+    using System.Runtime.Serialization;
+    using System.Text.Json.Serialization;
+
+    [Serializable]
+    [DataContract]
     public sealed class UnityRandom : AbstractRandom
     {
         public static readonly UnityRandom Instance = new();
 
+        [JsonPropertyName("State")]
+        [DataMember(Name = "State")]
         public override RandomState InternalState
         {
             get
@@ -12,7 +20,7 @@
                 {
                     return new RandomState(
                         (ulong)(_seed ?? 0),
-                        gaussian: _seed != null ? 0.0f : null
+                        gaussian: _seed != null ? 0.0 : null
                     );
                 }
             }
@@ -29,6 +37,7 @@
             }
         }
 
+        [JsonConstructor]
         public UnityRandom(RandomState state)
         {
             unchecked

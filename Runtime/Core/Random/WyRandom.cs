@@ -3,21 +3,21 @@
     using System;
     using System.Diagnostics.CodeAnalysis;
     using System.Runtime.CompilerServices;
+    using System.Runtime.Serialization;
     using System.Text.Json.Serialization;
 
     // https://github.com/cocowalla/wyhash-dotnet/blob/master/src/WyHash/WyRng.cs
     [Serializable]
+    [DataContract]
     public sealed class WyRandom : AbstractRandom
     {
         private const ulong Prime0 = 0xa0761d6478bd642f;
         private const ulong Prime1 = 0xe7037ed1a0b428db;
-        private const ulong Prime2 = 0x8ebc6af09c88c6e3;
-        private const ulong Prime3 = 0x589965cc75374cc3;
-        private const ulong Prime4 = 0x1d8e4e27c47d124f;
-        private const ulong Prime5 = 0xeb44accab455d165;
 
         public static IRandom Instance => ThreadLocalRandom<WyRandom>.Instance;
 
+        [JsonPropertyName("State")]
+        [DataMember(Name = "State")]
         public override RandomState InternalState => new RandomState(_state);
 
         private ulong _state;
@@ -31,12 +31,12 @@
             _state = BitConverter.ToUInt64(guidArray, 0);
         }
 
+        [JsonConstructor]
         public WyRandom(RandomState randomState)
         {
             _state = randomState.State1;
         }
 
-        [JsonConstructor]
         public WyRandom(ulong state)
         {
             _state = state;

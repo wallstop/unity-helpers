@@ -1,8 +1,12 @@
 ﻿namespace UnityHelpers.Core.Random
 {
     using System;
+    using System.Runtime.Serialization;
+    using System.Text.Json.Serialization;
 
     // https://youtu.be/LWFzPP8ZbdU?t=2673
+    [DataContract]
+    [Serializable]
     public sealed class SquirrelRandom : AbstractRandom
     {
         private const uint BitNoise1 = 0xB5297A4D;
@@ -10,27 +14,28 @@
         private const uint BitNoise3 = 0x1B56C4E9;
         private const int LargePrime = 198491317;
 
-        public static readonly SquirrelRandom Instance = new();
+        public static readonly SquirrelRandom Instance = ThreadLocalRandom<SquirrelRandom>.Instance;
+
+        [JsonPropertyName("State")]
+        [DataMember(Name = "State")]
+        public override RandomState InternalState => new(_position, gaussian: _cachedGaussian);
 
         private uint _position;
 
-        public SquirrelRandom() : this(Guid.NewGuid().GetHashCode())
-        {
-
-        }
+        public SquirrelRandom()
+            : this(Guid.NewGuid().GetHashCode()) { }
 
         public SquirrelRandom(int seed)
         {
             _position = unchecked((uint)seed);
         }
 
+        [JsonConstructor]
         public SquirrelRandom(RandomState randomState)
         {
             _position = unchecked((uint)randomState.State1);
             _cachedGaussian = randomState.Gaussian;
         }
-
-        public override RandomState InternalState => new(_position, gaussian: _cachedGaussian);
 
         public override uint NextUint()
         {

@@ -1,12 +1,21 @@
 ﻿namespace UnityHelpers.Core.Random
 {
     using System;
+    using System.Runtime.Serialization;
+    using System.Text.Json.Serialization;
 
     /// <summary>
     ///     Implementation dependent upon .Net's Random class.
     /// </summary>
+    [Serializable]
+    [DataContract]
     public sealed class SystemRandom : AbstractRandom
     {
+        [JsonPropertyName("State")]
+        [DataMember(Name = "State")]
+        public override RandomState InternalState =>
+            new(unchecked((ulong)inext), unchecked((ulong)inextp), _cachedGaussian);
+
         /*
             Copied from Random.cs source. Apparently it isn't guaranteed to be the
             same across platforms and we depend on that.
@@ -17,9 +26,8 @@
 
         public static IRandom Instance => ThreadLocalRandom<SystemRandom>.Instance;
 
-        public SystemRandom() : this (Environment.TickCount)
-        {
-        }
+        public SystemRandom()
+            : this(Environment.TickCount) { }
 
         public SystemRandom(int seed)
         {
@@ -48,14 +56,13 @@
             this.inextp = 21;
         }
 
+        [JsonConstructor]
         public SystemRandom(RandomState randomState)
         {
             inext = unchecked((int)randomState.State1);
             inextp = unchecked((int)randomState.State2);
             _cachedGaussian = randomState.Gaussian;
         }
-
-        public override RandomState InternalState => new(unchecked((ulong)inext), unchecked((ulong)inextp), _cachedGaussian);
 
         public override uint NextUint()
         {
@@ -75,7 +82,7 @@
             this.SeedArray[index1] = num;
             this.inext = index1;
             this.inextp = index2;
-            return unchecked((uint) num);
+            return unchecked((uint)num);
         }
 
         public override double NextDouble()
@@ -84,15 +91,14 @@
             do
             {
                 generated = unchecked((int)NextUint()) * 4.6566128752458E-10;
-            }
-            while (generated < 0 || 1 <= generated);
+            } while (generated < 0 || 1 <= generated);
 
             return generated;
         }
 
         public override float NextFloat()
         {
-            return (float) NextDouble();
+            return (float)NextDouble();
         }
 
         public override IRandom Copy()

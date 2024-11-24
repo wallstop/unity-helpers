@@ -1,10 +1,15 @@
 ﻿namespace UnityHelpers.Core.Random
 {
     using System;
+    using System.Runtime.Serialization;
+    using System.Text.Json.Serialization;
 
     [Serializable]
+    [DataContract]
     public sealed class DotNetRandom : AbstractRandom
     {
+        [JsonPropertyName("State")]
+        [DataMember(Name = "State")]
         public override RandomState InternalState =>
             new RandomState(unchecked((ulong)_seed), state2: _numberGenerated);
 
@@ -17,11 +22,11 @@
 
         public DotNetRandom(Guid guid)
         {
-            byte[] guidArray = guid.ToByteArray();
-            _seed = BitConverter.ToInt32(guidArray, 0);
+            _seed = guid.GetHashCode();
             _random = new Random(_seed);
         }
 
+        [JsonConstructor]
         public DotNetRandom(RandomState state)
         {
             _seed = unchecked((int)state.State1);

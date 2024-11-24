@@ -1,14 +1,17 @@
 ﻿namespace UnityHelpers.Core.Random
 {
     using System;
-    using Unity.Plastic.Newtonsoft.Json;
+    using System.Runtime.Serialization;
+    using System.Text.Json.Serialization;
 
     [Serializable]
+    [DataContract]
     public sealed class XorShiftRandom : AbstractRandom
     {
         public static IRandom Instance => ThreadLocalRandom<XorShiftRandom>.Instance;
 
-        [JsonProperty("State")]
+        [JsonPropertyName("State")]
+        [DataMember(Name = "State")]
         public override RandomState InternalState => new(_state, 0, _cachedGaussian);
 
         private uint _state;
@@ -16,12 +19,12 @@
         public XorShiftRandom()
             : this(Guid.NewGuid().GetHashCode()) { }
 
-        [JsonConstructor]
         public XorShiftRandom(int state)
         {
             _state = unchecked((uint)state);
         }
 
+        [JsonConstructor]
         public XorShiftRandom(RandomState state)
         {
             _state = unchecked((uint)state.State1);
