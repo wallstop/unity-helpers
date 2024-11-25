@@ -72,9 +72,6 @@
             );
         }
 
-        // [Test]
-        // public void FloatWithinMaxRange()
-
         [Test]
         public void Double()
         {
