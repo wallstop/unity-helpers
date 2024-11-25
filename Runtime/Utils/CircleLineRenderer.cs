@@ -17,7 +17,7 @@
         public int baseSegments = 4;
         public float updateRateSeconds = 0.1f;
         public Color color = Color.grey;
-        
+
         public Vector3 Offset
         {
             get => _offset;
@@ -26,6 +26,7 @@
 
         [SiblingComponent]
         private CircleCollider2D _collider;
+
         [SiblingComponent]
         private LineRenderer[] _lineRenderers;
 
@@ -70,7 +71,11 @@
 
             if (maxLineWidth < minLineWidth)
             {
-                this.LogWarn("MaxLineWidth {0} smaller than MinLineWidth {1}.", maxLineWidth, minLineWidth);
+                this.LogWarn(
+                    "MaxLineWidth {0} smaller than MinLineWidth {1}.",
+                    maxLineWidth,
+                    minLineWidth
+                );
             }
         }
 
@@ -98,7 +103,10 @@
                 lineRenderer.positionCount = numSegments;
 
                 // ReSharper disable once CompareOfFloatsByEqualityOperator
-                float lineWidth = minLineWidth == maxLineWidth ? minLineWidth : PcgRandom.Instance.NextFloat(minLineWidth, maxLineWidth);
+                float lineWidth =
+                    minLineWidth == maxLineWidth
+                        ? minLineWidth
+                        : PRNG.Instance.NextFloat(minLineWidth, maxLineWidth);
 
                 lineRenderer.startWidth = lineWidth;
                 lineRenderer.endWidth = lineWidth;
@@ -106,12 +114,16 @@
                 float distanceMultiplier = _collider.radius;
 
                 float angle = 360f / numSegments;
-                float offsetRadians = PcgRandom.Instance.NextFloat(angle);
+                float offsetRadians = PRNG.Instance.NextFloat(angle);
                 float currentOffset = offsetRadians;
                 Vector3[] positions = new Vector3[numSegments];
                 for (int i = 0; i < numSegments; ++i)
                 {
-                    positions[i] = new Vector3(Mathf.Cos(Mathf.Deg2Rad * currentOffset), Mathf.Sin(Mathf.Deg2Rad * currentOffset)) * distanceMultiplier;
+                    positions[i] =
+                        new Vector3(
+                            Mathf.Cos(Mathf.Deg2Rad * currentOffset),
+                            Mathf.Sin(Mathf.Deg2Rad * currentOffset)
+                        ) * distanceMultiplier;
                     currentOffset += angle % 360f;
                 }
 

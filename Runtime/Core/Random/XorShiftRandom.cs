@@ -10,8 +10,6 @@
     {
         public static IRandom Instance => ThreadLocalRandom<XorShiftRandom>.Instance;
 
-        [JsonPropertyName("State")]
-        [DataMember(Name = "State")]
         public override RandomState InternalState => new(_state, 0, _cachedGaussian);
 
         private uint _state;
@@ -25,10 +23,10 @@
         }
 
         [JsonConstructor]
-        public XorShiftRandom(RandomState state)
+        public XorShiftRandom(RandomState internalState)
         {
-            _state = unchecked((uint)state.State1);
-            _cachedGaussian = state.Gaussian;
+            _state = unchecked((uint)internalState.State1);
+            _cachedGaussian = internalState.Gaussian;
         }
 
         public override uint NextUint()

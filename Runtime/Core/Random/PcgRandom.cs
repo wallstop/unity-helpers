@@ -15,8 +15,6 @@
             IComparable,
             IComparable<PcgRandom>
     {
-        [DataMember(Name = "State")]
-        [JsonPropertyName("State")]
         public static IRandom Instance => ThreadLocalRandom<PcgRandom>.Instance;
 
         internal readonly ulong _increment;
@@ -34,11 +32,11 @@
         }
 
         [JsonConstructor]
-        public PcgRandom(RandomState state)
+        public PcgRandom(RandomState internalState)
         {
-            _state = state.State1;
-            _increment = state.State2;
-            _cachedGaussian = state.Gaussian;
+            _state = internalState.State1;
+            _increment = internalState.State2;
+            _cachedGaussian = internalState.Gaussian;
         }
 
         public PcgRandom(ulong increment, ulong state)

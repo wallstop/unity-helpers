@@ -2,13 +2,13 @@
 {
     using System;
     using System.ComponentModel;
-    using Extension;
-    using JsonConverters;
     using System.IO;
     using System.Runtime.Serialization.Formatters.Binary;
     using System.Text;
     using System.Text.Json;
     using System.Text.Json.Serialization;
+    using Extension;
+    using JsonConverters;
 
     internal static class SerializerEncoding
     {
@@ -30,7 +30,7 @@
                 {
                     new JsonStringEnumConverter(),
                     Vector3Converter.Instance,
-                    Vector2Converter.Instance
+                    Vector2Converter.Instance,
                 },
             };
 
@@ -45,7 +45,7 @@
                 {
                     new JsonStringEnumConverter(),
                     Vector3Converter.Instance,
-                    Vector2Converter.Instance
+                    Vector2Converter.Instance,
                 },
                 WriteIndented = true,
             };
@@ -70,7 +70,10 @@
                     return ProtoDeserialize<T>(serialized);
                 default:
                     throw new InvalidEnumArgumentException(
-                        nameof(serializationType), (int)serializationType, typeof(SerializationType));
+                        nameof(serializationType),
+                        (int)serializationType,
+                        typeof(SerializationType)
+                    );
             }
         }
 
@@ -84,7 +87,10 @@
                     return ProtoSerialize(instance);
                 default:
                     throw new InvalidEnumArgumentException(
-                        nameof(serializationType), (int)serializationType, typeof(SerializationType));
+                        nameof(serializationType),
+                        (int)serializationType,
+                        typeof(SerializationType)
+                    );
             }
         }
 
@@ -123,9 +129,14 @@
             return memoryStream.ToArray();
         }
 
-        public static T JsonDeserialize<T>(string data)
+        public static T JsonDeserialize<T>(string data, Type type = null)
         {
-            return JsonSerializer.Deserialize<T>(data, SerializerEncoding.NormalJsonOptions);
+            return (T)
+                JsonSerializer.Deserialize(
+                    data,
+                    type ?? typeof(T),
+                    SerializerEncoding.NormalJsonOptions
+                );
         }
 
         public static byte[] JsonSerialize<T>(T input)
@@ -135,13 +146,24 @@
 
         public static string JsonStringify<T>(T input, bool pretty = false)
         {
-            JsonSerializerOptions options =
-                pretty ? SerializerEncoding.PrettyJsonOptions : SerializerEncoding.NormalJsonOptions;
-            if (typeof(T) == typeof(object))
+            JsonSerializerOptions options = pretty
+                ? SerializerEncoding.PrettyJsonOptions
+                : SerializerEncoding.NormalJsonOptions;
+            Type parameterType = typeof(T);
+            if (
+                parameterType.IsAbstract
+                || parameterType.IsInterface
+                || parameterType == typeof(object)
+            )
             {
                 object data = input;
-                Type type = data?.GetType();
-                return JsonSerializer.Serialize(data, data?.GetType(), options);
+                if (data == null)
+                {
+                    return "{}";
+                }
+
+                Type type = data.GetType();
+                return JsonSerializer.Serialize(data, type, options);
             }
 
             return JsonSerializer.Serialize(input, options);

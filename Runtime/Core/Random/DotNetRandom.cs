@@ -8,8 +8,6 @@
     [DataContract]
     public sealed class DotNetRandom : AbstractRandom
     {
-        [JsonPropertyName("State")]
-        [DataMember(Name = "State")]
         public override RandomState InternalState =>
             new RandomState(unchecked((ulong)_seed), state2: _numberGenerated);
 
@@ -27,12 +25,12 @@
         }
 
         [JsonConstructor]
-        public DotNetRandom(RandomState state)
+        public DotNetRandom(RandomState internalState)
         {
-            _seed = unchecked((int)state.State1);
+            _seed = unchecked((int)internalState.State1);
             _random = new Random(_seed);
             _numberGenerated = 0;
-            ulong generationCount = state.State2;
+            ulong generationCount = internalState.State2;
 
             while (_numberGenerated < generationCount)
             {

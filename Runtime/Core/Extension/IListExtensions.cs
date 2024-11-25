@@ -1,7 +1,7 @@
 ﻿namespace UnityHelpers.Core.Extension
 {
-    using Random;
     using System.Collections.Generic;
+    using Random;
 
     public static class IListExtensions
     {
@@ -12,7 +12,7 @@
                 return;
             }
 
-            random ??= PcgRandom.Instance;
+            random ??= PRNG.Instance;
 
             int length = list.Count;
             for (int i = 0; i < length - 1; ++i)

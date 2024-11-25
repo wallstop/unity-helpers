@@ -16,8 +16,6 @@
 
         public static IRandom Instance => ThreadLocalRandom<WyRandom>.Instance;
 
-        [JsonPropertyName("State")]
-        [DataMember(Name = "State")]
         public override RandomState InternalState => new RandomState(_state);
 
         private ulong _state;
@@ -32,9 +30,9 @@
         }
 
         [JsonConstructor]
-        public WyRandom(RandomState randomState)
+        public WyRandom(RandomState internalState)
         {
-            _state = randomState.State1;
+            _state = internalState.State1;
         }
 
         public WyRandom(ulong state)

@@ -32,7 +32,11 @@
 
         private SpriteRendererMetadata CreateMetadata()
         {
-            GameObject go = new("TestSpriteRendererMetadata", typeof(SpriteRenderer), typeof(SpriteRendererMetadata));
+            GameObject go = new(
+                "TestSpriteRendererMetadata",
+                typeof(SpriteRenderer),
+                typeof(SpriteRendererMetadata)
+            );
             _spawned.Add(go);
             return go.GetComponent<SpriteRendererMetadata>();
         }
@@ -44,8 +48,13 @@
 
         private Color CreateColor()
         {
-            IRandom random = PcgRandom.Instance;
-            Color color = new(random.NextFloat(), random.NextFloat(), random.NextFloat(), random.NextFloat());
+            IRandom random = PRNG.Instance;
+            Color color = new(
+                random.NextFloat(),
+                random.NextFloat(),
+                random.NextFloat(),
+                random.NextFloat()
+            );
             return color;
         }
 
@@ -74,9 +83,8 @@
             Material originalMaterial = metadata.OriginalMaterial;
             do
             {
-                newColor.r = PcgRandom.Instance.NextFloat();
-            }
-            while (newColor == originalColor);
+                newColor.r = PRNG.Instance.NextFloat();
+            } while (newColor == originalColor);
 
             SpriteRendererMetadata second = CreateMetadata();
             SpriteRenderer spriteRenderer = metadata.GetComponent<SpriteRenderer>();
@@ -91,9 +99,8 @@
             Color updatedColor = newColor;
             do
             {
-                updatedColor.g = PcgRandom.Instance.NextFloat();
-            }
-            while (updatedColor == newColor);
+                updatedColor.g = PRNG.Instance.NextFloat();
+            } while (updatedColor == newColor);
 
             metadata.PushColor(spriteRenderer, updatedColor);
             Assert.AreEqual(spriteRenderer.color, metadata.CurrentColor);
@@ -108,9 +115,8 @@
             Color latestColor = updatedColor;
             do
             {
-                latestColor.b = PcgRandom.Instance.NextFloat();
-            }
-            while (latestColor == updatedColor);
+                latestColor.b = PRNG.Instance.NextFloat();
+            } while (latestColor == updatedColor);
 
             metadata.PushColor(second, latestColor);
             Assert.AreEqual(spriteRenderer.color, metadata.CurrentColor);
@@ -120,9 +126,8 @@
             Assert.IsFalse(metadata.Colors.Contains(newColor));
             do
             {
-                newColor.a = PcgRandom.Instance.NextFloat();
-            }
-            while (newColor == latestColor);
+                newColor.a = PRNG.Instance.NextFloat();
+            } while (newColor == latestColor);
 
             metadata.PushColor(second, newColor);
             Assert.AreEqual(spriteRenderer.color, metadata.CurrentColor);
@@ -188,7 +193,6 @@
 
             yield break;
         }
-
 
         [UnityTest]
         public IEnumerator PopColorIdempotent()

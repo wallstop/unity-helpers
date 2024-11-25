@@ -16,8 +16,6 @@
 
         public static readonly SquirrelRandom Instance = ThreadLocalRandom<SquirrelRandom>.Instance;
 
-        [JsonPropertyName("State")]
-        [DataMember(Name = "State")]
         public override RandomState InternalState => new(_position, gaussian: _cachedGaussian);
 
         private uint _position;
@@ -31,10 +29,10 @@
         }
 
         [JsonConstructor]
-        public SquirrelRandom(RandomState randomState)
+        public SquirrelRandom(RandomState internalState)
         {
-            _position = unchecked((uint)randomState.State1);
-            _cachedGaussian = randomState.Gaussian;
+            _position = unchecked((uint)internalState.State1);
+            _cachedGaussian = internalState.Gaussian;
         }
 
         public override uint NextUint()

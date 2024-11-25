@@ -28,16 +28,17 @@
 
         public TimedCache(Func<T> valueProducer, float cacheTtl, bool useJitter = false)
         {
-            _valueProducer = valueProducer ?? throw new ArgumentNullException(nameof(valueProducer));
+            _valueProducer =
+                valueProducer ?? throw new ArgumentNullException(nameof(valueProducer));
             if (cacheTtl < 0)
             {
                 throw new ArgumentException(nameof(cacheTtl));
             }
 
             _cacheTtl = cacheTtl;
-            if (useJitter && 0 <_cacheTtl)
+            if (useJitter && 0 < _cacheTtl)
             {
-                _cacheTtl += PcgRandom.Instance.NextFloat(_cacheTtl);
+                _cacheTtl += PRNG.Instance.NextFloat(_cacheTtl);
             }
         }
 
