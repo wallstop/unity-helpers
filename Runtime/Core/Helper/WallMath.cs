@@ -14,7 +14,9 @@
 
         public static double BoundedDouble(double max, double value)
         {
-            return value < max ? value : BitConverter.Int64BitsToDouble(BitConverter.DoubleToInt64Bits(value) - 1);
+            return value < max
+                ? value
+                : BitConverter.Int64BitsToDouble(BitConverter.DoubleToInt64Bits(value) - 1);
         }
 
         public static float BoundedFloat(float max, float value)
@@ -22,52 +24,113 @@
             return value < max
                 ? value
                 : BitConverter.ToSingle(
-                    BitConverter.GetBytes(BitConverter.ToInt32(BitConverter.GetBytes(value), 0) - 1), 0);
+                    BitConverter.GetBytes(
+                        BitConverter.ToInt32(BitConverter.GetBytes(value), 0) - 1
+                    ),
+                    0
+                );
         }
 
-        public static int WrappedAdd(int value, int increment, int max)
+        public static int WrappedAdd(this int value, int increment, int max)
         {
             WrappedAdd(ref value, increment, max);
             return value;
         }
 
-        public static void WrappedAdd(ref int value, int increment, int max)
+        public static int WrappedAdd(ref int value, int increment, int max)
         {
-            value = value + increment;
+            value += increment;
             if (value < max)
             {
-                return;
+                return value;
             }
-            value %= max;
+            return value %= max;
         }
 
-        public static int WrappedIncrement(int value, int max)
+        public static int WrappedIncrement(this int value, int max)
         {
             return WrappedAdd(value, 1, max);
         }
 
-        public static void WrappedIncrement(ref int value, int max)
+        public static int WrappedIncrement(ref int value, int max)
         {
-            WrappedAdd(ref value, 1, max);
+            return WrappedAdd(ref value, 1, max);
         }
 
-        public static void Clamp(this Rect bounds, ref Vector2 point)
+        public static T Clamp<T>(this T value, T min, T max)
+            where T : IComparable<T>
         {
-            if (!bounds.Contains(point))
+            if (value.CompareTo(min) < 0)
             {
-                Vector2 xClamp = bounds.width < 0 ?
-                    new Vector2(bounds.x + bounds.width, bounds.x) :
-                    new Vector2(bounds.x, bounds.x + bounds.width);
-                Vector2 yClamp = bounds.height < 0 ?
-                    new Vector2(bounds.y + bounds.height, bounds.y) :
-                    new Vector2(bounds.y, bounds.y + bounds.height);
-
-                point.x = Mathf.Clamp(point.x, xClamp.x, xClamp.y);
-                point.y = Mathf.Clamp(point.y, yClamp.x, yClamp.y);
+                return min;
             }
+
+            return max.CompareTo(value) < 0 ? max : value;
         }
 
-        public static bool Approximately(float lhs, float rhs, float tolerance = 0.045f)
+        public static Vector2 Clamp(this Rect bounds, Vector2 point)
+        {
+            return Clamp(bounds, ref point);
+        }
+
+        public static Vector2 Clamp(this Rect bounds, ref Vector2 point)
+        {
+            if (bounds.Contains(point))
+            {
+                return point;
+            }
+
+            Vector2 center = bounds.center;
+            Vector2 direction = point - center;
+
+            if (direction == Vector2.zero)
+            {
+                return center;
+            }
+
+            float tMax = float.MaxValue;
+            Vector2 min = bounds.min;
+            Vector2 max = bounds.max;
+
+            if (direction.x != 0)
+            {
+                if (0 < direction.x)
+                {
+                    float t2 = (max.x - center.x) / direction.x;
+                    tMax = Math.Min(tMax, t2);
+                }
+                else
+                {
+                    float t1 = (min.x - center.x) / direction.x;
+                    tMax = Math.Min(tMax, t1);
+                }
+            }
+
+            if (direction.y != 0)
+            {
+                if (direction.y > 0)
+                {
+                    float t2 = (max.y - center.y) / direction.y;
+                    tMax = Math.Min(tMax, t2);
+                }
+                else
+                {
+                    float t1 = (min.y - center.y) / direction.y;
+                    tMax = Math.Min(tMax, t1);
+                }
+            }
+
+            tMax = Mathf.Clamp01(tMax);
+
+            point = center + direction * tMax;
+            point = new Vector2(
+                Mathf.Clamp(point.x, min.x, max.x),
+                Mathf.Clamp(point.y, min.y, max.y)
+            );
+            return point;
+        }
+
+        public static bool Approximately(this float lhs, float rhs, float tolerance = 0.045f)
         {
             return Math.Abs(lhs - rhs) <= tolerance;
         }

@@ -43,7 +43,10 @@
         {
             float screenAspect = (float)Screen.width / Screen.height;
             float cameraHeight = camera.orthographicSize * 2;
-            Bounds bounds = new((Vector2) camera.transform.position, new Vector3(cameraHeight * screenAspect, cameraHeight, 1));
+            Bounds bounds = new(
+                (Vector2)camera.transform.position,
+                new Vector3(cameraHeight * screenAspect, cameraHeight, 1)
+            );
             return bounds;
         }
 
@@ -109,7 +112,14 @@
             {
                 return null;
             }
-            return new BoundsInt(xMin, yMin, zMin, (xMax - xMin) + 1, (yMax - yMin) + 1, (zMax - zMin) + 1);
+            return new BoundsInt(
+                xMin,
+                yMin,
+                zMin,
+                (xMax - xMin) + 1,
+                (yMax - yMin) + 1,
+                (zMax - zMin) + 1
+            );
         }
 
         public static BoundsInt? GetBounds(this IEnumerable<FastVector3Int> positions)
@@ -136,7 +146,14 @@
             {
                 return null;
             }
-            return new BoundsInt(xMin, yMin, zMin, (xMax - xMin) + 1, (yMax - yMin) + 1, (zMax - zMin) + 1);
+            return new BoundsInt(
+                xMin,
+                yMin,
+                zMin,
+                (xMax - xMin) + 1,
+                (yMax - yMin) + 1,
+                (zMax - zMin) + 1
+            );
         }
 
         public static Bounds? GetBounds(this IEnumerable<Vector2> positions)
@@ -188,11 +205,19 @@
                 return null;
             }
 
-            return new Bounds(new Vector3(minX + (maxX - minX) / 2, minY + (maxY - minY) / 2), new Vector3(maxX - minX, maxY - minY));
+            return new Bounds(
+                new Vector3(minX + (maxX - minX) / 2, minY + (maxY - minY) / 2),
+                new Vector3(maxX - minX, maxY - minY)
+            );
         }
 
         // https://www.habrador.com/tutorials/math/8-convex-hull/
-        public static List<Vector3Int> BuildConvexHull(this IEnumerable<Vector3Int> pointsSet, Grid grid, IRandom random = null, bool includeColinearPoints = true)
+        public static List<Vector3Int> BuildConvexHull(
+            this IEnumerable<Vector3Int> pointsSet,
+            Grid grid,
+            IRandom random = null,
+            bool includeColinearPoints = true
+        )
         {
             List<Vector3Int> points = pointsSet.ToList();
             if (points.Count <= 3)
@@ -200,7 +225,7 @@
                 return points;
             }
 
-            random ??= PcgRandom.Instance;
+            random ??= PRNG.Instance;
 
             Vector2 CellToWorld(Vector3Int position) => grid.CellToWorld(position);
 
@@ -211,7 +236,13 @@
                 Vector3Int testPoint = points[i];
                 Vector2 testPointWorldPosition = CellToWorld(testPoint);
                 // ReSharper disable once CompareOfFloatsByEqualityOperator
-                if (testPointWorldPosition.x < startPointWorldPosition.x || (Mathf.Approximately(testPointWorldPosition.x, startPointWorldPosition.x) && testPointWorldPosition.y < startPointWorldPosition.y))
+                if (
+                    testPointWorldPosition.x < startPointWorldPosition.x
+                    || (
+                        Mathf.Approximately(testPointWorldPosition.x, startPointWorldPosition.x)
+                        && testPointWorldPosition.y < startPointWorldPosition.y
+                    )
+                )
                 {
                     startPoint = testPoint;
                     startPointWorldPosition = testPointWorldPosition;
@@ -245,7 +276,11 @@
                         continue;
                     }
 
-                    float relation = Geometry.IsAPointLeftOfVectorOrOnTheLine(currentPointWorldPosition, nextPointWorldPosition, CellToWorld(point));
+                    float relation = Geometry.IsAPointLeftOfVectorOrOnTheLine(
+                        currentPointWorldPosition,
+                        nextPointWorldPosition,
+                        CellToWorld(point)
+                    );
                     if (Mathf.Approximately(relation, 0))
                     {
                         colinearPoints.Add(point);
@@ -261,10 +296,12 @@
                 if (0 < colinearPoints.Count)
                 {
                     colinearPoints.Add(nextPoint);
-                    colinearPoints.Sort((lhs, rhs) =>
-                            (CellToWorld(lhs) - currentPointWorldPosition).sqrMagnitude
-                        .CompareTo(
-                            (CellToWorld(rhs) - currentPointWorldPosition).sqrMagnitude));
+                    colinearPoints.Sort(
+                        (lhs, rhs) =>
+                            (CellToWorld(lhs) - currentPointWorldPosition).sqrMagnitude.CompareTo(
+                                (CellToWorld(rhs) - currentPointWorldPosition).sqrMagnitude
+                            )
+                    );
 
                     if (includeColinearPoints)
                     {
@@ -299,15 +336,20 @@
             return convexHull;
         }
 
-        public static List<FastVector3Int> BuildConvexHull(this IEnumerable<FastVector3Int> pointsSet, Grid grid, IRandom random = null, bool includeColinearPoints = false)
+        public static List<FastVector3Int> BuildConvexHull(
+            this IEnumerable<FastVector3Int> pointsSet,
+            Grid grid,
+            IRandom random = null,
+            bool includeColinearPoints = false
+        )
         {
             List<FastVector3Int> points = pointsSet.ToList();
             if (points.Count <= 3)
             {
                 return points;
             }
-            
-            random ??= PcgRandom.Instance;
+
+            random ??= PRNG.Instance;
 
             Vector2 CellToWorld(FastVector3Int position) => grid.CellToWorld(position);
 
@@ -317,7 +359,13 @@
             {
                 FastVector3Int testPoint = points[i];
                 Vector2 testPointWorldPosition = CellToWorld(testPoint);
-                if (testPointWorldPosition.x < startPointWorldPosition.x || (Mathf.Approximately(testPointWorldPosition.x, startPointWorldPosition.x) && testPointWorldPosition.y < startPointWorldPosition.y))
+                if (
+                    testPointWorldPosition.x < startPointWorldPosition.x
+                    || (
+                        Mathf.Approximately(testPointWorldPosition.x, startPointWorldPosition.x)
+                        && testPointWorldPosition.y < startPointWorldPosition.y
+                    )
+                )
                 {
                     startPoint = testPoint;
                     startPointWorldPosition = testPointWorldPosition;
@@ -351,7 +399,11 @@
                         continue;
                     }
 
-                    float relation = Geometry.IsAPointLeftOfVectorOrOnTheLine(currentPointWorldPosition, nextPointWorldPosition, CellToWorld(point));
+                    float relation = Geometry.IsAPointLeftOfVectorOrOnTheLine(
+                        currentPointWorldPosition,
+                        nextPointWorldPosition,
+                        CellToWorld(point)
+                    );
                     if (Mathf.Approximately(relation, 0))
                     {
                         colinearPoints.Add(point);
@@ -367,10 +419,12 @@
                 if (0 < colinearPoints.Count)
                 {
                     colinearPoints.Add(nextPoint);
-                    colinearPoints.Sort((lhs, rhs) =>
-                            (CellToWorld(lhs) - currentPointWorldPosition).sqrMagnitude
-                        .CompareTo(
-                            (CellToWorld(rhs) - currentPointWorldPosition).sqrMagnitude));
+                    colinearPoints.Sort(
+                        (lhs, rhs) =>
+                            (CellToWorld(lhs) - currentPointWorldPosition).sqrMagnitude.CompareTo(
+                                (CellToWorld(rhs) - currentPointWorldPosition).sqrMagnitude
+                            )
+                    );
 
                     if (includeColinearPoints)
                     {
@@ -405,8 +459,11 @@
             return convexHull;
         }
 
-        
-        public static bool IsConvexHullInsideConvexHull(this List<FastVector3Int> convexHull, Grid grid, List<FastVector3Int> maybeInside)
+        public static bool IsConvexHullInsideConvexHull(
+            this List<FastVector3Int> convexHull,
+            Grid grid,
+            List<FastVector3Int> maybeInside
+        )
         {
             foreach (FastVector3Int point in maybeInside)
             {
@@ -419,13 +476,21 @@
             return true;
         }
 
-        public static bool IsPointInsideConvexHull(this List<Vector3Int> convexHull, Grid grid, Vector3Int point)
+        public static bool IsPointInsideConvexHull(
+            this List<Vector3Int> convexHull,
+            Grid grid,
+            Vector3Int point
+        )
         {
             for (int i = 0; i < convexHull.Count; ++i)
             {
                 Vector3Int lhs = convexHull[i];
                 Vector3Int rhs = convexHull[(i + 1) % convexHull.Count];
-                float relation = Geometry.IsAPointLeftOfVectorOrOnTheLine(grid.CellToWorld(lhs), grid.CellToWorld(rhs), grid.CellToWorld(point));
+                float relation = Geometry.IsAPointLeftOfVectorOrOnTheLine(
+                    grid.CellToWorld(lhs),
+                    grid.CellToWorld(rhs),
+                    grid.CellToWorld(point)
+                );
                 if (relation < 0)
                 {
                     return false;
@@ -434,13 +499,21 @@
             return true;
         }
 
-        public static bool IsPointInsideConvexHull(this List<FastVector3Int> convexHull, Grid grid, FastVector3Int point)
+        public static bool IsPointInsideConvexHull(
+            this List<FastVector3Int> convexHull,
+            Grid grid,
+            FastVector3Int point
+        )
         {
             for (int i = 0; i < convexHull.Count; ++i)
             {
                 FastVector3Int lhs = convexHull[i];
                 FastVector3Int rhs = convexHull[(i + 1) % convexHull.Count];
-                float relation = Geometry.IsAPointLeftOfVectorOrOnTheLine(grid.CellToWorld(lhs), grid.CellToWorld(rhs), grid.CellToWorld(point));
+                float relation = Geometry.IsAPointLeftOfVectorOrOnTheLine(
+                    grid.CellToWorld(lhs),
+                    grid.CellToWorld(rhs),
+                    grid.CellToWorld(point)
+                );
                 if (relation < 0)
                 {
                     return false;
@@ -449,7 +522,11 @@
             return true;
         }
 
-        public static bool IsConvexHullInsideConvexHull(this List<Vector3Int> convexHull, Grid grid, List<Vector3Int> maybeInside)
+        public static bool IsConvexHullInsideConvexHull(
+            this List<Vector3Int> convexHull,
+            Grid grid,
+            List<Vector3Int> maybeInside
+        )
         {
             foreach (Vector3Int point in maybeInside)
             {
@@ -477,7 +554,7 @@
             public HullEdge(FastVector3Int from, FastVector3Int to, Grid grid)
             {
                 this.from = from;
-                this.to = to; 
+                this.to = to;
                 _grid = grid;
                 fromWorld = grid.CellToWorld(from);
                 toWorld = grid.CellToWorld(to);
@@ -486,7 +563,12 @@
 
             public bool Intersects(HullEdge other)
             {
-                return UnityExtensions.Intersects(fromWorld, toWorld, other.fromWorld, other.toWorld);
+                return UnityExtensions.Intersects(
+                    fromWorld,
+                    toWorld,
+                    other.fromWorld,
+                    other.toWorld
+                );
             }
 
             public float LargestAngle(FastVector3Int point)
@@ -502,10 +584,7 @@
         {
             public static readonly ConcaveHullComparer Instance = new();
 
-            private ConcaveHullComparer()
-            {
-
-            }
+            private ConcaveHullComparer() { }
 
             public int Compare(HullEdge lhs, HullEdge rhs)
             {
@@ -525,7 +604,13 @@
             }
         }
 
-        public static List<FastVector3Int> BuildConcaveHull3(this IReadOnlyCollection<FastVector3Int> gridPositions, Grid grid, IRandom random = null, int bucketSize = 40, float angleThreshold = 90f)
+        public static List<FastVector3Int> BuildConcaveHull3(
+            this IReadOnlyCollection<FastVector3Int> gridPositions,
+            Grid grid,
+            IRandom random = null,
+            int bucketSize = 40,
+            float angleThreshold = 90f
+        )
         {
             List<FastVector3Int> convexHull = gridPositions.BuildConvexHull(grid, random);
             List<HullEdge> concaveHullEdges = new();
@@ -538,7 +623,7 @@
                 HullEdge edge = new(lhs, rhs, grid);
                 _ = data.Add(edge);
             }
-            
+
             HashSet<FastVector3Int> remainingPoints = gridPositions.ToHashSet();
             remainingPoints.ExceptWith(convexHull);
 
@@ -550,7 +635,8 @@
                 throw new ArgumentException(nameof(gridPositions));
             }
 
-            QuadTree<FastVector3Int> NewQuadTree() => new(gridPositions, CellToWorld, maybeBounds.Value, bucketSize: bucketSize);
+            QuadTree<FastVector3Int> NewQuadTree() =>
+                new(gridPositions, CellToWorld, maybeBounds.Value, bucketSize: bucketSize);
 
             QuadTree<FastVector3Int> quadTree = NewQuadTree();
             List<FastVector3Int> neighbors = Buffers<FastVector3Int>.List;
@@ -568,10 +654,13 @@
                     {
                         continue;
                     }
-                
-                    localMaximumDistance = Math.Max(localMaximumDistance, (CellToWorld(neighbor) - edgeCenter).sqrMagnitude);
+
+                    localMaximumDistance = Math.Max(
+                        localMaximumDistance,
+                        (CellToWorld(neighbor) - edgeCenter).sqrMagnitude
+                    );
                 }
-                
+
                 if (edge.edgeLength <= localMaximumDistance)
                 {
                     concaveHullEdges.Add(edge);
@@ -669,7 +758,12 @@
 
         // https://www.researchgate.net/publication/220868874_Concave_hull_A_k-nearest_neighbours_approach_for_the_computation_of_the_region_occupied_by_a_set_of_points
 
-        public static List<FastVector3Int> BuildConcaveHull2(this IReadOnlyCollection<FastVector3Int> gridPositions, Grid grid, IRandom random = null, int nearestNeighbors = 3)
+        public static List<FastVector3Int> BuildConcaveHull2(
+            this IReadOnlyCollection<FastVector3Int> gridPositions,
+            Grid grid,
+            IRandom random = null,
+            int nearestNeighbors = 3
+        )
         {
             const int minimumNearestNeighbors = 3;
             nearestNeighbors = Math.Max(minimumNearestNeighbors, nearestNeighbors);
@@ -678,12 +772,12 @@
             {
                 return dataSet;
             }
-            
+
             nearestNeighbors = Math.Min(dataSet.Count, nearestNeighbors);
 
             IComparer<FastVector3Int> comparison = Comparer<FastVector3Int>.Create(
-                (lhs, rhs) =>
-                    grid.CellToWorld(lhs).y.CompareTo(grid.CellToWorld(rhs).y));
+                (lhs, rhs) => grid.CellToWorld(lhs).y.CompareTo(grid.CellToWorld(rhs).y)
+            );
 
             FastVector3Int? maybeFirst = null;
             foreach (FastVector3Int gridPosition in dataSet)
@@ -755,8 +849,14 @@
                 Vector2 lhsPoint = grid.CellToWorld(lhs);
                 Vector2 rhsPoint = grid.CellToWorld(rhs);
 
-                float lhsAngle = AngleDifference(previousAngle, CalculateAngle(currentPoint, lhsPoint));
-                float rhsAngle = AngleDifference(previousAngle, CalculateAngle(currentPoint, rhsPoint));
+                float lhsAngle = AngleDifference(
+                    previousAngle,
+                    CalculateAngle(currentPoint, lhsPoint)
+                );
+                float rhsAngle = AngleDifference(
+                    previousAngle,
+                    CalculateAngle(currentPoint, rhsPoint)
+                );
                 return rhsAngle.CompareTo(lhsAngle);
             }
 
@@ -771,11 +871,17 @@
                     {
                         Vector2 lhsPoint = grid.CellToWorld(lhs);
                         Vector2 rhsPoint = grid.CellToWorld(rhs);
-                        return (lhsPoint - currentPoint).sqrMagnitude.CompareTo((rhsPoint - currentPoint).sqrMagnitude);
-                    });
+                        return (lhsPoint - currentPoint).sqrMagnitude.CompareTo(
+                            (rhsPoint - currentPoint).sqrMagnitude
+                        );
+                    }
+                );
                 if (nearestNeighbors < clockwisePoints.Count)
                 {
-                    clockwisePoints.RemoveRange(nearestNeighbors, clockwisePoints.Count - nearestNeighbors);
+                    clockwisePoints.RemoveRange(
+                        nearestNeighbors,
+                        clockwisePoints.Count - nearestNeighbors
+                    );
                 }
             }
 
@@ -816,13 +922,18 @@
                     {
                         if (!IsPositionInside(hull, dataSet[i], grid))
                         {
-                            return BuildConcaveHull2(gridPositions, grid, random, nearestNeighbors + 1);
+                            return BuildConcaveHull2(
+                                gridPositions,
+                                grid,
+                                random,
+                                nearestNeighbors + 1
+                            );
                         }
                     }
 
                     return hull;
                 }
-                
+
                 current = clockwisePoints[i];
                 if (current != first)
                 {
@@ -839,7 +950,10 @@
                     dataSet.RemoveAtSwapBack(currentIndex);
                 }
 
-                previousAngle = CalculateAngle(grid.CellToWorld(hull[step - 1]), grid.CellToWorld(hull[step - 2]));
+                previousAngle = CalculateAngle(
+                    grid.CellToWorld(hull[step - 1]),
+                    grid.CellToWorld(hull[step - 2])
+                );
                 ++step;
             }
 
@@ -867,18 +981,24 @@
 
             public Line(Vector2 from, Vector2 to)
             {
-                this.from = from; 
+                this.from = from;
                 this.to = to;
                 sqrMagnitude = (from - to).sqrMagnitude;
             }
         }
 
-        public static List<FastVector3Int> BuildConcaveHull(this IEnumerable<FastVector3Int> gridPositions, Grid grid, IRandom random = null, float scaleFactor = 1, float concavity = 0f)
+        public static List<FastVector3Int> BuildConcaveHull(
+            this IEnumerable<FastVector3Int> gridPositions,
+            Grid grid,
+            IRandom random = null,
+            float scaleFactor = 1,
+            float concavity = 0f
+        )
         {
             if (concavity < -1 || 1 < concavity)
             {
                 throw new ArgumentException($"Concavity must be between [-1, 1], was {concavity}");
-            } 
+            }
 
             List<FastVector3Int> originalGridPositions = gridPositions.ToList();
             if (originalGridPositions.Count <= 3)
@@ -910,8 +1030,19 @@
                 for (int i = 0; i < concaveHullLines.Count; ++i)
                 {
                     Line line = concaveHullLines[i];
-                    IEnumerable<FastVector3Int> nearbyPoints = GetNearbyPoints(line, unusedNodes, grid, scaleFactor);
-                    List<Line> dividedLine = GetDividedLine(line, nearbyPoints, concaveHullLines, grid, concavity);
+                    IEnumerable<FastVector3Int> nearbyPoints = GetNearbyPoints(
+                        line,
+                        unusedNodes,
+                        grid,
+                        scaleFactor
+                    );
+                    List<Line> dividedLine = GetDividedLine(
+                        line,
+                        nearbyPoints,
+                        concaveHullLines,
+                        grid,
+                        concavity
+                    );
                     if (0 < dividedLine.Count)
                     {
                         aLineWasDividedInTheIteration = true;
@@ -922,8 +1053,7 @@
                         break;
                     }
                 }
-            }
-            while (aLineWasDividedInTheIteration);
+            } while (aLineWasDividedInTheIteration);
 
             List<FastVector3Int> concaveHull = new(concaveHullLines.Count);
             if (concaveHullLines.Count <= 0)
@@ -939,12 +1069,11 @@
             concaveHullLines.RemoveAtSwapBack(0);
             while (0 < concaveHullLines.Count)
             {
-                int index = concaveHullLines.FindIndex(
-                    line =>
-                    {
-                        FastVector3Int lineFrom = grid.WorldToCell(line.from);
-                        return lineFrom == to;
-                    });
+                int index = concaveHullLines.FindIndex(line =>
+                {
+                    FastVector3Int lineFrom = grid.WorldToCell(line.from);
+                    return lineFrom == to;
+                });
 
                 currentlyConsideredLine = concaveHullLines[index];
                 to = grid.WorldToCell(currentlyConsideredLine.to);
@@ -954,12 +1083,16 @@
                 }
                 concaveHull.Add(to);
                 concaveHullLines.RemoveAtSwapBack(index);
-            } 
+            }
 
             return concaveHull;
         }
 
-        public static bool IsPositionInside(List<FastVector3Int> hull, FastVector3Int gridPosition, Grid grid)
+        public static bool IsPositionInside(
+            List<FastVector3Int> hull,
+            FastVector3Int gridPosition,
+            Grid grid
+        )
         {
             bool isPositionInside = false;
             Vector2 position = grid.CellToWorld(gridPosition);
@@ -982,9 +1115,11 @@
                     rhs = oldVector;
                 }
 
-                if ((newVector.x < position.x) == (position.x <= oldVector.x) &&
-                    (position.y - (long)lhs.y) * (rhs.x - lhs.x) <
-                    (rhs.y - (long)lhs.y) * (position.x - lhs.x))
+                if (
+                    (newVector.x < position.x) == (position.x <= oldVector.x)
+                    && (position.y - (long)lhs.y) * (rhs.x - lhs.x)
+                        < (rhs.y - (long)lhs.y) * (position.x - lhs.x)
+                )
                 {
                     isPositionInside = !isPositionInside;
                 }
@@ -993,14 +1128,25 @@
             return isPositionInside;
         }
 
-        private static List<Line> GetDividedLine(Line line, IEnumerable<FastVector3Int> nearbyPoints, List<Line> concaveHull, Grid grid, float concavity)
+        private static List<Line> GetDividedLine(
+            Line line,
+            IEnumerable<FastVector3Int> nearbyPoints,
+            List<Line> concaveHull,
+            Grid grid,
+            float concavity
+        )
         {
             return GetDividedLine(line.from, line.to, nearbyPoints, concaveHull, grid, concavity);
         }
 
         private static List<Line> GetDividedLine(
-            Vector2 from, Vector2 to, IEnumerable<FastVector3Int> nearbyPoints, List<Line> concaveHull, Grid grid,
-            float concavity)
+            Vector2 from,
+            Vector2 to,
+            IEnumerable<FastVector3Int> nearbyPoints,
+            List<Line> concaveHull,
+            Grid grid,
+            float concavity
+        )
         {
             List<Line> dividedLine = new(2);
             Dictionary<Vector2, double> okMiddlePoints = new();
@@ -1012,7 +1158,10 @@
                 {
                     Line newLineA = new(from, point);
                     Line newLineB = new(point, to);
-                    if (!LineCollidesWithHull(newLineA, concaveHull) && !LineCollidesWithHull(newLineB, concaveHull))
+                    if (
+                        !LineCollidesWithHull(newLineA, concaveHull)
+                        && !LineCollidesWithHull(newLineB, concaveHull)
+                    )
                     {
                         okMiddlePoints[point] = cosine;
                     }
@@ -1074,12 +1223,23 @@
             return Math.Round(cos, 4);
         }
 
-        private static IEnumerable<FastVector3Int> GetNearbyPoints(Line line, ICollection<FastVector3Int> points, Grid grid, float scaleFactor)
+        private static IEnumerable<FastVector3Int> GetNearbyPoints(
+            Line line,
+            ICollection<FastVector3Int> points,
+            Grid grid,
+            float scaleFactor
+        )
         {
             return GetNearbyPoints(line.from, line.to, points, grid, scaleFactor);
         }
 
-        private static IEnumerable<FastVector3Int> GetNearbyPoints(Vector2 from, Vector2 to, ICollection<FastVector3Int> points, Grid grid, float scaleFactor)
+        private static IEnumerable<FastVector3Int> GetNearbyPoints(
+            Vector2 from,
+            Vector2 to,
+            ICollection<FastVector3Int> points,
+            Grid grid,
+            float scaleFactor
+        )
         {
             const int maxTries = 2;
             for (int tries = 0; tries < maxTries; ++tries)
@@ -1114,12 +1274,14 @@
             float yMin = Math.Min(from.y, to.y);
             float xMax = Math.Max(from.x, to.x);
             float yMax = Math.Max(from.y, to.y);
-            
+
             float width = xMax - xMin;
             float height = yMax - yMin;
-            return new Bounds(new Vector3(xMin + width / 2, yMin + height / 2), new Vector3(width, height) * scaleFactor + new Vector3(0.001f, 0.001f));
+            return new Bounds(
+                new Vector3(xMin + width / 2, yMin + height / 2),
+                new Vector3(width, height) * scaleFactor + new Vector3(0.001f, 0.001f)
+            );
         }
-
 
         // https://www.geeksforgeeks.org/how-to-check-if-a-given-point-lies-inside-a-polygon/#
 
@@ -1132,7 +1294,12 @@
         /// <param name="rhsFrom">LineSegmentB start point.</param>
         /// <param name="rhsTo">LineSegmentB end point.</param>
         /// <returns>True if the line segments intersect.</returns>
-        public static bool Intersects(Vector2 lhsFrom, Vector2 lhsTo, Vector2 rhsFrom, Vector2 rhsTo)
+        public static bool Intersects(
+            Vector2 lhsFrom,
+            Vector2 lhsTo,
+            Vector2 rhsFrom,
+            Vector2 rhsTo
+        )
         {
             if (lhsFrom == rhsFrom)
             {
@@ -1197,7 +1364,10 @@
         /// <returns>True if q lies on the line segment pr.</returns>
         public static bool LiesOnSegment(Vector2 p, Vector2 q, Vector2 r)
         {
-            return q.x <= Math.Max(p.x, r.x) && Math.Min(p.x, r.x) <= q.x && q.y <= Math.Max(p.y, r.y) && Math.Min(p.y, r.y) <= q.y;
+            return q.x <= Math.Max(p.x, r.x)
+                && Math.Min(p.x, r.x) <= q.x
+                && q.y <= Math.Max(p.y, r.y)
+                && Math.Min(p.y, r.y) <= q.y;
         }
 
         public enum OrientationType
@@ -1227,17 +1397,18 @@
 
         #endregion
 
-        public static Vector2 Rotate(this Vector2 v, float degrees) {
+        public static Vector2 Rotate(this Vector2 v, float degrees)
+        {
             float sin = Mathf.Sin(degrees * Mathf.Deg2Rad);
             float cos = Mathf.Cos(degrees * Mathf.Deg2Rad);
 
             float tx = v.x;
             float ty = v.y;
-            
+
             Vector2 rotatedVector;
             rotatedVector.x = (cos * tx) - (sin * ty);
             rotatedVector.y = (sin * tx) + (cos * ty);
-            
+
             return rotatedVector;
         }
 
@@ -1252,12 +1423,17 @@
 
             Vector3 boundsMax = bounds.max;
             Vector3 otherMin = other.min;
-            return boundsMax.x >= otherMin.x  && boundsMax.y >= otherMin.y && boundsMax.z >= otherMin.z;
+            return boundsMax.x >= otherMin.x
+                && boundsMax.y >= otherMin.y
+                && boundsMax.z >= otherMin.z;
         }
 
         public static bool FastContains2D(this BoundsInt bounds, FastVector3Int position)
         {
-            return position.x >= bounds.xMin && position.y >= bounds.yMin && position.x < bounds.xMax && position.y < bounds.yMax;
+            return position.x >= bounds.xMin
+                && position.y >= bounds.yMin
+                && position.x < bounds.xMax
+                && position.y < bounds.yMax;
         }
 
         public static bool FastIntersects2D(this BoundsInt bounds, BoundsInt other)
@@ -1276,7 +1452,7 @@
             if (position.x < min.x || position.y < bounds.min.y)
             {
                 return false;
-            } 
+            }
             Vector3 max = bounds.max;
             return position.x < max.x && position.y < max.y;
         }
@@ -1312,7 +1488,14 @@
         public static BoundsInt WithPadding(this BoundsInt bounds, int xPadding, int yPadding)
         {
             Vector3Int size = bounds.size;
-            return new BoundsInt(bounds.xMin - xPadding, bounds.yMin - yPadding, bounds.zMin, size.x + 2 * xPadding, size.y + 2 * yPadding, size.z);
+            return new BoundsInt(
+                bounds.xMin - xPadding,
+                bounds.yMin - yPadding,
+                bounds.zMin,
+                size.x + 2 * xPadding,
+                size.y + 2 * yPadding,
+                size.z
+            );
         }
 
         public static void SetColors(this UnityEngine.UI.Slider slider, Color color)
@@ -1392,9 +1575,14 @@
                 yield break;
             }
 
-            foreach (EditorCurveBinding binding in AnimationUtility.GetObjectReferenceCurveBindings(clip))
+            foreach (
+                EditorCurveBinding binding in AnimationUtility.GetObjectReferenceCurveBindings(clip)
+            )
             {
-                ObjectReferenceKeyframe[] keyframes = AnimationUtility.GetObjectReferenceCurve(clip, binding);
+                ObjectReferenceKeyframe[] keyframes = AnimationUtility.GetObjectReferenceCurve(
+                    clip,
+                    binding
+                );
                 foreach (ObjectReferenceKeyframe frame in keyframes)
                 {
                     if (frame.value is Sprite sprite)

@@ -12,12 +12,14 @@
     [DataContract]
     public sealed class SystemRandom : AbstractRandom
     {
+        public static IRandom Instance => ThreadLocalRandom<SystemRandom>.Instance;
+
         public override RandomState InternalState =>
             new(
                 unchecked((ulong)inext),
                 unchecked((ulong)inextp),
                 _cachedGaussian,
-                ArrayConverter.IntArrayToByteArray_BlockCopy(SeedArray)
+                ArrayConverter.IntArrayToByteArrayBlockCopy(SeedArray)
             );
 
         /*
@@ -28,8 +30,6 @@
         private int inext;
         private int inextp;
         private readonly int[] SeedArray = new int[56];
-
-        public static IRandom Instance => ThreadLocalRandom<SystemRandom>.Instance;
 
         public SystemRandom()
             : this(Guid.NewGuid().GetHashCode()) { }
@@ -70,7 +70,7 @@
                 inextp = (int)internalState.State2;
             }
             _cachedGaussian = internalState.Gaussian;
-            SeedArray = ArrayConverter.ByteArrayToIntArray_BlockCopy(internalState.Payload);
+            SeedArray = ArrayConverter.ByteArrayToIntArrayBlockCopy(internalState.Payload);
         }
 
         public override uint NextUint()

@@ -4,20 +4,19 @@
 
     public static class ArrayConverter
     {
-        public static byte[] IntArrayToByteArray_BlockCopy(int[] ints)
+        public static byte[] IntArrayToByteArrayBlockCopy(int[] ints)
         {
             if (ints == null)
             {
                 throw new ArgumentNullException(nameof(ints));
             }
 
-            // Each int is 4 bytes
             byte[] bytes = new byte[ints.Length * sizeof(int)];
             Buffer.BlockCopy(ints, 0, bytes, 0, bytes.Length);
             return bytes;
         }
 
-        public static int[] ByteArrayToIntArray_BlockCopy(byte[] bytes)
+        public static int[] ByteArrayToIntArrayBlockCopy(byte[] bytes)
         {
             if (bytes == null)
             {

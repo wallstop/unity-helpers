@@ -1,9 +1,10 @@
 ﻿namespace UnityHelpers.Core.Extension
 {
-    using Random;
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using Helper;
+    using Random;
     using UnityEngine;
 
     public static class RandomExtensions
@@ -13,7 +14,20 @@
             return random.NextVector2(-amplitude, amplitude);
         }
 
-        public static Vector2 NextVector2(this IRandom random, float minAmplitude, float maxAmplitude)
+        public static Vector2 NextVector2InRange(
+            this IRandom random,
+            float range,
+            Vector2? origin = null
+        )
+        {
+            return Helpers.GetRandomPointInCircle(origin ?? Vector2.zero, range, random);
+        }
+
+        public static Vector2 NextVector2(
+            this IRandom random,
+            float minAmplitude,
+            float maxAmplitude
+        )
         {
             float x = random.NextFloat(minAmplitude, maxAmplitude);
             float y = random.NextFloat(minAmplitude, maxAmplitude);
@@ -25,7 +39,11 @@
             return random.NextVector3(-amplitude, amplitude);
         }
 
-        public static Vector3 NextVector3(this IRandom random, float minAmplitude, float maxAmplitude)
+        public static Vector3 NextVector3(
+            this IRandom random,
+            float minAmplitude,
+            float maxAmplitude
+        )
         {
             float z = random.NextFloat(minAmplitude, maxAmplitude);
             Vector3 result = random.NextVector2(minAmplitude, maxAmplitude);
@@ -33,7 +51,8 @@
             return result;
         }
 
-        public static T NextEnum<T>(this IRandom random) where T : struct
+        public static T NextEnum<T>(this IRandom random)
+            where T : struct
         {
             T[] enumValues = (T[])Enum.GetValues(typeof(T));
             if (enumValues.Length == 0)

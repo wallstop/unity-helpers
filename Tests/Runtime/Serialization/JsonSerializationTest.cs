@@ -29,12 +29,12 @@
         [Test]
         public void SerializationWorks()
         {
-            IRandom random = PcgRandom.Instance;
+            IRandom random = PRNG.Instance;
             TestDataObject input = new()
             {
                 field = Guid.NewGuid().ToString(),
                 Property = random.Next(),
-                NamedProperty = random.NextFloat()
+                NamedProperty = random.NextFloat(),
             };
 
             int dictionaryProperties = random.Next(4, 10);
@@ -51,21 +51,34 @@
 
             string json = input.ToJson();
             Assert.IsTrue(
-                json.Contains("DifferentPropertyName"), $"DifferentPropertyName failed to serialize! JSON: {json}");
+                json.Contains("DifferentPropertyName"),
+                $"DifferentPropertyName failed to serialize! JSON: {json}"
+            );
 
             TestDataObject deserialized = Serializer.JsonDeserialize<TestDataObject>(json);
-            Assert.AreEqual(input.field, deserialized.field, $"Unexpected {nameof(deserialized.field)}! JSON: {json}");
             Assert.AreEqual(
-                input.Property, deserialized.Property, $"Unexpected {nameof(deserialized.Property)}! JSON: {json}");
+                input.field,
+                deserialized.field,
+                $"Unexpected {nameof(deserialized.field)}! JSON: {json}"
+            );
             Assert.AreEqual(
-                input.NamedProperty, deserialized.NamedProperty,
-                $"Unexpected {nameof(deserialized.NamedProperty)}! JSON: {json}");
-            Assert.IsTrue( 
+                input.Property,
+                deserialized.Property,
+                $"Unexpected {nameof(deserialized.Property)}! JSON: {json}"
+            );
+            Assert.AreEqual(
+                input.NamedProperty,
+                deserialized.NamedProperty,
+                $"Unexpected {nameof(deserialized.NamedProperty)}! JSON: {json}"
+            );
+            Assert.IsTrue(
                 input.DictionaryProperty.ContentEquals(deserialized.DictionaryProperty),
-                $"Unexpected {nameof(deserialized.DictionaryProperty)}! JSON: {json}");
+                $"Unexpected {nameof(deserialized.DictionaryProperty)}! JSON: {json}"
+            );
             Assert.IsTrue(
                 input.ListProperty.SequenceEqual(deserialized.ListProperty),
-                $"Unexpected {nameof(deserialized.ListProperty)}! JSON: {json}");
+                $"Unexpected {nameof(deserialized.ListProperty)}! JSON: {json}"
+            );
         }
     }
 }

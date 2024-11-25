@@ -1,21 +1,21 @@
 ﻿namespace UnityHelpers.Core.Helper
 {
-    using Extension;
     using System;
     using System.Collections;
     using System.Collections.Generic;
     using System.Linq;
     using System.Reflection;
     using DataStructure.Adapters;
+    using Extension;
     using Random;
-#if UNITY_EDITOR
-    using UnityEditor;
-    using UnityEditor.SceneManagement;
-#endif
     using UnityEngine;
     using UnityEngine.SceneManagement;
     using Utils;
     using Object = UnityEngine.Object;
+#if UNITY_EDITOR
+    using UnityEditor;
+    using UnityEditor.SceneManagement;
+#endif
 
     public static class Helpers
     {
@@ -24,7 +24,8 @@
         private static readonly Object LogObject = new();
         private static readonly Dictionary<string, Object> ObjectsByTag = new();
 
-        public static T Find<T>(this Object component, string tag, bool log = true) where T : Object
+        public static T Find<T>(this Object component, string tag, bool log = true)
+            where T : Object
         {
             if (ObjectsByTag.TryGetValue(tag, out Object value))
             {
@@ -56,14 +57,19 @@
             if (log)
             {
                 component.LogWarn(
-                    "Failed to find {0} on {1} (name: {2}), id [{3}].", typeof(T).Name, tag, gameObject.name,
-                    gameObject.GetInstanceID());
+                    "Failed to find {0} on {1} (name: {2}), id [{3}].",
+                    typeof(T).Name,
+                    tag,
+                    gameObject.name,
+                    gameObject.GetInstanceID()
+                );
             }
 
             return default;
         }
 
-        public static T Find<T>(string tag, bool log = true) where T : MonoBehaviour
+        public static T Find<T>(string tag, bool log = true)
+            where T : MonoBehaviour
         {
             if (ObjectsByTag.TryGetValue(tag, out Object value))
             {
@@ -100,12 +106,14 @@
             return default;
         }
 
-        public static void SetInstance<T>(string tag, T instance) where T : MonoBehaviour
+        public static void SetInstance<T>(string tag, T instance)
+            where T : MonoBehaviour
         {
             ObjectsByTag[tag] = instance;
         }
 
-        public static void ClearInstance<T>(string tag, T instance) where T : MonoBehaviour
+        public static void ClearInstance<T>(string tag, T instance)
+            where T : MonoBehaviour
         {
             if (ObjectsByTag.TryGetValue(tag, out Object existing) && existing == instance)
             {
@@ -113,22 +121,25 @@
             }
         }
 
-        public static bool HasComponent<T>(this Object unityObject) where T : Object
+        public static bool HasComponent<T>(this Object unityObject)
+            where T : Object
         {
             return unityObject switch
             {
                 GameObject go => go.HasComponent<T>(),
                 Component component => component.HasComponent<T>(),
-                _ => false
+                _ => false,
             };
         }
 
-        public static bool HasComponent<T>(this Component component) where T : Object
+        public static bool HasComponent<T>(this Component component)
+            where T : Object
         {
             return component.TryGetComponent<T>(out _);
         }
 
-        public static bool HasComponent<T>(this GameObject gameObject) where T : Object
+        public static bool HasComponent<T>(this GameObject gameObject)
+            where T : Object
         {
             return gameObject.TryGetComponent<T>(out _);
         }
@@ -143,7 +154,9 @@
             component.LogWarn("{0} not found.", name);
         }
 
-        public static IEnumerable<GameObject> IterateOverChildGameObjects(this GameObject gameObject)
+        public static IEnumerable<GameObject> IterateOverChildGameObjects(
+            this GameObject gameObject
+        )
         {
             for (int i = 0; i < gameObject.transform.childCount; i++)
             {
@@ -151,7 +164,9 @@
             }
         }
 
-        public static IEnumerable<GameObject> IterateOverChildGameObjectsRecursively(this GameObject gameObject)
+        public static IEnumerable<GameObject> IterateOverChildGameObjectsRecursively(
+            this GameObject gameObject
+        )
         {
             for (int i = 0; i < gameObject.transform.childCount; i++)
             {
@@ -165,21 +180,26 @@
         }
 
         public static IEnumerable<GameObject> IterateOverChildGameObjectsRecursivelyIncludingSelf(
-            this GameObject gameObject)
+            this GameObject gameObject
+        )
         {
             yield return gameObject;
 
             for (int i = 0; i < gameObject.transform.childCount; ++i)
             {
                 GameObject child = gameObject.transform.GetChild(i).gameObject;
-                foreach (GameObject c in child.IterateOverChildGameObjectsRecursivelyIncludingSelf())
+                foreach (
+                    GameObject c in child.IterateOverChildGameObjectsRecursivelyIncludingSelf()
+                )
                 {
                     yield return c;
                 }
             }
         }
 
-        public static IEnumerable<GameObject> IterateOverParentGameObjects(this GameObject gameObject)
+        public static IEnumerable<GameObject> IterateOverParentGameObjects(
+            this GameObject gameObject
+        )
         {
             Transform currentTransform = gameObject.transform.parent;
             while (currentTransform != null)
@@ -190,7 +210,8 @@
         }
 
         public static IEnumerable<GameObject> IterateOverParentGameObjectsRecursivelyIncludingSelf(
-            this GameObject gameObject)
+            this GameObject gameObject
+        )
         {
             yield return gameObject;
 
@@ -200,7 +221,11 @@
             }
         }
 
-        public static void EnableRecursively<T>(this Component component, bool enabled, Func<T, bool> exclude = null)
+        public static void EnableRecursively<T>(
+            this Component component,
+            bool enabled,
+            Func<T, bool> exclude = null
+        )
             where T : Behaviour
         {
             if (component == null)
@@ -230,8 +255,11 @@
         }
 
         public static void EnableRendererRecursively<T>(
-            this Component component, bool enabled,
-            Func<T, bool> exclude = null) where T : Renderer
+            this Component component,
+            bool enabled,
+            Func<T, bool> exclude = null
+        )
+            where T : Renderer
         {
             if (component == null)
             {
@@ -257,7 +285,9 @@
             }
         }
 
-        public static IEnumerable<T> IterateOverAllChildComponentsRecursively<T>(this Component component)
+        public static IEnumerable<T> IterateOverAllChildComponentsRecursively<T>(
+            this Component component
+        )
         {
             if (component == null)
             {
@@ -308,7 +338,9 @@
             }
         }
 
-        public static IEnumerable<Transform> IterateOverAllParentsIncludingSelf(this Component component)
+        public static IEnumerable<Transform> IterateOverAllParentsIncludingSelf(
+            this Component component
+        )
         {
             if (component == null)
             {
@@ -323,7 +355,9 @@
             }
         }
 
-        public static IEnumerable<Transform> IterateOverAllChildrenRecursively(this Component component)
+        public static IEnumerable<Transform> IterateOverAllChildrenRecursively(
+            this Component component
+        )
         {
             if (component == null)
             {
@@ -334,7 +368,9 @@
             {
                 Transform childTransform = component.transform.GetChild(i);
                 yield return childTransform;
-                foreach (Transform childChildTransform in childTransform.IterateOverAllChildrenRecursively())
+                foreach (
+                    Transform childChildTransform in childTransform.IterateOverAllChildrenRecursively()
+                )
                 {
                     yield return childChildTransform;
                 }
@@ -366,7 +402,8 @@
             }
         }
 
-        public static void DestroyAllComponentsOfType<T>(this GameObject gameObject) where T : Component
+        public static void DestroyAllComponentsOfType<T>(this GameObject gameObject)
+            where T : Component
         {
             foreach (T component in gameObject.GetComponents<T>())
             {
@@ -395,10 +432,12 @@
 
         public static void DestroyAllChildrenGameObjectsImmediatelyConditionally(
             this GameObject gameObject,
-            Func<GameObject, bool> acceptancePredicate)
+            Func<GameObject, bool> acceptancePredicate
+        )
         {
             InternalDestroyAllChildrenGameObjects(
-                gameObject, toDestroy =>
+                gameObject,
+                toDestroy =>
                 {
                     if (!acceptancePredicate(toDestroy))
                     {
@@ -406,15 +445,18 @@
                     }
 
                     Object.DestroyImmediate(toDestroy);
-                });
+                }
+            );
         }
 
         public static void DestroyAllChildGameObjectsConditionally(
             this GameObject gameObject,
-            Func<GameObject, bool> acceptancePredicate)
+            Func<GameObject, bool> acceptancePredicate
+        )
         {
             InternalDestroyAllChildrenGameObjects(
-                gameObject, toDestroy =>
+                gameObject,
+                toDestroy =>
                 {
                     if (!acceptancePredicate(toDestroy))
                     {
@@ -422,7 +464,8 @@
                     }
 
                     toDestroy.Destroy();
-                });
+                }
+            );
         }
 
         public static void DestroyAllChildrenGameObjectsImmediately(this GameObject gameObject) =>
@@ -436,7 +479,8 @@
 
         private static void InternalDestroyAllChildrenGameObjects(
             this GameObject gameObject,
-            Action<GameObject> destroyFunction)
+            Action<GameObject> destroyFunction
+        )
         {
             for (int i = gameObject.transform.childCount - 1; 0 <= i; --i)
             {
@@ -479,7 +523,8 @@
             return RadianToVector2(degree * Mathf.Deg2Rad);
         }
 
-        public static T GetOrAddComponent<T>(this GameObject unityObject) where T : Component
+        public static T GetOrAddComponent<T>(this GameObject unityObject)
+            where T : Component
         {
             if (!unityObject.TryGetComponent(out T instance))
             {
@@ -536,8 +581,12 @@
 
         // https://gamedevelopment.tutsplus.com/tutorials/unity-solution-for-hitting-moving-targets--cms-29633
         public static Vector2 PredictCurrentTarget(
-            this GameObject currentTarget, Vector2 launchLocation, float projectileSpeed, bool predictiveFiring,
-            Vector2 targetVelocity)
+            this GameObject currentTarget,
+            Vector2 launchLocation,
+            float projectileSpeed,
+            bool predictiveFiring,
+            Vector2 targetVelocity
+        )
         {
             Vector2 target = currentTarget.transform.position;
 
@@ -551,17 +600,21 @@
                 return target;
             }
 
-            float a = (targetVelocity.x * targetVelocity.x) + (targetVelocity.y * targetVelocity.y) -
-                      (projectileSpeed * projectileSpeed);
+            float a =
+                (targetVelocity.x * targetVelocity.x)
+                + (targetVelocity.y * targetVelocity.y)
+                - (projectileSpeed * projectileSpeed);
 
-            float b = 2 * (targetVelocity.x * (target.x - launchLocation.x) +
-                           targetVelocity.y * (target.y - launchLocation.y));
+            float b =
+                2
+                * (
+                    targetVelocity.x * (target.x - launchLocation.x)
+                    + targetVelocity.y * (target.y - launchLocation.y)
+                );
 
             float c =
-                ((target.x - launchLocation.x) *
-                 (target.x - launchLocation.x)) +
-                ((target.y - launchLocation.y) *
-                 (target.y - launchLocation.y));
+                ((target.x - launchLocation.x) * (target.x - launchLocation.x))
+                + ((target.y - launchLocation.y) * (target.y - launchLocation.y));
 
             float disc = b * b - (4 * a * c);
             if (disc < 0)
@@ -615,7 +668,7 @@
             {
                 GameObject go => go,
                 Component c => c.gameObject,
-                _ => null
+                _ => null,
             };
         }
 
@@ -632,12 +685,18 @@
 
         public static GameObject FindChildGameObjectWithTag(this GameObject gameObject, string tag)
         {
-            return gameObject.IterateOverChildGameObjectsRecursivelyIncludingSelf()
+            return gameObject
+                .IterateOverChildGameObjectsRecursivelyIncludingSelf()
                 .FirstOrDefault(child => child.CompareTag(tag));
         }
 
         public static bool HasLineOfSight(
-            Vector2 initialLocation, Vector2 direction, Transform transform, float totalDistance, float delta)
+            Vector2 initialLocation,
+            Vector2 direction,
+            Transform transform,
+            float totalDistance,
+            float delta
+        )
         {
             int hits = Physics2D.RaycastNonAlloc(initialLocation, direction, Buffers.RaycastHits);
             for (int i = 0; i < hits; ++i)
@@ -659,13 +718,24 @@
         }
 
         public static Coroutine StartFunctionAsCoroutine(
-            this MonoBehaviour monoBehaviour, Action action, float updateRate, bool useJitter = false,
-            bool waitBefore = false)
+            this MonoBehaviour monoBehaviour,
+            Action action,
+            float updateRate,
+            bool useJitter = false,
+            bool waitBefore = false
+        )
         {
-            return monoBehaviour.StartCoroutine(FunctionAsCoroutine(action, updateRate, useJitter, waitBefore));
+            return monoBehaviour.StartCoroutine(
+                FunctionAsCoroutine(action, updateRate, useJitter, waitBefore)
+            );
         }
 
-        private static IEnumerator FunctionAsCoroutine(Action action, float updateRate, bool useJitter, bool waitBefore)
+        private static IEnumerator FunctionAsCoroutine(
+            Action action,
+            float updateRate,
+            bool useJitter,
+            bool waitBefore
+        )
         {
             bool usedJitter = false;
             while (true)
@@ -675,7 +745,7 @@
                 {
                     if (useJitter && !usedJitter)
                     {
-                        float delay = PcgRandom.Instance.NextFloat(updateRate);
+                        float delay = PRNG.Instance.NextFloat(updateRate);
                         startTime = Time.time;
                         while (!HasEnoughTimePassed(startTime, delay))
                         {
@@ -698,7 +768,7 @@
                 {
                     if (useJitter && !usedJitter)
                     {
-                        float delay = PcgRandom.Instance.NextFloat(updateRate);
+                        float delay = PRNG.Instance.NextFloat(updateRate);
                         startTime = Time.time;
                         while (!HasEnoughTimePassed(startTime, delay))
                         {
@@ -717,22 +787,37 @@
             }
         }
 
-        public static Coroutine ExecuteFunctionAfterDelay(this MonoBehaviour monoBehaviour, Action action, float delay)
+        public static Coroutine ExecuteFunctionAfterDelay(
+            this MonoBehaviour monoBehaviour,
+            Action action,
+            float delay
+        )
         {
             return monoBehaviour.StartCoroutine(FunctionDelayAsCoroutine(action, delay));
         }
 
-        public static Coroutine ExecuteFunctionNextFrame(this MonoBehaviour monoBehaviour, Action action)
+        public static Coroutine ExecuteFunctionNextFrame(
+            this MonoBehaviour monoBehaviour,
+            Action action
+        )
         {
             return monoBehaviour.ExecuteFunctionAfterDelay(action, 0f);
         }
 
-        public static Coroutine ExecuteFunctionAfterFrame(this MonoBehaviour monoBehaviour, Action action)
+        public static Coroutine ExecuteFunctionAfterFrame(
+            this MonoBehaviour monoBehaviour,
+            Action action
+        )
         {
             return monoBehaviour.StartCoroutine(FunctionAfterFrame(action));
         }
 
-        public static IEnumerator ExecuteOverTime(Action action, int totalCount, float duration, bool delay = true)
+        public static IEnumerator ExecuteOverTime(
+            Action action,
+            int totalCount,
+            float duration,
+            bool delay = true
+        )
         {
             if (action == null)
             {
@@ -750,7 +835,10 @@
             {
                 float percent = (Time.time - startTime) / duration;
                 // optional delay execution from happening on 0, 1, 2, ... n-1 to 1, 2, ... n
-                if (totalExecuted < totalCount && ((totalExecuted + (delay ? 1f : 0f)) / totalCount) <= percent)
+                if (
+                    totalExecuted < totalCount
+                    && ((totalExecuted + (delay ? 1f : 0f)) / totalCount) <= percent
+                )
                 {
                     action();
                     ++totalExecuted;
@@ -759,7 +847,7 @@
                 yield return null;
             }
 
-            for (; totalExecuted < totalCount;)
+            for (; totalExecuted < totalCount; )
             {
                 action();
                 ++totalExecuted;
@@ -828,7 +916,11 @@
 
         public static Vector3Int AsVector3Int(this Vector3 vector)
         {
-            return new Vector3Int((int)Math.Round(vector.x), (int)Math.Round(vector.y), (int)Math.Round(vector.z));
+            return new Vector3Int(
+                (int)Math.Round(vector.x),
+                (int)Math.Round(vector.y),
+                (int)Math.Round(vector.z)
+            );
         }
 
         public static Vector3 AsVector3(this (uint x, uint y, uint z) vector)
@@ -856,7 +948,8 @@
             return new Vector3Int(vector.x, vector.y);
         }
 
-        public static T CopyTo<T>(this T original, GameObject destination) where T : Component
+        public static T CopyTo<T>(this T original, GameObject destination)
+            where T : Component
         {
             Type type = original.GetType();
             T copied = destination.GetComponent(type) as T;
@@ -877,8 +970,10 @@
                 }
             }
 
-            foreach (FieldInfo field in type.GetFields(BindingFlags.Instance | BindingFlags.NonPublic)
-                         .Where(field => Attribute.IsDefined(field, typeof(SerializeField))))
+            foreach (
+                FieldInfo field in type.GetFields(BindingFlags.Instance | BindingFlags.NonPublic)
+                    .Where(field => Attribute.IsDefined(field, typeof(SerializeField)))
+            )
             {
                 try
                 {
@@ -915,30 +1010,46 @@
             return new Rect(bounds.x, bounds.y, bounds.size.x, bounds.size.y);
         }
 
-        public static Vector3 GetRandomPointInCircle(Vector2 center, float radius, IRandom random = null)
+        public static Vector2 GetRandomPointInCircle(
+            Vector2 center,
+            float radius,
+            IRandom random = null
+        )
         {
-            random ??= PcgRandom.Instance;
-            float r = radius * Mathf.Sqrt(random.NextFloat());
-            float theta = random.NextFloat() * 2 * Mathf.PI;
-            return new Vector3(center.x + r * Mathf.Cos(theta), center.y + r * Mathf.Sin(theta), 0.0f);
+            random ??= PRNG.Instance;
+            double r = radius * Math.Sqrt(random.NextDouble());
+            double theta = random.NextDouble() * 2 * Math.PI;
+            return new Vector2(
+                center.x + (float)(r * Math.Cos(theta)),
+                center.y + (float)(r * Math.Sin(theta))
+            );
         }
 
-        public static GameObject GetPlayerObjectInChildHierarchy(this GameObject gameObject)
+        public static GameObject GetPlayerObjectInChildHierarchy(
+            this GameObject gameObject,
+            string playerTag = "Player"
+        )
         {
-            return gameObject.GetTagObjectInChildHierarchy("Player");
+            return gameObject.GetTagObjectInChildHierarchy(playerTag);
         }
 
-        public static GameObject GetTagObjectInChildHierarchy(this GameObject gameObject, string tag)
+        public static GameObject GetTagObjectInChildHierarchy(
+            this GameObject gameObject,
+            string tag
+        )
         {
-            return gameObject.IterateOverChildGameObjectsRecursivelyIncludingSelf()
+            return gameObject
+                .IterateOverChildGameObjectsRecursivelyIncludingSelf()
                 .FirstOrDefault(go => go.CompareTag(tag));
         }
 
         //https://answers.unity.com/questions/722748/refreshing-the-polygon-collider-2d-upon-sprite-cha.html
         public static void UpdateShapeToSprite(this Component component)
         {
-            if (!component.TryGetComponent(out SpriteRenderer spriteRenderer) ||
-                component.TryGetComponent(out PolygonCollider2D collider))
+            if (
+                !component.TryGetComponent(out SpriteRenderer spriteRenderer)
+                || component.TryGetComponent(out PolygonCollider2D collider)
+            )
             {
                 return;
             }
@@ -973,7 +1084,9 @@
             return new Vector3Int(x, y, z);
         }
 
-        public static GameObject TryGetClosestParentWithComponentIncludingSelf<T>(this GameObject current)
+        public static GameObject TryGetClosestParentWithComponentIncludingSelf<T>(
+            this GameObject current
+        )
             where T : Component
         {
             while (current != null)
@@ -991,7 +1104,9 @@
         }
 
 #if UNITY_EDITOR
-        public static IEnumerable<GameObject> EnumeratePrefabs(IEnumerable<string> assetPaths = null)
+        public static IEnumerable<GameObject> EnumeratePrefabs(
+            IEnumerable<string> assetPaths = null
+        )
         {
             assetPaths ??= new[] { "Assets/Prefabs", "Assets/Resources" };
 
@@ -1011,7 +1126,9 @@
         {
             assetPaths ??= new[] { "Assets/Prefabs", "Assets/Resources", "Assets/TileMaps" };
 
-            foreach (string assetGuid in AssetDatabase.FindAssets("t:" + typeof(T).Name, assetPaths))
+            foreach (
+                string assetGuid in AssetDatabase.FindAssets("t:" + typeof(T).Name, assetPaths)
+            )
             {
                 string path = AssetDatabase.GUIDToAssetPath(assetGuid);
                 T so = AssetDatabase.LoadAssetAtPath<T>(path);
@@ -1093,8 +1210,12 @@
             {
                 MethodInfo awakeInfo = AwakeMethodsByType.GetOrAdd(
                     script.GetType(),
-                    type => type.GetMethod(
-                        "Awake", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic));
+                    type =>
+                        type.GetMethod(
+                            "Awake",
+                            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+                        )
+                );
                 if (awakeInfo != null)
                 {
                     _ = awakeInfo.Invoke(script, null);
@@ -1102,7 +1223,11 @@
             }
         }
 
-        public static Vector2 GetAngleWithSpeed(Vector2 targetDirection, Vector2 currentDirection, float rotationSpeed)
+        public static Vector2 GetAngleWithSpeed(
+            Vector2 targetDirection,
+            Vector2 currentDirection,
+            float rotationSpeed
+        )
         {
             if (targetDirection == Vector2.zero)
             {

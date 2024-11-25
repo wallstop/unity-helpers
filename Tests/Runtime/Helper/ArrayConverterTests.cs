@@ -10,9 +10,9 @@
         [Test]
         public void IntToByteArray()
         {
-            int[] ints = Enumerable.Range(0, 1000).Select(_ => PcgRandom.Instance.Next()).ToArray();
-            byte[] bytes = ArrayConverter.IntArrayToByteArray_BlockCopy(ints);
-            int[] decoded = ArrayConverter.ByteArrayToIntArray_BlockCopy(bytes);
+            int[] ints = Enumerable.Range(0, 1000).Select(_ => PRNG.Instance.Next()).ToArray();
+            byte[] bytes = ArrayConverter.IntArrayToByteArrayBlockCopy(ints);
+            int[] decoded = ArrayConverter.ByteArrayToIntArrayBlockCopy(bytes);
             Assert.IsTrue(ints.SequenceEqual(decoded));
         }
     }

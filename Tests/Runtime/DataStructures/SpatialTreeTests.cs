@@ -8,9 +8,10 @@
     using NUnit.Framework;
     using Vector2 = UnityEngine.Vector2;
 
-    public abstract class SpatialTreeTests<TTree> where TTree : ISpatialTree<Vector2>
+    public abstract class SpatialTreeTests<TTree>
+        where TTree : ISpatialTree<Vector2>
     {
-        private IRandom Random => PcgRandom.Instance;
+        private IRandom Random => PRNG.Instance;
 
         protected abstract TTree CreateTree(IEnumerable<Vector2> points);
 
@@ -28,14 +29,18 @@
                 do
                 {
                     point = Helpers.GetRandomPointInCircle(center, radius);
-                }
-                while (!points.Add(point));
+                } while (!points.Add(point));
             }
 
             TTree quadTree = CreateTree(points);
 
             List<Vector2> pointsInRange = quadTree.GetElementsInRange(center, radius).ToList();
-            Assert.IsTrue(points.SetEquals(pointsInRange), "Found {0} points in range, expected {1}.", pointsInRange.Count, points.Count);
+            Assert.IsTrue(
+                points.SetEquals(pointsInRange),
+                "Found {0} points in range, expected {1}.",
+                pointsInRange.Count,
+                points.Count
+            );
             // Translate by a unit-square - there should be no points in this range
             Vector2 offset = center;
             offset.x -= radius * 2;
@@ -43,8 +48,14 @@
 
             pointsInRange = quadTree.GetElementsInRange(offset, radius).ToList();
             Assert.AreEqual(
-                0, pointsInRange.Count, "Found {0} points within {1} range of {2} (original center {3})",
-                pointsInRange.Count, radius, offset, center);
+                0,
+                pointsInRange.Count,
+                "Found {0} points within {1} range of {2} (original center {3})",
+                pointsInRange.Count,
+                radius,
+                offset,
+                center
+            );
         }
 
         [Test]
@@ -58,10 +69,19 @@
             List<Vector2> points = new(1) { testPoint };
 
             TTree quadTree = CreateTree(points);
-            List<Vector2> pointsInRange = quadTree.GetElementsInRange(point, range * 0.99f).ToList();
+            List<Vector2> pointsInRange = quadTree
+                .GetElementsInRange(point, range * 0.99f)
+                .ToList();
             Assert.AreEqual(0, pointsInRange.Count);
             pointsInRange = quadTree.GetElementsInRange(point, range * 1.01f).ToList();
-            Assert.AreEqual(1, pointsInRange.Count, "Failed to find point {0} from test point {1} with {2:0.00} range.", point, testPoint, range);
+            Assert.AreEqual(
+                1,
+                pointsInRange.Count,
+                "Failed to find point {0} from test point {1} with {2:0.00} range.",
+                point,
+                testPoint,
+                range
+            );
             Assert.AreEqual(testPoint, pointsInRange[0]);
         }
 
@@ -95,7 +115,11 @@
             nearestNeighborCount = 16;
             quadTree.GetApproximateNearestNeighbors(center, nearestNeighborCount, nearestNeighbors);
             Assert.AreEqual(nearestNeighborCount, nearestNeighbors.Count);
-            Assert.IsTrue(nearestNeighbors.All(neighbor => (neighbor - center).magnitude <= 5.6f), "Max: {0}", nearestNeighbors.Select(neighbor => (neighbor - center).magnitude).Max());
+            Assert.IsTrue(
+                nearestNeighbors.All(neighbor => (neighbor - center).magnitude <= 5.6f),
+                "Max: {0}",
+                nearestNeighbors.Select(neighbor => (neighbor - center).magnitude).Max()
+            );
 
             center = new Vector2(-100, -100);
 
