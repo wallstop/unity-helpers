@@ -2,8 +2,8 @@
 {
     using UnityHelpers.Core.Random;
 
-    public sealed class UnityRandomTests : RandomTestBase<UnityRandom>
+    public sealed class UnityRandomTests : RandomTestBase
     {
-        protected override UnityRandom NewRandom() => UnityRandom.Instance;
+        protected override IRandom NewRandom() => UnityRandom.Instance;
     }
 }

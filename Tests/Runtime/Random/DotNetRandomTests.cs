@@ -2,8 +2,8 @@
 {
     using Core.Random;
 
-    public sealed class DotNetRandomTests : RandomTestBase<DotNetRandom>
+    public sealed class DotNetRandomTests : RandomTestBase
     {
-        protected override DotNetRandom NewRandom() => new DotNetRandom();
+        protected override IRandom NewRandom() => new DotNetRandom();
     }
 }

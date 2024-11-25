@@ -129,9 +129,14 @@
             return memoryStream.ToArray();
         }
 
-        public static T JsonDeserialize<T>(string data)
+        public static T JsonDeserialize<T>(string data, Type type = null)
         {
-            return JsonSerializer.Deserialize<T>(data, SerializerEncoding.NormalJsonOptions);
+            return (T)
+                JsonSerializer.Deserialize(
+                    data,
+                    type ?? typeof(T),
+                    SerializerEncoding.NormalJsonOptions
+                );
         }
 
         public static byte[] JsonSerialize<T>(T input)

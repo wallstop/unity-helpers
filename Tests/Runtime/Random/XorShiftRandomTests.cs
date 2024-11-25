@@ -2,8 +2,8 @@
 {
     using UnityHelpers.Core.Random;
 
-    public sealed class XorShiftRandomTests : RandomTestBase<XorShiftRandom>
+    public sealed class XorShiftRandomTests : RandomTestBase
     {
-        protected override XorShiftRandom NewRandom() => new XorShiftRandom();
+        protected override IRandom NewRandom() => new XorShiftRandom();
     }
 }

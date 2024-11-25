@@ -8,15 +8,14 @@
     using NUnit.Framework;
     using UnityHelpers.Core.Random;
 
-    public abstract class RandomTestBase<T>
-        where T : IRandom
+    public abstract class RandomTestBase
     {
         private const int NumGeneratorChecks = 1_000;
         private const int SampleCount = 12_500_000;
 
         private readonly int[] _samples = new int[1_000];
 
-        protected abstract T NewRandom();
+        protected abstract IRandom NewRandom();
 
         [SetUp]
         public virtual void Setup()
@@ -132,9 +131,9 @@
         [Test]
         public void Json()
         {
-            T random = NewRandom();
+            IRandom random = NewRandom();
             string json = random.ToJson();
-            T deserialized = Serializer.JsonDeserialize<T>(json);
+            IRandom deserialized = Serializer.JsonDeserialize<IRandom>(json, random.GetType());
             Assert.AreEqual(random.InternalState, deserialized.InternalState);
 
             if (NewRandom() is not UnityRandom)

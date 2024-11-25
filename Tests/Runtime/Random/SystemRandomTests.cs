@@ -3,9 +3,8 @@
     using System;
     using UnityHelpers.Core.Random;
 
-    public sealed class SystemRandomTests : RandomTestBase<SystemRandom>
+    public sealed class SystemRandomTests : RandomTestBase
     {
-        protected override SystemRandom NewRandom() =>
-            new SystemRandom(Guid.NewGuid().GetHashCode());
+        protected override IRandom NewRandom() => new SystemRandom(Guid.NewGuid().GetHashCode());
     }
 }

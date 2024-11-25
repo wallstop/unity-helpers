@@ -2,8 +2,8 @@
 {
     using UnityHelpers.Core.Random;
 
-    public sealed class SquirrelRandomTests : RandomTestBase<SquirrelRandom>
+    public sealed class SquirrelRandomTests : RandomTestBase
     {
-        protected override SquirrelRandom NewRandom() => new SquirrelRandom();
+        protected override IRandom NewRandom() => new SquirrelRandom();
     }
 }
