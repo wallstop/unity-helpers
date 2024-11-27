@@ -2,9 +2,13 @@
 {
     using System.Collections;
     using Core.Helper;
+    using JetBrains.Annotations;
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.TestTools;
+
+    [UsedImplicitly]
+    public sealed class ObjectHelperComponent : MonoBehaviour { }
 
     public sealed class ObjectHelperTests
     {
@@ -244,6 +248,155 @@
             Assert.IsTrue(two == null);
             Assert.IsTrue(three == null);
             Assert.IsTrue(four == null);
+        }
+
+        [UnityTest]
+        public IEnumerator DestroyAllComponentsOfType()
+        {
+            GameObject one = New("1");
+            Assert.AreEqual(4, one.GetComponents<ObjectHelperComponent>().Length);
+
+            GameObject two = New("2");
+            two.transform.SetParent(one.transform);
+
+            one.DestroyAllComponentsOfType<ObjectHelperComponent>();
+            yield return null;
+            Assert.AreEqual(0, one.GetComponents<ObjectHelperComponent>().Length);
+            Assert.IsTrue(one.GetComponent<SpriteRenderer>() != null);
+            Assert.AreEqual(4, two.GetComponents<ObjectHelperComponent>().Length);
+
+            two.DestroyAllComponentsOfType<ObjectHelperComponent>();
+            yield return null;
+            Assert.AreEqual(0, one.GetComponents<ObjectHelperComponent>().Length);
+            Assert.IsTrue(one.GetComponent<SpriteRenderer>() != null);
+            Assert.AreEqual(0, two.GetComponents<ObjectHelperComponent>().Length);
+            Assert.IsTrue(two.GetComponent<SpriteRenderer>() != null);
+
+            GameObject New(string name)
+            {
+                return new GameObject(
+                    name,
+                    typeof(SpriteRenderer),
+                    typeof(ObjectHelperComponent),
+                    typeof(ObjectHelperComponent),
+                    typeof(ObjectHelperComponent),
+                    typeof(ObjectHelperComponent)
+                );
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator SmartDestroy()
+        {
+            GameObject one = new("1");
+
+            one.SmartDestroy();
+            yield return null;
+            Assert.IsTrue(one == null);
+
+            GameObject two = new("2");
+            two.SmartDestroy(1.5f);
+            yield return null;
+            Assert.IsTrue(two != null);
+            yield return new WaitForSeconds(1.6f);
+
+            Assert.IsTrue(two == null);
+        }
+
+        [UnityTest]
+        public IEnumerator DestroyAllChildrenGameObjectsImmediatelyConditionally()
+        {
+            GameObject one = new("1");
+            GameObject two = new("2");
+            two.transform.SetParent(one.transform);
+            GameObject three = new("3");
+            three.transform.SetParent(two.transform);
+            GameObject four = new("4");
+            four.transform.SetParent(two.transform);
+
+            two.DestroyAllChildrenGameObjectsImmediatelyConditionally(go => go == four);
+            Assert.IsTrue(one != null);
+            Assert.IsTrue(two != null);
+            Assert.IsTrue(three != null);
+            Assert.IsTrue(four == null);
+
+            one.DestroyAllChildrenGameObjectsImmediatelyConditionally(go => go != two);
+            Assert.IsTrue(one != null);
+            Assert.IsTrue(two != null);
+            Assert.IsTrue(three != null);
+            Assert.IsTrue(four == null);
+
+            one.DestroyAllChildrenGameObjectsImmediatelyConditionally(go => go == two);
+            Assert.IsTrue(one != null);
+            Assert.IsTrue(two == null);
+            Assert.IsTrue(three == null);
+            Assert.IsTrue(four == null);
+
+            yield break;
+        }
+
+        [UnityTest]
+        public IEnumerator DestroyAllChildGameObjectsConditionally()
+        {
+            GameObject one = new("1");
+            GameObject two = new("2");
+            two.transform.SetParent(one.transform);
+            GameObject three = new("3");
+            three.transform.SetParent(two.transform);
+            GameObject four = new("4");
+            four.transform.SetParent(two.transform);
+
+            two.DestroyAllChildGameObjectsConditionally(go => go == four);
+            yield return null;
+            Assert.IsTrue(one != null);
+            Assert.IsTrue(two != null);
+            Assert.IsTrue(three != null);
+            Assert.IsTrue(four == null);
+
+            one.DestroyAllChildGameObjectsConditionally(go => go != two);
+            yield return null;
+            Assert.IsTrue(one != null);
+            Assert.IsTrue(two != null);
+            Assert.IsTrue(three != null);
+            Assert.IsTrue(four == null);
+
+            one.DestroyAllChildGameObjectsConditionally(go => go == two);
+            yield return null;
+            Assert.IsTrue(one != null);
+            Assert.IsTrue(two == null);
+            Assert.IsTrue(three == null);
+            Assert.IsTrue(four == null);
+        }
+
+        [UnityTest]
+        public IEnumerator DestroyAllChildrenGameObjectsImmediately()
+        {
+            GameObject one = new("1");
+            GameObject two = new("2");
+            two.transform.SetParent(one.transform);
+            GameObject three = new("3");
+            three.transform.SetParent(two.transform);
+            GameObject four = new("4");
+            four.transform.SetParent(two.transform);
+
+            two.DestroyAllChildrenGameObjectsImmediately();
+            Assert.IsTrue(one != null);
+            Assert.IsTrue(two != null);
+            Assert.IsTrue(three == null);
+            Assert.IsTrue(four == null);
+
+            three = new GameObject("3");
+            three.transform.SetParent(two.transform);
+            four = new("4");
+            four.transform.SetParent(two.transform);
+
+            one.DestroyAllChildrenGameObjectsImmediately();
+            Assert.IsTrue(one != null);
+            Assert.IsTrue(two == null);
+            Assert.IsTrue(three == null);
+            Assert.IsTrue(four == null);
+
+            yield break;
         }
     }
 }
