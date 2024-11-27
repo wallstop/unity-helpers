@@ -4,14 +4,30 @@
     using System.Collections.Generic;
     using System.Linq;
     using System.Runtime.CompilerServices;
+    using Core.DataStructure.Adapters;
     using Core.Extension;
     using Core.Serialization;
     using NUnit.Framework;
     using UnityHelpers.Core.Random;
 
+    public enum TestValues
+    {
+        Value0,
+        Value1,
+        Value2,
+        Value3,
+        Value4,
+        Value5,
+        Value6,
+        Value7,
+        Value8,
+        Value9,
+    }
+
     public abstract class RandomTestBase
     {
         private const int NumGeneratorChecks = 1_000;
+        private const int NormalIterations = 1_000;
         private const int SampleCount = 12_750_000;
 
         private readonly int[] _samples = new int[1_000];
@@ -34,7 +50,10 @@
         [Parallelizable]
         public void Bool()
         {
-            TestAndVerify(random => Convert.ToInt32(random.NextBool()), maxLength: 2);
+            TestAndVerify(
+                random => Math.Min(_samples.Length - 1, Convert.ToInt32(random.NextBool())),
+                maxLength: Math.Min(2, _samples.Length)
+            );
         }
 
         [Test]
@@ -42,6 +61,16 @@
         public void Int()
         {
             TestAndVerify(random => random.Next(0, _samples.Length));
+        }
+
+        [Test]
+        [Parallelizable]
+        public void IntRaw()
+        {
+            int sampleLength = GetSampleLength();
+            TestAndVerify(random =>
+                (int)((1.0 * random.Next()) / (1.0 * int.MaxValue) * sampleLength)
+            );
         }
 
         [Test]
@@ -121,6 +150,17 @@
 
         [Test]
         [Parallelizable]
+        public void ShortRaw()
+        {
+            int sampleLength = GetSampleLength(short.MaxValue);
+            TestAndVerify(
+                random => (int)((1.0 * random.NextShort()) / (1.0 * short.MaxValue) * sampleLength),
+                maxLength: short.MaxValue
+            );
+        }
+
+        [Test]
+        [Parallelizable]
         public void ShortRange()
         {
             TestAndVerify(
@@ -153,6 +193,17 @@
                         (byte)(_samples.Length < byte.MaxValue ? _samples.Length : byte.MaxValue)
                     ),
                 byte.MaxValue
+            );
+        }
+
+        [Test]
+        [Parallelizable]
+        public void ByteRaw()
+        {
+            int sampleLength = GetSampleLength(byte.MaxValue);
+            TestAndVerify(
+                random => (int)((1.0 * random.NextByte()) / (1.0 * byte.MaxValue) * sampleLength),
+                maxLength: byte.MaxValue
             );
         }
 
@@ -294,6 +345,16 @@
 
         [Test]
         [Parallelizable]
+        public void LongRaw()
+        {
+            int sampleLength = GetSampleLength();
+            TestAndVerify(random =>
+                (int)(1.0 * random.NextLong() / (1.0 * long.MaxValue) * sampleLength)
+            );
+        }
+
+        [Test]
+        [Parallelizable]
         public void LongRange()
         {
             TestAndVerify(random => (int)random.NextLong(_samples.Length));
@@ -321,6 +382,16 @@
 
         [Test]
         [Parallelizable]
+        public void UlongRaw()
+        {
+            int sampleLength = GetSampleLength();
+            TestAndVerify(random =>
+                (int)(1.0 * random.NextUlong() / (1.0 * ulong.MaxValue) * sampleLength)
+            );
+        }
+
+        [Test]
+        [Parallelizable]
         public void UlongRange()
         {
             TestAndVerify(random => (int)random.NextUlong((ulong)_samples.Length));
@@ -337,6 +408,78 @@
                     * _samples.Length
                 )
             );
+        }
+
+        [Test]
+        [Parallelizable]
+        public void NextBytes()
+        {
+            IRandom random = NewRandom();
+            HashSet<byte> seen = new();
+            int total = 0;
+            for (int i = 0; i < NormalIterations; ++i)
+            {
+                int size = random.Next(1, 40);
+                total += size;
+                byte[] buffer = new byte[size];
+                random.NextBytes(buffer);
+                foreach (byte value in buffer)
+                {
+                    seen.Add(value);
+                }
+            }
+
+            double seenTargetMin = Math.Min(total, byte.MaxValue) * 0.9;
+            double seenTargetMax = Math.Min(total, byte.MaxValue) * 1.1;
+            Assert.LessOrEqual(seenTargetMin, seen.Count);
+            Assert.GreaterOrEqual(seenTargetMax, seen.Count);
+        }
+
+        [Test]
+        [Parallelizable]
+        public void NextGaussian()
+        {
+            IRandom random = NewRandom();
+            List<double> values = new();
+            for (int i = 0; i < NormalIterations; ++i)
+            {
+                double value = random.NextGaussian();
+                values.Add(value);
+            }
+
+            Assert.IsTrue(CheckApproximateNormality(values));
+        }
+
+        [Test]
+        [Parallelizable]
+        public void NextGuid()
+        {
+            IRandom random = NewRandom();
+
+            HashSet<Guid> seen = new();
+            for (int i = 0; i < NormalIterations; ++i)
+            {
+                Guid value = random.NextGuid();
+                seen.Add(value);
+            }
+
+            Assert.LessOrEqual(NormalIterations * 0.9, seen.Count);
+        }
+
+        [Test]
+        [Parallelizable]
+        public void NextKGuid()
+        {
+            IRandom random = NewRandom();
+
+            HashSet<KGuid> seen = new();
+            for (int i = 0; i < NormalIterations; ++i)
+            {
+                KGuid value = random.NextKGuid();
+                seen.Add(value);
+            }
+
+            Assert.LessOrEqual(NormalIterations * 0.9, seen.Count);
         }
 
         [Test]
@@ -388,9 +531,162 @@
             }
         }
 
-        protected virtual double DeviationFor(string caller)
+        [Test]
+        [Parallelizable]
+        public void NextEnumerable()
+        {
+            IRandom random = NewRandom();
+            for (int i = 0; i < NormalIterations; ++i)
+            {
+                HashSet<TestValues> selected = Enum.GetValues(typeof(TestValues))
+                    .OfType<TestValues>()
+                    .Shuffled(random)
+                    .Skip(3)
+                    .ToHashSet();
+
+                TestValues value = random.NextOf(selected.Shuffled(random));
+                Assert.IsTrue(selected.Contains(value));
+            }
+        }
+
+        [Test]
+        [Parallelizable]
+        public void NextArray()
+        {
+            IRandom random = NewRandom();
+            for (int i = 0; i < NormalIterations; ++i)
+            {
+                TestValues[] values = Enum.GetValues(typeof(TestValues))
+                    .OfType<TestValues>()
+                    .Shuffled(random)
+                    .Skip(3)
+                    .ToArray();
+
+                TestValues value = random.NextOf(values);
+                Assert.IsTrue(values.Contains(value));
+            }
+        }
+
+        [Test]
+        [Parallelizable]
+        public void NextList()
+        {
+            IRandom random = NewRandom();
+            for (int i = 0; i < NormalIterations; ++i)
+            {
+                List<TestValues> values = Enum.GetValues(typeof(TestValues))
+                    .OfType<TestValues>()
+                    .Shuffled(random)
+                    .Skip(3)
+                    .ToList();
+
+                TestValues value = random.NextOf(values);
+                Assert.IsTrue(values.Contains(value));
+            }
+        }
+
+        [Test]
+        [Parallelizable]
+        public void NextHashSet()
+        {
+            IRandom random = NewRandom();
+            for (int i = 0; i < NormalIterations; ++i)
+            {
+                HashSet<TestValues> values = Enum.GetValues(typeof(TestValues))
+                    .OfType<TestValues>()
+                    .Shuffled(random)
+                    .Skip(3)
+                    .ToHashSet();
+
+                TestValues value = random.NextOf(values);
+                Assert.IsTrue(values.Contains(value));
+            }
+        }
+
+        [Test]
+        [Parallelizable]
+        public void NextLinkedList()
+        {
+            IRandom random = NewRandom();
+            for (int i = 0; i < NormalIterations; ++i)
+            {
+                LinkedList<TestValues> values = Enum.GetValues(typeof(TestValues))
+                    .OfType<TestValues>()
+                    .Shuffled(random)
+                    .Skip(3)
+                    .ToLinkedList();
+
+                TestValues value = random.NextOf(values);
+                Assert.IsTrue(values.Contains(value));
+            }
+        }
+
+        [Test]
+        [Parallelizable]
+        public void NextEnum()
+        {
+            IRandom random = NewRandom();
+            HashSet<TestValues> seenEnums = new();
+            for (int i = 0; i < NormalIterations; ++i)
+            {
+                TestValues value = random.NextEnum<TestValues>();
+                _ = seenEnums.Add(value);
+            }
+
+            Assert.AreEqual(Enum.GetValues(typeof(TestValues)).Length, seenEnums.Count);
+        }
+
+        [Test]
+        [Parallelizable]
+        public void NextNoiseMap()
+        {
+            IRandom random = NewRandom();
+            for (int i = 0; i < NormalIterations; ++i)
+            {
+                int width = random.Next(1, 75);
+                int height = random.Next(1, 75);
+                float[,] noise = random.NextNoiseMap(width, height);
+                Assert.IsNotNull(noise);
+                Assert.AreEqual(width * height, noise.Length);
+                foreach (float value in noise)
+                {
+                    Assert.LessOrEqual(0f, value);
+                    Assert.GreaterOrEqual(1.1f, value);
+                }
+            }
+        }
+
+        protected virtual double GetDeviationFor(string caller)
         {
             return 0.0625;
+        }
+
+        private static bool CheckApproximateNormality(IEnumerable<double> data)
+        {
+            IReadOnlyList<double> input = data as IReadOnlyList<double> ?? data.ToArray();
+            int n = input.Count;
+            if (n < 3)
+            {
+                return true;
+            }
+
+            double mean = input.Average();
+            double variance = input.Sum(x => Math.Pow(x - mean, 2)) / n;
+            double stdDev = Math.Sqrt(variance);
+
+            double skewness = input.Sum(x => Math.Pow((x - mean) / stdDev, 3)) / n;
+            double kurtosis = input.Sum(x => Math.Pow((x - mean) / stdDev, 4)) / n - 3; // Excess kurtosis
+
+            // Thresholds can be defined based on empirical rules or domain-specific values
+            const double skewnessThreshold = 0.5;
+            const double kurtosisThreshold = 1.0;
+
+            return Math.Abs(skewness) < skewnessThreshold && Math.Abs(kurtosis) < kurtosisThreshold;
+        }
+
+        protected int GetSampleLength(int? sampleLength = null)
+        {
+            return Math.Min(_samples.Length, sampleLength ?? _samples.Length);
         }
 
         private void TestAndVerify(
@@ -414,9 +710,9 @@
                 }
             }
 
-            sampleLength = Math.Min(sampleLength, maxLength ?? sampleLength);
+            sampleLength = GetSampleLength(maxLength);
             double average = SampleCount * 1.0 / sampleLength;
-            double deviationAllowed = average * DeviationFor(caller);
+            double deviationAllowed = average * GetDeviationFor(caller);
             List<int> zeroCountIndexes = new();
             List<int> outsideRange = new();
             for (int i = 0; i < sampleLength; i++)

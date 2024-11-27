@@ -55,102 +55,6 @@
             return unchecked((int)(min + NextUint(range)));
         }
 
-        public T Next<T>(IEnumerable<T> enumerable)
-        {
-            if (enumerable is ICollection<T> collection)
-            {
-                return Next(collection);
-            }
-
-            return Next((IReadOnlyList<T>)enumerable.ToList());
-        }
-
-        public T Next<T>(ICollection<T> collection)
-        {
-            int count = collection.Count;
-            if (count <= 0)
-            {
-                throw new ArgumentException("Collection size cannot be less-than or equal-to 0");
-            }
-
-            switch (collection)
-            {
-                case IList<T> list:
-                    return Next(list);
-                case IReadOnlyList<T> readOnlyList:
-                    return Next(readOnlyList);
-            }
-
-            int index = Next(count);
-            int i = 0;
-            foreach (T element in collection)
-            {
-                if (i++ == index)
-                {
-                    return element;
-                }
-            }
-
-            // Should never happen
-            return default;
-        }
-
-        public T Next<T>(IList<T> list)
-        {
-            if (ReferenceEquals(list, null))
-            {
-                throw new ArgumentNullException(nameof(list));
-            }
-
-            /*
-                For small lists, it's much more efficient to simply return one of their elements
-                instead of trying to generate a random number within bounds (which is implemented as a while(true) loop)
-             */
-            switch (list.Count)
-            {
-                case 1:
-                    return list[0];
-                case 2:
-                    return NextBool() ? list[0] : list[1];
-                default:
-                    return list[Next(list.Count)];
-            }
-        }
-
-        private T Next<T>(IReadOnlyList<T> list)
-        {
-            /*
-                For small lists, it's much more efficient to simply return one of their elements
-                instead of trying to generate a random number within bounds (which is implemented as a while(true) loop)
-             */
-            switch (list.Count)
-            {
-                case 1:
-                    return list[0];
-                case 2:
-                    return NextBool() ? list[0] : list[1];
-                default:
-                    return list[Next(list.Count)];
-            }
-        }
-
-        public T Next<T>()
-            where T : struct, Enum
-        {
-            Type enumType = typeof(T);
-            T[] enumValues;
-            if (EnumTypeCache.TryGetValue(enumType, out Array enumArray))
-            {
-                enumValues = (T[])enumArray;
-            }
-            else
-            {
-                enumValues = (T[])Enum.GetValues(enumType);
-            }
-
-            return RandomOf(enumValues);
-        }
-
         // Internal sampler
         public abstract uint NextUint();
 
@@ -212,7 +116,7 @@
             uint lower = NextUint();
             unchecked
             {
-                return (long)((((ulong)upper << 32) | lower) & (0x1UL << 63));
+                return (long)((((ulong)upper << 32) | lower) & 0x7FFFFFFFFFFFFFFF);
             }
         }
 
@@ -275,34 +179,36 @@
 
         public void NextBytes(byte[] buffer)
         {
-            if (ReferenceEquals(buffer, null))
+            if (buffer == null)
             {
                 throw new ArgumentException(nameof(buffer));
             }
 
-            const byte sizeOfInt = sizeof(int); // May differ on some platforms
+            const int sizeOfInt = 4; // May differ on some platforms
 
             // See how many ints we can slap into it.
             int chunks = buffer.Length / sizeOfInt;
-            byte spare = unchecked((byte)(buffer.Length - (chunks * sizeOfInt)));
+            int spare = buffer.Length - chunks * sizeOfInt;
             for (int i = 0; i < chunks; ++i)
             {
-                int offset = i * chunks;
-                int random = Next();
-                buffer[offset] = unchecked((byte)(random & 0xFF000000));
-                buffer[offset + 1] = unchecked((byte)(random & 0x00FF0000));
-                buffer[offset + 2] = unchecked((byte)(random & 0x0000FF00));
-                buffer[offset + 3] = unchecked((byte)(random & 0x000000FF));
+                int offset = i * sizeOfInt;
+                uint random = NextUint();
+                for (int j = 0; j < sizeOfInt; ++j)
+                {
+                    buffer[offset + j] = unchecked(
+                        (byte)((random >> (j * sizeOfInt)) & 0x000000FF)
+                    );
+                }
             }
 
+            if (0 < spare)
             {
-                /*
-                    This could be implemented more optimally by generating a single int and
-                    bit shifting along the position, but that is too much for me right now.
-                 */
-                for (byte i = 0; i < spare; ++i)
+                uint spareRandom = NextUint();
+                for (int i = 0; i < spare; ++i)
                 {
-                    buffer[buffer.Length - 1 - i] = unchecked((byte)Next());
+                    buffer[buffer.Length - 1 - i] = unchecked(
+                        (byte)((spareRandom >> (i * sizeOfInt)) & 0x000000FF)
+                    );
                 }
             }
         }
@@ -343,7 +249,7 @@
                 return NextDoubleWithInfiniteRange(min, max);
             }
 
-            return min + (NextDouble() * range);
+            return min + NextDouble() * range;
         }
 
         protected double NextDoubleWithInfiniteRange(double min, double max)
@@ -408,7 +314,7 @@
                 x = 2 * NextDouble() - 1;
                 y = 2 * NextDouble() - 1;
                 square = x * x + y * y;
-            } while (square == 0 || 1 < square);
+            } while (square is 0 or > 1);
 
             double fac = Math.Sqrt(-2 * Math.Log(square) / square);
             _cachedGaussian = x * fac;
@@ -454,7 +360,53 @@
             return min + NextFloat(range);
         }
 
-        public T NextCachedEnum<T>()
+        public T NextOf<T>(IEnumerable<T> enumerable)
+        {
+            return enumerable switch
+            {
+                IReadOnlyList<T> list => NextOf(list),
+                IReadOnlyCollection<T> collection => NextOf(collection),
+                null => throw new ArgumentNullException(nameof(enumerable)),
+                _ => NextOf(enumerable.ToArray()),
+            };
+        }
+
+        public T NextOf<T>(IReadOnlyCollection<T> collection)
+        {
+            if (collection is not { Count: > 0 })
+            {
+                throw new ArgumentException("Collection cannot be empty");
+            }
+
+            if (collection is IReadOnlyList<T> list)
+            {
+                return NextOf(list);
+            }
+
+            int index = Next(collection.Count);
+            return collection.ElementAt(index);
+        }
+
+        public T NextOf<T>(IReadOnlyList<T> list)
+        {
+            if (list is not { Count: > 0 })
+            {
+                throw new ArgumentNullException(nameof(list));
+            }
+
+            /*
+                For small lists, it's much more efficient to simply return one of their elements
+                instead of trying to generate a random number within bounds (which is implemented as a while(true) loop)
+             */
+            return list.Count switch
+            {
+                1 => list[0],
+                2 => NextBool() ? list[0] : list[1],
+                _ => list[Next(list.Count)],
+            };
+        }
+
+        public T NextEnum<T>()
             where T : struct, Enum
         {
             Type enumType = typeof(T);
@@ -479,7 +431,13 @@
 
         // Advances the RNG
         // https://code2d.wordpress.com/2020/07/21/perlin-noise/
-        public float[,] NextNoiseMap(int width, int height, float scale = 2.5f, int octaves = 8)
+        public float[,] NextNoiseMap(
+            int width,
+            int height,
+            PerlinNoise noise = null,
+            float scale = 2.5f,
+            int octaves = 8
+        )
         {
             if (width <= 0)
             {
@@ -501,6 +459,7 @@
                 throw new ArgumentException(nameof(octaves));
             }
 
+            noise ??= PerlinNoise.Instance;
             float[,] noiseMap = new float[width, height];
 
             Vector2[] octaveOffsets = new Vector2[octaves];
@@ -529,8 +488,7 @@
                         float sampleX = (x - halfWidth) / scale * frequency + octaveOffsets[i].x;
                         float sampleY = (y - halfHeight) / scale * frequency + octaveOffsets[i].y;
 
-                        // Use unity's implementation of perlin noise
-                        float perlinValue = Mathf.PerlinNoise(sampleX, sampleY) * 2 - 1;
+                        float perlinValue = noise.Noise(sampleX, sampleY) * 2 - 1;
                         noiseHeight += perlinValue * amplitude;
                     }
 
@@ -565,17 +523,13 @@
 
         protected T RandomOf<T>(T[] values)
         {
-            switch (values.Length)
+            return values.Length switch
             {
-                case 0:
-                    return default;
-                case 1:
-                    return values[0];
-                case 2:
-                    return NextBool() ? values[0] : values[1];
-                default:
-                    return values[Next(values.Length)];
-            }
+                0 => default,
+                1 => values[0],
+                2 => NextBool() ? values[0] : values[1],
+                _ => values[Next(values.Length)],
+            };
         }
 
         public abstract IRandom Copy();

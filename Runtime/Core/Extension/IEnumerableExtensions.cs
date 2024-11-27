@@ -1,14 +1,19 @@
 ﻿namespace UnityHelpers.Core.Extension
 {
-    using Random;
     using System;
     using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Linq;
+    using Random;
 
     public static class IEnumerableExtensions
     {
         private static readonly ConcurrentDictionary<object, object> ComparerCache = new();
+
+        public static LinkedList<T> ToLinkedList<T>(this IEnumerable<T> source)
+        {
+            return new LinkedList<T>(source);
+        }
 
         public static IList<T> AsList<T>(this IEnumerable<T> enumeration)
         {
@@ -20,18 +25,27 @@
             return enumeration.ToList();
         }
 
-        public static IEnumerable<T> OrderBy<T>(this IEnumerable<T> enumeration, Func<T, T, int> comparer)
+        public static IEnumerable<T> OrderBy<T>(
+            this IEnumerable<T> enumeration,
+            Func<T, T, int> comparer
+        )
         {
-            FuncBasedComparer<T> comparerObject = (FuncBasedComparer<T>) ComparerCache.GetOrAdd(comparer, () => new FuncBasedComparer<T>(comparer));
+            FuncBasedComparer<T> comparerObject =
+                (FuncBasedComparer<T>)
+                    ComparerCache.GetOrAdd(comparer, () => new FuncBasedComparer<T>(comparer));
             return enumeration.OrderBy(_ => _, comparerObject);
         }
 
-        public static IEnumerable<T> Ordered<T>(this IEnumerable<T> enumerable) where T : IComparable
+        public static IEnumerable<T> Ordered<T>(this IEnumerable<T> enumerable)
+            where T : IComparable
         {
             return enumerable.OrderBy(_ => _);
         }
 
-        public static IEnumerable<T> Shuffled<T>(this IEnumerable<T> enumerable, IRandom random = null)
+        public static IEnumerable<T> Shuffled<T>(
+            this IEnumerable<T> enumerable,
+            IRandom random = null
+        )
         {
             random = random ?? ThreadLocalRandom<PcgRandom>.Instance;
             return enumerable.OrderBy(_ => random.Next());
@@ -89,7 +103,6 @@
             list.AddRange(enumerable);
             return list;
         }
-
 
         private class FuncBasedComparer<T> : IComparer<T>
         {

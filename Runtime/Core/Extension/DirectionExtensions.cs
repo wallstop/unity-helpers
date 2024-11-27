@@ -9,7 +9,10 @@
 
     public static class DirectionExtensions
     {
-        private static readonly List<Direction> Directions = Enum.GetValues(typeof(Direction)).OfType<Direction>().Except(Enumerables.Of(Direction.None)).ToList();
+        private static readonly Direction[] Directions = Enum.GetValues(typeof(Direction))
+            .OfType<Direction>()
+            .Except(Enumerables.Of(Direction.None))
+            .ToArray();
 
         public static Direction Opposite(this Direction direction)
         {
@@ -106,7 +109,7 @@
 
         public static Direction AsDirection(this Vector2 vector, bool preferAngles = false)
         {
-            if (vector.x == 0 && vector.y == 0)
+            if (vector == Vector2.zero)
             {
                 return Direction.None;
             }
