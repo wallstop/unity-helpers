@@ -147,7 +147,13 @@
         T NextEnum<T>()
             where T : struct, Enum;
 
-        float[,] NextNoiseMap(int width, int height, float scale = 2.5f, int octaves = 8);
+        float[,] NextNoiseMap(
+            int width,
+            int height,
+            PerlinNoise noise = null,
+            float scale = 2.5f,
+            int octaves = 8
+        );
 
         IRandom Copy();
     }

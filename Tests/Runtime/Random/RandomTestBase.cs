@@ -28,12 +28,9 @@
     {
         private const int NumGeneratorChecks = 1_000;
         private const int NormalIterations = 1_000;
-        private const int SampleCount = /*12_750_000*/
-            1;
+        private const int SampleCount = 12_750_000;
 
-        private readonly int[] _samples = new int[ /*1_000*/
-            1
-        ];
+        private readonly int[] _samples = new int[1_000];
 
         protected abstract IRandom NewRandom();
 
@@ -522,7 +519,7 @@
                 }
             }
         }
-        
+
         [Test]
         [Parallelizable]
         public void NextEnumerable()
@@ -530,14 +527,14 @@
             IRandom random = NewRandom();
             for (int i = 0; i < NormalIterations; ++i)
             {
-                HashSet<TesV
-                IEnumerable<TestValues> values = Enum.GetValues(typeof(TestValues))
+                HashSet<TestValues> selected = Enum.GetValues(typeof(TestValues))
                     .OfType<TestValues>()
                     .Shuffled(random)
-                    .Except()
+                    .Skip(3)
+                    .ToHashSet();
 
-                TestValues value = random.NextOf(values);
-                Assert.IsTrue(values.Contains(value));
+                TestValues value = random.NextOf(selected.Shuffled(random));
+                Assert.IsTrue(selected.Contains(value));
             }
         }
 
@@ -626,6 +623,26 @@
             }
 
             Assert.AreEqual(Enum.GetValues(typeof(TestValues)).Length, seenEnums.Count);
+        }
+
+        [Test]
+        [Parallelizable]
+        public void NextNoiseMap()
+        {
+            IRandom random = NewRandom();
+            for (int i = 0; i < NormalIterations; ++i)
+            {
+                int width = random.Next(1, 75);
+                int height = random.Next(1, 75);
+                float[,] noise = random.NextNoiseMap(width, height);
+                Assert.IsNotNull(noise);
+                Assert.AreEqual(width * height, noise.Length);
+                foreach (float value in noise)
+                {
+                    Assert.LessOrEqual(0f, value);
+                    Assert.GreaterOrEqual(1.1f, value);
+                }
+            }
         }
 
         protected virtual double GetDeviationFor(string caller)

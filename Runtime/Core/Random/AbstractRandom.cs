@@ -193,10 +193,12 @@
             {
                 int offset = i * sizeOfInt;
                 uint random = NextUint();
-                buffer[offset] = unchecked((byte)((random & 0xFF000000) >> 24));
-                buffer[offset + 1] = unchecked((byte)((random & 0x00FF0000) >> 16));
-                buffer[offset + 2] = unchecked((byte)((random & 0x0000FF00) >> 8));
-                buffer[offset + 3] = unchecked((byte)(random & 0x000000FF));
+                for (int j = 0; j < sizeOfInt; ++j)
+                {
+                    buffer[offset + j] = unchecked(
+                        (byte)((random >> (j * sizeOfInt)) & 0x000000FF)
+                    );
+                }
             }
 
             if (0 < spare)
@@ -205,7 +207,7 @@
                 for (int i = 0; i < spare; ++i)
                 {
                     buffer[buffer.Length - 1 - i] = unchecked(
-                        (byte)((spareRandom >> i) & 0x000000FF)
+                        (byte)((spareRandom >> (i * sizeOfInt)) & 0x000000FF)
                     );
                 }
             }
@@ -247,7 +249,7 @@
                 return NextDoubleWithInfiniteRange(min, max);
             }
 
-            return min + (NextDouble() * range);
+            return min + NextDouble() * range;
         }
 
         protected double NextDoubleWithInfiniteRange(double min, double max)
@@ -431,7 +433,13 @@
 
         // Advances the RNG
         // https://code2d.wordpress.com/2020/07/21/perlin-noise/
-        public float[,] NextNoiseMap(int width, int height, float scale = 2.5f, int octaves = 8)
+        public float[,] NextNoiseMap(
+            int width,
+            int height,
+            PerlinNoise noise = null,
+            float scale = 2.5f,
+            int octaves = 8
+        )
         {
             if (width <= 0)
             {
@@ -453,6 +461,7 @@
                 throw new ArgumentException(nameof(octaves));
             }
 
+            noise ??= PerlinNoise.Instance;
             float[,] noiseMap = new float[width, height];
 
             Vector2[] octaveOffsets = new Vector2[octaves];
@@ -481,8 +490,7 @@
                         float sampleX = (x - halfWidth) / scale * frequency + octaveOffsets[i].x;
                         float sampleY = (y - halfHeight) / scale * frequency + octaveOffsets[i].y;
 
-                        // Use unity's implementation of perlin noise
-                        float perlinValue = Mathf.PerlinNoise(sampleX, sampleY) * 2 - 1;
+                        float perlinValue = noise.Noise(sampleX, sampleY) * 2 - 1;
                         noiseHeight += perlinValue * amplitude;
                     }
 
@@ -517,17 +525,13 @@
 
         protected T RandomOf<T>(T[] values)
         {
-            switch (values.Length)
+            return values.Length switch
             {
-                case 0:
-                    return default;
-                case 1:
-                    return values[0];
-                case 2:
-                    return NextBool() ? values[0] : values[1];
-                default:
-                    return values[Next(values.Length)];
-            }
+                0 => default,
+                1 => values[0],
+                2 => NextBool() ? values[0] : values[1],
+                _ => values[Next(values.Length)],
+            };
         }
 
         public abstract IRandom Copy();
