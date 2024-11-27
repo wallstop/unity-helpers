@@ -12,14 +12,18 @@
     [DataContract]
     public sealed class SystemRandom : AbstractRandom
     {
+        private const int HalfwayInt = int.MaxValue / 2;
+        private const int SeedArraySize = 56;
+        private const int LastSeedIndex = SeedArraySize - 1;
+
         public static IRandom Instance => ThreadLocalRandom<SystemRandom>.Instance;
 
         public override RandomState InternalState =>
             new(
-                unchecked((ulong)inext),
-                unchecked((ulong)inextp),
+                unchecked((ulong)_inext),
+                unchecked((ulong)_inextp),
                 _cachedGaussian,
-                ArrayConverter.IntArrayToByteArrayBlockCopy(SeedArray)
+                ArrayConverter.IntArrayToByteArrayBlockCopy(_seedArray)
             );
 
         /*
@@ -27,9 +31,9 @@
             same across platforms, a fact which defeats the purpose of these serializable
             randoms.
          */
-        private int inext;
-        private int inextp;
-        private readonly int[] SeedArray = new int[56];
+        private int _inext;
+        private int _inextp;
+        private readonly int[] _seedArray = new int[SeedArraySize];
 
         public SystemRandom()
             : this(Guid.NewGuid().GetHashCode()) { }
@@ -37,28 +41,34 @@
         public SystemRandom(int seed)
         {
             int num1 = 161803398 - (seed == int.MinValue ? int.MaxValue : Math.Abs(seed));
-            this.SeedArray[55] = num1;
+            _seedArray[LastSeedIndex] = num1;
             int num2 = 1;
-            for (int index1 = 1; index1 < 55; ++index1)
+            for (int index1 = 1; index1 < LastSeedIndex; ++index1)
             {
-                int index2 = 21 * index1 % 55;
-                this.SeedArray[index2] = num2;
+                int index2 = 21 * index1 % LastSeedIndex;
+                _seedArray[index2] = num2;
                 num2 = num1 - num2;
                 if (num2 < 0)
+                {
                     num2 += int.MaxValue;
-                num1 = this.SeedArray[index2];
+                }
+
+                num1 = _seedArray[index2];
             }
             for (int index3 = 1; index3 < 5; ++index3)
             {
-                for (int index4 = 1; index4 < 56; ++index4)
+                for (int index4 = 1; index4 < SeedArraySize; ++index4)
                 {
-                    this.SeedArray[index4] -= this.SeedArray[1 + (index4 + 30) % 55];
-                    if (this.SeedArray[index4] < 0)
-                        this.SeedArray[index4] += int.MaxValue;
+                    int value = _seedArray[index4] -= _seedArray[1 + (index4 + 30) % LastSeedIndex];
+                    if (value < 0)
+                    {
+                        _seedArray[index4] += int.MaxValue;
+                    }
                 }
             }
-            this.inext = 0;
-            this.inextp = 21;
+
+            _inext = 0;
+            _inextp = 21;
         }
 
         [JsonConstructor]
@@ -66,59 +76,86 @@
         {
             unchecked
             {
-                inext = (int)internalState.State1;
-                inextp = (int)internalState.State2;
+                _inext = (int)internalState.State1;
+                _inextp = (int)internalState.State2;
             }
             _cachedGaussian = internalState.Gaussian;
-            SeedArray = ArrayConverter.ByteArrayToIntArrayBlockCopy(internalState.Payload);
+            _seedArray = ArrayConverter.ByteArrayToIntArrayBlockCopy(internalState.Payload);
+        }
+
+        public override int Next()
+        {
+            int localINext = _inext;
+            int localINextP = _inextp;
+            int index1;
+            if ((index1 = localINext + 1) >= SeedArraySize)
+            {
+                index1 = 1;
+            }
+
+            int index2;
+            if ((index2 = localINextP + 1) >= SeedArraySize)
+            {
+                index2 = 1;
+            }
+
+            int num = _seedArray[index1] - _seedArray[index2];
+            if (num == int.MaxValue)
+            {
+                --num;
+            }
+
+            if (num < 0)
+            {
+                num += int.MaxValue;
+            }
+
+            _seedArray[index1] = num;
+            _inext = index1;
+            _inextp = index2;
+            return num;
         }
 
         public override uint NextUint()
         {
-            int inext = this.inext;
-            int inextp = this.inextp;
-            int index1;
-            if ((index1 = inext + 1) >= 56)
-                index1 = 1;
-            int index2;
-            if ((index2 = inextp + 1) >= 56)
-                index2 = 1;
-            int num = this.SeedArray[index1] - this.SeedArray[index2];
-            if (num == int.MaxValue)
-                --num;
-            if (num < 0)
-                num += int.MaxValue;
-            this.SeedArray[index1] = num;
-            this.inext = index1;
-            this.inextp = index2;
-            return unchecked((uint)num);
+            if (NextBool())
+            {
+                return unchecked((uint)(Next() ^ 0x80000000));
+            }
+            return unchecked((uint)Next());
+        }
+
+        public override bool NextBool()
+        {
+            return Next() < HalfwayInt;
         }
 
         public override double NextDouble()
         {
-            double generated;
+            double random;
             do
             {
-                generated = unchecked((int)NextUint()) * 4.6566128752458E-10;
-            } while (generated < 0 || 1 <= generated);
+                random = Next() / (1.0 * int.MaxValue);
+            } while (1.0 <= random);
 
-            return generated;
+            return random;
         }
 
         public override float NextFloat()
         {
-            return (float)NextDouble();
+            float random;
+            do
+            {
+                random = Next() * (1f / int.MaxValue);
+            } while (1f <= random);
+
+            return random;
         }
 
         public override IRandom Copy()
         {
             SystemRandom copy = new(InternalState);
-
-            for (int i = 0; i < SeedArray.Length; ++i)
-            {
-                copy.SeedArray[i] = SeedArray[i];
-            }
-
+            Array.Copy(_seedArray, copy._seedArray, _seedArray.Length);
             return copy;
         }
     }

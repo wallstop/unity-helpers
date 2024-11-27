@@ -12,8 +12,12 @@
         {
             TimeSpan timeout = TimeSpan.FromSeconds(1.125);
 
-            UnityEngine.Debug.Log($"| Random | Next | NextFloat | NextDouble |");
-            UnityEngine.Debug.Log($"| ------ | ---- | --------- | ---------- |");
+            UnityEngine.Debug.Log(
+                $"| Random | NextBool | Next | NextUInt | NextFloat | NextDouble | NextUint - Range | "
+            );
+            UnityEngine.Debug.Log(
+                $"| ------ | -------- | ---- | -------- | --------- | ---------- | ---------------- |"
+            );
 
             RunTest(new PcgRandom(), timeout);
             RunTest(new SystemRandom(), timeout);
@@ -26,12 +30,21 @@
         private static void RunTest<T>(T random, TimeSpan timeout)
             where T : IRandom
         {
+            int nextBool = RunNextBool(timeout, random);
             int nextInt = RunNext(timeout, random);
+            int nextUint = RunNextUint(timeout, random);
             int nextFloat = RunNextFloat(timeout, random);
             int nextDouble = RunNextDouble(timeout, random);
+            int nextUintRange = RunNextUintRange(timeout, random);
 
             UnityEngine.Debug.Log(
-                $"| {random.GetType().Name} | {(nextInt / timeout.TotalSeconds):N0} | {(nextFloat / timeout.TotalSeconds):N0} | {(nextDouble / timeout.TotalSeconds):N0} |"
+                $"| {random.GetType().Name} | "
+                    + $"{(nextBool / timeout.TotalSeconds):N0} | "
+                    + $"{(nextInt / timeout.TotalSeconds):N0} | "
+                    + $"{(nextUint / timeout.TotalSeconds):N0} | "
+                    + $"{(nextFloat / timeout.TotalSeconds):N0} | "
+                    + $"{(nextDouble / timeout.TotalSeconds):N0} |"
+                    + $"{(nextUintRange / timeout.TotalSeconds):N0} |"
             );
         }
 
@@ -44,6 +57,48 @@
             do
             {
                 _ = random.Next();
+                ++count;
+            } while (timer.Elapsed < timeout);
+
+            return count;
+        }
+
+        private static int RunNextBool<T>(TimeSpan timeout, T random)
+            where T : IRandom
+        {
+            int count = 0;
+            Stopwatch timer = Stopwatch.StartNew();
+            do
+            {
+                _ = random.NextBool();
+                ++count;
+            } while (timer.Elapsed < timeout);
+
+            return count;
+        }
+
+        private static int RunNextUint<T>(TimeSpan timeout, T random)
+            where T : IRandom
+        {
+            int count = 0;
+            Stopwatch timer = Stopwatch.StartNew();
+            do
+            {
+                _ = random.NextUint();
+                ++count;
+            } while (timer.Elapsed < timeout);
+
+            return count;
+        }
+
+        private static int RunNextUintRange<T>(TimeSpan timeout, T random)
+            where T : IRandom
+        {
+            int count = 0;
+            Stopwatch timer = Stopwatch.StartNew();
+            do
+            {
+                _ = random.NextUint(1_000);
                 ++count;
             } while (timer.Elapsed < timeout);
 

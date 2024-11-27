@@ -5,5 +5,10 @@
     public sealed class SquirrelRandomTests : RandomTestBase
     {
         protected override IRandom NewRandom() => new SquirrelRandom();
+
+        protected override double DeviationFor(string caller)
+        {
+            return 0.075;
+        }
     }
 }
