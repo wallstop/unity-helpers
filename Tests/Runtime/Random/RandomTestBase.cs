@@ -3,6 +3,7 @@
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Runtime.CompilerServices;
     using Core.Extension;
     using Core.Serialization;
     using NUnit.Framework;
@@ -11,7 +12,7 @@
     public abstract class RandomTestBase
     {
         private const int NumGeneratorChecks = 1_000;
-        private const int SampleCount = 12_500_000;
+        private const int SampleCount = 12_750_000;
 
         private readonly int[] _samples = new int[1_000];
 
@@ -30,24 +31,119 @@
         }
 
         [Test]
+        [Parallelizable]
+        public void Bool()
+        {
+            TestAndVerify(random => Convert.ToInt32(random.NextBool()), maxLength: 2);
+        }
+
+        [Test]
+        [Parallelizable]
         public void Int()
         {
             TestAndVerify(random => random.Next(0, _samples.Length));
         }
 
         [Test]
+        [Parallelizable]
+        public void IntRange()
+        {
+            TestAndVerify(random => random.Next(_samples.Length));
+        }
+
+        [Test]
+        [Parallelizable]
+        public void IntDistribution()
+        {
+            TestAndVerify(random =>
+                (int)(random.Next() / ((1.0 * int.MaxValue) / _samples.Length))
+            );
+        }
+
+        [Test]
+        [Parallelizable]
+        public void IntMaxRange()
+        {
+            TestAndVerify(random =>
+                (int)(
+                    (random.Next(int.MinValue, int.MaxValue) + (-1.0 * int.MinValue))
+                    / (1.0 * int.MaxValue - int.MinValue)
+                    * _samples.Length
+                )
+            );
+        }
+
+        [Test]
+        [Parallelizable]
         public void Uint()
         {
             TestAndVerify(random => (int)random.NextUint(0, (uint)_samples.Length));
         }
 
         [Test]
-        public void Short()
+        [Parallelizable]
+        public void UintRange()
         {
-            TestAndVerify(random => random.NextShort(0, (short)_samples.Length));
+            TestAndVerify(random => (int)random.NextUint((uint)_samples.Length));
         }
 
         [Test]
+        [Parallelizable]
+        public void UintDistribution()
+        {
+            TestAndVerify(random =>
+                (int)(random.NextUint() / ((1.0 * uint.MaxValue) / _samples.Length))
+            );
+        }
+
+        [Test]
+        [Parallelizable]
+        public void UintMaxRange()
+        {
+            TestAndVerify(random =>
+                (int)(
+                    (random.NextUint(uint.MinValue, uint.MaxValue) + (1.0 * uint.MinValue))
+                    / (1.0 * uint.MaxValue)
+                    * _samples.Length
+                )
+            );
+        }
+
+        [Test]
+        [Parallelizable]
+        public void Short()
+        {
+            TestAndVerify(
+                random => random.NextShort(0, (short)_samples.Length),
+                maxLength: (short.MaxValue - short.MinValue)
+            );
+        }
+
+        [Test]
+        [Parallelizable]
+        public void ShortRange()
+        {
+            TestAndVerify(
+                random => random.NextShort((short)_samples.Length),
+                maxLength: (short.MaxValue - short.MinValue)
+            );
+        }
+
+        [Test]
+        [Parallelizable]
+        public void ShortMaxRange()
+        {
+            TestAndVerify(random =>
+                (int)(
+                    (random.NextShort(short.MinValue, short.MaxValue) + (-1.0 * short.MinValue))
+                    / (1.0 * short.MaxValue - short.MinValue)
+                    * _samples.Length
+                )
+            );
+        }
+
+        [Test]
+        [Parallelizable]
         public void Byte()
         {
             TestAndVerify(
@@ -61,6 +157,40 @@
         }
 
         [Test]
+        [Parallelizable]
+        public void ByteRange()
+        {
+            TestAndVerify(
+                random =>
+                    random.NextByte(
+                        (byte)(_samples.Length < byte.MaxValue ? _samples.Length : byte.MaxValue)
+                    ),
+                byte.MaxValue
+            );
+        }
+
+        [Test]
+        [Parallelizable]
+        public void ByteMaxRange()
+        {
+            int sampleCount = Math.Min((byte.MaxValue - byte.MinValue), _samples.Length);
+            TestAndVerify(
+                random =>
+                    Math.Clamp(
+                        (int)(
+                            (random.NextByte(byte.MinValue, byte.MaxValue) + (-1.0 * byte.MinValue))
+                            / (1.0 * byte.MaxValue - byte.MinValue)
+                            * sampleCount
+                        ),
+                        0,
+                        sampleCount - 1
+                    ),
+                maxLength: sampleCount
+            );
+        }
+
+        [Test]
+        [Parallelizable]
         public void Float()
         {
             TestAndVerify(random =>
@@ -73,6 +203,44 @@
         }
 
         [Test]
+        [Parallelizable]
+        public void FloatRange()
+        {
+            TestAndVerify(random =>
+                Math.Clamp(
+                    (int)Math.Floor(random.NextFloat(_samples.Length)),
+                    0,
+                    _samples.Length - 1
+                )
+            );
+        }
+
+        [Test]
+        [Parallelizable]
+        public void FloatDistribution()
+        {
+            TestAndVerify(random => (int)(random.NextFloat() * _samples.Length));
+        }
+
+        [Test]
+        [Parallelizable]
+        public void FloatMaxRange()
+        {
+            TestAndVerify(random =>
+                Math.Clamp(
+                    (int)(
+                        (random.NextFloat(float.MinValue, float.MaxValue) + (-1.0 * float.MinValue))
+                        / (1.0 * float.MaxValue - float.MinValue)
+                        * _samples.Length
+                    ),
+                    0,
+                    _samples.Length - 1
+                )
+            );
+        }
+
+        [Test]
+        [Parallelizable]
         public void Double()
         {
             TestAndVerify(random =>
@@ -85,18 +253,94 @@
         }
 
         [Test]
+        [Parallelizable]
+        public void DoubleRange()
+        {
+            TestAndVerify(random =>
+                Math.Clamp(
+                    (int)Math.Floor(random.NextDouble(_samples.Length)),
+                    0,
+                    _samples.Length - 1
+                )
+            );
+        }
+
+        [Test]
+        [Parallelizable]
+        public void DoubleDistribution()
+        {
+            TestAndVerify(random => (int)(random.NextDouble() * _samples.Length));
+        }
+
+        [Test]
+        [Parallelizable]
+        public void DoubleMaxRange()
+        {
+            IRandom random = NewRandom();
+            for (int i = 0; i < SampleCount; ++i)
+            {
+                double value = random.NextDouble(double.MinValue, double.MaxValue);
+                Assert.IsFalse(double.IsNaN(value));
+                Assert.IsFalse(double.IsInfinity(value));
+            }
+        }
+
+        [Test]
+        [Parallelizable]
         public void Long()
         {
             TestAndVerify(random => (int)random.NextLong(0, _samples.Length));
         }
 
         [Test]
+        [Parallelizable]
+        public void LongRange()
+        {
+            TestAndVerify(random => (int)random.NextLong(_samples.Length));
+        }
+
+        [Test]
+        [Parallelizable]
+        public void LongMaxRange()
+        {
+            TestAndVerify(random =>
+                (int)(
+                    (random.NextLong(long.MinValue, long.MaxValue) + (-1.0 * long.MinValue))
+                    / (1.0 * long.MaxValue - long.MinValue)
+                    * _samples.Length
+                )
+            );
+        }
+
+        [Test]
+        [Parallelizable]
         public void Ulong()
         {
             TestAndVerify(random => (int)random.NextUlong(0, (ulong)_samples.Length));
         }
 
         [Test]
+        [Parallelizable]
+        public void UlongRange()
+        {
+            TestAndVerify(random => (int)random.NextUlong((ulong)_samples.Length));
+        }
+
+        [Test]
+        [Parallelizable]
+        public void UlongMaxRange()
+        {
+            TestAndVerify(random =>
+                (int)(
+                    (random.NextUlong(ulong.MinValue, ulong.MaxValue) + (-1.0 * ulong.MinValue))
+                    / (1.0 * ulong.MaxValue - ulong.MinValue)
+                    * _samples.Length
+                )
+            );
+        }
+
+        [Test]
+        [Parallelizable]
         public void Copy()
         {
             IRandom random1 = NewRandom();
@@ -126,6 +370,7 @@
         }
 
         [Test]
+        [Parallelizable]
         public void Json()
         {
             IRandom random = NewRandom();
@@ -143,13 +388,23 @@
             }
         }
 
-        private void TestAndVerify(Func<IRandom, int> sample, int? maxLength = null)
+        protected virtual double DeviationFor(string caller)
+        {
+            return 0.0625;
+        }
+
+        private void TestAndVerify(
+            Func<IRandom, int> sample,
+            int? maxLength = null,
+            [CallerMemberName] string caller = ""
+        )
         {
             IRandom random = NewRandom();
+            int sampleLength = _samples.Length;
             for (int i = 0; i < SampleCount; ++i)
             {
                 int index = sample(random);
-                if (index < 0 || _samples.Length <= index)
+                if (index < 0 || sampleLength <= index)
                 {
                     Assert.Fail("Index {0} out of range", index);
                 }
@@ -159,9 +414,9 @@
                 }
             }
 
-            int sampleLength = Math.Min(_samples.Length, maxLength ?? _samples.Length);
+            sampleLength = Math.Min(sampleLength, maxLength ?? sampleLength);
             double average = SampleCount * 1.0 / sampleLength;
-            double deviationAllowed = average * 0.05;
+            double deviationAllowed = average * DeviationFor(caller);
             List<int> zeroCountIndexes = new();
             List<int> outsideRange = new();
             for (int i = 0; i < sampleLength; i++)

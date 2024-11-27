@@ -37,7 +37,7 @@
 
         public override uint NextUint()
         {
-            return _position = NextUintInternal(_position);
+            return NextUintInternal(ref _position);
         }
 
         // Does not advance the RNG
@@ -51,16 +51,15 @@
             return new SquirrelRandom(InternalState);
         }
 
-        private static uint NextUintInternal(uint seed)
+        private static uint NextUintInternal(ref uint seed)
         {
-            uint result = seed;
-            result *= BitNoise1;
-            result ^= (result >> 8);
-            result += BitNoise2;
-            result ^= (result << 8);
-            result *= BitNoise3;
-            result ^= (result >> 8);
-            return result;
+            seed *= BitNoise1;
+            seed ^= (seed >> 8);
+            seed += BitNoise2;
+            seed ^= (seed << 8);
+            seed *= BitNoise3;
+            seed ^= (seed >> 8);
+            return seed;
         }
 
         // https://youtu.be/LWFzPP8ZbdU?t=2906
