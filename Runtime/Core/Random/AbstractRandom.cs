@@ -366,14 +366,14 @@
             {
                 IReadOnlyList<T> list => NextOf(list),
                 IReadOnlyCollection<T> collection => NextOf(collection),
+                null => throw new ArgumentNullException(nameof(enumerable)),
                 _ => NextOf(enumerable.ToArray()),
             };
         }
 
         public T NextOf<T>(IReadOnlyCollection<T> collection)
         {
-            int count = collection.Count;
-            if (count <= 0)
+            if (collection is not { Count: > 0 })
             {
                 throw new ArgumentException("Collection cannot be empty");
             }
@@ -383,29 +383,27 @@
                 return NextOf(list);
             }
 
-            int index = Next(count);
+            int index = Next(collection.Count);
             return collection.ElementAt(index);
         }
 
         public T NextOf<T>(IReadOnlyList<T> list)
         {
-            if (list == null)
+            if (list is not { Count: > 0 })
             {
                 throw new ArgumentNullException(nameof(list));
             }
+
             /*
                 For small lists, it's much more efficient to simply return one of their elements
                 instead of trying to generate a random number within bounds (which is implemented as a while(true) loop)
              */
-            switch (list.Count)
+            return list.Count switch
             {
-                case 1:
-                    return list[0];
-                case 2:
-                    return NextBool() ? list[0] : list[1];
-                default:
-                    return list[Next(list.Count)];
-            }
+                1 => list[0],
+                2 => NextBool() ? list[0] : list[1],
+                _ => list[Next(list.Count)],
+            };
         }
 
         public T NextEnum<T>()

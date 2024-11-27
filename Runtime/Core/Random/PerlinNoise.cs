@@ -270,7 +270,9 @@
         public static readonly PerlinNoise Instance = new();
 
         private readonly int[] _permutations = new int[DefaultPermutations.Length];
-        private readonly int[] _doubledPermutations = new int[DefaultPermutations.Length * 2]; // Doubled permutation to avoid overflow
+
+        // Doubled permutation to avoid overflow
+        private readonly int[] _doubledPermutations = new int[DefaultPermutations.Length * 2];
 
         public PerlinNoise()
             : this(null) { }
