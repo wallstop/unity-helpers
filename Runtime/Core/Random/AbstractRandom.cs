@@ -55,102 +55,6 @@
             return unchecked((int)(min + NextUint(range)));
         }
 
-        public T Next<T>(IEnumerable<T> enumerable)
-        {
-            if (enumerable is ICollection<T> collection)
-            {
-                return Next(collection);
-            }
-
-            return Next((IReadOnlyList<T>)enumerable.ToList());
-        }
-
-        public T Next<T>(ICollection<T> collection)
-        {
-            int count = collection.Count;
-            if (count <= 0)
-            {
-                throw new ArgumentException("Collection size cannot be less-than or equal-to 0");
-            }
-
-            switch (collection)
-            {
-                case IList<T> list:
-                    return Next(list);
-                case IReadOnlyList<T> readOnlyList:
-                    return Next(readOnlyList);
-            }
-
-            int index = Next(count);
-            int i = 0;
-            foreach (T element in collection)
-            {
-                if (i++ == index)
-                {
-                    return element;
-                }
-            }
-
-            // Should never happen
-            return default;
-        }
-
-        public T Next<T>(IList<T> list)
-        {
-            if (ReferenceEquals(list, null))
-            {
-                throw new ArgumentNullException(nameof(list));
-            }
-
-            /*
-                For small lists, it's much more efficient to simply return one of their elements
-                instead of trying to generate a random number within bounds (which is implemented as a while(true) loop)
-             */
-            switch (list.Count)
-            {
-                case 1:
-                    return list[0];
-                case 2:
-                    return NextBool() ? list[0] : list[1];
-                default:
-                    return list[Next(list.Count)];
-            }
-        }
-
-        private T Next<T>(IReadOnlyList<T> list)
-        {
-            /*
-                For small lists, it's much more efficient to simply return one of their elements
-                instead of trying to generate a random number within bounds (which is implemented as a while(true) loop)
-             */
-            switch (list.Count)
-            {
-                case 1:
-                    return list[0];
-                case 2:
-                    return NextBool() ? list[0] : list[1];
-                default:
-                    return list[Next(list.Count)];
-            }
-        }
-
-        public T Next<T>()
-            where T : struct, Enum
-        {
-            Type enumType = typeof(T);
-            T[] enumValues;
-            if (EnumTypeCache.TryGetValue(enumType, out Array enumArray))
-            {
-                enumValues = (T[])enumArray;
-            }
-            else
-            {
-                enumValues = (T[])Enum.GetValues(enumType);
-            }
-
-            return RandomOf(enumValues);
-        }
-
         // Internal sampler
         public abstract uint NextUint();
 
@@ -212,7 +116,7 @@
             uint lower = NextUint();
             unchecked
             {
-                return (long)((((ulong)upper << 32) | lower) & (0x1UL << 63));
+                return (long)((((ulong)upper << 32) | lower) & 0x7FFFFFFFFFFFFFFF);
             }
         }
 
@@ -275,34 +179,34 @@
 
         public void NextBytes(byte[] buffer)
         {
-            if (ReferenceEquals(buffer, null))
+            if (buffer == null)
             {
                 throw new ArgumentException(nameof(buffer));
             }
 
-            const byte sizeOfInt = sizeof(int); // May differ on some platforms
+            const int sizeOfInt = 4; // May differ on some platforms
 
             // See how many ints we can slap into it.
             int chunks = buffer.Length / sizeOfInt;
-            byte spare = unchecked((byte)(buffer.Length - (chunks * sizeOfInt)));
+            int spare = buffer.Length - chunks * sizeOfInt;
             for (int i = 0; i < chunks; ++i)
             {
-                int offset = i * chunks;
-                int random = Next();
-                buffer[offset] = unchecked((byte)(random & 0xFF000000));
-                buffer[offset + 1] = unchecked((byte)(random & 0x00FF0000));
-                buffer[offset + 2] = unchecked((byte)(random & 0x0000FF00));
+                int offset = i * sizeOfInt;
+                uint random = NextUint();
+                buffer[offset] = unchecked((byte)((random & 0xFF000000) >> 24));
+                buffer[offset + 1] = unchecked((byte)((random & 0x00FF0000) >> 16));
+                buffer[offset + 2] = unchecked((byte)((random & 0x0000FF00) >> 8));
                 buffer[offset + 3] = unchecked((byte)(random & 0x000000FF));
             }
 
+            if (0 < spare)
             {
-                /*
-                    This could be implemented more optimally by generating a single int and
-                    bit shifting along the position, but that is too much for me right now.
-                 */
-                for (byte i = 0; i < spare; ++i)
+                uint spareRandom = NextUint();
+                for (int i = 0; i < spare; ++i)
                 {
-                    buffer[buffer.Length - 1 - i] = unchecked((byte)Next());
+                    buffer[buffer.Length - 1 - i] = unchecked(
+                        (byte)((spareRandom >> i) & 0x000000FF)
+                    );
                 }
             }
         }
@@ -408,7 +312,7 @@
                 x = 2 * NextDouble() - 1;
                 y = 2 * NextDouble() - 1;
                 square = x * x + y * y;
-            } while (square == 0 || 1 < square);
+            } while (square is 0 or > 1);
 
             double fac = Math.Sqrt(-2 * Math.Log(square) / square);
             _cachedGaussian = x * fac;
@@ -454,7 +358,55 @@
             return min + NextFloat(range);
         }
 
-        public T NextCachedEnum<T>()
+        public T NextOf<T>(IEnumerable<T> enumerable)
+        {
+            return enumerable switch
+            {
+                IReadOnlyList<T> list => NextOf(list),
+                IReadOnlyCollection<T> collection => NextOf(collection),
+                _ => NextOf(enumerable.ToArray()),
+            };
+        }
+
+        public T NextOf<T>(IReadOnlyCollection<T> collection)
+        {
+            int count = collection.Count;
+            if (count <= 0)
+            {
+                throw new ArgumentException("Collection cannot be empty");
+            }
+
+            if (collection is IReadOnlyList<T> list)
+            {
+                return NextOf(list);
+            }
+
+            int index = Next(count);
+            return collection.ElementAt(index);
+        }
+
+        public T NextOf<T>(IReadOnlyList<T> list)
+        {
+            if (list == null)
+            {
+                throw new ArgumentNullException(nameof(list));
+            }
+            /*
+                For small lists, it's much more efficient to simply return one of their elements
+                instead of trying to generate a random number within bounds (which is implemented as a while(true) loop)
+             */
+            switch (list.Count)
+            {
+                case 1:
+                    return list[0];
+                case 2:
+                    return NextBool() ? list[0] : list[1];
+                default:
+                    return list[Next(list.Count)];
+            }
+        }
+
+        public T NextEnum<T>()
             where T : struct, Enum
         {
             Type enumType = typeof(T);

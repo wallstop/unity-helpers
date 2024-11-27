@@ -266,7 +266,7 @@
                     return convexHull;
                 }
 
-                Vector3Int nextPoint = random.Next(points);
+                Vector3Int nextPoint = random.NextOf(points);
                 Vector2 currentPointWorldPosition = CellToWorld(currentPoint);
                 Vector2 nextPointWorldPosition = CellToWorld(nextPoint);
                 foreach (Vector3Int point in points)
@@ -389,7 +389,7 @@
                     return convexHull;
                 }
 
-                FastVector3Int nextPoint = random.Next(points);
+                FastVector3Int nextPoint = random.NextOf(points);
                 Vector2 currentPointWorldPosition = CellToWorld(currentPoint);
                 Vector2 nextPointWorldPosition = CellToWorld(nextPoint);
                 foreach (FastVector3Int point in points)

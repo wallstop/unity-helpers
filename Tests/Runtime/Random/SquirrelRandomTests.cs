@@ -6,7 +6,7 @@
     {
         protected override IRandom NewRandom() => new SquirrelRandom();
 
-        protected override double DeviationFor(string caller)
+        protected override double GetDeviationFor(string caller)
         {
             return 0.075;
         }

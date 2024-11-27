@@ -27,10 +27,12 @@
         /// </summary>
         /// <returns>A number within the range [0, uint.MaxValue].</returns>
         uint NextUint();
+
         /// <summary>
         /// </summary>
         /// <returns>A number within the range [0, max).</returns>
         uint NextUint(uint max);
+
         /// <summary>
         /// </summary>
         /// <returns>A number within the range [min, max).</returns>
@@ -45,6 +47,7 @@
         /// </summary>
         /// <returns>A number within the range [0, max).</returns>
         short NextShort(short max);
+
         /// <summary>
         /// </summary>
         /// <returns>A number within the range [min, max).</returns>
@@ -54,10 +57,12 @@
         /// </summary>
         /// <returns>A number within the range [0, byte.MaxValue).</returns>
         byte NextByte();
+
         /// <summary>
         /// </summary>
         /// <returns>A number within the range [0, max).</returns>
         byte NextByte(byte max);
+
         /// <summary>
         /// </summary>
         /// <returns>A number within the range [min, max).</returns>
@@ -67,10 +72,12 @@
         /// </summary>
         /// <returns>A number within the range [0, long.MaxValue).</returns>
         long NextLong();
+
         /// <summary>
         /// </summary>
         /// <returns>A number within the range [0, max).</returns>
         long NextLong(long max);
+
         /// <summary>
         /// </summary>
         /// <returns>A number within the range [min, max).</returns>
@@ -80,10 +87,12 @@
         /// </summary>
         /// <returns>A number within the range [0, ulong.MaxValue).</returns>
         ulong NextUlong();
+
         /// <summary>
         /// </summary>
         /// <returns>A number within the range [0, max).</returns>
         ulong NextUlong(ulong max);
+
         /// <summary>
         /// </summary>
         /// <returns>A number within the range [min, max).</returns>
@@ -100,10 +109,12 @@
         /// </summary>
         /// <returns>A number within the range [0, 1).</returns>
         float NextFloat();
+
         /// <summary>
         /// </summary>
         /// <returns>A number within the range [0, max).</returns>
         float NextFloat(float max);
+
         /// <summary>
         /// </summary>
         /// <returns>A number within the range min, max).</returns>
@@ -113,10 +124,12 @@
         /// </summary>
         /// <returns>A number within the range [0, 1).</returns>
         double NextDouble();
+
         /// <summary>
         /// </summary>
         /// <returns>A number within the range [0, max).</returns>
         double NextDouble(double max);
+
         /// <summary>
         /// </summary>
         /// <returns>A number within the range min, max).</returns>
@@ -127,12 +140,12 @@
         Guid NextGuid();
         KGuid NextKGuid();
 
-        T Next<T>(IEnumerable<T> enumerable);
-        T Next<T>(ICollection<T> collection);
-        T Next<T>(IList<T> list);
+        T NextOf<T>(IEnumerable<T> enumerable);
+        T NextOf<T>(IReadOnlyCollection<T> collection);
+        T NextOf<T>(IReadOnlyList<T> list);
 
-        T Next<T>() where T : struct, Enum;
-        T NextCachedEnum<T>() where T : struct, Enum;
+        T NextEnum<T>()
+            where T : struct, Enum;
 
         float[,] NextNoiseMap(int width, int height, float scale = 2.5f, int octaves = 8);
 
