@@ -152,9 +152,9 @@
         [Parallelizable]
         public void ShortRaw()
         {
-            int sampleLength = GetSampleLength();
+            int sampleLength = GetSampleLength(short.MaxValue);
             TestAndVerify(
-                random => (int)((1.0 * random.NextShort()) / (1.0 * long.MaxValue) * sampleLength),
+                random => (int)((1.0 * random.NextShort()) / (1.0 * short.MaxValue) * sampleLength),
                 maxLength: short.MaxValue
             );
         }
@@ -193,6 +193,17 @@
                         (byte)(_samples.Length < byte.MaxValue ? _samples.Length : byte.MaxValue)
                     ),
                 byte.MaxValue
+            );
+        }
+
+        [Test]
+        [Parallelizable]
+        public void ByteRaw()
+        {
+            int sampleLength = GetSampleLength(byte.MaxValue);
+            TestAndVerify(
+                random => (int)((1.0 * random.NextByte()) / (1.0 * byte.MaxValue) * sampleLength),
+                maxLength: byte.MaxValue
             );
         }
 
