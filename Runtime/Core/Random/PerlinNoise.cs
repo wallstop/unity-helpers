@@ -287,7 +287,7 @@
             }
             for (int i = 0; i < _doubledPermutations.Length; ++i)
             {
-                _doubledPermutations[i] = _permutations[i % 256];
+                _doubledPermutations[i] = _permutations[i % _permutations.Length];
             }
         }
 
