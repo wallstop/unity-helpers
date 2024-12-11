@@ -5,18 +5,26 @@
 namespace UnityHelpers.Core.Extension
 {
     using System;
-    using System.Diagnostics;
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Runtime.CompilerServices;
     using System.Threading;
     using Helper;
     using JetBrains.Annotations;
     using UnityEngine;
+    using Utils;
     using Debug = UnityEngine.Debug;
+    using Object = UnityEngine.Object;
 
     public static class LoggingExtensions
     {
         private static readonly Thread UnityMainThread;
+        private const int LogsPerCacheClean = 5;
 
         private static bool LoggingEnabled = true;
+        private static long _cacheAccessCount;
+
+        private static readonly HashSet<Object> Disabled = new();
 
         static LoggingExtensions()
         {
@@ -32,162 +40,176 @@ namespace UnityHelpers.Core.Extension
 #endif
         }
 
-        public static void EnableLogging(this UnityEngine.Object component)
+        public static void GlobalEnableLogging(this Object component)
         {
             LoggingEnabled = true;
         }
 
-        public static void DisableLogging(this UnityEngine.Object component)
+        public static void GlobalDisableLogging(this Object component)
         {
             LoggingEnabled = false;
         }
 
-        
+        public static void EnableLogging(this Object component)
+        {
+            Disabled.Remove(component);
+        }
+
+        public static void DisableLogging(this Object component)
+        {
+            Disabled.Add(component);
+        }
+
         [StringFormatMethod("message")]
-        public static void Log(this UnityEngine.Object component, string message, params object[] args)
+        public static void Log(this Object component, string message, params object[] args)
         {
 #if ENABLE_UBERLOGGING
-            if (!LoggingEnabled)
-            {
-                return;
-            }
             LogDebug(component, message, args);
 #endif
         }
 
-        
         [StringFormatMethod("message")]
-        public static void LogMethod(this UnityEngine.Object component)
+        public static void LogMethod(this Object component, [CallerMemberName] string caller = "")
         {
 #if ENABLE_UBERLOGGING
-            StackTrace stackTrace = new StackTrace();
-            string methodName = stackTrace.GetFrame(1).GetMethod().Name;
-            LogDebug(component, methodName);
+            LogDebug(component, caller);
 #endif
         }
 
-        
         [StringFormatMethod("message")]
-        public static void LogDebug(this UnityEngine.Object component, string message, params object[] args)
+        public static void LogDebug(this Object component, string message, params object[] args)
         {
 #if ENABLE_UBERLOGGING
-            if (!LoggingEnabled)
-            {
-                return;
-            }
             LogDebug(component, message, null, args);
 #endif
         }
 
-        
         [StringFormatMethod("message")]
-        public static void LogWarn(this UnityEngine.Object component, string message, params object[] args)
+        public static void LogWarn(this Object component, string message, params object[] args)
         {
 #if ENABLE_UBERLOGGING
-            if (!LoggingEnabled)
-            {
-                return;
-            }
             LogWarn(component, message, null, args);
 #endif
         }
 
-        
         [StringFormatMethod("message")]
-        public static void LogError(this UnityEngine.Object component, string message, params object[] args)
+        public static void LogError(this Object component, string message, params object[] args)
         {
 #if ENABLE_UBERLOGGING
-            if (!LoggingEnabled)
-            {
-                return;
-            }
             LogError(component, message, null, args);
 #endif
         }
 
-        
         [StringFormatMethod("message")]
-        public static void Log(this UnityEngine.Object component, string message, Exception e, params object[] args)
+        public static void Log(
+            this Object component,
+            string message,
+            Exception e,
+            params object[] args
+        )
         {
 #if ENABLE_UBERLOGGING
-            if (!LoggingEnabled)
-            {
-                return;
-            }
             LogDebug(component, message, e, args);
 #endif
         }
 
-        
         [StringFormatMethod("message")]
-        public static void LogDebug(this UnityEngine.Object component, string message, Exception e, params object[] args)
+        public static void LogDebug(
+            this Object component,
+            string message,
+            Exception e,
+            params object[] args
+        )
         {
 #if ENABLE_UBERLOGGING
-            if (!LoggingEnabled)
+            if (LoggingAllowed(component))
             {
-                return;
-            }
-            if (Equals(Thread.CurrentThread, UnityMainThread))
-            {
-                Debug.Log(Wrap(component, args.Length != 0 ? string.Format(message, args) : message, e));
+                Debug.Log(
+                    Wrap(component, args.Length != 0 ? string.Format(message, args) : message, e),
+                    component
+                );
             }
 #endif
         }
 
-        
         [StringFormatMethod("message")]
-        public static void LogWarn(this UnityEngine.Object component, string message, Exception e, params object[] args)
+        public static void LogWarn(
+            this Object component,
+            string message,
+            Exception e,
+            params object[] args
+        )
         {
 #if ENABLE_UBERLOGGING
-            if (!LoggingEnabled)
+            if (LoggingAllowed(component))
             {
-                return;
-            }
-            if (Equals(Thread.CurrentThread, UnityMainThread))
-            {
-                Debug.LogWarning(Wrap(component, args.Length != 0 ? string.Format(message, args) : message, e));
+                Debug.LogWarning(
+                    Wrap(component, args.Length != 0 ? string.Format(message, args) : message, e),
+                    component
+                );
             }
 #endif
         }
 
-        
         [StringFormatMethod("message")]
-        public static void LogError(this UnityEngine.Object component, string message, Exception e, params object[] args)
+        public static void LogError(
+            this Object component,
+            string message,
+            Exception e,
+            params object[] args
+        )
         {
 #if ENABLE_UBERLOGGING
-            if (!LoggingEnabled)
+            if (LoggingAllowed(component))
             {
-                return;
-            }
-            if (Equals(Thread.CurrentThread, UnityMainThread))
-            {
-                Debug.LogError(Wrap(component, args.Length != 0 ? string.Format(message, args) : message, e));
+                Debug.LogError(
+                    Wrap(component, args.Length != 0 ? string.Format(message, args) : message, e),
+                    component
+                );
             }
 #endif
         }
 
-        private static string Wrap(UnityEngine.Object component, string message, Exception e)
+        private static bool LoggingAllowed(Object component)
         {
-#if ENABLE_UBERLOGGING
-            float now = Time.time;
-            string componentType = component == null ? "NO_TYPE" : component.GetType().Name;
-            string gameObjectName = "NO_NAME";
-            if (component != null)
+            if (Interlocked.Increment(ref _cacheAccessCount) % LogsPerCacheClean == 0)
             {
-                GameObject owner = component.GetGameObject();
-                if (owner != null)
+                List<Object> buffer = Buffers<Object>.List;
+                buffer.Clear();
+                buffer.AddRange(Disabled);
+                buffer.RemoveAll(element => element != null);
+                if (0 < buffer.Count)
                 {
-                    gameObjectName = owner.name;
+                    Disabled.ExceptWith(buffer);
                 }
             }
 
-            string prepend = $"{now}|{gameObjectName}[{componentType}]|";
-            if (e != null)
+            return LoggingEnabled
+                && Equals(Thread.CurrentThread, UnityMainThread)
+                && !Disabled.Contains(component);
+        }
+
+        private static string Wrap(Object component, string message, Exception e)
+        {
+#if ENABLE_UBERLOGGING
+            float now = Time.time;
+            string componentType;
+            string gameObjectName;
+            if (component != null)
             {
-                return prepend + message + "\n    " + e;
+                componentType = component.GetType().Name;
+                gameObjectName = component.name;
+            }
+            else
+            {
+                componentType = "NO_TYPE";
+                gameObjectName = "NO_NAME";
             }
 
-            return prepend + message;
+            return e != null
+                ? $"{now}|{gameObjectName}[{componentType}]|{message}\n    {e}"
+                : $"{now}|{gameObjectName}[{componentType}]|{message}";
+
 #else
             return string.Empty;
 #endif
