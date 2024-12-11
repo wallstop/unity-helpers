@@ -92,9 +92,9 @@ namespace UnityHelpers.Core.Extension
 
             object ValueFormat(object value)
             {
-                if (value is Object obj && obj != null)
+                if (value is Object obj)
                 {
-                    return obj.name;
+                    return obj != null ? obj.name : null;
                 }
                 return value?.ToString();
             }
