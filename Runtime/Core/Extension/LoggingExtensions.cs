@@ -6,10 +6,9 @@ namespace UnityHelpers.Core.Extension
 {
     using System;
     using System.Collections.Generic;
-    using System.Linq;
+    using System.Reflection;
     using System.Runtime.CompilerServices;
     using System.Threading;
-    using Helper;
     using JetBrains.Annotations;
     using UnityEngine;
     using Utils;
@@ -25,6 +24,8 @@ namespace UnityHelpers.Core.Extension
         private static long _cacheAccessCount;
 
         private static readonly HashSet<Object> Disabled = new();
+        private static readonly Dictionary<Type, FieldInfo[]> FieldCache = new();
+        private static readonly Dictionary<Type, PropertyInfo[]> PropertyCache = new();
 
         static LoggingExtensions()
         {
@@ -58,6 +59,45 @@ namespace UnityHelpers.Core.Extension
         public static void DisableLogging(this Object component)
         {
             Disabled.Add(component);
+        }
+
+        public static string GenericToString(this Object component)
+        {
+            if (component == null)
+            {
+                return "null";
+            }
+
+            Dictionary<string, object> structure = new();
+            Type type = component.GetType();
+            FieldInfo[] fields = FieldCache.GetOrAdd(
+                type,
+                inType => inType.GetFields(BindingFlags.Public | BindingFlags.Instance)
+            );
+            PropertyInfo[] properties = PropertyCache.GetOrAdd(
+                type,
+                inType => inType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            );
+            foreach (FieldInfo field in fields)
+            {
+                structure[field.Name] = ValueFormat(field.GetValue(component));
+            }
+
+            foreach (PropertyInfo property in properties)
+            {
+                structure[property.Name] = ValueFormat(property.GetValue(component));
+            }
+
+            return structure.ToJson();
+
+            object ValueFormat(object value)
+            {
+                if (value is Object obj && obj != null)
+                {
+                    return obj.name;
+                }
+                return value?.ToString();
+            }
         }
 
         [StringFormatMethod("message")]
