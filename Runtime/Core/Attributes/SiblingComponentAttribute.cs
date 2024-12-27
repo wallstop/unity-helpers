@@ -1,12 +1,12 @@
 ﻿namespace UnityHelpers.Core.Attributes
 {
-    using Extension;
-    using JetBrains.Annotations;
     using System;
     using System.Collections;
     using System.Collections.Generic;
     using System.Linq;
     using System.Reflection;
+    using Extension;
+    using JetBrains.Annotations;
     using UnityEngine;
 
     [AttributeUsage(AttributeTargets.Field)]
@@ -28,11 +28,15 @@
                 type =>
                 {
                     FieldInfo[] fields = type.GetFields(
-                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+                    );
                     return fields
-                        .Where(prop => Attribute.IsDefined(prop, typeof(SiblingComponentAttribute)))
+                        .Where(field =>
+                            Attribute.IsDefined(field, typeof(SiblingComponentAttribute))
+                        )
                         .ToArray();
-                });
+                }
+            );
 
             foreach (FieldInfo field in fields)
             {
@@ -46,18 +50,26 @@
                     Component[] siblingComponents = component.GetComponents(siblingComponentType);
                     foundSibling = 0 < siblingComponents.Length;
 
-                    Array correctTypedArray = Array.CreateInstance(siblingComponentType, siblingComponents.Length);
+                    Array correctTypedArray = Array.CreateInstance(
+                        siblingComponentType,
+                        siblingComponents.Length
+                    );
                     Array.Copy(siblingComponents, correctTypedArray, siblingComponents.Length);
                     field.SetValue(component, correctTypedArray);
                 }
-                else if (fieldType.IsGenericType && fieldType.GetGenericTypeDefinition() == typeof(List<>))
+                else if (
+                    fieldType.IsGenericType
+                    && fieldType.GetGenericTypeDefinition() == typeof(List<>)
+                )
                 {
                     siblingComponentType = fieldType.GenericTypeArguments[0];
                     Type constructedListType = typeof(List<>).MakeGenericType(siblingComponentType);
                     IList instance = (IList)Activator.CreateInstance(constructedListType);
 
                     foundSibling = false;
-                    foreach (Component siblingComponent in component.GetComponents(siblingComponentType))
+                    foreach (
+                        Component siblingComponent in component.GetComponents(siblingComponentType)
+                    )
                     {
                         instance.Add(siblingComponent);
                         foundSibling = true;
@@ -67,7 +79,12 @@
                 }
                 else
                 {
-                    if (component.TryGetComponent(siblingComponentType, out Component siblingComponent))
+                    if (
+                        component.TryGetComponent(
+                            siblingComponentType,
+                            out Component siblingComponent
+                        )
+                    )
                     {
                         foundSibling = true;
                         field.SetValue(component, siblingComponent);
@@ -80,8 +97,10 @@
 
                 if (!foundSibling)
                 {
-                    if (field.GetCustomAttributes(typeof(SiblingComponentAttribute), false)[0] is
-                        SiblingComponentAttribute { optional: false } _)
+                    if (
+                        field.GetCustomAttributes(typeof(SiblingComponentAttribute), false)[0]
+                        is SiblingComponentAttribute { optional: false } _
+                    )
                     {
                         component.LogError($"Unable to find sibling component of type {fieldType}");
                     }
