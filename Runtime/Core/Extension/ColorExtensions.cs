@@ -21,15 +21,17 @@
     {
         public static Color GetAverageColor(
             this Sprite sprite,
-            ColorAveragingMethod method = ColorAveragingMethod.LAB
+            ColorAveragingMethod method = ColorAveragingMethod.LAB,
+            float alphaCutoff = 0.01f
         )
         {
-            return GetAverageColor(Enumerables.Of(sprite), method);
+            return GetAverageColor(Enumerables.Of(sprite), method, alphaCutoff);
         }
 
         public static Color GetAverageColor(
             this IEnumerable<Sprite> sprites,
-            ColorAveragingMethod method = ColorAveragingMethod.LAB
+            ColorAveragingMethod method = ColorAveragingMethod.LAB,
+            float alphaCutoff = 0.01f
         )
         {
             return GetAverageColor(
@@ -41,34 +43,36 @@
                     {
                         texture.MakeReadable();
                         Color[] pixels = texture.GetPixels();
-                        return pixels.Where(pixel => pixel.a > 0.01f);
+                        return pixels;
                     }),
-                method
+                method,
+                alphaCutoff
             );
         }
 
         public static Color GetAverageColor(
             this IEnumerable<Color> pixels,
-            ColorAveragingMethod method = ColorAveragingMethod.LAB
+            ColorAveragingMethod method = ColorAveragingMethod.LAB,
+            float alphaCutoff = 0.01f
         )
         {
             switch (method)
             {
                 case ColorAveragingMethod.LAB:
                 {
-                    return AverageInLABSpace(pixels);
+                    return AverageInLABSpace(pixels, alphaCutoff);
                 }
                 case ColorAveragingMethod.HSV:
                 {
-                    return AverageInHSVSpace(pixels);
+                    return AverageInHSVSpace(pixels, alphaCutoff);
                 }
                 case ColorAveragingMethod.Weighted:
                 {
-                    return WeightedRGBAverage(pixels);
+                    return WeightedRGBAverage(pixels, alphaCutoff);
                 }
                 case ColorAveragingMethod.Dominant:
                 {
-                    return GetDominantColor(pixels);
+                    return GetDominantColor(pixels, alphaCutoff);
                 }
                 default:
                 {
@@ -82,9 +86,12 @@
         }
 
         // CIE L*a*b* space averaging - most perceptually accurate
-        private static Color AverageInLABSpace(IEnumerable<Color> pixels)
+        private static Color AverageInLABSpace(IEnumerable<Color> pixels, float alphaCutoff)
         {
-            List<LABColor> labValues = pixels.Select(RGBToLAB).ToList();
+            List<LABColor> labValues = pixels
+                .Where(pixel => pixel.a > alphaCutoff)
+                .Select(RGBToLAB)
+                .ToList();
 
             double avgL = labValues.Average(lab => lab.l);
             double avgA = labValues.Average(lab => lab.a);
@@ -94,14 +101,14 @@
         }
 
         // HSV space averaging - good for preserving vibrant colors
-        private static Color AverageInHSVSpace(IEnumerable<Color> pixels)
+        private static Color AverageInHSVSpace(IEnumerable<Color> pixels, float alphaCutoff)
         {
             float avgH = 0f;
             float avgS = 0f;
             float avgV = 0f;
             int count = 0;
 
-            foreach (Color pixel in pixels)
+            foreach (Color pixel in pixels.Where(pixel => pixel.a > alphaCutoff))
             {
                 Color.RGBToHSV(pixel, out float h, out float s, out float v);
 
@@ -133,7 +140,7 @@
         }
 
         // Weighted RGB averaging using perceived luminance
-        private static Color WeightedRGBAverage(IEnumerable<Color> pixels)
+        private static Color WeightedRGBAverage(IEnumerable<Color> pixels, float alphaCutoff)
         {
             // Use perceived luminance weights
             const float rWeight = 0.299f;
@@ -146,7 +153,7 @@
                 b = 0f,
                 a = 0f;
 
-            foreach (Color pixel in pixels)
+            foreach (Color pixel in pixels.Where(pixel => pixel.a > alphaCutoff))
             {
                 float weight = pixel.r * rWeight + pixel.g * gWeight + pixel.b * bWeight;
                 r += pixel.r * weight;
@@ -168,12 +175,12 @@
         }
 
         // Find dominant color using simple clustering
-        private static Color GetDominantColor(IEnumerable<Color> pixels)
+        private static Color GetDominantColor(IEnumerable<Color> pixels, float alphaCutoff)
         {
             Dictionary<Vector3Int, int> colorBuckets = new();
             const int bucketSize = 32; // Adjust for different precision
 
-            foreach (Color pixel in pixels)
+            foreach (Color pixel in pixels.Where(pixel => pixel.a > alphaCutoff))
             {
                 Vector3Int bucket = new(
                     Mathf.RoundToInt(pixel.r * 255 / bucketSize),

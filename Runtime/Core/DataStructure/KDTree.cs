@@ -6,6 +6,7 @@
     using System.Linq;
     using Extension;
     using UnityEngine;
+    using Utils;
 
     [Serializable]
     public sealed class KDTree<T> : ISpatialTree<T>
@@ -13,7 +14,7 @@
         public delegate float Axis<in V>(V element);
 
         [Serializable]
-        private sealed class KDTreeNode<V>
+        public sealed class KDTreeNode<V>
         {
             public readonly Bounds boundary;
             public readonly KDTreeNode<V> left;
@@ -21,7 +22,13 @@
             public readonly V[] elements;
             public readonly bool isTerminal;
 
-            public KDTreeNode(List<V> elements, Func<V, Vector2> elementTransformer, int bucketSize, bool isXAxis, bool balanced)
+            public KDTreeNode(
+                List<V> elements,
+                Func<V, Vector2> elementTransformer,
+                int bucketSize,
+                bool isXAxis,
+                bool balanced
+            )
             {
                 boundary = elements.Select(elementTransformer).GetBounds() ?? new Bounds();
                 this.elements = elements.ToArray();
@@ -44,21 +51,65 @@
                     elements.Sort(Comparison);
 
                     int cutoff = elements.Count / 2;
-                    left = new KDTreeNode<V>(elements.Take(cutoff).ToList(), elementTransformer, bucketSize, !isXAxis, true);
-                    right = new KDTreeNode<V>(elements.Skip(cutoff).ToList(), elementTransformer, bucketSize, !isXAxis, true);
+                    left = new KDTreeNode<V>(
+                        elements.Take(cutoff).ToList(),
+                        elementTransformer,
+                        bucketSize,
+                        !isXAxis,
+                        true
+                    );
+                    right = new KDTreeNode<V>(
+                        elements.Skip(cutoff).ToList(),
+                        elementTransformer,
+                        bucketSize,
+                        !isXAxis,
+                        true
+                    );
                 }
                 else
                 {
                     Vector2 cutoff = boundary.center;
                     if (isXAxis)
                     {
-                        left = new KDTreeNode<V>(elements.Where(element => elementTransformer(element).x <= cutoff.x).ToList(), elementTransformer, bucketSize, false, false);
-                        right = new KDTreeNode<V>(elements.Where(element => cutoff.x < elementTransformer(element).x).ToList(), elementTransformer, bucketSize, false, false);
+                        left = new KDTreeNode<V>(
+                            elements
+                                .Where(element => elementTransformer(element).x <= cutoff.x)
+                                .ToList(),
+                            elementTransformer,
+                            bucketSize,
+                            false,
+                            false
+                        );
+                        right = new KDTreeNode<V>(
+                            elements
+                                .Where(element => cutoff.x < elementTransformer(element).x)
+                                .ToList(),
+                            elementTransformer,
+                            bucketSize,
+                            false,
+                            false
+                        );
                     }
                     else
                     {
-                        left = new KDTreeNode<V>(elements.Where(element => elementTransformer(element).y <= cutoff.y).ToList(), elementTransformer, bucketSize, true, false);
-                        right = new KDTreeNode<V>(elements.Where(element => cutoff.y < elementTransformer(element).y).ToList(), elementTransformer, bucketSize, true, false);
+                        left = new KDTreeNode<V>(
+                            elements
+                                .Where(element => elementTransformer(element).y <= cutoff.y)
+                                .ToList(),
+                            elementTransformer,
+                            bucketSize,
+                            true,
+                            false
+                        );
+                        right = new KDTreeNode<V>(
+                            elements
+                                .Where(element => cutoff.y < elementTransformer(element).y)
+                                .ToList(),
+                            elementTransformer,
+                            bucketSize,
+                            true,
+                            false
+                        );
                     }
                 }
             }
@@ -74,22 +125,42 @@
         private readonly Func<T, Vector2> _elementTransformer;
         private readonly KDTreeNode<T> _head;
 
-        public KDTree(IEnumerable<T> points, Func<T, Vector2> elementTransformer, int bucketSize = DefaultBucketSize, bool balanced = true)
+        public KDTree(
+            IEnumerable<T> points,
+            Func<T, Vector2> elementTransformer,
+            int bucketSize = DefaultBucketSize,
+            bool balanced = true
+        )
         {
-            _elementTransformer = elementTransformer ?? throw new ArgumentNullException(nameof(elementTransformer));
-            elements = points?.ToImmutableArray() ?? throw new ArgumentNullException(nameof(points));
+            _elementTransformer =
+                elementTransformer ?? throw new ArgumentNullException(nameof(elementTransformer));
+            elements =
+                points?.ToImmutableArray() ?? throw new ArgumentNullException(nameof(points));
             _bounds = elements.Select(elementTransformer).GetBounds() ?? new Bounds();
-            _head = new KDTreeNode<T>(elements.ToList(), elementTransformer, bucketSize: bucketSize, isXAxis:true, balanced: balanced);
+            _head = new KDTreeNode<T>(
+                elements.ToList(),
+                elementTransformer,
+                bucketSize: bucketSize,
+                isXAxis: true,
+                balanced: balanced
+            );
         }
 
         public IEnumerable<T> GetElementsInBounds(Bounds bounds)
+        {
+            Stack<KDTreeNode<T>> buffer = Buffers<KDTreeNode<T>>.Stack;
+            return GetElementsInBounds(bounds, buffer);
+        }
+
+        public IEnumerable<T> GetElementsInBounds(Bounds bounds, Stack<KDTreeNode<T>> nodeBuffer)
         {
             if (!bounds.FastIntersects2D(_bounds))
             {
                 yield break;
             }
 
-            Stack<KDTreeNode<T>> nodesToVisit = new();
+            Stack<KDTreeNode<T>> nodesToVisit = nodeBuffer ?? new Stack<KDTreeNode<T>>();
+            nodesToVisit.Clear();
             nodesToVisit.Push(_head);
 
             while (nodesToVisit.TryPop(out KDTreeNode<T> currentNode))
@@ -131,22 +202,49 @@
             }
         }
 
+        public void GetApproximateNearestNeighbors(
+            Vector2 position,
+            int count,
+            List<T> nearestNeighbors
+        )
+        {
+            Stack<KDTreeNode<T>> nodeBuffer = Buffers<KDTreeNode<T>>.Stack;
+            HashSet<T> nearestNeighborBuffer = Buffers<T>.HashSet;
+            GetApproximateNearestNeighbors(
+                position,
+                count,
+                nearestNeighbors,
+                nodeBuffer,
+                nearestNeighborBuffer
+            );
+        }
+
         // Heavily adapted http://homepage.divms.uiowa.edu/%7Ekvaradar/sp2012/daa/ann.pdf
-        public void GetApproximateNearestNeighbors(Vector2 position, int count, List<T> nearestNeighbors)
+        public void GetApproximateNearestNeighbors(
+            Vector2 position,
+            int count,
+            List<T> nearestNeighbors,
+            Stack<KDTreeNode<T>> nodeBuffer,
+            HashSet<T> nearestNeighborBuffer
+        )
         {
             nearestNeighbors.Clear();
 
             KDTreeNode<T> current = _head;
-            Stack<KDTreeNode<T>> stack = new();
+            Stack<KDTreeNode<T>> stack = nodeBuffer ?? new Stack<KDTreeNode<T>>();
+            stack.Clear();
             stack.Push(_head);
-            HashSet<T> nearestNeighborsSet = new(count);
+            HashSet<T> nearestNeighborsSet = nearestNeighborBuffer ?? new HashSet<T>(count);
+            nearestNeighborsSet.Clear();
 
             while (!current.isTerminal)
             {
                 KDTreeNode<T> left = current.left;
                 KDTreeNode<T> right = current.right;
-                if (((Vector2)left.boundary.center - position).sqrMagnitude <
-                    ((Vector2)right.boundary.center - position).sqrMagnitude)
+                if (
+                    ((Vector2)left.boundary.center - position).sqrMagnitude
+                    < ((Vector2)right.boundary.center - position).sqrMagnitude
+                )
                 {
                     stack.Push(left);
                     current = left;
@@ -177,7 +275,10 @@
             nearestNeighbors.AddRange(nearestNeighborsSet);
             if (count < nearestNeighbors.Count)
             {
-                int NearestComparison(T lhs, T rhs) => (_elementTransformer(lhs) - position).sqrMagnitude.CompareTo((_elementTransformer(rhs) - position).sqrMagnitude);
+                int NearestComparison(T lhs, T rhs) =>
+                    (_elementTransformer(lhs) - position).sqrMagnitude.CompareTo(
+                        (_elementTransformer(rhs) - position).sqrMagnitude
+                    );
                 nearestNeighbors.Sort(NearestComparison);
                 nearestNeighbors.RemoveRange(count, nearestNeighbors.Count - count);
             }

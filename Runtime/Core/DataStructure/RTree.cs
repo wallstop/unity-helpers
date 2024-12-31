@@ -6,19 +6,25 @@
     using System.Linq;
     using Extension;
     using UnityEngine;
+    using Utils;
 
     [Serializable]
     public sealed class RTree<T>
     {
         [Serializable]
-        private sealed class RTreeNode<V>
+        public sealed class RTreeNode<V>
         {
             public readonly Bounds boundary;
-            public readonly RTreeNode<V>[] children;
+            internal readonly RTreeNode<V>[] children;
             public readonly V[] elements;
             public readonly bool isTerminal;
 
-            public RTreeNode(List<V> elements, Func<V, Bounds> elementTransformer, int bucketSize, int branchFactor)
+            public RTreeNode(
+                List<V> elements,
+                Func<V, Bounds> elementTransformer,
+                int bucketSize,
+                int branchFactor
+            )
             {
                 float minX = float.MaxValue;
                 float minY = float.MaxValue;
@@ -35,7 +41,13 @@
                     maxY = Math.Max(maxY, max.y);
                 }
 
-                boundary = elements.Count <= 0 ? new Bounds() : new Bounds(new Vector3(minX + (maxX - minX) / 2, minY + (maxY - minY) / 2), new Vector3(maxX - minX, maxY - minY));
+                boundary =
+                    elements.Count <= 0
+                        ? new Bounds()
+                        : new Bounds(
+                            new Vector3(minX + (maxX - minX) / 2, minY + (maxY - minY) / 2),
+                            new Vector3(maxX - minX, maxY - minY)
+                        );
                 this.elements = elements.ToArray();
                 isTerminal = elements.Count <= bucketSize;
                 if (isTerminal)
@@ -63,21 +75,36 @@
 
                 int XAxis(V lhs, V rhs)
                 {
-                    return elementTransformer(lhs).center.x.CompareTo(elementTransformer(rhs).center.x);
+                    return elementTransformer(lhs)
+                        .center.x.CompareTo(elementTransformer(rhs).center.x);
                 }
 
                 int YAxis(V lhs, V rhs)
                 {
-                    return elementTransformer(lhs).center.y.CompareTo(elementTransformer(rhs).center.y);
+                    return elementTransformer(lhs)
+                        .center.y.CompareTo(elementTransformer(rhs).center.y);
                 }
 
                 elements.Sort(XAxis);
-                foreach (List<V> xSlice in elements.Partition(rectanglesPerPagePerAxis).Select(enumerable => enumerable as List<V> ?? enumerable.ToList()))
+                foreach (
+                    List<V> xSlice in elements
+                        .Partition(rectanglesPerPagePerAxis)
+                        .Select(enumerable => enumerable as List<V> ?? enumerable.ToList())
+                )
                 {
                     xSlice.Sort(YAxis);
-                    foreach (List<V> ySlice in xSlice.Partition(intTargetSize).Select(enumerable => enumerable as List<V> ?? enumerable.ToList()))
+                    foreach (
+                        List<V> ySlice in xSlice
+                            .Partition(intTargetSize)
+                            .Select(enumerable => enumerable as List<V> ?? enumerable.ToList())
+                    )
                     {
-                        RTreeNode<V> node = new(ySlice, elementTransformer, bucketSize, branchFactor);
+                        RTreeNode<V> node = new(
+                            ySlice,
+                            elementTransformer,
+                            bucketSize,
+                            branchFactor
+                        );
                         tempChildren.Add(node);
                     }
                 }
@@ -97,16 +124,30 @@
         private readonly RTreeNode<T> _head;
 
         public RTree(
-            IEnumerable<T> points, Func<T, Bounds> elementTransformer, int bucketSize = DefaultBucketSize,
-            int branchFactor = DefaultBranchFactor)
+            IEnumerable<T> points,
+            Func<T, Bounds> elementTransformer,
+            int bucketSize = DefaultBucketSize,
+            int branchFactor = DefaultBranchFactor
+        )
         {
-            _elementTransformer = elementTransformer ?? throw new ArgumentNullException(nameof(elementTransformer));
-            elements = points?.ToImmutableArray() ?? throw new ArgumentNullException(nameof(points));
+            _elementTransformer =
+                elementTransformer ?? throw new ArgumentNullException(nameof(elementTransformer));
+            elements =
+                points?.ToImmutableArray() ?? throw new ArgumentNullException(nameof(points));
             _bounds = elements.Select(elementTransformer).GetBounds() ?? new Bounds();
-            _head = new RTreeNode<T>(elements.ToList(), elementTransformer, bucketSize, branchFactor);
+            _head = new RTreeNode<T>(
+                elements.ToList(),
+                elementTransformer,
+                bucketSize,
+                branchFactor
+            );
         }
 
-        public IEnumerable<T> GetElementsInRange(Vector2 position, float range, float minimumRange = 0f)
+        public IEnumerable<T> GetElementsInRange(
+            Vector2 position,
+            float range,
+            float minimumRange = 0f
+        )
         {
             Circle area = new(position, range);
             if (0 < minimumRange)
@@ -115,25 +156,10 @@
                 return GetElementsInBounds(
                         new Bounds(
                             new Vector3(position.x, position.y, 0f),
-                            new Vector3(range * 2f, range * 2f, 1f)))
-                    .Where(
-                        element =>
-                        {
-                            Bounds elementBoundary = _elementTransformer(element);
-                            if (!area.Intersects(elementBoundary))
-                            {
-                                return false;
-                            }
-
-                            return !minimumArea.Intersects(elementBoundary);
-                        });
-            }
-            return GetElementsInBounds(
-                    new Bounds(
-                        new Vector3(position.x, position.y, 0f),
-                        new Vector3(range * 2f, range * 2f, 1f)))
-                .Where(
-                    element =>
+                            new Vector3(range * 2f, range * 2f, 1f)
+                        )
+                    )
+                    .Where(element =>
                     {
                         Bounds elementBoundary = _elementTransformer(element);
                         if (!area.Intersects(elementBoundary))
@@ -141,18 +167,42 @@
                             return false;
                         }
 
-                        return true;
+                        return !minimumArea.Intersects(elementBoundary);
                     });
+            }
+            return GetElementsInBounds(
+                    new Bounds(
+                        new Vector3(position.x, position.y, 0f),
+                        new Vector3(range * 2f, range * 2f, 1f)
+                    )
+                )
+                .Where(element =>
+                {
+                    Bounds elementBoundary = _elementTransformer(element);
+                    if (!area.Intersects(elementBoundary))
+                    {
+                        return false;
+                    }
+
+                    return true;
+                });
         }
 
         public IEnumerable<T> GetElementsInBounds(Bounds bounds)
+        {
+            Stack<RTreeNode<T>> nodeBuffer = Buffers<RTreeNode<T>>.Stack;
+            return GetElementsInBounds(bounds, nodeBuffer);
+        }
+
+        public IEnumerable<T> GetElementsInBounds(Bounds bounds, Stack<RTreeNode<T>> nodeBuffer)
         {
             if (!bounds.FastIntersects2D(_bounds))
             {
                 yield break;
             }
 
-            Stack<RTreeNode<T>> nodesToVisit = new();
+            Stack<RTreeNode<T>> nodesToVisit = nodeBuffer ?? new Stack<RTreeNode<T>>();
+            nodeBuffer.Clear();
             nodesToVisit.Push(_head);
 
             while (nodesToVisit.TryPop(out RTreeNode<T> currentNode))
@@ -197,18 +247,45 @@
             }
         }
 
+        public void GetApproximateNearestNeighbors(
+            Vector2 position,
+            int count,
+            List<T> nearestNeighbors
+        )
+        {
+            Stack<RTreeNode<T>> nodeBuffer = Buffers<RTreeNode<T>>.Stack;
+            List<RTreeNode<T>> childrenBuffer = Buffers<RTreeNode<T>>.List;
+            HashSet<T> nearestNeighborBuffer = Buffers<T>.HashSet;
+            GetApproximateNearestNeighbors(
+                position,
+                count,
+                nearestNeighbors,
+                nodeBuffer,
+                childrenBuffer,
+                nearestNeighborBuffer
+            );
+        }
+
         // Heavily adapted http://homepage.divms.uiowa.edu/%7Ekvaradar/sp2012/daa/ann.pdf
-        public void GetApproximateNearestNeighbors(Vector2 position, int count, List<T> nearestNeighbors)
+        public void GetApproximateNearestNeighbors(
+            Vector2 position,
+            int count,
+            List<T> nearestNeighbors,
+            Stack<RTreeNode<T>> nodeBuffer,
+            List<RTreeNode<T>> childrenBuffer,
+            HashSet<T> nearestNeighborsBuffer
+        )
         {
             nearestNeighbors.Clear();
 
             RTreeNode<T> current = _head;
-            Stack<RTreeNode<T>> stack = new();
+            Stack<RTreeNode<T>> stack = nodeBuffer ?? new Stack<RTreeNode<T>>();
+            stack.Clear();
             stack.Push(_head);
-            List<RTreeNode<T>> childrenCopy = new();
-            HashSet<T> nearestNeighborsSet = new(count);
-
-            int Comparison(RTreeNode<T> lhs, RTreeNode<T> rhs) => ((Vector2)lhs.boundary.center - position).sqrMagnitude.CompareTo(((Vector2)rhs.boundary.center - position).sqrMagnitude);
+            List<RTreeNode<T>> childrenCopy = childrenBuffer ?? new List<RTreeNode<T>>();
+            childrenCopy.Clear();
+            HashSet<T> nearestNeighborsSet = nearestNeighborsBuffer ?? new HashSet<T>(count);
+            nearestNeighborsSet.Clear();
 
             while (!current.isTerminal)
             {
@@ -238,10 +315,20 @@
             nearestNeighbors.AddRange(nearestNeighborsSet);
             if (count < nearestNeighbors.Count)
             {
-                int NearestComparison(T lhs, T rhs) => ((Vector2)_elementTransformer(lhs).center - position).sqrMagnitude.CompareTo(((Vector2)_elementTransformer(rhs).center - position).sqrMagnitude);
+                int NearestComparison(T lhs, T rhs) =>
+                    ((Vector2)_elementTransformer(lhs).center - position).sqrMagnitude.CompareTo(
+                        ((Vector2)_elementTransformer(rhs).center - position).sqrMagnitude
+                    );
                 nearestNeighbors.Sort(NearestComparison);
                 nearestNeighbors.RemoveRange(count, nearestNeighbors.Count - count);
             }
+
+            return;
+
+            int Comparison(RTreeNode<T> lhs, RTreeNode<T> rhs) =>
+                ((Vector2)lhs.boundary.center - position).sqrMagnitude.CompareTo(
+                    ((Vector2)rhs.boundary.center - position).sqrMagnitude
+                );
         }
     }
 }
