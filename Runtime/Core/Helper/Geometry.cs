@@ -1,9 +1,26 @@
 ﻿namespace UnityHelpers.Core.Helper
 {
+    using System.Collections.Generic;
+    using System.Linq;
     using UnityEngine;
 
     public static class Geometry
     {
+        public static Rect Accumulate(this IEnumerable<Rect> rects)
+        {
+            return rects.Aggregate(
+                (accumulated, next) =>
+                    new Rect(
+                        Mathf.Min(accumulated.xMin, next.xMin),
+                        Mathf.Min(accumulated.yMin, next.yMin),
+                        Mathf.Max(accumulated.xMax, next.xMax)
+                            - Mathf.Min(accumulated.xMin, next.xMin),
+                        Mathf.Max(accumulated.yMax, next.yMax)
+                            - Mathf.Min(accumulated.yMin, next.yMin)
+                    )
+            );
+        }
+
         //Where is p in relation to a-b
         // < 0 -> to the right
         // = 0 -> on the line

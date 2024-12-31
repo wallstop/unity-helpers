@@ -14,6 +14,16 @@
 
     public static class UnityExtensions
     {
+        public static Vector2 GetCenter(this GameObject gameObject)
+        {
+            if (gameObject.TryGetComponent(out CenterPointOffset centerPointOffset))
+            {
+                return centerPointOffset.CenterPoint;
+            }
+
+            return gameObject.transform.position;
+        }
+
         public static Bounds Bounds(this Rect rect)
         {
             return new Bounds(rect.center, rect.size);

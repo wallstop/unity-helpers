@@ -25,6 +25,9 @@
             RunTest(new XorShiftRandom(), timeout);
             RunTest(new DotNetRandom(), timeout);
             RunTest(new WyRandom(), timeout);
+            RunTest(new SplitMix64(), timeout);
+            RunTest(new RomuDuo(), timeout);
+            RunTest(new XorShiroRandom(), timeout);
         }
 
         private static void RunTest<T>(T random, TimeSpan timeout)

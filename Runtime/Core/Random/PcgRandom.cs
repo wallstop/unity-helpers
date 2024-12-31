@@ -17,6 +17,8 @@
     {
         public static IRandom Instance => ThreadLocalRandom<PcgRandom>.Instance;
 
+        public override RandomState InternalState => new(_state, _increment, _cachedGaussian);
+
         internal readonly ulong _increment;
 
         internal ulong _state;
@@ -52,8 +54,6 @@
             _state = unchecked((ulong)seed);
             _increment = NextUlong();
         }
-
-        public override RandomState InternalState => new(_state, _increment, _cachedGaussian);
 
         public override uint NextUint()
         {
