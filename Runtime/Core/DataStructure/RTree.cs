@@ -73,18 +73,6 @@
                 double slicesPerAxis = Math.Sqrt(branchFactor);
                 int rectanglesPerPagePerAxis = (int)(slicesPerAxis * targetSize);
 
-                int XAxis(V lhs, V rhs)
-                {
-                    return elementTransformer(lhs)
-                        .center.x.CompareTo(elementTransformer(rhs).center.x);
-                }
-
-                int YAxis(V lhs, V rhs)
-                {
-                    return elementTransformer(lhs)
-                        .center.y.CompareTo(elementTransformer(rhs).center.y);
-                }
-
                 elements.Sort(XAxis);
                 foreach (
                     List<V> xSlice in elements
@@ -110,6 +98,19 @@
                 }
 
                 children = tempChildren.ToArray();
+                return;
+
+                int XAxis(V lhs, V rhs)
+                {
+                    return elementTransformer(lhs)
+                        .center.x.CompareTo(elementTransformer(rhs).center.x);
+                }
+
+                int YAxis(V lhs, V rhs)
+                {
+                    return elementTransformer(lhs)
+                        .center.y.CompareTo(elementTransformer(rhs).center.y);
+                }
             }
         }
 
@@ -315,10 +316,6 @@
             nearestNeighbors.AddRange(nearestNeighborsSet);
             if (count < nearestNeighbors.Count)
             {
-                int NearestComparison(T lhs, T rhs) =>
-                    ((Vector2)_elementTransformer(lhs).center - position).sqrMagnitude.CompareTo(
-                        ((Vector2)_elementTransformer(rhs).center - position).sqrMagnitude
-                    );
                 nearestNeighbors.Sort(NearestComparison);
                 nearestNeighbors.RemoveRange(count, nearestNeighbors.Count - count);
             }
@@ -328,6 +325,11 @@
             int Comparison(RTreeNode<T> lhs, RTreeNode<T> rhs) =>
                 ((Vector2)lhs.boundary.center - position).sqrMagnitude.CompareTo(
                     ((Vector2)rhs.boundary.center - position).sqrMagnitude
+                );
+
+            int NearestComparison(T lhs, T rhs) =>
+                ((Vector2)_elementTransformer(lhs).center - position).sqrMagnitude.CompareTo(
+                    ((Vector2)_elementTransformer(rhs).center - position).sqrMagnitude
                 );
         }
     }

@@ -275,13 +275,16 @@
             nearestNeighbors.AddRange(nearestNeighborsSet);
             if (count < nearestNeighbors.Count)
             {
-                int NearestComparison(T lhs, T rhs) =>
-                    (_elementTransformer(lhs) - position).sqrMagnitude.CompareTo(
-                        (_elementTransformer(rhs) - position).sqrMagnitude
-                    );
                 nearestNeighbors.Sort(NearestComparison);
                 nearestNeighbors.RemoveRange(count, nearestNeighbors.Count - count);
             }
+
+            return;
+
+            int NearestComparison(T lhs, T rhs) =>
+                (_elementTransformer(lhs) - position).sqrMagnitude.CompareTo(
+                    (_elementTransformer(rhs) - position).sqrMagnitude
+                );
         }
     }
 }

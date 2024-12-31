@@ -214,9 +214,9 @@
             Vector2 position,
             int count,
             List<T> nearestNeighbors,
-            Stack<QuadTreeNode<T>> nodeBuffer = null,
-            List<QuadTreeNode<T>> childrenBuffer = null,
-            HashSet<T> nearestNeighborBuffer = null
+            Stack<QuadTreeNode<T>> nodeBuffer,
+            List<QuadTreeNode<T>> childrenBuffer,
+            HashSet<T> nearestNeighborBuffer
         )
         {
             nearestNeighbors.Clear();
@@ -259,10 +259,6 @@
             nearestNeighbors.AddRange(nearestNeighborsSet);
             if (count < nearestNeighbors.Count)
             {
-                int NearestComparison(T lhs, T rhs) =>
-                    (_elementTransformer(lhs) - position).sqrMagnitude.CompareTo(
-                        (_elementTransformer(rhs) - position).sqrMagnitude
-                    );
                 nearestNeighbors.Sort(NearestComparison);
                 nearestNeighbors.RemoveRange(count, nearestNeighbors.Count - count);
             }
@@ -272,6 +268,11 @@
             int Comparison(QuadTreeNode<T> lhs, QuadTreeNode<T> rhs) =>
                 ((Vector2)lhs.boundary.center - position).sqrMagnitude.CompareTo(
                     ((Vector2)rhs.boundary.center - position).sqrMagnitude
+                );
+
+            int NearestComparison(T lhs, T rhs) =>
+                (_elementTransformer(lhs) - position).sqrMagnitude.CompareTo(
+                    (_elementTransformer(rhs) - position).sqrMagnitude
                 );
         }
     }
