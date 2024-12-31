@@ -1,2 +1,2 @@
 # A Grab-Bag
-Various Unity Helpers. Includes deterministic randoms including a PCGRandom implementation,
+Various Unity Helpers. Includes many deterministic, seedable random number generators.
