@@ -551,6 +551,26 @@
 
         [Test]
         [Parallelizable]
+        public void NextEnumerableExcept()
+        {
+            IRandom random = NewRandom();
+            for (int i = 0; i < NormalIterations; ++i)
+            {
+                TestValues exception = random.NextEnum<TestValues>();
+                HashSet<TestValues> selected = Enum.GetValues(typeof(TestValues))
+                    .OfType<TestValues>()
+                    .Shuffled(random)
+                    .Skip(3)
+                    .ToHashSet();
+
+                TestValues value = random.NextOfExcept(selected.Shuffled(random), exception);
+                Assert.IsTrue(selected.Contains(value));
+                Assert.AreNotEqual(value, exception);
+            }
+        }
+
+        [Test]
+        [Parallelizable]
         public void NextArray()
         {
             IRandom random = NewRandom();
@@ -634,6 +654,23 @@
             }
 
             Assert.AreEqual(Enum.GetValues(typeof(TestValues)).Length, seenEnums.Count);
+        }
+
+        [Test]
+        [Parallelizable]
+        public void NextEnumExcept()
+        {
+            IRandom random = NewRandom();
+            HashSet<TestValues> seenEnums = new();
+            for (int i = 0; i < NormalIterations; ++i)
+            {
+                TestValues value = random.NextEnumExcept(TestValues.Value8, TestValues.Value9);
+                _ = seenEnums.Add(value);
+            }
+
+            Assert.AreEqual(Enum.GetValues(typeof(TestValues)).Length - 2, seenEnums.Count);
+            Assert.IsFalse(seenEnums.Contains(TestValues.Value8));
+            Assert.IsFalse(seenEnums.Contains(TestValues.Value9));
         }
 
         [Test]

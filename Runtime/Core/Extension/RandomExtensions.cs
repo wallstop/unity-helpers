@@ -1,5 +1,8 @@
 ﻿namespace UnityHelpers.Core.Extension
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
     using Helper;
     using Random;
     using UnityEngine;
@@ -9,6 +12,33 @@
         public static Vector2 NextVector2(this IRandom random, float amplitude)
         {
             return random.NextVector2(-amplitude, amplitude);
+        }
+
+        public static T NextEnumExcept<T>(this IRandom random, params T[] values)
+            where T : struct, Enum
+        {
+            T value;
+            do
+            {
+                value = random.NextEnum<T>();
+            } while (values.Contains(value));
+
+            return value;
+        }
+
+        public static T NextOfExcept<T>(
+            this IRandom random,
+            IEnumerable<T> values,
+            params T[] exceptions
+        )
+        {
+            T value;
+            do
+            {
+                value = random.NextOf(values);
+            } while (exceptions.Contains(value));
+
+            return value;
         }
 
         public static Vector2 NextVector2(
