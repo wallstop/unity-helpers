@@ -14,14 +14,14 @@
             return random.NextVector2(-amplitude, amplitude);
         }
 
-        public static T NextEnumExcept<T>(this IRandom random, params T[] values)
+        public static T NextEnumExcept<T>(this IRandom random, params T[] exceptions)
             where T : struct, Enum
         {
             T value;
             do
             {
                 value = random.NextEnum<T>();
-            } while (values.Contains(value));
+            } while (0 <= Array.IndexOf(exceptions, value));
 
             return value;
         }
@@ -33,10 +33,38 @@
         )
         {
             T value;
-            do
+
+            switch (values)
             {
-                value = random.NextOf(values);
-            } while (exceptions.Contains(value));
+                case IReadOnlyList<T> list:
+                {
+                    do
+                    {
+                        value = random.NextOf(list);
+                    } while (0 <= Array.IndexOf(exceptions, value));
+
+                    break;
+                }
+                case IReadOnlyCollection<T> collection:
+                {
+                    do
+                    {
+                        value = random.NextOf(collection);
+                    } while (0 <= Array.IndexOf(exceptions, value));
+
+                    break;
+                }
+                default:
+                {
+                    T[] input = values.ToArray();
+                    do
+                    {
+                        value = random.NextOf(input);
+                    } while (0 <= Array.IndexOf(exceptions, value));
+
+                    break;
+                }
+            }
 
             return value;
         }
