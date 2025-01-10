@@ -417,16 +417,40 @@
 
         public Guid NextGuid()
         {
-            byte[] guidBytes = new byte[16];
-            NextBytes(guidBytes);
-            return new Guid(guidBytes);
+            return new Guid(GenerateGuidBytes());
         }
 
         public KGuid NextKGuid()
         {
+            return new KGuid(GenerateGuidBytes());
+        }
+
+        private byte[] GenerateGuidBytes()
+        {
             byte[] guidBytes = new byte[16];
             NextBytes(guidBytes);
-            return new KGuid(guidBytes);
+            SetUuidV4Bits(guidBytes);
+            return guidBytes;
+        }
+
+        public static void SetUuidV4Bits(byte[] bytes)
+        {
+            // Set version to 4 (bits 6-7 of byte 6)
+
+            // Clear the version bits first (clear bits 4-7)
+            byte value = bytes[6];
+            value &= 0x0f;
+            // Set version 4 (set bits 4-7 to 0100)
+            value |= 0x40;
+            bytes[6] = value;
+
+            // Set variant to RFC 4122 (bits 6-7 of byte 8)
+            value = bytes[8];
+            // Clear the variant bits first (clear bits 6-7)
+            value &= 0x3f;
+            // Set RFC 4122 variant (set bits 6-7 to 10)
+            value |= 0x80;
+            bytes[8] = value;
         }
 
         // Advances the RNG
