@@ -3,19 +3,22 @@
     using System;
     using System.Collections.Generic;
     using UnityEngine;
+    using UnityEngine.Serialization;
     using UnityEngine.UI;
 
     [DisallowMultipleComponent]
     public sealed class MatchColliderToSprite : MonoBehaviour
     {
-        [SerializeField]
-        private SpriteRenderer _spriteRenderer;
+        public Func<Sprite> spriteOverrideProducer;
 
-        [SerializeField]
-        private Image _image;
+        [FormerlySerializedAs("_spriteRenderer")]
+        public SpriteRenderer spriteRenderer;
 
-        [SerializeField]
-        private PolygonCollider2D _collider;
+        [FormerlySerializedAs("_image")]
+        public Image image;
+
+        [FormerlySerializedAs("_collider")]
+        public PolygonCollider2D polygonCollider;
 
         private Sprite _lastHandled;
 
@@ -26,12 +29,17 @@
 
         private void Update()
         {
-            if (_spriteRenderer != null && _lastHandled == _spriteRenderer.sprite)
+            if (spriteOverrideProducer != null && _lastHandled == spriteOverrideProducer())
             {
                 return;
             }
 
-            if (_image != null && _lastHandled == _image.sprite)
+            if (spriteRenderer != null && _lastHandled == spriteRenderer.sprite)
+            {
+                return;
+            }
+
+            if (image != null && _lastHandled == image.sprite)
             {
                 return;
             }
@@ -41,41 +49,45 @@
 
         public void OnValidate()
         {
-            Sprite sprite;
-            if (_spriteRenderer != null || TryGetComponent(out _spriteRenderer))
+            if (polygonCollider == null && !TryGetComponent(out polygonCollider))
             {
-                sprite = _spriteRenderer.sprite;
+                return;
             }
-            else if (_image != null || TryGetComponent(out _image))
+
+            Sprite sprite;
+            if (spriteOverrideProducer != null)
             {
-                sprite = _image.sprite;
+                sprite = spriteOverrideProducer();
+            }
+            else if (spriteRenderer != null || TryGetComponent(out spriteRenderer))
+            {
+                sprite = spriteRenderer.sprite;
+            }
+            else if (image != null || TryGetComponent(out image))
+            {
+                sprite = image.sprite;
             }
             else
             {
                 sprite = null;
             }
 
-            if (_collider == null || !TryGetComponent(out _collider))
-            {
-                return;
-            }
-
             _lastHandled = sprite;
-            _collider.points = Array.Empty<Vector2>();
+            polygonCollider.points = Array.Empty<Vector2>();
             if (_lastHandled == null)
             {
-                _collider.pathCount = 0;
+                polygonCollider.pathCount = 0;
                 return;
             }
 
             int physicsShapes = _lastHandled.GetPhysicsShapeCount();
-            _collider.pathCount = physicsShapes;
+            polygonCollider.pathCount = physicsShapes;
             List<Vector2> buffer = Buffers<Vector2>.List;
             for (int i = 0; i < physicsShapes; ++i)
             {
                 buffer.Clear();
                 _ = _lastHandled.GetPhysicsShape(i, buffer);
-                _collider.SetPath(i, buffer);
+                polygonCollider.SetPath(i, buffer);
             }
         }
     }
