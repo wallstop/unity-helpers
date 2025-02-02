@@ -1,4 +1,4 @@
-﻿namespace Editor
+﻿namespace UnityHelpers.Editor
 {
 #if UNITY_EDITOR
     using System;
