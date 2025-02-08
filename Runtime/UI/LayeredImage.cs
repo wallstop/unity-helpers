@@ -248,8 +248,8 @@
                                 return;
                             }
 
-                            int textureX = offsetX + x + spriteX;
-                            int textureY = offsetY + y + spriteY;
+                            int textureX = (-1 * minX) + offsetX + x + spriteX;
+                            int textureY = (-1 * minY) + offsetY + y + spriteY;
                             int index = textureY * width + textureX;
 
                             if (index < 0 || pixels.Length <= index)
