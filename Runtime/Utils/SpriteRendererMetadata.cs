@@ -2,8 +2,8 @@
 {
     using System.Collections.Generic;
     using System.Linq;
-    using UnityEngine;
     using Core.Attributes;
+    using UnityEngine;
 
     /// <summary>
     ///     Keeps stack-like track of Colors and Materials of SpriteRenderers
@@ -80,13 +80,26 @@
             _spriteRenderer.color = CurrentColor;
         }
 
+        public bool TryGetColor(Component component, out Color color)
+        {
+            int index = _colorStack.FindIndex(value => value.component == component);
+            if (index < 0)
+            {
+                color = default;
+                return false;
+            }
+
+            color = _colorStack[index].color;
+            return true;
+        }
+
         /// <summary>
         ///     Inserts a material as "first in the queue".
         /// </summary>
         /// <param name="component">Component that owns the material.</param>
         /// <param name="material">Material to use.</param>
         /// <param name="force">If true, overrides the enable check.</param>
-        /// <returns>The instanced material, if possible.</returns> 
+        /// <returns>The instanced material, if possible.</returns>
         public Material PushMaterial(Component component, Material material, bool force = false)
         {
             if (component == this)
@@ -171,6 +184,18 @@
             _materialStack[^1] = (currentComponent, instanced);
         }
 
+        public bool TryGetMaterial(Component component, out Material material)
+        {
+            int index = _materialStack.FindIndex(value => value.component == component);
+            if (index < 0)
+            {
+                material = default;
+                return false;
+            }
+            material = _materialStack[index].material;
+            return true;
+        }
+
         private void Awake()
         {
             if (_spriteRenderer == null)
@@ -195,7 +220,10 @@
 
             _colorStack.Clear();
             _colorStack.Add(_colorStackCache[0]);
-            List<(Component component, Color color)> colorBuffer = Buffers<(Component component, Color color)>.List;
+            List<(Component component, Color color)> colorBuffer = Buffers<(
+                Component component,
+                Color color
+            )>.List;
             colorBuffer.Clear();
             colorBuffer.AddRange(_colorStackCache);
             for (int i = 1; i < colorBuffer.Count; ++i)
@@ -206,8 +234,10 @@
 
             _materialStack.Clear();
             _materialStack.Add(_materialStackCache[0]);
-            List<(Component component, Material material)> materialBuffer =
-                Buffers<(Component component, Material material)>.List;
+            List<(Component component, Material material)> materialBuffer = Buffers<(
+                Component component,
+                Material material
+            )>.List;
             materialBuffer.Clear();
             materialBuffer.AddRange(_materialStackCache);
             for (int i = 1; i < materialBuffer.Count; ++i)
@@ -219,7 +249,10 @@
 
         private void OnDisable()
         {
-            List<(Component component, Color color)> colorBuffer = Buffers<(Component component, Color color)>.List;
+            List<(Component component, Color color)> colorBuffer = Buffers<(
+                Component component,
+                Color color
+            )>.List;
             colorBuffer.Clear();
             colorBuffer.AddRange(_colorStack);
             for (int i = colorBuffer.Count - 1; 1 <= i; --i)
@@ -230,8 +263,10 @@
             _colorStackCache.Clear();
             _colorStackCache.AddRange(colorBuffer);
 
-            List<(Component component, Material material)> materialBuffer =
-                Buffers<(Component component, Material material)>.List;
+            List<(Component component, Material material)> materialBuffer = Buffers<(
+                Component component,
+                Material material
+            )>.List;
             materialBuffer.Clear();
             materialBuffer.AddRange(_materialStack);
 
@@ -251,10 +286,12 @@
                 return;
             }
 
-            _ = _colorStack.RemoveAll(
-                existingComponent => existingComponent.component == component || existingComponent.component == null);
-            _ = _colorStackCache.RemoveAll(
-                existingComponent => existingComponent.component == component || existingComponent.component == null);
+            _ = _colorStack.RemoveAll(existingComponent =>
+                existingComponent.component == component || existingComponent.component == null
+            );
+            _ = _colorStackCache.RemoveAll(existingComponent =>
+                existingComponent.component == component || existingComponent.component == null
+            );
         }
 
         private void RemoveMaterial(Component component)
@@ -264,10 +301,12 @@
                 return;
             }
 
-            _ = _materialStack.RemoveAll(
-                existingComponent => existingComponent.component == component || existingComponent.component == null);
-            _ = _materialStackCache.RemoveAll(
-                existingComponent => existingComponent.component == component || existingComponent.component == null);
+            _ = _materialStack.RemoveAll(existingComponent =>
+                existingComponent.component == component || existingComponent.component == null
+            );
+            _ = _materialStackCache.RemoveAll(existingComponent =>
+                existingComponent.component == component || existingComponent.component == null
+            );
         }
     }
 }
