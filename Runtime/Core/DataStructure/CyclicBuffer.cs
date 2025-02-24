@@ -10,6 +10,8 @@
     public sealed class CyclicBuffer<T> : IReadOnlyList<T>
     {
         public int Count { get; private set; }
+        public bool IsReadOnly => false;
+
         public readonly int capacity;
 
         private readonly List<T> _buffer;
@@ -88,28 +90,24 @@
             /* Simply reset state */
             Count = 0;
             _position = 0;
+            _buffer.Clear();
         }
 
-        public bool Peek(out T value)
+        public bool Contains(T item)
         {
-            const int firstIndex = 0;
-            if (InBounds(firstIndex))
-            {
-                value = _buffer[AdjustedIndexFor(firstIndex)];
-                return true;
-            }
-
-            value = default;
-            return false;
+            return _buffer.Contains(item);
         }
 
         private int AdjustedIndexFor(int index)
         {
-            if (index < _buffer.Count)
+            long longCapacity = capacity;
+            unchecked
             {
-                return index;
+                int adjustedIndex = (int)(
+                    (_position - 1L + longCapacity - (_buffer.Count - 1 - index)) % longCapacity
+                );
+                return adjustedIndex;
             }
-            return (_position - 1 + capacity - index) % capacity;
         }
 
         private void BoundsCheck(int index)

@@ -26,6 +26,28 @@
         }
 
         [Test]
+        public void CapacityInitializedOk()
+        {
+            for (int i = 0; i < NumTries; i++)
+            {
+                int capacity = PRNG.Instance.Next(1, int.MaxValue);
+                CyclicBuffer<int> buffer = new(capacity);
+                Assert.AreEqual(capacity, buffer.capacity);
+            }
+        }
+
+        [Test]
+        public void CountInitializedOk()
+        {
+            for (int i = 0; i < NumTries; i++)
+            {
+                int capacity = PRNG.Instance.Next(1, int.MaxValue);
+                CyclicBuffer<int> buffer = new(capacity);
+                Assert.AreEqual(0, buffer.Count);
+            }
+        }
+
+        [Test]
         public void ZeroCapacityOk()
         {
             CyclicBuffer<int> buffer = new(0);
@@ -49,7 +71,14 @@
                 int value = PRNG.Instance.Next();
                 buffer.Add(value);
                 expected.Add(value);
-                CollectionAssert.AreEquivalent(expected, buffer);
+                if (!expected.SequenceEqual(buffer))
+                {
+                    Assert.Fail(
+                        $"Failure at iteration {i}, capacity={buffer.capacity}, "
+                            + $"capacityMultiplier={CapacityMultiplier}\n"
+                            + $"Expected: [{string.Join(",", expected)}], Actual: [{string.Join(",", buffer)}]"
+                    );
+                }
             }
         }
 
@@ -69,9 +98,57 @@
         }
 
         [Test]
+        public void InitialElementsVariableSize()
+        {
+            for (int i = 0; i < NumTries; ++i)
+            {
+                int capacity = PRNG.Instance.Next(100, 1_000);
+                int[] elements = Enumerable
+                    .Range(0, (int)(capacity * PRNG.Instance.NextFloat(0.5f, 1.5f)))
+                    .Select(_ => PRNG.Instance.Next())
+                    .ToArray();
+                CyclicBuffer<int> buffer = new(capacity, elements);
+                if (capacity < elements.Length)
+                {
+                    Assert.IsTrue(elements.Skip(elements.Length - capacity).SequenceEqual(buffer));
+                }
+                else
+                {
+                    Assert.IsTrue(elements.SequenceEqual(buffer));
+                }
+            }
+        }
+
+        [Test]
+        public void InitialElementsSizeSameAsCapacity()
+        {
+            for (int i = 0; i < NumTries; ++i)
+            {
+                int capacity = PRNG.Instance.Next(100, 1_000);
+                int[] elements = Enumerable
+                    .Range(0, capacity)
+                    .Select(_ => PRNG.Instance.Next())
+                    .ToArray();
+                CyclicBuffer<int> buffer = new(capacity, elements);
+                Assert.IsTrue(elements.SequenceEqual(buffer));
+            }
+        }
+
+        [Test]
+        public void InitialElementsEmptyInput()
+        {
+            for (int i = 0; i < NumTries; ++i)
+            {
+                int capacity = PRNG.Instance.Next(100, 1_000);
+                CyclicBuffer<int> buffer = new(capacity, Array.Empty<int>());
+                Assert.IsTrue(Array.Empty<int>().SequenceEqual(buffer));
+            }
+        }
+
+        [Test]
         public void NormalAndWrappingBehavior()
         {
-            List<int> expected = new();
+            LinkedList<int> expected = new();
             for (int i = 0; i < NumTries; ++i)
             {
                 int capacity = PRNG.Instance.Next(100, 1_000);
@@ -81,20 +158,55 @@
                 for (int j = 0; j < capacity * CapacityMultiplier; ++j)
                 {
                     int newValue = PRNG.Instance.Next();
-                    if (capacity <= j)
+                    expected.AddLast(newValue);
+                    while (capacity < expected.Count)
                     {
-                        expected[j % capacity] = newValue;
-                    }
-                    else
-                    {
-                        expected.Add(newValue);
+                        expected.RemoveFirst();
                     }
                     buffer.Add(newValue);
-                    Assert.IsTrue(
-                        expected.SequenceEqual(buffer),
-                        $"Failure at iteration {i}, j={j}, capacity={capacity}, capacityMultiplier={CapacityMultiplier}"
-                    );
+                    Assert.AreEqual(expected.Count, buffer.Count);
+                    if (!expected.SequenceEqual(buffer))
+                    {
+                        Assert.Fail(
+                            $"Failure at iteration {i}, j={j}, capacity={buffer.capacity}, "
+                                + $"capacityMultiplier={CapacityMultiplier}\n"
+                                + $"Expected: [{string.Join(",", expected)}], Actual: [{string.Join(",", buffer)}]"
+                        );
+                    }
                 }
+
+                foreach (int item in expected)
+                {
+                    Assert.IsTrue(buffer.Contains(item));
+                }
+
+                for (int j = 0; j < NumTries; ++j)
+                {
+                    Assert.IsFalse(buffer.Contains(PRNG.Instance.Next(int.MinValue, -1)));
+                }
+            }
+        }
+
+        [Test]
+        public void ClearOk()
+        {
+            for (int i = 0; i < NumTries; ++i)
+            {
+                int capacity = PRNG.Instance.Next(100, 1_000);
+                CyclicBuffer<int> buffer = new(capacity);
+                float fillPercent = PRNG.Instance.NextFloat(0.5f, 1.5f);
+                for (int j = 0; j < capacity * fillPercent; ++j)
+                {
+                    buffer.Add(PRNG.Instance.Next());
+                }
+
+                Assert.AreNotEqual(0, buffer.Count);
+                Assert.IsFalse(Array.Empty<int>().SequenceEqual(buffer));
+                buffer.Clear();
+
+                Assert.AreEqual(0, buffer.Count);
+                Assert.AreEqual(capacity, buffer.capacity);
+                Assert.IsTrue(Array.Empty<int>().SequenceEqual(buffer));
             }
         }
     }

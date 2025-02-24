@@ -7,6 +7,7 @@
         Used to cache strings, meant to be used in place of strings as keys for when a Dictionary
         has a known set of values
      */
+    [Serializable]
     public sealed class StringWrapper : IEquatable<StringWrapper>, IComparable<StringWrapper>
     {
         private static readonly ConcurrentDictionary<string, StringWrapper> Cache = new();
