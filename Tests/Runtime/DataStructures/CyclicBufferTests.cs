@@ -190,14 +190,18 @@
         [Test]
         public void ClearOk()
         {
+            HashSet<int> seen = new();
             for (int i = 0; i < NumTries; ++i)
             {
                 int capacity = PRNG.Instance.Next(100, 1_000);
                 CyclicBuffer<int> buffer = new(capacity);
                 float fillPercent = PRNG.Instance.NextFloat(0.5f, 1.5f);
+                seen.Clear();
                 for (int j = 0; j < capacity * fillPercent; ++j)
                 {
-                    buffer.Add(PRNG.Instance.Next());
+                    int value = PRNG.Instance.Next();
+                    seen.Add(value);
+                    buffer.Add(value);
                 }
 
                 Assert.AreNotEqual(0, buffer.Count);
@@ -207,6 +211,12 @@
                 Assert.AreEqual(0, buffer.Count);
                 Assert.AreEqual(capacity, buffer.capacity);
                 Assert.IsTrue(Array.Empty<int>().SequenceEqual(buffer));
+
+                // Make sure our data is actually cleaned up, none of our input data should be "Contained"
+                foreach (int value in seen)
+                {
+                    Assert.IsFalse(buffer.Contains(value));
+                }
             }
         }
     }
