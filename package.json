@@ -1,6 +1,6 @@
 {
   "name": "com.wallstop-studios.unity-helpers",
-  "version": "2.0.0-rc22",
+  "version": "2.0.0-rc23",
   "displayName": "Unity Helpers",
   "description": "Various Unity Helper Library",
   "dependencies": {},
@@ -18,7 +18,8 @@
     "rtree",
     "r tree",
     "kd tree",
-    "kdtree"
+    "kdtree",
+    "cyclic buffer"
   ],
   "license": "MIT",
   "repository": {

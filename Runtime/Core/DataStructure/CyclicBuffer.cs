@@ -3,23 +3,16 @@
     using System;
     using System.Collections;
     using System.Collections.Generic;
-    using System.ComponentModel;
+    using System.Linq;
     using Helper;
-
-    public enum BufferOverflowBehavior
-    {
-        Prepend,
-        Append,
-    }
 
     [Serializable]
     public sealed class CyclicBuffer<T> : IReadOnlyList<T>
     {
         public int Count { get; private set; }
-        public readonly BufferOverflowBehavior overflowBehavior;
         public readonly int capacity;
 
-        private readonly T[] _buffer;
+        private readonly List<T> _buffer;
         private int _position;
 
         public T this[int index]
@@ -36,26 +29,29 @@
             }
         }
 
-        public CyclicBuffer(
-            int capacity,
-            BufferOverflowBehavior overflowBehavior = BufferOverflowBehavior.Prepend
-        )
+        public CyclicBuffer(int capacity, IEnumerable<T> initialContents = null)
         {
             if (capacity < 0)
             {
                 throw new ArgumentException(nameof(capacity));
             }
-            this.overflowBehavior = overflowBehavior;
+
             this.capacity = capacity;
             _position = 0;
-            _buffer = new T[capacity];
+            Count = 0;
+            _buffer = new List<T>();
+            foreach (T item in initialContents ?? Enumerable.Empty<T>())
+            {
+                Add(item);
+            }
         }
 
         public IEnumerator<T> GetEnumerator()
         {
             for (int i = 0; i < Count; ++i)
             {
-                yield return this[i];
+                // No need for bounds check, we're safe
+                yield return _buffer[AdjustedIndexFor(i)];
             }
         }
 
@@ -66,7 +62,20 @@
 
         public void Add(T item)
         {
-            _buffer[_position] = item;
+            if (capacity == 0)
+            {
+                return;
+            }
+
+            if (_position < _buffer.Count)
+            {
+                _buffer[_position] = item;
+            }
+            else
+            {
+                _buffer.Add(item);
+            }
+
             _position = _position.WrappedIncrement(capacity);
             if (Count < capacity)
             {
@@ -83,36 +92,24 @@
 
         public bool Peek(out T value)
         {
-            if (InBounds(0))
+            const int firstIndex = 0;
+            if (InBounds(firstIndex))
             {
-                value = this[0];
+                value = _buffer[AdjustedIndexFor(firstIndex)];
                 return true;
             }
-            value = default(T);
+
+            value = default;
             return false;
         }
 
         private int AdjustedIndexFor(int index)
         {
-            switch (overflowBehavior)
+            if (index < _buffer.Count)
             {
-                case BufferOverflowBehavior.Prepend:
-                {
-                    return (_position - 1 + capacity - index) % capacity;
-                }
-                case BufferOverflowBehavior.Append:
-                {
-                    return index;
-                }
-                default:
-                {
-                    throw new InvalidEnumArgumentException(
-                        nameof(overflowBehavior),
-                        (int)overflowBehavior,
-                        typeof(BufferOverflowBehavior)
-                    );
-                }
+                return index;
             }
+            return (_position - 1 + capacity - index) % capacity;
         }
 
         private void BoundsCheck(int index)
@@ -125,7 +122,7 @@
 
         private bool InBounds(int index)
         {
-            return !(Count <= index || index < 0);
+            return 0 <= index && index < Count;
         }
     }
 }
