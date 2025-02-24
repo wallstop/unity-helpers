@@ -59,14 +59,20 @@
             return new KGuid(System.Guid.NewGuid());
         }
 
-        public KGuid(Guid guid) : this(guid.ToByteArray()) { }
+        public KGuid(Guid guid)
+            : this(guid.ToByteArray()) { }
 
         [JsonConstructor]
-        public KGuid(string guid) : this(System.Guid.Parse(guid)) { }
+        public KGuid(string guid)
+            : this(System.Guid.Parse(guid)) { }
 
         public KGuid(byte[] guidBytes)
         {
-            _a = (int)guidBytes[3] << 24 | (int)guidBytes[2] << 16 | (int)guidBytes[1] << 8 | (int)guidBytes[0];
+            _a =
+                (int)guidBytes[3] << 24
+                | (int)guidBytes[2] << 16
+                | (int)guidBytes[1] << 8
+                | (int)guidBytes[0];
             _b = (short)((int)guidBytes[5] << 8 | (int)guidBytes[4]);
             _c = (short)((int)guidBytes[7] << 8 | (int)guidBytes[6]);
             _d = guidBytes[8];
@@ -83,7 +89,18 @@
         public static implicit operator Guid(KGuid guid)
         {
             return new Guid(
-                guid._a, guid._b, guid._c, guid._d, guid._e, guid._f, guid._g, guid._h, guid._i, guid._j, guid._k);
+                guid._a,
+                guid._b,
+                guid._c,
+                guid._d,
+                guid._e,
+                guid._f,
+                guid._g,
+                guid._h,
+                guid._i,
+                guid._j,
+                guid._k
+            );
         }
 
         public static implicit operator KGuid(Guid guid)
@@ -237,7 +254,7 @@
             {
                 KGuid otherKGuid => Equals(otherKGuid),
                 Guid otherGuid => Equals(otherGuid),
-                _ => false
+                _ => false,
             };
         }
 
@@ -275,7 +292,7 @@
                 _h,
                 _i,
                 _j,
-                _k
+                _k,
             };
         }
 

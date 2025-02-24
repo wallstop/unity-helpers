@@ -29,11 +29,13 @@
         public List<string> spriteFileExtensions = new() { ".png" };
 
         [Tooltip(
-            "Drag various sprite settings here, where the name property matches a sprite asset name. The first settings with an empty or matching name will be applied to each and every sprite.")]
+            "Drag various sprite settings here, where the name property matches a sprite asset name. The first settings with an empty or matching name will be applied to each and every sprite."
+        )]
         public List<SpriteSettings> spriteSettings = new() { new SpriteSettings() };
 
         [Tooltip(
-            "Drag a folder from Unity here to apply the configuration to all settings under it. No sprites are modified if no directories are provided.")]
+            "Drag a folder from Unity here to apply the configuration to all settings under it. No sprites are modified if no directories are provided."
+        )]
         public List<Object> directories = new();
 
         [MenuItem("Tools/Unity Helpers/Sprite Settings Applier")]
@@ -67,14 +69,19 @@
                         continue;
                     }
 
-                    int index = fullFilePath.LastIndexOf(directoryPath, StringComparison.OrdinalIgnoreCase);
+                    int index = fullFilePath.LastIndexOf(
+                        directoryPath,
+                        StringComparison.OrdinalIgnoreCase
+                    );
                     if (index < 0)
                     {
                         continue;
                     }
 
                     string filePath = fullFilePath.Substring(index);
-                    if (processedSpritePaths.Add(fullFilePath) && TryUpdateTextureSettings(filePath))
+                    if (
+                        processedSpritePaths.Add(fullFilePath) && TryUpdateTextureSettings(filePath)
+                    )
                     {
                         ++spriteCount;
                     }
@@ -82,7 +89,10 @@
 
                 foreach (string subDirectory in Directory.EnumerateDirectories(directoryPath))
                 {
-                    int index = subDirectory.LastIndexOf(directoryPath, StringComparison.OrdinalIgnoreCase);
+                    int index = subDirectory.LastIndexOf(
+                        directoryPath,
+                        StringComparison.OrdinalIgnoreCase
+                    );
                     if (index < 0)
                     {
                         continue;
@@ -100,7 +110,10 @@
                 }
 
                 string filePath = AssetDatabase.GetAssetPath(sprite);
-                if (processedSpritePaths.Add(Application.dataPath + filePath) && TryUpdateTextureSettings(filePath))
+                if (
+                    processedSpritePaths.Add(Application.dataPath + filePath)
+                    && TryUpdateTextureSettings(filePath)
+                )
                 {
                     ++spriteCount;
                 }
@@ -121,8 +134,9 @@
                 return false;
             }
 
-            SpriteSettings spriteData = spriteSettings.FirstOrDefault(
-                settings => string.IsNullOrEmpty(settings.name) || filePath.Contains(settings.name));
+            SpriteSettings spriteData = spriteSettings.FirstOrDefault(settings =>
+                string.IsNullOrEmpty(settings.name) || filePath.Contains(settings.name)
+            );
             if (spriteData == null)
             {
                 return false;

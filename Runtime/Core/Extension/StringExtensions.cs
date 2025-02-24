@@ -6,8 +6,17 @@
 
     public static class StringExtensions
     {
-        private static readonly HashSet<char> PascalCaseSeparators =
-            new() { '_', ' ', '\r', '\n', '\t', '.', '\'', '"' };
+        private static readonly HashSet<char> PascalCaseSeparators = new()
+        {
+            '_',
+            ' ',
+            '\r',
+            '\n',
+            '\t',
+            '.',
+            '\'',
+            '"',
+        };
 
         public static string Center(this string input, int length)
         {
@@ -41,13 +50,18 @@
             bool appendedAnySeparator = false;
             for (int i = 0; i < value.Length; ++i)
             {
-                while (startIndex < value.Length && PascalCaseSeparators.Contains(value[startIndex]))
+                while (
+                    startIndex < value.Length && PascalCaseSeparators.Contains(value[startIndex])
+                )
                 {
                     ++startIndex;
                 }
 
-                if (startIndex < i && char.IsLower(value[i - 1]) &&
-                    (char.IsUpper(value[i]) || PascalCaseSeparators.Contains(value[i])))
+                if (
+                    startIndex < i
+                    && char.IsLower(value[i - 1])
+                    && (char.IsUpper(value[i]) || PascalCaseSeparators.Contains(value[i]))
+                )
                 {
                     _ = stringBuilder.Append(char.ToUpper(value[startIndex]));
                     if (1 < i - startIndex)
@@ -74,8 +88,11 @@
                     continue;
                 }
 
-                if (startIndex + 1 < i && char.IsLower(value[i]) &&
-                    (char.IsUpper(value[i - 1]) || PascalCaseSeparators.Contains(value[i - 1])))
+                if (
+                    startIndex + 1 < i
+                    && char.IsLower(value[i])
+                    && (char.IsUpper(value[i - 1]) || PascalCaseSeparators.Contains(value[i - 1]))
+                )
                 {
                     _ = stringBuilder.Append(char.ToUpper(value[startIndex]));
                     if (1 < i - 1 - startIndex)
@@ -119,8 +136,11 @@
                     }
                 }
             }
-            else if (appendedAnySeparator && !string.IsNullOrEmpty(separator) &&
-                     separator.Length <= stringBuilder.Length)
+            else if (
+                appendedAnySeparator
+                && !string.IsNullOrEmpty(separator)
+                && separator.Length <= stringBuilder.Length
+            )
             {
                 stringBuilder.Remove(stringBuilder.Length - separator.Length, separator.Length);
             }

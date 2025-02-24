@@ -1,9 +1,9 @@
 ﻿namespace UnityHelpers.Core.Serialization.JsonConverters
 {
     using System;
-    using UnityEngine;
     using System.Text.Json;
     using System.Text.Json.Serialization;
+    using UnityEngine;
 
     public sealed class Vector3Converter : JsonConverter<Vector3>
     {
@@ -11,14 +11,20 @@
 
         private Vector3Converter() { }
 
-        public override Vector3 Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        public override Vector3 Read(
+            ref Utf8JsonReader reader,
+            Type typeToConvert,
+            JsonSerializerOptions options
+        )
         {
             if (reader.TokenType != JsonTokenType.StartObject)
             {
                 throw new JsonException($"Invalid token type {reader.TokenType}");
             }
 
-            float x = 0, y = 0, z = 0;
+            float x = 0,
+                y = 0,
+                z = 0;
 
             while (reader.Read())
             {
@@ -59,7 +65,11 @@
             throw new JsonException("Incomplete JSON for Vector3");
         }
 
-        public override void Write(Utf8JsonWriter writer, Vector3 value, JsonSerializerOptions options)
+        public override void Write(
+            Utf8JsonWriter writer,
+            Vector3 value,
+            JsonSerializerOptions options
+        )
         {
             writer.WriteStartObject();
             writer.WriteNumber("x", value.x);

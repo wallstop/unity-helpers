@@ -7,11 +7,19 @@
 
     public static class DictionaryExtensions
     {
-        public static V GetOrAdd<K, V>(this IDictionary<K, V> dictionary, K key, Func<V> valueProducer)
+        public static V GetOrAdd<K, V>(
+            this IDictionary<K, V> dictionary,
+            K key,
+            Func<V> valueProducer
+        )
         {
             if (dictionary is ConcurrentDictionary<K, V> concurrentDictionary)
             {
-                return concurrentDictionary.GetOrAdd(key, static (_, existing) => existing(), valueProducer);
+                return concurrentDictionary.GetOrAdd(
+                    key,
+                    static (_, existing) => existing(),
+                    valueProducer
+                );
             }
 
             if (dictionary.TryGetValue(key, out V result))
@@ -22,7 +30,11 @@
             return dictionary[key] = valueProducer();
         }
 
-        public static V GetOrAdd<K, V>(this IDictionary<K, V> dictionary, K key, Func<K, V> valueProducer)
+        public static V GetOrAdd<K, V>(
+            this IDictionary<K, V> dictionary,
+            K key,
+            Func<K, V> valueProducer
+        )
         {
             if (dictionary is ConcurrentDictionary<K, V> concurrentDictionary)
             {
@@ -37,7 +49,11 @@
             return dictionary[key] = valueProducer(key);
         }
 
-        public static V GetOrElse<K, V>(this IReadOnlyDictionary<K, V> dictionary, K key, Func<V> valueProducer)
+        public static V GetOrElse<K, V>(
+            this IReadOnlyDictionary<K, V> dictionary,
+            K key,
+            Func<V> valueProducer
+        )
         {
             if (dictionary.TryGetValue(key, out V value))
             {
@@ -47,7 +63,11 @@
             return valueProducer.Invoke();
         }
 
-        public static V GetOrElse<K, V>(this IReadOnlyDictionary<K, V> dictionary, K key, Func<K, V> valueProducer)
+        public static V GetOrElse<K, V>(
+            this IReadOnlyDictionary<K, V> dictionary,
+            K key,
+            Func<K, V> valueProducer
+        )
         {
             if (dictionary.TryGetValue(key, out V value))
             {
@@ -57,11 +77,16 @@
             return valueProducer.Invoke(key);
         }
 
-        public static V GetOrAdd<K, V>(this IDictionary<K, V> dictionary, K key) where V : new()
+        public static V GetOrAdd<K, V>(this IDictionary<K, V> dictionary, K key)
+            where V : new()
         {
             if (dictionary is ConcurrentDictionary<K, V> concurrentDictionary)
             {
-                return concurrentDictionary.AddOrUpdate(key, _ => new V(), (_, existing) => existing);
+                return concurrentDictionary.AddOrUpdate(
+                    key,
+                    _ => new V(),
+                    (_, existing) => existing
+                );
             }
 
             if (dictionary.TryGetValue(key, out V result))
@@ -78,14 +103,20 @@
         }
 
         public static V AddOrUpdate<K, V>(
-            this IDictionary<K, V> dictionary, K key, Func<K, V> creator, Func<K, V, V> updater)
+            this IDictionary<K, V> dictionary,
+            K key,
+            Func<K, V> creator,
+            Func<K, V, V> updater
+        )
         {
             if (dictionary is ConcurrentDictionary<K, V> concurrentDictionary)
             {
                 return concurrentDictionary.AddOrUpdate(key, creator, updater);
             }
 
-            V latest = dictionary.TryGetValue(key, out V value) ? updater(key, value) : creator(key);
+            V latest = dictionary.TryGetValue(key, out V value)
+                ? updater(key, value)
+                : creator(key);
             dictionary[key] = latest;
             return latest;
         }
@@ -107,7 +138,10 @@
             return value;
         }
 
-        public static Dictionary<K, V> Merge<K, V>(this IReadOnlyDictionary<K, V> lhs, IReadOnlyDictionary<K, V> rhs)
+        public static Dictionary<K, V> Merge<K, V>(
+            this IReadOnlyDictionary<K, V> lhs,
+            IReadOnlyDictionary<K, V> rhs
+        )
         {
             Dictionary<K, V> result = new();
             if (0 < lhs.Count)
@@ -137,7 +171,9 @@
         /// <param name="rhs">Changed dictionary.</param>
         /// <returns>All elements of rhs that either don't exist in or are different from lhs</returns>
         public static Dictionary<K, V> Difference<K, V>(
-            this IReadOnlyDictionary<K, V> lhs, IReadOnlyDictionary<K, V> rhs)
+            this IReadOnlyDictionary<K, V> lhs,
+            IReadOnlyDictionary<K, V> rhs
+        )
         {
             Dictionary<K, V> result = new(rhs.Count);
             foreach (KeyValuePair<K, V> kvp in rhs)
@@ -170,18 +206,25 @@
             return new Dictionary<K, V>(dictionary);
         }
 
-        public static Dictionary<K, V> ToDictionary<K, V>(this IEnumerable<KeyValuePair<K, V>> prettyMuchADictionary)
+        public static Dictionary<K, V> ToDictionary<K, V>(
+            this IEnumerable<KeyValuePair<K, V>> prettyMuchADictionary
+        )
         {
             return prettyMuchADictionary.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
         }
 
-        public static Dictionary<K, V> ToDictionary<K, V>(this IEnumerable<(K, V)> prettyMuchADictionary)
+        public static Dictionary<K, V> ToDictionary<K, V>(
+            this IEnumerable<(K, V)> prettyMuchADictionary
+        )
         {
             return prettyMuchADictionary.ToDictionary(kvp => kvp.Item1, kvp => kvp.Item2);
         }
 
         public static bool ContentEquals<K, V>(
-            this IReadOnlyDictionary<K, V> dictionary, IReadOnlyDictionary<K, V> other) where V : IEquatable<V>
+            this IReadOnlyDictionary<K, V> dictionary,
+            IReadOnlyDictionary<K, V> other
+        )
+            where V : IEquatable<V>
         {
             if (ReferenceEquals(dictionary, other))
             {
@@ -193,8 +236,10 @@
                 return false;
             }
 
-            return dictionary.Count == other.Count && dictionary.All(
-                kvp => other.TryGetValue(kvp.Key, out V value) && kvp.Value.Equals(value));
+            return dictionary.Count == other.Count
+                && dictionary.All(kvp =>
+                    other.TryGetValue(kvp.Key, out V value) && kvp.Value.Equals(value)
+                );
         }
 
         public static void Deconstruct<K, V>(this KeyValuePair<K, V> kvp, out K key, out V value)

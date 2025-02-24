@@ -47,7 +47,8 @@
 
         private void LateUpdate()
         {
-            SpriteRenderer localToMatch = dynamicToMatch != null ? GetDynamicSpriteRenderer() : toMatch;
+            SpriteRenderer localToMatch =
+                dynamicToMatch != null ? GetDynamicSpriteRenderer() : toMatch;
             if (localToMatch == null)
             {
                 _spriteRenderer.sprite = null;
@@ -75,7 +76,8 @@
 
             if (matchOrderInLayer)
             {
-                _spriteRenderer.sortingOrder = DynamicSortingOrderOverride ?? localToMatch.sortingOrder;
+                _spriteRenderer.sortingOrder =
+                    DynamicSortingOrderOverride ?? localToMatch.sortingOrder;
             }
 
             _spriteRenderer.size = localToMatch.size;

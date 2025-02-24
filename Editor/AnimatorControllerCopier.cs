@@ -33,8 +33,10 @@
             if (GUILayout.Button("Set Animator Controller Source Path"))
             {
                 string sourcePath = EditorUtility.OpenFolderPanel(
-                    "Select Animator Controller Source Path", EditorUtilities.GetCurrentPathOfProjectWindow(),
-                    string.Empty);
+                    "Select Animator Controller Source Path",
+                    EditorUtilities.GetCurrentPathOfProjectWindow(),
+                    string.Empty
+                );
                 int assetIndex = sourcePath?.IndexOf("Assets", StringComparison.Ordinal) ?? -1;
                 if (assetIndex < 0)
                 {
@@ -49,8 +51,10 @@
             if (GUILayout.Button("Set Animator Controller Destination Path"))
             {
                 string sourcePath = EditorUtility.OpenFolderPanel(
-                    "Select Animator Controller Destination Path", EditorUtilities.GetCurrentPathOfProjectWindow(),
-                    string.Empty);
+                    "Select Animator Controller Destination Path",
+                    EditorUtilities.GetCurrentPathOfProjectWindow(),
+                    string.Empty
+                );
                 int assetIndex = sourcePath?.IndexOf("Assets", StringComparison.Ordinal) ?? -1;
                 if (assetIndex < 0)
                 {
@@ -72,14 +76,21 @@
                 return;
             }
 
-            if (string.IsNullOrEmpty(controllerSourcePath) || string.IsNullOrEmpty(controllerDestinationpath))
+            if (
+                string.IsNullOrEmpty(controllerSourcePath)
+                || string.IsNullOrEmpty(controllerDestinationpath)
+            )
             {
                 return;
             }
 
             int processed = 0;
-            foreach (string assetGuid in AssetDatabase.FindAssets(
-                         "t:AnimatorController", new[] { controllerSourcePath }))
+            foreach (
+                string assetGuid in AssetDatabase.FindAssets(
+                    "t:AnimatorController",
+                    new[] { controllerSourcePath }
+                )
+            )
             {
                 string path = AssetDatabase.GUIDToAssetPath(assetGuid);
 
@@ -87,17 +98,26 @@
                     AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(path);
                 if (animatorController == null)
                 {
-                    this.LogError("Invalid Animator Controller (null) found at path '{0}', skipping.", path);
+                    this.LogError(
+                        "Invalid Animator Controller (null) found at path '{0}', skipping.",
+                        path
+                    );
                     continue;
                 }
 
                 string prefix = animatorController.name;
                 string relativePath = path.Substring(controllerSourcePath.Length);
-                int prefixIndex = relativePath.LastIndexOf(prefix, StringComparison.OrdinalIgnoreCase);
+                int prefixIndex = relativePath.LastIndexOf(
+                    prefix,
+                    StringComparison.OrdinalIgnoreCase
+                );
                 if (prefixIndex < 0)
                 {
                     this.LogWarn(
-                        "Unsupported AnimatorController at '{0}', expected to be prefixed by '{1}'.", path, prefix);
+                        "Unsupported AnimatorController at '{0}', expected to be prefixed by '{1}'.",
+                        path,
+                        prefix
+                    );
                     continue;
                 }
 
@@ -109,21 +129,29 @@
                     _ = Directory.CreateDirectory(outputPath);
                 }
 
-                string destination = controllerDestinationpath + partialPath + relativePath.Substring(prefixIndex);
+                string destination =
+                    controllerDestinationpath + partialPath + relativePath.Substring(prefixIndex);
                 bool copySuccessful = AssetDatabase.CopyAsset(path, destination);
                 if (copySuccessful)
                 {
                     bool deleteSuccessful = AssetDatabase.DeleteAsset(path);
                     if (!deleteSuccessful)
                     {
-                        this.LogError("Failed to delete Animator Controller asset at path '{0}'.", path);
+                        this.LogError(
+                            "Failed to delete Animator Controller asset at path '{0}'.",
+                            path
+                        );
                     }
 
                     ++processed;
                 }
                 else
                 {
-                    this.LogError("Failed to copy Animator Controller from '{0}' to '{1}'.", path, destination);
+                    this.LogError(
+                        "Failed to copy Animator Controller from '{0}' to '{1}'.",
+                        path,
+                        destination
+                    );
                 }
             }
 

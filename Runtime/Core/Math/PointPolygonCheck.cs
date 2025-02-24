@@ -10,11 +10,18 @@
             int j = polygon.Length - 1;
             for (int i = 0; i < polygon.Length; i++)
             {
-                if (polygon[i].y < point.y && polygon[j].y >= point.y ||
-                    polygon[j].y < point.y && polygon[i].y >= point.y)
+                if (
+                    polygon[i].y < point.y && polygon[j].y >= point.y
+                    || polygon[j].y < point.y && polygon[i].y >= point.y
+                )
                 {
-                    if (polygon[i].x + (point.y - polygon[i].y) / (polygon[j].y - polygon[i].y) *
-                        (polygon[j].x - polygon[i].x) < point.x)
+                    if (
+                        polygon[i].x
+                            + (point.y - polygon[i].y)
+                                / (polygon[j].y - polygon[i].y)
+                                * (polygon[j].x - polygon[i].x)
+                        < point.x
+                    )
                     {
                         result = !result;
                     }

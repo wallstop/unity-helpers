@@ -18,14 +18,15 @@
 
         static AnimationEventEditor()
         {
-            Dictionary<Type, IReadOnlyList<MethodInfo>> typesToMethods = AppDomain.CurrentDomain
-                .GetAssemblies()
+            Dictionary<Type, IReadOnlyList<MethodInfo>> typesToMethods = AppDomain
+                .CurrentDomain.GetAssemblies()
                 .SelectMany(assembly => assembly.GetTypes())
                 .Where(type => type.IsClass)
                 .Where(type => typeof(MonoBehaviour).IsAssignableFrom(type))
                 .ToDictionary(
                     type => type,
-                    type => (IReadOnlyList<MethodInfo>)type.GetPossibleAnimatorEventsForType());
+                    type => (IReadOnlyList<MethodInfo>)type.GetPossibleAnimatorEventsForType()
+                );
             foreach (KeyValuePair<Type, IReadOnlyList<MethodInfo>> entry in typesToMethods.ToList())
             {
                 if (entry.Value.Count <= 0)
@@ -36,7 +37,6 @@
 
             TypesToMethods = typesToMethods;
         }
-
 
         [MenuItem("Tools/Unity Helpers/AnimationEvent Editor")]
         private static void AnimationEventEditorMenu()
@@ -68,7 +68,9 @@
             _explicitMode ? AnimationEventHelpers.TypesToMethods : TypesToMethods;
 
         private int MaxFrameIndex =>
-            _currentClip == null ? 0 : (int)Math.Round(_currentClip.frameRate * _currentClip.length);
+            _currentClip == null
+                ? 0
+                : (int)Math.Round(_currentClip.frameRate * _currentClip.length);
 
         private Vector2 _scrollPosition;
         private Animator _sourceAnimator;
@@ -82,15 +84,22 @@
         private readonly List<AnimationEventItem> _state = new();
         private readonly Dictionary<AnimationEventItem, string> _lastSeenSearch = new();
 
-        private readonly Dictionary<AnimationEventItem, IReadOnlyDictionary<Type, IReadOnlyList<MethodInfo>>> _lookups =
-            new();
+        private readonly Dictionary<
+            AnimationEventItem,
+            IReadOnlyDictionary<Type, IReadOnlyList<MethodInfo>>
+        > _lookups = new();
 
         private int _selectedFrameIndex = -1;
 
         private void OnGUI()
         {
-            Animator tmpAnimator = EditorGUILayout.ObjectField(
-                "Animator Object", _sourceAnimator, typeof(Animator), true) as Animator;
+            Animator tmpAnimator =
+                EditorGUILayout.ObjectField(
+                    "Animator Object",
+                    _sourceAnimator,
+                    typeof(Animator),
+                    true
+                ) as Animator;
             if (tmpAnimator == null)
             {
                 _sourceAnimator = null;
@@ -106,13 +115,18 @@
 
             _explicitMode = EditorGUILayout.Toggle(
                 new GUIContent(
-                    "Explicit Mode", "If true, restricts results to only those that explicitly with [AnimationEvent]"),
-                _explicitMode);
+                    "Explicit Mode",
+                    "If true, restricts results to only those that explicitly with [AnimationEvent]"
+                ),
+                _explicitMode
+            );
             _controlFrameTime = EditorGUILayout.Toggle(
                 new GUIContent(
                     "Control Frame Time",
-                    "Select to edit precise time of animation events instead of snapping to nearest frame"),
-                _controlFrameTime);
+                    "Select to edit precise time of animation events instead of snapping to nearest frame"
+                ),
+                _controlFrameTime
+            );
 
             AnimationClip selectedClip = DrawAndFilterAnimationClips();
             if (selectedClip == null)
@@ -134,7 +148,11 @@
             {
                 if (0 <= _selectedFrameIndex)
                 {
-                    _state.Add(new AnimationEventItem(new AnimationEvent { time = _selectedFrameIndex / frameRate }));
+                    _state.Add(
+                        new AnimationEventItem(
+                            new AnimationEvent { time = _selectedFrameIndex / frameRate }
+                        )
+                    );
                 }
             }
 
@@ -156,13 +174,13 @@
 
                 EditorGUI.indentLevel++;
                 RenderAnimationEventItem(item, frame, frameRate);
-                
+
                 if (i != stateCopy.Count - 1)
                 {
                     DrawGuiLine(height: 3, color: new Color(0f, 1f, 0.3f, 1f));
                     EditorGUILayout.Space();
                 }
-                
+
                 EditorGUI.indentLevel--;
             }
 
@@ -173,14 +191,20 @@
 
         private AnimationClip DrawAndFilterAnimationClips()
         {
-            _animationSearchString = EditorGUILayout.TextField("Animation Search", _animationSearchString);
-            List<AnimationClip> animationClips = _sourceAnimator.runtimeAnimatorController.animationClips.ToList();
+            _animationSearchString = EditorGUILayout.TextField(
+                "Animation Search",
+                _animationSearchString
+            );
+            List<AnimationClip> animationClips =
+                _sourceAnimator.runtimeAnimatorController.animationClips.ToList();
             int selectedIndex;
             if (string.IsNullOrEmpty(_animationSearchString) || _animationSearchString == "*")
             {
                 selectedIndex = EditorGUILayout.Popup(
-                    "Animation", animationClips.IndexOf(_currentClip),
-                    animationClips.Select(clip => clip.name).ToArray());
+                    "Animation",
+                    animationClips.IndexOf(_currentClip),
+                    animationClips.Select(clip => clip.name).ToArray()
+                );
             }
             else
             {
@@ -212,8 +236,10 @@
                 }
 
                 selectedIndex = EditorGUILayout.Popup(
-                    "Animation", animationClips.IndexOf(_currentClip),
-                    animationClips.Select(clip => clip.name).ToArray());
+                    "Animation",
+                    animationClips.IndexOf(_currentClip),
+                    animationClips.Select(clip => clip.name).ToArray()
+                );
             }
 
             if (selectedIndex < 0)
@@ -243,13 +269,20 @@
                 return 1;
             }
 
-            return AnimationEventEqualityComparer.Instance.Compare(lhs.animationEvent, rhs.animationEvent);
+            return AnimationEventEqualityComparer.Instance.Compare(
+                lhs.animationEvent,
+                rhs.animationEvent
+            );
         }
 
         private void DrawControlButtons()
         {
-            if (_baseClipEvents.SequenceEqual(
-                    _state.Select(item => item.animationEvent), AnimationEventEqualityComparer.Instance))
+            if (
+                _baseClipEvents.SequenceEqual(
+                    _state.Select(item => item.animationEvent),
+                    AnimationEventEqualityComparer.Instance
+                )
+            )
             {
                 GUILayout.Label("No changes detected...");
                 return;
@@ -268,8 +301,14 @@
                 RefreshAnimationEvents();
             }
 
-            if (!_state.SequenceEqual(
-                    _state.OrderBy(item => item.animationEvent, AnimationEventEqualityComparer.Instance)))
+            if (
+                !_state.SequenceEqual(
+                    _state.OrderBy(
+                        item => item.animationEvent,
+                        AnimationEventEqualityComparer.Instance
+                    )
+                )
+            )
             {
                 if (GUILayout.Button("Re-Order"))
                 {
@@ -284,26 +323,42 @@
             EditorGUILayout.BeginHorizontal();
             try
             {
-                if (1 <= index && Math.Abs(_state[index - 1].animationEvent.time - item.animationEvent.time) < 0.001f &&
-                    GUILayout.Button("Move Up"))
+                if (
+                    1 <= index
+                    && Math.Abs(_state[index - 1].animationEvent.time - item.animationEvent.time)
+                        < 0.001f
+                    && GUILayout.Button("Move Up")
+                )
                 {
                     _state.RemoveAt(index);
                     _state.Insert(index - 1, item);
                 }
 
-                if (index < _state.Count - 1 &&
-                    Math.Abs(_state[index + 1].animationEvent.time - item.animationEvent.time) < 0.001f &&
-                    GUILayout.Button("Move Down"))
+                if (
+                    index < _state.Count - 1
+                    && Math.Abs(_state[index + 1].animationEvent.time - item.animationEvent.time)
+                        < 0.001f
+                    && GUILayout.Button("Move Down")
+                )
                 {
                     _state.RemoveAt(index);
                     _state.Insert(index + 1, item);
                 }
 
-                if (0 <= index && index < _baseClipEvents.Count &&
-                    !AnimationEventEqualityComparer.Instance.Equals(item.animationEvent, _baseClipEvents[index]) &&
-                    GUILayout.Button("Reset"))
+                if (
+                    0 <= index
+                    && index < _baseClipEvents.Count
+                    && !AnimationEventEqualityComparer.Instance.Equals(
+                        item.animationEvent,
+                        _baseClipEvents[index]
+                    )
+                    && GUILayout.Button("Reset")
+                )
                 {
-                    AnimationEventEqualityComparer.Instance.CopyInto(item.animationEvent, _baseClipEvents[index]);
+                    AnimationEventEqualityComparer.Instance.CopyInto(
+                        item.animationEvent,
+                        _baseClipEvents[index]
+                    );
                     item.selectedType = null;
                     item.selectedMethod = null;
                 }
@@ -373,7 +428,10 @@
         private void SelectFunctionName(AnimationEventItem item)
         {
             AnimationEvent animEvent = item.animationEvent;
-            animEvent.functionName = EditorGUILayout.TextField("FunctionName", animEvent.functionName ?? string.Empty);
+            animEvent.functionName = EditorGUILayout.TextField(
+                "FunctionName",
+                animEvent.functionName ?? string.Empty
+            );
             if (!_explicitMode)
             {
                 item.search = EditorGUILayout.TextField("Search", item.search);
@@ -381,7 +439,9 @@
         }
 
         private void TryPopulateTypeAndMethod(
-            AnimationEventItem item, IReadOnlyDictionary<Type, IReadOnlyList<MethodInfo>> lookup)
+            AnimationEventItem item,
+            IReadOnlyDictionary<Type, IReadOnlyList<MethodInfo>> lookup
+        )
         {
             if (item.selectedType != null)
             {
@@ -389,11 +449,17 @@
             }
 
             AnimationEvent animEvent = item.animationEvent;
-            foreach (KeyValuePair<Type, IReadOnlyList<MethodInfo>> entry in lookup.OrderBy(kvp => kvp.Key.FullName))
+            foreach (
+                KeyValuePair<Type, IReadOnlyList<MethodInfo>> entry in lookup.OrderBy(kvp =>
+                    kvp.Key.FullName
+                )
+            )
             {
                 foreach (MethodInfo method in entry.Value)
                 {
-                    if (string.Equals(method.Name, animEvent.functionName, StringComparison.Ordinal))
+                    if (
+                        string.Equals(method.Name, animEvent.functionName, StringComparison.Ordinal)
+                    )
                     {
                         item.selectedType = entry.Key;
                         item.selectedMethod = method;
@@ -403,10 +469,18 @@
             }
         }
 
-        private bool SelectTypes(AnimationEventItem item, IList<Type> orderedTypes, string[] orderedTypeNames)
+        private bool SelectTypes(
+            AnimationEventItem item,
+            IList<Type> orderedTypes,
+            string[] orderedTypeNames
+        )
         {
             int existingIndex = orderedTypes.IndexOf(item.selectedType);
-            int selectedTypeIndex = EditorGUILayout.Popup("TypeName", existingIndex, orderedTypeNames);
+            int selectedTypeIndex = EditorGUILayout.Popup(
+                "TypeName",
+                existingIndex,
+                orderedTypeNames
+            );
             item.selectedType = selectedTypeIndex < 0 ? null : orderedTypes[selectedTypeIndex];
             if (existingIndex != selectedTypeIndex)
             {
@@ -416,7 +490,10 @@
             return item.selectedType != null;
         }
 
-        private bool SelectMethods(AnimationEventItem item, IReadOnlyDictionary<Type, IReadOnlyList<MethodInfo>> lookup)
+        private bool SelectMethods(
+            AnimationEventItem item,
+            IReadOnlyDictionary<Type, IReadOnlyList<MethodInfo>> lookup
+        )
         {
             AnimationEvent animEvent = item.animationEvent;
             if (!lookup.TryGetValue(item.selectedType, out IReadOnlyList<MethodInfo> methods))
@@ -428,7 +505,9 @@
             {
                 foreach (MethodInfo method in methods)
                 {
-                    if (string.Equals(method.Name, animEvent.functionName, StringComparison.Ordinal))
+                    if (
+                        string.Equals(method.Name, animEvent.functionName, StringComparison.Ordinal)
+                    )
                     {
                         item.selectedMethod = method;
                         break;
@@ -442,8 +521,10 @@
             }
 
             int selectedMethodIndex = EditorGUILayout.Popup(
-                "MethodName", methods.ToList().IndexOf(item.selectedMethod),
-                methods.Select(method => method.Name).ToArray());
+                "MethodName",
+                methods.ToList().IndexOf(item.selectedMethod),
+                methods.Select(method => method.Name).ToArray()
+            );
             if (0 <= selectedMethodIndex)
             {
                 item.selectedMethod = methods[selectedMethodIndex];
@@ -465,7 +546,10 @@
                 Type paramType = arrayParameterInfo[0].ParameterType;
                 if (paramType == typeof(int))
                 {
-                    animEvent.intParameter = EditorGUILayout.IntField("IntParameter", animEvent.intParameter);
+                    animEvent.intParameter = EditorGUILayout.IntField(
+                        "IntParameter",
+                        animEvent.intParameter
+                    );
                 }
                 else if (paramType.BaseType == typeof(Enum))
                 {
@@ -473,52 +557,79 @@
                     List<string> enumNames = enumNamesArray.ToList();
                     string enumName = Enum.GetName(paramType, animEvent.intParameter);
 
-                    int index = EditorGUILayout.Popup($"{paramType.Name}", enumNames.IndexOf(enumName), enumNamesArray);
+                    int index = EditorGUILayout.Popup(
+                        $"{paramType.Name}",
+                        enumNames.IndexOf(enumName),
+                        enumNamesArray
+                    );
                     if (0 <= index)
                     {
                         animEvent.intParameter = (int)Enum.Parse(paramType, enumNames[index]);
                     }
 
-                    item.overrideEnumValues = EditorGUILayout.Toggle("Override", item.overrideEnumValues);
+                    item.overrideEnumValues = EditorGUILayout.Toggle(
+                        "Override",
+                        item.overrideEnumValues
+                    );
                     if (item.overrideEnumValues)
                     {
-                        animEvent.intParameter = EditorGUILayout.IntField("IntParameter", animEvent.intParameter);
+                        animEvent.intParameter = EditorGUILayout.IntField(
+                            "IntParameter",
+                            animEvent.intParameter
+                        );
                     }
                 }
                 else if (paramType == typeof(float))
                 {
                     animEvent.floatParameter = EditorGUILayout.FloatField(
-                        "FloatParameter", animEvent.floatParameter);
+                        "FloatParameter",
+                        animEvent.floatParameter
+                    );
                 }
                 else if (paramType == typeof(string))
                 {
                     animEvent.stringParameter = EditorGUILayout.TextField(
-                        "StringParameter", animEvent.stringParameter);
+                        "StringParameter",
+                        animEvent.stringParameter
+                    );
                 }
                 else if (paramType == typeof(UnityEngine.Object))
                 {
                     animEvent.objectReferenceParameter = EditorGUILayout.ObjectField(
-                        "ObjectReferenceParameter", animEvent.objectReferenceParameter, typeof(UnityEngine.Object),
-                        true);
+                        "ObjectReferenceParameter",
+                        animEvent.objectReferenceParameter,
+                        typeof(UnityEngine.Object),
+                        true
+                    );
                 }
 
                 EditorGUI.indentLevel--;
             }
         }
 
-        private IReadOnlyDictionary<Type, IReadOnlyList<MethodInfo>> FilterLookup(AnimationEventItem item)
+        private IReadOnlyDictionary<Type, IReadOnlyList<MethodInfo>> FilterLookup(
+            AnimationEventItem item
+        )
         {
             IReadOnlyDictionary<Type, IReadOnlyList<MethodInfo>> lookup;
             if (!_explicitMode)
             {
-                if (!_lastSeenSearch.TryGetValue(item, out string lastSearch) || !string.Equals(
-                        lastSearch, item.search, StringComparison.InvariantCultureIgnoreCase) ||
-                    !_lookups.TryGetValue(item, out lookup))
+                if (
+                    !_lastSeenSearch.TryGetValue(item, out string lastSearch)
+                    || !string.Equals(
+                        lastSearch,
+                        item.search,
+                        StringComparison.InvariantCultureIgnoreCase
+                    )
+                    || !_lookups.TryGetValue(item, out lookup)
+                )
                 {
                     Dictionary<Type, List<MethodInfo>> filtered = Lookup.ToDictionary(
-                        kvp => kvp.Key, kvp => kvp.Value.ToList());
-                    List<string> searchTerms = item.search
-                        .Split(" ")
+                        kvp => kvp.Key,
+                        kvp => kvp.Value.ToList()
+                    );
+                    List<string> searchTerms = item
+                        .search.Split(" ")
                         .Select(searchTerm => searchTerm.Trim().ToLowerInvariant())
                         .Where(trimmed => !string.IsNullOrEmpty(trimmed) && trimmed != "*")
                         .ToList();
@@ -534,8 +645,11 @@
                                     continue;
                                 }
 
-                                if (entry.Value.Any(
-                                        methodInfo => methodInfo.Name.ToLowerInvariant().Contains(searchTerm)))
+                                if (
+                                    entry.Value.Any(methodInfo =>
+                                        methodInfo.Name.ToLowerInvariant().Contains(searchTerm)
+                                    )
+                                )
                                 {
                                     continue;
                                 }
@@ -543,12 +657,13 @@
                                 _ = filtered.Remove(entry.Key);
                                 break;
                             }
-
                         }
                     }
 
                     _lookups[item] = lookup = filtered.ToDictionary(
-                        kvp => kvp.Key, kvp => (IReadOnlyList<MethodInfo>)kvp.Value);
+                        kvp => kvp.Key,
+                        kvp => (IReadOnlyList<MethodInfo>)kvp.Value
+                    );
                     _lastSeenSearch[item] = item.search;
                 }
             }
@@ -583,7 +698,8 @@
                             return;
                         }
 
-                        TextureImporter tImporter = AssetImporter.GetAtPath(assetPath) as TextureImporter;
+                        TextureImporter tImporter =
+                            AssetImporter.GetAtPath(assetPath) as TextureImporter;
                         if (tImporter == null)
                         {
                             return;
@@ -647,7 +763,10 @@
         private bool TryFindSpriteForEvent(AnimationEventItem item, out Sprite sprite)
         {
             sprite = null;
-            foreach (ObjectReferenceKeyframe keyFrame in _referenceCurve ?? Enumerable.Empty<ObjectReferenceKeyframe>())
+            foreach (
+                ObjectReferenceKeyframe keyFrame in _referenceCurve
+                    ?? Enumerable.Empty<ObjectReferenceKeyframe>()
+            )
             {
                 if (keyFrame.time <= item.animationEvent.time)
                 {
@@ -706,17 +825,17 @@
             for (int i = 0; i < _currentClip.events.Length; i++)
             {
                 AnimationEvent animEvent = _currentClip.events[i];
-                _state.Add(
-                    new AnimationEventItem(animEvent)
-                    {
-                        originalIndex = i
-                    });
+                _state.Add(new AnimationEventItem(animEvent) { originalIndex = i });
                 _baseClipEvents.Add(AnimationEventEqualityComparer.Instance.Copy(animEvent));
             }
 
             _selectedFrameIndex = MaxFrameIndex;
-            _referenceCurve = AnimationUtility.GetObjectReferenceCurve(
-                _currentClip, EditorCurveBinding.PPtrCurve("", typeof(SpriteRenderer), "m_Sprite")).ToList();
+            _referenceCurve = AnimationUtility
+                .GetObjectReferenceCurve(
+                    _currentClip,
+                    EditorCurveBinding.PPtrCurve("", typeof(SpriteRenderer), "m_Sprite")
+                )
+                .ToList();
             _referenceCurve.Sort(
                 (lhs, rhs) =>
                 {
@@ -726,23 +845,31 @@
                         return comparison;
                     }
 
-                    string lhsName = lhs.value == null ? string.Empty : lhs.value.name ?? string.Empty;
-                    string rhsName = rhs.value == null ? string.Empty : rhs.value.name ?? string.Empty;
+                    string lhsName =
+                        lhs.value == null ? string.Empty : lhs.value.name ?? string.Empty;
+                    string rhsName =
+                        rhs.value == null ? string.Empty : rhs.value.name ?? string.Empty;
                     return string.Compare(lhsName, rhsName, StringComparison.OrdinalIgnoreCase);
-                });
+                }
+            );
         }
 
         private void SaveAnimation()
         {
             if (_currentClip != null)
             {
-                AnimationUtility.SetAnimationEvents(_currentClip, _state.Select(item => item.animationEvent).ToArray());
+                AnimationUtility.SetAnimationEvents(
+                    _currentClip,
+                    _state.Select(item => item.animationEvent).ToArray()
+                );
                 EditorUtility.SetDirty(_currentClip);
                 AssetDatabase.SaveAssetIfDirty(_currentClip);
                 _baseClipEvents.Clear();
                 foreach (AnimationEventItem item in _state)
                 {
-                    _baseClipEvents.Add(AnimationEventEqualityComparer.Instance.Copy(item.animationEvent));
+                    _baseClipEvents.Add(
+                        AnimationEventEqualityComparer.Instance.Copy(item.animationEvent)
+                    );
                 }
             }
         }

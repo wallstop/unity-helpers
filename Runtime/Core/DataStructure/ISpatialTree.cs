@@ -20,26 +20,10 @@
                 return GetElementsInBounds(
                         new Bounds(
                             new Vector3(position.x, position.y, 0f),
-                            new Vector3(range * 2f, range * 2f, 1f)))
-                    .Where(
-                        element =>
-                        {
-                            Vector2 elementPosition = elementTransformer(element);
-                            if (!area.Contains(elementPosition))
-                            {
-                                return false;
-                            }
-
-                            return !minimumArea.Contains(elementPosition);
-                        });
-            }
-
-            return GetElementsInBounds(
-                    new Bounds(
-                        new Vector3(position.x, position.y, 0f),
-                        new Vector3(range * 2f, range * 2f, 1f)))
-                .Where(
-                    element =>
+                            new Vector3(range * 2f, range * 2f, 1f)
+                        )
+                    )
+                    .Where(element =>
                     {
                         Vector2 elementPosition = elementTransformer(element);
                         if (!area.Contains(elementPosition))
@@ -47,8 +31,26 @@
                             return false;
                         }
 
-                        return true;
+                        return !minimumArea.Contains(elementPosition);
                     });
+            }
+
+            return GetElementsInBounds(
+                    new Bounds(
+                        new Vector3(position.x, position.y, 0f),
+                        new Vector3(range * 2f, range * 2f, 1f)
+                    )
+                )
+                .Where(element =>
+                {
+                    Vector2 elementPosition = elementTransformer(element);
+                    if (!area.Contains(elementPosition))
+                    {
+                        return false;
+                    }
+
+                    return true;
+                });
         }
 
         IEnumerable<T> GetElementsInBounds(Bounds bounds);

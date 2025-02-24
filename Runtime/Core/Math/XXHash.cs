@@ -18,7 +18,10 @@
         private const uint k_Prime32v5 = 374761393u;
 
         public static uint Hash32(string text) => Hash32(text, Encoding.UTF8);
-        public static uint Hash32(string text, Encoding encoding) => Hash32(encoding.GetBytes(text));
+
+        public static uint Hash32(string text, Encoding encoding) =>
+            Hash32(encoding.GetBytes(text));
+
         public static uint Hash32(byte[] buffer)
         {
             unsafe
@@ -71,7 +74,10 @@
         }
 
         public static ulong Hash64(string text) => Hash64(text, Encoding.UTF8);
-        public static ulong Hash64(string text, Encoding encoding) => Hash64(encoding.GetBytes(text));
+
+        public static ulong Hash64(string text, Encoding encoding) =>
+            Hash64(encoding.GetBytes(text));
+
         public static ulong Hash64(byte[] buffer)
         {
             unsafe
@@ -120,7 +126,6 @@
             acc += (ulong)len;
             acc = processRemaining64(pInput, acc, remainingLen);
 
-
             return avalanche64(acc);
         }
 
@@ -130,17 +135,19 @@
             ref ulong acc1,
             ref ulong acc2,
             ref ulong acc3,
-            ref ulong acc4)
+            ref ulong acc4
+        )
         {
             processLane64(ref acc1, ref pInput);
             processLane64(ref acc2, ref pInput);
             processLane64(ref acc3, ref pInput);
             processLane64(ref acc4, ref pInput);
 
-            ulong acc = Bits.RotateLeft(acc1, 1)
-                        + Bits.RotateLeft(acc2, 7)
-                        + Bits.RotateLeft(acc3, 12)
-                        + Bits.RotateLeft(acc4, 18);
+            ulong acc =
+                Bits.RotateLeft(acc1, 1)
+                + Bits.RotateLeft(acc2, 7)
+                + Bits.RotateLeft(acc3, 12)
+                + Bits.RotateLeft(acc4, 18);
 
             mergeAccumulator64(ref acc, acc1);
             mergeAccumulator64(ref acc, acc2);
@@ -158,10 +165,7 @@
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static unsafe ulong processRemaining64(
-            byte* pInput,
-            ulong acc,
-            int remainingLen)
+        private static unsafe ulong processRemaining64(byte* pInput, ulong acc, int remainingLen)
         {
             for (ulong lane; remainingLen >= 8; remainingLen -= 8, pInput += 8)
             {
@@ -223,7 +227,8 @@
             ref uint acc1,
             ref uint acc2,
             ref uint acc3,
-            ref uint acc4)
+            ref uint acc4
+        )
         {
             processLane32(ref pInput, ref acc1);
             processLane32(ref pInput, ref acc2);
@@ -231,9 +236,9 @@
             processLane32(ref pInput, ref acc4);
 
             return Bits.RotateLeft(acc1, 1)
-                   + Bits.RotateLeft(acc2, 7)
-                   + Bits.RotateLeft(acc3, 12)
-                   + Bits.RotateLeft(acc4, 18);
+                + Bits.RotateLeft(acc2, 7)
+                + Bits.RotateLeft(acc3, 12)
+                + Bits.RotateLeft(acc4, 18);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -245,10 +250,7 @@
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static unsafe uint processRemaining32(
-            byte* pInput,
-            uint acc,
-            int remainingLen)
+        private static unsafe uint processRemaining32(byte* pInput, uint acc, int remainingLen)
         {
             for (uint lane; remainingLen >= 4; remainingLen -= 4, pInput += 4)
             {

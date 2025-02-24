@@ -21,7 +21,9 @@
         {
             if (length <= 0)
             {
-                throw new ArgumentException($"Expected a length greater than 0, but found: {length:0.00}.");
+                throw new ArgumentException(
+                    $"Expected a length greater than 0, but found: {length:0.00}."
+                );
             }
 
             Length = length;

@@ -9,9 +9,7 @@
     [CustomPropertyDrawer(typeof(ReadOnlyAttribute))]
     public sealed class ReadOnlyPropertyDrawer : PropertyDrawer
     {
-        public override float GetPropertyHeight(
-            SerializedProperty property,
-            GUIContent label)
+        public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {
             return EditorGUI.GetPropertyHeight(property, label, true);
         }

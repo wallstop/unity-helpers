@@ -1,31 +1,26 @@
 ﻿namespace UnityHelpers.Core.DataStructure
 {
-    using Helper;
     using System;
     using System.Collections;
     using System.Collections.Generic;
     using System.ComponentModel;
+    using Helper;
 
-    public enum BufferAddMethod
+    public enum BufferOverflowBehavior
     {
         Prepend,
-        Append
+        Append,
     }
 
     [Serializable]
-    public sealed class CyclicBuffer<T> : IEnumerable<T>
+    public sealed class CyclicBuffer<T> : IReadOnlyList<T>
     {
-        private readonly T[] _buffer;
-
-        private int _position;
-
-        public readonly BufferAddMethod AddMethod;
-
-        public readonly int Capacity;
-
         public int Count { get; private set; }
+        public readonly BufferOverflowBehavior overflowBehavior;
+        public readonly int capacity;
 
-        public readonly bool IsReadOnly;
+        private readonly T[] _buffer;
+        private int _position;
 
         public T this[int index]
         {
@@ -41,17 +36,19 @@
             }
         }
 
-        public CyclicBuffer(int capacity, BufferAddMethod addMethod = BufferAddMethod.Prepend)
+        public CyclicBuffer(
+            int capacity,
+            BufferOverflowBehavior overflowBehavior = BufferOverflowBehavior.Prepend
+        )
         {
             if (capacity < 0)
             {
                 throw new ArgumentException(nameof(capacity));
             }
-            AddMethod = addMethod;
-            Capacity = capacity;
+            this.overflowBehavior = overflowBehavior;
+            this.capacity = capacity;
             _position = 0;
             _buffer = new T[capacity];
-            IsReadOnly = false;
         }
 
         public IEnumerator<T> GetEnumerator()
@@ -70,8 +67,8 @@
         public void Add(T item)
         {
             _buffer[_position] = item;
-            _position = WallMath.WrappedIncrement(_position, Capacity);
-            if (Count < Capacity)
+            _position = _position.WrappedIncrement(capacity);
+            if (Count < capacity)
             {
                 ++Count;
             }
@@ -97,20 +94,24 @@
 
         private int AdjustedIndexFor(int index)
         {
-            switch (AddMethod)
+            switch (overflowBehavior)
             {
-                case BufferAddMethod.Prepend:
-                    {
-                        return (_position - 1 + Capacity - index) % Capacity;
-                    }
-                case BufferAddMethod.Append:
-                    {
-                        return index;
-                    }
+                case BufferOverflowBehavior.Prepend:
+                {
+                    return (_position - 1 + capacity - index) % capacity;
+                }
+                case BufferOverflowBehavior.Append:
+                {
+                    return index;
+                }
                 default:
-                    {
-                        throw new InvalidEnumArgumentException("Unexpected AddMethod: " + AddMethod);
-                    }
+                {
+                    throw new InvalidEnumArgumentException(
+                        nameof(overflowBehavior),
+                        (int)overflowBehavior,
+                        typeof(BufferOverflowBehavior)
+                    );
+                }
             }
         }
 

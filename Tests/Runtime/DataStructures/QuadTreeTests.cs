@@ -1,8 +1,8 @@
 ﻿namespace UnityHelpers.Tests.DataStructures
 {
     using System.Collections.Generic;
-    using UnityEngine;
     using Core.DataStructure;
+    using UnityEngine;
 
     public sealed class QuadTreeTests : SpatialTreeTests<QuadTree<Vector2>>
     {

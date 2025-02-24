@@ -1,8 +1,8 @@
 ﻿namespace UnityHelpers.Tests.Performance
 {
     using System.Collections.Generic;
-    using UnityEngine;
     using Core.DataStructure;
+    using UnityEngine;
 
     public sealed class UnbalancedKDTreeTests : SpatialTreePerformanceTest<KDTree<Vector2>>
     {

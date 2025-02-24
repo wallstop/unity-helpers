@@ -1,6 +1,4 @@
 ﻿namespace UnityHelpers.Core.OneOf
 {
-    public readonly struct None
-    {
-    }
+    public readonly struct None { }
 }

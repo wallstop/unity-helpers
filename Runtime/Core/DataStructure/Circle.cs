@@ -3,7 +3,7 @@
     using System;
     using Extension;
     using UnityEngine;
-    
+
     public readonly struct Circle
     {
         public readonly Vector2 center;

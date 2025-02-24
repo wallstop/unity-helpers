@@ -1,12 +1,12 @@
 ﻿namespace UnityHelpers.Utils
 {
-    using Core.Extension;
     using System;
     using System.Collections.Generic;
     using System.Globalization;
     using System.Linq;
     using System.Runtime.Serialization;
     using System.Text.Json.Serialization;
+    using Core.Extension;
     using UnityEngine;
 
     /// <summary>
@@ -15,8 +15,7 @@
     /// <typeparam name="T">Specific Enum being managed.</typeparam>
     [DataContract]
     public sealed class AnimatorEnumStateMachine<T>
-        where T : struct, IConvertible, IComparable,
-        IFormattable // This is as close as we can get to saying where T : Enum (https://stackoverflow.com/questions/79126/create-generic-method-constraining-t-to-an-enum)
+        where T : struct, IConvertible, IComparable, IFormattable // This is as close as we can get to saying where T : Enum (https://stackoverflow.com/questions/79126/create-generic-method-constraining-t-to-an-enum)
     {
         private static readonly T[] Values = Enum.GetValues(typeof(T)).OfType<T>().ToArray();
 

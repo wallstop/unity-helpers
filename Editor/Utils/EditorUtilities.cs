@@ -11,7 +11,9 @@
         {
             Type projectWindowUtilType = typeof(ProjectWindowUtil);
             MethodInfo getActiveFolderPath = projectWindowUtilType.GetMethod(
-                "GetActiveFolderPath", BindingFlags.Static | BindingFlags.NonPublic);
+                "GetActiveFolderPath",
+                BindingFlags.Static | BindingFlags.NonPublic
+            );
             object obj = getActiveFolderPath?.Invoke(null, Array.Empty<object>());
             return obj?.ToString() ?? string.Empty;
         }

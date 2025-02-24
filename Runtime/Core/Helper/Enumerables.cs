@@ -6,7 +6,7 @@
     {
         public static IEnumerable<T> Of<T>(T element)
         {
-            return new[] {element};
+            return new[] { element };
         }
 
         public static IEnumerable<T> Of<T>(params T[] elements)

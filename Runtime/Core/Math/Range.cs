@@ -1,17 +1,18 @@
 ﻿namespace UnityHelpers.Core.Math
 {
-    using Extension;
-    using Helper;
     using System;
     using System.Runtime.Serialization;
     using System.Text.Json.Serialization;
+    using Extension;
+    using Helper;
 
     /// <summary>
     ///     Inclusive Range [min,max]
     /// </summary>
     [Serializable]
     [DataContract]
-    public struct Range<T> : IEquatable<Range<T>> where T : IEquatable<T>, IComparable<T>
+    public struct Range<T> : IEquatable<Range<T>>
+        where T : IEquatable<T>, IComparable<T>
     {
         [DataMember]
         [JsonInclude]
@@ -40,10 +41,10 @@
 
         public bool Equals(Range<T> other)
         {
-            return min.Equals(other.min) &&
-                   max.Equals(other.max) &&
-                   startInclusive == other.startInclusive &&
-                   endInclusive == other.endInclusive;
+            return min.Equals(other.min)
+                && max.Equals(other.max)
+                && startInclusive == other.startInclusive
+                && endInclusive == other.endInclusive;
         }
 
         public override bool Equals(object obj)

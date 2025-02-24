@@ -44,13 +44,14 @@
             {
                 if (_index != 0)
                 {
-                    throw new InvalidOperationException($"Cannot return as T0 as result is T{_index}");
+                    throw new InvalidOperationException(
+                        $"Cannot return as T0 as result is T{_index}"
+                    );
                 }
 
                 return _value0;
             }
         }
-
 
         public T1 AsT1
         {
@@ -59,7 +60,9 @@
             {
                 if (_index != 1)
                 {
-                    throw new InvalidOperationException($"Cannot return as T1 as result is T{_index}");
+                    throw new InvalidOperationException(
+                        $"Cannot return as T1 as result is T{_index}"
+                    );
                 }
 
                 return _value1;
@@ -73,7 +76,9 @@
             {
                 if (_index != 2)
                 {
-                    throw new InvalidOperationException($"Cannot return as T2 as result is T{_index}");
+                    throw new InvalidOperationException(
+                        $"Cannot return as T2 as result is T{_index}"
+                    );
                 }
 
                 return _value2;
@@ -89,7 +94,9 @@
         }
 
         public static implicit operator FastOneOf<T0, T1, T2>(T0 value) => new(0, value0: value);
+
         public static implicit operator FastOneOf<T0, T1, T2>(T1 value) => new(1, value1: value);
+
         public static implicit operator FastOneOf<T0, T1, T2>(T2 value) => new(2, value2: value);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

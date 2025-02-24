@@ -9,9 +9,9 @@
     {
         public static IEnumerable<FastVector3Int> EnumerateArea(this Circle circle, int z = 0)
         {
-            for (int x = (int) -circle.radius; x < circle.radius; ++x)
+            for (int x = (int)-circle.radius; x < circle.radius; ++x)
             {
-                for (int y = (int) -circle.radius; y < circle.radius; ++y)
+                for (int y = (int)-circle.radius; y < circle.radius; ++y)
                 {
                     Vector2 point = new(x, y);
                     if (circle.Contains(point))

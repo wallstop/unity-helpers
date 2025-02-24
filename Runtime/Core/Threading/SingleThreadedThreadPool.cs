@@ -83,8 +83,7 @@
             do
             {
                 active = Interlocked.CompareExchange(ref _active, 0, _active);
-            }
-            while (active != 0);
+            } while (active != 0);
 
             if (disposing)
             {

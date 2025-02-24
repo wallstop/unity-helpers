@@ -17,11 +17,13 @@
             Assert.AreEqual(value, dictionary["test"]);
 
             int newValue = dictionary.GetOrAdd(
-                "test", () =>
+                "test",
+                () =>
                 {
                     Assert.Fail("Value Producer should not have been called!");
                     return 200;
-                });
+                }
+            );
             Assert.AreEqual(100, newValue);
 
             newValue = dictionary.GetOrAdd("test2", () => 300);
@@ -34,28 +36,34 @@
         {
             Dictionary<string, int> dictionary = new();
             int value = dictionary.GetOrAdd(
-                "test", key =>
+                "test",
+                key =>
                 {
                     Assert.AreEqual("test", key);
                     return 100;
-                });
+                }
+            );
             Assert.AreEqual(100, value);
             Assert.AreEqual(value, dictionary["test"]);
 
             int newValue = dictionary.GetOrAdd(
-                "test", key =>
+                "test",
+                key =>
                 {
                     Assert.Fail("Value Producer should not have been called!");
                     return 200;
-                });
+                }
+            );
             Assert.AreEqual(100, newValue);
 
             newValue = dictionary.GetOrAdd(
-                "test2", key =>
+                "test2",
+                key =>
                 {
                     Assert.AreEqual("test2", key);
                     return 300;
-                });
+                }
+            );
             Assert.AreEqual(300, newValue);
             Assert.AreEqual(100, dictionary["test"]);
         }
@@ -82,11 +90,13 @@
             Assert.IsFalse(dictionary.ContainsKey("test"));
             dictionary["test"] = 150;
             value = dictionary.GetOrElse(
-                "test", () =>
+                "test",
+                () =>
                 {
                     Assert.Fail("Producer should not be called.");
                     return 100;
-                });
+                }
+            );
             Assert.AreEqual(150, value);
             Assert.AreEqual(150, dictionary["test"]);
         }
@@ -96,20 +106,24 @@
         {
             Dictionary<string, int> dictionary = new();
             int value = dictionary.GetOrElse(
-                "test", key =>
+                "test",
+                key =>
                 {
                     Assert.AreEqual("test", key);
                     return 100;
-                });
+                }
+            );
             Assert.AreEqual(100, value);
             Assert.IsFalse(dictionary.ContainsKey("test"));
             dictionary["test"] = 150;
             value = dictionary.GetOrElse(
-                "test", () =>
+                "test",
+                () =>
                 {
                     Assert.Fail("Producer should not be called.");
                     return 100;
-                });
+                }
+            );
             Assert.AreEqual(150, value);
             Assert.AreEqual(150, dictionary["test"]);
         }
@@ -162,29 +176,35 @@
         {
             Dictionary<string, int> dictionary = new();
             int value = dictionary.TryAdd(
-                "test", key =>
+                "test",
+                key =>
                 {
                     Assert.AreEqual("test", key);
                     return 150;
-                });
+                }
+            );
             Assert.AreEqual(150, value);
             Assert.AreEqual(value, dictionary["test"]);
 
             value = dictionary.TryAdd(
-                "test", key =>
+                "test",
+                key =>
                 {
                     Assert.Fail("Creator should not have been called.");
                     return 200;
-                });
+                }
+            );
             Assert.AreEqual(150, value);
             Assert.AreEqual(value, dictionary["test"]);
 
             value = dictionary.TryAdd(
-                "test2", key =>
+                "test2",
+                key =>
                 {
                     Assert.AreEqual("test2", key);
                     return 350;
-                });
+                }
+            );
             Assert.AreEqual(350, value);
             Assert.AreEqual(value, dictionary["test2"]);
             Assert.AreEqual(150, dictionary["test"]);

@@ -21,10 +21,16 @@
         private static FieldInfo[] GetOrAdd(Type objectType)
         {
             return FieldsByType.GetOrAdd(
-                objectType, type => type
-                    .GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-                    .Where(prop => Attribute.IsDefined(prop, typeof(ValidateAssignmentAttribute)))
-                    .ToArray());
+                objectType,
+                type =>
+                    type.GetFields(
+                            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+                        )
+                        .Where(prop =>
+                            Attribute.IsDefined(prop, typeof(ValidateAssignmentAttribute))
+                        )
+                        .ToArray()
+            );
         }
 
         public static void ValidateAssignments(this Object o)
@@ -88,7 +94,7 @@
                 IList list => list.Count <= 0,
                 ICollection collection => collection.Count <= 0,
                 IEnumerable enumerable => IsInvalid(enumerable),
-                _ => fieldValue == null
+                _ => fieldValue == null,
             };
         }
     }

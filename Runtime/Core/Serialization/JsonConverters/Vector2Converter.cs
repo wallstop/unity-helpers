@@ -11,14 +11,19 @@
 
         private Vector2Converter() { }
 
-        public override Vector2 Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        public override Vector2 Read(
+            ref Utf8JsonReader reader,
+            Type typeToConvert,
+            JsonSerializerOptions options
+        )
         {
             if (reader.TokenType != JsonTokenType.StartObject)
             {
                 throw new JsonException($"Invalid token type {reader.TokenType}");
             }
 
-            float x = 0, y = 0;
+            float x = 0,
+                y = 0;
 
             while (reader.Read())
             {
@@ -54,7 +59,11 @@
             throw new JsonException("Incomplete JSON for Vector2");
         }
 
-        public override void Write(Utf8JsonWriter writer, Vector2 value, JsonSerializerOptions options)
+        public override void Write(
+            Utf8JsonWriter writer,
+            Vector2 value,
+            JsonSerializerOptions options
+        )
         {
             writer.WriteStartObject();
             writer.WriteNumber("x", value.x);

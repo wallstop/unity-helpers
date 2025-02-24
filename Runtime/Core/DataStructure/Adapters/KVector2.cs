@@ -14,6 +14,7 @@
         [DataMember]
         [ProtoMember(1)]
         public float x;
+
         [DataMember]
         [ProtoMember(2)]
         public float y;

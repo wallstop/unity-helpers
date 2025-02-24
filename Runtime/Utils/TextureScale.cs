@@ -38,7 +38,12 @@
             ThreadedScale(tex, newWidth, newHeight, true);
         }
 
-        private static void ThreadedScale(Texture2D tex, int newWidth, int newHeight, bool useBilinear)
+        private static void ThreadedScale(
+            Texture2D tex,
+            int newWidth,
+            int newHeight,
+            bool useBilinear
+        )
         {
             texColors = tex.GetPixels();
             newColors = new Color[newWidth * newHeight];
@@ -123,9 +128,18 @@
                     int xFloor = (int)Mathf.Floor(x * ratioX);
                     float xLerp = x * ratioX - xFloor;
                     newColors[yw + x] = ColorLerpUnclamped(
-                        ColorLerpUnclamped(texColors[y1 + xFloor], texColors[y1 + xFloor + 1], xLerp),
-                        ColorLerpUnclamped(texColors[y2 + xFloor], texColors[y2 + xFloor + 1], xLerp),
-                        y * ratioY - yFloor);
+                        ColorLerpUnclamped(
+                            texColors[y1 + xFloor],
+                            texColors[y1 + xFloor + 1],
+                            xLerp
+                        ),
+                        ColorLerpUnclamped(
+                            texColors[y2 + xFloor],
+                            texColors[y2 + xFloor + 1],
+                            xLerp
+                        ),
+                        y * ratioY - yFloor
+                    );
                 }
             }
 
@@ -158,7 +172,8 @@
                 c1.r + (c2.r - c1.r) * value,
                 c1.g + (c2.g - c1.g) * value,
                 c1.b + (c2.b - c1.b) * value,
-                c1.a + (c2.a - c1.a) * value);
+                c1.a + (c2.a - c1.a) * value
+            );
         }
     }
 }

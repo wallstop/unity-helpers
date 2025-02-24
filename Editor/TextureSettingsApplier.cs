@@ -31,7 +31,8 @@
         public List<Texture2D> textures = new();
 
         [Tooltip(
-            "Drag a folder from Unity here to apply the configuration to all settings under it. No sprites are modified if no directories are provided.")]
+            "Drag a folder from Unity here to apply the configuration to all settings under it. No sprites are modified if no directories are provided."
+        )]
         public List<Object> directories = new();
 
         [MenuItem("Tools/Unity Helpers/Texture Settings Applier")]
@@ -54,10 +55,12 @@
 
             int textureCount = 0;
             HashSet<string> processedPaths = new();
-            foreach (Texture2D texture in textures?
-                                              .Distinct()
-                                              .OrderBy(texture => texture != null ? texture.name : string.Empty) ??
-                                          Enumerable.Empty<Texture2D>())
+            foreach (
+                Texture2D texture in textures
+                    ?.Distinct()
+                    .OrderBy(texture => texture != null ? texture.name : string.Empty)
+                    ?? Enumerable.Empty<Texture2D>()
+            )
             {
                 if (texture == null)
                 {
@@ -65,7 +68,10 @@
                 }
 
                 string assetPath = AssetDatabase.GetAssetPath(texture);
-                if (processedPaths.Add(Application.dataPath + assetPath) && TryUpdateTextureSettings(assetPath))
+                if (
+                    processedPaths.Add(Application.dataPath + assetPath)
+                    && TryUpdateTextureSettings(assetPath)
+                )
                 {
                     ++textureCount;
                 }
@@ -81,7 +87,10 @@
                         continue;
                     }
 
-                    int index = fullFilePath.LastIndexOf(directoryPath, StringComparison.OrdinalIgnoreCase);
+                    int index = fullFilePath.LastIndexOf(
+                        directoryPath,
+                        StringComparison.OrdinalIgnoreCase
+                    );
                     if (index < 0)
                     {
                         continue;
@@ -96,7 +105,10 @@
 
                 foreach (string subDirectory in Directory.EnumerateDirectories(directoryPath))
                 {
-                    int index = subDirectory.LastIndexOf(directoryPath, StringComparison.OrdinalIgnoreCase);
+                    int index = subDirectory.LastIndexOf(
+                        directoryPath,
+                        StringComparison.OrdinalIgnoreCase
+                    );
                     if (index < 0)
                     {
                         continue;
@@ -129,7 +141,8 @@
                     format = textureFormat,
                     textureCompression = compression,
                     crunchedCompression = useCrunchCompression,
-                });
+                }
+            );
             if (applyReadOnly)
             {
                 textureImporter.isReadable = !isReadOnly;

@@ -4,14 +4,13 @@
     using System.Collections.Generic;
     using UnityEngine;
 
-    public sealed class AnimationEventEqualityComparer : EqualityComparer<AnimationEvent>, IComparer<AnimationEvent>
+    public sealed class AnimationEventEqualityComparer
+        : EqualityComparer<AnimationEvent>,
+            IComparer<AnimationEvent>
     {
         public static readonly AnimationEventEqualityComparer Instance = new();
 
-        private AnimationEventEqualityComparer()
-        {
-
-        }
+        private AnimationEventEqualityComparer() { }
 
         // Returns a shallow copy with equatable values propagated
         public AnimationEvent Copy(AnimationEvent instance)
@@ -93,13 +92,18 @@
 
             return true;
         }
-    
 
         public override int GetHashCode(AnimationEvent instance)
         {
             return HashCode.Combine(
-                instance.time, instance.functionName, instance.intParameter, instance.floatParameter,
-                instance.stringParameter, instance.objectReferenceParameter, instance.messageOptions);
+                instance.time,
+                instance.functionName,
+                instance.intParameter,
+                instance.floatParameter,
+                instance.stringParameter,
+                instance.objectReferenceParameter,
+                instance.messageOptions
+            );
         }
 
         public int Compare(AnimationEvent lhs, AnimationEvent rhs)
@@ -125,7 +129,11 @@
                 return timeComparison;
             }
 
-            int functionNameComparison = string.Compare(lhs.functionName, rhs.functionName, StringComparison.Ordinal);
+            int functionNameComparison = string.Compare(
+                lhs.functionName,
+                rhs.functionName,
+                StringComparison.Ordinal
+            );
             if (functionNameComparison != 0)
             {
                 return functionNameComparison;
@@ -137,7 +145,11 @@
                 return intParameterComparison;
             }
 
-            int stringParameterComparison = string.Compare(lhs.stringParameter, rhs.stringParameter, StringComparison.Ordinal);
+            int stringParameterComparison = string.Compare(
+                lhs.stringParameter,
+                rhs.stringParameter,
+                StringComparison.Ordinal
+            );
             if (stringParameterComparison != 0)
             {
                 return stringParameterComparison;

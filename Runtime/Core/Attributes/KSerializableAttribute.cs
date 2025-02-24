@@ -8,16 +8,12 @@
     ///     If specified on a class, will automatically attempt to serialize all fields and properties.
     /// </summary>
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property | AttributeTargets.Class)]
-    public sealed class KSerializableAttribute : Attribute
-    {
-    }
+    public sealed class KSerializableAttribute : Attribute { }
 
     /// <summary>
     ///     For classes where KSerializableAttribute is used, specifying this on fields or properties
     ///     will ignore them for the purpose of serialization into SerializedWorld.
     /// </summary>
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
-    public sealed class KNonSerializableAttribute : Attribute
-    {
-    }
+    public sealed class KNonSerializableAttribute : Attribute { }
 }

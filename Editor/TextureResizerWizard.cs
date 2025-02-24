@@ -20,14 +20,15 @@
         public enum ResizeAlgorithm
         {
             Bilinear,
-            Point
+            Point,
         }
 
         public List<Texture2D> textures = new();
 
         [FormerlySerializedAs("animationSources")]
         [Tooltip(
-            "Drag a folder from Unity here to apply the configuration to all textures under it. No textures are modified if no directories are provided.")]
+            "Drag a folder from Unity here to apply the configuration to all textures under it. No textures are modified if no directories are provided."
+        )]
         public List<Object> textureSourcePaths = new();
 
         public int numResizes = 1;
@@ -61,7 +62,12 @@
 
             if (animationPaths.Any())
             {
-                foreach (string assetGuid in AssetDatabase.FindAssets("t:texture2D", animationPaths.ToArray()))
+                foreach (
+                    string assetGuid in AssetDatabase.FindAssets(
+                        "t:texture2D",
+                        animationPaths.ToArray()
+                    )
+                )
                 {
                     string path = AssetDatabase.GUIDToAssetPath(assetGuid);
                     if (string.IsNullOrEmpty(path))
@@ -94,7 +100,8 @@
                         continue;
                     }
 
-                    TextureImporter tImporter = AssetImporter.GetAtPath(assetPath) as TextureImporter;
+                    TextureImporter tImporter =
+                        AssetImporter.GetAtPath(assetPath) as TextureImporter;
                     if (tImporter == null)
                     {
                         continue;
@@ -112,9 +119,10 @@
                     Texture2D copy = Instantiate(texture);
                     try
                     {
-                        int extraWidth = (int)Math.Round(copy.width / (pixelsPerUnit * widthMultiplier));
-                        int extraHeight = (int)Math.Round(
-                            copy.height / (pixelsPerUnit * heightMultiplier));
+                        int extraWidth = (int)
+                            Math.Round(copy.width / (pixelsPerUnit * widthMultiplier));
+                        int extraHeight = (int)
+                            Math.Round(copy.height / (pixelsPerUnit * heightMultiplier));
                         if (extraWidth == 0 && extraHeight == 0)
                         {
                             continue;
@@ -123,22 +131,37 @@
                         switch (scalingResizeAlgorithm)
                         {
                             case ResizeAlgorithm.Bilinear:
-                                TextureScale.Bilinear(copy, copy.width + extraWidth, copy.height + extraHeight);
+                                TextureScale.Bilinear(
+                                    copy,
+                                    copy.width + extraWidth,
+                                    copy.height + extraHeight
+                                );
                                 break;
                             case ResizeAlgorithm.Point:
-                                TextureScale.Point(copy, copy.width + extraWidth, copy.height + extraHeight);
+                                TextureScale.Point(
+                                    copy,
+                                    copy.width + extraWidth,
+                                    copy.height + extraHeight
+                                );
                                 break;
                             default:
                                 throw new InvalidEnumArgumentException(
-                                    nameof(scalingResizeAlgorithm), (int)scalingResizeAlgorithm,
-                                    typeof(ResizeAlgorithm));
+                                    nameof(scalingResizeAlgorithm),
+                                    (int)scalingResizeAlgorithm,
+                                    typeof(ResizeAlgorithm)
+                                );
                         }
 
                         byte[] bytes = copy.EncodeToPNG();
                         File.WriteAllBytes(assetPath, bytes);
                         this.Log(
-                            "Resized {0} from [{1}x{2}] to [{3}x{4}]", texture.name, texture.width, texture.height,
-                            copy.width, copy.height);
+                            "Resized {0} from [{1}x{2}] to [{3}x{4}]",
+                            texture.name,
+                            texture.width,
+                            texture.height,
+                            copy.width,
+                            copy.height
+                        );
                     }
                     catch (Exception e)
                     {

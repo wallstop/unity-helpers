@@ -2,7 +2,5 @@
 
 namespace UnityHelpers.Core.Attributes
 {
-    public sealed class ReadOnlyAttribute : PropertyAttribute
-    {
-    }
+    public sealed class ReadOnlyAttribute : PropertyAttribute { }
 }

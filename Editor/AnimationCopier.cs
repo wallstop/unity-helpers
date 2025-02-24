@@ -33,7 +33,10 @@
             if (GUILayout.Button("Set Animation Source Path"))
             {
                 string sourcePath = EditorUtility.OpenFolderPanel(
-                    "Select Animation Source Path", EditorUtilities.GetCurrentPathOfProjectWindow(), string.Empty);
+                    "Select Animation Source Path",
+                    EditorUtilities.GetCurrentPathOfProjectWindow(),
+                    string.Empty
+                );
                 int assetIndex = sourcePath?.IndexOf("Assets", StringComparison.Ordinal) ?? -1;
                 if (assetIndex < 0)
                 {
@@ -48,7 +51,10 @@
             if (GUILayout.Button("Set Animation Destination Path"))
             {
                 string sourcePath = EditorUtility.OpenFolderPanel(
-                    "Select Animation Destination Path", EditorUtilities.GetCurrentPathOfProjectWindow(), string.Empty);
+                    "Select Animation Destination Path",
+                    EditorUtilities.GetCurrentPathOfProjectWindow(),
+                    string.Empty
+                );
                 int assetIndex = sourcePath?.IndexOf("Assets", StringComparison.Ordinal) ?? -1;
                 if (assetIndex < 0)
                 {
@@ -70,29 +76,47 @@
                 return;
             }
 
-            if (string.IsNullOrEmpty(animationSourcePath) || string.IsNullOrEmpty(animationDestinationPath))
+            if (
+                string.IsNullOrEmpty(animationSourcePath)
+                || string.IsNullOrEmpty(animationDestinationPath)
+            )
             {
                 return;
             }
 
             int processed = 0;
-            foreach (string assetGuid in AssetDatabase.FindAssets("t:AnimationClip", new[] { animationSourcePath }))
+            foreach (
+                string assetGuid in AssetDatabase.FindAssets(
+                    "t:AnimationClip",
+                    new[] { animationSourcePath }
+                )
+            )
             {
                 string path = AssetDatabase.GUIDToAssetPath(assetGuid);
 
                 AnimationClip animationClip = AssetDatabase.LoadAssetAtPath<AnimationClip>(path);
                 if (animationClip == null)
                 {
-                    this.LogError("Invalid AnimationClip (null) found at path '{0}', skipping.", path);
+                    this.LogError(
+                        "Invalid AnimationClip (null) found at path '{0}', skipping.",
+                        path
+                    );
                     continue;
                 }
 
                 string prefix = animationClip.name;
                 string relativePath = path.Substring(animationSourcePath.Length);
-                int prefixIndex = relativePath.LastIndexOf(prefix, StringComparison.OrdinalIgnoreCase);
+                int prefixIndex = relativePath.LastIndexOf(
+                    prefix,
+                    StringComparison.OrdinalIgnoreCase
+                );
                 if (prefixIndex < 0)
                 {
-                    this.LogWarn("Unsupported animation at '{0}', expected to be prefixed by '{1}'.", path, prefix);
+                    this.LogWarn(
+                        "Unsupported animation at '{0}', expected to be prefixed by '{1}'.",
+                        path,
+                        prefix
+                    );
                     continue;
                 }
 
@@ -104,7 +128,8 @@
                     _ = Directory.CreateDirectory(outputPath);
                 }
 
-                string destination = animationDestinationPath + partialPath + relativePath.Substring(prefixIndex);
+                string destination =
+                    animationDestinationPath + partialPath + relativePath.Substring(prefixIndex);
                 bool copySuccessful = AssetDatabase.CopyAsset(path, destination);
                 if (copySuccessful)
                 {
@@ -118,7 +143,11 @@
                 }
                 else
                 {
-                    this.LogError("Failed to copy animation from '{0}' to '{1}'.", path, destination);
+                    this.LogError(
+                        "Failed to copy animation from '{0}' to '{1}'.",
+                        path,
+                        destination
+                    );
                 }
             }
 

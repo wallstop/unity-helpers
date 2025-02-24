@@ -18,7 +18,9 @@
     {
         private static readonly Dictionary<Type, List<FieldInfo>> FieldsByType = new();
 
-        [Tooltip("Drag a folder from Unity here to validate all prefabs under it. Defaults to Assets/Prefabs and Assets/Resources if none specified.")]
+        [Tooltip(
+            "Drag a folder from Unity here to validate all prefabs under it. Defaults to Assets/Prefabs and Assets/Resources if none specified."
+        )]
         public List<Object> assetPaths;
 
         [MenuItem("Tools/Unity Helpers/Prefab Check Wizard")]
@@ -59,7 +61,10 @@
                         }
                         else
                         {
-                            prefab.LogError("Detected missing script for script type {0}.", scriptType);
+                            prefab.LogError(
+                                "Detected missing script for script type {0}.",
+                                scriptType
+                            );
                         }
 
                         continue;
@@ -71,17 +76,31 @@
 
         private static void ValidateNoNullsInLists(Object component)
         {
-            foreach (FieldInfo field in FieldsByType.GetOrAdd(
-                         component.GetType(), type => type
-                             .GetFields(BindingFlags.Instance | BindingFlags.Public)
-                             .Concat(
-                                 type.GetFields(BindingFlags.Instance | BindingFlags.NonPublic).Where(
-                                     field => field.GetCustomAttributes(typeof(SerializeField)).Any() ||
-                                              field.GetCustomAttributes(typeof(ValidateAssignmentAttribute)).Any()))
-                             .Where(field => typeof(IEnumerable).IsAssignableFrom(field.FieldType) || field.FieldType.IsArray)
-                             .Where(field => !typeof(Transform).IsAssignableFrom(field.FieldType))
-                             .Where(field => !typeof(Object).IsAssignableFrom(field.FieldType))
-                             .ToList()))
+            foreach (
+                FieldInfo field in FieldsByType.GetOrAdd(
+                    component.GetType(),
+                    type =>
+                        type.GetFields(BindingFlags.Instance | BindingFlags.Public)
+                            .Concat(
+                                type.GetFields(BindingFlags.Instance | BindingFlags.NonPublic)
+                                    .Where(field =>
+                                        field.GetCustomAttributes(typeof(SerializeField)).Any()
+                                        || field
+                                            .GetCustomAttributes(
+                                                typeof(ValidateAssignmentAttribute)
+                                            )
+                                            .Any()
+                                    )
+                            )
+                            .Where(field =>
+                                typeof(IEnumerable).IsAssignableFrom(field.FieldType)
+                                || field.FieldType.IsArray
+                            )
+                            .Where(field => !typeof(Transform).IsAssignableFrom(field.FieldType))
+                            .Where(field => !typeof(Object).IsAssignableFrom(field.FieldType))
+                            .ToList()
+                )
+            )
             {
                 bool LogIfNull(object thing, int? position = null)
                 {
@@ -93,7 +112,11 @@
                         }
                         else
                         {
-                            component.LogError("Field {0} has a null element at position {1}.", field.Name, position);
+                            component.LogError(
+                                "Field {0} has a null element at position {1}.",
+                                field.Name,
+                                position
+                            );
                         }
 
                         return true;

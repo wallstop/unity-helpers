@@ -8,14 +8,19 @@
 
     [Serializable]
     [ProtoContract]
-    public struct FastVector3Int : IEquatable<FastVector3Int>, IComparable<FastVector3Int>, IComparable
+    public struct FastVector3Int
+        : IEquatable<FastVector3Int>,
+            IComparable<FastVector3Int>,
+            IComparable
     {
         public static readonly FastVector3Int zero = new(0, 0, 0);
 
         [ProtoMember(1)]
         public int x;
+
         [ProtoMember(2)]
         public int y;
+
         [ProtoMember(3)]
         public int z;
 
@@ -30,13 +35,10 @@
         }
 
         public FastVector3Int(Vector3Int vector)
-            : this(vector.x, vector.y, vector.z)
-        {
-        }
+            : this(vector.x, vector.y, vector.z) { }
 
-        public FastVector3Int(int x, int y) : this(x, y, 0)
-        {
-        }
+        public FastVector3Int(int x, int y)
+            : this(x, y, 0) { }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool operator ==(FastVector3Int lhs, FastVector3Int rhs)
@@ -124,7 +126,10 @@
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Equals(FastVector3Int other)
         {
-            return GetHashCode() == other.GetHashCode() && x == other.x && y == other.y && z == other.z;
+            return GetHashCode() == other.GetHashCode()
+                && x == other.x
+                && y == other.y
+                && z == other.z;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
