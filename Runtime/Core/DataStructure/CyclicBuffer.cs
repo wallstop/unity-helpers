@@ -4,15 +4,15 @@
     using System.Collections;
     using System.Collections.Generic;
     using System.Linq;
+    using Extension;
     using Helper;
 
     [Serializable]
     public sealed class CyclicBuffer<T> : IReadOnlyList<T>
     {
+        public int Capacity { get; private set; }
         public int Count { get; private set; }
         public bool IsReadOnly => false;
-
-        public readonly int capacity;
 
         private readonly List<T> _buffer;
         private int _position;
@@ -38,7 +38,7 @@
                 throw new ArgumentException(nameof(capacity));
             }
 
-            this.capacity = capacity;
+            Capacity = capacity;
             _position = 0;
             Count = 0;
             _buffer = new List<T>();
@@ -64,7 +64,7 @@
 
         public void Add(T item)
         {
-            if (capacity == 0)
+            if (Capacity == 0)
             {
                 return;
             }
@@ -78,8 +78,8 @@
                 _buffer.Add(item);
             }
 
-            _position = _position.WrappedIncrement(capacity);
-            if (Count < capacity)
+            _position = _position.WrappedIncrement(Capacity);
+            if (Count < Capacity)
             {
                 ++Count;
             }
@@ -93,6 +93,24 @@
             _buffer.Clear();
         }
 
+        public void Resize(int newCapacity)
+        {
+            if (newCapacity < 0)
+            {
+                throw new ArgumentException(nameof(newCapacity));
+            }
+
+            Capacity = newCapacity;
+            _buffer.Shift(-_position);
+            if (newCapacity < _buffer.Count)
+            {
+                _buffer.RemoveRange(newCapacity, _buffer.Count - newCapacity);
+                _position = 0;
+            }
+
+            Count = Math.Min(newCapacity, Count);
+        }
+
         public bool Contains(T item)
         {
             return _buffer.Contains(item);
@@ -100,7 +118,11 @@
 
         private int AdjustedIndexFor(int index)
         {
-            long longCapacity = capacity;
+            long longCapacity = Capacity;
+            if (longCapacity == 0L)
+            {
+                return 0;
+            }
             unchecked
             {
                 int adjustedIndex = (int)(
