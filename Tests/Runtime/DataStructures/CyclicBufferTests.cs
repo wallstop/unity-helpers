@@ -244,6 +244,11 @@
                 Assert.AreEqual(newCapacity, newValues.Length);
                 Assert.That(values.Take(newCapacity), Is.EqualTo(newValues));
 
+                buffer.Add(1);
+                buffer.Add(2);
+                int[] afterAddition = buffer.ToArray();
+                Assert.That(afterAddition, Is.EqualTo(newValues.Skip(2).Concat(new[] { 1, 2 })));
+
                 newCapacity = 0;
                 buffer.Resize(newCapacity);
                 newValues = buffer.ToArray();
@@ -276,6 +281,37 @@
                 Assert.AreEqual(newCapacity, buffer.Capacity);
                 Assert.AreEqual(Math.Min(filled, newCapacity), newValues.Length);
                 Assert.That(values.Take(newCapacity), Is.EqualTo(newValues));
+
+                buffer.Add(1);
+                buffer.Add(2);
+                int[] afterAddition = buffer.ToArray();
+                if (newCapacity <= filled)
+                {
+                    Assert.That(
+                        afterAddition,
+                        Is.EqualTo(newValues.Skip(2).Concat(new[] { 1, 2 })),
+                        $"Resize failed for iteration {i}, fillPercent {fillPercent:0.00}, capacityPercent: {capacityPercent:0.00}. "
+                            + $"Capacity: {capacity}, newCapacity: {newCapacity}, filled: {filled}."
+                    );
+                }
+                else if (newCapacity == filled + 1)
+                {
+                    Assert.That(
+                        afterAddition,
+                        Is.EqualTo(newValues.Skip(1).Concat(new[] { 1, 2 })),
+                        $"Resize failed for iteration {i}, fillPercent {fillPercent:0.00}, capacityPercent: {capacityPercent:0.00}. "
+                            + $"Capacity: {capacity}, newCapacity: {newCapacity}, filled: {filled}."
+                    );
+                }
+                else
+                {
+                    Assert.That(
+                        afterAddition,
+                        Is.EqualTo(newValues.Concat(new[] { 1, 2 })),
+                        $"Resize failed for iteration {i}, fillPercent {fillPercent:0.00}, capacityPercent: {capacityPercent:0.00}. "
+                            + $"Capacity: {capacity}, newCapacity: {newCapacity}, filled: {filled}."
+                    );
+                }
 
                 newCapacity = 0;
                 buffer.Resize(newCapacity);

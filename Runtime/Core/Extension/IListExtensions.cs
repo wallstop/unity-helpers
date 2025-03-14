@@ -1,5 +1,6 @@
 ﻿namespace UnityHelpers.Core.Extension
 {
+    using System;
     using System.Collections.Generic;
     using Helper;
     using Random;
@@ -48,6 +49,15 @@
 
         public static void Reverse<T>(this IList<T> list, int start, int end)
         {
+            if (start < 0 || list.Count <= start)
+            {
+                throw new ArgumentException(nameof(start));
+            }
+            if (end < 0 || list.Count <= end)
+            {
+                throw new ArgumentException(nameof(end));
+            }
+
             while (start < end)
             {
                 (list[start], list[end]) = (list[end], list[start]);

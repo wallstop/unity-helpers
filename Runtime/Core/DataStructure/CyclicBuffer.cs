@@ -95,19 +95,26 @@
 
         public void Resize(int newCapacity)
         {
+            if (newCapacity == Capacity)
+            {
+                return;
+            }
+
             if (newCapacity < 0)
             {
                 throw new ArgumentException(nameof(newCapacity));
             }
 
+            int oldCapacity = Capacity;
             Capacity = newCapacity;
             _buffer.Shift(-_position);
             if (newCapacity < _buffer.Count)
             {
                 _buffer.RemoveRange(newCapacity, _buffer.Count - newCapacity);
-                _position = 0;
             }
 
+            _position =
+                newCapacity < oldCapacity && newCapacity <= _buffer.Count ? 0 : _buffer.Count;
             Count = Math.Min(newCapacity, Count);
         }
 
