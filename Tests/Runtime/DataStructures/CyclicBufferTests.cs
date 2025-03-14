@@ -32,7 +32,7 @@
             {
                 int capacity = PRNG.Instance.Next(1, int.MaxValue);
                 CyclicBuffer<int> buffer = new(capacity);
-                Assert.AreEqual(capacity, buffer.capacity);
+                Assert.AreEqual(capacity, buffer.Capacity);
             }
         }
 
@@ -74,7 +74,7 @@
                 if (!expected.SequenceEqual(buffer))
                 {
                     Assert.Fail(
-                        $"Failure at iteration {i}, capacity={buffer.capacity}, "
+                        $"Failure at iteration {i}, capacity={buffer.Capacity}, "
                             + $"capacityMultiplier={CapacityMultiplier}\n"
                             + $"Expected: [{string.Join(",", expected)}], Actual: [{string.Join(",", buffer)}]"
                     );
@@ -168,7 +168,7 @@
                     if (!expected.SequenceEqual(buffer))
                     {
                         Assert.Fail(
-                            $"Failure at iteration {i}, j={j}, capacity={buffer.capacity}, "
+                            $"Failure at iteration {i}, j={j}, capacity={buffer.Capacity}, "
                                 + $"capacityMultiplier={CapacityMultiplier}\n"
                                 + $"Expected: [{string.Join(",", expected)}], Actual: [{string.Join(",", buffer)}]"
                         );
@@ -209,7 +209,7 @@
                 buffer.Clear();
 
                 Assert.AreEqual(0, buffer.Count);
-                Assert.AreEqual(capacity, buffer.capacity);
+                Assert.AreEqual(capacity, buffer.Capacity);
                 Assert.IsTrue(Array.Empty<int>().SequenceEqual(buffer));
 
                 // Make sure our data is actually cleaned up, none of our input data should be "Contained"
@@ -217,6 +217,71 @@
                 {
                     Assert.IsFalse(buffer.Contains(value));
                 }
+            }
+        }
+
+        [Test]
+        public void ResizeFullOk()
+        {
+            for (int i = 0; i < NumTries; ++i)
+            {
+                int capacity = PRNG.Instance.Next(100, 1_000);
+                CyclicBuffer<int> buffer = new(capacity);
+                float fillPercent = PRNG.Instance.NextFloat(1f, 2f);
+                float capacityPercent = PRNG.Instance.NextFloat(0.3f, 0.9f);
+                for (int j = 0; j < capacity * fillPercent; ++j)
+                {
+                    int value = PRNG.Instance.Next();
+                    buffer.Add(value);
+                }
+
+                int[] values = buffer.ToArray();
+
+                int newCapacity = Math.Max(0, (int)(capacity * capacityPercent));
+                buffer.Resize(newCapacity);
+                int[] newValues = buffer.ToArray();
+                Assert.AreEqual(newCapacity, buffer.Capacity);
+                Assert.AreEqual(newCapacity, newValues.Length);
+                Assert.That(values.Take(newCapacity), Is.EqualTo(newValues));
+
+                newCapacity = 0;
+                buffer.Resize(newCapacity);
+                newValues = buffer.ToArray();
+                Assert.AreEqual(newCapacity, buffer.Capacity);
+                Assert.AreEqual(newCapacity, newValues.Length);
+            }
+        }
+
+        [Test]
+        public void ResizePartialOk()
+        {
+            for (int i = 0; i < NumTries; ++i)
+            {
+                int capacity = PRNG.Instance.Next(100, 1_000);
+                CyclicBuffer<int> buffer = new(capacity);
+                float fillPercent = PRNG.Instance.NextFloat(0.3f, 0.9f);
+                float capacityPercent = PRNG.Instance.NextFloat(0.3f, 0.9f);
+                int filled = (int)(capacity * fillPercent);
+                for (int j = 0; j < filled; ++j)
+                {
+                    int value = PRNG.Instance.Next();
+                    buffer.Add(value);
+                }
+
+                int[] values = buffer.ToArray();
+
+                int newCapacity = Math.Max(0, (int)(capacity * capacityPercent));
+                buffer.Resize(newCapacity);
+                int[] newValues = buffer.ToArray();
+                Assert.AreEqual(newCapacity, buffer.Capacity);
+                Assert.AreEqual(Math.Min(filled, newCapacity), newValues.Length);
+                Assert.That(values.Take(newCapacity), Is.EqualTo(newValues));
+
+                newCapacity = 0;
+                buffer.Resize(newCapacity);
+                newValues = buffer.ToArray();
+                Assert.AreEqual(newCapacity, buffer.Capacity);
+                Assert.AreEqual(newCapacity, newValues.Length);
             }
         }
     }

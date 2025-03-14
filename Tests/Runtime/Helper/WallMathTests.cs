@@ -45,13 +45,25 @@
         }
 
         [Test]
+        public void PositiveMod()
+        {
+            Assert.AreEqual(9, (-1).PositiveMod(10));
+            Assert.AreEqual(1, 1.PositiveMod(10));
+            Assert.AreEqual(9f, (-1f).PositiveMod(10f));
+            Assert.AreEqual(1f, 1f.PositiveMod(10f));
+            Assert.AreEqual(9.0, (-1.0).PositiveMod(10.0));
+            Assert.AreEqual(1.0, 1.0.PositiveMod(10.0));
+            Assert.AreEqual(9L, (-1L).PositiveMod(10L));
+            Assert.AreEqual(1L, 1L.PositiveMod(10L));
+        }
+
+        [Test]
         public void ApproximatelyExpected()
         {
             Assert.IsTrue(0f.Approximately(0f, 0f));
             Assert.IsTrue(0f.Approximately(0.5f, 1f));
             Assert.IsFalse(0.001f.Approximately(0f, 0f));
             Assert.IsFalse(100f.Approximately(5f, 2.4f));
-
             Assert.IsTrue(0.001f.Approximately(0.0001f));
         }
 

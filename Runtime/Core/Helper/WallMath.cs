@@ -31,6 +31,34 @@
                 );
         }
 
+        public static float PositiveMod(this float value, float max)
+        {
+            value %= max;
+            value += max;
+            return value % max;
+        }
+
+        public static double PositiveMod(this double value, double max)
+        {
+            value %= max;
+            value += max;
+            return value % max;
+        }
+
+        public static int PositiveMod(this int value, int max)
+        {
+            value %= max;
+            value += max;
+            return value % max;
+        }
+
+        public static long PositiveMod(this long value, long max)
+        {
+            value %= max;
+            value += max;
+            return value % max;
+        }
+
         public static int WrappedAdd(this int value, int increment, int max)
         {
             WrappedAdd(ref value, increment, max);
