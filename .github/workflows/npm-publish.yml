@@ -1,0 +1,60 @@
+name: Publish to NPM
+
+on:
+  push:
+    branches:
+      - main  # Change this to your default branch
+    paths:
+      - 'package.json'
+
+jobs:
+  publish_npm:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Ensure full commit history for version comparison
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          registry-url: 'https://registry.npmjs.org/'
+
+      - name: Check if version changed
+        id: version_check
+        run: |
+          PREV_VERSION=$(git show HEAD~1:package.json | jq -r '.version' || echo "0.0.0")
+          NEW_VERSION=$(jq -r '.version' package.json)
+          echo "Previous version: $PREV_VERSION"
+          echo "New version: $NEW_VERSION"
+
+          if [ "$PREV_VERSION" != "$NEW_VERSION" ]; then
+            echo "Version changed, proceeding..."
+            echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+            echo "should_publish=true" >> $GITHUB_ENV
+
+            # Detect pre-releases (versions with "rc" or similar tags)
+            if [[ "$NEW_VERSION" == *"rc"* ]]; then
+              echo "This is a pre-release (next tag)."
+              echo "NPM_TAG=next" >> $GITHUB_ENV
+            else
+              echo "This is a stable release (latest tag)."
+              echo "NPM_TAG=latest" >> $GITHUB_ENV
+            fi
+          else
+            echo "Version did not change, skipping..."
+            echo "should_publish=false" >> $GITHUB_ENV
+          fi
+
+      - name: Install Dependencies
+        if: env.should_publish == 'true'
+        run: npm install
+
+      - name: Publish to NPM
+        if: env.should_publish == 'true'
+        run: npm publish --access public --tag ${{ env.NPM_TAG }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
