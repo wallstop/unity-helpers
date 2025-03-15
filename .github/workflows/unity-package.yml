@@ -1,0 +1,64 @@
+name: Export Unity Package
+
+on:
+  push:
+    branches:
+      - main  # Change this to your default branch
+    paths:
+      - 'package.json'
+
+jobs:
+  package_unity:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Check if version changed
+        id: version_check
+        run: |
+          git fetch --prune --unshallow
+          PREV_VERSION=$(git show HEAD~1:package.json | jq -r '.version' || echo "0.0.0")
+          NEW_VERSION=$(jq -r '.version' package.json)
+          echo "Previous version: $PREV_VERSION"
+          echo "New version: $NEW_VERSION"
+          if [ "$PREV_VERSION" != "$NEW_VERSION" ]; then
+            echo "Version changed, proceeding..."
+            echo "should_build=true" >> $GITHUB_ENV
+          else
+            echo "Version did not change, skipping..."
+            echo "should_build=false" >> $GITHUB_ENV
+          fi
+
+      - name: Set up Unity
+        if: env.should_build == 'true'
+        uses: game-ci/unity-builder@v3
+        with:
+          unityVersion: 2022.3.10f1  # Change to your Unity version
+          targetPlatform: StandaloneLinux64
+
+      - name: Export Unity Package
+        if: env.should_build == 'true'
+        run: |
+          mkdir -p UnityHelpers
+          UNITY_PROJECT_PATH=$(pwd)
+          PACKAGE_NAME="UnityPackage-v$(jq -r '.version' package.json).unitypackage"
+          echo "Exporting package: $PACKAGE_NAME"
+          
+          /opt/unity/Editor/Unity \
+            -batchmode -quit \
+            -projectPath "$UNITY_PROJECT_PATH" \
+            -exportPackage "Assets" "UnityHelpers/$PACKAGE_NAME"
+
+      - name: Upload Unity Package
+        if: env.should_build == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: UnityHelpers
+          path: UnityHelpers/*.unitypackage
