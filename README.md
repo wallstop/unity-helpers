@@ -2,8 +2,7 @@
 Various Unity Helpers. Includes many deterministic, seedable random number generators.
 
 # CI/CD Status
-![Tests](https://github.com/wallstop/unity-helpers/actions/workflows/unity-tests.yml/badge.svg)
-![Deploy](https://github.com/wallstop/unity-helpers/actions/workflows/npm-publish.yml/badge.svg)
+![Npm Publish](https://github.com/wallstop/unity-helpers/actions/workflows/npm-publish.yml/badge.svg)
 ![Deploy](https://github.com/wallstop/unity-helpers/actions/workflows/unity-package.yml/badge.svg)
 
 # Compatibility

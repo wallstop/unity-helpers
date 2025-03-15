@@ -1,10 +1,11 @@
 name: Publish to NPM
 
 on:
-  workflow_run:
-    workflows: ["Unity Tests"]
-    types:
-      - completed
+  push:
+    branches:
+      - main
+    paths:
+      - 'package.json'
 
 jobs:
   publish_npm:

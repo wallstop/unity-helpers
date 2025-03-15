@@ -1,10 +1,11 @@
 name: Export and Release Unity Package
 
 on:
-  workflow_run:
-    workflows: ["Unity Tests"]
-    types:
-      - completed
+  push:
+    branches:
+      - main
+    paths:
+      - 'package.json'
 
 jobs:
   package_unity:
