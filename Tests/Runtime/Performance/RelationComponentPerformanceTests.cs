@@ -7,7 +7,7 @@
     using NUnit.Framework;
     using UnityEngine;
 
-    public class RelationComponentPerformanceTests
+    public sealed class RelationComponentPerformanceTests
     {
         [Test]
         public void RelationalPerformanceTest()

@@ -1,6 +1,5 @@
 ﻿namespace UnityHelpers.Tests.Components
 {
-    using System.Collections.Generic;
     using Core.Attributes;
     using UnityEngine;
 
