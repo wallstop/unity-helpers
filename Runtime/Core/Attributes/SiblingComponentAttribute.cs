@@ -6,6 +6,7 @@
     using System.Linq;
     using System.Reflection;
     using Extension;
+    using Helper;
     using JetBrains.Annotations;
     using UnityEngine;
 
@@ -18,12 +19,15 @@
 
     public static class SiblingComponentExtensions
     {
-        private static readonly Dictionary<Type, FieldInfo[]> FieldsByType = new();
+        private static readonly Dictionary<
+            Type,
+            (FieldInfo field, Action<object, object> setter)[]
+        > FieldsByType = new();
 
         public static void AssignSiblingComponents(this Component component)
         {
             Type componentType = component.GetType();
-            FieldInfo[] fields = FieldsByType.GetOrAdd(
+            (FieldInfo field, Action<object, object> setter)[] fields = FieldsByType.GetOrAdd(
                 componentType,
                 type =>
                 {
@@ -34,11 +38,12 @@
                         .Where(field =>
                             Attribute.IsDefined(field, typeof(SiblingComponentAttribute))
                         )
+                        .Select(field => (field, ReflectionHelpers.CreateFieldSetter(type, field)))
                         .ToArray();
                 }
             );
 
-            foreach (FieldInfo field in fields)
+            foreach ((FieldInfo field, Action<object, object> setter) in fields)
             {
                 Type fieldType = field.FieldType;
                 bool isArray = fieldType.IsArray;
@@ -50,12 +55,12 @@
                     Component[] siblingComponents = component.GetComponents(siblingComponentType);
                     foundSibling = 0 < siblingComponents.Length;
 
-                    Array correctTypedArray = Array.CreateInstance(
+                    Array correctTypedArray = ReflectionHelpers.CreateArray(
                         siblingComponentType,
                         siblingComponents.Length
                     );
                     Array.Copy(siblingComponents, correctTypedArray, siblingComponents.Length);
-                    field.SetValue(component, correctTypedArray);
+                    setter(component, correctTypedArray);
                 }
                 else if (
                     fieldType.IsGenericType
@@ -63,19 +68,22 @@
                 )
                 {
                     siblingComponentType = fieldType.GenericTypeArguments[0];
-                    Type constructedListType = typeof(List<>).MakeGenericType(siblingComponentType);
-                    IList instance = (IList)Activator.CreateInstance(constructedListType);
+
+                    Component[] siblings = component.GetComponents(siblingComponentType);
+
+                    IList instance = ReflectionHelpers.CreateList(
+                        siblingComponentType,
+                        siblings.Length
+                    );
 
                     foundSibling = false;
-                    foreach (
-                        Component siblingComponent in component.GetComponents(siblingComponentType)
-                    )
+                    foreach (Component siblingComponent in siblings)
                     {
                         instance.Add(siblingComponent);
                         foundSibling = true;
                     }
 
-                    field.SetValue(component, instance);
+                    setter(component, instance);
                 }
                 else
                 {
@@ -87,7 +95,7 @@
                     )
                     {
                         foundSibling = true;
-                        field.SetValue(component, siblingComponent);
+                        setter(component, siblingComponent);
                     }
                     else
                     {
