@@ -20,12 +20,15 @@
 
     public static class ChildComponentExtensions
     {
-        private static readonly Dictionary<Type, FieldInfo[]> FieldsByType = new();
+        private static readonly Dictionary<
+            Type,
+            (FieldInfo field, Action<object, object> setter)[]
+        > FieldsByType = new();
 
         public static void AssignChildComponents(this Component component)
         {
             Type componentType = component.GetType();
-            FieldInfo[] fields = FieldsByType.GetOrAdd(
+            (FieldInfo field, Action<object, object> setter)[] fields = FieldsByType.GetOrAdd(
                 componentType,
                 type =>
                 {
@@ -34,11 +37,12 @@
                     );
                     return fields
                         .Where(field => Attribute.IsDefined(field, typeof(ChildComponentAttribute)))
+                        .Select(field => (field, ReflectionHelpers.CreateFieldSetter(type, field)))
                         .ToArray();
                 }
             );
 
-            foreach (FieldInfo field in fields)
+            foreach ((FieldInfo field, Action<object, object> setter) in fields)
             {
                 Type fieldType = field.FieldType;
                 bool isArray = fieldType.IsArray;
@@ -59,12 +63,12 @@
 
                         foundChild = 0 < children.Count;
 
-                        Array correctTypedArray = Array.CreateInstance(
+                        Array correctTypedArray = ReflectionHelpers.CreateArray(
                             childComponentType,
                             children.Count
                         );
                         Array.Copy(children.ToArray(), correctTypedArray, children.Count);
-                        field.SetValue(component, correctTypedArray);
+                        setter(component, correctTypedArray);
                     }
                     else if (
                         fieldType.IsGenericType
@@ -72,11 +76,8 @@
                     )
                     {
                         childComponentType = fieldType.GenericTypeArguments[0];
-                        Type constructedListType = typeof(List<>).MakeGenericType(
-                            childComponentType
-                        );
-                        IList instance = (IList)Activator.CreateInstance(constructedListType);
 
+                        IList instance = ReflectionHelpers.CreateList(childComponentType);
                         foundChild = false;
                         foreach (
                             Component childComponent in component
@@ -90,7 +91,7 @@
                             foundChild = true;
                         }
 
-                        field.SetValue(component, instance);
+                        setter(component, instance);
                     }
                     else
                     {
@@ -107,7 +108,7 @@
                         }
                         if (foundChild)
                         {
-                            field.SetValue(component, childComponent);
+                            setter(component, childComponent);
                         }
                     }
                 }
@@ -121,12 +122,12 @@
                         );
                         foundChild = 0 < childComponents.Length;
 
-                        Array correctTypedArray = Array.CreateInstance(
+                        Array correctTypedArray = ReflectionHelpers.CreateArray(
                             childComponentType,
                             childComponents.Length
                         );
                         Array.Copy(childComponents, correctTypedArray, childComponents.Length);
-                        field.SetValue(component, correctTypedArray);
+                        setter(component, correctTypedArray);
                     }
                     else if (
                         fieldType.IsGenericType
@@ -134,11 +135,16 @@
                     )
                     {
                         childComponentType = fieldType.GenericTypeArguments[0];
-                        Type constructedListType = typeof(List<>).MakeGenericType(
-                            childComponentType
-                        );
-                        IList instance = (IList)Activator.CreateInstance(constructedListType);
 
+                        Component[] children = component.GetComponentsInChildren(
+                            childComponentType,
+                            true
+                        );
+
+                        IList instance = ReflectionHelpers.CreateList(
+                            childComponentType,
+                            children.Length
+                        );
                         foundChild = false;
                         foreach (
                             Component childComponent in component.GetComponentsInChildren(
@@ -151,7 +157,7 @@
                             foundChild = true;
                         }
 
-                        field.SetValue(component, instance);
+                        setter(component, instance);
                     }
                     else
                     {
@@ -162,7 +168,7 @@
                         foundChild = childComponent != null;
                         if (foundChild)
                         {
-                            field.SetValue(component, childComponent);
+                            setter(component, childComponent);
                         }
                     }
                 }

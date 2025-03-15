@@ -6,6 +6,7 @@
     using System.Linq;
     using System.Reflection;
     using Extension;
+    using Helper;
     using JetBrains.Annotations;
     using UnityEngine;
 
@@ -19,12 +20,15 @@
 
     public static class ParentComponentExtensions
     {
-        private static readonly Dictionary<Type, FieldInfo[]> FieldsByType = new();
+        private static readonly Dictionary<
+            Type,
+            (FieldInfo field, Action<object, object> setter)[]
+        > FieldsByType = new();
 
         public static void AssignParentComponents(this Component component)
         {
             Type componentType = component.GetType();
-            FieldInfo[] fields = FieldsByType.GetOrAdd(
+            (FieldInfo field, Action<object, object> setter)[] fields = FieldsByType.GetOrAdd(
                 componentType,
                 type =>
                 {
@@ -35,11 +39,12 @@
                         .Where(field =>
                             Attribute.IsDefined(field, typeof(ParentComponentAttribute))
                         )
+                        .Select(field => (field, ReflectionHelpers.CreateFieldSetter(type, field)))
                         .ToArray();
                 }
             );
 
-            foreach (FieldInfo field in fields)
+            foreach ((FieldInfo field, Action<object, object> setter) in fields)
             {
                 Type fieldType = field.FieldType;
                 bool isArray = fieldType.IsArray;
@@ -61,12 +66,12 @@
                         );
                         foundParent = 0 < parentComponents.Length;
 
-                        Array correctTypedArray = Array.CreateInstance(
+                        Array correctTypedArray = ReflectionHelpers.CreateArray(
                             parentComponentType,
                             parentComponents.Length
                         );
                         Array.Copy(parentComponents, correctTypedArray, parentComponents.Length);
-                        field.SetValue(component, correctTypedArray);
+                        setter(component, correctTypedArray);
                     }
                     else if (
                         fieldType.IsGenericType
@@ -74,24 +79,25 @@
                     )
                     {
                         parentComponentType = fieldType.GenericTypeArguments[0];
-                        Type constructedListType = typeof(List<>).MakeGenericType(
-                            parentComponentType
+
+                        Component[] parents = parent.GetComponentsInParent(
+                            parentComponentType,
+                            true
                         );
-                        IList instance = (IList)Activator.CreateInstance(constructedListType);
+
+                        IList instance = ReflectionHelpers.CreateList(
+                            parentComponentType,
+                            parents.Length
+                        );
 
                         foundParent = false;
-                        foreach (
-                            Component parentComponent in parent.GetComponentsInParent(
-                                parentComponentType,
-                                true
-                            )
-                        )
+                        foreach (Component parentComponent in parents)
                         {
                             instance.Add(parentComponent);
                             foundParent = true;
                         }
 
-                        field.SetValue(component, instance);
+                        setter(component, instance);
                     }
                     else
                     {
@@ -102,7 +108,7 @@
                         foundParent = childComponent != null;
                         if (foundParent)
                         {
-                            field.SetValue(component, childComponent);
+                            setter(component, childComponent);
                         }
                     }
                 }
@@ -116,12 +122,12 @@
                         );
                         foundParent = 0 < parentComponents.Length;
 
-                        Array correctTypedArray = Array.CreateInstance(
+                        Array correctTypedArray = ReflectionHelpers.CreateArray(
                             parentComponentType,
                             parentComponents.Length
                         );
                         Array.Copy(parentComponents, correctTypedArray, parentComponents.Length);
-                        field.SetValue(component, correctTypedArray);
+                        setter(component, correctTypedArray);
                     }
                     else if (
                         fieldType.IsGenericType
@@ -129,24 +135,24 @@
                     )
                     {
                         parentComponentType = fieldType.GenericTypeArguments[0];
-                        Type constructedListType = typeof(List<>).MakeGenericType(
-                            parentComponentType
+
+                        Component[] parents = component.GetComponentsInParent(
+                            parentComponentType,
+                            true
                         );
-                        IList instance = (IList)Activator.CreateInstance(constructedListType);
+
+                        IList instance = ReflectionHelpers.CreateList(
+                            parentComponentType,
+                            parents.Length
+                        );
 
                         foundParent = false;
-                        foreach (
-                            Component parentComponent in component.GetComponentsInParent(
-                                parentComponentType,
-                                true
-                            )
-                        )
+                        foreach (Component parentComponent in parents)
                         {
                             instance.Add(parentComponent);
                             foundParent = true;
                         }
-
-                        field.SetValue(component, instance);
+                        setter(component, instance);
                     }
                     else
                     {
@@ -157,7 +163,7 @@
                         foundParent = childComponent != null;
                         if (foundParent)
                         {
-                            field.SetValue(component, childComponent);
+                            setter(component, childComponent);
                         }
                     }
                 }
