@@ -1,0 +1,38 @@
+name: Unity Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    name: Run Unity Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Cache Library folder
+        uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-${{ runner.os }}-${{ hashFiles('Packages/manifest.json') }}
+          restore-keys: |
+            Library-${{ runner.os }}-
+
+      - name: Activate Unity License
+        uses: game-ci/unity-activate@v3
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+
+      - name: Run Unity Tests
+        uses: game-ci/unity-test-runner@v3
+        with:
+          projectPath: .
+          githubToken: ${{ secrets.GITHUB_TOKEN }}
+          testMode: all
+
+      - name: Deactivate Unity License
+        if: always()
+        uses: game-ci/unity-return-license@v3
