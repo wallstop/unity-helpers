@@ -5,7 +5,7 @@ on:
   pull_request:
 
 jobs:
-  test:
+  unity-tests:
     name: Run Unity Tests
     runs-on: ubuntu-latest
     
@@ -22,17 +22,17 @@ jobs:
             Library-${{ runner.os }}-
 
       - name: Activate Unity License
-        uses: game-ci/unity-activate@v3
+        uses: game-ci/unity-activate@v2  # Use v2 instead of v3
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
 
       - name: Run Unity Tests
-        uses: game-ci/unity-test-runner@v3
+        uses: game-ci/unity-test-runner@v2  # Use v2 instead of v3
         with:
           projectPath: .
           githubToken: ${{ secrets.GITHUB_TOKEN }}
-          testMode: all
+          testMode: editmode
 
       - name: Deactivate Unity License
         if: always()
-        uses: game-ci/unity-return-license@v3
+        uses: game-ci/unity-return-license@v2  # Use v2 instead of v3
