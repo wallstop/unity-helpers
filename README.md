@@ -1,7 +1,19 @@
 # A Grab-Bag
 Various Unity Helpers. Includes many deterministic, seedable random number generators.
 
-# To Install as Unity Package
+# Compatibility
+| Platform | Compatible |
+| --- | --- |
+| Unity 2021 | Likely, but untested |
+| Unity 2022 | &check; |
+| Unity 2023 | &check; |
+| Unity 6 | &check; |
+| URP | &check; |
+| HDRP | &check; |
+
+# Installation
+
+## To Install as Unity Package
 1. Open Unity Package Manager
 2. (Optional) Enable Pre-release packages to get the latest, cutting-edge builds
 3. Open the Advanced Package Settings
@@ -10,6 +22,12 @@ Various Unity Helpers. Includes many deterministic, seedable random number gener
     - URL: `https://registry.npmjs.org`
     - Scope(s): `com.wallstop-studios.unity-helpers`
 5. Resolve the latest `com.wallstop-studios.unity-helpers`
+
+## From Source
+Grab a copy of this repo (either `git clone` or [download a zip of the source](https://github.com/wallstop/unity-helpers/archive/refs/heads/main.zip)) and copy the contents to your project's `Assets` folder.
+
+## From Releases
+Check out the latest [Releases](https://github.com/wallstop/unity-helpers/releases) to grab the Unity Package and import to your project.
 
 # Package Contents
 - Random Number Generators
