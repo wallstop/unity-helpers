@@ -56,18 +56,15 @@ jobs:
             fi
           fi
 
-      - name: Set up Unity
-        if: env.should_build == 'true'
-        uses: game-ci/unity-builder@v4
+      - name: Install Unity
+        uses: game-ci/unity-activate@v2
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
-          unityVersion: 2022.3.5f1
-          targetPlatform: StandaloneLinux64
-          buildMethod: BuildScript.BuildLinux
-          projectPath: .   
+          unityVersion: 2022.3.5f1  # Change to your Unity version
+          personalLicense: ${{ secrets.UNITY_LICENSE }}
 
       - name: Export Unity Package
         if: env.should_build == 'true'
