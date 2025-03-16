@@ -49,18 +49,16 @@ jobs:
           fi
 
       - name: Activate Unity License
+        uses: game-ci/unity-activate@v2
         if: env.should_build == 'true'
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
-        run: |
-          echo "$UNITY_LICENSE" | base64 --decode > UnityLicense.ulf
-          echo "Unity license activated."
 
       - name: Set up Unity
         if: env.should_build == 'true'
-        uses: game-ci/unity-builder@v3
+        uses: game-ci/unity-builder@v2
         with:
-          unityVersion: 2022.3.10f1  # Change to your Unity version
+          unityVersion: 2022.3.5f1
           targetPlatform: StandaloneLinux64
           activateLicense: true
           unityLicense: ${{ secrets.UNITY_LICENSE }}
