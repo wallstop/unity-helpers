@@ -61,10 +61,6 @@ jobs:
             echo "should_build=false" >> $GITHUB_ENV
           fi
 
-      - name: Activate Unity License
-        uses: game-ci/unity-activate@v2
-        if: env.should_build == 'true'
-
       - name: Set up Unity
         if: env.should_build == 'true'
         uses: game-ci/unity-builder@v4
