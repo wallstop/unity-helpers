@@ -56,12 +56,10 @@ jobs:
 
       - name: Set up Unity
         if: env.should_build == 'true'
-        uses: game-ci/unity-builder@v2
+        uses: game-ci/unity-builder@v3
         with:
           unityVersion: 2022.3.5f1
           targetPlatform: StandaloneLinux64
-          activateLicense: true
-          unityLicense: ${{ secrets.UNITY_LICENSE }}
 
       - name: Export Unity Package
         if: env.should_build == 'true'
