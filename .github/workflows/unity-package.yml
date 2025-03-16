@@ -1,11 +1,10 @@
 name: Export and Release Unity Package
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'package.json'
+  workflow_run:
+    workflows: ["Unity Tests"]
+    types:
+      - completed
   workflow_dispatch:
     inputs:
       logLevel:
@@ -70,9 +69,9 @@ jobs:
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           unityVersion: 2022.3.5f1
-          targetPlatform: StandaloneWindows64
-          buildMethod: BuildScript.BuildProject
-   
+          targetPlatform: StandaloneLinux64
+          buildMethod: BuildScript.BuildLinux
+          projectPath: .   
 
       - name: Export Unity Package
         if: env.should_build == 'true'
