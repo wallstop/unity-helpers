@@ -14,9 +14,9 @@
     {
         public const int DefaultFramesPerSecond = 12;
 
-        public List<Texture2D> frames;
+        public List<Texture2D> frames = new();
         public int framesPerSecond = DefaultFramesPerSecond;
-        public string animationName;
+        public string animationName = string.Empty;
     }
 
     public sealed class AnimationCreator : ScriptableWizard
@@ -90,11 +90,13 @@
                         int lastNumericIndex = frameName.Length - 1;
                         for (int i = frameName.Length - 1; 0 <= i; --i)
                         {
-                            if (!char.IsNumber(frameName[i]))
+                            if (char.IsNumber(frameName[i]))
                             {
-                                lastNumericIndex = i + 1;
-                                break;
+                                continue;
                             }
+
+                            lastNumericIndex = i + 1;
+                            break;
                         }
 
                         int lastUnderscoreIndex = frameName.LastIndexOf('_');
@@ -118,29 +120,18 @@
                     if (0 < texturesByPrefixAndAssetPath.Count)
                     {
                         animationData.Clear();
-                        foreach (
-                            KeyValuePair<
-                                string,
-                                Dictionary<string, List<Texture2D>>
-                            > assetPathAndTextures in texturesByPrefixAndAssetPath
-                        )
-                        {
-                            foreach (
-                                KeyValuePair<
-                                    string,
-                                    List<Texture2D>
-                                > textureAndPrefix in assetPathAndTextures.Value
+                        animationData.AddRange(
+                            texturesByPrefixAndAssetPath.SelectMany(assetPathAndTextures =>
+                                assetPathAndTextures.Value.Select(
+                                    textureAndPrefix => new AnimationData
+                                    {
+                                        frames = textureAndPrefix.Value,
+                                        framesPerSecond = data.framesPerSecond,
+                                        animationName = $"Anim_{textureAndPrefix.Key}",
+                                    }
+                                )
                             )
-                            {
-                                AnimationData newData = new()
-                                {
-                                    frames = textureAndPrefix.Value,
-                                    framesPerSecond = data.framesPerSecond,
-                                    animationName = $"Anim_{textureAndPrefix.Key}",
-                                };
-                                animationData.Add(newData);
-                            }
-                        }
+                        );
                     }
                 }
             }

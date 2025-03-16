@@ -38,7 +38,7 @@
                         .Where(field =>
                             Attribute.IsDefined(field, typeof(SiblingComponentAttribute))
                         )
-                        .Select(field => (field, ReflectionHelpers.CreateFieldSetter(type, field)))
+                        .Select(field => (field, ReflectionHelpers.GetFieldSetter(field)))
                         .ToArray();
                 }
             );
@@ -103,15 +103,13 @@
                     }
                 }
 
-                if (!foundSibling)
+                if (
+                    !foundSibling
+                    && field.GetCustomAttributes(typeof(SiblingComponentAttribute), false)[0]
+                        is SiblingComponentAttribute { optional: false }
+                )
                 {
-                    if (
-                        field.GetCustomAttributes(typeof(SiblingComponentAttribute), false)[0]
-                        is SiblingComponentAttribute { optional: false } _
-                    )
-                    {
-                        component.LogError($"Unable to find sibling component of type {fieldType}");
-                    }
+                    component.LogError($"Unable to find sibling component of type {fieldType}");
                 }
             }
         }

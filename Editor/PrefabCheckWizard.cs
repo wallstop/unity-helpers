@@ -21,7 +21,7 @@
         [Tooltip(
             "Drag a folder from Unity here to validate all prefabs under it. Defaults to Assets/Prefabs and Assets/Resources if none specified."
         )]
-        public List<Object> assetPaths;
+        public List<Object> assetPaths = new();
 
         [MenuItem("Tools/Unity Helpers/Prefab Check Wizard")]
         public static void CreatePrefabCheckWizard()

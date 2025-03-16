@@ -14,11 +14,11 @@
         private string _fullSourcePath;
         private string _fullDestinationPath;
 
-        [ReadOnly]
+        [DxReadOnly]
         public string controllerSourcePath;
 
-        [ReadOnly]
-        public string controllerDestinationpath;
+        [DxReadOnly]
+        public string controllerDestinationPath;
 
         [MenuItem("Tools/Unity Helpers/Animator Controller Copier")]
         public static void CopyAnimations()
@@ -61,8 +61,8 @@
                     return false;
                 }
 
-                _fullDestinationPath = controllerDestinationpath = sourcePath ?? string.Empty;
-                controllerDestinationpath = controllerDestinationpath.Substring(assetIndex);
+                _fullDestinationPath = controllerDestinationPath = sourcePath ?? string.Empty;
+                controllerDestinationPath = controllerDestinationPath.Substring(assetIndex);
                 return true;
             }
 
@@ -78,7 +78,7 @@
 
             if (
                 string.IsNullOrEmpty(controllerSourcePath)
-                || string.IsNullOrEmpty(controllerDestinationpath)
+                || string.IsNullOrEmpty(controllerDestinationPath)
             )
             {
                 return;
@@ -130,7 +130,7 @@
                 }
 
                 string destination =
-                    controllerDestinationpath + partialPath + relativePath.Substring(prefixIndex);
+                    controllerDestinationPath + partialPath + relativePath.Substring(prefixIndex);
                 bool copySuccessful = AssetDatabase.CopyAsset(path, destination);
                 if (copySuccessful)
                 {

@@ -6,8 +6,8 @@
     using UnityEngine;
 
     // https://www.patrykgalach.com/2020/01/20/readonly-attribute-in-unity-editor/
-    [CustomPropertyDrawer(typeof(ReadOnlyAttribute))]
-    public sealed class ReadOnlyPropertyDrawer : PropertyDrawer
+    [CustomPropertyDrawer(typeof(DxReadOnlyAttribute))]
+    public sealed class DxReadOnlyPropertyDrawer : PropertyDrawer
     {
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {

@@ -15,6 +15,7 @@
     public sealed class ParentComponentAttribute : Attribute
     {
         public bool optional = false;
+        public bool includeInactive = true;
         public bool onlyAncestors = false;
     }
 
@@ -39,7 +40,7 @@
                         .Where(field =>
                             Attribute.IsDefined(field, typeof(ParentComponentAttribute))
                         )
-                        .Select(field => (field, ReflectionHelpers.CreateFieldSetter(type, field)))
+                        .Select(field => (field, ReflectionHelpers.GetFieldSetter(field)))
                         .ToArray();
                 }
             );
@@ -51,6 +52,8 @@
                 Type parentComponentType = isArray ? fieldType.GetElementType() : fieldType;
 
                 bool foundParent;
+                ParentComponentAttribute customAttribute =
+                    field.GetCustomAttribute<ParentComponentAttribute>();
                 if (field.GetCustomAttribute<ParentComponentAttribute>().onlyAncestors)
                 {
                     Transform parent = component.transform.parent;
@@ -62,7 +65,7 @@
                     {
                         Component[] parentComponents = parent.GetComponentsInParent(
                             parentComponentType,
-                            true
+                            customAttribute.includeInactive
                         );
                         foundParent = 0 < parentComponents.Length;
 
@@ -82,7 +85,7 @@
 
                         Component[] parents = parent.GetComponentsInParent(
                             parentComponentType,
-                            true
+                            customAttribute.includeInactive
                         );
 
                         IList instance = ReflectionHelpers.CreateList(
@@ -103,7 +106,7 @@
                     {
                         Component childComponent = parent.GetComponentInParent(
                             parentComponentType,
-                            true
+                            customAttribute.includeInactive
                         );
                         foundParent = childComponent != null;
                         if (foundParent)
@@ -118,7 +121,7 @@
                     {
                         Component[] parentComponents = component.GetComponentsInParent(
                             parentComponentType,
-                            true
+                            customAttribute.includeInactive
                         );
                         foundParent = 0 < parentComponents.Length;
 
@@ -138,7 +141,7 @@
 
                         Component[] parents = component.GetComponentsInParent(
                             parentComponentType,
-                            true
+                            customAttribute.includeInactive
                         );
 
                         IList instance = ReflectionHelpers.CreateList(
@@ -158,7 +161,7 @@
                     {
                         Component childComponent = component.GetComponentInParent(
                             parentComponentType,
-                            true
+                            customAttribute.includeInactive
                         );
                         foundParent = childComponent != null;
                         if (foundParent)
@@ -168,15 +171,13 @@
                     }
                 }
 
-                if (!foundParent)
+                if (
+                    !foundParent
+                    && field.GetCustomAttributes(typeof(ParentComponentAttribute), false)[0]
+                        is ParentComponentAttribute { optional: false }
+                )
                 {
-                    if (
-                        field.GetCustomAttributes(typeof(ParentComponentAttribute), false)[0]
-                        is ParentComponentAttribute { optional: false } _
-                    )
-                    {
-                        component.LogError($"Unable to find parent component of type {fieldType}");
-                    }
+                    component.LogError($"Unable to find parent component of type {fieldType}");
                 }
             }
         }

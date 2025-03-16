@@ -8,6 +8,8 @@
     using System.Runtime.CompilerServices;
     using Extension;
 
+    public delegate void FieldSetter<TInstance, in TValue>(ref TInstance instance, TValue value);
+
     public static class ReflectionHelpers
     {
         private static readonly Dictionary<Type, Func<int, Array>> ArrayCreators = new();
@@ -15,15 +17,11 @@
         private static readonly Dictionary<Type, Func<int, IList>> ListWithCapacityCreators = new();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Func<int, Array> GetOrCreateArrayCreator(Type type)
-        {
-            return ArrayCreators.GetOrAdd(type, elementType => GetArrayCreator(elementType));
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Array CreateArray(Type type, int length)
         {
-            return GetOrCreateArrayCreator(type).Invoke(length);
+            return ArrayCreators
+                .GetOrAdd(type, elementType => GetArrayCreator(elementType))
+                .Invoke(length);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -40,32 +38,110 @@
             return ListCreators.GetOrAdd(elementType, type => GetListCreator(type)).Invoke();
         }
 
-        public static Action<object, object> CreateFieldSetter(Type type, FieldInfo field)
+        public static Func<object, object> GetFieldGetter(FieldInfo field)
+        {
+#if WEB_GL
+            return field.GetValue;
+#else
+            DynamicMethod dynamicMethod = new(
+                $"Get{(field.DeclaringType?.Name ?? string.Empty)}{field.Name}",
+                typeof(object),
+                new[] { typeof(object) },
+                field.DeclaringType,
+                true
+            );
+
+            ILGenerator il = dynamicMethod.GetILGenerator();
+            il.Emit(OpCodes.Ldarg_0);
+            il.Emit(
+                field.DeclaringType.IsValueType ? OpCodes.Unbox : OpCodes.Castclass,
+                field.DeclaringType
+            );
+
+            il.Emit(OpCodes.Ldfld, field);
+
+            // If the field's type is a value type, box it.
+            if (field.FieldType.IsValueType)
+            {
+                il.Emit(OpCodes.Box, field.FieldType);
+            }
+
+            il.Emit(OpCodes.Ret);
+
+            return (Func<object, object>)dynamicMethod.CreateDelegate(typeof(Func<object, object>));
+#endif
+        }
+
+        public static FieldSetter<TInstance, TValue> GetFieldSetter<TInstance, TValue>(
+            FieldInfo field
+        )
+        {
+#if WEB_GL
+            return Setter;
+            void Setter(ref TInstance instance, TValue newValue)
+            {
+                object value = instance;
+                field.SetValue(value, newValue);
+                instance = (TInstance)value;
+            }
+#else
+            Type instanceType = field.DeclaringType;
+            Type valueType = field.FieldType;
+
+            DynamicMethod dynamicMethod = new(
+                $"SetFieldGeneric{field.DeclaringType.Name}{field.Name}",
+                MethodAttributes.Public | MethodAttributes.Static,
+                CallingConventions.Standard,
+                typeof(void),
+                new[] { instanceType.MakeByRefType(), valueType },
+                field.Module,
+                true
+            );
+
+            ILGenerator il = dynamicMethod.GetILGenerator();
+            il.Emit(OpCodes.Ldarg_0);
+            if (!instanceType.IsValueType)
+            {
+                il.Emit(OpCodes.Ldind_Ref);
+            }
+
+            il.Emit(OpCodes.Ldarg_1);
+            il.Emit(OpCodes.Stfld, field);
+            il.Emit(OpCodes.Ret);
+
+            Type delegateType = typeof(FieldSetter<,>).MakeGenericType(instanceType, valueType);
+            return (FieldSetter<TInstance, TValue>)dynamicMethod.CreateDelegate(delegateType);
+#endif
+        }
+
+        public static Action<object, object> GetFieldSetter(FieldInfo field)
         {
 #if WEB_GL
             return field.SetValue;
 #else
             DynamicMethod dynamicMethod = new(
-                $"SetField{field.Name}",
+                $"SetField{field.DeclaringType.Name}{field.Name}",
                 null,
                 new[] { typeof(object), typeof(object) },
-                type.Module,
+                field.DeclaringType.Module,
                 true
             );
 
             ILGenerator il = dynamicMethod.GetILGenerator();
 
-            il.Emit(OpCodes.Ldarg_0); // Load the object (arg0)
-            il.Emit(OpCodes.Castclass, type); // Cast to the actual type
+            il.Emit(OpCodes.Ldarg_0);
+            il.Emit(
+                field.DeclaringType.IsValueType ? OpCodes.Unbox : OpCodes.Castclass,
+                field.DeclaringType
+            );
 
-            il.Emit(OpCodes.Ldarg_1); // Load the value (arg1)
+            il.Emit(OpCodes.Ldarg_1);
             il.Emit(
                 field.FieldType.IsValueType ? OpCodes.Unbox_Any : OpCodes.Castclass,
                 field.FieldType
-            ); // Cast for reference types
-            // Unbox if it's a value type
-            il.Emit(OpCodes.Stfld, field); // Set the field
-            il.Emit(OpCodes.Ret); // Return
+            );
+            il.Emit(OpCodes.Stfld, field);
+            il.Emit(OpCodes.Ret);
             return (Action<object, object>)
                 dynamicMethod.CreateDelegate(typeof(Action<object, object>));
 #endif
@@ -76,9 +152,8 @@
 #if WEB_GL
             return size => Array.CreateInstance(elementType, size);
 #else
-
-            DynamicMethod dynamicMethod = new DynamicMethod(
-                $"CreateArray{elementType.Namespace}",
+            DynamicMethod dynamicMethod = new(
+                $"CreateArray{elementType.Name}",
                 typeof(Array), // Return type: Array
                 new[] { typeof(int) }, // Parameter: int (size)
                 true
@@ -98,7 +173,7 @@
 #if WEB_GL
             return () => (IList)Activator.CreateInstance(listType);
 #else
-            DynamicMethod dynamicMethod = new DynamicMethod(
+            DynamicMethod dynamicMethod = new(
                 $"CreateList{listType.Name}",
                 typeof(IList), // Return type: IList
                 Type.EmptyTypes, // No parameters
@@ -126,7 +201,7 @@
 #if WEB_GL
             return _ => (IList)Activator.CreateInstance(listType);
 #else
-            DynamicMethod dynamicMethod = new DynamicMethod(
+            DynamicMethod dynamicMethod = new(
                 $"CreateListWithCapacity{listType.Name}",
                 typeof(IList), // Return type: IList
                 new[] { typeof(int) }, // Parameter: int (size)

@@ -15,6 +15,7 @@
     public sealed class ChildComponentAttribute : Attribute
     {
         public bool optional = false;
+        public bool includeInactive = true;
         public bool onlyDescendents = false;
     }
 
@@ -37,7 +38,7 @@
                     );
                     return fields
                         .Where(field => Attribute.IsDefined(field, typeof(ChildComponentAttribute)))
-                        .Select(field => (field, ReflectionHelpers.CreateFieldSetter(type, field)))
+                        .Select(field => (field, ReflectionHelpers.GetFieldSetter(field)))
                         .ToArray();
                 }
             );
@@ -49,7 +50,9 @@
                 Type childComponentType = isArray ? fieldType.GetElementType() : fieldType;
 
                 bool foundChild;
-                if (field.GetCustomAttribute<ChildComponentAttribute>().onlyDescendents)
+                ChildComponentAttribute customAttribute =
+                    field.GetCustomAttribute<ChildComponentAttribute>();
+                if (customAttribute.onlyDescendents)
                 {
                     if (isArray)
                     {
@@ -57,7 +60,10 @@
                         foreach (Transform child in component.IterateOverAllChildren())
                         {
                             children.AddRange(
-                                child.GetComponentsInChildren(childComponentType, true)
+                                child.GetComponentsInChildren(
+                                    childComponentType,
+                                    customAttribute.includeInactive
+                                )
                             );
                         }
 
@@ -83,7 +89,10 @@
                             Component childComponent in component
                                 .IterateOverAllChildren()
                                 .SelectMany(child =>
-                                    child.GetComponentsInChildren(childComponentType, true)
+                                    child.GetComponentsInChildren(
+                                        childComponentType,
+                                        customAttribute.includeInactive
+                                    )
                                 )
                         )
                         {
@@ -97,14 +106,27 @@
                     {
                         foundChild = false;
                         Component childComponent = null;
-                        foreach (Transform child in component.IterateOverAllChildren())
+                        foreach (
+                            Transform child in component.IterateOverAllChildrenRecursivelyBreadthFirst()
+                        )
                         {
                             childComponent = child.GetComponent(childComponentType);
-                            if (childComponent != null)
+                            if (
+                                childComponent == null
+                                || (
+                                    !customAttribute.includeInactive
+                                    && (
+                                        !childComponent.gameObject.activeInHierarchy
+                                        || childComponent is Behaviour { enabled: false }
+                                    )
+                                )
+                            )
                             {
-                                foundChild = true;
-                                break;
+                                continue;
                             }
+
+                            foundChild = true;
+                            break;
                         }
                         if (foundChild)
                         {
@@ -118,7 +140,7 @@
                     {
                         Component[] childComponents = component.GetComponentsInChildren(
                             childComponentType,
-                            true
+                            customAttribute.includeInactive
                         );
                         foundChild = 0 < childComponents.Length;
 
@@ -149,7 +171,7 @@
                         foreach (
                             Component childComponent in component.GetComponentsInChildren(
                                 childComponentType,
-                                true
+                                customAttribute.includeInactive
                             )
                         )
                         {
@@ -163,7 +185,7 @@
                     {
                         Component childComponent = component.GetComponentInChildren(
                             childComponentType,
-                            true
+                            customAttribute.includeInactive
                         );
                         foundChild = childComponent != null;
                         if (foundChild)
@@ -173,15 +195,13 @@
                     }
                 }
 
-                if (!foundChild)
+                if (
+                    !foundChild
+                    && field.GetCustomAttributes(typeof(ChildComponentAttribute), false)[0]
+                        is ChildComponentAttribute { optional: false }
+                )
                 {
-                    if (
-                        field.GetCustomAttributes(typeof(ChildComponentAttribute), false)[0]
-                        is ChildComponentAttribute { optional: false } _
-                    )
-                    {
-                        component.LogError($"Unable to find child component of type {fieldType}");
-                    }
+                    component.LogError($"Unable to find child component of type {fieldType}");
                 }
             }
         }

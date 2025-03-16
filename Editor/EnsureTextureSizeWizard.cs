@@ -22,22 +22,27 @@
         {
             textures ??= new List<Texture2D>();
             textureSourcePaths ??= new List<Object>();
-            HashSet<string> texturePath = new();
-            foreach (Object textureSource in textureSourcePaths)
+            HashSet<string> texturePaths = new();
+            foreach (
+                string assetPath in textureSourcePaths
+                    .Select(AssetDatabase.GetAssetPath)
+                    .Where(assetPath => !string.IsNullOrWhiteSpace(assetPath))
+            )
             {
-                string assetPath = AssetDatabase.GetAssetPath(textureSource);
-                if (!string.IsNullOrWhiteSpace(assetPath))
-                {
-                    _ = texturePath.Add(assetPath);
-                }
+                _ = texturePaths.Add(assetPath);
             }
 
-            if (texturePath.Any())
+            if (!textures.Any() && !texturePaths.Any())
+            {
+                texturePaths.Add("Assets");
+            }
+
+            if (texturePaths.Any())
             {
                 foreach (
                     string assetGuid in AssetDatabase.FindAssets(
                         "t:texture2D",
-                        texturePath.ToArray()
+                        texturePaths.ToArray()
                     )
                 )
                 {

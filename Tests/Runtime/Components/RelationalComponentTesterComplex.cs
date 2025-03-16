@@ -8,7 +8,7 @@
     [RequireComponent(typeof(BoxCollider2D))]
     [RequireComponent(typeof(BoxCollider2D))]
     [RequireComponent(typeof(PolygonCollider2D))]
-    public sealed class RelationalComponentTester : MonoBehaviour
+    public sealed class RelationalComponentTesterComplex : MonoBehaviour
     {
         [SiblingComponent]
         internal SpriteRenderer _spriteRenderer;

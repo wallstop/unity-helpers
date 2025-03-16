@@ -14,11 +14,34 @@
         private string _fullSourcePath;
         private string _fullDestinationPath;
 
-        [ReadOnly]
+        [DxReadOnly]
         public string animationSourcePath;
 
-        [ReadOnly]
+        [DxReadOnly]
         public string animationDestinationPath;
+
+        private void OnEnable()
+        {
+            if (string.IsNullOrWhiteSpace(_fullSourcePath))
+            {
+                _fullSourcePath = $"{Application.dataPath}/Sprites";
+                int assetIndex = _fullSourcePath.IndexOf("Assets", StringComparison.Ordinal);
+                if (0 <= assetIndex)
+                {
+                    animationSourcePath = _fullSourcePath.Substring(assetIndex);
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(_fullDestinationPath))
+            {
+                _fullDestinationPath = $"{Application.dataPath}/Animations";
+                int assetIndex = _fullDestinationPath.IndexOf("Assets", StringComparison.Ordinal);
+                if (0 <= assetIndex)
+                {
+                    animationDestinationPath = _fullDestinationPath.Substring(assetIndex);
+                }
+            }
+        }
 
         [MenuItem("Tools/Unity Helpers/Animation Copier")]
         public static void CopyAnimations()

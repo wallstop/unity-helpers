@@ -1,6 +1,7 @@
 ﻿namespace UnityHelpers.Core.Helper
 {
     using System.Collections.Generic;
+    using System.Linq;
     using UnityEngine;
 
     public static partial class Helpers
@@ -162,6 +163,31 @@
                     yield return childChildTransform;
                 }
             }
+        }
+
+        public static IEnumerable<Transform> IterateOverAllChildrenRecursivelyBreadthFirst(
+            this Component component
+        )
+        {
+            if (component == null)
+            {
+                return Enumerable.Empty<Transform>();
+            }
+
+            Queue<Transform> results = new();
+            Queue<Transform> iteration = new();
+            iteration.Enqueue(component.transform);
+            while (iteration.TryDequeue(out Transform current))
+            {
+                for (int i = 0; i < current.childCount; ++i)
+                {
+                    Transform childTransform = current.GetChild(i);
+                    results.Enqueue(childTransform);
+                    iteration.Enqueue(childTransform);
+                }
+            }
+
+            return results;
         }
     }
 }

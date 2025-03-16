@@ -50,6 +50,43 @@ Check out the latest [Releases](https://github.com/wallstop/unity-helpers/releas
 - A randomizable PerlinNoise implementation
 - And more!
 
+# Auto Get(Parent/Sibling/Child)Component
+Are you tired of constantly writing GetComponent<T>() all over the place? Waste time no more!
+
+```csharp
+public sealed class MyCoolScript : MonoBehaviour
+{
+    [SiblingComponent] // If it doesn't exist, will log an error
+    private SpriteRenderer _spriteRenderer;
+
+    [SiblingComponent(optional = true)] // Ok if it doesn't exist, no errors logged
+    private BoxCollider2D _boxCollider;
+
+    [ParentComponent] // Similar to GetComponentInParent<AIController>(includeInactive: true)
+    private AIController _parentAIController;
+
+    // Only include components in parents, Unity by default includes sibling components in the GetComponentsInParent call
+    [ParentComponent(onlyAncestors = true)] 
+    private Transform [] _allParentTransforms; // Works with arrays!
+
+    [ParentComponent(includeInactive = false)] // Don't include inactive components
+    private List<PolygonCollider2> _parentColliders; // Works with lists!
+
+    [ChildComponent(onlyDescendents = true)] // Similar to GetComponentInChildren<EdgeCollider2D>(includeInactive: true)
+    private EdgeCollider2D _childEdgeCollider;
+
+    private void Awake()
+    {
+        /*
+            Make sure this is called somewhere, usually in Awake, OnEnable, or Start - wherever this is called,
+             values will be injected into the annotated fields and errors will be logged
+        */
+        this.AssignRelationalComponents();
+    }
+}
+
+```
+
 # Random Number Generators
 This package implements several high quality, seedable, and serializable random number generators. The best one (currently) is the PCG Random. This has been hidden behind the `PRNG.Instance` class, which is thread-safe. As the package evolves, the exact implementation of this may change.
 
