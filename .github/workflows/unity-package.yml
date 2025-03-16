@@ -70,7 +70,8 @@ jobs:
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           unityVersion: 2022.3.5f1
-          targetPlatform: StandaloneLinux64
+          targetPlatform: StandaloneWindows64
+          buildMethod: BuildScript.BuildProject
    
 
       - name: Export Unity Package
