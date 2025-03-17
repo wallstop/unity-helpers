@@ -22,6 +22,7 @@
 
         private readonly Random _random = new();
 
+        // TODO: Test on static fields
         [Test]
         public void GetFieldGetterClass()
         {
@@ -37,6 +38,7 @@
             }
         }
 
+        // TODO: Test on static fields
         [Test]
         public void GetFieldGetterStruct()
         {
@@ -52,6 +54,7 @@
             }
         }
 
+        // TODO: Test on static fields
         [Test]
         public void GetFieldSetterClass()
         {
@@ -67,6 +70,7 @@
             }
         }
 
+        // TODO: Test on static fields
         [Test]
         public void GetFieldSetterStruct()
         {
@@ -83,22 +87,24 @@
             }
         }
 
+        // TODO: Test on static fields
         [Test]
         public void GetFieldSetterClassGeneric()
         {
             TestClass testClass = new();
-            FieldSetter<TestClass, int> structSetter = ReflectionHelpers.GetFieldSetter<
+            FieldSetter<TestClass, int> classSetter = ReflectionHelpers.GetFieldSetter<
                 TestClass,
                 int
             >(typeof(TestClass).GetField(nameof(TestClass.intValue)));
             for (int i = 0; i < NumTries; ++i)
             {
                 int expected = _random.Next(int.MinValue, int.MaxValue);
-                structSetter(ref testClass, expected);
+                classSetter(ref testClass, expected);
                 Assert.AreEqual(expected, testClass.intValue);
             }
         }
 
+        // TODO: Test on static fields
         [Test]
         public void GetFieldSetterStructGeneric()
         {
@@ -112,6 +118,36 @@
                 int expected = _random.Next(int.MinValue, int.MaxValue);
                 structSetter(ref testStruct, expected);
                 Assert.AreEqual(expected, testStruct.intValue);
+            }
+        }
+
+        // TODO: Test on static fields
+        [Test]
+        public void GetFieldGetterClassGeneric()
+        {
+            TestClass testClass = new();
+            Func<TestClass, int> classGetter = ReflectionHelpers.GetFieldGetter<TestClass, int>(
+                typeof(TestClass).GetField(nameof(TestClass.intValue))
+            );
+            for (int i = 0; i < NumTries; ++i)
+            {
+                testClass.intValue = _random.Next(int.MinValue, int.MaxValue);
+                Assert.AreEqual(testClass.intValue, classGetter(testClass));
+            }
+        }
+
+        // TODO: Test on static fields
+        [Test]
+        public void GetFieldGetterStructGeneric()
+        {
+            TestStruct testStruct = new();
+            Func<TestStruct, int> structSetter = ReflectionHelpers.GetFieldGetter<TestStruct, int>(
+                typeof(TestStruct).GetField(nameof(TestStruct.intValue))
+            );
+            for (int i = 0; i < NumTries; ++i)
+            {
+                testStruct.intValue = _random.Next(int.MinValue, int.MaxValue);
+                Assert.AreEqual(testStruct.intValue, structSetter(testStruct));
             }
         }
 

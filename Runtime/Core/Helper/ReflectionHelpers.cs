@@ -72,6 +72,76 @@
 #endif
         }
 
+        public static Func<TInstance, TValue> GetFieldGetter<TInstance, TValue>(FieldInfo field)
+        {
+#if WEB_GL
+            return Getter;
+            TValue Getter(TInstance instance)
+            {
+                return (TValue)field.GetValue(instance);
+            }
+#else
+            DynamicMethod dynamicMethod = new(
+                $"GetGeneric{field.DeclaringType.Name}{field.Name}",
+                typeof(TValue),
+                new[] { typeof(TInstance) },
+                field.DeclaringType,
+                true
+            );
+
+            ILGenerator il = dynamicMethod.GetILGenerator();
+
+            if (!field.IsStatic)
+            {
+                if (typeof(TInstance).IsValueType)
+                {
+                    il.Emit(OpCodes.Ldarga_S, 0);
+                }
+                else
+                {
+                    il.Emit(OpCodes.Ldarg_0);
+                }
+
+                if (field.DeclaringType != typeof(TInstance))
+                {
+                    il.Emit(
+                        field.DeclaringType.IsValueType ? OpCodes.Unbox : OpCodes.Castclass,
+                        field.DeclaringType
+                    );
+                }
+
+                il.Emit(OpCodes.Ldfld, field);
+            }
+            else
+            {
+                il.Emit(OpCodes.Ldsfld, field);
+            }
+
+            if (field.FieldType.IsValueType)
+            {
+                if (!typeof(TValue).IsValueType)
+                {
+                    il.Emit(OpCodes.Box, field.FieldType);
+                }
+            }
+            else
+            {
+                if (typeof(TValue).IsValueType)
+                {
+                    il.Emit(OpCodes.Unbox_Any, typeof(TValue));
+                }
+                else if (typeof(TValue) != field.FieldType)
+                {
+                    il.Emit(OpCodes.Castclass, typeof(TValue));
+                }
+            }
+
+            il.Emit(OpCodes.Ret);
+            return (Func<TInstance, TValue>)
+                dynamicMethod.CreateDelegate(typeof(Func<TInstance, TValue>));
+#endif
+        }
+
         public static FieldSetter<TInstance, TValue> GetFieldSetter<TInstance, TValue>(
             FieldInfo field
         )
