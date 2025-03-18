@@ -171,10 +171,9 @@
         {
             if (component == null)
             {
-                return Enumerable.Empty<Transform>();
+                yield break;
             }
 
-            Queue<Transform> results = new();
             Queue<Transform> iteration = new();
             iteration.Enqueue(component.transform);
             while (iteration.TryDequeue(out Transform current))
@@ -182,12 +181,10 @@
                 for (int i = 0; i < current.childCount; ++i)
                 {
                     Transform childTransform = current.GetChild(i);
-                    results.Enqueue(childTransform);
                     iteration.Enqueue(childTransform);
+                    yield return childTransform;
                 }
             }
-
-            return results;
         }
     }
 }

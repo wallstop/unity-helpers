@@ -22,7 +22,7 @@
             }
             else
             {
-                Debug.LogError("NO SUCH METHOD " + methodName + " FOR " + type);
+                Debug.LogError($"NO SUCH METHOD {methodName} FOR {type}");
             }
         }
 
