@@ -18,7 +18,8 @@
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool Null(UnityEngine.Object instance)
+        public static bool Null<T>(T instance)
+            where T : UnityEngine.Object
         {
             return instance == null;
         }
@@ -29,7 +30,8 @@
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool NotNull(UnityEngine.Object instance)
+        public static bool NotNull<T>(T instance)
+            where T : UnityEngine.Object
         {
             return instance != null;
         }

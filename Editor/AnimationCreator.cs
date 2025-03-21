@@ -25,7 +25,7 @@
         public List<Object> animationSources = new();
         public string text;
 
-        [MenuItem("Tools/Unity Helpers/Animation Creator")]
+        [MenuItem("Tools/Unity Helpers/Animation Creator", priority = -3)]
         public static void CreateAnimation()
         {
             _ = DisplayWizard<AnimationCreator>("Animation Creator", "Create");

@@ -7,6 +7,7 @@
     public sealed class SingleThreadedThreadPool : IDisposable
     {
         public ConcurrentQueue<Exception> Exceptions => _exceptions;
+        public int Count => _work.Count + Interlocked.CompareExchange(ref _working, 0, 0);
 
         private int _active;
         private int _working;
@@ -16,14 +17,14 @@
         private bool _disposed;
         private readonly ConcurrentQueue<Exception> _exceptions;
 
-        public SingleThreadedThreadPool()
+        public SingleThreadedThreadPool(bool runInBackground = false)
         {
             _active = 1;
             _working = 1;
             _work = new ConcurrentQueue<Action>();
             _exceptions = new ConcurrentQueue<Exception>();
             _waitHandle = new AutoResetEvent(false);
-            _worker = new Thread(DoWork);
+            _worker = new Thread(DoWork) { IsBackground = runInBackground };
             _worker.Start();
         }
 
@@ -32,39 +33,11 @@
             Dispose(false);
         }
 
-        private void DoWork()
-        {
-            while (Interlocked.CompareExchange(ref _active, 0, 0) != 0)
-            {
-                _ = Interlocked.Exchange(ref _working, 0);
-                if (_work.TryDequeue(out Action workItem))
-                {
-                    _ = Interlocked.Exchange(ref _working, 1);
-                    try
-                    {
-                        workItem();
-                    }
-                    catch (Exception e)
-                    {
-                        _exceptions.Enqueue(e);
-                    }
-                }
-                else
-                {
-                    _ = _waitHandle.WaitOne(TimeSpan.FromSeconds(1));
-                }
-
-                _ = Interlocked.Exchange(ref _working, 0);
-            }
-        }
-
         public void Enqueue(Action work)
         {
             _work.Enqueue(work);
             _ = _waitHandle.Set();
         }
-
-        public int Count => _work.Count + Interlocked.CompareExchange(ref _working, 0, 0);
 
         public void Dispose()
         {
@@ -79,17 +52,16 @@
                 return;
             }
 
-            int active;
-            do
+            while (Interlocked.CompareExchange(ref _active, 0, _active) != 0)
             {
-                active = Interlocked.CompareExchange(ref _active, 0, _active);
-            } while (active != 0);
+                // Spin
+            }
 
             if (disposing)
             {
                 try
                 {
-                    _worker?.Join();
+                    _worker?.Join(TimeSpan.FromSeconds(30));
                     _waitHandle?.Dispose();
                 }
                 catch
@@ -102,6 +74,43 @@
             }
 
             _disposed = true;
+        }
+
+        private void DoWork()
+        {
+            while (Interlocked.CompareExchange(ref _active, 0, 0) != 0)
+            {
+                try
+                {
+                    if (_work.TryDequeue(out Action workItem))
+                    {
+                        _ = Interlocked.Exchange(ref _working, 1);
+                        try
+                        {
+                            workItem();
+                        }
+                        catch (Exception e)
+                        {
+                            _exceptions.Enqueue(e);
+                        }
+                    }
+                    else
+                    {
+                        try
+                        {
+                            _ = _waitHandle?.WaitOne(TimeSpan.FromSeconds(1));
+                        }
+                        catch (ObjectDisposedException)
+                        {
+                            return;
+                        }
+                    }
+                }
+                finally
+                {
+                    _ = Interlocked.Exchange(ref _working, 0);
+                }
+            }
         }
     }
 }

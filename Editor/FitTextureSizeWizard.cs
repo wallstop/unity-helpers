@@ -6,16 +6,24 @@
     using UnityEditor;
     using UnityEngine;
 
-    public sealed class EnsureTextureSizeWizard : ScriptableWizard
+    public enum FitMode
     {
+        GrowAndShrink = 0,
+        GrowOnly = 1,
+        ShrinkOnly = 2,
+    }
+
+    public sealed class FitTextureSizeWizard : ScriptableWizard
+    {
+        public FitMode fitMode = FitMode.GrowAndShrink;
         public List<Texture2D> textures = new();
 
         public List<Object> textureSourcePaths = new();
 
-        [MenuItem("Tools/Unity Helpers/Ensure Texture Size")]
+        [MenuItem("Tools/Unity Helpers/Fit Texture Size", priority = -1)]
         public static void EnsureSizes()
         {
-            _ = DisplayWizard<EnsureTextureSizeWizard>("Ensure Texture Size", "Run");
+            _ = DisplayWizard<FitTextureSizeWizard>("Fit Texture Size", "Run");
         }
 
         private void OnWizardCreate()
@@ -68,36 +76,60 @@
             }
 
             int changedCount = 0;
-            foreach (Texture2D inputTexture in textures)
+            foreach (Texture2D texture in textures)
             {
-                Texture2D texture = inputTexture;
                 string assetPath = AssetDatabase.GetAssetPath(texture);
                 if (string.IsNullOrWhiteSpace(assetPath))
                 {
                     continue;
                 }
 
-                TextureImporter tImporter = AssetImporter.GetAtPath(assetPath) as TextureImporter;
-                if (tImporter == null)
+                TextureImporter textureImporter =
+                    AssetImporter.GetAtPath(assetPath) as TextureImporter;
+                if (textureImporter == null)
                 {
                     continue;
                 }
-                tImporter.GetSourceTextureWidthAndHeight(out int width, out int height);
+                textureImporter.GetSourceTextureWidthAndHeight(out int width, out int height);
 
                 float size = Mathf.Max(width, height);
-                int textureSize = tImporter.maxTextureSize;
+                int textureSize = textureImporter.maxTextureSize;
+                int originalTextureSize = textureSize;
                 bool changed = false;
-                while (textureSize < size)
+                if (fitMode is FitMode.GrowAndShrink or FitMode.GrowOnly)
                 {
-                    changed = true;
-                    textureSize <<= 1;
+                    while (textureSize < size)
+                    {
+                        changed = true;
+                        textureSize <<= 1;
+                    }
                 }
-                tImporter.maxTextureSize = textureSize;
+
+                if (fitMode is FitMode.GrowAndShrink or FitMode.ShrinkOnly)
+                {
+                    while (0 < textureSize && size <= (textureSize >> 1))
+                    {
+                        changed = true;
+                        textureSize >>= 1;
+                    }
+                }
+
+                textureImporter.maxTextureSize = textureSize;
 
                 if (changed)
                 {
-                    changedCount++;
-                    tImporter.SaveAndReimport();
+                    ++changedCount;
+                    textureImporter.SaveAndReimport();
+                    if (textureImporter.maxTextureSize != textureSize)
+                    {
+                        this.LogError(
+                            $"Failed to update {texture.name}, need texture size {textureSize} but got {textureImporter.maxTextureSize}. Path: '{assetPath}'."
+                        );
+                        if (originalTextureSize != textureImporter.maxTextureSize)
+                        {
+                            --changedCount;
+                        }
+                    }
                 }
             }
 

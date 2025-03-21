@@ -23,7 +23,7 @@
         )]
         public List<Object> assetPaths = new();
 
-        [MenuItem("Tools/Unity Helpers/Prefab Check Wizard")]
+        [MenuItem("Tools/Unity Helpers/Prefab Check Wizard", priority = -1)]
         public static void CreatePrefabCheckWizard()
         {
             _ = DisplayWizard<PrefabCheckWizard>("Prefab sanity check", "Run");
@@ -34,7 +34,10 @@
             List<string> parsedAssetPaths;
             if (assetPaths is { Count: > 0 })
             {
-                parsedAssetPaths = assetPaths.Select(AssetDatabase.GetAssetPath).ToList();
+                parsedAssetPaths = assetPaths
+                    .Where(Objects.NotNull)
+                    .Select(AssetDatabase.GetAssetPath)
+                    .ToList();
                 parsedAssetPaths.RemoveAll(string.IsNullOrEmpty);
                 if (parsedAssetPaths.Count <= 0)
                 {
@@ -102,29 +105,6 @@
                 )
             )
             {
-                bool LogIfNull(object thing, int? position = null)
-                {
-                    if (thing == null || (thing is Object unityThing && !unityThing))
-                    {
-                        if (position == null)
-                        {
-                            component.LogError("Field {0} has a null element in it.", field.Name);
-                        }
-                        else
-                        {
-                            component.LogError(
-                                "Field {0} has a null element at position {1}.",
-                                field.Name,
-                                position
-                            );
-                        }
-
-                        return true;
-                    }
-
-                    return false;
-                }
-
                 object fieldValue = field.GetValue(component);
 
                 if (field.FieldType.IsArray)
@@ -157,6 +137,31 @@
                 foreach (object thing in list)
                 {
                     _ = LogIfNull(thing, position++);
+                }
+
+                continue;
+
+                bool LogIfNull(object thing, int? position = null)
+                {
+                    if (thing == null || (thing is Object unityThing && !unityThing))
+                    {
+                        if (position == null)
+                        {
+                            component.LogError("Field {0} has a null element in it.", field.Name);
+                        }
+                        else
+                        {
+                            component.LogError(
+                                "Field {0} has a null element at position {1}.",
+                                field.Name,
+                                position
+                            );
+                        }
+
+                        return true;
+                    }
+
+                    return false;
                 }
             }
         }

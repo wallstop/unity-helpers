@@ -5,6 +5,7 @@
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;
+    using Core.Attributes;
     using Core.Extension;
     using UnityEditor;
     using UnityEngine;
@@ -18,9 +19,15 @@
         public bool applyMipMaps = false;
         public bool generateMipMaps = false;
         public bool applyWrapMode = false;
+
+        [WShowIf(nameof(applyWrapMode))]
         public TextureWrapMode wrapMode = TextureWrapMode.Clamp;
+
         public bool applyFilterMode = false;
+
+        [WShowIf(nameof(applyFilterMode))]
         public FilterMode filterMode = FilterMode.Trilinear;
+
         public TextureImporterCompression compression = TextureImporterCompression.CompressedHQ;
         public bool useCrunchCompression = true;
         public TextureResizeAlgorithm textureResizeAlgorithm = TextureResizeAlgorithm.Bilinear;

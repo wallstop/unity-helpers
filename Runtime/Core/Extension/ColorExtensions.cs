@@ -1,6 +1,5 @@
 ﻿namespace UnityHelpers.Core.Extension
 {
-    using System;
     using System.Collections.Generic;
     using System.ComponentModel;
     using System.Linq;
@@ -19,6 +18,8 @@
     // https://sharpsnippets.wordpress.com/2014/03/11/c-extension-complementary-color/
     public static class ColorExtensions
     {
+        private static readonly Dictionary<Vector3Int, int> ColorBucketCache = new();
+
         public static Color GetAverageColor(
             this Sprite sprite,
             ColorAveragingMethod method = ColorAveragingMethod.LAB,
@@ -36,9 +37,9 @@
         {
             return GetAverageColor(
                 sprites
-                    .Where(Objects.NotNull)
+                    .Where(value => value != null)
                     .Select(sprite => sprite.texture)
-                    .Where(Objects.NotNull)
+                    .Where(value => value != null)
                     .SelectMany(texture =>
                     {
                         texture.MakeReadable();
@@ -56,48 +57,105 @@
             float alphaCutoff = 0.01f
         )
         {
-            switch (method)
+            return method switch
             {
-                case ColorAveragingMethod.LAB:
-                {
-                    return AverageInLABSpace(pixels, alphaCutoff);
-                }
-                case ColorAveragingMethod.HSV:
-                {
-                    return AverageInHSVSpace(pixels, alphaCutoff);
-                }
-                case ColorAveragingMethod.Weighted:
-                {
-                    return WeightedRGBAverage(pixels, alphaCutoff);
-                }
-                case ColorAveragingMethod.Dominant:
-                {
-                    return GetDominantColor(pixels, alphaCutoff);
-                }
-                default:
-                {
-                    throw new InvalidEnumArgumentException(
-                        nameof(method),
-                        (int)method,
-                        typeof(ColorAveragingMethod)
-                    );
-                }
-            }
+                ColorAveragingMethod.LAB => AverageInLABSpace(pixels, alphaCutoff),
+                ColorAveragingMethod.HSV => AverageInHSVSpace(pixels, alphaCutoff),
+                ColorAveragingMethod.Weighted => WeightedRGBAverage(pixels, alphaCutoff),
+                ColorAveragingMethod.Dominant => GetDominantColor(pixels, alphaCutoff),
+                _ => throw new InvalidEnumArgumentException(
+                    nameof(method),
+                    (int)method,
+                    typeof(ColorAveragingMethod)
+                ),
+            };
         }
 
         // CIE L*a*b* space averaging - most perceptually accurate
         private static Color AverageInLABSpace(IEnumerable<Color> pixels, float alphaCutoff)
         {
-            List<LABColor> labValues = pixels
-                .Where(pixel => pixel.a > alphaCutoff)
-                .Select(RGBToLAB)
-                .ToList();
+            double l = 0;
+            double a = 0;
+            double b = 0;
+            int count = 0;
+            switch (pixels)
+            {
+                case List<Color> colorList:
+                {
+                    foreach (Color pixel in colorList)
+                    {
+                        if (pixel.a <= alphaCutoff)
+                        {
+                            continue;
+                        }
 
-            double avgL = labValues.Average(lab => lab.l);
-            double avgA = labValues.Average(lab => lab.a);
-            double avgB = labValues.Average(lab => lab.b);
+                        LABColor lab = RGBToLAB(pixel);
+                        l += lab.l;
+                        a += lab.a;
+                        b += lab.b;
+                        ++count;
+                    }
 
-            return LABToRGB(avgL, avgA, avgB);
+                    break;
+                }
+                case Color[] colorArray:
+                {
+                    foreach (Color pixel in colorArray)
+                    {
+                        if (pixel.a <= alphaCutoff)
+                        {
+                            continue;
+                        }
+
+                        LABColor lab = RGBToLAB(pixel);
+                        l += lab.l;
+                        a += lab.a;
+                        b += lab.b;
+                        ++count;
+                    }
+
+                    break;
+                }
+                case HashSet<Color> colorSet:
+                {
+                    foreach (Color pixel in colorSet)
+                    {
+                        if (pixel.a <= alphaCutoff)
+                        {
+                            continue;
+                        }
+
+                        LABColor lab = RGBToLAB(pixel);
+                        l += lab.l;
+                        a += lab.a;
+                        b += lab.b;
+                        ++count;
+                    }
+
+                    break;
+                }
+                default:
+                {
+                    foreach (Color pixel in pixels)
+                    {
+                        if (pixel.a <= alphaCutoff)
+                        {
+                            continue;
+                        }
+
+                        LABColor lab = RGBToLAB(pixel);
+                        l += lab.l;
+                        a += lab.a;
+                        b += lab.b;
+                        ++count;
+                    }
+
+                    break;
+                }
+            }
+
+            count = Mathf.Max(count, 1);
+            return LABToRGB(l / count, a / count, b / count);
         }
 
         // HSV space averaging - good for preserving vibrant colors
@@ -108,29 +166,107 @@
             float avgV = 0f;
             int count = 0;
 
-            foreach (Color pixel in pixels.Where(pixel => pixel.a > alphaCutoff))
+            switch (pixels)
             {
-                Color.RGBToHSV(pixel, out float h, out float s, out float v);
+                case List<Color> pixelList:
+                {
+                    foreach (Color pixel in pixelList)
+                    {
+                        if (pixel.a <= alphaCutoff)
+                        {
+                            continue;
+                        }
 
-                // Handle hue wrapping around 360 degrees
-                float hRad = h * 2f * Mathf.PI;
-                avgH += Mathf.Cos(hRad);
-                avgH += Mathf.Sin(hRad);
+                        Color.RGBToHSV(pixel, out float h, out float s, out float v);
 
-                avgS += s;
-                avgV += v;
-                count++;
+                        // Handle hue wrapping around 360 degrees
+                        float hRad = h * 2f * Mathf.PI;
+                        avgH += Mathf.Cos(hRad);
+                        avgH += Mathf.Sin(hRad);
+
+                        avgS += s;
+                        avgV += v;
+                        ++count;
+                    }
+
+                    break;
+                }
+                case Color[] pixelArray:
+                {
+                    foreach (Color pixel in pixelArray)
+                    {
+                        if (pixel.a <= alphaCutoff)
+                        {
+                            continue;
+                        }
+
+                        Color.RGBToHSV(pixel, out float h, out float s, out float v);
+
+                        // Handle hue wrapping around 360 degrees
+                        float hRad = h * 2f * Mathf.PI;
+                        avgH += Mathf.Cos(hRad);
+                        avgH += Mathf.Sin(hRad);
+
+                        avgS += s;
+                        avgV += v;
+                        ++count;
+                    }
+
+                    break;
+                }
+                case HashSet<Color> pixelSet:
+                {
+                    foreach (Color pixel in pixelSet)
+                    {
+                        if (pixel.a <= alphaCutoff)
+                        {
+                            continue;
+                        }
+
+                        Color.RGBToHSV(pixel, out float h, out float s, out float v);
+
+                        // Handle hue wrapping around 360 degrees
+                        float hRad = h * 2f * Mathf.PI;
+                        avgH += Mathf.Cos(hRad);
+                        avgH += Mathf.Sin(hRad);
+
+                        avgS += s;
+                        avgV += v;
+                        ++count;
+                    }
+
+                    break;
+                }
+                default:
+                {
+                    foreach (Color pixel in pixels)
+                    {
+                        if (pixel.a <= alphaCutoff)
+                        {
+                            continue;
+                        }
+
+                        Color.RGBToHSV(pixel, out float h, out float s, out float v);
+
+                        // Handle hue wrapping around 360 degrees
+                        float hRad = h * 2f * Mathf.PI;
+                        avgH += Mathf.Cos(hRad);
+                        avgH += Mathf.Sin(hRad);
+
+                        avgS += s;
+                        avgV += v;
+                        ++count;
+                    }
+
+                    break;
+                }
             }
-
+            count = Mathf.Max(count, 1);
             avgH = Mathf.Atan2(avgH / count, avgH / count) / (2f * Mathf.PI);
+
             if (avgH < 0)
             {
                 avgH += 1f;
-            }
-
-            if (count <= 0)
-            {
-                count = 1;
             }
 
             avgS /= count;
@@ -153,14 +289,81 @@
                 b = 0f,
                 a = 0f;
 
-            foreach (Color pixel in pixels.Where(pixel => pixel.a > alphaCutoff))
+            switch (pixels)
             {
-                float weight = pixel.r * rWeight + pixel.g * gWeight + pixel.b * bWeight;
-                r += pixel.r * weight;
-                g += pixel.g * weight;
-                b += pixel.b * weight;
-                a += pixel.a * weight;
-                totalWeight += weight;
+                case List<Color> colorList:
+                {
+                    foreach (Color pixel in colorList)
+                    {
+                        if (pixel.a <= alphaCutoff)
+                        {
+                            continue;
+                        }
+                        float weight = pixel.r * rWeight + pixel.g * gWeight + pixel.b * bWeight;
+                        r += pixel.r * weight;
+                        g += pixel.g * weight;
+                        b += pixel.b * weight;
+                        a += pixel.a * weight;
+                        totalWeight += weight;
+                    }
+
+                    break;
+                }
+                case Color[] colorArray:
+                {
+                    foreach (Color pixel in colorArray)
+                    {
+                        if (pixel.a <= alphaCutoff)
+                        {
+                            continue;
+                        }
+                        float weight = pixel.r * rWeight + pixel.g * gWeight + pixel.b * bWeight;
+                        r += pixel.r * weight;
+                        g += pixel.g * weight;
+                        b += pixel.b * weight;
+                        a += pixel.a * weight;
+                        totalWeight += weight;
+                    }
+
+                    break;
+                }
+                case HashSet<Color> colorSet:
+                {
+                    foreach (Color pixel in colorSet)
+                    {
+                        if (pixel.a <= alphaCutoff)
+                        {
+                            continue;
+                        }
+                        float weight = pixel.r * rWeight + pixel.g * gWeight + pixel.b * bWeight;
+                        r += pixel.r * weight;
+                        g += pixel.g * weight;
+                        b += pixel.b * weight;
+                        a += pixel.a * weight;
+                        totalWeight += weight;
+                    }
+
+                    break;
+                }
+                default:
+                {
+                    foreach (Color pixel in pixels)
+                    {
+                        if (pixel.a <= alphaCutoff)
+                        {
+                            continue;
+                        }
+
+                        float weight = pixel.r * rWeight + pixel.g * gWeight + pixel.b * bWeight;
+                        r += pixel.r * weight;
+                        g += pixel.g * weight;
+                        b += pixel.b * weight;
+                        a += pixel.a * weight;
+                        totalWeight += weight;
+                    }
+
+                    break;
+                }
             }
 
             if (totalWeight > 0f)
@@ -177,25 +380,112 @@
         // Find dominant color using simple clustering
         private static Color GetDominantColor(IEnumerable<Color> pixels, float alphaCutoff)
         {
-            Dictionary<Vector3Int, int> colorBuckets = new();
+            ColorBucketCache.Clear();
             const int bucketSize = 32; // Adjust for different precision
 
-            foreach (Color pixel in pixels.Where(pixel => pixel.a > alphaCutoff))
+            switch (pixels)
             {
-                Vector3Int bucket = new(
-                    Mathf.RoundToInt(pixel.r * 255 / bucketSize),
-                    Mathf.RoundToInt(pixel.g * 255 / bucketSize),
-                    Mathf.RoundToInt(pixel.b * 255 / bucketSize)
-                );
+                case List<Color> colorList:
+                {
+                    foreach (Color pixel in colorList)
+                    {
+                        if (pixel.a <= alphaCutoff)
+                        {
+                            continue;
+                        }
 
-                colorBuckets.TryAdd(bucket, 0);
-                colorBuckets[bucket]++;
+                        Vector3Int bucket = new(
+                            Mathf.RoundToInt(pixel.r * 255 / bucketSize),
+                            Mathf.RoundToInt(pixel.g * 255 / bucketSize),
+                            Mathf.RoundToInt(pixel.b * 255 / bucketSize)
+                        );
+
+                        ColorBucketCache.AddOrUpdate(bucket, _ => 0, (_, value) => value + 1);
+                    }
+
+                    break;
+                }
+                case Color[] colorArray:
+                {
+                    foreach (Color pixel in colorArray)
+                    {
+                        if (pixel.a <= alphaCutoff)
+                        {
+                            continue;
+                        }
+
+                        Vector3Int bucket = new(
+                            Mathf.RoundToInt(pixel.r * 255 / bucketSize),
+                            Mathf.RoundToInt(pixel.g * 255 / bucketSize),
+                            Mathf.RoundToInt(pixel.b * 255 / bucketSize)
+                        );
+
+                        ColorBucketCache.AddOrUpdate(bucket, _ => 0, (_, value) => value + 1);
+                    }
+
+                    break;
+                }
+                case HashSet<Color> colorSet:
+                {
+                    foreach (Color pixel in colorSet)
+                    {
+                        if (pixel.a <= alphaCutoff)
+                        {
+                            continue;
+                        }
+
+                        Vector3Int bucket = new(
+                            Mathf.RoundToInt(pixel.r * 255 / bucketSize),
+                            Mathf.RoundToInt(pixel.g * 255 / bucketSize),
+                            Mathf.RoundToInt(pixel.b * 255 / bucketSize)
+                        );
+
+                        ColorBucketCache.AddOrUpdate(bucket, _ => 0, (_, value) => value + 1);
+                    }
+
+                    break;
+                }
+                default:
+                {
+                    foreach (Color pixel in pixels)
+                    {
+                        if (pixel.a <= alphaCutoff)
+                        {
+                            continue;
+                        }
+
+                        Vector3Int bucket = new(
+                            Mathf.RoundToInt(pixel.r * 255 / bucketSize),
+                            Mathf.RoundToInt(pixel.g * 255 / bucketSize),
+                            Mathf.RoundToInt(pixel.b * 255 / bucketSize)
+                        );
+
+                        ColorBucketCache.AddOrUpdate(bucket, _ => 0, (_, value) => value + 1);
+                    }
+
+                    break;
+                }
             }
 
-            Vector3Int dominantBucket = colorBuckets
-                .OrderByDescending(kvp => kvp.Value)
-                .First()
-                .Key;
+            KeyValuePair<Vector3Int, int>? largest = null;
+            if (0 < ColorBucketCache.Count)
+            {
+                foreach (KeyValuePair<Vector3Int, int> bucketEntry in ColorBucketCache)
+                {
+                    largest ??= bucketEntry;
+                    if (largest.Value.Value < bucketEntry.Value)
+                    {
+                        largest = bucketEntry;
+                    }
+                }
+            }
+
+            if (largest == null)
+            {
+                return default;
+            }
+
+            Vector3Int dominantBucket = largest.Value.Key;
             return new Color(
                 dominantBucket.x * bucketSize / 255f,
                 dominantBucket.y * bucketSize / 255f,
@@ -276,15 +566,21 @@
         )
         {
             Color inputColor = source;
-            //if RGB values are close to each other by a diff less than 10%, then if RGB values are lighter side, decrease the blue by 50% (eventually it will increase in conversion below), if RBB values are on darker side, decrease yellow by about 50% (it will increase in conversion)
+            /*
+                If RGB values are close to each other by a diff less than 10%, then if RGB values are lighter side,
+                decrease the blue by 50% (eventually it will increase in conversion below), if RBB values are on the
+                darker side, decrease yellow by about 50% (it will increase in conversion)
+             */
             float avgColorValue = (source.r + source.g + source.b) / 3;
-            float rDiff = Math.Abs(source.r - avgColorValue);
-            float gDiff = Math.Abs(source.g - avgColorValue);
-            float bDiff = Math.Abs(source.b - avgColorValue);
+            float rDiff = Mathf.Abs(source.r - avgColorValue);
+            float gDiff = Mathf.Abs(source.g - avgColorValue);
+            float bDiff = Mathf.Abs(source.b - avgColorValue);
             const float greyDelta = 20 / 255f;
-            if (rDiff < greyDelta && gDiff < greyDelta && bDiff < greyDelta) //The color is a shade of gray
+            //The color is a shade of gray
+            if (rDiff < greyDelta && gDiff < greyDelta && bDiff < greyDelta)
             {
-                if (avgColorValue < 123 / 255f) //color is dark
+                // Color is dark
+                if (avgColorValue < 123 / 255f)
                 {
                     inputColor.b = 220 / 255f;
                     inputColor.g = 230 / 255f;
@@ -302,18 +598,18 @@
             {
                 if (variance != 0)
                 {
-                    variance = Math.Abs(variance);
+                    variance = Mathf.Abs(variance);
 
-                    float minR = Clamp(inputColor.r - variance);
-                    float maxR = Clamp(inputColor.r + variance);
+                    float minR = Mathf.Clamp01(inputColor.r - variance);
+                    float maxR = Mathf.Clamp01(inputColor.r + variance);
                     inputColor.r = random.NextFloat(minR, maxR);
 
-                    float minG = Clamp(inputColor.g - variance);
-                    float maxG = Clamp(inputColor.g + variance);
+                    float minG = Mathf.Clamp01(inputColor.g - variance);
+                    float maxG = Mathf.Clamp01(inputColor.g + variance);
                     inputColor.g = random.NextFloat(minG, maxG);
 
-                    float minB = Clamp(inputColor.b - variance);
-                    float maxB = Clamp(inputColor.b + variance);
+                    float minB = Mathf.Clamp01(inputColor.b - variance);
+                    float maxB = Mathf.Clamp01(inputColor.b + variance);
                     inputColor.b = random.NextFloat(minB, maxB);
                 }
                 else
@@ -328,11 +624,6 @@
             h = h < 0.5f ? h + 0.5f : h - 0.5f;
             Color result = Color.HSVToRGB(h, s, v);
             return result;
-        }
-
-        private static float Clamp(float value)
-        {
-            return Math.Clamp(value, 0, 1);
         }
     }
 }
