@@ -12,6 +12,8 @@
             IComparable,
             IComparable<XorShiroRandom>
     {
+        public static XorShiroRandom Instance => ThreadLocalRandom<XorShiroRandom>.Instance;
+
         public override RandomState InternalState => new(_s0, _s1, _cachedGaussian);
 
         internal ulong _s0;

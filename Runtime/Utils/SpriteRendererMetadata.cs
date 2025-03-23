@@ -11,6 +11,8 @@
     [DisallowMultipleComponent]
     public sealed class SpriteRendererMetadata : MonoBehaviour
     {
+        private bool Enabled => enabled && gameObject.activeInHierarchy;
+
         private readonly List<(Component component, Color color)> _colorStack = new();
         private readonly List<(Component component, Material material)> _materialStack = new();
 
@@ -25,9 +27,10 @@
 
         public Material CurrentMaterial => _materialStack[^1].material;
 
-        public IEnumerable<Material> Materials => _materialStack.Select(entry => entry.material);
+        public IEnumerable<Material> Materials =>
+            _materialStack.Select(entry => entry.material).Reverse();
 
-        public IEnumerable<Color> Colors => _colorStack.Select(entry => entry.color);
+        public IEnumerable<Color> Colors => _colorStack.Select(entry => entry.color).Reverse();
 
         [SiblingComponent]
         [SerializeField]
@@ -42,7 +45,7 @@
                 return;
             }
 
-            if (!force && !enabled)
+            if (!force && !Enabled)
             {
                 return;
             }
@@ -64,7 +67,7 @@
                 return;
             }
 
-            if (!force && !enabled)
+            if (!force && !Enabled)
             {
                 return;
             }
@@ -82,15 +85,17 @@
 
         public bool TryGetColor(Component component, out Color color)
         {
-            int index = _colorStack.FindIndex(value => value.component == component);
-            if (index < 0)
+            foreach ((Component component, Color color) entry in _colorStack)
             {
-                color = default;
-                return false;
+                if (entry.component == component)
+                {
+                    color = entry.color;
+                    return true;
+                }
             }
 
-            color = _colorStack[index].color;
-            return true;
+            color = default;
+            return false;
         }
 
         /// <summary>
@@ -98,7 +103,7 @@
         /// </summary>
         /// <param name="component">Component that owns the material.</param>
         /// <param name="material">Material to use.</param>
-        /// <param name="force">If true, overrides the enable check.</param>
+        /// <param name="force">If true, overrides the enabled check.</param>
         /// <returns>The instanced material, if possible.</returns>
         public Material PushMaterial(Component component, Material material, bool force = false)
         {
@@ -107,7 +112,7 @@
                 return null;
             }
 
-            if (!force && !enabled)
+            if (!force && !Enabled)
             {
                 return null;
             }
@@ -135,7 +140,7 @@
         /// </summary>
         /// <param name="component">Component that owns the material.</param>
         /// <param name="material">Material to use.</param>
-        /// <param name="force">If true, overrides the enable check.</param>
+        /// <param name="force">If true, overrides the enabled check.</param>
         /// <returns>The instanced material, if possible.</returns>
         public Material PushBackMaterial(Component component, Material material, bool force = false)
         {
@@ -144,7 +149,7 @@
                 return null;
             }
 
-            if (!force && !enabled)
+            if (!force && !Enabled)
             {
                 return null;
             }
@@ -186,14 +191,17 @@
 
         public bool TryGetMaterial(Component component, out Material material)
         {
-            int index = _materialStack.FindIndex(value => value.component == component);
-            if (index < 0)
+            foreach ((Component component, Material material) entry in _materialStack)
             {
-                material = default;
-                return false;
+                if (entry.component == component)
+                {
+                    material = entry.material;
+                    return true;
+                }
             }
-            material = _materialStack[index].material;
-            return true;
+
+            material = default;
+            return false;
         }
 
         private void Awake()
@@ -204,9 +212,15 @@
             }
 
             InternalPushColor(this, _spriteRenderer.color);
-            _colorStackCache.AddRange(_colorStack);
+            foreach ((Component component, Color color) entry in _colorStack)
+            {
+                _colorStackCache.Add(entry);
+            }
             _ = InternalPushMaterial(this, _spriteRenderer.material);
-            _materialStackCache.AddRange(_materialStack);
+            foreach ((Component component, Material material) entry in _materialStack)
+            {
+                _materialStackCache.Add(entry);
+            }
         }
 
         private void OnEnable()
@@ -219,13 +233,20 @@
             }
 
             _colorStack.Clear();
-            _colorStack.Add(_colorStackCache[0]);
+            if (0 < _colorStackCache.Count)
+            {
+                _colorStack.Add(_colorStackCache[0]);
+            }
+
             List<(Component component, Color color)> colorBuffer = Buffers<(
                 Component component,
                 Color color
             )>.List;
             colorBuffer.Clear();
-            colorBuffer.AddRange(_colorStackCache);
+            foreach ((Component component, Color color) entry in _colorStackCache)
+            {
+                colorBuffer.Add(entry);
+            }
             for (int i = 1; i < colorBuffer.Count; ++i)
             {
                 (Component component, Color color) entry = colorBuffer[i];
@@ -233,13 +254,20 @@
             }
 
             _materialStack.Clear();
-            _materialStack.Add(_materialStackCache[0]);
+            if (0 < _materialStackCache.Count)
+            {
+                _materialStack.Add(_materialStackCache[0]);
+            }
+
             List<(Component component, Material material)> materialBuffer = Buffers<(
                 Component component,
                 Material material
             )>.List;
             materialBuffer.Clear();
-            materialBuffer.AddRange(_materialStackCache);
+            foreach ((Component component, Material material) entry in _materialStackCache)
+            {
+                materialBuffer.Add(entry);
+            }
             for (int i = 1; i < materialBuffer.Count; ++i)
             {
                 (Component component, Material material) entry = materialBuffer[i];
@@ -254,21 +282,30 @@
                 Color color
             )>.List;
             colorBuffer.Clear();
-            colorBuffer.AddRange(_colorStack);
+            foreach ((Component component, Color color) entry in _colorStack)
+            {
+                colorBuffer.Add(entry);
+            }
             for (int i = colorBuffer.Count - 1; 1 <= i; --i)
             {
                 PopColor(colorBuffer[i].component);
             }
 
             _colorStackCache.Clear();
-            _colorStackCache.AddRange(colorBuffer);
+            foreach ((Component component, Color color) entry in colorBuffer)
+            {
+                _colorStackCache.Add(entry);
+            }
 
             List<(Component component, Material material)> materialBuffer = Buffers<(
                 Component component,
                 Material material
             )>.List;
             materialBuffer.Clear();
-            materialBuffer.AddRange(_materialStack);
+            foreach ((Component component, Material material) entry in _materialStack)
+            {
+                materialBuffer.Add(entry);
+            }
 
             for (int i = materialBuffer.Count - 1; 1 <= i; --i)
             {
@@ -276,7 +313,10 @@
             }
 
             _materialStackCache.Clear();
-            _materialStackCache.AddRange(materialBuffer);
+            foreach ((Component component, Material material) entry in materialBuffer)
+            {
+                _materialStackCache.Add(entry);
+            }
         }
 
         private void RemoveColor(Component component)
@@ -286,12 +326,23 @@
                 return;
             }
 
-            _ = _colorStack.RemoveAll(existingComponent =>
-                existingComponent.component == component || existingComponent.component == null
-            );
-            _ = _colorStackCache.RemoveAll(existingComponent =>
-                existingComponent.component == component || existingComponent.component == null
-            );
+            for (int i = _colorStack.Count - 1; 0 <= i; --i)
+            {
+                (Component component, Color color) stackEntry = _colorStack[i];
+                if (stackEntry.component == component || stackEntry.component == null)
+                {
+                    _colorStack.RemoveAt(i);
+                }
+            }
+
+            for (int i = _colorStackCache.Count - 1; 0 <= i; --i)
+            {
+                (Component component, Color color) stackEntry = _colorStackCache[i];
+                if (stackEntry.component == component || stackEntry.component == null)
+                {
+                    _colorStackCache.RemoveAt(i);
+                }
+            }
         }
 
         private void RemoveMaterial(Component component)
@@ -301,12 +352,23 @@
                 return;
             }
 
-            _ = _materialStack.RemoveAll(existingComponent =>
-                existingComponent.component == component || existingComponent.component == null
-            );
-            _ = _materialStackCache.RemoveAll(existingComponent =>
-                existingComponent.component == component || existingComponent.component == null
-            );
+            for (int i = _materialStack.Count - 1; 0 <= i; --i)
+            {
+                (Component component, Material material) stackEntry = _materialStack[i];
+                if (stackEntry.component == component || stackEntry.component == null)
+                {
+                    _materialStack.RemoveAt(i);
+                }
+            }
+
+            for (int i = _materialStackCache.Count - 1; 0 <= i; --i)
+            {
+                (Component component, Material material) stackEntry = _materialStackCache[i];
+                if (stackEntry.component == component || stackEntry.component == null)
+                {
+                    _materialStackCache.RemoveAt(i);
+                }
+            }
         }
     }
 }

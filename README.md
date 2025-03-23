@@ -129,6 +129,22 @@ random.NextNoiseMap(width, height); // A configurable noise map generated using 
 - XorShift
 - XorShiro
 
+## Performance (Number of Operations / Second)
+
+| Random | NextBool | Next | NextUInt | NextFloat | NextDouble | NextUint - Range | NextInt - Range |
+| ------ | -------- | ---- | -------- | --------- | ---------- | ---------------- | --------------- |
+| PcgRandom | 34,260,478 | 34,303,866 | 35,148,246 | 24,818,438 | 30,034,632 |22,436,474 |20,801,797 |
+| SystemRandom | 28,698,806 | 30,040,782 | 20,435,092 | 24,079,399 | 27,284,147 |20,735,769 |19,861,780 |
+| SquirrelRandom | 33,285,784 | 33,439,909 | 34,611,893 | 23,885,731 | 28,958,725 |21,520,279 |20,311,372 |
+| XorShiftRandom | 34,695,989 | 35,147,320 | 35,997,718 | 25,248,238 | 31,582,991 |22,679,928 |21,255,319 |
+| DotNetRandom | 18,097,489 | 18,191,042 | 18,783,063 | 14,061,444 | 15,730,439 |13,284,050 |12,596,913 |
+| WyRandom | 28,490,852 | 29,086,052 | 29,724,907 | 20,252,065 | 24,542,201 |18,474,790 |17,404,641 |
+| SplitMix64 | 34,301,843 | 34,343,404 | 35,512,284 | 24,289,416 | 30,586,231 |22,470,330 |20,850,965 |
+| RomuDuo | 32,969,889 | 33,413,212 | 34,339,227 | 23,755,059 | 29,483,136 |21,671,641 |20,253,479 |
+| XorShiroRandom | 31,529,025 | 31,717,709 | 32,536,277 | 22,421,715 | 27,619,417 |20,843,993 |19,270,063 |
+| UnityRandom | 24,925,268 | 24,830,594 | 26,429,283 | 17,864,528 | 21,206,384 |16,376,626 |15,528,972 |
+| LinearCongruentialGenerator | 35,013,818 | 35,025,182 | 35,843,533 | 25,093,401 | 31,553,487 |22,579,798 |21,211,175 |
+
 # Spatial Trees
 There are three implemented 2D immutable spatial trees that can store generic objects, as long as there is some resolution function that can convert them into Vector2 spatial positions.
 

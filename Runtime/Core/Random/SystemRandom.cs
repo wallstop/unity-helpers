@@ -16,7 +16,7 @@
         private const int SeedArraySize = 56;
         private const int LastSeedIndex = SeedArraySize - 1;
 
-        public static IRandom Instance => ThreadLocalRandom<SystemRandom>.Instance;
+        public static SystemRandom Instance => ThreadLocalRandom<SystemRandom>.Instance;
 
         public override RandomState InternalState =>
             new(

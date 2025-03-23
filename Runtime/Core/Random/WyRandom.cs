@@ -14,7 +14,7 @@
         private const ulong Prime0 = 0xa0761d6478bd642f;
         private const ulong Prime1 = 0xe7037ed1a0b428db;
 
-        public static IRandom Instance => ThreadLocalRandom<WyRandom>.Instance;
+        public static WyRandom Instance => ThreadLocalRandom<WyRandom>.Instance;
 
         public override RandomState InternalState => new RandomState(_state);
 

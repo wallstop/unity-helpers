@@ -8,6 +8,8 @@
     [DataContract]
     public sealed class DotNetRandom : AbstractRandom
     {
+        public static DotNetRandom Instance => ThreadLocalRandom<DotNetRandom>.Instance;
+
         public override RandomState InternalState =>
             new RandomState(unchecked((ulong)_seed), state2: _numberGenerated);
 

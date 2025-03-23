@@ -12,7 +12,7 @@
             IComparable,
             IComparable<SplitMix64>
     {
-        public static IRandom Instance => ThreadLocalRandom<SplitMix64>.Instance;
+        public static SplitMix64 Instance => ThreadLocalRandom<SplitMix64>.Instance;
 
         public override RandomState InternalState => new(_state, 0, _cachedGaussian);
 

@@ -15,7 +15,7 @@
             IComparable,
             IComparable<RomuDuo>
     {
-        public static IRandom Instance => ThreadLocalRandom<RomuDuo>.Instance;
+        public static RomuDuo Instance => ThreadLocalRandom<RomuDuo>.Instance;
         public override RandomState InternalState => new(_x, _y, _cachedGaussian);
 
         internal ulong _x;

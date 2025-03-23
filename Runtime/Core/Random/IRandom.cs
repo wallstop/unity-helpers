@@ -138,6 +138,7 @@
         double NextGaussian(double mean = 0, double stdDev = 1);
 
         Guid NextGuid();
+
         KGuid NextKGuid();
 
         T NextOf<T>(IEnumerable<T> enumerable);

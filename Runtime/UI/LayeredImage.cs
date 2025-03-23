@@ -176,7 +176,7 @@
                 int maxY = int.MinValue;
                 foreach (AnimatedSpriteLayer layer in _layers)
                 {
-                    if (!layer.frames.Any())
+                    if (layer.frames.Length <= 0)
                     {
                         continue;
                     }
@@ -210,7 +210,7 @@
 
                 foreach (AnimatedSpriteLayer layer in _layers)
                 {
-                    if (!layer.frames.Any())
+                    if (layer.frames.Length <= 0)
                     {
                         continue;
                     }

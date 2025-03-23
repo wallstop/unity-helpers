@@ -15,7 +15,7 @@
             IComparable,
             IComparable<PcgRandom>
     {
-        public static IRandom Instance => ThreadLocalRandom<PcgRandom>.Instance;
+        public static PcgRandom Instance => ThreadLocalRandom<PcgRandom>.Instance;
 
         public override RandomState InternalState => new(_state, _increment, _cachedGaussian);
 

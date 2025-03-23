@@ -21,6 +21,8 @@
 
         public abstract RandomState InternalState { get; }
 
+        private readonly byte[] _guidBytes = new byte[16];
+
         public virtual int Next()
         {
             // Mask out the MSB to ensure the value is within [0, int.MaxValue]
@@ -410,24 +412,23 @@
             where T : struct, Enum
         {
             Type enumType = typeof(T);
-            T[] enumValues = (T[])EnumTypeCache.GetOrAdd(enumType, Enum.GetValues);
+            T[] enumValues = (T[])EnumTypeCache.GetOrAdd(enumType, type => Enum.GetValues(type));
 
             return RandomOf(enumValues);
         }
 
         public Guid NextGuid()
         {
-            return new Guid(GenerateGuidBytes());
+            return new Guid(GenerateGuidBytes(_guidBytes));
         }
 
         public KGuid NextKGuid()
         {
-            return new KGuid(GenerateGuidBytes());
+            return new KGuid(GenerateGuidBytes(_guidBytes));
         }
 
-        private byte[] GenerateGuidBytes()
+        private byte[] GenerateGuidBytes(byte[] guidBytes)
         {
-            byte[] guidBytes = new byte[16];
             NextBytes(guidBytes);
             SetUuidV4Bits(guidBytes);
             return guidBytes;
