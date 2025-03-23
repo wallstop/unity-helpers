@@ -125,12 +125,12 @@
                 if (0 < direction.x)
                 {
                     float t2 = (max.x - center.x) / direction.x;
-                    tMax = Math.Min(tMax, t2);
+                    tMax = Mathf.Min(tMax, t2);
                 }
                 else
                 {
                     float t1 = (min.x - center.x) / direction.x;
-                    tMax = Math.Min(tMax, t1);
+                    tMax = Mathf.Min(tMax, t1);
                 }
             }
 
@@ -139,12 +139,12 @@
                 if (direction.y > 0)
                 {
                     float t2 = (max.y - center.y) / direction.y;
-                    tMax = Math.Min(tMax, t2);
+                    tMax = Mathf.Min(tMax, t2);
                 }
                 else
                 {
                     float t1 = (min.y - center.y) / direction.y;
-                    tMax = Math.Min(tMax, t1);
+                    tMax = Mathf.Min(tMax, t1);
                 }
             }
 
@@ -160,7 +160,7 @@
 
         public static bool Approximately(this float lhs, float rhs, float tolerance = 0.045f)
         {
-            return Math.Abs(lhs - rhs) <= tolerance;
+            return Mathf.Abs(lhs - rhs) <= tolerance;
         }
     }
 }

@@ -1,9 +1,9 @@
-﻿namespace UnityHelpers.Tests.Tests.Runtime.Helper
+﻿namespace UnityHelpers.Tests.Helper
 {
     using System.Linq;
-    using Core.Helper;
-    using Core.Random;
     using NUnit.Framework;
+    using UnityHelpers.Core.Helper;
+    using UnityHelpers.Core.Random;
 
     public sealed class ArrayConverterTests
     {

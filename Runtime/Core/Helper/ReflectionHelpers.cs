@@ -20,6 +20,7 @@
         public static Array CreateArray(Type type, int length)
         {
             return ArrayCreators
+                // ReSharper disable once ConvertClosureToMethodGroup
                 .GetOrAdd(type, elementType => GetArrayCreator(elementType))
                 .Invoke(length);
         }
@@ -28,6 +29,7 @@
         public static IList CreateList(Type elementType, int length)
         {
             return ListWithCapacityCreators
+                // ReSharper disable once ConvertClosureToMethodGroup
                 .GetOrAdd(elementType, type => GetListWithCapacityCreator(type))
                 .Invoke(length);
         }
@@ -35,6 +37,7 @@
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static IList CreateList(Type elementType)
         {
+            // ReSharper disable once ConvertClosureToMethodGroup
             return ListCreators.GetOrAdd(elementType, type => GetListCreator(type)).Invoke();
         }
 
@@ -44,7 +47,7 @@
             return field.GetValue;
 #else
             DynamicMethod dynamicMethod = new(
-                $"Get{(field.DeclaringType?.Name ?? string.Empty)}{field.Name}",
+                $"Get{field.DeclaringType.Name}{field.Name}",
                 typeof(object),
                 new[] { typeof(object) },
                 field.DeclaringType,
@@ -69,6 +72,41 @@
             il.Emit(OpCodes.Ret);
 
             return (Func<object, object>)dynamicMethod.CreateDelegate(typeof(Func<object, object>));
+#endif
+        }
+
+        public static Func<object> GetStaticFieldGetter(FieldInfo field)
+        {
+            if (!field.IsStatic)
+            {
+                throw new ArgumentException(nameof(field));
+            }
+
+#if WEB_GL
+            return () => field.GetValue(null);
+#else
+            DynamicMethod dynamicMethod = new(
+                $"Get{field.DeclaringType.Name}{field.Name}",
+                typeof(object),
+                Type.EmptyTypes, // No parameters for static fields
+                field.DeclaringType,
+                true
+            );
+
+            ILGenerator il = dynamicMethod.GetILGenerator();
+
+            // Load the static field
+            il.Emit(OpCodes.Ldsfld, field);
+
+            // If the field's type is a value type, box it.
+            if (field.FieldType.IsValueType)
+            {
+                il.Emit(OpCodes.Box, field.FieldType);
+            }
+
+            il.Emit(OpCodes.Ret);
+
+            return (Func<object>)dynamicMethod.CreateDelegate(typeof(Func<object>));
 #endif
         }
 
@@ -142,6 +180,59 @@
 #endif
         }
 
+        public static Func<TValue> GetStaticFieldGetter<TValue>(FieldInfo field)
+        {
+            if (!field.IsStatic)
+            {
+                throw new ArgumentException(nameof(field));
+            }
+
+#if WEB_GL
+            return Getter;
+            TValue Getter()
+            {
+                return (TValue)field.GetValue(null);
+            }
+#else
+            DynamicMethod dynamicMethod = new(
+                $"GetGenericStatic{field.DeclaringType.Name}{field.Name}",
+                typeof(TValue),
+                Type.EmptyTypes, // no parameters needed for static fields
+                field.DeclaringType,
+                true
+            );
+
+            ILGenerator il = dynamicMethod.GetILGenerator();
+
+            // Load the static field.
+            il.Emit(OpCodes.Ldsfld, field);
+
+            // Handle conversion from the field type to TValue.
+            if (field.FieldType.IsValueType)
+            {
+                if (!typeof(TValue).IsValueType)
+                {
+                    il.Emit(OpCodes.Box, field.FieldType);
+                }
+            }
+            else
+            {
+                if (typeof(TValue).IsValueType)
+                {
+                    il.Emit(OpCodes.Unbox_Any, typeof(TValue));
+                }
+                else if (typeof(TValue) != field.FieldType)
+                {
+                    il.Emit(OpCodes.Castclass, typeof(TValue));
+                }
+            }
+
+            il.Emit(OpCodes.Ret);
+
+            return (Func<TValue>)dynamicMethod.CreateDelegate(typeof(Func<TValue>));
+#endif
+        }
+
         public static FieldSetter<TInstance, TValue> GetFieldSetter<TInstance, TValue>(
             FieldInfo field
         )
@@ -184,6 +275,36 @@
 #endif
         }
 
+        public static Action<TValue> GetStaticFieldSetter<TValue>(FieldInfo field)
+        {
+            if (!field.IsStatic)
+            {
+                throw new ArgumentException(nameof(field));
+            }
+#if WEB_GL
+            return Setter;
+            void Setter(TValue newValue)
+            {
+                field.SetValue(null, newValue);
+            }
+#else
+            DynamicMethod dynamicMethod = new(
+                $"SetFieldGenericStatic{field.DeclaringType.Name}{field.Name}",
+                typeof(void),
+                new[] { typeof(TValue) },
+                field.Module,
+                true
+            );
+
+            ILGenerator il = dynamicMethod.GetILGenerator();
+            il.Emit(OpCodes.Ldarg_0);
+            il.Emit(OpCodes.Stsfld, field);
+            il.Emit(OpCodes.Ret);
+
+            return (Action<TValue>)dynamicMethod.CreateDelegate(typeof(Action<TValue>));
+#endif
+        }
+
         public static Action<object, object> GetFieldSetter(FieldInfo field)
         {
 #if WEB_GL
@@ -214,6 +335,40 @@
             il.Emit(OpCodes.Ret);
             return (Action<object, object>)
                 dynamicMethod.CreateDelegate(typeof(Action<object, object>));
+#endif
+        }
+
+        public static Action<object> GetStaticFieldSetter(FieldInfo field)
+        {
+            if (!field.IsStatic)
+            {
+                throw new ArgumentException(nameof(field));
+            }
+#if WEB_GL
+            return value => field.SetValue(null, value);
+#else
+            DynamicMethod dynamicMethod = new(
+                $"SetFieldStatic{field.DeclaringType.Name}{field.Name}",
+                null,
+                new[] { typeof(object) },
+                field.DeclaringType.Module,
+                true
+            );
+
+            ILGenerator il = dynamicMethod.GetILGenerator();
+
+            // Load the new value (argument 0)
+            il.Emit(OpCodes.Ldarg_0);
+            // Convert the object to the field's type (unbox or cast as needed)
+            il.Emit(
+                field.FieldType.IsValueType ? OpCodes.Unbox_Any : OpCodes.Castclass,
+                field.FieldType
+            );
+            // Set the static field
+            il.Emit(OpCodes.Stsfld, field);
+            il.Emit(OpCodes.Ret);
+
+            return (Action<object>)dynamicMethod.CreateDelegate(typeof(Action<object>));
 #endif
         }
 

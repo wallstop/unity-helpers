@@ -1,11 +1,11 @@
-﻿namespace UnityHelpers.Tests.Tests.Runtime.Helper
+﻿namespace UnityHelpers.Tests.Helper
 {
     using System.Collections;
-    using Core.Helper;
     using JetBrains.Annotations;
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.TestTools;
+    using UnityHelpers.Core.Helper;
 
     [UsedImplicitly]
     public sealed class ObjectHelperComponent : MonoBehaviour { }
