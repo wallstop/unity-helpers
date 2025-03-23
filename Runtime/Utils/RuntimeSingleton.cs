@@ -45,12 +45,20 @@
 
         protected virtual void Start()
         {
-            if (_instance != null && _instance != this)
+            if (_instance == null || _instance == this)
             {
-                this.LogError(
-                    $"Double singleton detected, {_instance.name} conflicts with {name}."
-                );
-                gameObject.Destroy();
+                return;
+            }
+
+            this.LogError($"Double singleton detected, {_instance.name} conflicts with {name}.");
+            gameObject.Destroy();
+        }
+
+        protected virtual void OnDestroy()
+        {
+            if (_instance == this)
+            {
+                _instance = null;
             }
         }
     }

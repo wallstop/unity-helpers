@@ -85,5 +85,22 @@
             list[index] = last;
             list.RemoveAt(lastIndex);
         }
+
+        public static void InsertionSort<T, TComparer>(this IList<T> array, TComparer comparer)
+            where TComparer : struct, IComparer<T>
+        {
+            int arrayCount = array.Count;
+            for (int i = 1; i < arrayCount; ++i)
+            {
+                T key = array[i];
+                int j = i - 1;
+                while (j >= 0 && comparer.Compare(array[j], key) > 0)
+                {
+                    array[j + 1] = array[j];
+                    j--;
+                }
+                array[j + 1] = key;
+            }
+        }
     }
 }
