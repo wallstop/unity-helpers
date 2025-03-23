@@ -11,8 +11,21 @@
         {
             get
             {
-                if (!_lastRead.HasValue || Helpers.HasEnoughTimePassed(_lastRead.Value, _cacheTtl))
+                if (!_lastRead.HasValue)
                 {
+                    Reset();
+                }
+                else if (
+                    Helpers.HasEnoughTimePassed(
+                        _lastRead.Value,
+                        _cacheTtl + (_shouldUseJitter && !_usedJitter ? _jitterAmount : 0f)
+                    )
+                )
+                {
+                    if (_shouldUseJitter)
+                    {
+                        _usedJitter = true;
+                    }
                     Reset();
                 }
 
@@ -26,6 +39,10 @@
         private float? _lastRead;
         private T _value;
 
+        private bool _usedJitter;
+        private readonly bool _shouldUseJitter;
+        private readonly float _jitterAmount;
+
         public TimedCache(Func<T> valueProducer, float cacheTtl, bool useJitter = false)
         {
             _valueProducer =
@@ -36,10 +53,8 @@
             }
 
             _cacheTtl = cacheTtl;
-            if (useJitter && 0 < _cacheTtl)
-            {
-                _cacheTtl += PRNG.Instance.NextFloat(_cacheTtl);
-            }
+            _shouldUseJitter = useJitter;
+            _jitterAmount = useJitter ? PRNG.Instance.NextFloat(0f, cacheTtl) : 0f;
         }
 
         public void Reset()

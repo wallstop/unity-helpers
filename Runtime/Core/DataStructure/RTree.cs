@@ -288,11 +288,15 @@
             HashSet<T> nearestNeighborsSet = nearestNeighborsBuffer ?? new HashSet<T>(count);
             nearestNeighborsSet.Clear();
 
+            Comparison<RTreeNode<T>> comparison = Comparison;
             while (!current.isTerminal)
             {
                 childrenCopy.Clear();
-                childrenCopy.AddRange(current.children);
-                childrenCopy.Sort(Comparison);
+                foreach (RTreeNode<T> child in current.children)
+                {
+                    childrenCopy.Add(child);
+                }
+                childrenCopy.Sort(comparison);
                 for (int i = childrenCopy.Count - 1; 0 <= i; --i)
                 {
                     stack.Push(childrenCopy[i]);
@@ -313,11 +317,22 @@
                 }
             }
 
-            nearestNeighbors.AddRange(nearestNeighborsSet);
+            foreach (T element in nearestNeighborsSet)
+            {
+                nearestNeighbors.Add(element);
+            }
             if (count < nearestNeighbors.Count)
             {
+                Vector2 localPosition = position;
                 nearestNeighbors.Sort(NearestComparison);
                 nearestNeighbors.RemoveRange(count, nearestNeighbors.Count - count);
+
+                int NearestComparison(T lhs, T rhs) =>
+                    (
+                        (Vector2)_elementTransformer(lhs).center - localPosition
+                    ).sqrMagnitude.CompareTo(
+                        ((Vector2)_elementTransformer(rhs).center - localPosition).sqrMagnitude
+                    );
             }
 
             return;
@@ -325,11 +340,6 @@
             int Comparison(RTreeNode<T> lhs, RTreeNode<T> rhs) =>
                 ((Vector2)lhs.boundary.center - position).sqrMagnitude.CompareTo(
                     ((Vector2)rhs.boundary.center - position).sqrMagnitude
-                );
-
-            int NearestComparison(T lhs, T rhs) =>
-                ((Vector2)_elementTransformer(lhs).center - position).sqrMagnitude.CompareTo(
-                    ((Vector2)_elementTransformer(rhs).center - position).sqrMagnitude
                 );
         }
     }

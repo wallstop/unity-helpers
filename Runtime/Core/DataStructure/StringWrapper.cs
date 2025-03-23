@@ -19,7 +19,7 @@
         private StringWrapper(string value)
         {
             this.value = value;
-            _hashCode = value?.GetHashCode() ?? 0;
+            _hashCode = value.GetHashCode();
         }
 
         public static StringWrapper Get(string value)
@@ -27,9 +27,9 @@
             return Cache.GetOrAdd(value, key => new StringWrapper(key));
         }
 
-        public static void Remove(string value)
+        public static bool Remove(string value)
         {
-            _ = Cache.TryRemove(value, out _);
+            return Cache.TryRemove(value, out _);
         }
 
         public bool Equals(StringWrapper other)
@@ -49,7 +49,7 @@
                 return false;
             }
 
-            return string.Equals(value, other.value);
+            return string.Equals(value, other.value, StringComparison.Ordinal);
         }
 
         public int CompareTo(StringWrapper other)

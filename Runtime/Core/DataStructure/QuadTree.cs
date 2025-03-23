@@ -231,11 +231,15 @@
             HashSet<T> nearestNeighborsSet = nearestNeighborBuffer ?? new HashSet<T>(count);
             nearestNeighborsSet.Clear();
 
+            Comparison<QuadTreeNode<T>> comparison = Comparison;
             while (!current.isTerminal)
             {
                 childrenCopy.Clear();
-                childrenCopy.AddRange(current.children);
-                childrenCopy.Sort(Comparison);
+                foreach (QuadTreeNode<T> child in current.children)
+                {
+                    childrenCopy.Add(child);
+                }
+                childrenCopy.Sort(comparison);
                 for (int i = childrenCopy.Count - 1; 0 <= i; --i)
                 {
                     stack.Push(childrenCopy[i]);
@@ -256,11 +260,20 @@
                 }
             }
 
-            nearestNeighbors.AddRange(nearestNeighborsSet);
+            foreach (T element in nearestNeighborsSet)
+            {
+                nearestNeighbors.Add(element);
+            }
             if (count < nearestNeighbors.Count)
             {
+                Vector2 localPosition = position;
                 nearestNeighbors.Sort(NearestComparison);
                 nearestNeighbors.RemoveRange(count, nearestNeighbors.Count - count);
+
+                int NearestComparison(T lhs, T rhs) =>
+                    (_elementTransformer(lhs) - localPosition).sqrMagnitude.CompareTo(
+                        (_elementTransformer(rhs) - localPosition).sqrMagnitude
+                    );
             }
 
             return;
@@ -268,11 +281,6 @@
             int Comparison(QuadTreeNode<T> lhs, QuadTreeNode<T> rhs) =>
                 ((Vector2)lhs.boundary.center - position).sqrMagnitude.CompareTo(
                     ((Vector2)rhs.boundary.center - position).sqrMagnitude
-                );
-
-            int NearestComparison(T lhs, T rhs) =>
-                (_elementTransformer(lhs) - position).sqrMagnitude.CompareTo(
-                    (_elementTransformer(rhs) - position).sqrMagnitude
                 );
         }
     }
