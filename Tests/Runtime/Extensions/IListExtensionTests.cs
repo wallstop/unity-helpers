@@ -1,12 +1,21 @@
 ﻿namespace UnityHelpers.Tests.Extensions
 {
     using System;
+    using System.Collections.Generic;
     using System.Linq;
     using Core.Extension;
+    using Core.Random;
     using NUnit.Framework;
 
     public sealed class IListExtensionTests
     {
+        private const int NumTries = 1_000;
+
+        private readonly struct IntComparer : IComparer<int>
+        {
+            public int Compare(int x, int y) => x.CompareTo(y);
+        }
+
         [Test]
         public void ShiftLeft()
         {
@@ -71,6 +80,25 @@
             Assert.Throws<ArgumentException>(() => input.Reverse(1, input.Length));
             Assert.Throws<ArgumentException>(() => input.Reverse(1, int.MaxValue));
             Assert.Throws<ArgumentException>(() => input.Reverse(1, int.MinValue));
+        }
+
+        [Test]
+        public void InsertionSort()
+        {
+            for (int i = 0; i < NumTries; ++i)
+            {
+                int[] input = Enumerable
+                    .Range(0, 100)
+                    .Select(_ => PRNG.Instance.Next(int.MinValue, int.MaxValue))
+                    .ToArray();
+                int[] conventionalSorted = input.ToArray();
+                Array.Sort(conventionalSorted);
+
+                int[] insertionSorted = input.ToArray();
+                insertionSorted.InsertionSort(new IntComparer());
+                Assert.That(conventionalSorted, Is.EqualTo(insertionSorted));
+                Assert.That(input.OrderBy(x => x), Is.EqualTo(insertionSorted));
+            }
         }
     }
 }

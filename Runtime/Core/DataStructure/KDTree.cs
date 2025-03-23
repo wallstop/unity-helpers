@@ -272,19 +272,21 @@
                 }
             }
 
-            nearestNeighbors.AddRange(nearestNeighborsSet);
+            foreach (T element in nearestNeighborsSet)
+            {
+                nearestNeighbors.Add(element);
+            }
             if (count < nearestNeighbors.Count)
             {
+                Vector2 localPosition = position;
                 nearestNeighbors.Sort(NearestComparison);
                 nearestNeighbors.RemoveRange(count, nearestNeighbors.Count - count);
+
+                int NearestComparison(T lhs, T rhs) =>
+                    (_elementTransformer(lhs) - localPosition).sqrMagnitude.CompareTo(
+                        (_elementTransformer(rhs) - localPosition).sqrMagnitude
+                    );
             }
-
-            return;
-
-            int NearestComparison(T lhs, T rhs) =>
-                (_elementTransformer(lhs) - position).sqrMagnitude.CompareTo(
-                    (_elementTransformer(rhs) - position).sqrMagnitude
-                );
         }
     }
 }

@@ -12,7 +12,6 @@
     {
         public int Capacity { get; private set; }
         public int Count { get; private set; }
-        public bool IsReadOnly => false;
 
         private readonly List<T> _buffer;
         private int _position;
@@ -52,7 +51,7 @@
         {
             for (int i = 0; i < Count; ++i)
             {
-                // No need for bounds check, we're safe
+                // No need for bound check, we're safe
                 yield return _buffer[AdjustedIndexFor(i)];
             }
         }
@@ -87,7 +86,6 @@
 
         public void Clear()
         {
-            /* Simply reset state */
             Count = 0;
             _position = 0;
             _buffer.Clear();
