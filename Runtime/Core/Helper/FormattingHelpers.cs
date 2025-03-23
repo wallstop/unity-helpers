@@ -4,19 +4,19 @@
 
     public static class FormattingHelpers
     {
+        private static readonly string[] ByteSizes = { "B", "KB", "MB", "GB", "TB", "PB", "EB" };
+
         public static string FormatBytes(long bytes)
         {
-            string[] sizes = { "B", "KB", "MB", "GB", "TB", "PB", "EB" };
+            bytes = Math.Max(0L, bytes);
             double len = bytes;
             int order = 0;
-
-            bytes = Math.Max(0, bytes);
 
             const int byteInChunk = 1024;
             while (byteInChunk <= len)
             {
                 len /= byteInChunk;
-                if (order < sizes.Length - 1)
+                if (order < ByteSizes.Length - 1)
                 {
                     ++order;
                 }
@@ -26,7 +26,7 @@
                 }
             }
 
-            return $"{len:0.##} {sizes[order]}";
+            return $"{len:0.##} {ByteSizes[order]}";
         }
     }
 }

@@ -1,10 +1,10 @@
-﻿namespace UnityHelpers.Tests.Tests.Runtime.Helper
+﻿namespace UnityHelpers.Tests.Helper
 {
-    using Core.Extension;
-    using Core.Helper;
-    using Core.Random;
     using NUnit.Framework;
     using UnityEngine;
+    using UnityHelpers.Core.Extension;
+    using UnityHelpers.Core.Helper;
+    using UnityHelpers.Core.Random;
 
     public sealed class WallMathTests
     {

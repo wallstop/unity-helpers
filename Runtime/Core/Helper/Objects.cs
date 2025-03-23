@@ -7,8 +7,8 @@
 
     public static class Objects
     {
-        private const int HashBase = 839;
-        private const int HashMultiplier = 4021;
+        private const int HashBase = 5556137;
+        private const int HashMultiplier = 95785853;
 
         public static T FromWeakReference<T>(WeakReference weakReference)
             where T : class
