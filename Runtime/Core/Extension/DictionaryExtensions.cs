@@ -125,7 +125,11 @@
         {
             if (dictionary is ConcurrentDictionary<K, V> concurrentDictionary)
             {
-                return concurrentDictionary.AddOrUpdate(key, creator, (_, existing) => existing);
+                return concurrentDictionary.AddOrUpdate(
+                    key,
+                    creator,
+                    (_, existingValue) => existingValue
+                );
             }
 
             if (dictionary.TryGetValue(key, out V existing))
@@ -207,6 +211,14 @@
         }
 
         public static Dictionary<K, V> ToDictionary<K, V>(
+            this IReadOnlyDictionary<K, V> dictionary,
+            IEqualityComparer<K> comparer
+        )
+        {
+            return new Dictionary<K, V>(dictionary, comparer);
+        }
+
+        public static Dictionary<K, V> ToDictionary<K, V>(
             this IEnumerable<KeyValuePair<K, V>> prettyMuchADictionary
         )
         {
@@ -214,10 +226,26 @@
         }
 
         public static Dictionary<K, V> ToDictionary<K, V>(
+            this IEnumerable<KeyValuePair<K, V>> prettyMuchADictionary,
+            IEqualityComparer<K> comparer
+        )
+        {
+            return prettyMuchADictionary.ToDictionary(kvp => kvp.Key, kvp => kvp.Value, comparer);
+        }
+
+        public static Dictionary<K, V> ToDictionary<K, V>(
             this IEnumerable<(K, V)> prettyMuchADictionary
         )
         {
             return prettyMuchADictionary.ToDictionary(kvp => kvp.Item1, kvp => kvp.Item2);
+        }
+
+        public static Dictionary<K, V> ToDictionary<K, V>(
+            this IEnumerable<(K, V)> prettyMuchADictionary,
+            IEqualityComparer<K> comparer
+        )
+        {
+            return prettyMuchADictionary.ToDictionary(kvp => kvp.Item1, kvp => kvp.Item2, comparer);
         }
 
         public static bool ContentEquals<K, V>(

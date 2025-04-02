@@ -52,10 +52,7 @@
                 return;
             }
 
-            while (Interlocked.CompareExchange(ref _active, 0, _active) != 0)
-            {
-                // Spin
-            }
+            Interlocked.Exchange(ref _active, 0);
 
             if (disposing)
             {
