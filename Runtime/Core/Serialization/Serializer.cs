@@ -32,7 +32,11 @@
                     new JsonStringEnumConverter(),
                     Vector3Converter.Instance,
                     Vector2Converter.Instance,
+                    Vector4Converter.Instance,
+                    Matrix4x4Converter.Instance,
                     TypeConverter.Instance,
+                    GameObjectConverter.Instance,
+                    ColorConverter.Instance,
                 },
             };
 
@@ -48,7 +52,11 @@
                     new JsonStringEnumConverter(),
                     Vector3Converter.Instance,
                     Vector2Converter.Instance,
+                    Vector4Converter.Instance,
+                    Matrix4x4Converter.Instance,
                     TypeConverter.Instance,
+                    GameObjectConverter.Instance,
+                    ColorConverter.Instance,
                 },
                 WriteIndented = true,
             };

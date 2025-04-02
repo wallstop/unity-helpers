@@ -22,9 +22,9 @@
                 throw new JsonException($"Invalid token type {reader.TokenType}");
             }
 
-            float x = 0,
-                y = 0,
-                z = 0;
+            float x = 0;
+            float y = 0;
+            float z = 0;
 
             while (reader.Read())
             {

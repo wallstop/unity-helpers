@@ -5,13 +5,13 @@
     using System.Text.Json.Serialization;
     using UnityEngine;
 
-    public sealed class Vector2Converter : JsonConverter<Vector2>
+    public sealed class ColorConverter : JsonConverter<Color>
     {
-        public static readonly Vector2Converter Instance = new();
+        public static readonly ColorConverter Instance = new();
 
-        private Vector2Converter() { }
+        private ColorConverter() { }
 
-        public override Vector2 Read(
+        public override Color Read(
             ref Utf8JsonReader reader,
             Type typeToConvert,
             JsonSerializerOptions options
@@ -22,14 +22,16 @@
                 throw new JsonException($"Invalid token type {reader.TokenType}");
             }
 
-            float x = 0;
-            float y = 0;
+            float r = 0;
+            float g = 0;
+            float b = 0;
+            float a = 1;
 
             while (reader.Read())
             {
                 if (reader.TokenType == JsonTokenType.EndObject)
                 {
-                    return new Vector2(x, y);
+                    return new Color(r, g, b, a);
                 }
 
                 if (reader.TokenType == JsonTokenType.PropertyName)
@@ -38,14 +40,24 @@
                     reader.Read();
                     switch (propertyName)
                     {
-                        case "x":
+                        case "r":
                         {
-                            x = reader.GetSingle();
+                            r = reader.GetSingle();
                             break;
                         }
-                        case "y":
+                        case "g":
                         {
-                            y = reader.GetSingle();
+                            g = reader.GetSingle();
+                            break;
+                        }
+                        case "b":
+                        {
+                            b = reader.GetSingle();
+                            break;
+                        }
+                        case "a":
+                        {
+                            a = reader.GetSingle();
                             break;
                         }
                         default:
@@ -56,18 +68,20 @@
                 }
             }
 
-            throw new JsonException("Incomplete JSON for Vector2");
+            throw new JsonException("Incomplete JSON for Color");
         }
 
         public override void Write(
             Utf8JsonWriter writer,
-            Vector2 value,
+            Color value,
             JsonSerializerOptions options
         )
         {
             writer.WriteStartObject();
-            writer.WriteNumber("x", value.x);
-            writer.WriteNumber("y", value.y);
+            writer.WriteNumber("r", value.r);
+            writer.WriteNumber("g", value.g);
+            writer.WriteNumber("b", value.b);
+            writer.WriteNumber("a", value.a);
             writer.WriteEndObject();
         }
     }

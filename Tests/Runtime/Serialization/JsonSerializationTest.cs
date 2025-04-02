@@ -6,9 +6,11 @@
     using System.Runtime.Serialization;
     using System.Text.Json.Serialization;
     using Core.Extension;
+    using Core.Helper;
     using Core.Random;
     using Core.Serialization;
     using NUnit.Framework;
+    using UnityEngine;
 
     [DataContract]
     public sealed class TestDataObject
@@ -26,8 +28,69 @@
         public List<Type> TypeProperties { get; set; } = new();
     }
 
-    public class JsonSerializationTest
+    public sealed class JsonSerializationTest
     {
+        [Test]
+        public void UnityEngineObjectSerializationWorks()
+        {
+            GameObject testGo = new("Test GameObject", typeof(SpriteRenderer));
+            string json = testGo.ToJson();
+            Assert.IsFalse(string.IsNullOrWhiteSpace(json), json);
+            Assert.AreNotEqual("{}", json);
+            Assert.IsTrue(json.Contains("name = Test GameObject"), json);
+            Assert.IsTrue(json.Contains("type = UnityEngine.GameObject"), json);
+        }
+
+        [Test]
+        public void NullGameObjectSerializationWorks()
+        {
+            GameObject testGo = null;
+            string json = testGo.ToJson();
+            Assert.AreEqual("null", json);
+
+            testGo = new GameObject();
+            testGo.Destroy();
+            Assert.IsFalse(string.IsNullOrWhiteSpace(json), json);
+            Assert.AreEqual("null", json);
+        }
+
+        [Test]
+        public void TransformSerializationWorks()
+        {
+            GameObject testGo = new("Test GameObject", typeof(SpriteRenderer));
+            Transform transform = testGo.transform;
+            string json = transform.ToJson();
+            Assert.AreEqual("[]", json);
+        }
+
+        [Test]
+        public void ColorSerializationWorks()
+        {
+            Color color = new(0.5f, 0.5f, 0.5f, 0.5f);
+            string json = color.ToJson();
+            Color deserialized = Serializer.JsonDeserialize<Color>(json);
+            Assert.AreEqual(color, deserialized);
+
+            color = new Color(0.7f, 0.1f, 0.3f);
+            json = color.ToJson();
+            deserialized = Serializer.JsonDeserialize<Color>(json);
+            Assert.AreEqual(color, deserialized);
+        }
+
+        [Test]
+        public void Vector4SerializationWorks()
+        {
+            Vector4 vector = new(0.5f, 0.5f, 0.5f, 0.5f);
+            string json = vector.ToJson();
+            Vector4 deserialized = Serializer.JsonDeserialize<Vector4>(json);
+            Assert.AreEqual(vector, deserialized);
+
+            vector = new Vector4(0.7f, 0.1f, 0.3f);
+            json = vector.ToJson();
+            deserialized = Serializer.JsonDeserialize<Vector4>(json);
+            Assert.AreEqual(vector, deserialized);
+        }
+
         [Test]
         public void SerializationWorks()
         {

@@ -5,13 +5,13 @@
     using System.Text.Json.Serialization;
     using UnityEngine;
 
-    public sealed class Vector2Converter : JsonConverter<Vector2>
+    public sealed class Vector4Converter : JsonConverter<Vector4>
     {
-        public static readonly Vector2Converter Instance = new();
+        public static readonly Vector4Converter Instance = new();
 
-        private Vector2Converter() { }
+        private Vector4Converter() { }
 
-        public override Vector2 Read(
+        public override Vector4 Read(
             ref Utf8JsonReader reader,
             Type typeToConvert,
             JsonSerializerOptions options
@@ -24,12 +24,14 @@
 
             float x = 0;
             float y = 0;
+            float z = 0;
+            float w = 0;
 
             while (reader.Read())
             {
                 if (reader.TokenType == JsonTokenType.EndObject)
                 {
-                    return new Vector2(x, y);
+                    return new Vector4(x, y, z, w);
                 }
 
                 if (reader.TokenType == JsonTokenType.PropertyName)
@@ -48,6 +50,16 @@
                             y = reader.GetSingle();
                             break;
                         }
+                        case "z":
+                        {
+                            z = reader.GetSingle();
+                            break;
+                        }
+                        case "w":
+                        {
+                            w = reader.GetSingle();
+                            break;
+                        }
                         default:
                         {
                             throw new JsonException($"Unknown property: {propertyName}");
@@ -56,18 +68,20 @@
                 }
             }
 
-            throw new JsonException("Incomplete JSON for Vector2");
+            throw new JsonException("Incomplete JSON for Vector4");
         }
 
         public override void Write(
             Utf8JsonWriter writer,
-            Vector2 value,
+            Vector4 value,
             JsonSerializerOptions options
         )
         {
             writer.WriteStartObject();
             writer.WriteNumber("x", value.x);
             writer.WriteNumber("y", value.y);
+            writer.WriteNumber("z", value.z);
+            writer.WriteNumber("w", value.w);
             writer.WriteEndObject();
         }
     }
