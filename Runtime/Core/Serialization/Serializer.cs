@@ -9,6 +9,7 @@
     using System.Text.Json.Serialization;
     using Extension;
     using JsonConverters;
+    using TypeConverter = JsonConverters.TypeConverter;
 
     internal static class SerializerEncoding
     {
@@ -31,6 +32,7 @@
                     new JsonStringEnumConverter(),
                     Vector3Converter.Instance,
                     Vector2Converter.Instance,
+                    TypeConverter.Instance,
                 },
             };
 
@@ -46,6 +48,7 @@
                     new JsonStringEnumConverter(),
                     Vector3Converter.Instance,
                     Vector2Converter.Instance,
+                    TypeConverter.Instance,
                 },
                 WriteIndented = true,
             };

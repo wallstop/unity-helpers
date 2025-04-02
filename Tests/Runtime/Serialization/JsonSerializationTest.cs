@@ -22,6 +22,8 @@
         public Dictionary<string, bool> DictionaryProperty { get; set; } = new();
 
         public List<int> ListProperty { get; set; } = new();
+
+        public List<Type> TypeProperties { get; set; } = new();
     }
 
     public class JsonSerializationTest
@@ -35,6 +37,12 @@
                 field = Guid.NewGuid().ToString(),
                 Property = random.Next(),
                 NamedProperty = random.NextFloat(),
+                TypeProperties = new List<Type>()
+                {
+                    typeof(int),
+                    typeof(Serializer),
+                    typeof(TestDataObject),
+                },
             };
 
             int dictionaryProperties = random.Next(4, 10);
@@ -79,6 +87,7 @@
                 input.ListProperty.SequenceEqual(deserialized.ListProperty),
                 $"Unexpected {nameof(deserialized.ListProperty)}! JSON: {json}"
             );
+            Assert.That(input.TypeProperties, Is.EquivalentTo(deserialized.TypeProperties));
         }
     }
 }
