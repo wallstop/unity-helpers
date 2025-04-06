@@ -26,7 +26,11 @@
 
                 Type type = typeof(T);
                 GameObject instance = new($"{type.Name}-Singleton", type);
-                if (instance.TryGetComponent(out _instance) && _instance.Preserve)
+                if (
+                    instance.TryGetComponent(out _instance)
+                    && _instance.Preserve
+                    && Application.isPlaying
+                )
                 {
                     DontDestroyOnLoad(instance);
                 }
