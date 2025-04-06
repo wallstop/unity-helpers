@@ -67,7 +67,13 @@
                 throw new ArgumentException("Max cannot be zero");
             }
 
-            return (uint)(NextDouble() * max);
+            uint result = (uint)(NextDouble() * max);
+            if (result == max)
+            {
+                return result - 1;
+            }
+
+            return result;
         }
 
         public uint NextUint(uint min, uint max)
@@ -129,7 +135,13 @@
                 throw new ArgumentException($"Max {max} cannot be less-than or equal-to 0");
             }
 
-            return (long)(NextDouble() * max);
+            long result = (long)(NextDouble() * max);
+            if (result == max)
+            {
+                return result - 1;
+            }
+
+            return result;
         }
 
         public long NextLong(long min, long max)
@@ -147,7 +159,13 @@
                 return unchecked((long)NextUlong());
             }
 
-            return unchecked((long)(NextDouble() * range + min));
+            long result = unchecked((long)(NextDouble() * range + min));
+            if (result == max)
+            {
+                return result - 1;
+            }
+
+            return result;
         }
 
         public ulong NextUlong()
@@ -159,7 +177,12 @@
 
         public ulong NextUlong(ulong max)
         {
-            return (ulong)(NextDouble() * max);
+            ulong result = (ulong)(NextDouble() * max);
+            if (result == max)
+            {
+                return result - 1;
+            }
+            return result;
         }
 
         public ulong NextUlong(ulong min, ulong max)

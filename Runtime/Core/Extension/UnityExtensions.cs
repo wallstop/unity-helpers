@@ -3,6 +3,7 @@
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Threading.Tasks;
     using DataStructure;
     using DataStructure.Adapters;
     using Helper;
@@ -1575,6 +1576,13 @@
             }
 
             return false;
+        }
+
+        public static Task AsTask(this AsyncOperation asyncOp)
+        {
+            TaskCompletionSource<bool> taskCompletionSource = new();
+            asyncOp.completed += _ => taskCompletionSource.SetResult(true);
+            return taskCompletionSource.Task;
         }
 
 #if UNITY_EDITOR
