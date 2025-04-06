@@ -48,7 +48,7 @@
         {
             DeferredDisposalResult<T[]> result = await GetAllObjectsOfTypeInScene<T>(scenePath);
             return new DeferredDisposalResult<T>(
-                result.Result.FirstOrDefault(),
+                result.result.FirstOrDefault(),
                 result.DisposeAsync
             );
         }

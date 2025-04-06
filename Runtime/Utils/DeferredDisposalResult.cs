@@ -5,15 +5,19 @@
 
     public sealed class DeferredDisposalResult<T>
     {
-        public T Result { get; }
+        public readonly T result;
+
         private readonly Func<Task> _disposeAsync;
 
         public DeferredDisposalResult(T result, Func<Task> disposeAsync)
         {
-            Result = result;
-            _disposeAsync = disposeAsync;
+            this.result = result;
+            _disposeAsync = disposeAsync ?? throw new ArgumentNullException(nameof(disposeAsync));
         }
 
-        public Task DisposeAsync() => _disposeAsync();
+        public async Task DisposeAsync()
+        {
+            await _disposeAsync();
+        }
     }
 }

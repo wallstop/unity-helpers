@@ -66,7 +66,7 @@
             Assert.IsTrue(task.IsCompletedSuccessfully, task.Exception?.ToString() ?? string.Empty);
 
             _disposalTasks.Add(task.Result.DisposeAsync);
-            SpriteRenderer found = task.Result.Result;
+            SpriteRenderer found = task.Result.result;
             Assert.IsTrue(found != null);
         }
 
@@ -85,7 +85,7 @@
 
             Assert.IsTrue(task.IsCompletedSuccessfully, task.Exception?.ToString() ?? string.Empty);
             _disposalTasks.Add(task.Result.DisposeAsync);
-            SpriteRenderer[] found = task.Result.Result;
+            SpriteRenderer[] found = task.Result.result;
             Assert.That(found, Has.Length.EqualTo(7));
         }
     }
