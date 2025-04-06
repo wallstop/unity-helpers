@@ -63,24 +63,23 @@
             TaskCompletionSource<T[]> taskCompletionSource = new();
 
             SceneLoadScope sceneScope = new(scenePath, OnSceneLoaded);
-            return await taskCompletionSource.Task.ContinueWith(result =>
-            {
-                return new DeferredDisposalResult<T[]>(
-                    result.Result,
-                    async () =>
-                    {
-                        TaskCompletionSource<bool> disposalComplete = new();
-                        UnityMainThreadDispatcher.Instance.RunOnMainThread(
-                            () =>
-                                sceneScope
-                                    .DisposeAsync()
-                                    .ContinueWith(_ => disposalComplete.SetResult(true))
-                        );
+            T[] result = await taskCompletionSource.Task;
 
-                        await disposalComplete.Task;
-                    }
-                );
-            });
+            return new DeferredDisposalResult<T[]>(
+                result,
+                () =>
+                {
+                    TaskCompletionSource<bool> disposalComplete = new();
+                    UnityMainThreadDispatcher.Instance.RunOnMainThread(
+                        () =>
+                            sceneScope
+                                .DisposeAsync()
+                                .ContinueWith(_ => disposalComplete.SetResult(true))
+                    );
+
+                    return disposalComplete.Task;
+                }
+            );
 
             void OnSceneLoaded(Scene scene, LoadSceneMode mode)
             {
@@ -102,7 +101,7 @@
                         return go.scene == scene;
                     })
                     .ToArray();
-                taskCompletionSource.TrySetResult(foundObjects);
+                taskCompletionSource.SetResult(foundObjects);
             }
         }
 
