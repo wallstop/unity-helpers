@@ -41,19 +41,17 @@
 #endif
         }
 
-        public static async Task<DeferredDisposalResult<T>> GetObjectOfTypeInScene<T>(
+        public static async ValueTask<DeferredDisposalResult<T>> GetObjectOfTypeInScene<T>(
             string scenePath
         )
             where T : Object
         {
             DeferredDisposalResult<T[]> result = await GetAllObjectsOfTypeInScene<T>(scenePath);
-            return new DeferredDisposalResult<T>(
-                result.result.FirstOrDefault(),
-                result.DisposeAsync
-            );
+            T value = result.result.Length == 0 ? default : result.result[0];
+            return new DeferredDisposalResult<T>(value, result.DisposeAsync);
         }
 
-        public static async Task<DeferredDisposalResult<T[]>> GetAllObjectsOfTypeInScene<T>(
+        public static async ValueTask<DeferredDisposalResult<T[]>> GetAllObjectsOfTypeInScene<T>(
             string scenePath
         )
             where T : Object
@@ -67,17 +65,17 @@
 
             return new DeferredDisposalResult<T[]>(
                 result,
-                () =>
+                async () =>
                 {
                     TaskCompletionSource<bool> disposalComplete = new();
                     UnityMainThreadDispatcher.Instance.RunOnMainThread(
                         () =>
-                            sceneScope
+                            _ = sceneScope
                                 .DisposeAsync()
-                                .ContinueWith(_ => disposalComplete.SetResult(true))
+                                .WithContinuation(() => disposalComplete.SetResult(true))
                     );
 
-                    return disposalComplete.Task;
+                    await disposalComplete.Task;
                 }
             );
 
@@ -105,9 +103,17 @@
             }
         }
 
-        public sealed class SceneLoadScope
+        public
+#if UNITY_EDITOR
+        readonly
+#endif
+        struct SceneLoadScope
         {
-            private Scene? _openedScene;
+            private
+#if UNITY_EDITOR
+            readonly
+#endif
+            Scene? _openedScene;
             private readonly UnityAction<Scene, LoadSceneMode> _onSceneLoaded;
             private readonly bool _eventAdded;
 
@@ -166,7 +172,7 @@
                 }
             }
 
-            public async Task DisposeAsync()
+            public async ValueTask DisposeAsync()
             {
                 if (_eventAdded)
                 {
@@ -192,22 +198,14 @@
 #if UNITY_EDITOR
                 if (Application.isPlaying)
                 {
-                    AsyncOperation asyncOperation = SceneManager.UnloadSceneAsync(
-                        openedScene,
-                        UnloadSceneOptions.None
-                    );
-                    await asyncOperation.AsTask();
+                    await SceneManager.UnloadSceneAsync(openedScene, UnloadSceneOptions.None);
                 }
                 else
                 {
                     EditorSceneManager.CloseScene(openedScene, true);
                 }
 #else
-                AsyncOperation asyncOperation = SceneManager.UnloadSceneAsync(
-                    openedScene,
-                    UnloadSceneOptions.None
-                );
-                await asyncOperation.AsTask();
+                await SceneManager.UnloadSceneAsync(openedScene, UnloadSceneOptions.None);
 #endif
             }
         }

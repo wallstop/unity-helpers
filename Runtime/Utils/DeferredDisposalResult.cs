@@ -3,19 +3,19 @@
     using System;
     using System.Threading.Tasks;
 
-    public sealed class DeferredDisposalResult<T>
+    public readonly struct DeferredDisposalResult<T>
     {
         public readonly T result;
 
-        private readonly Func<Task> _disposeAsync;
+        private readonly Func<ValueTask> _disposeAsync;
 
-        public DeferredDisposalResult(T result, Func<Task> disposeAsync)
+        public DeferredDisposalResult(T result, Func<ValueTask> disposeAsync)
         {
             this.result = result;
             _disposeAsync = disposeAsync ?? throw new ArgumentNullException(nameof(disposeAsync));
         }
 
-        public async Task DisposeAsync()
+        public async ValueTask DisposeAsync()
         {
             await _disposeAsync();
         }

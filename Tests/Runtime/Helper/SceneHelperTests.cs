@@ -13,12 +13,14 @@
 
     public sealed class SceneHelperTests
     {
-        private readonly List<Func<Task>> _disposalTasks = new();
+        private readonly List<Func<ValueTask>> _disposalTasks = new();
 
         [UnityTearDown]
         public IEnumerator TearDown()
         {
-            foreach (Task disposal in _disposalTasks.Select(disposalProducer => disposalProducer()))
+            foreach (
+                ValueTask disposal in _disposalTasks.Select(disposalProducer => disposalProducer())
+            )
             {
                 while (!disposal.IsCompleted)
                 {
@@ -55,7 +57,7 @@
         [UnityTest]
         public IEnumerator GetObjectOfTypeInScene()
         {
-            Task<DeferredDisposalResult<SpriteRenderer>> task =
+            ValueTask<DeferredDisposalResult<SpriteRenderer>> task =
                 SceneHelper.GetObjectOfTypeInScene<SpriteRenderer>(
                     @"Packages\com.wallstop-studios.unity-helpers\Tests\Runtime\Scenes\Test1.unity"
                 );
@@ -63,7 +65,7 @@
             {
                 yield return null;
             }
-            Assert.IsTrue(task.IsCompletedSuccessfully, task.Exception?.ToString() ?? string.Empty);
+            Assert.IsTrue(task.IsCompletedSuccessfully);
 
             _disposalTasks.Add(task.Result.DisposeAsync);
             SpriteRenderer found = task.Result.result;
@@ -73,7 +75,7 @@
         [UnityTest]
         public IEnumerator GetAllObjectOfTypeInScene()
         {
-            Task<DeferredDisposalResult<SpriteRenderer[]>> task =
+            ValueTask<DeferredDisposalResult<SpriteRenderer[]>> task =
                 SceneHelper.GetAllObjectsOfTypeInScene<SpriteRenderer>(
                     @"Packages\com.wallstop-studios.unity-helpers\Tests\Runtime\Scenes\Test1.unity"
                 );
@@ -83,7 +85,7 @@
                 yield return null;
             }
 
-            Assert.IsTrue(task.IsCompletedSuccessfully, task.Exception?.ToString() ?? string.Empty);
+            Assert.IsTrue(task.IsCompletedSuccessfully);
             _disposalTasks.Add(task.Result.DisposeAsync);
             SpriteRenderer[] found = task.Result.result;
             Assert.That(found, Has.Length.EqualTo(7));

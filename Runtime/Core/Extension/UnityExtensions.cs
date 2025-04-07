@@ -1578,13 +1578,6 @@
             return false;
         }
 
-        public static Task AsTask(this AsyncOperation asyncOp)
-        {
-            TaskCompletionSource<bool> taskCompletionSource = new();
-            asyncOp.completed += _ => taskCompletionSource.SetResult(true);
-            return taskCompletionSource.Task;
-        }
-
 #if UNITY_EDITOR
         public static IEnumerable<Sprite> GetSpritesFromClip(this AnimationClip clip)
         {
