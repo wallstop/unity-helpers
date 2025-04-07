@@ -76,10 +76,12 @@
             await asyncOp;
         }
 
+#if !UNITY_2023_1_OR_NEWER
         public static AsyncOperationAwaiter GetAwaiter(this AsyncOperation op)
         {
             return new AsyncOperationAwaiter(op);
         }
+#endif
 
         public static async ValueTask WithContinuation(this ValueTask task, Action continuation)
         {

@@ -2,9 +2,11 @@
 {
     using System;
     using System.Collections.Concurrent;
-    using UnityEditor;
     using UnityEngine;
     using Utils;
+#if UNITY_EDITOR
+    using UnityEditor;
+#endif
 
     [ExecuteAlways]
     public sealed class UnityMainThreadDispatcher : RuntimeSingleton<UnityMainThreadDispatcher>
