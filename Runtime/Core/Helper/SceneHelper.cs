@@ -103,11 +103,7 @@
             }
         }
 
-        public
-#if UNITY_EDITOR
-        readonly
-#endif
-        struct SceneLoadScope
+        public sealed class SceneLoadScope
         {
             private
 #if UNITY_EDITOR
