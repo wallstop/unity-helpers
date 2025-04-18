@@ -10,6 +10,45 @@
     [Serializable]
     public sealed class CyclicBuffer<T> : IReadOnlyList<T>
     {
+        public struct CyclicBufferEnumerator : IEnumerator<T>
+        {
+            private readonly CyclicBuffer<T> _buffer;
+
+            private int _index;
+            private T _current;
+
+            internal CyclicBufferEnumerator(CyclicBuffer<T> buffer)
+            {
+                _buffer = buffer;
+                _index = -1;
+                _current = default;
+            }
+
+            public bool MoveNext()
+            {
+                if (++_index < _buffer.Count)
+                {
+                    _current = _buffer._buffer[_buffer.AdjustedIndexFor(_index)];
+                    return true;
+                }
+
+                _current = default;
+                return false;
+            }
+
+            public T Current => _current;
+
+            object IEnumerator.Current => Current;
+
+            public void Reset()
+            {
+                _index = -1;
+                _current = default;
+            }
+
+            public void Dispose() { }
+        }
+
         public int Capacity { get; private set; }
         public int Count { get; private set; }
 
@@ -47,13 +86,14 @@
             }
         }
 
-        public IEnumerator<T> GetEnumerator()
+        public CyclicBufferEnumerator GetEnumerator()
         {
-            for (int i = 0; i < Count; ++i)
-            {
-                // No need for bound check, we're safe
-                yield return _buffer[AdjustedIndexFor(i)];
-            }
+            return new CyclicBufferEnumerator(this);
+        }
+
+        IEnumerator<T> IEnumerable<T>.GetEnumerator()
+        {
+            return GetEnumerator();
         }
 
         IEnumerator IEnumerable.GetEnumerator()

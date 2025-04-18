@@ -4,6 +4,7 @@
     using System.Collections.Generic;
     using Helper;
     using Random;
+    using Utils;
 
     public static class IListExtensions
     {
@@ -30,12 +31,12 @@
 
         public static void Shift<T>(this IList<T> list, int amount)
         {
-            int count = list.Count;
-            if (count <= 1)
+            if (list is not { Count: > 1 })
             {
                 return;
             }
 
+            int count = list.Count;
             amount = amount.PositiveMod(count);
             if (amount == 0)
             {
@@ -87,20 +88,59 @@
         }
 
         public static void InsertionSort<T, TComparer>(this IList<T> array, TComparer comparer)
-            where TComparer : struct, IComparer<T>
+            where TComparer : IComparer<T>
         {
             int arrayCount = array.Count;
             for (int i = 1; i < arrayCount; ++i)
             {
                 T key = array[i];
                 int j = i - 1;
-                while (j >= 0 && comparer.Compare(array[j], key) > 0)
+                while (0 <= j && 0 < comparer.Compare(array[j], key))
                 {
                     array[j + 1] = array[j];
                     j--;
                 }
                 array[j + 1] = key;
             }
+        }
+
+        public static void SortByName<T>(this IList<T> inputList)
+            where T : UnityEngine.Object
+        {
+            switch (inputList)
+            {
+                case T[] array:
+                    Array.Sort(array, UnityObjectNameComparer<T>.Instance);
+                    return;
+                case List<T> list:
+                    list.Sort(UnityObjectNameComparer<T>.Instance);
+                    return;
+                default:
+                    inputList.InsertionSort(UnityObjectNameComparer<T>.Instance);
+                    break;
+            }
+        }
+
+        public static bool IsSorted<T>(this IList<T> list, IComparer<T> comparer = null)
+        {
+            if (list.Count <= 1)
+            {
+                return true;
+            }
+
+            comparer ??= Comparer<T>.Default;
+
+            T previous = list[0];
+            for (int i = 1; i < list.Count; ++i)
+            {
+                T current = list[i];
+                if (comparer.Compare(previous, current) > 0)
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
     }
 }

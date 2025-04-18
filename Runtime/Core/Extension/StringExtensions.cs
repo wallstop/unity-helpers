@@ -2,10 +2,15 @@
 {
     using System.Collections.Generic;
     using System.Text;
+    using System.Threading;
     using Serialization;
 
     public static class StringExtensions
     {
+        private static ThreadLocal<StringBuilder> StringBuilderCache = new(
+            () => new StringBuilder()
+        );
+
         private static readonly HashSet<char> PascalCaseSeparators = new()
         {
             '_',
@@ -46,7 +51,8 @@
         public static string ToPascalCase(this string value, string separator = "")
         {
             int startIndex = 0;
-            StringBuilder stringBuilder = new();
+            StringBuilder stringBuilder = StringBuilderCache.Value;
+            stringBuilder.Clear();
             bool appendedAnySeparator = false;
             for (int i = 0; i < value.Length; ++i)
             {
@@ -146,6 +152,29 @@
             }
 
             return stringBuilder.ToString();
+        }
+
+        public static bool NeedsLowerInvariantConversion(this string input)
+        {
+            foreach (char inputCharacter in input)
+            {
+                if (char.ToLowerInvariant(inputCharacter) != inputCharacter)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        public static bool NeedsTrim(this string input)
+        {
+            if (string.IsNullOrEmpty(input))
+            {
+                return false;
+            }
+
+            return char.IsWhiteSpace(input[0]) || char.IsWhiteSpace(input[^1]);
         }
     }
 }

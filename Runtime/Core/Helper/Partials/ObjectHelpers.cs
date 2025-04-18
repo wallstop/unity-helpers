@@ -365,7 +365,7 @@
 
                 if (content == null)
                 {
-                    Debug.LogError($"Unable to load {prefab} as a prefab");
+                    Debug.LogError($"Unable to load {prefab} as a prefab", prefab);
                     return;
                 }
 
