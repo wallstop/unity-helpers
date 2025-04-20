@@ -216,11 +216,17 @@ namespace UnityHelpers.Core.Extension
             {
                 List<Object> buffer = Buffers<Object>.List;
                 buffer.Clear();
-                buffer.AddRange(Disabled);
-                buffer.RemoveAll(element => element != null);
-                if (0 < buffer.Count)
+                foreach (Object disabled in Disabled)
                 {
-                    Disabled.ExceptWith(buffer);
+                    buffer.Add(disabled);
+                }
+
+                foreach (Object disabled in buffer)
+                {
+                    if (disabled == null)
+                    {
+                        Disabled.Remove(disabled);
+                    }
                 }
             }
 

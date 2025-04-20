@@ -7,6 +7,8 @@
 
     public sealed class RandomPerformanceTests
     {
+        private const int NumInvocationsPerIteration = 10_000;
+
         [Test]
         public void Benchmark()
         {
@@ -63,8 +65,11 @@
             Stopwatch timer = Stopwatch.StartNew();
             do
             {
-                _ = random.Next();
-                ++count;
+                for (int i = 0; i < NumInvocationsPerIteration; ++i)
+                {
+                    _ = random.Next();
+                    ++count;
+                }
             } while (timer.Elapsed < timeout);
 
             return count;
@@ -77,8 +82,11 @@
             Stopwatch timer = Stopwatch.StartNew();
             do
             {
-                _ = random.NextBool();
-                ++count;
+                for (int i = 0; i < NumInvocationsPerIteration; ++i)
+                {
+                    _ = random.NextBool();
+                    ++count;
+                }
             } while (timer.Elapsed < timeout);
 
             return count;
@@ -91,8 +99,11 @@
             Stopwatch timer = Stopwatch.StartNew();
             do
             {
-                _ = random.NextUint();
-                ++count;
+                for (int i = 0; i < NumInvocationsPerIteration; ++i)
+                {
+                    _ = random.NextUint();
+                    ++count;
+                }
             } while (timer.Elapsed < timeout);
 
             return count;
@@ -105,8 +116,11 @@
             Stopwatch timer = Stopwatch.StartNew();
             do
             {
-                _ = random.NextUint(1_000);
-                ++count;
+                for (int i = 0; i < NumInvocationsPerIteration; ++i)
+                {
+                    _ = random.NextUint(1_000);
+                    ++count;
+                }
             } while (timer.Elapsed < timeout);
 
             return count;
@@ -119,8 +133,11 @@
             Stopwatch timer = Stopwatch.StartNew();
             do
             {
-                _ = random.Next(1_000);
-                ++count;
+                for (int i = 0; i < NumInvocationsPerIteration; ++i)
+                {
+                    _ = random.Next(1_000);
+                    ++count;
+                }
             } while (timer.Elapsed < timeout);
 
             return count;
@@ -133,8 +150,11 @@
             Stopwatch timer = Stopwatch.StartNew();
             do
             {
-                _ = random.NextFloat();
-                ++count;
+                for (int i = 0; i < NumInvocationsPerIteration; ++i)
+                {
+                    _ = random.NextFloat();
+                    ++count;
+                }
             } while (timer.Elapsed < timeout);
 
             return count;
@@ -147,8 +167,11 @@
             Stopwatch timer = Stopwatch.StartNew();
             do
             {
-                _ = random.NextDouble();
-                ++count;
+                for (int i = 0; i < NumInvocationsPerIteration; ++i)
+                {
+                    _ = random.NextDouble();
+                    ++count;
+                }
             } while (timer.Elapsed < timeout);
 
             return count;

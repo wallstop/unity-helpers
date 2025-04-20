@@ -1,6 +1,7 @@
 ﻿namespace UnityHelpers.Utils
 {
     using System;
+    using Core.Attributes;
     using Core.Extension;
     using Core.Helper;
     using UnityEngine;
@@ -41,6 +42,7 @@
 
         protected virtual void Awake()
         {
+            this.AssignRelationalComponents();
             if (_instance == null)
             {
                 _instance = this as T;

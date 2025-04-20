@@ -21,6 +21,7 @@
 
     public static class ChildComponentExtensions
     {
+        private static readonly List<Component> ChildCache = new();
         private static readonly Dictionary<
             Type,
             (FieldInfo field, Action<object, object> setter)[]
@@ -56,24 +57,27 @@
                 {
                     if (isArray)
                     {
-                        List<Component> children = new();
+                        ChildCache.Clear();
                         foreach (Transform child in component.IterateOverAllChildren())
                         {
-                            children.AddRange(
-                                child.GetComponentsInChildren(
+                            foreach (
+                                Component childComponent in child.GetComponentsInChildren(
                                     childComponentType,
                                     customAttribute.includeInactive
                                 )
-                            );
+                            )
+                            {
+                                ChildCache.Add(childComponent);
+                            }
                         }
 
-                        foundChild = 0 < children.Count;
+                        foundChild = 0 < ChildCache.Count;
 
                         Array correctTypedArray = ReflectionHelpers.CreateArray(
                             childComponentType,
-                            children.Count
+                            ChildCache.Count
                         );
-                        Array.Copy(children.ToArray(), correctTypedArray, children.Count);
+                        Array.Copy(ChildCache.ToArray(), correctTypedArray, ChildCache.Count);
                         setter(component, correctTypedArray);
                     }
                     else if (
