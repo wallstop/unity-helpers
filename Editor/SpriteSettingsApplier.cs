@@ -61,6 +61,11 @@
         [WShowIf(nameof(applyFilterMode))]
         public FilterMode filterMode = FilterMode.Point;
 
+        public bool applyCrunchCompression;
+
+        [WShowIf(nameof(applyCrunchCompression))]
+        public bool useCrunchCompression;
+
         public string name = string.Empty;
     }
 
@@ -87,7 +92,7 @@
 
         private void OnWizardCreate()
         {
-            HashSet<string> uniqueDirectories = new();
+            HashSet<string> uniqueDirectories = new(StringComparer.OrdinalIgnoreCase);
             foreach (
                 string assetPath in directories
                     .Where(Objects.NotNull)
@@ -101,14 +106,19 @@
                 }
             }
 
-            HashSet<string> processedSpritePaths = new();
+            HashSet<string> processedSpritePaths = new(StringComparer.OrdinalIgnoreCase);
             Queue<string> directoriesToCheck = new(uniqueDirectories);
             int spriteCount = 0;
             while (directoriesToCheck.TryDequeue(out string directoryPath))
             {
                 foreach (string fullFilePath in Directory.EnumerateFiles(directoryPath))
                 {
-                    if (!spriteFileExtensions.Contains(Path.GetExtension(fullFilePath)))
+                    if (
+                        !spriteFileExtensions.Contains(
+                            Path.GetExtension(fullFilePath),
+                            StringComparer.OrdinalIgnoreCase
+                        )
+                    )
                     {
                         continue;
                     }
@@ -150,7 +160,7 @@
                 string filePath in sprites
                     .Where(Objects.NotNull)
                     .Select(AssetDatabase.GetAssetPath)
-                    .Where(Objects.NotNull)
+                    .Where(path => !string.IsNullOrWhiteSpace(path))
             )
             {
                 if (
@@ -171,26 +181,27 @@
 
         private bool TryUpdateTextureSettings(string filePath)
         {
-            bool changed = false;
             if (string.IsNullOrWhiteSpace(filePath))
             {
-                return changed;
+                return false;
             }
 
             TextureImporter textureImporter = AssetImporter.GetAtPath(filePath) as TextureImporter;
             if (textureImporter == null)
             {
-                return changed;
+                return false;
             }
 
             SpriteSettings spriteData = spriteSettings.Find(settings =>
-                string.IsNullOrWhiteSpace(settings.name) || filePath.Contains(settings.name)
+                string.IsNullOrWhiteSpace(settings.name)
+                || filePath.Contains(settings.name, StringComparison.OrdinalIgnoreCase)
             );
             if (spriteData == null)
             {
-                return changed;
+                return false;
             }
 
+            bool changed = false;
             if (spriteData.applyPixelsPerUnit)
             {
                 // ReSharper disable once CompareOfFloatsByEqualityOperator
@@ -208,6 +219,12 @@
             {
                 changed |= textureImporter.mipmapEnabled != spriteData.generateMipMaps;
                 textureImporter.mipmapEnabled = spriteData.generateMipMaps;
+            }
+
+            if (spriteData.applyCrunchCompression)
+            {
+                changed |= textureImporter.crunchedCompression != spriteData.useCrunchCompression;
+                textureImporter.crunchedCompression = spriteData.useCrunchCompression;
             }
 
             bool changedSettings = false;
