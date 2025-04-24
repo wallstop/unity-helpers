@@ -125,7 +125,7 @@
                 }
             }
 
-            this.Log("Processed {0} textures.", textureCount);
+            this.Log($"Processed {textureCount} textures.");
             if (0 < textureCount)
             {
                 AssetDatabase.Refresh();

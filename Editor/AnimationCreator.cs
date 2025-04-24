@@ -113,7 +113,7 @@
                         }
                         else
                         {
-                            this.LogWarn("Failed to process frame {0}.", frameName);
+                            this.LogWarn($"Failed to process frame {frameName}.");
                         }
                     }
 
@@ -179,7 +179,7 @@
                 string animationName = data.animationName;
                 if (string.IsNullOrWhiteSpace(animationName))
                 {
-                    this.LogWarn("Ignoring animationData without an animation name.");
+                    this.LogWarn($"Ignoring animationData without an animation name.");
                     continue;
                 }
 
@@ -187,9 +187,7 @@
                 if (framesPerSecond <= 0)
                 {
                     this.LogWarn(
-                        "Ignoring animationData with FPS of {0} with name {1}.",
-                        framesPerSecond,
-                        animationName
+                        $"Ignoring animationData with FPS of {framesPerSecond} with name {animationName}."
                     );
                     continue;
                 }
@@ -198,8 +196,7 @@
                 if (frames is not { Count: > 0 })
                 {
                     this.LogWarn(
-                        "Ignoring animationData without frames with name {0}.",
-                        animationName
+                        $"Ignoring animationData without frames with name {animationName}."
                     );
                     continue;
                 }
@@ -227,8 +224,7 @@
                 if (keyFrames.Count <= 0)
                 {
                     this.LogWarn(
-                        "Ignoring animationData with empty frames with name {0}.",
-                        animationName
+                        $"Ignoring animationData with empty frames with name {animationName}."
                     );
                     continue;
                 }

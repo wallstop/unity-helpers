@@ -60,13 +60,12 @@
                         Type scriptType = script?.GetType();
                         if (scriptType == null)
                         {
-                            prefab.LogError("Detected missing script.");
+                            prefab.LogError($"Detected missing script.");
                         }
                         else
                         {
                             prefab.LogError(
-                                "Detected missing script for script type {0}.",
-                                scriptType
+                                $"Detected missing script for script type {scriptType}."
                             );
                         }
 
@@ -111,7 +110,7 @@
                 {
                     if (fieldValue == null)
                     {
-                        component.LogError("Field {0} (array) was null.", field.Name);
+                        component.LogError($"Field {field.Name} (array) was null.");
                         continue;
                     }
 
@@ -147,14 +146,12 @@
                     {
                         if (position == null)
                         {
-                            component.LogError("Field {0} has a null element in it.", field.Name);
+                            component.LogError($"Field {field.Name} has a null element in it.");
                         }
                         else
                         {
                             component.LogError(
-                                "Field {0} has a null element at position {1}.",
-                                field.Name,
-                                position
+                                $"Field {field.Name} has a null element at position {position}."
                             );
                         }
 

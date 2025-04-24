@@ -20,6 +20,26 @@
     {
         private static readonly Dictionary<Vector3Int, int> ColorBucketCache = new();
 
+        public static string ToHex(this Color color, bool includeAlpha = true)
+        {
+            int r = (int)(Mathf.Clamp01(color.r) * 255f);
+            int g = (int)(Mathf.Clamp01(color.g) * 255f);
+            int b = (int)(Mathf.Clamp01(color.b) * 255f);
+
+            string hexR = r.ToString("X2");
+            string hexG = g.ToString("X2");
+            string hexB = b.ToString("X2");
+
+            if (!includeAlpha)
+            {
+                return $"#{hexR}{hexG}{hexB}";
+            }
+
+            int a = (int)(Mathf.Clamp01(color.a) * 255f);
+            string hexA = a.ToString("X2");
+            return $"#{hexR}{hexG}{hexB}{hexA}";
+        }
+
         public static Color GetAverageColor(
             this Sprite sprite,
             ColorAveragingMethod method = ColorAveragingMethod.LAB,

@@ -17,14 +17,14 @@
             string assetPath = AssetDatabase.GetAssetPath(texture);
             if (string.IsNullOrEmpty(assetPath))
             {
-                texture.LogError("Failed to get asset path.");
+                texture.LogError($"Failed to get asset path.");
                 return;
             }
 
             TextureImporter tImporter = AssetImporter.GetAtPath(assetPath) as TextureImporter;
             if (tImporter == null)
             {
-                texture.LogError("Failed to get texture importer.");
+                texture.LogError($"Failed to get texture importer.");
                 return;
             }
 
