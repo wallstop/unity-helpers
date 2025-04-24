@@ -3,6 +3,7 @@
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Text;
     using Extension;
     using UnityEngine;
     using Debug = UnityEngine.Debug;
@@ -10,60 +11,79 @@
 
     public sealed class UnityLogTagFormatter : IFormatProvider, ICustomFormatter
     {
-        public static readonly UnityLogTagFormatter Instance = new();
+        public const char Separator = ',';
+
+        private static readonly string NewLine = Environment.NewLine;
+        private static readonly StringBuilder CachedStringBuilder = new();
+        private static readonly List<string> CachedDecorators = new();
 
         private static readonly Dictionary<string, string> ColorNamesToHex = ReflectionHelpers
             .LoadStaticPropertiesForType<Color>()
             .Where(kvp => kvp.Value.PropertyType == typeof(Color))
-            .Select(kvp => ($"#{kvp.Key}", ((Color)kvp.Value.GetValue(null)).ToHex()))
+            .Select(kvp => (kvp.Key, ((Color)kvp.Value.GetValue(null)).ToHex()))
             .ToDictionary(StringComparer.OrdinalIgnoreCase);
 
-        public IReadOnlyDictionary<string, Func<object, string>> KeyedDecorations =>
-            _keyedDecorations;
+        public IReadOnlyDictionary<
+            string,
+            (bool editorOnly, Func<object, string> formatter)
+        > KeyedDecorations => _keyedDecorations;
 
         public IReadOnlyCollection<
             IReadOnlyList<(
                 string tag,
+                bool editorOnly,
                 Func<string, bool> predicate,
                 Func<string, object, string> formatter
             )>
         > MatchingDecorations => _matchingDecorations.Values;
 
-        private readonly Dictionary<string, Func<object, string>> _keyedDecorations = new(
-            StringComparer.OrdinalIgnoreCase
-        );
+        private readonly Dictionary<
+            string,
+            (bool editorOnly, Func<object, string> formatter)
+        > _keyedDecorations = new(StringComparer.OrdinalIgnoreCase);
 
         private readonly SortedDictionary<
             int,
-            List<(string tag, Func<string, bool> predicate, Func<string, object, string> formatter)>
+            List<(
+                string tag,
+                bool editorOnly,
+                Func<string, bool> predicate,
+                Func<string, object, string> formatter
+            )>
         > _matchingDecorations = new();
 
-        private UnityLogTagFormatter()
+        public UnityLogTagFormatter()
+            : this(true) { }
+
+        public UnityLogTagFormatter(bool createDefaultDecorators)
         {
+            if (!createDefaultDecorators)
+            {
+                return;
+            }
+
             const string boldify = "<b>{0}</b>";
-            AddDecoration("b", boldify, true);
-            AddDecoration("bold", boldify, true);
-            AddDecoration("!", boldify, true);
+            AddDecoration("b", boldify, editorOnly: true, force: true);
+            AddDecoration("bold", boldify, editorOnly: true, force: true);
+            AddDecoration("!", boldify, editorOnly: true, force: true);
 
             const string italicify = "<i>{0}</i>";
-            AddDecoration("i", italicify, true);
-            AddDecoration("italic", italicify, true);
-            AddDecoration("_", italicify, true);
+            AddDecoration("i", italicify, editorOnly: true, force: true);
+            AddDecoration("italic", italicify, editorOnly: true, force: true);
+            AddDecoration("_", italicify, editorOnly: true, force: true);
 
-            const string underlineify = "<u>{0}</u>";
-            AddDecoration("u", underlineify, true);
-            AddDecoration("underline", underlineify, true);
-
-            AddDecoration("json", value => value?.ToJson() ?? "{}", true);
+            AddDecoration("json", value => value?.ToJson() ?? "{}", editorOnly: false, force: true);
 
             AddDecoration(
                 format => format.StartsWith('#'),
                 (format, value) =>
                 {
-                    string hexCode = ColorNamesToHex.GetValueOrDefault(format, format);
+                    string hexCode = ColorNamesToHex.GetValueOrDefault(format.Substring(1), format);
                     return $"<color={hexCode}>{value}</color>";
                 },
-                "Color"
+                "Color",
+                editorOnly: true,
+                force: true
             );
             AddDecoration(
                 format => int.TryParse(format, out _),
@@ -72,7 +92,38 @@
                     int size = int.Parse(format);
                     return $"<size={size}>{value}</size>";
                 },
-                "SpecificSize"
+                "ImplicitSize",
+                editorOnly: true,
+                force: true
+            );
+
+            const string sizeCheck = "size=";
+            AddDecoration(
+                format =>
+                    format.StartsWith(sizeCheck)
+                    && int.TryParse(format.Substring(sizeCheck.Length), out _),
+                (format, value) =>
+                {
+                    int size = int.Parse(format.Substring(sizeCheck.Length));
+                    return $"<size={size}>{value}</size>";
+                },
+                "ExplicitSize",
+                editorOnly: true,
+                force: true
+            );
+
+            const string colorCheck = "color=";
+            AddDecoration(
+                format => format.StartsWith(colorCheck),
+                (format, value) =>
+                {
+                    string color = format.Substring(colorCheck.Length);
+                    color = ColorNamesToHex.GetValueOrDefault(color, color);
+                    return $"<color={color}>{value}</color>";
+                },
+                "ExplicitColor",
+                editorOnly: true,
+                force: true
             );
         }
 
@@ -90,21 +141,58 @@
                 return arg?.ToString() ?? string.Empty;
             }
 
+            // Do not format stuff that we don't have control over!
             if (arg is not string && arg is IFormattable formattable)
             {
                 return formattable.ToString(format, this);
             }
 
-            if (Application.isEditor)
+            CachedDecorators.Clear();
+            if (!format.Contains(Separator))
             {
-                if (_keyedDecorations.TryGetValue(format, out Func<object, string> formatter))
+                CachedDecorators.Add(format);
+            }
+            else
+            {
+                CachedStringBuilder.Clear();
+                foreach (char element in format)
                 {
-                    return formatter(arg);
+                    if (element == Separator)
+                    {
+                        if (0 < CachedStringBuilder.Length)
+                        {
+                            CachedDecorators.Add(CachedStringBuilder.ToString());
+                            CachedStringBuilder.Clear();
+                        }
+                    }
+                    else
+                    {
+                        CachedStringBuilder.Append(element);
+                    }
+                }
+                if (0 < CachedStringBuilder.Length)
+                {
+                    CachedDecorators.Add(CachedStringBuilder.ToString());
+                    CachedStringBuilder.Clear();
+                }
+            }
+
+            foreach (string key in CachedDecorators)
+            {
+                if (
+                    _keyedDecorations.TryGetValue(
+                        key,
+                        out (bool editorOnly, Func<object, string> formatter) decorator
+                    ) && (Application.isEditor || !decorator.editorOnly)
+                )
+                {
+                    return decorator.formatter(arg);
                 }
 
                 foreach (
                     List<(
                         string tag,
+                        bool editorOnly,
                         Func<string, bool> predicate,
                         Func<string, object, string> formatter
                     )> matchingDecoration in _matchingDecorations.Values
@@ -113,14 +201,15 @@
                     foreach (
                         (
                             _,
+                            bool editorOnly,
                             Func<string, bool> predicate,
                             Func<string, object, string> matchingFormatter
                         ) in matchingDecoration
                     )
                     {
-                        if (predicate(format))
+                        if ((Application.isEditor || !editorOnly) && predicate(key))
                         {
-                            return matchingFormatter(format, arg);
+                            return matchingFormatter(key, arg);
                         }
                     }
                 }
@@ -130,10 +219,14 @@
         }
 
         [HideInCallstack]
-        //[System.Diagnostics]
-        public void Log(FormattableString message, Object context = null, Exception e = null)
+        public void Log(
+            object message,
+            Object context = null,
+            Exception e = null,
+            bool prettify = true
+        )
         {
-            string rendered = Render(message, context, e);
+            string rendered = Render(message, context, e, prettify);
             if (context != null)
             {
                 Debug.Log(rendered, context);
@@ -145,22 +238,14 @@
         }
 
         [HideInCallstack]
-        public void Log(string message, Object context = null)
+        public void LogWarn(
+            object message,
+            Object context = null,
+            Exception e = null,
+            bool prettify = true
+        )
         {
-            if (context != null)
-            {
-                Debug.Log(message, context);
-            }
-            else
-            {
-                Debug.Log(message);
-            }
-        }
-
-        [HideInCallstack]
-        public void LogWarn(FormattableString message, Object context = null, Exception e = null)
-        {
-            string rendered = Render(message, context, e);
+            string rendered = Render(message, context, e, prettify);
             if (context != null)
             {
                 Debug.LogWarning(rendered, context);
@@ -172,22 +257,14 @@
         }
 
         [HideInCallstack]
-        public void LogWarn(string message, Object context = null)
+        public void LogError(
+            object message,
+            Object context = null,
+            Exception e = null,
+            bool prettify = true
+        )
         {
-            if (context != null)
-            {
-                Debug.LogWarning(message, context);
-            }
-            else
-            {
-                Debug.LogWarning(message);
-            }
-        }
-
-        [HideInCallstack]
-        public void LogError(FormattableString message, Object context = null, Exception e = null)
-        {
-            string rendered = Render(message, context, e);
+            string rendered = Render(message, context, e, prettify);
             if (context != null)
             {
                 Debug.LogError(rendered, context);
@@ -198,32 +275,29 @@
             }
         }
 
-        [HideInCallstack]
-        public void LogError(string message, Object context = null)
+        public bool AddDecoration(
+            string tag,
+            string format,
+            bool editorOnly = false,
+            bool force = false
+        )
         {
-            if (context != null)
-            {
-                Debug.LogError(message, context);
-            }
-            else
-            {
-                Debug.LogError(message);
-            }
+            return AddDecoration(tag, content => string.Format(format, content), editorOnly, force);
         }
 
-        public bool AddDecoration(string tag, string format, bool force = false)
-        {
-            return AddDecoration(tag, content => string.Format(format, content), force);
-        }
-
-        public bool AddDecoration(string tag, Func<object, string> format, bool force = false)
+        public bool AddDecoration(
+            string tag,
+            Func<object, string> format,
+            bool editorOnly = false,
+            bool force = false
+        )
         {
             if (!force)
             {
-                return _keyedDecorations.TryAdd(tag, format);
+                return _keyedDecorations.TryAdd(tag, (editorOnly, format));
             }
 
-            _keyedDecorations[tag] = format;
+            _keyedDecorations[tag] = (editorOnly, format);
             return true;
         }
 
@@ -232,6 +306,7 @@
             Func<string, object, string> format,
             string tag,
             int priority = 0,
+            bool editorOnly = false,
             bool force = false
         )
         {
@@ -240,6 +315,7 @@
                     priority,
                     out List<(
                         string tag,
+                        bool editorOnly,
                         Func<string, bool> predicate,
                         Func<string, object, string> formatter
                     )> matchingDecorations
@@ -248,11 +324,12 @@
             {
                 _matchingDecorations[priority] = new List<(
                     string tag,
+                    bool editorOnly,
                     Func<string, bool> predicate,
                     Func<string, object, string> formatter
                 )>
                 {
-                    (tag, predicate, format),
+                    (tag, editorOnly, predicate, format),
                 };
                 return true;
             }
@@ -260,7 +337,7 @@
             int? matchingIndex = null;
             for (int i = 0; i < matchingDecorations.Count; ++i)
             {
-                (string matchingTag, Func<string, bool> _, Func<string, object, string> _) =
+                (string matchingTag, bool _, Func<string, bool> _, Func<string, object, string> _) =
                     matchingDecorations[i];
                 if (string.Equals(matchingTag, tag, StringComparison.OrdinalIgnoreCase))
                 {
@@ -271,7 +348,7 @@
 
             if (matchingIndex == null)
             {
-                matchingDecorations.Add((tag, predicate, format));
+                matchingDecorations.Add((tag, editorOnly, predicate, format));
                 return true;
             }
 
@@ -279,7 +356,7 @@
             {
                 return false;
             }
-            matchingDecorations[matchingIndex.Value] = (tag, predicate, format);
+            matchingDecorations[matchingIndex.Value] = (tag, editorOnly, predicate, format);
             return true;
         }
 
@@ -295,6 +372,7 @@
                     priority,
                     out List<(
                         string,
+                        bool,
                         Func<string, bool>,
                         Func<string, object, string>
                     )> matchingDecorations
@@ -307,7 +385,7 @@
             int? matchingIndex = null;
             for (int i = 0; i < matchingDecorations.Count; ++i)
             {
-                (string matchingTag, Func<string, bool> _, Func<string, object, string> _) =
+                (string matchingTag, bool _, Func<string, bool> _, Func<string, object, string> _) =
                     matchingDecorations[i];
                 if (string.Equals(matchingTag, tag, StringComparison.OrdinalIgnoreCase))
                 {
@@ -330,8 +408,20 @@
         }
 
         [HideInCallstack]
-        private string Render(FormattableString message, Object unityObject, Exception e)
+        private string Render(object message, Object unityObject, Exception e, bool prettify)
         {
+            if (!prettify)
+            {
+                return message switch
+                {
+                    FormattableString formattable => e != null
+                        ? $"{formattable.ToString(this)}{NewLine}    {e}"
+                        : formattable.ToString(this),
+                    string str => e != null ? $"{str}{NewLine}    {e}" : str,
+                    _ => e != null ? $"{message}{NewLine}    {e}" : message.ToString(),
+                };
+            }
+
             float now = Time.time;
             string componentType;
             string gameObjectName;
@@ -346,9 +436,18 @@
                 gameObjectName = "NO_NAME";
             }
 
-            return e != null
-                ? $"{now}|{gameObjectName}[{componentType}]|{message.ToString(this)}\n    {e}"
-                : $"{now}|{gameObjectName}[{componentType}]|{message.ToString(this)}";
+            return message switch
+            {
+                FormattableString formattable => e != null
+                    ? $"{now}|{gameObjectName}[{componentType}]|{formattable.ToString(this)}{NewLine}    {e}"
+                    : $"{now}|{gameObjectName}[{componentType}]|{formattable.ToString(this)}",
+                string str => e != null
+                    ? $"{now}|{gameObjectName}[{componentType}]|{str}{NewLine}    {e}"
+                    : $"{now}|{gameObjectName}[{componentType}]|{str}",
+                _ => e != null
+                    ? $"{now}|{gameObjectName}[{componentType}]|{message}{NewLine}    {e}"
+                    : $"{now}|{gameObjectName}[{componentType}]|{message}",
+            };
         }
     }
 }

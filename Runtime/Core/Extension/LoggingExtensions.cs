@@ -17,6 +17,10 @@ namespace UnityHelpers.Core.Extension
 
     public static class LoggingExtensions
     {
+        public static readonly UnityLogTagFormatter LogInstance = new(
+            createDefaultDecorators: true
+        );
+
         private static readonly Thread UnityMainThread;
         private const int LogsPerCacheClean = 5;
 
@@ -118,10 +122,15 @@ namespace UnityHelpers.Core.Extension
         }
 
         [HideInCallstack]
-        public static void Log(this Object component, FormattableString message, Exception e = null)
+        public static void Log(
+            this Object component,
+            FormattableString message,
+            Exception e = null,
+            bool prettify = true
+        )
         {
 #if ENABLE_UBERLOGGING
-            LogDebug(component, message, e);
+            LogDebug(component, message, e, prettify);
 #endif
         }
 
@@ -129,13 +138,14 @@ namespace UnityHelpers.Core.Extension
         public static void LogDebug(
             this Object component,
             FormattableString message,
-            Exception e = null
+            Exception e = null,
+            bool prettify = true
         )
         {
 #if ENABLE_UBERLOGGING
             if (LoggingAllowed(component))
             {
-                UnityLogTagFormatter.Instance.Log(message, component, e);
+                LogInstance.Log(message, component, e, prettify);
             }
 #endif
         }
@@ -144,13 +154,14 @@ namespace UnityHelpers.Core.Extension
         public static void LogWarn(
             this Object component,
             FormattableString message,
-            Exception e = null
+            Exception e = null,
+            bool prettify = true
         )
         {
 #if ENABLE_UBERLOGGING
             if (LoggingAllowed(component))
             {
-                UnityLogTagFormatter.Instance.LogWarn(message, component, e);
+                LogInstance.LogWarn(message, component, e, prettify);
             }
 #endif
         }
@@ -159,13 +170,14 @@ namespace UnityHelpers.Core.Extension
         public static void LogError(
             this Object component,
             FormattableString message,
-            Exception e = null
+            Exception e = null,
+            bool prettify = true
         )
         {
 #if ENABLE_UBERLOGGING
             if (LoggingAllowed(component))
             {
-                UnityLogTagFormatter.Instance.LogError(message, component, e);
+                LogInstance.LogError(message, component, e, prettify);
             }
 #endif
         }

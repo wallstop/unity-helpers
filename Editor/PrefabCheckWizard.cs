@@ -140,18 +140,18 @@
 
                 continue;
 
-                bool LogIfNull(object thing, int? position = null)
+                bool LogIfNull(object thing, int? elementIndex = null)
                 {
                     if (thing == null || (thing is Object unityThing && !unityThing))
                     {
-                        if (position == null)
+                        if (elementIndex == null)
                         {
                             component.LogError($"Field {field.Name} has a null element in it.");
                         }
                         else
                         {
                             component.LogError(
-                                $"Field {field.Name} has a null element at position {position}."
+                                $"Field {field.Name} has a null element at position {elementIndex}."
                             );
                         }
 
