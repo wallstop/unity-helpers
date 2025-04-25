@@ -126,11 +126,11 @@ namespace UnityHelpers.Core.Extension
             this Object component,
             FormattableString message,
             Exception e = null,
-            bool prettify = true
+            bool pretty = true
         )
         {
 #if ENABLE_UBERLOGGING
-            LogDebug(component, message, e, prettify);
+            LogDebug(component, message, e, pretty);
 #endif
         }
 
@@ -139,13 +139,13 @@ namespace UnityHelpers.Core.Extension
             this Object component,
             FormattableString message,
             Exception e = null,
-            bool prettify = true
+            bool pretty = true
         )
         {
 #if ENABLE_UBERLOGGING
             if (LoggingAllowed(component))
             {
-                LogInstance.Log(message, component, e, prettify);
+                LogInstance.Log(message, component, e, pretty);
             }
 #endif
         }
@@ -155,13 +155,13 @@ namespace UnityHelpers.Core.Extension
             this Object component,
             FormattableString message,
             Exception e = null,
-            bool prettify = true
+            bool pretty = true
         )
         {
 #if ENABLE_UBERLOGGING
             if (LoggingAllowed(component))
             {
-                LogInstance.LogWarn(message, component, e, prettify);
+                LogInstance.LogWarn(message, component, e, pretty);
             }
 #endif
         }
@@ -171,13 +171,13 @@ namespace UnityHelpers.Core.Extension
             this Object component,
             FormattableString message,
             Exception e = null,
-            bool prettify = true
+            bool pretty = true
         )
         {
 #if ENABLE_UBERLOGGING
             if (LoggingAllowed(component))
             {
-                LogInstance.LogError(message, component, e, prettify);
+                LogInstance.LogError(message, component, e, pretty);
             }
 #endif
         }
