@@ -737,13 +737,13 @@
             for (int i = 0; i < SampleCount; ++i)
             {
                 int index = sample(random);
-                if (index < 0 || sampleLength <= index)
+                if (index < 0 || sampleLength < index)
                 {
                     Assert.Fail("Index {0} out of range", index);
                 }
                 else
                 {
-                    _samples[index]++;
+                    _samples[Math.Min(sampleLength - 1, index)]++;
                 }
             }
 

@@ -6,17 +6,21 @@ namespace UnityHelpers.Core.Extension
 {
     using System;
     using System.Collections.Generic;
+    using System.Linq;
     using System.Reflection;
-    using System.Runtime.CompilerServices;
     using System.Threading;
-    using JetBrains.Annotations;
+    using Helper;
+    using Helper.Logging;
     using UnityEngine;
     using Utils;
-    using Debug = UnityEngine.Debug;
     using Object = UnityEngine.Object;
 
     public static class LoggingExtensions
     {
+        public static readonly UnityLogTagFormatter LogInstance = new(
+            createDefaultDecorators: true
+        );
+
         private static readonly Thread UnityMainThread;
         private const int LogsPerCacheClean = 5;
 
@@ -24,8 +28,10 @@ namespace UnityHelpers.Core.Extension
         private static long _cacheAccessCount;
 
         private static readonly HashSet<Object> Disabled = new();
-        private static readonly Dictionary<Type, FieldInfo[]> FieldCache = new();
-        private static readonly Dictionary<Type, PropertyInfo[]> PropertyCache = new();
+        private static readonly Dictionary<Type, (string, Func<object, object>)[]> MetadataCache =
+            new();
+
+        private static readonly Dictionary<string, object> GenericObject = new();
 
         static LoggingExtensions()
         {
@@ -33,7 +39,7 @@ namespace UnityHelpers.Core.Extension
             /*
                 Unity throws exceptions if you try to log on something that isn't the main thread.
                 Sometimes, it's nice to log in async Tasks. Assume that the first initialization of
-                this class will be done by the Unity main thread, and then check every time we log.
+                this class will be done by the Unity main thread and then check every time we log.
                 If the logging thread is not the unity main thread, then do nothing
                 (instead of throwing...)
              */
@@ -61,6 +67,7 @@ namespace UnityHelpers.Core.Extension
             Disabled.Add(component);
         }
 
+        [HideInCallstack]
         public static string GenericToString(this Object component)
         {
             if (component == null)
@@ -68,148 +75,114 @@ namespace UnityHelpers.Core.Extension
                 return "null";
             }
 
-            Dictionary<string, object> structure = new();
-            Type type = component.GetType();
-            FieldInfo[] fields = FieldCache.GetOrAdd(
-                type,
-                inType => inType.GetFields(BindingFlags.Public | BindingFlags.Instance)
+            (string, Func<object, object>)[] metadataAccess = MetadataCache.GetOrAdd(
+                component.GetType(),
+                inType =>
+                    inType
+                        .GetFields(BindingFlags.Public | BindingFlags.Instance)
+                        .Select(field => (field.Name, ReflectionHelpers.GetFieldGetter(field)))
+                        .Concat(
+                            inType
+                                .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                                .Select(property =>
+                                    (property.Name, ReflectionHelpers.GetPropertyGetter(property))
+                                )
+                        )
+                        .ToArray()
             );
-            PropertyInfo[] properties = PropertyCache.GetOrAdd(
-                type,
-                inType => inType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-            );
-            foreach (FieldInfo field in fields)
-            {
-                structure[field.Name] = ValueFormat(field.GetValue(component));
-            }
 
-            foreach (PropertyInfo property in properties)
+            GenericObject.Clear();
+            foreach ((string name, Func<object, object> access) in metadataAccess)
             {
-                structure[property.Name] = ValueFormat(property.GetValue(component));
-            }
-
-            return structure.ToJson();
-
-            object ValueFormat(object value)
-            {
-                if (value is Object obj)
+                try
                 {
-                    return obj != null ? obj.name : null;
+                    string valueFormat = ValueFormat(access(component));
+                    if (valueFormat != null)
+                    {
+                        GenericObject[name] = valueFormat;
+                    }
                 }
-                return value?.ToString();
+                catch
+                {
+                    // Skip
+                }
             }
+
+            return GenericObject.ToJson();
         }
 
-        [StringFormatMethod("message")]
-        public static void Log(this Object component, string message, params object[] args)
+        [HideInCallstack]
+        private static string ValueFormat(object value)
         {
-#if ENABLE_UBERLOGGING
-            LogDebug(component, message, args);
-#endif
+            if (value is Object obj)
+            {
+                return obj != null ? obj.name : "null";
+            }
+            return value?.ToString();
         }
 
-        [StringFormatMethod("message")]
-        public static void LogMethod(this Object component, [CallerMemberName] string caller = "")
-        {
-#if ENABLE_UBERLOGGING
-            LogDebug(component, caller);
-#endif
-        }
-
-        [StringFormatMethod("message")]
-        public static void LogDebug(this Object component, string message, params object[] args)
-        {
-#if ENABLE_UBERLOGGING
-            LogDebug(component, message, null, args);
-#endif
-        }
-
-        [StringFormatMethod("message")]
-        public static void LogWarn(this Object component, string message, params object[] args)
-        {
-#if ENABLE_UBERLOGGING
-            LogWarn(component, message, null, args);
-#endif
-        }
-
-        [StringFormatMethod("message")]
-        public static void LogError(this Object component, string message, params object[] args)
-        {
-#if ENABLE_UBERLOGGING
-            LogError(component, message, null, args);
-#endif
-        }
-
-        [StringFormatMethod("message")]
+        [HideInCallstack]
         public static void Log(
             this Object component,
-            string message,
-            Exception e,
-            params object[] args
+            FormattableString message,
+            Exception e = null,
+            bool pretty = true
         )
         {
 #if ENABLE_UBERLOGGING
-            LogDebug(component, message, e, args);
+            LogDebug(component, message, e, pretty);
 #endif
         }
 
-        [StringFormatMethod("message")]
+        [HideInCallstack]
         public static void LogDebug(
             this Object component,
-            string message,
-            Exception e,
-            params object[] args
+            FormattableString message,
+            Exception e = null,
+            bool pretty = true
         )
         {
 #if ENABLE_UBERLOGGING
             if (LoggingAllowed(component))
             {
-                Debug.Log(
-                    Wrap(component, args.Length != 0 ? string.Format(message, args) : message, e),
-                    component
-                );
+                LogInstance.Log(message, component, e, pretty);
             }
 #endif
         }
 
-        [StringFormatMethod("message")]
+        [HideInCallstack]
         public static void LogWarn(
             this Object component,
-            string message,
-            Exception e,
-            params object[] args
+            FormattableString message,
+            Exception e = null,
+            bool pretty = true
         )
         {
 #if ENABLE_UBERLOGGING
             if (LoggingAllowed(component))
             {
-                Debug.LogWarning(
-                    Wrap(component, args.Length != 0 ? string.Format(message, args) : message, e),
-                    component
-                );
+                LogInstance.LogWarn(message, component, e, pretty);
             }
 #endif
         }
 
-        [StringFormatMethod("message")]
+        [HideInCallstack]
         public static void LogError(
             this Object component,
-            string message,
-            Exception e,
-            params object[] args
+            FormattableString message,
+            Exception e = null,
+            bool pretty = true
         )
         {
 #if ENABLE_UBERLOGGING
             if (LoggingAllowed(component))
             {
-                Debug.LogError(
-                    Wrap(component, args.Length != 0 ? string.Format(message, args) : message, e),
-                    component
-                );
+                LogInstance.LogError(message, component, e, pretty);
             }
 #endif
         }
 
+        [HideInCallstack]
         private static bool LoggingAllowed(Object component)
         {
             if (Interlocked.Increment(ref _cacheAccessCount) % LogsPerCacheClean == 0)
@@ -233,32 +206,6 @@ namespace UnityHelpers.Core.Extension
             return LoggingEnabled
                 && Equals(Thread.CurrentThread, UnityMainThread)
                 && !Disabled.Contains(component);
-        }
-
-        private static string Wrap(Object component, string message, Exception e)
-        {
-#if ENABLE_UBERLOGGING
-            float now = Time.time;
-            string componentType;
-            string gameObjectName;
-            if (component != null)
-            {
-                componentType = component.GetType().Name;
-                gameObjectName = component.name;
-            }
-            else
-            {
-                componentType = "NO_TYPE";
-                gameObjectName = "NO_NAME";
-            }
-
-            return e != null
-                ? $"{now}|{gameObjectName}[{componentType}]|{message}\n    {e}"
-                : $"{now}|{gameObjectName}[{componentType}]|{message}";
-
-#else
-            return string.Empty;
-#endif
         }
     }
 }

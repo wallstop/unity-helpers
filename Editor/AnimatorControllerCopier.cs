@@ -99,8 +99,7 @@
                 if (animatorController == null)
                 {
                     this.LogError(
-                        "Invalid Animator Controller (null) found at path '{0}', skipping.",
-                        path
+                        $"Invalid Animator Controller (null) found at path '{path}', skipping."
                     );
                     continue;
                 }
@@ -114,9 +113,7 @@
                 if (prefixIndex < 0)
                 {
                     this.LogWarn(
-                        "Unsupported AnimatorController at '{0}', expected to be prefixed by '{1}'.",
-                        path,
-                        prefix
+                        $"Unsupported AnimatorController at '{path}', expected to be prefixed by '{prefix}'."
                     );
                     continue;
                 }
@@ -138,8 +135,7 @@
                     if (!deleteSuccessful)
                     {
                         this.LogError(
-                            "Failed to delete Animator Controller asset at path '{0}'.",
-                            path
+                            $"Failed to delete Animator Controller asset at path '{path}'."
                         );
                     }
 
@@ -148,9 +144,7 @@
                 else
                 {
                     this.LogError(
-                        "Failed to copy Animator Controller from '{0}' to '{1}'.",
-                        path,
-                        destination
+                        $"Failed to copy Animator Controller from '{path}' to '{destination}'."
                     );
                 }
             }

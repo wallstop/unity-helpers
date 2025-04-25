@@ -30,7 +30,7 @@
             {
                 if (log)
                 {
-                    component.LogWarn("Could not find {0}.", tag);
+                    component.LogWarn($"Could not find {tag}.");
                 }
 
                 return default;
@@ -45,11 +45,7 @@
             if (log)
             {
                 component.LogWarn(
-                    "Failed to find {0} on {1} (name: {2}), id [{3}].",
-                    typeof(T).Name,
-                    tag,
-                    gameObject.name,
-                    gameObject.GetInstanceID()
+                    $"Failed to find {typeof(T).Name} on {tag} (name: {gameObject.name}), id [{gameObject.GetInstanceID()}]."
                 );
             }
 

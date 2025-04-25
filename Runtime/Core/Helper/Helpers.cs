@@ -411,7 +411,7 @@
                 }
                 catch
                 {
-                    original.LogWarn("Failed to copy public field {0}.", field.Name);
+                    original.LogWarn($"Failed to copy public field {field.Name}.");
                 }
             }
 
@@ -426,7 +426,7 @@
                 }
                 catch
                 {
-                    original.LogWarn("Failed to copy non-public field {0}.", field.Name);
+                    original.LogWarn($"Failed to copy non-public field {field.Name}.");
                 }
             }
 
@@ -443,7 +443,7 @@
                 }
                 catch
                 {
-                    original.LogWarn("Failed to copy property {0}.", property.Name);
+                    original.LogWarn($"Failed to copy property {property.Name}.");
                 }
             }
 

@@ -17,9 +17,7 @@
             if (matchColliderToSprite == null)
             {
                 this.LogError(
-                    "Target was of type {0}, expected {1}.",
-                    target?.GetType(),
-                    typeof(MatchColliderToSprite)
+                    $"Target was of type {target?.GetType()}, expected {nameof(MatchColliderToSprite)}."
                 );
                 return;
             }

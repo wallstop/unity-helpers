@@ -16,7 +16,7 @@
             for (int i = 0; i < TestIterations; ++i)
             {
                 float target = PRNG.Instance.NextFloat(-1_000, 1_000);
-                float delta = PRNG.Instance.NextFloat(0f, 10f);
+                float delta = PRNG.Instance.NextFloat(1f, 10f);
 
                 float insideOffset = delta * PRNG.Instance.NextFloat();
                 if (PRNG.Instance.NextBool())

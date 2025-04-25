@@ -71,7 +71,7 @@
             textures = textures.Distinct().OrderBy(texture => texture.name).ToList();
             if (textures.Count <= 0)
             {
-                this.Log("Failed to find any texture paths.");
+                this.Log($"Failed to find any texture paths.");
                 return;
             }
 
@@ -140,7 +140,7 @@
             }
             else
             {
-                this.Log("No textures updated.");
+                this.Log($"No textures updated.");
             }
         }
     }

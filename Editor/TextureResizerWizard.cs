@@ -155,17 +155,12 @@
                         byte[] bytes = copy.EncodeToPNG();
                         File.WriteAllBytes(assetPath, bytes);
                         this.Log(
-                            "Resized {0} from [{1}x{2}] to [{3}x{4}]",
-                            texture.name,
-                            texture.width,
-                            texture.height,
-                            copy.width,
-                            copy.height
+                            $"Resized {texture.name} from [{texture.width}x{texture.height}] to [{copy.width}x{copy.height}]"
                         );
                     }
                     catch (Exception e)
                     {
-                        this.LogError("Failed to resize {0}.", e, texture.name);
+                        this.LogError($"Failed to resize {texture.name}.", e);
                     }
                     finally
                     {

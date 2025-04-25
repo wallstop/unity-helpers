@@ -61,20 +61,18 @@
         {
             if (numSegments <= 2)
             {
-                this.LogWarn("Invalid number of segments {0}.", numSegments);
+                this.LogWarn($"Invalid number of segments {numSegments}.");
             }
 
             if (updateRateSeconds <= 0)
             {
-                this.LogWarn("Invalid update rate {0}.", updateRateSeconds);
+                this.LogWarn($"Invalid update rate {updateRateSeconds}.");
             }
 
             if (maxLineWidth < minLineWidth)
             {
                 this.LogWarn(
-                    "MaxLineWidth {0} smaller than MinLineWidth {1}.",
-                    maxLineWidth,
-                    minLineWidth
+                    $"MaxLineWidth {maxLineWidth} smaller than MinLineWidth {minLineWidth}."
                 );
             }
         }

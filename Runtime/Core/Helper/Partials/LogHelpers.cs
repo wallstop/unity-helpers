@@ -7,7 +7,7 @@
     {
         public static void LogNotAssigned(this Object component, string name)
         {
-            component.LogWarn("{0} not found.", name);
+            component.LogWarn($"{name} not found.");
         }
     }
 }

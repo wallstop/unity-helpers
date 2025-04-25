@@ -60,13 +60,12 @@
                         Type scriptType = script?.GetType();
                         if (scriptType == null)
                         {
-                            prefab.LogError("Detected missing script.");
+                            prefab.LogError($"Detected missing script.");
                         }
                         else
                         {
                             prefab.LogError(
-                                "Detected missing script for script type {0}.",
-                                scriptType
+                                $"Detected missing script for script type {scriptType}."
                             );
                         }
 
@@ -111,7 +110,7 @@
                 {
                     if (fieldValue == null)
                     {
-                        component.LogError("Field {0} (array) was null.", field.Name);
+                        component.LogError($"Field {field.Name} (array) was null.");
                         continue;
                     }
 
@@ -141,20 +140,18 @@
 
                 continue;
 
-                bool LogIfNull(object thing, int? position = null)
+                bool LogIfNull(object thing, int? elementIndex = null)
                 {
                     if (thing == null || (thing is Object unityThing && !unityThing))
                     {
-                        if (position == null)
+                        if (elementIndex == null)
                         {
-                            component.LogError("Field {0} has a null element in it.", field.Name);
+                            component.LogError($"Field {field.Name} has a null element in it.");
                         }
                         else
                         {
                             component.LogError(
-                                "Field {0} has a null element at position {1}.",
-                                field.Name,
-                                position
+                                $"Field {field.Name} has a null element at position {elementIndex}."
                             );
                         }
 

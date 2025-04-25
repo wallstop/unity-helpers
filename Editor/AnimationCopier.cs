@@ -121,8 +121,7 @@
                 if (animationClip == null)
                 {
                     this.LogError(
-                        "Invalid AnimationClip (null) found at path '{0}', skipping.",
-                        path
+                        $"Invalid AnimationClip (null) found at path '{path}', skipping."
                     );
                     continue;
                 }
@@ -136,9 +135,7 @@
                 if (prefixIndex < 0)
                 {
                     this.LogWarn(
-                        "Unsupported animation at '{0}', expected to be prefixed by '{1}'.",
-                        path,
-                        prefix
+                        $"Unsupported animation at '{path}', expected to be prefixed by '{prefix}'."
                     );
                     continue;
                 }
@@ -159,18 +156,14 @@
                     bool deleteSuccessful = AssetDatabase.DeleteAsset(path);
                     if (!deleteSuccessful)
                     {
-                        this.LogError("Failed to delete asset at path '{0}'.", path);
+                        this.LogError($"Failed to delete asset at path '{path}'.");
                     }
 
                     ++processed;
                 }
                 else
                 {
-                    this.LogError(
-                        "Failed to copy animation from '{0}' to '{1}'.",
-                        path,
-                        destination
-                    );
+                    this.LogError($"Failed to copy animation from '{path}' to '{destination}'.");
                 }
             }
 

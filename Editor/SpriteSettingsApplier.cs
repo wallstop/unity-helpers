@@ -172,7 +172,7 @@
                 }
             }
 
-            this.Log("Processed {0} sprites.", spriteCount);
+            this.Log($"Processed {spriteCount} sprites.");
             if (0 < spriteCount)
             {
                 AssetDatabase.Refresh();
