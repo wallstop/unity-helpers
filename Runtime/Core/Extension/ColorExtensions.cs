@@ -26,18 +26,13 @@
             int g = (int)(Mathf.Clamp01(color.g) * 255f);
             int b = (int)(Mathf.Clamp01(color.b) * 255f);
 
-            string hexR = r.ToString("X2");
-            string hexG = g.ToString("X2");
-            string hexB = b.ToString("X2");
-
             if (!includeAlpha)
             {
-                return $"#{hexR}{hexG}{hexB}";
+                return $"#{r:X2}{g:X2}{b:X2}";
             }
 
             int a = (int)(Mathf.Clamp01(color.a) * 255f);
-            string hexA = a.ToString("X2");
-            return $"#{hexR}{hexG}{hexB}{hexA}";
+            return $"#{r:X2}{g:X2}{b:X2}{a:X2}";
         }
 
         public static Color GetAverageColor(
