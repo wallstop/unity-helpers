@@ -21,6 +21,9 @@
             .Select(kvp => (kvp.Key, ((Color)kvp.Value.GetValue(null)).ToHex()))
             .ToDictionary(StringComparer.OrdinalIgnoreCase);
 
+        /// <summary>
+        /// All currently registered decorations by tag.
+        /// </summary>
         public IEnumerable<string> Decorations =>
             _matchingDecorations.Values.SelectMany(x => x).Select(value => value.tag);
 
@@ -49,6 +52,10 @@
         public UnityLogTagFormatter()
             : this(true) { }
 
+        /// <summary>
+        /// Creates a new UnityLogTagFormatter.
+        /// </summary>
+        /// <param name="createDefaultDecorators">If true, applies default decorators (bold, italic, color, size, and json).</param>
         public UnityLogTagFormatter(bool createDefaultDecorators)
         {
             if (!createDefaultDecorators)
@@ -226,7 +233,7 @@
         }
 
         [HideInCallstack]
-        public void Log(
+        public string Log(
             FormattableString message,
             Object context = null,
             Exception e = null,
@@ -242,10 +249,12 @@
             {
                 Debug.Log(rendered);
             }
+
+            return rendered;
         }
 
         [HideInCallstack]
-        public void LogWarn(
+        public string LogWarn(
             FormattableString message,
             Object context = null,
             Exception e = null,
@@ -261,10 +270,12 @@
             {
                 Debug.LogWarning(rendered);
             }
+
+            return rendered;
         }
 
         [HideInCallstack]
-        public void LogError(
+        public string LogError(
             FormattableString message,
             Object context = null,
             Exception e = null,
@@ -280,12 +291,28 @@
             {
                 Debug.LogError(rendered);
             }
+
+            return rendered;
         }
 
+        /// <summary>
+        /// Attempts to add a decoration.
+        /// </summary>
+        /// <param name="match">An exact match for tag ("a" would correspond to ${value:a})</param>
+        /// <param name="format">A formatter to apply to the matched object (typically something like value => $"<newFormat>{value}</newFormat>"){</param>
+        /// <param name="tag">A descriptive, unique identifier for the decoration (for example, "Bold", or "Color")</param>
+        /// <param name="priority">The priority to register the decoration at. Lower values will be evaluated first.</param>
+        /// <param name="editorOnly">If true, will only be applied when the game is running in the Unity Editor.</param>
+        /// <param name="force">
+        ///     If true, will override any existing decorations for the same tag, regardless of priority.
+        ///     If false, decorations with the same tag (compared OrdinalIgnoreCase) will cause the registration to fail.
+        /// </param>
+        /// <returns>True if the decoration was added, false if the decoration was not added.</returns>
         public bool AddDecoration(
             string match,
             Func<object, string> format,
             string tag = null,
+            int priority = 0,
             bool editorOnly = false,
             bool force = false
         )
@@ -294,11 +321,32 @@
                 check => string.Equals(check, match, StringComparison.OrdinalIgnoreCase),
                 format: (_, value) => format(value),
                 tag: tag ?? match,
-                priority: 0,
+                priority: priority,
                 editorOnly: editorOnly,
                 force: force
             );
         }
+
+        /// <summary>
+        /// Attempts to add a decoration.
+        /// </summary>
+        /// <param name="predicate">
+        ///     Tag matcher. Can be as complex as you want. For example, the default color matcher
+        ///     is implemented something like tag => tag.StartsWith('#') || tag.StartsWith("color=")
+        /// </param>
+        /// <param name="format">
+        ///     Custom formatting function. Takes in both the matched tag as well the current object to format. In
+        ///     the same case of color matching, the implementation needs to be smart enough to handle the case where
+        ///     the tag is "#red" or "color=red" or "color=#FF0000".
+        /// </param>
+        /// <param name="tag">A descriptive, unique identifier for the decoration (for example, "Bold", or "Color")</param>
+        /// <param name="priority">The priority to register the decoration at. Lower values will be evaluated first.</param>
+        /// <param name="editorOnly">If true, will only be applied when the game is running in the Unity Editor.</param>
+        /// <param name="force">
+        ///     If true, will override any existing decorations for the same tag, regardless of priority.
+        ///     If false, decorations with the same tag (compared OrdinalIgnoreCase) will cause the registration to fail.
+        /// </param>
+        /// <returns>True if the decoration was added, false if the decoration was not added.</returns>
 
         public bool AddDecoration(
             Func<string, bool> predicate,
@@ -363,46 +411,32 @@
                 return true;
             }
 
-            int? matchingIndex = null;
-            for (int i = 0; i < matchingDecorations.Count; ++i)
-            {
-                (string matchingTag, bool _, Func<string, bool> _, Func<string, object, string> _) =
-                    matchingDecorations[i];
-                if (string.Equals(matchingTag, tag, StringComparison.OrdinalIgnoreCase))
-                {
-                    matchingIndex = i;
-                    break;
-                }
-            }
-
-            if (matchingIndex == null)
-            {
-                matchingDecorations.Add((tag, editorOnly, predicate, format));
-                return true;
-            }
-
-            if (!force)
-            {
-                return false;
-            }
-            matchingDecorations[matchingIndex.Value] = (tag, editorOnly, predicate, format);
+            matchingDecorations.Add((tag, editorOnly, predicate, format));
             return true;
         }
 
-        public bool RemoveDecoration(string tag)
+        /// <summary>
+        /// Attempts to remove a decoration by its tag.
+        /// </summary>
+        /// <param name="tag">Tag for the decoration ("Bold", "Color", etc.)</param>
+        /// <param name="decoration">The removed decoration, if one was found.</param>
+        /// <returns>True if a decoration was found for that tag and removed, false otherwise.</returns>
+        public bool RemoveDecoration(
+            string tag,
+            out (
+                string tag,
+                bool editorOnly,
+                Func<string, bool> predicate,
+                Func<string, object, string> formatter
+            ) decoration
+        )
         {
             foreach (var entry in _matchingDecorations)
             {
                 for (int i = 0; i < entry.Value.Count; ++i)
                 {
-                    var existingDecoration = entry.Value[i];
-                    if (
-                        string.Equals(
-                            tag,
-                            existingDecoration.tag,
-                            StringComparison.OrdinalIgnoreCase
-                        )
-                    )
+                    decoration = entry.Value[i];
+                    if (string.Equals(tag, decoration.tag, StringComparison.OrdinalIgnoreCase))
                     {
                         entry.Value.RemoveAt(i);
                         if (entry.Value.Count == 0)
@@ -414,6 +448,7 @@
                 }
             }
 
+            decoration = default;
             return false;
         }
 

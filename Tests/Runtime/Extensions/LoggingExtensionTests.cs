@@ -2,12 +2,67 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.Linq;
     using Core.Extension;
+    using Core.Helper;
+    using Core.Helper.Logging;
     using NUnit.Framework;
     using UnityEngine;
 
     public sealed class LoggingExtensionTests
     {
+        [Test]
+        public void Registration()
+        {
+            UnityLogTagFormatter formatter = new(createDefaultDecorators: false);
+            Assert.AreEqual(
+                0,
+                formatter.Decorations.Count(),
+                $"Found an unexpected number of registered decorations {formatter.Decorations.ToJson()}"
+            );
+
+            bool added = formatter.AddDecoration("b", value => $"<b>{value}</b>", "Bold");
+            Assert.IsTrue(added);
+            string formatted = formatter.Log($"{"Hello":b}", pretty: false);
+            Assert.AreEqual("<b>Hello</b>", formatted);
+            Assert.That(Enumerables.Of("Bold"), Is.EqualTo(formatter.Decorations));
+
+            added = formatter.AddDecoration("b", value => $"<c>{value}</c>", "Bold");
+            Assert.IsFalse(added);
+            formatted = formatter.Log($"{"Hello":b}", pretty: false);
+            Assert.AreEqual("<b>Hello</b>", formatted);
+            Assert.That(Enumerables.Of("Bold"), Is.EqualTo(formatter.Decorations));
+
+            added = formatter.AddDecoration("c", value => $"<c>{value}</c>", "Bold");
+            Assert.IsFalse(added);
+            formatted = formatter.Log($"{"Hello":b}", pretty: false);
+            Assert.AreEqual("<b>Hello</b>", formatted);
+            Assert.That(Enumerables.Of("Bold"), Is.EqualTo(formatter.Decorations));
+
+            added = formatter.AddDecoration("c", value => $"<c>{value}</c>", "Bold1");
+            Assert.IsTrue(added);
+            formatted = formatter.Log($"{"Hello":b}", pretty: false);
+            Assert.AreEqual("<b>Hello</b>", formatted);
+            Assert.That(Enumerables.Of("Bold", "Bold1"), Is.EqualTo(formatter.Decorations));
+            formatted = formatter.Log($"{"Hello":c}", pretty: false);
+            Assert.AreEqual("<c>Hello</c>", formatted);
+            Assert.That(Enumerables.Of("Bold", "Bold1"), Is.EqualTo(formatter.Decorations));
+
+            added = formatter.AddDecoration("b", value => $"<c>{value}</c>", "Bold", force: true);
+            Assert.IsTrue(added);
+            Assert.That(Enumerables.Of("Bold", "Bold1"), Is.EqualTo(formatter.Decorations));
+            formatted = formatter.Log($"{"Hello":b}", pretty: false);
+            Assert.AreEqual("<c>Hello</c>", formatted);
+
+            bool removed = formatter.RemoveDecoration("Bold", out _);
+            Assert.IsTrue(removed);
+            Assert.That(Enumerables.Of("Bold1"), Is.EqualTo(formatter.Decorations));
+            formatted = formatter.Log($"{"Hello":b}", pretty: false);
+            Assert.AreEqual("Hello", formatted);
+            formatted = formatter.Log($"{"Hello":c}", pretty: false);
+            Assert.AreEqual("<c>Hello</c>", formatted);
+        }
+
         [Test]
         public void SimpleLogging()
         {

@@ -69,7 +69,7 @@
         {
             int sampleLength = GetSampleLength();
             TestAndVerify(random =>
-                (int)((1.0 * random.Next() / (1.0 * int.MaxValue)) * sampleLength)
+                (int)((1.0 * random.Next()) / (1.0 * int.MaxValue) * sampleLength)
             );
         }
 
@@ -85,7 +85,7 @@
         public void IntDistribution()
         {
             TestAndVerify(random =>
-                (int)((random.Next() / (1.0 * int.MaxValue)) / _samples.Length)
+                (int)(random.Next() / ((1.0 * int.MaxValue) / _samples.Length))
             );
         }
 
@@ -121,7 +121,7 @@
         public void UintDistribution()
         {
             TestAndVerify(random =>
-                (int)((random.NextUint() / (1.0 * uint.MaxValue)) / _samples.Length)
+                (int)(random.NextUint() / ((1.0 * uint.MaxValue) / _samples.Length))
             );
         }
 
@@ -154,7 +154,7 @@
         {
             int sampleLength = GetSampleLength(short.MaxValue);
             TestAndVerify(
-                random => (int)((1.0 * random.NextShort() / (1.0 * short.MaxValue)) * sampleLength),
+                random => (int)((1.0 * random.NextShort()) / (1.0 * short.MaxValue) * sampleLength),
                 maxLength: short.MaxValue
             );
         }
@@ -202,7 +202,7 @@
         {
             int sampleLength = GetSampleLength(byte.MaxValue);
             TestAndVerify(
-                random => (int)(1.0 * random.NextByte() / (1.0 * byte.MaxValue) * sampleLength),
+                random => (int)((1.0 * random.NextByte()) / (1.0 * byte.MaxValue) * sampleLength),
                 maxLength: byte.MaxValue
             );
         }
@@ -737,13 +737,13 @@
             for (int i = 0; i < SampleCount; ++i)
             {
                 int index = sample(random);
-                if (index < 0 || index < sampleLength)
+                if (index < 0 || sampleLength < index)
                 {
                     Assert.Fail("Index {0} out of range", index);
                 }
                 else
                 {
-                    _samples[Math.Min(index, sampleLength - 1)]++;
+                    _samples[Math.Min(sampleLength - 1, index)]++;
                 }
             }
 
