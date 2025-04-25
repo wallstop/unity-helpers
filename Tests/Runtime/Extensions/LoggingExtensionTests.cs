@@ -358,22 +358,306 @@
         [Test]
         public void SizeLogging()
         {
-            GameObject go = new(nameof(ColorLogging), typeof(SpriteRenderer));
-            go.Log($"Hello {"world":40}");
+            GameObject go = new(nameof(SizeLogging), typeof(SpriteRenderer));
+
+            int logCount = 0;
+            Exception exception = null;
+            Action<string> assertion = null;
+            Application.logMessageReceived += HandleMessageReceived;
+
+            try
+            {
+                int expectedLogCount = 0;
+                foreach (bool pretty in new[] { true, false })
+                {
+                    assertion = message =>
+                    {
+                        if (pretty)
+                        {
+                            Assert.IsTrue(message.Contains(nameof(SizeLogging)), message);
+                            Assert.IsTrue(message.Contains(nameof(GameObject)), message);
+                            Assert.IsTrue(message.Contains("Hello <size=40>world</size>"), message);
+                        }
+                        else
+                        {
+                            Assert.AreEqual("Hello <size=40>world</size>", message);
+                        }
+                    };
+                    go.Log($"Hello {"world":40}", pretty: pretty);
+                    Assert.AreEqual(++expectedLogCount, logCount);
+                    Assert.IsNull(exception, exception?.ToString());
+
+                    go.Log($"Hello {"world":size=40}", pretty: pretty);
+                    Assert.AreEqual(++expectedLogCount, logCount);
+                    Assert.IsNull(exception, exception?.ToString());
+                }
+            }
+            finally
+            {
+                Application.logMessageReceived -= HandleMessageReceived;
+            }
+
+            return;
+
+            void HandleMessageReceived(string message, string stackTrace, LogType type)
+            {
+                ++logCount;
+                try
+                {
+                    assertion?.Invoke(message);
+                }
+                catch (Exception e)
+                {
+                    exception = e;
+                    throw;
+                }
+            }
         }
 
         [Test]
         public void DateTimeNormalFormatTests()
         {
-            GameObject go = new(nameof(ColorLogging), typeof(SpriteRenderer));
-            go.Log($"Hello {DateTime.UtcNow:O}");
+            GameObject go = new(nameof(DateTimeNormalFormatTests), typeof(SpriteRenderer));
+            int logCount = 0;
+            Exception exception = null;
+            Action<string> assertion = null;
+            Application.logMessageReceived += HandleMessageReceived;
+            try
+            {
+                int expectedLogCount = 0;
+                DateTime now = DateTime.UtcNow;
+                foreach (bool pretty in new[] { true, false })
+                {
+                    assertion = message =>
+                    {
+                        if (pretty)
+                        {
+                            Assert.IsTrue(
+                                message.Contains(nameof(DateTimeNormalFormatTests)),
+                                message
+                            );
+                            Assert.IsTrue(message.Contains(nameof(GameObject)), message);
+                            Assert.IsTrue(message.Contains($"Hello {now:O}"), message);
+                        }
+                        else
+                        {
+                            Assert.AreEqual($"Hello {now:O}", message);
+                        }
+                    };
+
+                    go.Log($"Hello {now:O}", pretty: pretty);
+                    Assert.AreEqual(++expectedLogCount, logCount);
+                    Assert.IsNull(exception, exception?.ToString());
+
+                    assertion = message =>
+                    {
+                        if (pretty)
+                        {
+                            Assert.IsTrue(
+                                message.Contains(nameof(DateTimeNormalFormatTests)),
+                                message
+                            );
+                            Assert.IsTrue(message.Contains(nameof(GameObject)), message);
+                            Assert.IsTrue(
+                                message.Contains($"Hello <size=40>{now}</size>"),
+                                message
+                            );
+                        }
+                        else
+                        {
+                            Assert.AreEqual($"Hello <size=40>{now}</size>", message);
+                        }
+                    };
+
+                    go.Log($"Hello {now:40}", pretty: pretty);
+                    Assert.AreEqual(++expectedLogCount, logCount);
+                    Assert.IsNull(exception, exception?.ToString());
+                }
+            }
+            finally
+            {
+                Application.logMessageReceived -= HandleMessageReceived;
+            }
+
+            return;
+
+            void HandleMessageReceived(string message, string stackTrace, LogType type)
+            {
+                ++logCount;
+                try
+                {
+                    assertion?.Invoke(message);
+                }
+                catch (Exception e)
+                {
+                    exception = e;
+                    throw;
+                }
+            }
         }
 
         [Test]
-        public void LinkTests()
+        public void StackedTags()
         {
-            GameObject go = new(nameof(ColorLogging), typeof(SpriteRenderer));
-            go.Log($"Hello {"world":link=UnityLogTagFormatter.cs}");
+            GameObject go = new(nameof(StackedTags), typeof(SpriteRenderer));
+            int logCount = 0;
+            Exception exception = null;
+            Action<string> assertion = null;
+            Application.logMessageReceived += HandleMessageReceived;
+
+            try
+            {
+                int expectedLogCount = 0;
+                foreach (bool pretty in new[] { true, false })
+                {
+                    assertion = message =>
+                    {
+                        if (pretty)
+                        {
+                            Assert.IsTrue(message.Contains(nameof(StackedTags)), message);
+                            Assert.IsTrue(message.Contains(nameof(GameObject)), message);
+                            Assert.IsTrue(message.Contains("Hello <b>[1,2,3]</b>"), message);
+                        }
+                        else
+                        {
+                            Assert.AreEqual("Hello <b>[1,2,3]</b>", message);
+                        }
+                    };
+
+                    go.Log($"Hello {new List<int> { 1, 2, 3 }:json,b}", pretty: pretty);
+                    Assert.AreEqual(++expectedLogCount, logCount);
+                    Assert.IsNull(exception, exception?.ToString());
+
+                    assertion = message =>
+                    {
+                        if (pretty)
+                        {
+                            Assert.IsTrue(message.Contains(nameof(StackedTags)), message);
+                            Assert.IsTrue(message.Contains(nameof(GameObject)), message);
+                            Assert.IsTrue(
+                                message.Contains("Hello <color=#FF0000FF><b>[1,2,3]</b></color>"),
+                                message
+                            );
+                        }
+                        else
+                        {
+                            Assert.AreEqual(
+                                "Hello <color=#FF0000FF><b>[1,2,3]</b></color>",
+                                message
+                            );
+                        }
+                    };
+
+                    go.Log($"Hello {new List<int> { 1, 2, 3 }:json,b,color=red}", pretty: pretty);
+                    Assert.AreEqual(++expectedLogCount, logCount);
+                    Assert.IsNull(exception, exception?.ToString());
+                }
+            }
+            finally
+            {
+                Application.logMessageReceived -= HandleMessageReceived;
+            }
+
+            return;
+
+            void HandleMessageReceived(string message, string stackTrace, LogType type)
+            {
+                ++logCount;
+                try
+                {
+                    assertion?.Invoke(message);
+                }
+                catch (Exception e)
+                {
+                    exception = e;
+                    throw;
+                }
+            }
+        }
+
+        [Test]
+        public void TagsDeduplicate()
+        {
+            GameObject go = new(nameof(TagsDeduplicate), typeof(SpriteRenderer));
+            int logCount = 0;
+            Exception exception = null;
+            Action<string> assertion = null;
+            Application.logMessageReceived += HandleMessageReceived;
+
+            try
+            {
+                int expectedLogCount = 0;
+                foreach (bool pretty in new[] { true, false })
+                {
+                    assertion = message =>
+                    {
+                        if (pretty)
+                        {
+                            Assert.IsTrue(message.Contains(nameof(TagsDeduplicate)), message);
+                            Assert.IsTrue(message.Contains(nameof(GameObject)), message);
+                            Assert.IsTrue(message.Contains("Hello <b>[1,2,3]</b>"), message);
+                        }
+                        else
+                        {
+                            Assert.AreEqual("Hello <b>[1,2,3]</b>", message);
+                        }
+                    };
+
+                    go.Log(
+                        $"Hello {new List<int> { 1, 2, 3 }:json,b,bold,!,bold,b,!,b,bold}",
+                        pretty: pretty
+                    );
+                    Assert.AreEqual(++expectedLogCount, logCount);
+                    Assert.IsNull(exception, exception?.ToString());
+
+                    assertion = message =>
+                    {
+                        if (pretty)
+                        {
+                            Assert.IsTrue(message.Contains(nameof(TagsDeduplicate)), message);
+                            Assert.IsTrue(message.Contains(nameof(GameObject)), message);
+                            Assert.IsTrue(
+                                message.Contains("Hello <color=#FF0000FF><b>[1,2,3]</b></color>"),
+                                message
+                            );
+                        }
+                        else
+                        {
+                            Assert.AreEqual(
+                                "Hello <color=#FF0000FF><b>[1,2,3]</b></color>",
+                                message
+                            );
+                        }
+                    };
+
+                    go.Log(
+                        $"Hello {new List<int> { 1, 2, 3 }:json,b,!,color=red,b,b,b,b,b,b,b}",
+                        pretty: pretty
+                    );
+                    Assert.AreEqual(++expectedLogCount, logCount);
+                    Assert.IsNull(exception, exception?.ToString());
+                }
+            }
+            finally
+            {
+                Application.logMessageReceived -= HandleMessageReceived;
+            }
+
+            return;
+
+            void HandleMessageReceived(string message, string stackTrace, LogType type)
+            {
+                ++logCount;
+                try
+                {
+                    assertion?.Invoke(message);
+                }
+                catch (Exception e)
+                {
+                    exception = e;
+                    throw;
+                }
+            }
         }
     }
 }
