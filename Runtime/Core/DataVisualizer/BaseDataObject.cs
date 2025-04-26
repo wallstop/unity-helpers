@@ -8,8 +8,10 @@ namespace UnityHelpers.Core.DataVisualizer
     using System.Collections.Generic;
     using Attributes;
     using Sirenix.OdinInspector;
+    using UnityEditor;
     using UnityEngine;
     using UnityEngine.Serialization;
+    using UnityEngine.UIElements;
 
     public abstract class BaseDataObject :
 #if ODIN_INSPECTOR
@@ -56,5 +58,12 @@ namespace UnityHelpers.Core.DataVisualizer
                 _assetGuid = Guid.NewGuid().ToString();
             }
         }
+
+#if UNITY_EDITOR
+        public virtual VisualElement BuildGUI(SerializedObject scriptableObject)
+        {
+            return null;
+        }
+#endif
     }
 }

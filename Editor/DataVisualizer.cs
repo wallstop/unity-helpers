@@ -38,11 +38,11 @@
         private VisualElement _inspectorContainer;
         private ScrollView _objectScrollView;
         private ScrollView _inspectorScrollView;
-        private IVisualElementScheduledItem _odinRepaintSchedule;
 
 #if ODIN_INSPECTOR
         private PropertyTree _odinPropertyTree;
-        private IMGUIContainer _odinInspectorContainer;
+        private IMGUIContainer _odinInspectorContainer; // Re-added
+        private IVisualElementScheduledItem _odinRepaintSchedule; // Re-added for caret blink
 #endif
 
         [MenuItem("Tools/Unity Helpers/Data Visualizer")]
@@ -68,14 +68,20 @@
 
         private void OnDisable()
         {
+            Undo.undoRedoPerformed -= UpdateVisuals;
 #if ODIN_INSPECTOR
-            // Unhook from the current tree when the window is disabled/closed
+            _odinRepaintSchedule?.Pause();
+            _odinRepaintSchedule = null;
             if (_odinPropertyTree != null)
             {
                 _odinPropertyTree.OnPropertyValueChanged -= HandleOdinPropertyValueChanged;
+                _odinPropertyTree.Dispose();
+                _odinPropertyTree = null;
             }
+            _odinInspectorContainer?.RemoveFromHierarchy();
+            _odinInspectorContainer?.Dispose();
+            _odinInspectorContainer = null;
 #endif
-            Undo.undoRedoPerformed -= UpdateVisuals;
         }
 
         public void CreateGUI()
@@ -309,8 +315,45 @@
                         BuildObjectsView(); // Update object list UI
                         _selectedObject = null; // Clear selection
 #if ODIN_INSPECTOR
-                        _odinPropertyTree = null; // Clear Odin tree
-#endif
+                        // --- Re-added Odin Tree Recreation & Event Hooking ---
+                        bool recreateTree =
+                            _odinPropertyTree == null
+                            || _odinPropertyTree.WeakTargets == null
+                            || _odinPropertyTree.WeakTargets.Count == 0
+                            || !ReferenceEquals(_odinPropertyTree.WeakTargets[0], _selectedObject);
+
+                        if (recreateTree)
+                        {
+                            // Unhook previous tree event
+                            if (_odinPropertyTree != null)
+                            {
+                                _odinPropertyTree.OnPropertyValueChanged -=
+                                    HandleOdinPropertyValueChanged;
+                                // _odinPropertyTree.Dispose(); // Optional dispose
+                            }
+
+                            _odinPropertyTree = null; // Clear ref
+                            if (_selectedObject != null)
+                            {
+                                try
+                                {
+                                    _odinPropertyTree = PropertyTree.Create(_selectedObject);
+                                    // Hook new tree event
+                                    _odinPropertyTree.OnPropertyValueChanged +=
+                                        HandleOdinPropertyValueChanged;
+                                }
+                                catch (Exception e)
+                                {
+                                    Debug.LogError(
+                                        $"Failed to create Odin PropertyTree for {_selectedObject.name}: {e}"
+                                    );
+                                }
+                            }
+                            // Invalidate the IMGUIContainer so it redraws with the new tree
+                            _odinInspectorContainer?.MarkDirtyRepaint();
+                        }
+                        // --- End Odin Tree Recreation ---
+#endif // ODIN_INSPECTOR
                         BuildInspectorView(); // Update inspector UI (clear it)
                     })
                     {
@@ -339,54 +382,13 @@
                     // Action on click:
                     Selection.activeObject = currentObject; // Update Unity's selection first
                     _selectedObject = currentObject; // Update selection
-#if ODIN_INSPECTOR
-                    // Determine if the Odin Tree needs to be recreated.
-                    bool shouldRecreate =
-                        _odinPropertyTree == null
-                        || _odinPropertyTree.WeakTargets == null
-                        || _odinPropertyTree.WeakTargets.Count == 0
-                        || !object.ReferenceEquals(
-                            _odinPropertyTree.WeakTargets[0],
-                            _selectedObject
-                        );
-
-                    if (shouldRecreate)
-                    {
-                        // Optional: Explicitly dispose the old tree if Odin requires it.
-                        // Check Odin's documentation if you encounter issues.
-                        // _odinPropertyTree?.Dispose();
-                        if (_odinPropertyTree != null)
-                        {
-                            _odinPropertyTree.OnPropertyValueChanged -=
-                                HandleOdinPropertyValueChanged;
-                            // _odinPropertyTree.Dispose(); // If Odin requires explicit disposal
-                        }
-                        _odinPropertyTree = null; // Clear the reference first
-                        if (_selectedObject != null)
-                        {
-                            try
-                            {
-                                _odinPropertyTree = PropertyTree.Create(_selectedObject);
-                                _odinPropertyTree.OnPropertyValueChanged +=
-                                    HandleOdinPropertyValueChanged;
-                            }
-                            catch (Exception e)
-                            {
-                                this.LogError(
-                                    $"Failed to create Odin PropertyTree for {_selectedObject.name}.",
-                                    e
-                                );
-                            }
-                        }
-                    }
-#endif // ODIN_INSPECTOR
-
                     BuildInspectorView(); // Update inspector UI with the potentially new tree/selection
                 })
                 {
                     text = currentObject.Title, // Use the Title property
                     style = { minHeight = 20 },
                 };
+
                 _objectVisualElementMap[dataObject] = objectButton;
                 _objectListContainer.Add(objectButton);
             }
@@ -413,30 +415,42 @@
                 return;
             }
 
+            using SerializedObject serializedObject = new(_selectedObject);
 #if ODIN_INSPECTOR
-            // Use Odin Inspector via IMGUIContainer
-
-            // Ensure tree exists and matches the selected object before drawing
-            if (
-                _odinPropertyTree != null
-                && _odinPropertyTree.WeakTargets != null
-                && // Check list exists
-                _odinPropertyTree.WeakTargets.Count > 0
-                && // Check list has items
-                ReferenceEquals(_odinPropertyTree.WeakTargets[0], _selectedObject)
-            ) // Check the item matches
+            // --- Odin Inspector Path ---
+            try
             {
-                // Reuse the container or create if null
+                // Ensure tree exists for the selected object (might have been created in button click)
+                if (
+                    _odinPropertyTree == null
+                    || _odinPropertyTree.WeakTargets == null
+                    || _odinPropertyTree.WeakTargets.Count == 0
+                    || !object.ReferenceEquals(_odinPropertyTree.WeakTargets[0], _selectedObject)
+                )
+                {
+                    // Attempt to create it if missing/mismatched
+                    if (_odinPropertyTree != null)
+                    {
+                        _odinPropertyTree.OnPropertyValueChanged -= HandleOdinPropertyValueChanged; // Unhook old just in case
+                    }
+                    _odinPropertyTree = PropertyTree.Create(_selectedObject);
+                    _odinPropertyTree.OnPropertyValueChanged += HandleOdinPropertyValueChanged; // Hook new
+                }
+
+                // Reuse or create IMGUIContainer
                 if (_odinInspectorContainer == null)
                 {
                     _odinInspectorContainer = new IMGUIContainer(() =>
                     {
-                        // Double-check inside the handler for safety, though outer check should suffice
+                        // Draw Odin Tree if valid and target matches
                         if (
                             _odinPropertyTree != null
                             && _odinPropertyTree.WeakTargets != null
                             && _odinPropertyTree.WeakTargets.Count > 0
-                            && ReferenceEquals(_odinPropertyTree.WeakTargets[0], _selectedObject)
+                            && object.ReferenceEquals(
+                                _odinPropertyTree.WeakTargets[0],
+                                _selectedObject
+                            )
                         )
                         {
                             try
@@ -445,58 +459,46 @@
                             }
                             catch (Exception e)
                             {
-                                // Handle potential drawing errors
-                                this.LogError($"Error drawing Odin Inspector.", e);
-                                // Optionally display an error in the IMGUI container itself
-                                GUILayout.Label($"Error drawing Odin Inspector: {e.Message}");
+                                Debug.LogError($"Odin Draw Error: {e}");
+                                GUILayout.Label("Odin Draw Error");
                             }
                         }
                     })
                     {
                         name = "odin-inspector",
-                        style = { flexGrow = 1 }, // Allow IMGUI container to expand
+                        style = { flexGrow = 1 },
                     };
 
-                    _odinInspectorContainer.RegisterCallback<FocusInEvent, DataVisualizer>(
-                        (evt, context) =>
-                        {
-                            // When the container gains focus, start periodic repainting for the cursor blink
-                            context._odinRepaintSchedule?.Pause(); // Ensure any previous schedule is stopped
-                            context._odinRepaintSchedule = context
-                                ._odinInspectorContainer.schedule.Execute(() =>
+                    // --- Add Caret Blink Fix ---
+                    _odinInspectorContainer.RegisterCallback<FocusInEvent>(evt =>
+                    {
+                        _odinRepaintSchedule?.Pause();
+                        _odinRepaintSchedule = _odinInspectorContainer
+                            .schedule.Execute(() =>
+                            {
+                                if (
+                                    _odinInspectorContainer.focusController?.focusedElement
+                                    == _odinInspectorContainer
+                                )
                                 {
-                                    if (
-                                        context
-                                            ._odinInspectorContainer
-                                            .focusController
-                                            ?.focusedElement == context._odinInspectorContainer
-                                    )
-                                    {
-                                        context._odinInspectorContainer.MarkDirtyRepaint();
-                                    }
-                                    else
-                                    {
-                                        context._odinRepaintSchedule?.Pause();
-                                    }
-                                })
-                                .Every(100);
-                        },
-                        this
-                    );
-
-                    _odinInspectorContainer.RegisterCallback<FocusOutEvent, DataVisualizer>(
-                        (evt, context) =>
-                        {
-                            // When the container loses focus, stop the periodic repainting
-                            context._odinRepaintSchedule?.Pause();
-                        },
-                        this
-                    );
+                                    _odinInspectorContainer.MarkDirtyRepaint();
+                                }
+                                else
+                                {
+                                    _odinRepaintSchedule?.Pause();
+                                }
+                            })
+                            .Every(100); // ~100ms interval for blinking
+                    });
+                    _odinInspectorContainer.RegisterCallback<FocusOutEvent>(evt =>
+                    {
+                        _odinRepaintSchedule?.Pause();
+                    });
+                    // --- End Caret Blink Fix ---
                 }
                 else
                 {
-                    // If container exists, ensure its handler is up-to-date
-                    // (The lambda captures should handle this, but explicit re-assignment is safe)
+                    // Ensure handler is correct if container is reused
                     _odinInspectorContainer.onGUIHandler = () =>
                     {
                         if (
@@ -515,55 +517,94 @@
                             }
                             catch (Exception e)
                             {
-                                this.LogError($"Error drawing Odin Inspector.", e);
-                                GUILayout.Label($"Error drawing Odin Inspector: {e.Message}");
+                                Debug.LogError($"Odin Draw Error: {e}");
+                                GUILayout.Label("Odin Draw Error");
                             }
                         }
                     };
                 }
-
-                // Add the container to the hierarchy if it's not already there
-                // (Clear() removes it, so we always add it back if we have a valid tree)
                 _inspectorContainer.Add(_odinInspectorContainer);
-
-                // Ensure the container repaints if the underlying data might have changed
-                _odinInspectorContainer.MarkDirtyRepaint();
+                _odinInspectorContainer.MarkDirtyRepaint(); // Ensure it draws initially
             }
-            else if (_selectedObject != null)
+            catch (Exception e)
             {
-                // Handle case where tree creation failed or doesn't match
-                _inspectorContainer.Add(
-                    new Label(
-                        $"Odin Inspector could not be shown for {_selectedObject.name}. Tree invalid or target mismatch."
-                    )
-                    {
-                        name = "odin-error-label",
-                    }
-                );
+                Debug.LogError($"Error setting up Odin Inspector: {e}");
+                _inspectorContainer.Add(new Label($"Odin Inspector Error: {e.Message}"));
             }
 
-#else
-
-            SerializedObject serializedObject = new(_selectedObject);
-            SerializedProperty serializedProperty = serializedObject.GetIterator();
-            serializedProperty.NextVisible(true);
-
-            const string titleFieldName = nameof(BaseDataObject._title);
-            while (serializedProperty.NextVisible(false))
+#else // --- Standard Inspector Path ---
+            try
             {
-                SerializedProperty currentProperty = serializedProperty.Copy();
-                PropertyField propertyField = new(serializedProperty.Copy());
-                propertyField.Bind(serializedObject);
-                if (string.Equals(currentProperty.name, titleFieldName, StringComparison.Ordinal))
+                SerializedProperty serializedProperty = serializedObject.GetIterator();
+                serializedProperty.NextVisible(true); // Skip script property
+
+                // <<< IMPORTANT: Define the actual field name for the Title property >>>
+                string titleFieldName = "title"; // Example: Change "title" to your field name (e.g., "objectName", "_title")
+
+                while (serializedProperty.NextVisible(false))
                 {
-                    propertyField.RegisterValueChangeCallback(evt =>
+                    SerializedProperty currentPropCopy = serializedProperty.Copy();
+                    var propertyField = new PropertyField(currentPropCopy);
+                    propertyField.Bind(serializedObject);
+
+                    // --- Real-time update for Title field ---
+                    if (currentPropCopy.name == titleFieldName)
                     {
-                        RefreshSelectedElement();
-                    });
+                        propertyField.RegisterValueChangeCallback(evt =>
+                        {
+                            // Use the generic update method
+                            // Schedule slightly later to ensure data settles before reading Title property
+                            rootVisualElement
+                                .schedule.Execute(
+                                    () => UpdateObjectTitleRepresentation(_selectedObject)
+                                )
+                                .ExecuteLater(10);
+                        });
+                    }
+                    // --- End Real-time update ---
+
+                    _inspectorContainer.Add(propertyField);
                 }
-                _inspectorContainer.Add(propertyField);
             }
-#endif
+            catch (Exception e)
+            {
+                Debug.LogError($"Error creating standard inspector: {e}");
+                _inspectorContainer.Add(new Label($"Inspector Error: {e.Message}"));
+            }
+#endif // ODIN_INSPECTOR / Standard
+
+            VisualElement customElement = _selectedObject.BuildGUI(serializedObject);
+            if (customElement != null)
+            {
+                _inspectorContainer.Add(customElement);
+            }
+        }
+
+        private void UpdateObjectTitleRepresentation(BaseDataObject dataObject)
+        {
+            if (
+                dataObject != null
+                && _selectedObject == dataObject
+                && _objectVisualElementMap.TryGetValue(dataObject, out VisualElement element)
+            )
+            {
+                string currentTitle = dataObject.Title;
+
+                if (element is Button buttonElement)
+                {
+                    if (buttonElement.text != currentTitle)
+                    {
+                        buttonElement.text = currentTitle;
+                    }
+                }
+                else if (element is Label labelElement)
+                {
+                    if (labelElement.text != currentTitle)
+                    {
+                        labelElement.text = currentTitle;
+                    }
+                }
+            }
         }
 
         private void DrawNamespaceTab()
