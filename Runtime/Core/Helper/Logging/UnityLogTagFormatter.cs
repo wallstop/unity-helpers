@@ -9,6 +9,21 @@
     using Debug = UnityEngine.Debug;
     using Object = UnityEngine.Object;
 
+    /// <summary>
+    /// Default supported formats:
+    ///     b -> Bold text
+    ///     bold -> Bold text
+    ///     ! -> Bold text
+    ///     i -> Italic text
+    ///     italic -> Italic text
+    ///     _ -> Italic text
+    ///     json -> format as JSON
+    ///     #color-hex -> Colored text
+    ///     #color-name -> Colored text
+    ///     color=value -> Colored text
+    ///     1-100 -> Sized text
+    ///     size=1-100 -> Sized text
+    /// </summary>
     public sealed class UnityLogTagFormatter : IFormatProvider, ICustomFormatter
     {
         public const char Separator = ',';
@@ -357,6 +372,7 @@
             bool force = false
         )
         {
+            bool stopLooping = false;
             foreach (var entry in _matchingDecorations)
             {
                 for (int i = 0; i < entry.Value.Count; i++)
@@ -378,12 +394,24 @@
                         if (priority != entry.Key)
                         {
                             entry.Value.RemoveAt(i);
+                            if (entry.Value.Count == 0)
+                            {
+                                _matchingDecorations.Remove(entry.Key);
+                            }
+
+                            stopLooping = true;
                             break;
                         }
+
                         entry.Value[i] = (tag, editorOnly, predicate, format);
                         return true;
                     }
                     return false;
+                }
+
+                if (stopLooping)
+                {
+                    break;
                 }
             }
 
