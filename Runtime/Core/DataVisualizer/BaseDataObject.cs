@@ -31,7 +31,7 @@ namespace UnityHelpers.Core.DataVisualizer
 
         [FormerlySerializedAs("title")]
         [SerializeField]
-        protected string _title = string.Empty;
+        protected internal string _title = string.Empty;
 
         [FormerlySerializedAs("description")]
         [SerializeField]
