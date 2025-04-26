@@ -1,4 +1,8 @@
-﻿namespace UnityHelpers.Core.DataVisualizer
+﻿using System.Runtime.CompilerServices;
+
+[assembly: InternalsVisibleTo(assemblyName: "WallstopStudios.UnityHelpers.Editor")]
+
+namespace UnityHelpers.Core.DataVisualizer
 {
     using System;
     using System.Collections.Generic;
@@ -35,8 +39,15 @@
         protected string _description = string.Empty;
 
         [FormerlySerializedAs("tags")]
+        [SerializeField]
         [HideInInspector]
         protected List<string> _tags = new();
+
+#if UNITY_EDITOR
+        [SerializeField]
+        [HideInInspector]
+        protected internal int _customOrder = -1;
+#endif
 
         protected virtual void OnValidate()
         {
