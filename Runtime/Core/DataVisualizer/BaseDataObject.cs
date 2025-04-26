@@ -21,7 +21,15 @@ namespace UnityHelpers.Core.DataVisualizer
 #endif
     {
         public virtual string Id => _assetGuid;
-        public virtual string Title => _title;
+        public virtual string Title
+        {
+            get
+            {
+                string title = _title;
+                return string.IsNullOrWhiteSpace(title) ? Id : title;
+            }
+        }
+
         public virtual string Description => _description;
         public virtual IReadOnlyList<string> Tags => _tags;
 
