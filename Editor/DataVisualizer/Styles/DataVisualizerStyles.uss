@@ -9,7 +9,16 @@
 }
 
 .object-item__label {
+    /* Core properties */
+    flex-grow: 1; /* Allow label to take available space */
+    flex-shrink: 1; /* Allow label to shrink if needed */
+    min-width: 0; /* Crucial for flexbox to allow shrinking below content size */
 
+    /* Text Overflow Handling */
+    white-space: nowrap; /* Prevent text from wrapping to the next line */
+    overflow: hidden; /* Hide text that exceeds the element bounds */
+    text-overflow: ellipsis; /* Display '...' for hidden text */
+    margin-right: 5px; /* Add some space between label and action buttons */
 }
 
 .object-item:hover {
@@ -97,4 +106,46 @@
     font-size: 10px;
     -unity-font-style: bold;
     flex-shrink: 0;
+}
+
+.object-item { /* The main row VE */
+    min-width: 0;
+    overflow: hidden; /* Hide overflow at the row level too */
+}
+
+.object-item-content { /* The VE wrapping the label */
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0; /* Allow this container to shrink */
+    /* Add overflow hidden here too as a fallback */
+    overflow: hidden;
+    /* Align label vertically if needed */
+    /* align-items: center; */
+}
+
+.object-item-actions {
+    flex-shrink: 0;
+}
+
+.action-button {
+    padding: 0;
+    min-width: 0;
+    font-size: 12px;
+    background-color: transparent;
+    border-width: 0;
+}
+
+.action-button:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.delete-button {
+    /* Use !important cautiously if needed to override default button styles */
+    color: rgb(217, 83, 79) !important; /* A common 'danger' red */
+    -unity-font-style: bold;
+}
+
+.delete-button:hover {
+    color: rgb(200, 60, 56) !important; /* Darker red on hover */
+    background-color: rgba(217, 83, 79, 0.1); /* Slight red background on hover */
 }

@@ -39,6 +39,11 @@
         private const string NamespaceLabelClass = "object-item__label";
         private const string TypeItemClass = "type-item";
         private const string TypeLabelClass = "type-item__label";
+        private const string objectItemClass = "object-item"; // Keep using this base class maybe
+        private const string objectItemContentClass = "object-item-content"; // Container for label/main part
+        private const string objectItemActionsClass = "object-item-actions"; // Container for buttons
+        private const string actionButtonClass = "action-button"; // Style for small buttons
+
         private const string ArrowCollapsed = "►";
         private const string ArrowExpanded = "▼";
 
@@ -419,79 +424,155 @@
             };
             headerRow.Add(settingsButton);
 
-            VisualElement mainContainer = new()
-            {
-                name = "main-container",
-                style = { flexGrow = 1, flexDirection = FlexDirection.Row },
-            };
-            root.Add(mainContainer);
+            // VisualElement mainContainer = new()
+            // {
+            //     name = "main-container",
+            //     style = { flexGrow = 1, flexDirection = FlexDirection.Row },
+            // };
+            // root.Add(mainContainer);
 
-            VisualElement namespaceColumn = new()
-            {
-                name = "namespace-column",
-                style =
-                {
-                    width = 200,
-                    borderRightWidth = 1,
-                    borderRightColor = Color.gray,
-                },
-            };
-            ScrollView namespaceScrollView = new(ScrollViewMode.Vertical)
-            {
-                name = "namespace-scrollview",
-                style = { flexGrow = 1 },
-            };
-            _namespaceListContainer = new VisualElement { name = "namespace-list" };
-            namespaceScrollView.Add(_namespaceListContainer);
-            namespaceColumn.Add(
-                new Label("Namespaces")
-                {
-                    style = { unityFontStyleAndWeight = FontStyle.Bold, paddingBottom = 5 },
-                }
-            );
-            namespaceColumn.Add(namespaceScrollView);
-            mainContainer.Add(namespaceColumn);
+            VisualElement namespaceColumn = CreateNamespaceColumn(); // Extract creation logic
+            VisualElement objectColumn = CreateObjectColumn(); // Extract creation logic
+            VisualElement inspectorColumn = CreateInspectorColumn(); // Extract creation logic
 
-            VisualElement objectColumn = new()
+            var innerSplitView = new TwoPaneSplitView(
+                0,
+                250,
+                TwoPaneSplitViewOrientation.Horizontal
+            )
             {
-                name = "object-column",
-                style =
-                {
-                    width = 200,
-                    borderRightWidth = 1,
-                    borderRightColor = Color.gray,
-                },
+                name = "inner-split-view",
+                style = { flexGrow = 1 }, // Grow within outer split view
             };
-            objectColumn.Add(
-                new Label("Objects")
-                {
-                    style = { unityFontStyleAndWeight = FontStyle.Bold, paddingBottom = 5 },
-                }
-            );
-            _objectScrollView = new ScrollView(ScrollViewMode.Vertical)
-            {
-                name = "object-scrollview",
-                style = { flexGrow = 1 },
-            };
-            _objectListContainer = new VisualElement { name = "object-list" };
-            _objectScrollView.Add(_objectListContainer);
-            objectColumn.Add(_objectScrollView);
-            mainContainer.Add(objectColumn);
 
-            VisualElement inspectorColumn = new()
+            innerSplitView.Add(objectColumn); // Add object column VE directly
+
+            // Pane 1 (Right/Flexible): Inspector Column
+            innerSplitView.Add(inspectorColumn); // Add inspector column VE directly
+
+            var outerSplitView = new TwoPaneSplitView(
+                0,
+                200,
+                TwoPaneSplitViewOrientation.Horizontal
+            )
             {
-                name = "inspector-column",
-                style = { flexGrow = 1 },
+                name = "outer-split-view",
+                style = { flexGrow = 1 }, // Take up all space under header
             };
-            _inspectorScrollView = new ScrollView(ScrollViewMode.Vertical)
-            {
-                name = "inspector-scrollview",
-                style = { flexGrow = 1 },
-            };
-            _inspectorContainer = new VisualElement { name = "inspector-content" };
-            _inspectorScrollView.Add(_inspectorContainer);
-            inspectorColumn.Add(_inspectorScrollView);
-            mainContainer.Add(inspectorColumn);
+            // Pane 0 (Left/Fixed): Namespace Column
+            outerSplitView.Add(namespaceColumn);
+
+            // Pane 1 (Right/Flexible): Inner Split View
+            outerSplitView.Add(innerSplitView);
+
+            // Add the outer split view to the root
+            root.Add(outerSplitView);
+
+            // VisualElement namespaceColumn = new()
+            // {
+            //     name = "namespace-column",
+            //     style =
+            //     {
+            //         width = 200,
+            //         borderRightWidth = 1,
+            //         borderRightColor = Color.gray,
+            //     },
+            // };
+            // ScrollView namespaceScrollView = new(ScrollViewMode.Vertical)
+            // {
+            //     name = "namespace-scrollview",
+            //     style = { flexGrow = 1 },
+            // };
+            // _namespaceListContainer = new VisualElement { name = "namespace-list" };
+            // namespaceScrollView.Add(_namespaceListContainer);
+            // namespaceColumn.Add(
+            //     new Label("Namespaces")
+            //     {
+            //         style = { unityFontStyleAndWeight = FontStyle.Bold, paddingBottom = 5 },
+            //     }
+            // );
+            // namespaceColumn.Add(namespaceScrollView);
+            // mainContainer.Add(namespaceColumn);
+
+            // VisualElement objectColumn = new()
+            // {
+            //     name = "object-column",
+            //     style =
+            //     {
+            //         width = 250,
+            //         borderRightWidth = 1,
+            //         borderRightColor = Color.gray,
+            //         flexDirection = FlexDirection.Column,
+            //     },
+            // };
+
+            // var objectHeader = new VisualElement
+            // {
+            //     name = "object-header",
+            //     style =
+            //     {
+            //         flexDirection = FlexDirection.Row, // Align label and button horizontally
+            //         justifyContent = Justify.SpaceBetween, // Push label left, button right
+            //         alignItems = Align.Center,
+            //         paddingBottom = 3,
+            //         paddingTop = 3,
+            //         paddingLeft = 3,
+            //         paddingRight = 3,
+            //         height = 24, // Fixed height for header
+            //         flexShrink = 0, // Prevent shrinking
+            //         borderBottomWidth = 1, // Separator line
+            //         borderBottomColor = Color.gray,
+            //     },
+            // };
+            // objectColumn.Add(objectHeader); // Add header first
+            //
+            // objectColumn.Add(
+            //     new Label("Objects")
+            //     {
+            //         style = { unityFontStyleAndWeight = FontStyle.Bold, paddingBottom = 5 },
+            //     }
+            // );
+            //
+            // var createButton = new Button(CreateNewObject)
+            // {
+            //     text = "+",
+            //     tooltip = "Create New Object",
+            //     name = "create-object-button",
+            //     style =
+            //     {
+            //         width = 20,
+            //         height = 20,
+            //         paddingLeft = 0,
+            //         paddingRight = 0,
+            //     }, // Style as small button
+            // };
+            // createButton.AddToClassList("icon-button"); // Use existing or new style
+            // objectHeader.Add(createButton);
+
+            // _objectScrollView = new ScrollView(ScrollViewMode.Vertical)
+            // {
+            //     name = "object-scrollview",
+            //     style = { flexGrow = 1 },
+            // };
+            // _objectListContainer = new VisualElement { name = "object-list" };
+            // _objectScrollView.Add(_objectListContainer);
+            // objectColumn.Add(_objectScrollView);
+            // mainContainer.Add(objectColumn);
+
+            // VisualElement inspectorColumn = new()
+            // {
+            //     name = "inspector-column",
+            //     style = { flexGrow = 1 },
+            // };
+            // _inspectorScrollView = new ScrollView(ScrollViewMode.Vertical)
+            // {
+            //     name = "inspector-scrollview",
+            //     style = { flexGrow = 1 },
+            // };
+            // _inspectorContainer = new VisualElement { name = "inspector-content" };
+            // _inspectorScrollView.Add(_inspectorContainer);
+            // inspectorColumn.Add(_inspectorScrollView);
+            // mainContainer.Add(inspectorColumn);
 
             _settingsPopup = new VisualElement
             {
@@ -523,12 +604,261 @@
                 },
             };
             root.Add(_settingsPopup);
-
             BuildSettingsPopup();
-
             BuildNamespaceView();
             BuildObjectsView();
             BuildInspectorView();
+        }
+
+        private VisualElement CreateNamespaceColumn()
+        {
+            VisualElement namespaceColumn = new()
+            {
+                name = "namespace-column",
+                style =
+                {
+                    borderRightWidth = 1,
+                    borderRightColor = Color.gray,
+                    height = Length.Percent(100),
+                }, // Height 100% for SplitView pane
+            };
+            ScrollView namespaceScrollView = new(ScrollViewMode.Vertical)
+            {
+                name = "namespace-scrollview",
+                style = { flexGrow = 1 },
+            };
+            _namespaceListContainer = new VisualElement { name = "namespace-list" };
+            namespaceScrollView.Add(_namespaceListContainer);
+            namespaceColumn.Add(
+                new Label("Namespaces")
+                {
+                    style =
+                    {
+                        unityFontStyleAndWeight = FontStyle.Bold,
+                        paddingBottom = 5,
+                        paddingLeft = 3,
+                    },
+                }
+            );
+            namespaceColumn.Add(namespaceScrollView);
+            return namespaceColumn;
+        }
+
+        private VisualElement CreateObjectColumn()
+        {
+            VisualElement objectColumn = new()
+            {
+                name = "object-column",
+                style =
+                {
+                    borderRightWidth = 1,
+                    borderRightColor = Color.gray,
+                    flexDirection = FlexDirection.Column,
+                    height = Length.Percent(100),
+                }, // Height 100%
+            };
+            // Header
+            var objectHeader = new VisualElement
+            {
+                name = "object-header",
+                style =
+                {
+                    flexDirection = FlexDirection.Row, // Align label and button horizontally
+                    justifyContent = Justify.SpaceBetween, // Push label left, button right
+                    alignItems = Align.Center,
+                    paddingBottom = 3,
+                    paddingTop = 3,
+                    paddingLeft = 3,
+                    paddingRight = 3,
+                    height = 24, // Fixed height for header
+                    flexShrink = 0, // Prevent shrinking
+                    borderBottomWidth = 1, // Separator line
+                    borderBottomColor = Color.gray,
+                },
+            };
+
+            objectColumn.Add(
+                new Label("Objects")
+                {
+                    style = { unityFontStyleAndWeight = FontStyle.Bold, paddingBottom = 5 },
+                }
+            );
+            var createButton = new Button(CreateNewObject)
+            {
+                text = "+",
+                tooltip = "Create New Object",
+                name = "create-object-button",
+                style =
+                {
+                    width = 20,
+                    height = 20,
+                    paddingLeft = 0,
+                    paddingRight = 0,
+                }, // Style as small button
+            };
+            createButton.AddToClassList("icon-button");
+            objectHeader.Add(createButton);
+            objectColumn.Add(objectHeader);
+            // ScrollView
+            _objectScrollView = new ScrollView(ScrollViewMode.Vertical)
+            {
+                name = "object-scrollview",
+                style = { flexGrow = 1 },
+            };
+            _objectListContainer = new VisualElement { name = "object-list" };
+            _objectScrollView.Add(_objectListContainer);
+            objectColumn.Add(_objectScrollView);
+            return objectColumn;
+        }
+
+        private VisualElement CreateInspectorColumn()
+        {
+            VisualElement inspectorColumn = new()
+            {
+                name = "inspector-column",
+                style = { flexGrow = 1, height = Length.Percent(100) }, // Height 100%
+            };
+            _inspectorScrollView = new ScrollView(ScrollViewMode.Vertical)
+            {
+                name = "inspector-scrollview",
+                style = { flexGrow = 1 },
+            };
+            _inspectorContainer = new VisualElement { name = "inspector-content" };
+            _inspectorScrollView.Add(_inspectorContainer);
+            inspectorColumn.Add(_inspectorScrollView);
+            return inspectorColumn;
+        }
+
+        private void CreateNewObject()
+        {
+            // 1. Check if a Type is selected
+            if (_selectedType == null)
+            {
+                EditorUtility.DisplayDialog(
+                    "Cannot Create Object",
+                    "Please select a Type in the first column before creating an object.",
+                    "OK"
+                );
+                return;
+            }
+
+            // 2. Check if Settings and DataFolderPath are valid
+            if (_settings == null || string.IsNullOrWhiteSpace(_settings.DataFolderPath))
+            {
+                EditorUtility.DisplayDialog(
+                    "Cannot Create Object",
+                    "Data Folder Path is not set correctly in Settings.",
+                    "OK"
+                );
+                return;
+            }
+
+            // 3. Ensure target directory exists
+            string targetDirectory = Path.Combine(
+                Directory.GetCurrentDirectory(),
+                _settings.DataFolderPath
+            ); // Get full path
+            targetDirectory = Path.GetFullPath(targetDirectory).Replace('\\', '/'); // Normalize
+
+            // Double-check it's within Assets (should be from settings validation, but be safe)
+            string projectAssetsPath = Path.GetFullPath(Application.dataPath).Replace('\\', '/');
+            if (!targetDirectory.StartsWith(projectAssetsPath, StringComparison.OrdinalIgnoreCase))
+            {
+                EditorUtility.DisplayDialog(
+                    "Invalid Data Folder",
+                    $"The configured Data Folder ('{_settings.DataFolderPath}') is not inside the project's Assets folder.",
+                    "OK"
+                );
+                return;
+            }
+
+            try
+            {
+                if (!Directory.Exists(targetDirectory))
+                {
+                    Directory.CreateDirectory(targetDirectory);
+                    Debug.Log($"Created data directory: {_settings.DataFolderPath}");
+                }
+            }
+            catch (Exception e)
+            {
+                EditorUtility.DisplayDialog(
+                    "Error",
+                    $"Could not create data directory '{_settings.DataFolderPath}': {e.Message}",
+                    "OK"
+                );
+                return;
+            }
+
+            // 4. Create Instance
+            ScriptableObject instance = ScriptableObject.CreateInstance(_selectedType);
+            if (instance == null)
+            {
+                EditorUtility.DisplayDialog(
+                    "Error",
+                    $"Failed to create instance of type '{_selectedType.Name}'.",
+                    "OK"
+                );
+                return;
+            }
+
+            // Optionally set default Title based on TypeName (BaseDataObject specific)
+            if (instance is BaseDataObject bdo)
+            {
+                // Title might be set based on asset name later, or set a default here
+                bdo._title = $"New {_selectedType.Name}";
+                // Guid should be assigned automatically if BaseDataObject handles it
+            }
+
+            // 5. Generate Unique Asset Path
+            // Use relative path for asset database functions
+            string baseAssetName = $"New {_selectedType.Name}.asset";
+            string proposedPath = Path.Combine(_settings.DataFolderPath, baseAssetName)
+                .Replace('\\', '/');
+            string uniquePath = AssetDatabase.GenerateUniqueAssetPath(proposedPath);
+
+            // 6. Create Asset
+            try
+            {
+                AssetDatabase.CreateAsset(instance, uniquePath);
+                AssetDatabase.SaveAssets(); // Save immediately
+                AssetDatabase.Refresh(); // Make sure Unity recognizes it
+
+                Debug.Log($"Created new object asset at: {uniquePath}");
+
+                // Load the newly created asset to get the correct instance
+                BaseDataObject newObject = AssetDatabase.LoadAssetAtPath<BaseDataObject>(
+                    uniquePath
+                );
+
+                if (newObject != null)
+                {
+                    // --- Update UI ---
+                    // Add to the beginning of the current list
+                    _selectedObjects.Insert(0, newObject);
+                    // Rebuild the view
+                    BuildObjectsView();
+                    // Select the new object
+                    SelectObject(newObject);
+                }
+                else
+                {
+                    Debug.LogError($"Failed to load the newly created asset at {uniquePath}");
+                    // Might still want to rebuild view even if selection fails
+                    BuildObjectsView();
+                    SelectObject(null);
+                }
+            }
+            catch (Exception e)
+            {
+                EditorUtility.DisplayDialog(
+                    "Error Creating Asset",
+                    $"Failed to create asset at '{uniquePath}': {e.Message}",
+                    "OK"
+                );
+                // Clean up the instance if asset creation failed?
+                UnityEngine.Object.DestroyImmediate(instance); // Destroy the SO instance if saving failed
+            }
         }
 
         private void ToggleSettingsPopup()
@@ -873,27 +1203,107 @@
 
             foreach (BaseDataObject dataObject in _selectedObjects)
             {
-                VisualElement objectItem = new()
+                if (dataObject == null)
                 {
-                    name = $"object-item-{dataObject.GetInstanceID()}",
+                    continue;
+                }
+
+                VisualElement objectItemRow = new()
+                {
+                    name = $"object-item-row-{dataObject.GetInstanceID()}",
                 };
-                objectItem.AddToClassList("object-item");
-                objectItem.userData = dataObject;
+                objectItemRow.AddToClassList(objectItemClass); // Apply base style if needed
+                // Store data object reference for event handlers (like selection)
+                objectItemRow.style.flexDirection = FlexDirection.Row; // Explicitly set row
+                objectItemRow.style.alignItems = Align.Center; // Align items vertically
+                objectItemRow.userData = dataObject;
+                // Register Pointer Down Event for Selection and Drag Start (on the ROW)
+                objectItemRow.RegisterCallback<PointerDownEvent>(OnObjectPointerDown);
 
-                Label titleLabel = new(dataObject.Title) { name = "object-item-label" };
-                titleLabel.AddToClassList("object-item__label");
-                objectItem.Add(titleLabel);
+                VisualElement contentArea = new VisualElement { name = "content" };
+                contentArea.AddToClassList(objectItemContentClass);
+                objectItemRow.Add(contentArea);
 
-                objectItem.RegisterCallback<PointerDownEvent>(OnObjectPointerDown);
+                Label titleLabel = new Label(dataObject.Title) { name = "object-item-label" };
+                titleLabel.AddToClassList("object-item__label"); // Apply style
+                contentArea.Add(titleLabel);
 
-                _objectVisualElementMap[dataObject] = objectItem;
-                _objectListContainer.Add(objectItem);
+                VisualElement actionsArea = new VisualElement
+                {
+                    name = "actions",
+                    style =
+                    {
+                        flexDirection = FlexDirection.Row, // <<< SET HORIZONTAL LAYOUT
+                        alignItems = Align.Center, // Align buttons vertically if their heights differ slightly
+                        flexShrink = 0, // Ensure this container doesn't shrink horizontally
+                    },
+                };
+                actionsArea.AddToClassList(objectItemActionsClass);
+                objectItemRow.Add(actionsArea);
 
+                var cloneButton = new Button(() => CloneObject(dataObject))
+                {
+                    text = "++", // Document emoji or "⎘" U+2398
+                    tooltip = "Clone Object",
+                    style = { color = new Color(0.4f, 0.7f, 0.4f) },
+                };
+                cloneButton.AddToClassList(actionButtonClass);
+                actionsArea.Add(cloneButton);
+
+                // Rename Button
+                var renameButton = new Button(() => OpenRenamePopup(dataObject))
+                {
+                    text = "✎", // Pencil emoji or "Rename"
+                    tooltip = "Rename Asset",
+                    style = { color = new Color(0.2f, 0.6f, 0.9f) },
+                };
+                renameButton.AddToClassList(actionButtonClass);
+                actionsArea.Add(renameButton);
+
+                // Delete Button
+                var deleteButton = new Button(() => DeleteObject(dataObject))
+                {
+                    text = "X", // Trash can emoji U+1F5D1
+                    tooltip = "Delete Object",
+                    style = { color = new Color(0.9f, 0.4f, 0.4f) }, // Make delete reddish? Requires USS usually
+                };
+                deleteButton.AddToClassList(actionButtonClass);
+                deleteButton.AddToClassList("delete-button");
+                // deleteButton.AddToClassList("delete-button"); // For specific styling via USS
+                actionsArea.Add(deleteButton);
+
+                // Store mapping (use the main row element for selection/drag)
+                _objectVisualElementMap[dataObject] = objectItemRow;
+                _objectListContainer.Add(objectItemRow);
+
+                // Re-apply selection style if needed
                 if (_selectedObject != null && _selectedObject == dataObject)
                 {
-                    objectItem.AddToClassList("selected");
-                    _selectedElement = objectItem;
+                    objectItemRow.AddToClassList("selected");
+                    _selectedElement = objectItemRow;
                 }
+
+                // VisualElement objectItem = new()
+                // {
+                //     name = $"object-item-{dataObject.GetInstanceID()}",
+                // };
+                // objectItem.AddToClassList("object-item");
+                // objectItem.userData = dataObject;
+                //
+                // Label titleLabel = new(dataObject.Title) { name = "object-item-label" };
+                // titleLabel.AddToClassList("object-item__label");
+                // objectItem.Add(titleLabel);
+                //
+                // objectItem.RegisterCallback<PointerDownEvent>(OnObjectPointerDown);
+                //
+                // _objectVisualElementMap[dataObject] = objectItem;
+                // _objectListContainer.Add(objectItem);
+                //
+                // if (_selectedObject != null && _selectedObject == dataObject)
+                // {
+                //     objectItem.AddToClassList("selected");
+                //     _selectedElement = objectItem;
+                // }
             }
         }
 
@@ -1067,6 +1477,213 @@
                     this.LogError($"Error creating standard inspector.", e);
                     _inspectorContainer.Add(new Label($"Inspector Error: {e.Message}"));
                 }
+            }
+        }
+
+        private void DeleteObject(BaseDataObject objectToDelete)
+        {
+            if (objectToDelete == null)
+                return;
+
+            // Confirmation Dialog
+            if (
+                EditorUtility.DisplayDialog(
+                    "Confirm Delete",
+                    $"Are you sure you want to delete the asset '{objectToDelete.name}'?\nThis action cannot be undone.",
+                    "Delete",
+                    "Cancel"
+                )
+            )
+            {
+                string path = AssetDatabase.GetAssetPath(objectToDelete);
+                if (string.IsNullOrEmpty(path))
+                {
+                    Debug.LogError(
+                        $"Could not find asset path for '{objectToDelete.name}'. Cannot delete."
+                    );
+                    return;
+                }
+
+                Debug.Log($"Attempting to delete asset: {path}");
+
+                // Remove from internal list and map FIRST
+                bool removed = _selectedObjects.Remove(objectToDelete);
+                _objectVisualElementMap.Remove(objectToDelete, out var visualElement);
+
+                // Delete the asset file
+                bool deleted = AssetDatabase.DeleteAsset(path);
+
+                if (deleted)
+                {
+                    Debug.Log($"Asset '{path}' deleted successfully.");
+                    // Optionally save/refresh database
+                    // AssetDatabase.SaveAssets(); // Usually not needed after DeleteAsset
+                    AssetDatabase.Refresh();
+
+                    // Remove visual element from the list container
+                    visualElement?.RemoveFromHierarchy();
+
+                    // Clear selection if the deleted object was selected
+                    if (_selectedObject == objectToDelete)
+                    {
+                        SelectObject(null); // This will clear selection and update inspector
+                    }
+                    // No need to call BuildObjectsView if we manually remove the element.
+                    // If list order matters beyond _customOrder, might need rebuild.
+                }
+                else
+                {
+                    Debug.LogError($"Failed to delete asset at '{path}'.");
+                    // If delete failed, add object back to list? Or refresh view?
+                    // For safety, let's rebuild the view to reflect actual state.
+                    LoadObjectTypes(_selectedType); // Reload objects for current type
+                    BuildObjectsView(); // Rebuild view fully
+                    // Re-select previously selected if it wasn't the one we tried to delete
+                    SelectObject(_selectedObject);
+                }
+            }
+        }
+
+        private void OpenRenamePopup(BaseDataObject objectToRename)
+        {
+            if (objectToRename == null)
+                return;
+            string currentPath = AssetDatabase.GetAssetPath(objectToRename);
+            if (string.IsNullOrEmpty(currentPath))
+            {
+                EditorUtility.DisplayDialog(
+                    "Error",
+                    "Cannot rename object: Asset path not found.",
+                    "OK"
+                );
+                return;
+            }
+
+            // Get reference to this window to pass to popup for callback
+            DataVisualizer mainVisualizerWindow = this;
+
+            // Create and show the modal window
+            RenameAssetPopup.ShowWindow(
+                currentPath,
+                (renameSuccessful) =>
+                {
+                    // This callback executes after the popup closes
+                    Debug.Log($"Rename popup closed. Success: {renameSuccessful}");
+                    if (renameSuccessful)
+                    {
+                        // Refreshing the object view might be needed if title depends on name,
+                        // or just refresh the specific element. AssetDatabase refresh might trigger some updates too.
+                        // Find the element associated with the (now potentially renamed) object.
+                        // Note: objectToRename instance might still hold old name until reloaded?
+                        // Safest bet is to fully reload and rebuild.
+                        if (_selectedType != null)
+                        { // Ensure type context is still valid
+                            LoadObjectTypes(_selectedType);
+                            BuildObjectsView();
+                            // Try to re-select the object (it's the same instance)
+                            SelectObject(objectToRename);
+                        }
+                        else
+                        {
+                            BuildObjectsView(); // Rebuild without type context if needed
+                        }
+                    }
+                    // Ensure focus returns to main window (ShowModalUtility usually handles this)
+                    mainVisualizerWindow?.Focus();
+                }
+            );
+        }
+
+        private void CloneObject(BaseDataObject originalObject)
+        {
+            if (originalObject == null)
+                return;
+
+            string originalPath = AssetDatabase.GetAssetPath(originalObject);
+            if (string.IsNullOrEmpty(originalPath))
+            {
+                EditorUtility.DisplayDialog(
+                    "Error",
+                    "Cannot clone object: Original asset path not found.",
+                    "OK"
+                );
+                return;
+            }
+
+            // 1. Instantiate a copy
+            BaseDataObject cloneInstance = Instantiate(originalObject); // Copies serialized data
+            if (cloneInstance == null)
+            {
+                EditorUtility.DisplayDialog(
+                    "Error",
+                    "Failed to instantiate a clone of the object.",
+                    "OK"
+                );
+                return;
+            }
+            cloneInstance._assetGuid = Guid.NewGuid().ToString(); // Generate a new GUID
+            // Note: Instantiate often triggers OnEnable/Awake. Ensure any Guid generation in BaseDataObject handles cloning (e.g., assigns a NEW Guid).
+
+
+            // 2. Generate Unique Path in the same directory
+            string directory = Path.GetDirectoryName(originalPath).Replace('\\', '/');
+            string originalName = Path.GetFileNameWithoutExtension(originalPath);
+            string extension = Path.GetExtension(originalPath); // Should be ".asset"
+            string proposedName = $"{originalName} (Clone){extension}"; // Suggest a name
+            string proposedPath = Path.Combine(directory, proposedName).Replace('\\', '/');
+            string uniquePath = AssetDatabase.GenerateUniqueAssetPath(proposedPath);
+            string uniqueName = Path.GetFileNameWithoutExtension(uniquePath); // Get the final unique name
+
+            // 3. Update Clone's Title (optional, based on new unique asset name)
+            cloneInstance._title = uniqueName; // Set title to match unique asset name
+
+            // 4. Create Asset
+            try
+            {
+                AssetDatabase.CreateAsset(cloneInstance, uniquePath);
+                AssetDatabase.SaveAssets();
+                AssetDatabase.Refresh();
+                Debug.Log($"Cloned object to: {uniquePath}");
+
+                // Load the clone to work with the asset instance
+                BaseDataObject cloneAsset = AssetDatabase.LoadAssetAtPath<BaseDataObject>(
+                    uniquePath
+                );
+                if (cloneAsset != null)
+                {
+                    // --- Update UI ---
+                    // Add clone to list (e.g., after original or at end)
+                    int originalIndex = _selectedObjects.IndexOf(originalObject);
+                    if (originalIndex >= 0)
+                    {
+                        _selectedObjects.Insert(originalIndex + 1, cloneAsset);
+                    }
+                    else
+                    {
+                        _selectedObjects.Add(cloneAsset); // Add to end if original somehow wasn't found
+                    }
+
+                    // Optional: Update _customOrder if using it, might need to shift subsequent items
+                    // For now, let's assume LoadObjectTypes will sort correctly on next load.
+
+                    // Rebuild view and select clone
+                    BuildObjectsView();
+                    SelectObject(cloneAsset);
+                }
+                else
+                {
+                    Debug.LogError($"Failed to load the cloned asset at {uniquePath}");
+                    BuildObjectsView(); // Rebuild anyway
+                }
+            }
+            catch (Exception e)
+            {
+                EditorUtility.DisplayDialog(
+                    "Error Cloning Asset",
+                    $"Failed to create cloned asset at '{uniquePath}': {e.Message}",
+                    "OK"
+                );
+                DestroyImmediate(cloneInstance); // Clean up instance if saving failed
             }
         }
 

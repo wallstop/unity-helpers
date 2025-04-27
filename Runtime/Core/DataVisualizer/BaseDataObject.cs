@@ -7,10 +7,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataVisualizer
     using System;
     using System.Collections.Generic;
     using Attributes;
-    using Sirenix.OdinInspector;
     using UnityEngine;
     using UnityEngine.Serialization;
     using UnityEngine.UIElements;
+#if ODIN_INSPECTOR
+    using Sirenix.OdinInspector;
+#endif
 
     public abstract class BaseDataObject :
 #if ODIN_INSPECTOR
@@ -34,9 +36,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataVisualizer
 
         [Header("Base Data")]
         [FormerlySerializedAs("initialGuid")]
+#if ODIN_INSPECTOR
+        [ReadOnly]
+#endif
         [DxReadOnly]
         [SerializeField]
-        protected string _assetGuid = Guid.NewGuid().ToString();
+        protected internal string _assetGuid = Guid.NewGuid().ToString();
 
         [FormerlySerializedAs("title")]
         [SerializeField]
