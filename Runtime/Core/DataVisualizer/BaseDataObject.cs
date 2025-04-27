@@ -8,7 +8,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataVisualizer
     using System.Collections.Generic;
     using Attributes;
     using Sirenix.OdinInspector;
-    using UnityEditor;
     using UnityEngine;
     using UnityEngine.Serialization;
     using UnityEngine.UIElements;
@@ -67,11 +66,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataVisualizer
             }
         }
 
-#if UNITY_EDITOR
-        public virtual VisualElement BuildGUI(SerializedObject scriptableObject)
+        public virtual VisualElement BuildGUI(DataVisualizerGUIContext context)
         {
             return null;
         }
-#endif
     }
 }

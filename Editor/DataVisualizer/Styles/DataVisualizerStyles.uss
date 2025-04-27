@@ -17,11 +17,7 @@
 
 /* Style for the label inside the item */
 .object-item__label {
-    /* Prevent label from blocking pointer events on the parent object-item */
-    picking-mode: Ignore;
-    /* Prevent text selection during drag attempts */
-    -unity-user-select: None;
-    /* Removed invalid cursor property */
+
 }
 
 /* Style when the mouse is hovering over an item */
@@ -48,8 +44,7 @@
     border-radius: 3px;
     padding: 4px 8px;
     opacity: 0.8;
-    /* Make sure it doesn't interfere with pointer events for drop targets */
-    picking-mode: Ignore;
+
     /* Removed z-index; stacking is handled via BringToFront() in C# */
 }
 
@@ -60,13 +55,12 @@
     height: 2px;
     background-color: #6E98C2; /* Match selected border color */
     width: 100%; /* Span the width of the container */
-    /* Don't let the indicator interfere with pointer events */
-    picking-mode: Ignore;
+
     /* Removed z-index; stacking is handled via BringToFront() in C# */
 }
 
 .type-item {
-    margin-left: 15px; /* Indentation */
+    margin-left: 10px; /* Indentation */
     padding: 2px 6px;
     margin-top: 1px;
     margin-bottom: 1px;
@@ -75,12 +69,12 @@
     border-radius: 2px;
     background-color: rgba(90, 90, 90, 0.1);
 }
+
 .type-item:hover {
     background-color: rgba(110, 110, 110, 0.3);
     border-color: rgba(150, 150, 150, 0.5);
 }
+
 .type-item__label {
-    picking-mode: Ignore;
-    -unity-user-select: None;
     font-size: 11px; /* Smaller font for types */
 }

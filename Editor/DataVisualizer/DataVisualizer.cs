@@ -9,11 +9,11 @@
     using UnityEditor;
     using UnityEngine;
     using UnityEngine.UIElements;
-    using WallstopStudios.UnityHelpers.Core.Attributes;
+    using Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.DataVisualizer;
-    using WallstopStudios.UnityHelpers.Core.Extension;
-    using WallstopStudios.UnityHelpers.Core.Helper;
-    using WallstopStudios.UnityHelpers.Core.Serialization;
+    using Core.Extension;
+    using Core.Helper;
+    using Core.Serialization;
     using Object = UnityEngine.Object;
 #if ODIN_INSPECTOR
 
@@ -25,8 +25,17 @@
     {
         private const string CustomTypeOrderKey =
             "WallstopStudios.UnityHelpers.DataVisualizer.CustomTypeOrder";
+
         private const string CustomNamespaceOrderKey =
             "WallstopStudios.UnityHelpers.DataVisualizer.CustomNamespaceOrder";
+
+        // {0} = Namespace Key
+        private const string CustomTypeOrderKeyFormat =
+            "WallstopStudios.UnityHelpers.DataVisualizer.CustomTypeOrder.{0}"; // {0} = Namespace Key
+
+        // {0} = Type Name
+        private const string CustomObjectOrderKeyFormat =
+            "WallstopStudios.UnityHelpers.DataVisualizer.CustomObjectOrder.{0}";
 
         private readonly List<(string key, List<Type> types)> _scriptableObjectTypes = new();
         private readonly Dictionary<BaseDataObject, VisualElement> _objectVisualElementMap = new();
@@ -260,29 +269,12 @@
 
             if (titlePotentiallyChanged)
             {
-                RefreshSelectedElement();
+                rootVisualElement
+                    .schedule.Execute(() => RefreshSelectedElementVisuals(_selectedObject))
+                    .ExecuteLater(1);
             }
         }
 #endif
-
-        private void RefreshSelectedElement()
-        {
-            if (
-                _selectedObject == null
-                || !_objectVisualElementMap.TryGetValue(
-                    _selectedObject,
-                    out VisualElement visualElement
-                )
-            )
-            {
-                return;
-            }
-
-            BaseDataObject dataObject = _selectedObject;
-            visualElement
-                .schedule.Execute(() => UpdateObjectTitleRepresentation(dataObject))
-                .ExecuteLater(10);
-        }
 
         private void BuildNamespaceView()
         {
@@ -300,67 +292,107 @@
 
             foreach ((string key, List<Type> types) in _scriptableObjectTypes)
             {
-                VisualElement namespaceGroupItem = new VisualElement()
+                VisualElement namespaceGroupItem = new()
                 {
                     name = $"namespace-group-{key}",
+                    userData = key,
                 };
 
+                namespaceGroupItem.AddToClassList(namespaceItemClass);
                 Label namespaceLabel = new(key)
                 {
                     style = { unityFontStyleAndWeight = FontStyle.Bold, marginTop = 5 },
                 };
-                _namespaceListContainer.Add(namespaceLabel);
+                namespaceLabel.AddToClassList(namespaceLabelClass);
+                namespaceGroupItem.Add(namespaceLabel);
+                namespaceGroupItem.RegisterCallback<PointerDownEvent>(OnNamespacePointerDown);
+                _namespaceListContainer.Add(namespaceGroupItem);
+
+                VisualElement typesContainer = new()
+                {
+                    name = $"types-container-{key}",
+                    userData = key,
+                };
+                namespaceGroupItem.Add(typesContainer);
 
                 foreach (Type type in types)
                 {
-                    var typeButton = new Button(() =>
+                    VisualElement typeItem = new()
                     {
-                        LoadObjectTypes(type);
-                        BuildObjectsView();
-                        _selectedObject = null;
-#if ODIN_INSPECTOR
-
-                        bool recreateTree =
-                            _odinPropertyTree?.WeakTargets == null
-                            || _odinPropertyTree.WeakTargets.Count == 0
-                            || !ReferenceEquals(_odinPropertyTree.WeakTargets[0], _selectedObject);
-
-                        if (recreateTree)
-                        {
-                            if (_odinPropertyTree != null)
-                            {
-                                _odinPropertyTree.OnPropertyValueChanged -=
-                                    HandleOdinPropertyValueChanged;
-                            }
-
-                            _odinPropertyTree = null;
-                            if (_selectedObject != null)
-                            {
-                                try
-                                {
-                                    _odinPropertyTree = PropertyTree.Create(_selectedObject);
-                                    _odinPropertyTree.OnPropertyValueChanged +=
-                                        HandleOdinPropertyValueChanged;
-                                }
-                                catch (Exception e)
-                                {
-                                    this.LogError(
-                                        $"Failed to create Odin PropertyTree for {_selectedObject.name}.",
-                                        e
-                                    );
-                                }
-                            }
-
-                            _odinInspectorContainer?.MarkDirtyRepaint();
-                        }
-#endif
-                        BuildInspectorView();
-                    })
-                    {
-                        text = type.Name,
-                        style = { marginLeft = 10 },
+                        name = $"type-item-{type.Name}",
+                        userData = type,
                     };
-                    _namespaceListContainer.Add(typeButton);
+                    typeItem.AddToClassList(typeItemClass);
+
+                    Label typeLabel = new(type.Name) { name = "type-item-label" };
+                    typeLabel.AddToClassList(typeLabelClass);
+                    typeItem.Add(typeLabel);
+
+                    typeItem.RegisterCallback<PointerDownEvent>(OnTypePointerDown);
+                    typeItem.RegisterCallback<PointerUpEvent>(evt =>
+                    {
+                        if (!_isDragging && evt.button == 0) // Check if not dragging and left click up
+                        {
+                            if (typeItem.userData is Type clickedType)
+                            {
+                                LoadObjectTypes(clickedType);
+                                BuildObjectsView();
+                                SelectObject(null);
+                                evt.StopPropagation(); // Consume the event
+                            }
+                        }
+                    });
+
+                    typesContainer.Add(typeItem);
+
+                    //                     var typeButton = new Button(() =>
+                    //                     {
+                    //                         LoadObjectTypes(type);
+                    //                         BuildObjectsView();
+                    //                         _selectedObject = null;
+                    // #if ODIN_INSPECTOR
+                    //
+                    //                         bool recreateTree =
+                    //                             _odinPropertyTree?.WeakTargets == null
+                    //                             || _odinPropertyTree.WeakTargets.Count == 0
+                    //                             || !ReferenceEquals(_odinPropertyTree.WeakTargets[0], _selectedObject);
+                    //
+                    //                         if (recreateTree)
+                    //                         {
+                    //                             if (_odinPropertyTree != null)
+                    //                             {
+                    //                                 _odinPropertyTree.OnPropertyValueChanged -=
+                    //                                     HandleOdinPropertyValueChanged;
+                    //                             }
+                    //
+                    //                             _odinPropertyTree = null;
+                    //                             if (_selectedObject != null)
+                    //                             {
+                    //                                 try
+                    //                                 {
+                    //                                     _odinPropertyTree = PropertyTree.Create(_selectedObject);
+                    //                                     _odinPropertyTree.OnPropertyValueChanged +=
+                    //                                         HandleOdinPropertyValueChanged;
+                    //                                 }
+                    //                                 catch (Exception e)
+                    //                                 {
+                    //                                     this.LogError(
+                    //                                         $"Failed to create Odin PropertyTree for {_selectedObject.name}.",
+                    //                                         e
+                    //                                     );
+                    //                                 }
+                    //                             }
+                    //
+                    //                             _odinInspectorContainer?.MarkDirtyRepaint();
+                    //                         }
+                    // #endif
+                    //                         BuildInspectorView();
+                    //                     })
+                    //                     {
+                    //                         text = type.Name,
+                    //                         style = { marginLeft = 10 },
+                    //                     };
+                    //                     _namespaceListContainer.Add(typeButton);
                 }
             }
         }
@@ -373,24 +405,37 @@
             }
 
             _objectListContainer.Clear();
+            _objectVisualElementMap.Clear();
             _objectScrollView.scrollOffset = Vector2.zero;
 
             foreach (BaseDataObject dataObject in _selectedObjects)
             {
-                BaseDataObject currentObject = dataObject;
-                Button objectButton = new(() =>
+                // Create the main container element for the object
+                VisualElement objectItem = new VisualElement
                 {
-                    Selection.activeObject = currentObject;
-                    _selectedObject = currentObject;
-                    BuildInspectorView();
-                })
-                {
-                    text = currentObject.Title,
-                    style = { minHeight = 20 },
+                    name = $"object-item-{dataObject.GetInstanceID()}",
                 };
+                objectItem.AddToClassList("object-item"); // Apply USS style
+                objectItem.userData = dataObject; // Store data object reference
 
-                _objectVisualElementMap[dataObject] = objectButton;
-                _objectListContainer.Add(objectButton);
+                // Create a label for the title
+                Label titleLabel = new Label(dataObject.Title) { name = "object-item-label" };
+                titleLabel.AddToClassList("object-item__label"); // Apply USS style
+                objectItem.Add(titleLabel);
+
+                // --- Register Pointer Down Event for Selection and Drag Start ---
+                objectItem.RegisterCallback<PointerDownEvent>(OnObjectPointerDown);
+
+                // Store mapping and add to list
+                _objectVisualElementMap[dataObject] = objectItem;
+                _objectListContainer.Add(objectItem);
+
+                // --- Re-apply selection style if this object was selected ---
+                if (_selectedObject != null && _selectedObject == dataObject)
+                {
+                    objectItem.AddToClassList("selected");
+                    _selectedElement = objectItem; // Ensure _selectedElement is up-to-date
+                }
             }
         }
 
@@ -412,6 +457,16 @@
                         style = { unityTextAlign = TextAnchor.MiddleCenter, paddingTop = 20 },
                     }
                 );
+#if ODIN_INSPECTOR
+                // Clear Odin tree when nothing is selected
+                if (_odinPropertyTree != null)
+                {
+                    _odinPropertyTree.OnPropertyValueChanged -= HandleOdinPropertyValueChanged;
+                    _odinPropertyTree.Dispose();
+                    _odinPropertyTree = null;
+                }
+                _odinInspectorContainer?.MarkDirtyRepaint(); // Update IMGUI
+#endif
                 return;
             }
 
@@ -419,11 +474,12 @@
 #if ODIN_INSPECTOR
             try
             {
-                if (
+                bool recreateTree =
                     _odinPropertyTree?.WeakTargets == null
                     || _odinPropertyTree.WeakTargets.Count == 0
-                    || !ReferenceEquals(_odinPropertyTree.WeakTargets[0], _selectedObject)
-                )
+                    || !ReferenceEquals(_odinPropertyTree.WeakTargets[0], _selectedObject);
+
+                if (recreateTree)
                 {
                     if (_odinPropertyTree != null)
                     {
@@ -432,113 +488,70 @@
                     }
                     _odinPropertyTree = PropertyTree.Create(_selectedObject);
                     _odinPropertyTree.OnPropertyValueChanged += HandleOdinPropertyValueChanged;
+                    // Odin needs explicit repaint sometimes after tree change
+                    _odinInspectorContainer?.MarkDirtyRepaint();
                 }
 
                 if (_odinInspectorContainer == null)
                 {
-                    _odinInspectorContainer = new IMGUIContainer(() =>
-                    {
-                        if (
-                            _odinPropertyTree is { WeakTargets: { Count: > 0 } }
-                            && ReferenceEquals(_odinPropertyTree.WeakTargets[0], _selectedObject)
-                        )
-                        {
-                            try
-                            {
-                                _odinPropertyTree.Draw();
-                            }
-                            catch (Exception e)
-                            {
-                                this.LogError($"Odin Draw Error.", e);
-                                GUILayout.Label("Odin Draw Error");
-                            }
-                        }
-                    })
+                    // Simplified Odin IMGUIContainer setup
+                    _odinInspectorContainer = new IMGUIContainer(() => _odinPropertyTree?.Draw())
                     {
                         name = "odin-inspector",
                         style = { flexGrow = 1 },
                     };
-
-                    _odinInspectorContainer.RegisterCallback<FocusInEvent, DataVisualizer>(
-                        (evt, context) =>
-                        {
-                            context._odinRepaintSchedule?.Pause();
-                            context._odinRepaintSchedule = context
-                                ._odinInspectorContainer.schedule.Execute(() =>
-                                {
-                                    if (
-                                        context
-                                            ._odinInspectorContainer
-                                            .focusController
-                                            ?.focusedElement == _odinInspectorContainer
-                                    )
-                                    {
-                                        context._odinInspectorContainer.MarkDirtyRepaint();
-                                    }
-                                    else
-                                    {
-                                        context._odinRepaintSchedule?.Pause();
-                                    }
-                                })
-                                .Every(100);
-                        },
-                        this
-                    );
-                    _odinInspectorContainer.RegisterCallback<FocusOutEvent, DataVisualizer>(
-                        (evt, context) =>
-                        {
-                            context._odinRepaintSchedule?.Pause();
-                        },
-                        this
-                    );
+                    // Focus handling can be simplified or removed if not strictly needed
                 }
                 else
                 {
-                    _odinInspectorContainer.onGUIHandler = () =>
-                    {
-                        if (
-                            _odinPropertyTree?.WeakTargets is not { Count: > 0 }
-                            || !ReferenceEquals(_odinPropertyTree.WeakTargets[0], _selectedObject)
-                        )
-                        {
-                            return;
-                        }
-
-                        try
-                        {
-                            _odinPropertyTree.Draw();
-                        }
-                        catch (Exception e)
-                        {
-                            this.LogError($"Odin Draw Error.", e);
-                            GUILayout.Label("Odin Draw Error");
-                        }
-                    };
+                    // Ensure the handler is correct if the container persists
+                    _odinInspectorContainer.onGUIHandler = () => _odinPropertyTree?.Draw();
                 }
-                _inspectorContainer.Add(_odinInspectorContainer);
+
+                // Ensure container is added if it was removed or never added
+                if (_odinInspectorContainer.parent != _inspectorContainer)
+                {
+                    _inspectorContainer.Add(_odinInspectorContainer);
+                }
                 _odinInspectorContainer.MarkDirtyRepaint();
             }
             catch (Exception e)
             {
                 this.LogError($"Error setting up Odin Inspector.", e);
                 _inspectorContainer.Add(new Label($"Odin Inspector Error: {e.Message}"));
+                _odinPropertyTree = null; // Prevent further errors
             }
-
 #else
             try
             {
                 SerializedProperty serializedProperty = serializedObject.GetIterator();
-                serializedProperty.NextVisible(true);
+                bool enterChildren = true;
                 const string titleFieldName = nameof(BaseDataObject._title);
-                while (serializedProperty.NextVisible(false))
-                {
-                    SerializedProperty currentPropCopy = serializedProperty.Copy();
-                    PropertyField propertyField = new(currentPropCopy);
-                    propertyField.Bind(serializedObject);
 
+                // Draw the default script field
+                if (serializedProperty.NextVisible(enterChildren))
+                {
+                    using (
+                        new EditorGUI.DisabledScope("m_Script" == serializedProperty.propertyPath)
+                    )
+                    {
+                        PropertyField scriptField = new PropertyField(serializedProperty);
+                        scriptField.Bind(serializedObject); // Bind is important
+                        _inspectorContainer.Add(scriptField);
+                    }
+                    enterChildren = false; // Don't re-enter children for the script field itself
+                }
+
+                while (serializedProperty.NextVisible(enterChildren))
+                {
+                    SerializedProperty currentPropCopy = serializedProperty.Copy(); // Use copy for safety
+                    PropertyField propertyField = new(currentPropCopy);
+                    propertyField.Bind(serializedObject); // Bind the field
+
+                    // Check if this is the title field and register callback
                     if (
                         string.Equals(
-                            currentPropCopy.name,
+                            currentPropCopy.propertyPath,
                             titleFieldName,
                             StringComparison.Ordinal
                         )
@@ -546,11 +559,19 @@
                     {
                         propertyField.RegisterValueChangeCallback(evt =>
                         {
-                            RefreshSelectedElement();
+                            // Use schedule to avoid modifying data during UI build/event
+                            rootVisualElement
+                                .schedule.Execute(
+                                    () => RefreshSelectedElementVisuals(_selectedObject)
+                                )
+                                .ExecuteLater(1);
                         });
                     }
                     _inspectorContainer.Add(propertyField);
+                    enterChildren = false; // Only step through top-level properties after the first one
                 }
+                // Apply changes if any occurred
+                serializedObject.ApplyModifiedProperties();
             }
             catch (Exception e)
             {
@@ -558,39 +579,47 @@
                 _inspectorContainer.Add(new Label($"Inspector Error: {e.Message}"));
             }
 #endif
-
-            VisualElement customElement = _selectedObject.BuildGUI(serializedObject);
+            VisualElement customElement = _selectedObject.BuildGUI(
+                new DataVisualizerGUIContext(serializedObject)
+            );
             if (customElement != null)
             {
                 _inspectorContainer.Add(customElement);
             }
         }
 
-        private void UpdateObjectTitleRepresentation(BaseDataObject dataObject)
+        private void RefreshSelectedElementVisuals(BaseDataObject dataObject)
         {
             if (
                 dataObject == null
-                || _selectedObject != dataObject
-                || !_objectVisualElementMap.TryGetValue(dataObject, out VisualElement element)
+                || !_objectVisualElementMap.TryGetValue(dataObject, out VisualElement visualElement)
             )
             {
                 return;
             }
+            UpdateObjectTitleRepresentation(dataObject, visualElement); // Pass the element
+        }
+
+        private void UpdateObjectTitleRepresentation(
+            BaseDataObject dataObject,
+            VisualElement element
+        )
+        {
+            if (dataObject == null || element == null)
+                return;
+
+            // Find the Label within the element
+            Label titleLabel = element.Q<Label>(className: "object-item__label"); // More robust query
+            if (titleLabel == null)
+            {
+                Debug.LogError("Could not find title label within object item element.");
+                return;
+            }
 
             string currentTitle = dataObject.Title;
-            if (element is Button buttonElement)
+            if (titleLabel.text != currentTitle)
             {
-                if (buttonElement.text != currentTitle)
-                {
-                    buttonElement.text = currentTitle;
-                }
-            }
-            else if (element is Label labelElement)
-            {
-                if (labelElement.text != currentTitle)
-                {
-                    labelElement.text = currentTitle;
-                }
+                titleLabel.text = currentTitle;
             }
         }
 
@@ -731,7 +760,7 @@
                 _draggedElement = targetElement;
                 _draggedObject = clickedObject;
                 _dragStartPosition = evt.position; // Use event position relative to window/panel
-                _draggedElement.CapturePointer(evt.pointerId); // Capture pointer for drag events
+                //_draggedElement.CapturePointer(evt.pointerId); // Capture pointer for drag events
                 _isDragging = false; // Set to true only after a minimum move distance if desired
                 // Don't set isDragging = true yet, wait for PointerMove to confirm drag intent
             }
@@ -777,26 +806,402 @@
 
         private void OnGlobalPointerUp(PointerUpEvent evt)
         {
-            if (_draggedElement == null || !_draggedElement.HasPointerCapture(evt.pointerId))
+            // Check if we were actually dragging with the pointer that was released
+            if (
+                _draggedElement == null
+                || !_draggedElement.HasPointerCapture(evt.pointerId)
+                || _activeDragType == DragType.None
+            )
             {
-                return; // Not the pointer we captured
+                // This pointer wasn't the one we were tracking for a drag.
+                // It might be a right-click release or something else. Ignore it for drag purposes.
+                return;
             }
 
-            _draggedElement.ReleasePointer(evt.pointerId); // Release capture
+            // Store necessary info before potential modification in CancelDrag
+            bool wasDragging = _isDragging;
+            DragType finishedDragType = _activeDragType;
+            VisualElement releasedElement = _draggedElement; // Keep ref for logging if needed
+            int pointerId = evt.pointerId;
 
-            if (_isDragging)
+            // --- CRITICAL: Release the pointer and cleanup state in a finally block ---
+            try
             {
-                // --- Finalize Drop ---
-                //PerformDrop();
+                // 1. Release Pointer Immediately
+                // Debug.Log($"Releasing Pointer {pointerId} from {_draggedElement.name}");
+                _draggedElement.ReleasePointer(pointerId);
+
+                // 2. Perform Drop Logic if we were actually dragging
+                if (wasDragging)
+                {
+                    // Debug.Log($"Performing drop for {finishedDragType}...");
+                    // --- Finalize Drop based on type ---
+                    switch (finishedDragType)
+                    {
+                        case DragType.Object:
+                            PerformObjectDrop();
+                            break;
+                        case DragType.Namespace:
+                            PerformNamespaceDrop();
+                            break;
+                        case DragType.Type:
+                            PerformTypeDrop();
+                            break;
+                    }
+                    // Debug.Log($"Drop performed for {finishedDragType}.");
+                }
+                // else: It was just a click, selection logic might have happened on PointerDown/Up on the item.
+            }
+            catch (Exception ex)
+            {
+                // Log any error during drop logic
+                Debug.LogError($"Error during drop execution for {finishedDragType}: {ex}");
+            }
+            finally
+            {
+                // 3. ALWAYS Reset State via CancelDrag
+                // Pass the specific pointer ID for context, though CancelDrag might not strictly need it now.
+                // We reset state *after* potentially using it in the drop logic.
+                // Debug.Log($"Calling CancelDrag from finally block.");
+                CancelDrag(pointerId);
+            }
+
+            // We handled the drag event, stop it from propagating further.
+            evt.StopPropagation();
+        }
+
+        private void PerformNamespaceDrop()
+        {
+            if (
+                _draggedElement == null
+                || !(_draggedData is string draggedKey)
+                || _namespaceListContainer == null
+                || _dropIndicator == null
+            )
+            {
+                CancelDrag(); // Includes resetting _activeDragType
+                return;
+            }
+
+            // Get target index from indicator (calculated by the modified UpdateDropIndicator)
+            int targetIndex = _dropIndicator.userData is int index ? index : -1;
+
+            if (targetIndex == -1)
+            {
+                // Debug.LogWarning("Namespace drop target index invalid.");
+                CancelDrag();
+                return;
+            }
+
+            // --- Reorder Visual Element ---
+            int currentIndex = _namespaceListContainer.IndexOf(_draggedElement);
+            if (currentIndex == targetIndex || currentIndex + 1 == targetIndex)
+            {
+                CancelDrag();
+                return;
+            }
+
+            // Adjust target index if moving item downwards
+            if (currentIndex < targetIndex)
+            {
+                targetIndex--;
+            }
+            targetIndex = Mathf.Clamp(targetIndex, 0, _namespaceListContainer.childCount - 1);
+            _namespaceListContainer.Insert(targetIndex, _draggedElement);
+
+            // --- Reorder Data (_scriptableObjectTypes list and save to EditorPrefs) ---
+            int oldDataIndex = _scriptableObjectTypes.FindIndex(kvp => kvp.key == draggedKey);
+            if (oldDataIndex >= 0)
+            {
+                var draggedItem = _scriptableObjectTypes[oldDataIndex];
+                _scriptableObjectTypes.RemoveAt(oldDataIndex);
+
+                int dataInsertIndex = targetIndex; // Visual index corresponds to data index before insertion
+                dataInsertIndex = Mathf.Clamp(dataInsertIndex, 0, _scriptableObjectTypes.Count);
+                _scriptableObjectTypes.Insert(dataInsertIndex, draggedItem);
+
+                // --- Update and Save Namespace Order ---
+                UpdateAndSaveNamespaceOrder();
             }
             else
             {
-                // If not dragging, it was just a click (selection handled in PointerDown)
+                Debug.LogError($"Dragged namespace key '{draggedKey}' not found in data list!");
             }
 
-            // --- Cleanup Drag State ---
-            CancelDrag();
+            // Cleanup happens in CancelDrag called by OnGlobalPointerUp
+        }
+
+        private void OnNamespacePointerDown(PointerDownEvent evt)
+        {
+            VisualElement targetElement = evt.currentTarget as VisualElement;
+            // Ensure it's a namespace item and has the key string in userData
+            if (targetElement == null || !(targetElement.userData is string namespaceKey))
+            {
+                // Debug.LogWarning("PointerDown target is not a valid namespace item.");
+                return;
+            }
+
+            // No selection logic needed for namespaces
+
+            // --- Initiate Drag ---
+            if (evt.button == 0) // Left mouse button
+            {
+                _draggedElement = targetElement;
+                _draggedData = namespaceKey; // Store the namespace key string
+                _activeDragType = DragType.Namespace; // << SET DRAG TYPE
+                _dragStartPosition = evt.position;
+                //_draggedElement.CapturePointer(evt.pointerId);
+                _isDragging = false; // Set to true only after movement threshold
+            }
+
             evt.StopPropagation();
+        }
+
+        private void UpdateAndSaveNamespaceOrder()
+        {
+            // Extract the ordered keys from the potentially reordered _scriptableObjectTypes list
+            List<string> newNamespaceOrder = _scriptableObjectTypes.Select(kvp => kvp.key).ToList();
+
+            try
+            {
+                // Serialize and save to EditorPrefs
+                string json = Serializer.JsonStringify(newNamespaceOrder);
+                EditorPrefs.SetString(CustomNamespaceOrderKey, json);
+                // Debug.Log($"Saved custom namespace order: {json}");
+            }
+            catch (Exception e)
+            {
+                this.LogError($"Failed to serialize or save custom namespace order.", e);
+            }
+        }
+
+        private void OnTypePointerDown(PointerDownEvent evt)
+        {
+            VisualElement targetElement = evt.currentTarget as VisualElement;
+            // Ensure it's a type item and has the Type in userData
+            if (targetElement is not { userData: Type type })
+            {
+                return;
+            }
+
+            // No selection logic needed for types
+
+            if (evt.button == 0) // Left mouse button
+            {
+                _draggedElement = targetElement;
+                _draggedData = type; // Store the System.Type
+                _activeDragType = DragType.Type; // << SET DRAG TYPE
+                _dragStartPosition = evt.position;
+                //_draggedElement.CapturePointer(evt.pointerId);
+                _isDragging = false;
+            }
+            evt.StopPropagation();
+        }
+
+        private void PerformTypeDrop()
+        {
+            if (
+                _draggedElement == null
+                || !(_draggedData is Type draggedType)
+                || _dropIndicator == null
+            )
+            {
+                CancelDrag();
+                return;
+            }
+
+            // The drop indicator's target container should be the typesContainer
+            VisualElement typesContainer = _draggedElement.parent; // The parent should be the typesContainer
+            if (typesContainer == null || !(typesContainer.userData is string namespaceKey))
+            {
+                Debug.LogError("Could not determine parent types container or its namespace key.");
+                CancelDrag();
+                return;
+            }
+
+            // Get target index from indicator (calculated relative to typesContainer)
+            int targetIndex = _dropIndicator.userData is int index ? index : -1;
+            if (targetIndex == -1)
+            {
+                CancelDrag();
+                return;
+            }
+
+            // --- Reorder Visual Element ---
+            int currentIndex = typesContainer.IndexOf(_draggedElement);
+            if (currentIndex == targetIndex || currentIndex + 1 == targetIndex)
+            {
+                CancelDrag();
+                return;
+            }
+            if (currentIndex < targetIndex)
+                targetIndex--;
+            targetIndex = Mathf.Clamp(targetIndex, 0, typesContainer.childCount - 1);
+            typesContainer.Insert(targetIndex, _draggedElement);
+
+            // --- Reorder Data (Types list within _scriptableObjectTypes and save to EditorPrefs) ---
+            int namespaceIndex = _scriptableObjectTypes.FindIndex(kvp => kvp.key == namespaceKey);
+            if (namespaceIndex >= 0)
+            {
+                List<Type> typesList = _scriptableObjectTypes[namespaceIndex].types;
+                int oldDataIndex = typesList.IndexOf(draggedType);
+                if (oldDataIndex >= 0)
+                {
+                    typesList.RemoveAt(oldDataIndex);
+                    int dataInsertIndex = targetIndex; // Visual index corresponds to data index
+                    dataInsertIndex = Mathf.Clamp(dataInsertIndex, 0, typesList.Count);
+                    typesList.Insert(dataInsertIndex, draggedType);
+
+                    // --- Update and Save Type Order for this Namespace ---
+                    UpdateAndSaveTypeOrder(namespaceKey, typesList);
+                }
+                else
+                {
+                    Debug.LogError(
+                        $"Dragged type '{draggedType.Name}' not found in data list for namespace '{namespaceKey}'!"
+                    );
+                }
+            }
+            else
+            {
+                Debug.LogError(
+                    $"Namespace key '{namespaceKey}' not found in _scriptableObjectTypes!"
+                );
+            }
+
+            // Cleanup happens in CancelDrag
+        }
+
+        private void UpdateAndSaveTypeOrder(string namespaceKey, List<Type> orderedTypes)
+        {
+            // Extract the ordered type names
+            List<string> newTypeNameOrder = orderedTypes.Select(t => t.Name).ToList();
+            string prefsKey = string.Format(CustomTypeOrderKeyFormat, namespaceKey);
+            try
+            {
+                string json = Serializer.JsonStringify(newTypeNameOrder);
+                EditorPrefs.SetString(prefsKey, json);
+            }
+            catch (Exception e)
+            {
+                this.LogError(
+                    $"Failed to serialize or save custom type order for namespace '{namespaceKey}'.",
+                    e
+                );
+            }
+        }
+
+        private void PerformObjectDrop()
+        {
+            if (
+                _draggedElement == null
+                || !(_draggedData is BaseDataObject draggedObject)
+                || _objectListContainer == null
+                || _dropIndicator == null
+            )
+            {
+                CancelDrag();
+                return;
+            }
+
+            int targetIndex = _dropIndicator.userData is int index ? index : -1;
+            if (targetIndex == -1)
+            {
+                CancelDrag();
+                return;
+            }
+
+            int currentIndex = _objectListContainer.IndexOf(_draggedElement);
+            if (currentIndex == targetIndex || currentIndex + 1 == targetIndex)
+            {
+                CancelDrag();
+                return;
+            }
+
+            if (currentIndex < targetIndex)
+                targetIndex--;
+            targetIndex = Mathf.Clamp(targetIndex, 0, _objectListContainer.childCount - 1);
+            _objectListContainer.Insert(targetIndex, _draggedElement);
+
+            // --- Reorder Data (_selectedObjects list) ---
+            int oldDataIndex = _selectedObjects.IndexOf(draggedObject);
+            if (oldDataIndex >= 0)
+            {
+                _selectedObjects.RemoveAt(oldDataIndex);
+                int dataInsertIndex = targetIndex;
+                dataInsertIndex = Mathf.Clamp(dataInsertIndex, 0, _selectedObjects.Count);
+                _selectedObjects.Insert(dataInsertIndex, draggedObject);
+
+                // --- Update and Save Object Order (GUIDs) using EditorPrefs ---
+                if (_selectedObjects.Count > 0) // Need at least one object to know the Type
+                {
+                    Type objectType = _selectedObjects[0].GetType(); // Assuming all objects in the list are of the same type
+                    UpdateAndSaveObjectOrder(objectType, _selectedObjects);
+                }
+            }
+            else
+            {
+                Debug.LogError("Dragged object not found in data list!");
+            }
+
+            // Cleanup in CancelDrag
+        }
+
+        private void UpdateAndSaveObjectOrder(Type objectType, List<BaseDataObject> orderedObjects)
+        {
+            List<string> orderedGuids = new List<string>();
+            foreach (BaseDataObject obj in orderedObjects)
+            {
+                if (obj == null)
+                    continue; // Skip null entries if any
+                string path = AssetDatabase.GetAssetPath(obj);
+                if (!string.IsNullOrEmpty(path))
+                {
+                    string guid = AssetDatabase.AssetPathToGUID(path);
+                    if (!string.IsNullOrEmpty(guid))
+                    {
+                        orderedGuids.Add(guid);
+                    }
+                    else
+                    {
+                        Debug.LogWarning(
+                            $"Could not get GUID for object '{obj.name}' at path '{path}'. It might not be saved yet or is not an asset."
+                        );
+                    }
+                }
+                else
+                {
+                    Debug.LogWarning(
+                        $"Could not get asset path for object '{obj.name}'. It might not be saved yet."
+                    );
+                }
+            }
+
+            if (orderedGuids.Count > 0) // Only save if we have GUIDs
+            {
+                string prefsKey = string.Format(CustomObjectOrderKeyFormat, objectType.Name);
+                try
+                {
+                    string json = Serializer.JsonStringify(orderedGuids);
+                    EditorPrefs.SetString(prefsKey, json);
+                    // Debug.Log($"Saved custom object order for type '{objectType.Name}': {json}");
+                }
+                catch (Exception e)
+                {
+                    this.LogError(
+                        $"Failed to serialize or save custom object order for type '{objectType.Name}'.",
+                        e
+                    );
+                }
+            }
+            else if (orderedObjects.Count > 0)
+            {
+                // Clear the pref if all objects failed to get a GUID? Or leave stale?
+                // Let's leave stale for now. New objects without GUIDs won't be saved.
+                Debug.LogWarning(
+                    $"Could not save object order for type '{objectType.Name}' as no valid asset GUIDs were found."
+                );
+            }
         }
 
         private void StartDragVisuals(Vector2 currentPosition)
@@ -918,60 +1323,6 @@
             _dropIndicator.userData = targetIndex;
         }
 
-        private void PerformObjectDrop()
-        {
-            if (
-                _draggedElement == null
-                || !(_draggedData is BaseDataObject draggedObject)
-                || _objectListContainer == null
-                || _dropIndicator == null
-            )
-            {
-                CancelDrag();
-                return;
-            }
-
-            int targetIndex = _dropIndicator.userData is int index ? index : -1;
-            if (targetIndex == -1)
-            {
-                CancelDrag();
-                return;
-            }
-
-            int currentIndex = _objectListContainer.IndexOf(_draggedElement);
-            if (currentIndex == targetIndex || currentIndex + 1 == targetIndex)
-            {
-                CancelDrag();
-                return;
-            }
-
-            if (currentIndex < targetIndex)
-                targetIndex--;
-            targetIndex = Mathf.Clamp(targetIndex, 0, _objectListContainer.childCount - 1);
-
-            // --- Reorder Visual Element (remains the same) ---
-            _objectListContainer.Insert(targetIndex, _draggedElement);
-
-            // --- Reorder Data (_selectedObjects list - remains the same) ---
-            int oldDataIndex = _selectedObjects.IndexOf(draggedObject);
-            if (oldDataIndex >= 0)
-            {
-                _selectedObjects.RemoveAt(oldDataIndex);
-                int dataInsertIndex = targetIndex;
-                dataInsertIndex = Mathf.Clamp(dataInsertIndex, 0, _selectedObjects.Count);
-                _selectedObjects.Insert(dataInsertIndex, draggedObject);
-
-                // --- Update _customOrder and Save Assets ---
-                UpdateAndSaveObjectCustomOrder(); // Call the method to handle _customOrder persistence
-            }
-            else
-            {
-                Debug.LogError("Dragged object not found in data list!");
-            }
-
-            // Cleanup happens in CancelDrag
-        }
-
         private void UpdateAndSaveObjectCustomOrder()
         {
             List<Object> dirtyObjects = new List<Object>();
@@ -1026,22 +1377,40 @@
             }
         }
 
-        private void CancelDrag()
+        private void CancelDrag(int pointerIdContext = -1)
         {
+            // Debug.Log($"CancelDrag called (Context Pointer ID: {pointerIdContext})");
+
+            // Restore visual appearance of the element that was dragged (if any)
             if (_draggedElement != null)
             {
-                _draggedElement.style.opacity = 1.0f; // Restore original opacity
-                if (_draggedElement.HasPointerCapture(-1)) // Check general capture just in case specific ID isn't known
-                    _draggedElement.ReleasePointer(-1);
+                _draggedElement.style.opacity = 1.0f;
+
+                // Attempting release here is mostly a fallback/safety net,
+                // as the primary release should happen in OnGlobalPointerUp's try block.
+                // Check if it *still* has capture for any reason (e.g., error before release in Up handler)
+                if (_draggedElement.HasPointerCapture(-1)) // Check for *any* pointer capture
+                {
+                    Debug.LogWarning(
+                        $"CancelDrag found lingering pointer capture on {_draggedElement.name}. Releasing (-1)."
+                    );
+                    _draggedElement.ReleasePointer(-1); // Release any pointer it might still hold
+                }
             }
+
+            // Hide drag visuals
             if (_dragGhost != null)
                 _dragGhost.style.visibility = Visibility.Hidden;
             if (_dropIndicator != null)
                 _dropIndicator.style.visibility = Visibility.Hidden;
 
+            // Reset state variables - CRITICAL
             _isDragging = false;
-            _draggedElement = null;
-            _draggedObject = null;
+            _draggedElement = null; // Allows garbage collection
+            _draggedData = null;
+            _activeDragType = DragType.None;
+
+            // Debug.Log("CancelDrag finished. State reset.");
         }
 
         private static int CompareUsingCustomOrder(
@@ -1090,7 +1459,7 @@
             {
                 return attribute.Namespace;
             }
-            return type.Namespace?.Split('.').Last() ?? "No Namespace";
+            return type.Namespace?.Split('.').LastOrDefault() ?? "No Namespace";
         }
     }
 #endif
