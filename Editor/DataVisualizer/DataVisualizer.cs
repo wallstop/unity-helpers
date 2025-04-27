@@ -509,6 +509,8 @@
 
                 foreach (Type type in types)
                 {
+                    bool hasObjects = AssetDatabase.FindAssets($"t:{type.Name}").Length > 0;
+
                     VisualElement typeItem = new()
                     {
                         name = $"type-item-{type.Name}",
@@ -520,76 +522,43 @@
                     typeLabel.AddToClassList(TypeLabelClass);
                     typeItem.Add(typeLabel);
 
-                    typeItem.RegisterCallback<PointerDownEvent>(OnTypePointerDown);
-                    typeItem.RegisterCallback<PointerUpEvent>(evt =>
+                    if (hasObjects)
                     {
-                        if (_isDragging || evt.button != 0)
+                        typeItem.RegisterCallback<PointerDownEvent>(OnTypePointerDown);
+                        typeItem.RegisterCallback<PointerUpEvent>(evt =>
                         {
-                            return;
-                        }
+                            if (_isDragging || evt.button != 0)
+                            {
+                                return;
+                            }
 
-                        if (typeItem.userData is not Type clickedType)
-                        {
-                            return;
-                        }
+                            if (typeItem.userData is not Type clickedType)
+                            {
+                                return;
+                            }
 
-                        _selectedTypeElement?.RemoveFromClassList("selected");
-
-                        _selectedType = clickedType;
-                        _selectedTypeElement = typeItem;
-                        _selectedTypeElement.AddToClassList("selected");
-
-                        SaveNamespaceAndTypeSelectionState(
-                            GetNamespaceKey(_selectedType),
-                            _selectedType.Name
-                        );
-
-                        LoadObjectTypes(clickedType);
-
-                        BaseDataObject objectToSelect = null;
-                        if (_selectedObjects.Any())
-                        {
-                            string objPrefsKey = string.Format(
-                                LastSelectedObjectFormat,
+                            _selectedTypeElement?.RemoveFromClassList("selected");
+                            _selectedType = clickedType;
+                            _selectedTypeElement = typeItem;
+                            _selectedTypeElement.AddToClassList("selected");
+                            SaveNamespaceAndTypeSelectionState(
+                                GetNamespaceKey(_selectedType),
                                 _selectedType.Name
                             );
-                            string savedObjectGuid = EditorPrefs.GetString(
-                                objPrefsKey,
-                                string.Empty
-                            );
-                            if (!string.IsNullOrWhiteSpace(savedObjectGuid))
-                            {
-                                objectToSelect = _selectedObjects.First(obj =>
-                                {
-                                    if (obj == null)
-                                    {
-                                        return false;
-                                    }
 
-                                    string path = AssetDatabase.GetAssetPath(obj);
-                                    return !string.IsNullOrWhiteSpace(path)
-                                        && string.Equals(
-                                            AssetDatabase.AssetPathToGUID(path),
-                                            savedObjectGuid,
-                                            StringComparison.OrdinalIgnoreCase
-                                        );
-                                });
-
-                                if (objectToSelect == null)
-                                {
-                                    EditorPrefs.DeleteKey(objPrefsKey);
-                                }
-                            }
-                            if (objectToSelect == null)
-                            {
-                                objectToSelect = _selectedObjects[0];
-                            }
-                        }
-
-                        BuildObjectsView();
-                        SelectObject(objectToSelect);
-                        evt.StopPropagation();
-                    });
+                            LoadObjectTypes(clickedType);
+                            BaseDataObject objectToSelect = DetermineObjectToAutoSelect();
+                            BuildObjectsView();
+                            SelectObject(objectToSelect);
+                            evt.StopPropagation();
+                        });
+                    }
+                    else
+                    {
+                        typeItem.AddToClassList("type-item--disabled");
+                        typeItem.pickingMode = PickingMode.Ignore;
+                        typeItem.focusable = false;
+                    }
 
                     typesContainer.Add(typeItem);
                 }
@@ -803,6 +772,41 @@
                     _inspectorContainer.Add(new Label($"Inspector Error: {e.Message}"));
                 }
             }
+        }
+
+        private BaseDataObject DetermineObjectToAutoSelect()
+        {
+            if (!_selectedObjects.Any() || _selectedType == null)
+            {
+                return null;
+            }
+
+            BaseDataObject objectToSelect = null;
+            string objPrefsKey = string.Format(LastSelectedObjectFormat, _selectedType.Name);
+            string savedObjectGuid = EditorPrefs.GetString(objPrefsKey, string.Empty);
+            if (!string.IsNullOrWhiteSpace(savedObjectGuid))
+            {
+                objectToSelect = _selectedObjects.Find(obj =>
+                {
+                    if (obj == null)
+                    {
+                        return false;
+                    }
+
+                    string path = AssetDatabase.GetAssetPath(obj);
+                    return !string.IsNullOrEmpty(path)
+                        && string.Equals(
+                            AssetDatabase.AssetPathToGUID(path),
+                            savedObjectGuid,
+                            StringComparison.OrdinalIgnoreCase
+                        );
+                });
+            }
+            if (objectToSelect == null)
+            {
+                objectToSelect = _selectedObjects[0];
+            }
+            return objectToSelect;
         }
 
         private static void ApplyNamespaceCollapsedState(

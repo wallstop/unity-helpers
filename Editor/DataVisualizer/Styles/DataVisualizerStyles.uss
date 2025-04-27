@@ -66,6 +66,11 @@
     -unity-font-style: bold;
 }
 
+.type-item--disabled {
+    opacity: 0.5;
+    background-color: rgba(70, 70, 70, 0.1);
+}
+
 .in-place-ghost {
     opacity: 0.5;
     border-width: 1px;
