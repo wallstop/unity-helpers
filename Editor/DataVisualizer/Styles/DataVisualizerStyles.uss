@@ -1,0 +1,86 @@
+﻿/* DataVisualizerStyles.uss (Corrected for UI Toolkit) */
+
+/* Style for each item in the object list */
+.object-item {
+    /* Layout */
+    padding: 4px 8px; /* Internal spacing */
+    margin: 2px 0; /* Vertical spacing between items */
+
+    /* Appearance */
+    /* Note: border-style: dotted is not supported in USS. Using solid border. */
+    border-width: 1px;
+    border-color: rgba(128, 128, 128, 0.5); /* Semi-transparent grey */
+    border-radius: 3px;
+    background-color: rgba(80, 80, 80, 0.2);
+    /* Removed invalid cursor property; rely on hover/selection states */
+}
+
+/* Style for the label inside the item */
+.object-item__label {
+    /* Prevent label from blocking pointer events on the parent object-item */
+    picking-mode: Ignore;
+    /* Prevent text selection during drag attempts */
+    -unity-user-select: None;
+    /* Removed invalid cursor property */
+}
+
+/* Style when the mouse is hovering over an item */
+.object-item:hover {
+    background-color: rgba(100, 100, 100, 0.4);
+    border-color: rgba(180, 180, 180, 0.7);
+}
+
+/* Style for the selected item */
+.object-item.selected {
+    background-color: #4A6A8A; /* A distinct selection color */
+    border-color: #6E98C2;
+    /* If you wanted a thicker border on selection: */
+    /* border-width: 2px; */
+}
+
+/* Style for the visual ghost element shown during drag */
+.drag-ghost {
+    /* Using absolute positioning controlled by C# (left/top style props) */
+    position: absolute;
+    border-width: 1px;
+    border-color: white;
+    background-color: rgba(70, 130, 180, 0.7); /* Semi-transparent blue */
+    border-radius: 3px;
+    padding: 4px 8px;
+    opacity: 0.8;
+    /* Make sure it doesn't interfere with pointer events for drop targets */
+    picking-mode: Ignore;
+    /* Removed z-index; stacking is handled via BringToFront() in C# */
+}
+
+/* Style for the drop indicator line */
+.drop-indicator {
+    /* Using absolute positioning controlled by C# (left/top style props) */
+    position: absolute;
+    height: 2px;
+    background-color: #6E98C2; /* Match selected border color */
+    width: 100%; /* Span the width of the container */
+    /* Don't let the indicator interfere with pointer events */
+    picking-mode: Ignore;
+    /* Removed z-index; stacking is handled via BringToFront() in C# */
+}
+
+.type-item {
+    margin-left: 15px; /* Indentation */
+    padding: 2px 6px;
+    margin-top: 1px;
+    margin-bottom: 1px;
+    border-width: 1px;
+    border-color: rgba(100, 100, 100, 0.3);
+    border-radius: 2px;
+    background-color: rgba(90, 90, 90, 0.1);
+}
+.type-item:hover {
+    background-color: rgba(110, 110, 110, 0.3);
+    border-color: rgba(150, 150, 150, 0.5);
+}
+.type-item__label {
+    picking-mode: Ignore;
+    -unity-user-select: None;
+    font-size: 11px; /* Smaller font for types */
+}
