@@ -147,6 +147,208 @@
 #endif
         }
 
+        public static void SignalRefresh()
+        {
+            // Find the open instance of the window (if any)
+            DataVisualizer window = GetWindow<DataVisualizer>(false, null, false); // Don't create if not open
+            if (window != null)
+            {
+                Debug.Log("DataVisualizer window found, scheduling refresh.");
+                // Schedule the actual refresh on the window's update loop
+                window.ScheduleRefresh();
+            }
+            else
+            {
+                Debug.Log("DataVisualizer window not open, refresh signal ignored.");
+            }
+        }
+
+        private void ScheduleRefresh()
+        {
+            // Ensure execution on the main thread via the window's scheduler
+            // A small delay can prevent issues if called during awkward editor states
+            rootVisualElement.schedule.Execute(RefreshAllViews).ExecuteLater(50); // 50ms delay
+        }
+
+        private void RefreshAllViews()
+        {
+            Debug.Log("DataVisualizer RefreshAllViews started.");
+            if (_settings == null)
+            {
+                _settings = LoadOrCreateSettings(); // Ensure settings are loaded
+            }
+
+            // --- Store current selection state ---
+            string previousNamespaceKey =
+                _selectedType != null ? GetNamespaceKey(_selectedType) : null;
+            string previousTypeName = _selectedType?.Name;
+            string previousObjectGuid = null;
+            if (_selectedObject != null)
+            {
+                string path = AssetDatabase.GetAssetPath(_selectedObject);
+                if (!string.IsNullOrEmpty(path))
+                {
+                    previousObjectGuid = AssetDatabase.AssetPathToGUID(path);
+                }
+            }
+            // ---
+
+            // --- Reload Core Data ---
+            // Note: _settings itself might need reloading if the settings *file* changed,
+            // but LoadOrCreateSettings only loads on first enable or if null.
+            // If settings file changes often, consider reloading it here too.
+            // _settings = LoadOrCreateSettings(); // Uncomment if settings file changes need explicit reload here
+
+            LoadScriptableObjectTypes(); // Reloads namespace/type structure and sorts them
+            // ---
+
+
+            // --- Attempt to Restore Selection ---
+            _selectedType = null; // Reset selection first
+            _selectedObject = null;
+            _selectedElement = null;
+            _selectedTypeElement = null;
+
+            // Find previous Namespace
+            int namespaceIndex = -1;
+            if (!string.IsNullOrEmpty(previousNamespaceKey))
+            {
+                namespaceIndex = _scriptableObjectTypes.FindIndex(kvp =>
+                    kvp.key == previousNamespaceKey
+                );
+            }
+            if (namespaceIndex == -1 && _scriptableObjectTypes.Count > 0)
+            { // Fallback namespace
+                namespaceIndex = 0;
+                Debug.Log("Refresh: Previous namespace not found or null, using first.");
+            }
+
+            // Find previous Type
+            if (namespaceIndex != -1)
+            {
+                List<Type> typesInNamespace = _scriptableObjectTypes[namespaceIndex].types;
+                if (typesInNamespace.Count > 0)
+                {
+                    if (!string.IsNullOrEmpty(previousTypeName))
+                    {
+                        _selectedType = typesInNamespace.FirstOrDefault(t =>
+                            t.Name == previousTypeName
+                        );
+                    }
+                    if (_selectedType == null)
+                    { // Fallback type
+                        _selectedType = typesInNamespace[0];
+                        Debug.Log(
+                            "Refresh: Previous type not found or null, using first in namespace."
+                        );
+                    }
+                }
+                else
+                {
+                    Debug.Log("Refresh: No types found in selected/fallback namespace.");
+                }
+            }
+            else
+            {
+                Debug.Log("Refresh: No namespaces found after reload.");
+            }
+
+            // Load objects for the determined type
+            if (_selectedType != null)
+            {
+                LoadObjectTypes(_selectedType); // Reloads _selectedObjects for the type
+            }
+            else
+            {
+                _selectedObjects.Clear(); // No type selected, clear object list
+            }
+
+            // Find previous Object
+            if (
+                _selectedType != null
+                && !string.IsNullOrEmpty(previousObjectGuid)
+                && _selectedObjects.Count > 0
+            )
+            {
+                _selectedObject = _selectedObjects.FirstOrDefault(obj =>
+                {
+                    if (obj == null)
+                        return false;
+                    string path = AssetDatabase.GetAssetPath(obj);
+                    return !string.IsNullOrEmpty(path)
+                        && AssetDatabase.AssetPathToGUID(path) == previousObjectGuid;
+                });
+                if (_selectedObject == null)
+                {
+                    Debug.Log("Refresh: Previous object GUID not found in current list.");
+                    // Fallback to first object? Or select none? Let's select none if specific one is gone.
+                    // _selectedObject = _selectedObjects.Count > 0 ? _selectedObjects[0] : null;
+                }
+            }
+            // --- End Restore Selection Attempt ---
+
+
+            // --- Rebuild UI ---
+            // Need to rebuild all views to reflect potential changes in namespaces, types, objects, and their order/existence.
+            BuildNamespaceView(); // Applies collapse state, builds type items (checking for objects)
+            BuildObjectsView(); // Builds object list based on potentially changed _selectedObjects
+
+            // Apply visual selection for Type (FindTypeElement needs BuildNamespaceView first)
+            VisualElement typeElementToSelect = FindTypeElement(_selectedType);
+            if (typeElementToSelect != null)
+            {
+                _selectedTypeElement = typeElementToSelect;
+                _selectedTypeElement.AddToClassList("selected");
+                // Ensure namespace is expanded if needed
+                var ancestorGroup = FindAncestorNamespaceGroup(_selectedTypeElement); // Use new helper
+                if (ancestorGroup != null)
+                    ExpandNamespaceGroupIfNeeded(ancestorGroup, false); // Don't re-save state
+            }
+
+            // Apply visual selection for Object and update Inspector
+            // SelectObject handles null correctly, finds the VE in the rebuilt view, and builds inspector.
+            // It will also re-save the (potentially restored) state.
+            SelectObject(_selectedObject);
+
+            Debug.Log("DataVisualizer RefreshAllViews finished.");
+        }
+
+        private VisualElement FindAncestorNamespaceGroup(VisualElement startingElement)
+        {
+            if (startingElement == null)
+                return null;
+            VisualElement currentElement = startingElement;
+            while (currentElement != null && currentElement != _namespaceListContainer)
+            {
+                if (currentElement.ClassListContains("object-item")) // Assuming namespace groups use this class
+                {
+                    return currentElement;
+                }
+                currentElement = currentElement.parent;
+            }
+            return null;
+        }
+
+        // Expands a namespace group if it's currently collapsed
+        private void ExpandNamespaceGroupIfNeeded(VisualElement namespaceGroupItem, bool saveState)
+        {
+            if (namespaceGroupItem == null)
+                return;
+            var indicator = namespaceGroupItem.Q<Label>(className: "namespace-indicator"); // Use class
+            string nsKey = namespaceGroupItem.userData as string;
+            var typesContainer = namespaceGroupItem.Q<VisualElement>($"types-container-{nsKey}"); // Use name
+
+            if (
+                indicator != null
+                && typesContainer != null
+                && typesContainer.style.display == DisplayStyle.None
+            )
+            {
+                // It's collapsed, expand it
+                ApplyNamespaceCollapsedState(indicator, typesContainer, false, saveState); // false = collapsed state = expand
+            }
+        }
+
         private DataVisualizerSettings LoadOrCreateSettings()
         {
             DataVisualizerSettings settings = null;
@@ -802,14 +1004,6 @@
                 return;
             }
 
-            // Optionally set default Title based on TypeName (BaseDataObject specific)
-            if (instance is BaseDataObject bdo)
-            {
-                // Title might be set based on asset name later, or set a default here
-                bdo._title = $"New {_selectedType.Name}";
-                // Guid should be assigned automatically if BaseDataObject handles it
-            }
-
             // 5. Generate Unique Asset Path
             // Use relative path for asset database functions
             string baseAssetName = $"New {_selectedType.Name}.asset";
@@ -836,6 +1030,7 @@
                     // --- Update UI ---
                     // Add to the beginning of the current list
                     _selectedObjects.Insert(0, newObject);
+                    UpdateAndSaveObjectCustomOrder();
                     // Rebuild the view
                     BuildObjectsView();
                     // Select the new object
@@ -1665,7 +1860,7 @@
 
                     // Optional: Update _customOrder if using it, might need to shift subsequent items
                     // For now, let's assume LoadObjectTypes will sort correctly on next load.
-
+                    UpdateAndSaveObjectCustomOrder();
                     // Rebuild view and select clone
                     BuildObjectsView();
                     SelectObject(cloneAsset);
