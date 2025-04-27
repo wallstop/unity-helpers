@@ -79,6 +79,12 @@
     font-size: 11px; /* Smaller font for types */
 }
 
+.type-item.selected {
+    background-color: #4A6A8A; /* Or a slightly different color */
+    border-color: #6E98C2;
+    -unity-font-style: bold;
+}
+
 .in-place-ghost {
     opacity: 0.5;
     /* Ensure it doesn't prevent interactions below (though it shouldn't be interactive anyway) */

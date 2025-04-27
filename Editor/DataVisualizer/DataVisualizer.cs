@@ -89,6 +89,7 @@
             _odinPropertyTree = null;
 #endif
             LoadScriptableObjectTypes();
+            rootVisualElement.schedule.Execute(RestorePreviousSelection).ExecuteLater(10); // Small delay
         }
 
         private void OnDisable()
@@ -120,6 +121,119 @@
             _odinInspectorContainer?.Dispose();
             _odinInspectorContainer = null;
 #endif
+        }
+
+        private void RestorePreviousSelection()
+        {
+            if (_scriptableObjectTypes.Count == 0)
+            {
+                return;
+            }
+
+            string savedNamespaceKey = EditorPrefs.GetString(LastSelectedNamespaceKey, null);
+            string selectedNamespaceKey;
+            List<Type> typesInNamespace;
+            int namespaceIndex = -1;
+
+            if (!string.IsNullOrWhiteSpace(savedNamespaceKey))
+            {
+                namespaceIndex = _scriptableObjectTypes.FindIndex(kvp =>
+                    kvp.key == savedNamespaceKey
+                );
+            }
+
+            if (0 <= namespaceIndex)
+            {
+                selectedNamespaceKey = savedNamespaceKey;
+                typesInNamespace = _scriptableObjectTypes[namespaceIndex].types;
+            }
+            else if (_scriptableObjectTypes.Any())
+            {
+                selectedNamespaceKey = _scriptableObjectTypes[0].key;
+                typesInNamespace = _scriptableObjectTypes[0].types;
+            }
+            else
+            {
+                selectedNamespaceKey = null;
+                typesInNamespace = null;
+            }
+
+            if (typesInNamespace is not { Count: > 0 })
+            {
+                return;
+            }
+
+            string typePrefsKey = string.Format(LastSelectedTypeFormat, selectedNamespaceKey);
+            string savedTypeName = EditorPrefs.GetString(typePrefsKey, null);
+            Type selectedType = null;
+
+            if (!string.IsNullOrWhiteSpace(savedTypeName))
+            {
+                selectedType = typesInNamespace.Find(t => t.Name == savedTypeName);
+            }
+
+            selectedType ??= typesInNamespace[0];
+            _selectedType = selectedType;
+
+            LoadObjectTypes(_selectedType);
+
+            BuildNamespaceView();
+            BuildObjectsView();
+
+            VisualElement typeElementToSelect = FindTypeElement(_selectedType);
+            if (typeElementToSelect != null)
+            {
+                _selectedTypeElement?.RemoveFromClassList("selected");
+                _selectedTypeElement = typeElementToSelect;
+                _selectedTypeElement.AddToClassList("selected");
+            }
+
+            string objPrefsKey = string.Format(LastSelectedObjectFormat, _selectedType.Name);
+            string savedObjectGuid = EditorPrefs.GetString(objPrefsKey, null);
+            BaseDataObject objectToSelect = null;
+
+            if (!string.IsNullOrWhiteSpace(savedObjectGuid) && 0 < _selectedObjects.Count)
+            {
+                objectToSelect = _selectedObjects.Find(obj =>
+                {
+                    if (obj == null)
+                    {
+                        return false;
+                    }
+
+                    string path = AssetDatabase.GetAssetPath(obj);
+                    return !string.IsNullOrWhiteSpace(path)
+                        && AssetDatabase.AssetPathToGUID(path) == savedObjectGuid;
+                });
+            }
+
+            if (objectToSelect == null && _selectedObjects.Count > 0)
+            {
+                objectToSelect = _selectedObjects[0];
+            }
+
+            SelectObject(objectToSelect);
+        }
+
+        private VisualElement FindTypeElement(Type targetType)
+        {
+            if (targetType == null || _namespaceListContainer == null)
+            {
+                return null;
+            }
+
+            List<VisualElement> typeItems = _namespaceListContainer
+                .Query<VisualElement>(className: "type-item")
+                .ToList();
+
+            foreach (VisualElement item in typeItems)
+            {
+                if (item.userData is Type itemType && itemType == targetType)
+                {
+                    return item;
+                }
+            }
+            return null;
         }
 
         public void CreateGUI()
@@ -322,6 +436,45 @@
                         {
                             if (typeItem.userData is Type clickedType)
                             {
+                                _selectedTypeElement?.RemoveFromClassList("selected");
+                                _selectedType = clickedType;
+                                _selectedTypeElement = typeItem;
+                                _selectedTypeElement.AddToClassList("selected");
+
+                                try
+                                {
+                                    string namespaceKey = GetNamespaceKey(_selectedType);
+                                    string typeName = _selectedType.Name;
+
+                                    if (!string.IsNullOrWhiteSpace(namespaceKey))
+                                    {
+                                        EditorPrefs.SetString(
+                                            LastSelectedNamespaceKey,
+                                            namespaceKey
+                                        );
+                                        if (!string.IsNullOrWhiteSpace(typeName))
+                                        {
+                                            string typePrefsKey = string.Format(
+                                                LastSelectedTypeFormat,
+                                                namespaceKey
+                                            );
+                                            EditorPrefs.SetString(typePrefsKey, typeName);
+                                            string objPrefsKey = string.Format(
+                                                LastSelectedObjectFormat,
+                                                typeName
+                                            );
+                                            EditorPrefs.DeleteKey(objPrefsKey);
+                                        }
+                                    }
+                                }
+                                catch (Exception e)
+                                {
+                                    this.LogError(
+                                        $"Error saving type/namespace selection state.",
+                                        e
+                                    );
+                                }
+
                                 LoadObjectTypes(clickedType);
                                 BuildObjectsView();
                                 SelectObject(null);
@@ -682,7 +835,7 @@
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError($"Error saving selection state.", e);
+                    this.LogError($"Error saving selection state.", e);
                 }
             }
             else
