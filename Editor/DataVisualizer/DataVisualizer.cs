@@ -23,6 +23,7 @@
 
     public sealed class DataVisualizer : EditorWindow
     {
+        private const float DragUpdateThrottleTime = 0.05f;
         private const string CustomTypeOrderKey =
             "WallstopStudios.UnityHelpers.DataVisualizer.CustomTypeOrder";
 
@@ -31,11 +32,15 @@
 
         // {0} = Namespace Key
         private const string CustomTypeOrderKeyFormat =
-            "WallstopStudios.UnityHelpers.DataVisualizer.CustomTypeOrder.{0}"; // {0} = Namespace Key
+            "WallstopStudios.UnityHelpers.DataVisualizer.CustomTypeOrder.{0}";
 
-        // {0} = Type Name
-        private const string CustomObjectOrderKeyFormat =
-            "WallstopStudios.UnityHelpers.DataVisualizer.CustomObjectOrder.{0}";
+        private enum DragType
+        {
+            None = 0,
+            Object = 1,
+            Namespace = 2,
+            Type = 3,
+        }
 
         private readonly List<(string key, List<Type> types)> _scriptableObjectTypes = new();
         private readonly Dictionary<BaseDataObject, VisualElement> _objectVisualElementMap = new();
@@ -49,26 +54,17 @@
         private ScrollView _objectScrollView;
         private ScrollView _inspectorScrollView;
 
-        private enum DragType
-        {
-            None = 0,
-            Object = 1,
-            Namespace = 2,
-            Type = 3,
-        } // Added Type
-
         private DragType _activeDragType = DragType.None;
-        private object _draggedData; // Holds BaseDataObject, namespace key (string), or Type
+        private object _draggedData;
 
-        // Add near other drag state variables
-        private VisualElement _inPlaceGhost = null;
-        private int _lastGhostInsertIndex = -1; // Track where the in-place ghost was last put
-        private VisualElement _lastGhostParent = null; // Track which container it was in
+        private VisualElement _inPlaceGhost;
+        private int _lastGhostInsertIndex = -1;
+        private VisualElement _lastGhostParent;
         private VisualElement _draggedElement;
-        private BaseDataObject _draggedObject;
         private VisualElement _dragGhost;
         private Vector2 _dragStartPosition;
         private bool _isDragging;
+        private float _lastDragUpdateTime;
 
 #if ODIN_INSPECTOR
         private PropertyTree _odinPropertyTree;
@@ -111,7 +107,6 @@
             _dragGhost?.RemoveFromHierarchy();
             _dragGhost = null;
             _draggedElement = null;
-            _draggedObject = null;
 #if ODIN_INSPECTOR
             _odinRepaintSchedule?.Pause();
             _odinRepaintSchedule = null;
@@ -323,68 +318,20 @@
                     typeItem.RegisterCallback<PointerDownEvent>(OnTypePointerDown);
                     typeItem.RegisterCallback<PointerUpEvent>(evt =>
                     {
-                        if (!_isDragging && evt.button == 0) // Check if not dragging and left click up
+                        if (
+                            !_isDragging
+                            && evt.button == 0
+                            && typeItem.userData is Type clickedType
+                        )
                         {
-                            if (typeItem.userData is Type clickedType)
-                            {
-                                LoadObjectTypes(clickedType);
-                                BuildObjectsView();
-                                SelectObject(null);
-                                evt.StopPropagation(); // Consume the event
-                            }
+                            LoadObjectTypes(clickedType);
+                            BuildObjectsView();
+                            SelectObject(null);
+                            evt.StopPropagation();
                         }
                     });
 
                     typesContainer.Add(typeItem);
-
-                    //                     var typeButton = new Button(() =>
-                    //                     {
-                    //                         LoadObjectTypes(type);
-                    //                         BuildObjectsView();
-                    //                         _selectedObject = null;
-                    // #if ODIN_INSPECTOR
-                    //
-                    //                         bool recreateTree =
-                    //                             _odinPropertyTree?.WeakTargets == null
-                    //                             || _odinPropertyTree.WeakTargets.Count == 0
-                    //                             || !ReferenceEquals(_odinPropertyTree.WeakTargets[0], _selectedObject);
-                    //
-                    //                         if (recreateTree)
-                    //                         {
-                    //                             if (_odinPropertyTree != null)
-                    //                             {
-                    //                                 _odinPropertyTree.OnPropertyValueChanged -=
-                    //                                     HandleOdinPropertyValueChanged;
-                    //                             }
-                    //
-                    //                             _odinPropertyTree = null;
-                    //                             if (_selectedObject != null)
-                    //                             {
-                    //                                 try
-                    //                                 {
-                    //                                     _odinPropertyTree = PropertyTree.Create(_selectedObject);
-                    //                                     _odinPropertyTree.OnPropertyValueChanged +=
-                    //                                         HandleOdinPropertyValueChanged;
-                    //                                 }
-                    //                                 catch (Exception e)
-                    //                                 {
-                    //                                     this.LogError(
-                    //                                         $"Failed to create Odin PropertyTree for {_selectedObject.name}.",
-                    //                                         e
-                    //                                     );
-                    //                                 }
-                    //                             }
-                    //
-                    //                             _odinInspectorContainer?.MarkDirtyRepaint();
-                    //                         }
-                    // #endif
-                    //                         BuildInspectorView();
-                    //                     })
-                    //                     {
-                    //                         text = type.Name,
-                    //                         style = { marginLeft = 10 },
-                    //                     };
-                    //                     _namespaceListContainer.Add(typeButton);
                 }
             }
         }
@@ -402,31 +349,27 @@
 
             foreach (BaseDataObject dataObject in _selectedObjects)
             {
-                // Create the main container element for the object
-                VisualElement objectItem = new VisualElement
+                VisualElement objectItem = new()
                 {
                     name = $"object-item-{dataObject.GetInstanceID()}",
                 };
-                objectItem.AddToClassList("object-item"); // Apply USS style
-                objectItem.userData = dataObject; // Store data object reference
+                objectItem.AddToClassList("object-item");
+                objectItem.userData = dataObject;
 
-                // Create a label for the title
-                Label titleLabel = new Label(dataObject.Title) { name = "object-item-label" };
-                titleLabel.AddToClassList("object-item__label"); // Apply USS style
+                Label titleLabel = new(dataObject.Title) { name = "object-item-label" };
+                titleLabel.AddToClassList("object-item__label");
                 objectItem.Add(titleLabel);
 
-                // --- Register Pointer Down Event for Selection and Drag Start ---
                 objectItem.RegisterCallback<PointerDownEvent>(OnObjectPointerDown);
 
                 // Store mapping and add to list
                 _objectVisualElementMap[dataObject] = objectItem;
                 _objectListContainer.Add(objectItem);
 
-                // --- Re-apply selection style if this object was selected ---
                 if (_selectedObject != null && _selectedObject == dataObject)
                 {
                     objectItem.AddToClassList("selected");
-                    _selectedElement = objectItem; // Ensure _selectedElement is up-to-date
+                    _selectedElement = objectItem;
                 }
             }
         }
@@ -450,14 +393,13 @@
                     }
                 );
 #if ODIN_INSPECTOR
-                // Clear Odin tree when nothing is selected
                 if (_odinPropertyTree != null)
                 {
                     _odinPropertyTree.OnPropertyValueChanged -= HandleOdinPropertyValueChanged;
                     _odinPropertyTree.Dispose();
                     _odinPropertyTree = null;
                 }
-                _odinInspectorContainer?.MarkDirtyRepaint(); // Update IMGUI
+                _odinInspectorContainer?.MarkDirtyRepaint();
 #endif
                 return;
             }
@@ -480,27 +422,22 @@
                     }
                     _odinPropertyTree = PropertyTree.Create(_selectedObject);
                     _odinPropertyTree.OnPropertyValueChanged += HandleOdinPropertyValueChanged;
-                    // Odin needs explicit repaint sometimes after tree change
                     _odinInspectorContainer?.MarkDirtyRepaint();
                 }
 
                 if (_odinInspectorContainer == null)
                 {
-                    // Simplified Odin IMGUIContainer setup
                     _odinInspectorContainer = new IMGUIContainer(() => _odinPropertyTree?.Draw())
                     {
                         name = "odin-inspector",
                         style = { flexGrow = 1 },
                     };
-                    // Focus handling can be simplified or removed if not strictly needed
                 }
                 else
                 {
-                    // Ensure the handler is correct if the container persists
                     _odinInspectorContainer.onGUIHandler = () => _odinPropertyTree?.Draw();
                 }
 
-                // Ensure container is added if it was removed or never added
                 if (_odinInspectorContainer.parent != _inspectorContainer)
                 {
                     _inspectorContainer.Add(_odinInspectorContainer);
@@ -511,7 +448,7 @@
             {
                 this.LogError($"Error setting up Odin Inspector.", e);
                 _inspectorContainer.Add(new Label($"Odin Inspector Error: {e.Message}"));
-                _odinPropertyTree = null; // Prevent further errors
+                _odinPropertyTree = null;
             }
 #else
             try
@@ -589,7 +526,7 @@
             {
                 return;
             }
-            UpdateObjectTitleRepresentation(dataObject, visualElement); // Pass the element
+            UpdateObjectTitleRepresentation(dataObject, visualElement);
         }
 
         private void UpdateObjectTitleRepresentation(
@@ -598,13 +535,14 @@
         )
         {
             if (dataObject == null || element == null)
+            {
                 return;
+            }
 
-            // Find the Label within the element
-            Label titleLabel = element.Q<Label>(className: "object-item__label"); // More robust query
+            Label titleLabel = element.Q<Label>(className: "object-item__label");
             if (titleLabel == null)
             {
-                Debug.LogError("Could not find title label within object item element.");
+                this.LogError($"Could not find title label within object item element.");
                 return;
             }
 
@@ -692,14 +630,9 @@
 
         private void SelectObject(BaseDataObject dataObject)
         {
-            // Deselect previous
-            if (_selectedElement != null)
-            {
-                _selectedElement.RemoveFromClassList("selected");
-            }
-
+            _selectedElement?.RemoveFromClassList("selected");
             _selectedObject = dataObject;
-            _selectedElement = null; // Reset selected element
+            _selectedElement = null;
 
             if (
                 _selectedObject != null
@@ -711,17 +644,14 @@
             {
                 _selectedElement = newSelectedElement;
                 _selectedElement.AddToClassList("selected");
-                Selection.activeObject = _selectedObject; // Update Unity selection
-                // Optionally scroll to the selected item
+                Selection.activeObject = _selectedObject;
                 _objectScrollView.ScrollTo(_selectedElement);
             }
             else
             {
-                // If null is passed or object not found, clear Unity selection
                 Selection.activeObject = null;
             }
 
-            // Rebuild the inspector view for the newly selected object (or lack thereof)
             BuildInspectorView();
         }
 
@@ -729,17 +659,16 @@
         {
             VisualElement targetElement = evt.currentTarget as VisualElement;
             if (targetElement?.userData is not BaseDataObject clickedObject)
+            {
                 return;
+            }
 
-            // --- Handle Selection --- (Remains the same)
             if (_selectedObject != clickedObject)
             {
                 SelectObject(clickedObject);
             }
 
-            // --- Initiate Drag ---
-            // Check for left mouse button to start drag
-            if (evt.button == 0) // Left mouse button
+            if (evt.button == 0)
             {
                 _draggedElement = targetElement;
                 _draggedData = clickedObject;
@@ -755,42 +684,39 @@
 
         private void OnPointerCaptureOut(PointerCaptureOutEvent evt)
         {
-            // This handler is attached to _draggedElement
-            // Debug.LogWarning($"Pointer Capture Out detected on {_draggedElement?.name}. Cleaning up drag state.");
-
-            // Check if we were actually dragging with this element
             if (_activeDragType != DragType.None && _draggedElement != null)
             {
-                // We lost capture unexpectedly, likely means the drag is cancelled externally.
-                // Clean up everything as if the drag ended.
-
-                // Ensure local handlers are unregistered (might be redundant if called after Up, but safe)
-                // Debug.Log($"Unregistering handlers due to Capture Out on {_draggedElement.name}");
                 _draggedElement.UnregisterCallback<PointerMoveEvent>(OnCapturedPointerMove);
                 _draggedElement.UnregisterCallback<PointerUpEvent>(OnCapturedPointerUp);
                 _draggedElement.UnregisterCallback<PointerCaptureOutEvent>(OnPointerCaptureOut);
-
-                // Reset state and visuals
                 CancelDrag();
             }
         }
 
         private void OnCapturedPointerMove(PointerMoveEvent evt)
         {
-            // This handler is attached to _draggedElement
-
-            // Ensure we are actually in a drag state initiated by this element
             if (
                 _draggedElement == null
                 || !_draggedElement.HasPointerCapture(evt.pointerId)
                 || _activeDragType == DragType.None
             )
             {
-                // Should not happen if registration/capture is correct, but good safety check
                 return;
             }
 
-            // Check if we've moved enough to start the visual drag
+            if (_dragGhost != null)
+            {
+                _dragGhost.style.left = evt.position.x - _dragGhost.resolvedStyle.width / 2;
+                _dragGhost.style.top = evt.position.y - _dragGhost.resolvedStyle.height;
+            }
+
+            float currentTime = Time.realtimeSinceStartup;
+            if (currentTime - _lastDragUpdateTime < DragUpdateThrottleTime)
+            {
+                return;
+            }
+            _lastDragUpdateTime = currentTime;
+
             if (!_isDragging)
             {
                 if (Vector2.Distance(evt.position, _dragStartPosition) > 5.0f)
@@ -807,62 +733,38 @@
                 }
                 else
                 {
-                    return; // Not dragging yet
+                    return;
                 }
             }
 
-            // --- Update Drag Visuals (if dragging started) ---
-            if (_isDragging) // Check again as it might have just been set true
+            if (_isDragging)
             {
-                // Update Ghost Position (using evt.position relative to window/panel)
-                if (_dragGhost != null)
-                {
-                    // Calculate center offset if desired
-                    float ghostOffsetX = _dragGhost.resolvedStyle.width / 2f;
-                    float ghostOffsetY = _dragGhost.resolvedStyle.height / 2f;
-                    _dragGhost.style.left = evt.position.x - ghostOffsetX;
-                    _dragGhost.style.top = evt.position.y - ghostOffsetY;
-                }
-
-                // Update Drop Indicator Position
-                UpdateDragTargeting(evt.position);
+                UpdateInPlaceGhostPosition(evt.position);
             }
-
-            // Stop propagation? Usually not needed here as the capturing element gets priority.
-            // evt.StopPropagation();
         }
 
         private void OnCapturedPointerUp(PointerUpEvent evt)
         {
-            // This handler is attached to _draggedElement
-
-            // Ensure this is the pointer we captured
             if (
                 _draggedElement == null
                 || !_draggedElement.HasPointerCapture(evt.pointerId)
                 || _activeDragType == DragType.None
             )
             {
-                // Debug.LogWarning($"OnCapturedPointerUp received event for pointer {evt.pointerId}, but not actively dragging or element mismatch.");
                 return;
             }
 
             int pointerId = evt.pointerId;
-            bool performDrop = _isDragging; // Check if we moved enough to count as a drop
-            DragType dropType = _activeDragType; // Store before potentially resetting in CancelDrag
+            bool performDrop = _isDragging;
+            DragType dropType = _activeDragType;
 
-            var draggedElement = _draggedElement;
-            // Use try...finally to guarantee pointer release and handler unregistration
+            VisualElement draggedElement = _draggedElement;
             try
             {
-                // 1. Release Pointer - CRITICAL
-                // Debug.Log($"Releasing pointer {pointerId} in OnCapturedPointerUp for {_draggedElement.name}");
                 _draggedElement.ReleasePointer(pointerId);
 
-                // 2. Perform Drop Logic (only if we actually dragged)
                 if (performDrop)
                 {
-                    // Debug.Log($"Performing drop for {dropType}...");
                     switch (dropType)
                     {
                         case DragType.Object:
@@ -875,110 +777,86 @@
                             PerformTypeDrop();
                             break;
                     }
-                    // Debug.Log($"Drop performed for {dropType}.");
                 }
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                Debug.LogError($"Error during drop execution for {dropType}: {ex}");
+                this.LogError($"Error during drop execution for {dropType}.", e);
             }
             finally
             {
-                // 3. Unregister Local Handlers - CRITICAL
-                // Debug.Log($"Unregistering drag handlers from {_draggedElement.name}");
                 draggedElement.UnregisterCallback<PointerMoveEvent>(OnCapturedPointerMove);
                 draggedElement.UnregisterCallback<PointerUpEvent>(OnCapturedPointerUp);
-                // Also unregister PointerCaptureOutEvent if you handle it (see step 6)
                 draggedElement.UnregisterCallback<PointerCaptureOutEvent>(OnPointerCaptureOut);
 
-                // 4. Reset State via CancelDrag (which no longer needs to release pointer)
-                // Debug.Log("Calling CancelDrag from OnCapturedPointerUp finally block.");
-                CancelDrag(); // Reset state variables and visuals
+                CancelDrag();
             }
 
-            // Stop the event after handling it here
             evt.StopPropagation();
         }
 
         private void PerformNamespaceDrop()
         {
-            // Retrieve target index from where the in-place ghost was visually placed
-            int targetIndex = (_inPlaceGhost?.userData is int index) ? index : -1;
-            // Debug.Log($"PerformNamespaceDrop - Target Index from InPlaceGhost: {targetIndex}");
+            int targetIndex = _inPlaceGhost?.userData is int index ? index : -1;
 
-            // Validate essential elements and data
+            _inPlaceGhost?.RemoveFromHierarchy();
+
             if (
                 _draggedElement == null
-                || !(_draggedData is string draggedKey)
+                || _draggedData is not string draggedKey
                 || _namespaceListContainer == null
             )
             {
-                // Cleanup is handled by OnCapturedPointerUp's finally block calling CancelDrag
                 return;
             }
 
-            if (targetIndex == -1)
+            if (targetIndex < 0)
             {
-                Debug.LogWarning(
-                    "PerformNamespaceDrop: Invalid target index (-1) retrieved from ghost. Aborting drop."
-                );
-                // Cleanup is handled by OnCapturedPointerUp's finally block calling CancelDrag
                 return;
             }
 
-            // --- Reorder Visual Element (Place ORIGINAL element) ---
-            int maxIndex = _namespaceListContainer.childCount; // Max index for insertion
-            targetIndex = Mathf.Clamp(targetIndex, 0, maxIndex);
+            int currentIndex = _namespaceListContainer.IndexOf(_draggedElement);
+            if (currentIndex < 0)
+            {
+                return;
+            }
 
-            // Make original element visible again before inserting
+            if (currentIndex < targetIndex)
+            {
+                targetIndex--;
+            }
+
             _draggedElement.style.display = DisplayStyle.Flex;
-
-            // Insert original element at the target visual index
+            _draggedElement.style.opacity = 1.0f;
             _namespaceListContainer.Insert(targetIndex, _draggedElement);
 
-            // --- Reorder Data (_scriptableObjectTypes list and save to EditorPrefs) ---
             int oldDataIndex = _scriptableObjectTypes.FindIndex(kvp => kvp.key == draggedKey);
-            if (oldDataIndex >= 0)
+            if (0 <= oldDataIndex)
             {
-                var draggedItem = _scriptableObjectTypes[oldDataIndex];
+                (string key, List<Type> types) draggedItem = _scriptableObjectTypes[oldDataIndex];
                 _scriptableObjectTypes.RemoveAt(oldDataIndex);
-
-                // The visual targetIndex directly corresponds to the desired data index
                 int dataInsertIndex = targetIndex;
-                dataInsertIndex = Mathf.Clamp(dataInsertIndex, 0, _scriptableObjectTypes.Count); // Clamp against current data list size
+                dataInsertIndex = Mathf.Clamp(dataInsertIndex, 0, _scriptableObjectTypes.Count);
                 _scriptableObjectTypes.Insert(dataInsertIndex, draggedItem);
-
-                // Update and Save Namespace Order to EditorPrefs
                 UpdateAndSaveNamespaceOrder();
             }
-            else
-            {
-                Debug.LogError(
-                    $"PerformNamespaceDrop: Dragged namespace key '{draggedKey}' not found in data list!"
-                );
-            }
-
-            // Note: Cleanup (_inPlaceGhost removal, state reset) happens in OnCapturedPointerUp/CancelDrag
         }
 
         private void OnNamespacePointerDown(PointerDownEvent evt)
         {
-            VisualElement targetElement = evt.currentTarget as VisualElement;
-            // Ensure it's a namespace item and has the key string in userData
-            if (targetElement == null || !(targetElement.userData is string namespaceKey))
+            if (
+                evt.currentTarget
+                is not VisualElement { userData: string namespaceKey } targetElement
+            )
             {
-                // Debug.LogWarning("PointerDown target is not a valid namespace item.");
                 return;
             }
 
-            // No selection logic needed for namespaces
-
-            // --- Initiate Drag ---
-            if (evt.button == 0) // Left mouse button
+            if (evt.button == 0)
             {
                 _draggedElement = targetElement;
-                _draggedData = namespaceKey; // Store the namespace key string
-                _activeDragType = DragType.Namespace; // << SET DRAG TYPE
+                _draggedData = namespaceKey;
+                _activeDragType = DragType.Namespace;
                 _dragStartPosition = evt.position;
                 targetElement.CapturePointer(evt.pointerId);
                 targetElement.RegisterCallback<PointerMoveEvent>(OnCapturedPointerMove);
@@ -990,15 +868,11 @@
 
         private void UpdateAndSaveNamespaceOrder()
         {
-            // Extract the ordered keys from the potentially reordered _scriptableObjectTypes list
             List<string> newNamespaceOrder = _scriptableObjectTypes.Select(kvp => kvp.key).ToList();
-
             try
             {
-                // Serialize and save to EditorPrefs
                 string json = Serializer.JsonStringify(newNamespaceOrder);
                 EditorPrefs.SetString(CustomNamespaceOrderKey, json);
-                // Debug.Log($"Saved custom namespace order: {json}");
             }
             catch (Exception e)
             {
@@ -1008,20 +882,16 @@
 
         private void OnTypePointerDown(PointerDownEvent evt)
         {
-            VisualElement targetElement = evt.currentTarget as VisualElement;
-            // Ensure it's a type item and has the Type in userData
-            if (targetElement is not { userData: Type type })
+            if (evt.currentTarget is not VisualElement { userData: Type type } targetElement)
             {
                 return;
             }
 
-            // No selection logic needed for types
-
-            if (evt.button == 0) // Left mouse button
+            if (evt.button == 0)
             {
                 _draggedElement = targetElement;
-                _draggedData = type; // Store the System.Type
-                _activeDragType = DragType.Type; // << SET DRAG TYPE
+                _draggedData = type;
+                _activeDragType = DragType.Type;
                 _dragStartPosition = evt.position;
                 _isDragging = false;
                 targetElement.CapturePointer(evt.pointerId);
@@ -1034,85 +904,56 @@
 
         private void PerformTypeDrop()
         {
-            // Retrieve target index from where the in-place ghost was visually placed
-            int targetIndex = (_inPlaceGhost?.userData is int index) ? index : -1;
-            // Debug.Log($"PerformTypeDrop - Target Index from InPlaceGhost: {targetIndex}");
+            int targetIndex = _inPlaceGhost?.userData is int index ? index : -1;
+            _inPlaceGhost?.RemoveFromHierarchy();
 
-            // Validate essential elements and data
-            VisualElement typesContainer = _draggedElement?.parent; // Parent should be the types container
-            string namespaceKey = typesContainer?.userData as string; // Get namespace key from container
+            VisualElement typesContainer = _draggedElement?.parent;
+            string namespaceKey = typesContainer?.userData as string;
 
             if (
                 _draggedElement == null
-                || !(_draggedData is Type draggedType)
+                || _draggedData is not Type draggedType
                 || typesContainer == null
                 || string.IsNullOrEmpty(namespaceKey)
             )
             {
-                Debug.LogError(
-                    "PerformTypeDrop: Missing dragged element, type data, parent container, or namespace key."
-                );
-                // Cleanup is handled by OnCapturedPointerUp's finally block calling CancelDrag
                 return;
             }
 
-            if (targetIndex == -1)
+            if (targetIndex < 01)
             {
-                Debug.LogWarning(
-                    "PerformTypeDrop: Invalid target index (-1) retrieved from ghost. Aborting drop."
-                );
-                // Cleanup is handled by OnCapturedPointerUp's finally block calling CancelDrag
                 return;
             }
 
-            // --- Reorder Visual Element (Place ORIGINAL element) ---
-            int maxIndex = typesContainer.childCount; // Max index for insertion
-            targetIndex = Mathf.Clamp(targetIndex, 0, maxIndex);
+            int currentIndex = typesContainer.IndexOf(_draggedElement);
+            if (currentIndex < targetIndex)
+            {
+                targetIndex--;
+            }
 
-            // Make original element visible again before inserting
             _draggedElement.style.display = DisplayStyle.Flex;
-
-            // Insert original element at the target visual index within its parent container
+            _draggedElement.style.opacity = 1.0f;
             typesContainer.Insert(targetIndex, _draggedElement);
 
-            // --- Reorder Data (Types list within _scriptableObjectTypes and save to EditorPrefs) ---
             int namespaceIndex = _scriptableObjectTypes.FindIndex(kvp => kvp.key == namespaceKey);
-            if (namespaceIndex >= 0)
+            if (0 <= namespaceIndex)
             {
                 List<Type> typesList = _scriptableObjectTypes[namespaceIndex].types;
                 int oldDataIndex = typesList.IndexOf(draggedType);
-                if (oldDataIndex >= 0)
+                if (0 <= oldDataIndex)
                 {
                     typesList.RemoveAt(oldDataIndex);
-
-                    // Visual targetIndex corresponds to data index
                     int dataInsertIndex = targetIndex;
-                    dataInsertIndex = Mathf.Clamp(dataInsertIndex, 0, typesList.Count); // Clamp against current data list size
+                    dataInsertIndex = Mathf.Clamp(dataInsertIndex, 0, typesList.Count);
                     typesList.Insert(dataInsertIndex, draggedType);
 
-                    // Update and Save Type Order for this Namespace to EditorPrefs
                     UpdateAndSaveTypeOrder(namespaceKey, typesList);
                 }
-                else
-                {
-                    Debug.LogError(
-                        $"PerformTypeDrop: Dragged type '{draggedType.Name}' not found in data list for namespace '{namespaceKey}'!"
-                    );
-                }
             }
-            else
-            {
-                Debug.LogError(
-                    $"PerformTypeDrop: Namespace key '{namespaceKey}' not found in _scriptableObjectTypes!"
-                );
-            }
-
-            // Note: Cleanup (_inPlaceGhost removal, state reset) happens in OnCapturedPointerUp/CancelDrag
         }
 
         private void UpdateAndSaveTypeOrder(string namespaceKey, List<Type> orderedTypes)
         {
-            // Extract the ordered type names
             List<string> newTypeNameOrder = orderedTypes.Select(t => t.Name).ToList();
             string prefsKey = string.Format(CustomTypeOrderKeyFormat, namespaceKey);
             try
@@ -1131,461 +972,356 @@
 
         private void PerformObjectDrop()
         {
-            int targetIndex = (_inPlaceGhost?.userData is int index) ? index : -1;
+            int targetIndex = _inPlaceGhost?.userData is int index ? index : -1;
+
+            if (_inPlaceGhost != null)
+            {
+                _inPlaceGhost.RemoveFromHierarchy();
+            }
 
             if (
                 _draggedElement == null
-                || !(_draggedData is BaseDataObject draggedObject)
+                || _draggedData is not BaseDataObject draggedObject
                 || _objectListContainer == null
             )
             {
-                CancelDrag();
                 return;
             }
 
-            if (targetIndex == -1)
+            if (targetIndex < 0)
             {
-                CancelDrag();
                 return;
             }
 
             int currentIndex = _objectListContainer.IndexOf(_draggedElement);
-            if (currentIndex == targetIndex || currentIndex + 1 == targetIndex)
+            if (currentIndex < 0)
             {
-                CancelDrag();
                 return;
             }
 
-            int maxIndex = _objectListContainer.childCount; // Current count is max insert index
-            targetIndex = Mathf.Clamp(targetIndex, 0, maxIndex);
+            if (currentIndex < targetIndex)
+            {
+                targetIndex--;
+            }
 
-            // Make original element visible again before inserting
-            _draggedElement.style.display = DisplayStyle.Flex; // Or Visible if using visibility property
-
-            // Insert original element at the target index
+            _draggedElement.style.display = DisplayStyle.Flex;
+            _draggedElement.style.opacity = 1.0f;
             _objectListContainer.Insert(targetIndex, _draggedElement);
 
-            // --- Reorder Data (_selectedObjects list) ---
             int oldDataIndex = _selectedObjects.IndexOf(draggedObject);
-            if (oldDataIndex >= 0)
+            if (0 <= oldDataIndex)
             {
                 _selectedObjects.RemoveAt(oldDataIndex);
-                // dataInsertIndex should match the visual targetIndex where it was placed
                 int dataInsertIndex = targetIndex;
-                // If we inserted visually *after* the original data index, the data index needs adjustment
-                // because the list is one shorter *before* insertion compared to visual list *after* insertion.
-                // Example: [A, B(dragged), C] -> Drag B after C -> Visual Insert Index = 2. Data list [A, C]. Insert B at index 2 -> [A, C, B] Correct.
-                // Example: [A, B, C(dragged)] -> Drag C before B -> Visual Insert Index = 1. Data list [A, B]. Insert C at index 1 -> [A, C, B] Correct.
-                // Example: [A(dragged), B, C] -> Drag A after C -> Visual Insert Index = 2. Data list [B, C]. Insert A at index 2 -> [B, C, A] Correct.
-                dataInsertIndex = Mathf.Clamp(dataInsertIndex, 0, _selectedObjects.Count); // Clamp against current data list size
+                dataInsertIndex = Mathf.Clamp(dataInsertIndex, 0, _selectedObjects.Count);
                 _selectedObjects.Insert(dataInsertIndex, draggedObject);
-
-                // Update persistence (_customOrder)
                 UpdateAndSaveObjectCustomOrder();
             }
-            else
-            {
-                Debug.LogError("PerformObjectDrop: Dragged object not found in data list!");
-            }
-
-            // Cleanup in CancelDrag
         }
 
-        private void UpdateAndSaveObjectOrder(Type objectType, List<BaseDataObject> orderedObjects)
-        {
-            List<string> orderedGuids = new List<string>();
-            foreach (BaseDataObject obj in orderedObjects)
-            {
-                if (obj == null)
-                    continue; // Skip null entries if any
-                string path = AssetDatabase.GetAssetPath(obj);
-                if (!string.IsNullOrEmpty(path))
-                {
-                    string guid = AssetDatabase.AssetPathToGUID(path);
-                    if (!string.IsNullOrEmpty(guid))
-                    {
-                        orderedGuids.Add(guid);
-                    }
-                    else
-                    {
-                        Debug.LogWarning(
-                            $"Could not get GUID for object '{obj.name}' at path '{path}'. It might not be saved yet or is not an asset."
-                        );
-                    }
-                }
-                else
-                {
-                    Debug.LogWarning(
-                        $"Could not get asset path for object '{obj.name}'. It might not be saved yet."
-                    );
-                }
-            }
-
-            if (orderedGuids.Count > 0) // Only save if we have GUIDs
-            {
-                string prefsKey = string.Format(CustomObjectOrderKeyFormat, objectType.Name);
-                try
-                {
-                    string json = Serializer.JsonStringify(orderedGuids);
-                    EditorPrefs.SetString(prefsKey, json);
-                    // Debug.Log($"Saved custom object order for type '{objectType.Name}': {json}");
-                }
-                catch (Exception e)
-                {
-                    this.LogError(
-                        $"Failed to serialize or save custom object order for type '{objectType.Name}'.",
-                        e
-                    );
-                }
-            }
-            else if (orderedObjects.Count > 0)
-            {
-                // Clear the pref if all objects failed to get a GUID? Or leave stale?
-                // Let's leave stale for now. New objects without GUIDs won't be saved.
-                Debug.LogWarning(
-                    $"Could not save object order for type '{objectType.Name}' as no valid asset GUIDs were found."
-                );
-            }
-        }
-
-        private void StartDragVisuals(Vector2 currentPosition, string dragText) // << Added dragText parameter
+        private void StartDragVisuals(Vector2 currentPosition, string dragText)
         {
             if (_draggedElement == null || _draggedData == null)
+            {
                 return;
+            }
 
-            // Create Ghost Element
             if (_dragGhost == null)
             {
-                _dragGhost = new VisualElement() { name = "drag-ghost-cursor" };
+                _dragGhost = new VisualElement
+                {
+                    name = "drag-ghost-cursor",
+                    style = { visibility = Visibility.Visible },
+                };
+                _dragGhost.style.left = currentPosition.x - _dragGhost.resolvedStyle.width / 2;
+                _dragGhost.style.top = currentPosition.y - _dragGhost.resolvedStyle.height;
                 _dragGhost.AddToClassList("drag-ghost");
-                // Use a label inside the ghost
-                Label ghostLabel = new Label(dragText); // << Use parameter
-                ghostLabel.style.unityTextAlign = TextAnchor.MiddleLeft;
+                _dragGhost.BringToFront();
+                Label ghostLabel = new(dragText)
+                {
+                    style = { unityTextAlign = TextAnchor.MiddleLeft },
+                };
                 _dragGhost.Add(ghostLabel);
                 rootVisualElement.Add(_dragGhost);
             }
             else
             {
-                // Update text if ghost already exists (e.g., if StartDragVisuals was called multiple times)
-                var ghostLabel = _dragGhost.Q<Label>();
+                Label ghostLabel = _dragGhost.Q<Label>();
                 if (ghostLabel != null)
-                    ghostLabel.text = dragText; // << Update text
+                {
+                    ghostLabel.text = dragText;
+                }
             }
 
             _dragGhost.style.visibility = Visibility.Visible;
-            _dragGhost.style.left = currentPosition.x - (_draggedElement.resolvedStyle.width / 2);
-            _dragGhost.style.top = currentPosition.y - (_draggedElement.resolvedStyle.height / 2);
+            _dragGhost.style.left = currentPosition.x - _draggedElement.resolvedStyle.width / 2;
+            _dragGhost.style.top = currentPosition.y - _draggedElement.resolvedStyle.height;
             _dragGhost.BringToFront();
 
             if (_inPlaceGhost == null)
             {
                 try
                 {
-                    // 1. Create the basic element
-                    _inPlaceGhost = new VisualElement();
-                    _inPlaceGhost.name = "drag-ghost-inplace";
+                    _inPlaceGhost = new VisualElement
+                    {
+                        name = "drag-ghost-overlay",
+                        style =
+                        {
+                            height = _draggedElement.resolvedStyle.height,
+                            marginTop = _draggedElement.resolvedStyle.marginTop,
+                            marginBottom = _draggedElement.resolvedStyle.marginBottom,
+                            marginLeft = _draggedElement.resolvedStyle.marginLeft,
+                            marginRight = _draggedElement.resolvedStyle.marginRight,
+                        },
+                    };
 
-                    // 2. Copy relevant style classes from the original element
-                    //    (Assumes classes define the general look)
-                    foreach (var className in _draggedElement.GetClasses())
+                    foreach (string className in _draggedElement.GetClasses())
                     {
                         _inPlaceGhost.AddToClassList(className);
                     }
-                    // 3. Add the specific styling class for the ghost effect (opacity etc.)
                     _inPlaceGhost.AddToClassList("in-place-ghost");
 
-                    // 4. Copy size and margins to ensure correct layout spacing
-                    //    Using resolvedStyle ensures we get the computed values.
-                    _inPlaceGhost.style.height = _draggedElement.resolvedStyle.height;
-                    // Width might often be determined by flexbox/parent, but copy if fixed.
-                    // _inPlaceGhost.style.width = _draggedElement.resolvedStyle.width;
-                    _inPlaceGhost.style.marginTop = _draggedElement.resolvedStyle.marginTop;
-                    _inPlaceGhost.style.marginBottom = _draggedElement.resolvedStyle.marginBottom;
-                    _inPlaceGhost.style.marginLeft = _draggedElement.resolvedStyle.marginLeft;
-                    _inPlaceGhost.style.marginRight = _draggedElement.resolvedStyle.marginRight;
-
-                    // 5. Recreate essential children (e.g., the primary Label)
-                    //    Query the original element for its label
-                    var originalLabel =
-                        _draggedElement.Q<Label>(className: "object-item__label") // Be specific if possible
+                    Label originalLabel =
+                        _draggedElement.Q<Label>(className: "object-item__label")
                         ?? _draggedElement.Q<Label>(className: "type-item__label")
-                        ?? _draggedElement.Q<Label>(); // Fallback to first label
+                        ?? _draggedElement.Q<Label>();
 
                     if (originalLabel != null)
                     {
-                        var ghostLabel = new Label(originalLabel.text);
-                        // Copy label's classes for consistent text styling
-                        foreach (var className in originalLabel.GetClasses())
+                        Label ghostLabel = new(originalLabel.text);
+                        foreach (string className in originalLabel.GetClasses())
                         {
                             ghostLabel.AddToClassList(className);
                         }
-                        ghostLabel.pickingMode = PickingMode.Ignore; // Ensure label is not interactive
+                        ghostLabel.pickingMode = PickingMode.Ignore;
                         _inPlaceGhost.Add(ghostLabel);
                     }
                     else
                     {
-                        // Fallback: If no specific label found, maybe add the generic dragText
-                        var fallbackLabel = new Label(dragText);
-                        fallbackLabel.pickingMode = PickingMode.Ignore;
+                        Label fallbackLabel = new(dragText) { pickingMode = PickingMode.Ignore };
                         _inPlaceGhost.Add(fallbackLabel);
                     }
-                    // Note: This does NOT copy complex child hierarchies. Adapt if your items are more complex.
 
-                    // 6. Set essential properties for the ghost role
-                    _inPlaceGhost.pickingMode = PickingMode.Ignore; // Must not interfere with drop target detection
-                    _inPlaceGhost.style.visibility = Visibility.Hidden; // Hide initially
+                    _inPlaceGhost.pickingMode = PickingMode.Ignore;
+                    _inPlaceGhost.style.visibility = Visibility.Hidden;
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogError($"Error creating in-place ghost: {ex}");
-                    _inPlaceGhost = null; // Ensure it's null if creation failed
+                    this.LogError($"Error creating in-place ghost: {ex}");
+                    _inPlaceGhost = null;
                 }
             }
-            _lastGhostInsertIndex = -1; // Reset insert tracking
-            _lastGhostParent = null;
 
-            _draggedElement.style.display = DisplayStyle.None; // Remove original from layout
+            _lastGhostInsertIndex = -1;
+            _lastGhostParent = null;
+            _lastDragUpdateTime = Time.realtimeSinceStartup;
+            _draggedElement.style.display = DisplayStyle.None;
+            _draggedElement.style.opacity = 0.5f;
         }
 
-        private void UpdateDragTargeting(Vector2 pointerPosition)
+        private void UpdateInPlaceGhostPosition(Vector2 pointerPosition)
         {
             VisualElement container = null;
-            string itemClassName = null;
-            VisualElement indicatorParent = null; // Parent where the in-place ghost should live
+            VisualElement positioningParent;
 
-            // --- Determine container, item class, and indicator parent ---
             switch (_activeDragType)
             {
                 case DragType.Object:
-                    container = _objectListContainer;
-                    itemClassName = "object-item";
-                    indicatorParent = _objectListContainer; // Ghost goes directly in list
+                    container = _objectListContainer.contentContainer;
+                    positioningParent = _objectListContainer.contentContainer;
                     break;
                 case DragType.Namespace:
                     container = _namespaceListContainer;
-                    itemClassName = "object-item"; // Or "namespace-group-item"
-                    indicatorParent = _namespaceListContainer; // Ghost goes directly in list
+                    positioningParent = _namespaceListContainer;
                     break;
                 case DragType.Type:
                     if (_draggedElement != null)
+                    {
                         container = _draggedElement.parent;
-                    itemClassName = "type-item";
-                    indicatorParent = container; // Ghost goes directly in the types container
+                    }
+                    positioningParent = container;
                     break;
                 default:
-                    // Hide and remove in-place ghost if drag type is invalid
+                    if (_inPlaceGhost?.parent != null)
+                    {
+                        _inPlaceGhost.RemoveFromHierarchy();
+                    }
                     if (_inPlaceGhost != null)
                     {
                         _inPlaceGhost.style.visibility = Visibility.Hidden;
-                        _inPlaceGhost.RemoveFromHierarchy(); // Ensure removal
-                        _lastGhostInsertIndex = -1;
-                        _lastGhostParent = null;
                     }
+                    _lastGhostInsertIndex = -1;
+                    _lastGhostParent = null;
                     return;
             }
 
-            // Basic validation
             if (
                 container == null
+                || positioningParent == null
                 || _draggedElement == null
-                || itemClassName == null
-                || indicatorParent == null
                 || _inPlaceGhost == null
             )
             {
-                // Hide and remove in-place ghost if something is wrong
+                if (_inPlaceGhost?.parent != null)
+                {
+                    _inPlaceGhost.RemoveFromHierarchy();
+                }
+
                 if (_inPlaceGhost != null)
                 {
                     _inPlaceGhost.style.visibility = Visibility.Hidden;
-                    _inPlaceGhost.RemoveFromHierarchy();
-                    _lastGhostInsertIndex = -1;
-                    _lastGhostParent = null;
                 }
+
+                _lastGhostInsertIndex = -1;
+                _lastGhostParent = null;
                 return;
             }
 
-            // --- Calculate Target Index (logic reused from UpdateDropIndicator) ---
             int childCount = container.childCount;
             int targetIndex = -1;
-            VisualElement elementBefore = null;
             Vector2 localPointerPos = container.WorldToLocal(pointerPosition);
 
-            // Iterate through children to find insert position (ignoring original element which is hidden)
+            int index = 0;
             for (int i = 0; i < childCount; ++i)
             {
                 VisualElement child = container.ElementAt(i);
-                // Skip non-items, the in-place ghost itself, or hidden elements (like original)
-                if (
-                    !child.ClassListContains(itemClassName)
-                    || child == _inPlaceGhost
-                    || child.style.display == DisplayStyle.None
-                )
-                    continue;
 
                 float childMidY = child.layout.yMin + child.resolvedStyle.height / 2f;
                 if (localPointerPos.y < childMidY)
                 {
-                    targetIndex = i;
+                    targetIndex = index;
                     break;
                 }
-                elementBefore = child;
+
+                if (child != _draggedElement)
+                {
+                    index++;
+                }
             }
 
-            if (targetIndex == -1) // Below all items or list empty/only contained ghost
+            if (targetIndex < 0)
             {
-                if (childCount == 0 || (childCount == 1 && container.Contains(_inPlaceGhost)))
+                targetIndex = childCount;
+                targetIndex = Math.Max(0, targetIndex);
+            }
+
+            bool targetIndexValid = true;
+            int maxIndex = positioningParent.childCount;
+
+            if (_inPlaceGhost.parent == positioningParent)
+            {
+                maxIndex--;
+            }
+
+            maxIndex = Math.Max(0, maxIndex);
+            targetIndex = Mathf.Clamp(targetIndex, 0, maxIndex + 1);
+
+            if (targetIndex != _lastGhostInsertIndex || positioningParent != _lastGhostParent)
+            {
+                if (_inPlaceGhost.parent != null && _inPlaceGhost.parent != positioningParent)
                 {
-                    targetIndex = 0; // Insert at beginning if empty or only ghost present
+                    _inPlaceGhost.RemoveFromHierarchy();
+                    positioningParent.Add(_inPlaceGhost);
+                }
+                else if (0 <= targetIndex && targetIndex <= positioningParent.childCount)
+                {
+                    _inPlaceGhost.RemoveFromHierarchy();
+                    if (positioningParent.childCount < targetIndex)
+                    {
+                        positioningParent.Add(_inPlaceGhost);
+                    }
+                    else
+                    {
+                        positioningParent.Insert(targetIndex, _inPlaceGhost);
+                    }
                 }
                 else
                 {
-                    targetIndex = container.childCount; // Append at the end (adjusting for potential ghost presence)
-                    if (container.Contains(_inPlaceGhost))
-                        targetIndex--; // If ghost is present, target index is before it if appending
-                    targetIndex = Math.Max(0, targetIndex); // Ensure not negative
+                    targetIndexValid = false;
                 }
+
+                if (targetIndexValid)
+                {
+                    _inPlaceGhost.style.visibility = Visibility.Visible;
+                }
+
+                _lastGhostInsertIndex = targetIndex;
+                _lastGhostParent = positioningParent;
             }
-            // --- End Target Index Calculation ---
-
-
-            // --- Manage In-Place Ghost ---
-            bool targetIndexValid = targetIndex >= 0;
+            else
+            {
+                _inPlaceGhost.style.visibility = Visibility.Visible;
+            }
 
             if (targetIndexValid)
             {
-                // Clamp index just in case calculation went out of bounds
-                int maxIndex = indicatorParent.childCount; // Max index is current count
-                targetIndex = Mathf.Clamp(targetIndex, 0, maxIndex);
-
-                // Check if position needs update (different index or different parent)
-                if (targetIndex != _lastGhostInsertIndex || indicatorParent != _lastGhostParent)
-                {
-                    // Debug.Log($"Updating in-place ghost. New Index: {targetIndex}, Old Index: {_lastGhostInsertIndex}, Parent: {indicatorParent.name}");
-
-                    // Remove from old position first (if any)
-                    // Note: Add/Insert automatically handles reparenting if needed, but explicit remove can be clearer
-                    _inPlaceGhost.RemoveFromHierarchy();
-
-                    // Insert into the correct parent at the new index
-                    indicatorParent.Insert(targetIndex, _inPlaceGhost);
-
-                    // Make sure it's visible
-                    _inPlaceGhost.style.visibility = Visibility.Visible;
-
-                    // Update tracking
-                    _lastGhostInsertIndex = targetIndex;
-                    _lastGhostParent = indicatorParent;
-                }
-                else
-                {
-                    // Index and parent are the same, ensure it's visible
-                    _inPlaceGhost.style.visibility = Visibility.Visible;
-                }
+                _inPlaceGhost.userData = targetIndex;
             }
-            else // Target index calculation failed, hide the ghost
+            else
             {
-                if (_inPlaceGhost.parent != null) // Only remove if it's in the hierarchy
+                if (_inPlaceGhost.parent != null)
                 {
-                    // Debug.Log($"Hiding in-place ghost. Invalid Target Index.");
-                    _inPlaceGhost.style.visibility = Visibility.Hidden;
                     _inPlaceGhost.RemoveFromHierarchy();
                 }
+
+                _inPlaceGhost.style.visibility = Visibility.Hidden;
+                _inPlaceGhost.userData = -1;
                 _lastGhostInsertIndex = -1;
                 _lastGhostParent = null;
             }
-
-            // Store the calculated valid target index on the ghost itself (or dragged element)
-            // so PerformDrop methods can easily retrieve it without recalculating.
-            // Using userData on _inPlaceGhost is convenient.
-            _inPlaceGhost.userData = targetIndex; // Store the index where the ghost IS currently placed
         }
 
         private void UpdateAndSaveObjectCustomOrder()
         {
-            List<Object> dirtyObjects = new List<Object>();
+            List<Object> dirtyObjects = new();
             for (int i = 0; i < _selectedObjects.Count; i++)
             {
                 BaseDataObject obj = _selectedObjects[i];
                 if (obj == null)
+                {
                     continue;
+                }
 
-                // Assign 1-based order index. All items in the list get a positive order.
                 int newOrder = i + 1;
                 if (obj._customOrder != newOrder)
                 {
                     obj._customOrder = newOrder;
                     EditorUtility.SetDirty(obj);
                     dirtyObjects.Add(obj);
-                    // Debug.Log($"Set {obj.name} custom order to {newOrder}");
                 }
             }
 
             if (dirtyObjects.Count > 0)
             {
-                // Save all modified assets
                 AssetDatabase.SaveAssets();
-                // Debug.Log($"Saved custom order for {dirtyObjects.Count} objects.");
             }
         }
 
-        private void UpdateAndSaveCustomOrder()
+        private void CancelDrag()
         {
-            List<Object> dirtyObjects = new List<Object>();
-            for (int i = 0; i < _selectedObjects.Count; i++)
-            {
-                BaseDataObject obj = _selectedObjects[i];
-                int newOrder = i + 1; // Use 1-based index for custom order
-                if (obj._customOrder != newOrder)
-                {
-                    obj._customOrder = newOrder;
-                    EditorUtility.SetDirty(obj);
-                    dirtyObjects.Add(obj);
-                    // Debug.Log($"Set {obj.name} custom order to {newOrder}");
-                }
-            }
-
-            if (dirtyObjects.Count > 0)
-            {
-                // Save all modified assets
-                AssetDatabase.SaveAssets();
-                // Optional: Refresh Asset Database view if needed, though usually SaveAssets is enough
-                // AssetDatabase.Refresh();
-                // Debug.Log($"Saved custom order for {dirtyObjects.Count} objects.");
-            }
-        }
-
-        private void CancelDrag() // No longer needs pointerId parameter
-        {
-            // Debug.Log("CancelDrag called.");
-
-            // Restore visual appearance
-            if (_draggedElement != null)
-            {
-                _draggedElement.style.display = DisplayStyle.Flex; // Restore display
-                _draggedElement.style.opacity = 1.0f; // Restore opacity just in case
-                // No pointer release needed here
-            }
-
-            if (_dragGhost != null)
-                _dragGhost.style.visibility = Visibility.Hidden;
-
-            // Remove in-place ghost from hierarchy
             if (_inPlaceGhost != null)
             {
                 _inPlaceGhost.RemoveFromHierarchy();
-                // Optional: Could pool ghosts instead of destroying/nulling if performance is critical
                 _inPlaceGhost = null;
             }
-            _lastGhostInsertIndex = -1; // Reset tracking
+            _lastGhostInsertIndex = -1;
             _lastGhostParent = null;
 
-            // Reset state variables
+            if (_draggedElement != null)
+            {
+                _draggedElement.style.display = DisplayStyle.Flex;
+                _draggedElement.style.opacity = 1.0f;
+            }
+
+            if (_dragGhost != null)
+            {
+                _dragGhost.style.visibility = Visibility.Hidden;
+            }
+
             _isDragging = false;
             _draggedElement = null;
             _draggedData = null;
             _activeDragType = DragType.None;
-
-            // Debug.Log("CancelDrag finished. State reset.");
         }
 
         private static int CompareUsingCustomOrder(

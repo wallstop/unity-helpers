@@ -80,9 +80,22 @@
 }
 
 .in-place-ghost {
-    opacity: 0.5; /* Make it semi-transparent */
-    /* Optional: Add a dashed border or different background */
-    /* border-style: dashed; */ /* Note: Not standard USS, but illustrates intent */
+    opacity: 0.5;
+    /* Ensure it doesn't prevent interactions below (though it shouldn't be interactive anyway) */
+    /* Optional: dashed border to indicate it's a ghost */
+    border-width: 1px;
     border-color: grey;
-    background-color: rgba(150, 150, 150, 0.2);
+}
+
+.overlay-ghost {
+    position: absolute; /* IMPORTANT for overlay effect */
+    opacity: 0.5;
+
+    /* Add visual cues like a border */
+    border-width: 1px;
+    border-color: cornflowerblue;
+    /* Background can help distinguish it */
+    background-color: rgba(100, 150, 255, 0.1);
+    /* Ensure it appears above list items */
+    /* Z-index isn't USS, handled by hierarchy/BringToFront if needed */
 }
