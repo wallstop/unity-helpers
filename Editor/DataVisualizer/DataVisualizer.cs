@@ -3,6 +3,7 @@
 #if UNITY_EDITOR
     using System;
     using System.Collections.Generic;
+    using System.ComponentModel;
     using System.IO;
     using System.Linq;
     using Sirenix.OdinInspector.Editor;
@@ -24,15 +25,13 @@
     public sealed class DataVisualizer : EditorWindow
     {
         private const float DragUpdateThrottleTime = 0.05f;
-        private const string CustomTypeOrderKey =
-            "WallstopStudios.UnityHelpers.DataVisualizer.CustomTypeOrder";
-
-        private const string CustomNamespaceOrderKey =
-            "WallstopStudios.UnityHelpers.DataVisualizer.CustomNamespaceOrder";
-
-        // {0} = Namespace Key
-        private const string CustomTypeOrderKeyFormat =
-            "WallstopStudios.UnityHelpers.DataVisualizer.CustomTypeOrder.{0}";
+        private const string PrefsPrefix = "WallstopStudios.UnityHelpers.DataVisualizer.";
+        private const string LastSelectedNamespaceKey = PrefsPrefix + "LastSelectedNamespace";
+        private const string LastSelectedTypeFormat = PrefsPrefix + "LastSelectedType.{0}";
+        private const string LastSelectedObjectFormat = PrefsPrefix + "LastSelectedObject.{0}";
+        private const string CustomTypeOrderKey = PrefsPrefix + "CustomTypeOrder";
+        private const string CustomNamespaceOrderKey = PrefsPrefix + "CustomNamespaceOrder";
+        private const string CustomTypeOrderKeyFormat = PrefsPrefix + "CustomTypeOrder.{0}";
 
         private enum DragType
         {
@@ -56,7 +55,8 @@
 
         private DragType _activeDragType = DragType.None;
         private object _draggedData;
-
+        private Type _selectedType;
+        private VisualElement _selectedTypeElement;
         private VisualElement _inPlaceGhost;
         private int _lastGhostInsertIndex = -1;
         private VisualElement _lastGhostParent;
@@ -318,16 +318,15 @@
                     typeItem.RegisterCallback<PointerDownEvent>(OnTypePointerDown);
                     typeItem.RegisterCallback<PointerUpEvent>(evt =>
                     {
-                        if (
-                            !_isDragging
-                            && evt.button == 0
-                            && typeItem.userData is Type clickedType
-                        )
+                        if (!_isDragging && evt.button == 0)
                         {
-                            LoadObjectTypes(clickedType);
-                            BuildObjectsView();
-                            SelectObject(null);
-                            evt.StopPropagation();
+                            if (typeItem.userData is Type clickedType)
+                            {
+                                LoadObjectTypes(clickedType);
+                                BuildObjectsView();
+                                SelectObject(null);
+                                evt.StopPropagation();
+                            }
                         }
                     });
 
@@ -646,6 +645,45 @@
                 _selectedElement.AddToClassList("selected");
                 Selection.activeObject = _selectedObject;
                 _objectScrollView.ScrollTo(_selectedElement);
+                try
+                {
+                    if (_selectedType != null)
+                    {
+                        string namespaceKey = GetNamespaceKey(_selectedType);
+                        string typeName = _selectedType.Name;
+                        string assetPath = AssetDatabase.GetAssetPath(_selectedObject);
+                        if (!string.IsNullOrWhiteSpace(assetPath))
+                        {
+                            string objectGuid = AssetDatabase.AssetPathToGUID(assetPath);
+                            if (!string.IsNullOrWhiteSpace(namespaceKey))
+                            {
+                                EditorPrefs.SetString(LastSelectedNamespaceKey, namespaceKey);
+                            }
+
+                            if (!string.IsNullOrWhiteSpace(typeName))
+                            {
+                                string typePrefsKey = string.Format(
+                                    LastSelectedTypeFormat,
+                                    namespaceKey
+                                );
+                                EditorPrefs.SetString(typePrefsKey, typeName);
+                            }
+
+                            if (!string.IsNullOrWhiteSpace(objectGuid))
+                            {
+                                string objPrefsKey = string.Format(
+                                    LastSelectedObjectFormat,
+                                    typeName
+                                );
+                                EditorPrefs.SetString(objPrefsKey, objectGuid);
+                            }
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError($"Error saving selection state.", e);
+                }
             }
             else
             {
@@ -768,14 +806,28 @@
                     switch (dropType)
                     {
                         case DragType.Object:
+                        {
                             PerformObjectDrop();
                             break;
+                        }
                         case DragType.Namespace:
+                        {
                             PerformNamespaceDrop();
                             break;
+                        }
                         case DragType.Type:
+                        {
                             PerformTypeDrop();
                             break;
+                        }
+                        default:
+                        {
+                            throw new InvalidEnumArgumentException(
+                                nameof(dropType),
+                                (int)dropType,
+                                typeof(DragType)
+                            );
+                        }
                     }
                 }
             }
@@ -1105,9 +1157,9 @@
                     _inPlaceGhost.pickingMode = PickingMode.Ignore;
                     _inPlaceGhost.style.visibility = Visibility.Hidden;
                 }
-                catch (Exception ex)
+                catch (Exception e)
                 {
-                    this.LogError($"Error creating in-place ghost: {ex}");
+                    this.LogError($"Error creating in-place ghost.", e);
                     _inPlaceGhost = null;
                 }
             }
@@ -1127,32 +1179,43 @@
             switch (_activeDragType)
             {
                 case DragType.Object:
+                {
                     container = _objectListContainer.contentContainer;
                     positioningParent = _objectListContainer.contentContainer;
                     break;
+                }
                 case DragType.Namespace:
+                {
                     container = _namespaceListContainer;
                     positioningParent = _namespaceListContainer;
                     break;
+                }
                 case DragType.Type:
+                {
                     if (_draggedElement != null)
                     {
                         container = _draggedElement.parent;
                     }
+
                     positioningParent = container;
                     break;
+                }
                 default:
+                {
                     if (_inPlaceGhost?.parent != null)
                     {
                         _inPlaceGhost.RemoveFromHierarchy();
                     }
+
                     if (_inPlaceGhost != null)
                     {
                         _inPlaceGhost.style.visibility = Visibility.Hidden;
                     }
+
                     _lastGhostInsertIndex = -1;
                     _lastGhostParent = null;
                     return;
+                }
             }
 
             if (
