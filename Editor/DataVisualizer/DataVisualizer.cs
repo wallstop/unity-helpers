@@ -229,6 +229,7 @@
 
             string objPrefsKey = string.Format(LastSelectedObjectFormat, _selectedType.Name);
             string savedObjectGuid = EditorPrefs.GetString(objPrefsKey, null);
+            this.Log($"Loaded saved object guid {savedObjectGuid} for type '{_selectedType.Name}'");
             BaseDataObject objectToSelect = null;
 
             if (!string.IsNullOrWhiteSpace(savedObjectGuid) && 0 < _selectedObjects.Count)
@@ -323,7 +324,7 @@
                     width = 200,
                     borderRightWidth = 1,
                     borderRightColor = Color.gray,
-                }, // Fixed width
+                },
             };
             ScrollView namespaceScrollView = new(ScrollViewMode.Vertical)
             {
@@ -529,10 +530,7 @@
                             return;
                         }
 
-                        if (_selectedTypeElement != null)
-                        {
-                            _selectedTypeElement.RemoveFromClassList("selected");
-                        }
+                        _selectedTypeElement?.RemoveFromClassList("selected");
 
                         _selectedType = clickedType;
                         _selectedTypeElement = typeItem;
@@ -544,8 +542,65 @@
                         );
 
                         LoadObjectTypes(clickedType);
+
+                        BaseDataObject objectToSelect = null;
+                        if (_selectedObjects.Count > 0) // Only if objects exist for this type
+                        {
+                            // 1. Try to load the last selected object GUID for THIS type
+                            string objPrefsKey = string.Format(
+                                LastSelectedObjectFormat,
+                                _selectedType.Name
+                            );
+                            string savedObjectGuid = EditorPrefs.GetString(objPrefsKey, null);
+                            Debug.Log(
+                                $"Trying to load last object for type '{_selectedType.Name}', GUID: '{savedObjectGuid ?? "None"}', Pref key {objPrefsKey}"
+                            );
+
+                            if (!string.IsNullOrWhiteSpace(savedObjectGuid))
+                            {
+                                // Find the object matching the saved GUID among the currently loaded objects
+                                objectToSelect = _selectedObjects.FirstOrDefault(obj =>
+                                {
+                                    if (obj == null)
+                                        return false;
+                                    string path = AssetDatabase.GetAssetPath(obj);
+                                    // Ensure path is valid before getting GUID
+                                    return !string.IsNullOrWhiteSpace(path)
+                                        && AssetDatabase.AssetPathToGUID(path) == savedObjectGuid;
+                                });
+
+                                if (objectToSelect != null)
+                                {
+                                    Debug.Log(
+                                        $"Found last selected object by GUID: {objectToSelect.name}"
+                                    );
+                                }
+                                else
+                                {
+                                    Debug.Log(
+                                        $"Saved object GUID '{savedObjectGuid}' not found in current assets for type '{_selectedType.Name}'."
+                                    );
+                                    // Clear the preference if the saved object no longer exists?
+                                    // EditorPrefs.DeleteKey(objPrefsKey);
+                                }
+                            }
+
+                            // 2. Fallback: If no saved object OR saved object not found, select the first one
+                            if (objectToSelect == null)
+                            {
+                                objectToSelect = _selectedObjects[0]; // Select the first object in the (sorted) list
+                                Debug.Log($"Auto-selecting first object: {objectToSelect?.name}");
+                            }
+                        }
+                        else
+                        {
+                            Debug.Log(
+                                $"No objects found for type '{_selectedType.Name}'. Cannot auto-select object."
+                            );
+                        }
+
                         BuildObjectsView();
-                        SelectObject(null);
+                        SelectObject(objectToSelect);
                         evt.StopPropagation();
                     });
 
@@ -812,8 +867,6 @@
 
                 string typePrefsKey = string.Format(LastSelectedTypeFormat, namespaceKey);
                 EditorPrefs.SetString(typePrefsKey, typeName);
-                string objPrefsKey = string.Format(LastSelectedObjectFormat, typeName);
-                EditorPrefs.DeleteKey(objPrefsKey);
             }
             catch (Exception e)
             {
@@ -957,32 +1010,50 @@
                         string namespaceKey = GetNamespaceKey(_selectedType);
                         string typeName = _selectedType.Name;
                         string assetPath = AssetDatabase.GetAssetPath(_selectedObject);
+                        string objectGuid = null;
                         if (!string.IsNullOrWhiteSpace(assetPath))
                         {
-                            string objectGuid = AssetDatabase.AssetPathToGUID(assetPath);
-                            if (!string.IsNullOrWhiteSpace(namespaceKey))
-                            {
-                                EditorPrefs.SetString(LastSelectedNamespaceKey, namespaceKey);
-                            }
-
-                            if (!string.IsNullOrWhiteSpace(typeName))
-                            {
-                                string typePrefsKey = string.Format(
-                                    LastSelectedTypeFormat,
-                                    namespaceKey
-                                );
-                                EditorPrefs.SetString(typePrefsKey, typeName);
-                            }
-
-                            if (!string.IsNullOrWhiteSpace(objectGuid))
-                            {
-                                string objPrefsKey = string.Format(
-                                    LastSelectedObjectFormat,
-                                    typeName
-                                );
-                                EditorPrefs.SetString(objPrefsKey, objectGuid);
-                            }
+                            objectGuid = AssetDatabase.AssetPathToGUID(assetPath);
                         }
+
+                        if (!string.IsNullOrWhiteSpace(namespaceKey))
+                        {
+                            EditorPrefs.SetString(LastSelectedNamespaceKey, namespaceKey);
+                        }
+
+                        if (!string.IsNullOrWhiteSpace(typeName))
+                        {
+                            string typePrefsKey = string.Format(
+                                LastSelectedTypeFormat,
+                                namespaceKey
+                            );
+                            EditorPrefs.SetString(typePrefsKey, typeName);
+                        }
+
+                        if (!string.IsNullOrEmpty(objectGuid))
+                        {
+                            string objPrefsKey = string.Format(LastSelectedObjectFormat, typeName);
+                            EditorPrefs.SetString(objPrefsKey, objectGuid); // Save the valid GUID
+                            Debug.Log(
+                                $"SelectObject - Saved Object GUID: {objectGuid} under key {objPrefsKey}"
+                            );
+                        }
+                        else
+                        {
+                            // Object doesn't have a valid GUID (maybe not saved yet?)
+                            // Don't save an invalid GUID. Optionally clear the key?
+                            string objPrefsKey = string.Format(LastSelectedObjectFormat, typeName);
+                            // EditorPrefs.DeleteKey(objPrefsKey); // Uncomment to clear if object becomes invalid/unsaved
+                            Debug.LogWarning(
+                                $"SelectObject - Could not get GUID for {_selectedObject.name}. Object selection not saved to prefs. Key: {objPrefsKey}"
+                            );
+                        }
+                    }
+                    else
+                    {
+                        Debug.LogWarning(
+                            "SelectObject - _selectedType is null. Cannot save selection state accurately."
+                        );
                     }
                 }
                 catch (Exception e)
