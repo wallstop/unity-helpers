@@ -41,10 +41,10 @@
         private const string NamespaceLabelClass = "object-item__label";
         private const string TypeItemClass = "type-item";
         private const string TypeLabelClass = "type-item__label";
-        private const string objectItemClass = "object-item"; // Keep using this base class maybe
-        private const string objectItemContentClass = "object-item-content"; // Container for label/main part
-        private const string objectItemActionsClass = "object-item-actions"; // Container for buttons
-        private const string actionButtonClass = "action-button"; // Style for small buttons
+        private const string ObjectItemClass = "object-item";
+        private const string ObjectItemContentClass = "object-item-content";
+        private const string ObjectItemActionsClass = "object-item-actions";
+        private const string ActionButtonClass = "action-button";
 
         private const string ArrowCollapsed = "►";
         private const string ArrowExpanded = "▼";
@@ -75,12 +75,12 @@
 
         private TwoPaneSplitView _outerSplitView;
         private TwoPaneSplitView _innerSplitView;
-        private VisualElement _namespaceColumnVE; // Need reference to the actual column VE
-        private VisualElement _objectColumnVE; // Need reference to the actual column VE
+        private VisualElement _namespaceColumnElement;
+        private VisualElement _objectColumnElement;
 
-        private float _lastSavedOuterWidth = -1f; // Track last saved value to avoid redundant writes
+        private float _lastSavedOuterWidth = -1f;
         private float _lastSavedInnerWidth = -1f;
-        private IVisualElementScheduledItem _saveWidthsTask; // Reference to the scheduled task
+        private IVisualElementScheduledItem _saveWidthsTask;
 
         private DragType _activeDragType = DragType.None;
         private object _draggedData;
@@ -124,6 +124,7 @@
             _settings = LoadOrCreateSettings();
 
             LoadScriptableObjectTypes();
+            Undo.undoRedoPerformed += OnUndoRedoPerformed;
             rootVisualElement
                 .schedule.Execute(() =>
                 {
@@ -135,6 +136,7 @@
 
         private void OnDisable()
         {
+            Undo.undoRedoPerformed -= OnUndoRedoPerformed;
             Cleanup();
         }
 
@@ -170,36 +172,22 @@
 
         public static void SignalRefresh()
         {
-            // Find the open instance of the window (if any)
-            DataVisualizer window = GetWindow<DataVisualizer>(false, null, false); // Don't create if not open
+            DataVisualizer window = GetWindow<DataVisualizer>(false, null, false);
             if (window != null)
             {
-                Debug.Log("DataVisualizer window found, scheduling refresh.");
-                // Schedule the actual refresh on the window's update loop
                 window.ScheduleRefresh();
-            }
-            else
-            {
-                Debug.Log("DataVisualizer window not open, refresh signal ignored.");
             }
         }
 
         private void ScheduleRefresh()
         {
-            // Ensure execution on the main thread via the window's scheduler
-            // A small delay can prevent issues if called during awkward editor states
-            rootVisualElement.schedule.Execute(RefreshAllViews).ExecuteLater(50); // 50ms delay
+            rootVisualElement.schedule.Execute(RefreshAllViews).ExecuteLater(50);
         }
 
         private void RefreshAllViews()
         {
-            Debug.Log("DataVisualizer RefreshAllViews started.");
-            if (_settings == null)
-            {
-                _settings = LoadOrCreateSettings(); // Ensure settings are loaded
-            }
+            if (_settings == null) { }
 
-            // --- Store current selection state ---
             string previousNamespaceKey =
                 _selectedType != null ? GetNamespaceKey(_selectedType) : null;
             string previousTypeName = _selectedType?.Name;
@@ -212,136 +200,103 @@
                     previousObjectGuid = AssetDatabase.AssetPathToGUID(path);
                 }
             }
-            // ---
 
-            // --- Reload Core Data ---
-            // Note: _settings itself might need reloading if the settings *file* changed,
-            // but LoadOrCreateSettings only loads on first enable or if null.
-            // If settings file changes often, consider reloading it here too.
-            // _settings = LoadOrCreateSettings(); // Uncomment if settings file changes need explicit reload here
+            LoadScriptableObjectTypes();
 
-            LoadScriptableObjectTypes(); // Reloads namespace/type structure and sorts them
-            // ---
-
-
-            // --- Attempt to Restore Selection ---
-            _selectedType = null; // Reset selection first
+            _selectedType = null;
             _selectedObject = null;
             _selectedElement = null;
             _selectedTypeElement = null;
 
-            // Find previous Namespace
             int namespaceIndex = -1;
-            if (!string.IsNullOrEmpty(previousNamespaceKey))
+            if (!string.IsNullOrWhiteSpace(previousNamespaceKey))
             {
                 namespaceIndex = _scriptableObjectTypes.FindIndex(kvp =>
                     kvp.key == previousNamespaceKey
                 );
             }
-            if (namespaceIndex == -1 && _scriptableObjectTypes.Count > 0)
-            { // Fallback namespace
+            if (namespaceIndex < 0 && _scriptableObjectTypes.Any())
+            {
                 namespaceIndex = 0;
-                Debug.Log("Refresh: Previous namespace not found or null, using first.");
             }
 
-            // Find previous Type
-            if (namespaceIndex != -1)
+            if (0 <= namespaceIndex)
             {
                 List<Type> typesInNamespace = _scriptableObjectTypes[namespaceIndex].types;
-                if (typesInNamespace.Count > 0)
+                if (typesInNamespace.Any())
                 {
-                    if (!string.IsNullOrEmpty(previousTypeName))
+                    if (!string.IsNullOrWhiteSpace(previousTypeName))
                     {
                         _selectedType = typesInNamespace.FirstOrDefault(t =>
                             t.Name == previousTypeName
                         );
                     }
-                    if (_selectedType == null)
-                    { // Fallback type
-                        _selectedType = typesInNamespace[0];
-                        Debug.Log(
-                            "Refresh: Previous type not found or null, using first in namespace."
-                        );
-                    }
+
+                    _selectedType ??= typesInNamespace[0];
                 }
-                else
-                {
-                    Debug.Log("Refresh: No types found in selected/fallback namespace.");
-                }
-            }
-            else
-            {
-                Debug.Log("Refresh: No namespaces found after reload.");
             }
 
-            // Load objects for the determined type
             if (_selectedType != null)
             {
-                LoadObjectTypes(_selectedType); // Reloads _selectedObjects for the type
+                LoadObjectTypes(_selectedType);
             }
             else
             {
-                _selectedObjects.Clear(); // No type selected, clear object list
+                _selectedObjects.Clear();
             }
 
-            // Find previous Object
             if (
                 _selectedType != null
-                && !string.IsNullOrEmpty(previousObjectGuid)
-                && _selectedObjects.Count > 0
+                && !string.IsNullOrWhiteSpace(previousObjectGuid)
+                && _selectedObjects.Any()
             )
             {
-                _selectedObject = _selectedObjects.FirstOrDefault(obj =>
+                _selectedObject = _selectedObjects.Find(obj =>
                 {
                     if (obj == null)
+                    {
                         return false;
+                    }
+
                     string path = AssetDatabase.GetAssetPath(obj);
                     return !string.IsNullOrEmpty(path)
-                        && AssetDatabase.AssetPathToGUID(path) == previousObjectGuid;
+                        && string.Equals(
+                            AssetDatabase.AssetPathToGUID(path),
+                            previousObjectGuid,
+                            StringComparison.OrdinalIgnoreCase
+                        );
                 });
-                if (_selectedObject == null)
-                {
-                    Debug.Log("Refresh: Previous object GUID not found in current list.");
-                    // Fallback to first object? Or select none? Let's select none if specific one is gone.
-                    // _selectedObject = _selectedObjects.Count > 0 ? _selectedObjects[0] : null;
-                }
             }
-            // --- End Restore Selection Attempt ---
 
+            BuildNamespaceView();
+            BuildObjectsView();
 
-            // --- Rebuild UI ---
-            // Need to rebuild all views to reflect potential changes in namespaces, types, objects, and their order/existence.
-            BuildNamespaceView(); // Applies collapse state, builds type items (checking for objects)
-            BuildObjectsView(); // Builds object list based on potentially changed _selectedObjects
-
-            // Apply visual selection for Type (FindTypeElement needs BuildNamespaceView first)
             VisualElement typeElementToSelect = FindTypeElement(_selectedType);
             if (typeElementToSelect != null)
             {
                 _selectedTypeElement = typeElementToSelect;
                 _selectedTypeElement.AddToClassList("selected");
-                // Ensure namespace is expanded if needed
-                var ancestorGroup = FindAncestorNamespaceGroup(_selectedTypeElement); // Use new helper
+                VisualElement ancestorGroup = FindAncestorNamespaceGroup(_selectedTypeElement);
                 if (ancestorGroup != null)
-                    ExpandNamespaceGroupIfNeeded(ancestorGroup, false); // Don't re-save state
+                {
+                    ExpandNamespaceGroupIfNeeded(ancestorGroup, false);
+                }
             }
 
-            // Apply visual selection for Object and update Inspector
-            // SelectObject handles null correctly, finds the VE in the rebuilt view, and builds inspector.
-            // It will also re-save the (potentially restored) state.
             SelectObject(_selectedObject);
-
-            Debug.Log("DataVisualizer RefreshAllViews finished.");
         }
 
         private VisualElement FindAncestorNamespaceGroup(VisualElement startingElement)
         {
             if (startingElement == null)
+            {
                 return null;
+            }
+
             VisualElement currentElement = startingElement;
             while (currentElement != null && currentElement != _namespaceListContainer)
             {
-                if (currentElement.ClassListContains("object-item")) // Assuming namespace groups use this class
+                if (currentElement.ClassListContains("object-item"))
                 {
                     return currentElement;
                 }
@@ -350,14 +305,21 @@
             return null;
         }
 
-        // Expands a namespace group if it's currently collapsed
-        private void ExpandNamespaceGroupIfNeeded(VisualElement namespaceGroupItem, bool saveState)
+        private static void ExpandNamespaceGroupIfNeeded(
+            VisualElement namespaceGroupItem,
+            bool saveState
+        )
         {
             if (namespaceGroupItem == null)
+            {
                 return;
-            var indicator = namespaceGroupItem.Q<Label>(className: "namespace-indicator"); // Use class
+            }
+
+            Label indicator = namespaceGroupItem.Q<Label>(className: "namespace-indicator");
             string nsKey = namespaceGroupItem.userData as string;
-            var typesContainer = namespaceGroupItem.Q<VisualElement>($"types-container-{nsKey}"); // Use name
+            VisualElement typesContainer = namespaceGroupItem.Q<VisualElement>(
+                $"types-container-{nsKey}"
+            );
 
             if (
                 indicator != null
@@ -365,8 +327,7 @@
                 && typesContainer.style.display == DisplayStyle.None
             )
             {
-                // It's collapsed, expand it
-                ApplyNamespaceCollapsedState(indicator, typesContainer, false, saveState); // false = collapsed state = expand
+                ApplyNamespaceCollapsedState(indicator, typesContainer, false, saveState);
             }
         }
 
@@ -446,61 +407,45 @@
 
         private void StartPeriodicWidthSave()
         {
-            // Ensure it runs only once / stop previous if needed
             _saveWidthsTask?.Pause();
-            // Schedule CheckAndSaveSplitterWidths to run every 1000ms (1 second)
             _saveWidthsTask = rootVisualElement
                 .schedule.Execute(CheckAndSaveSplitterWidths)
                 .Every(1000);
-            Debug.Log("Started periodic splitter width saving.");
         }
 
         private void CheckAndSaveSplitterWidths()
         {
-            // Check if split views and target columns have been created and have valid layout
             if (
                 _outerSplitView == null
                 || _innerSplitView == null
-                || _namespaceColumnVE == null
-                || _objectColumnVE == null
-                || float.IsNaN(_namespaceColumnVE.resolvedStyle.width)
-                || // Wait for layout pass
-                float.IsNaN(_objectColumnVE.resolvedStyle.width)
+                || _namespaceColumnElement == null
+                || _objectColumnElement == null
+                || float.IsNaN(_namespaceColumnElement.resolvedStyle.width)
+                || float.IsNaN(_objectColumnElement.resolvedStyle.width)
             )
             {
-                // Debug.Log("Skipping width save check - elements not ready or layout invalid.");
                 return;
             }
 
-            // Get CURRENT actual widths of the columns within the fixed panes
-            float currentOuterWidth = _namespaceColumnVE.resolvedStyle.width;
-            float currentInnerWidth = _objectColumnVE.resolvedStyle.width;
+            float currentOuterWidth = _namespaceColumnElement.resolvedStyle.width;
+            float currentInnerWidth = _objectColumnElement.resolvedStyle.width;
 
-            bool changed = false;
-
-            // Compare with last saved values (using approximation for floats)
             if (!Mathf.Approximately(currentOuterWidth, _lastSavedOuterWidth))
             {
-                Debug.Log(
-                    $"Outer width changed: {_lastSavedOuterWidth} -> {currentOuterWidth}. Saving."
-                );
                 EditorPrefs.SetFloat(PrefsSplitterOuterKey, currentOuterWidth);
-                _lastSavedOuterWidth = currentOuterWidth; // Update tracking value
-                changed = true;
+                _lastSavedOuterWidth = currentOuterWidth;
             }
 
             if (!Mathf.Approximately(currentInnerWidth, _lastSavedInnerWidth))
             {
-                Debug.Log(
-                    $"Inner width changed: {_lastSavedInnerWidth} -> {currentInnerWidth}. Saving."
-                );
                 EditorPrefs.SetFloat(PrefsSplitterInnerKey, currentInnerWidth);
-                _lastSavedInnerWidth = currentInnerWidth; // Update tracking value
-                changed = true;
+                _lastSavedInnerWidth = currentInnerWidth;
             }
+        }
 
-            // Optional: If EditorPrefs saving is slow, maybe call EditorPrefs.Save() periodically? Usually not needed.
-            // if (changed) { EditorPrefs.Save(); } // Likely unnecessary
+        private void OnUndoRedoPerformed()
+        {
+            ScheduleRefresh();
         }
 
         private void RestorePreviousSelection()
@@ -717,20 +662,9 @@
 
             _lastSavedOuterWidth = initialOuterWidth;
             _lastSavedInnerWidth = initialInnerWidth;
-            Debug.Log(
-                $"Loaded initial widths: Outer={initialOuterWidth}, Inner={initialInnerWidth}"
-            );
-
-            // VisualElement mainContainer = new()
-            // {
-            //     name = "main-container",
-            //     style = { flexGrow = 1, flexDirection = FlexDirection.Row },
-            // };
-            // root.Add(mainContainer);
-
-            _namespaceColumnVE = CreateNamespaceColumn(); // Extract creation logic
-            _objectColumnVE = CreateObjectColumn(); // Extract creation logic
-            VisualElement inspectorColumn = CreateInspectorColumn(); // Extract creation logic
+            _namespaceColumnElement = CreateNamespaceColumn();
+            _objectColumnElement = CreateObjectColumn();
+            VisualElement inspectorColumn = CreateInspectorColumn();
 
             _innerSplitView = new TwoPaneSplitView(
                 0,
@@ -739,13 +673,11 @@
             )
             {
                 name = "inner-split-view",
-                style = { flexGrow = 1 }, // Grow within outer split view
+                style = { flexGrow = 1 },
             };
 
-            _innerSplitView.Add(_objectColumnVE); // Add object column VE directly
-
+            _innerSplitView.Add(_objectColumnElement);
             _innerSplitView.Add(inspectorColumn);
-
             _outerSplitView = new TwoPaneSplitView(
                 0,
                 (int)initialOuterWidth,
@@ -755,119 +687,9 @@
                 name = "outer-split-view",
                 style = { flexGrow = 1 },
             };
-            _outerSplitView.Add(_namespaceColumnVE);
-
-            // Pane 1 (Right/Flexible): Inner Split View
+            _outerSplitView.Add(_namespaceColumnElement);
             _outerSplitView.Add(_innerSplitView);
-
-            // Add the outer split view to the root
             root.Add(_outerSplitView);
-
-            // VisualElement namespaceColumn = new()
-            // {
-            //     name = "namespace-column",
-            //     style =
-            //     {
-            //         width = 200,
-            //         borderRightWidth = 1,
-            //         borderRightColor = Color.gray,
-            //     },
-            // };
-            // ScrollView namespaceScrollView = new(ScrollViewMode.Vertical)
-            // {
-            //     name = "namespace-scrollview",
-            //     style = { flexGrow = 1 },
-            // };
-            // _namespaceListContainer = new VisualElement { name = "namespace-list" };
-            // namespaceScrollView.Add(_namespaceListContainer);
-            // namespaceColumn.Add(
-            //     new Label("Namespaces")
-            //     {
-            //         style = { unityFontStyleAndWeight = FontStyle.Bold, paddingBottom = 5 },
-            //     }
-            // );
-            // namespaceColumn.Add(namespaceScrollView);
-            // mainContainer.Add(namespaceColumn);
-
-            // VisualElement objectColumn = new()
-            // {
-            //     name = "object-column",
-            //     style =
-            //     {
-            //         width = 250,
-            //         borderRightWidth = 1,
-            //         borderRightColor = Color.gray,
-            //         flexDirection = FlexDirection.Column,
-            //     },
-            // };
-
-            // var objectHeader = new VisualElement
-            // {
-            //     name = "object-header",
-            //     style =
-            //     {
-            //         flexDirection = FlexDirection.Row, // Align label and button horizontally
-            //         justifyContent = Justify.SpaceBetween, // Push label left, button right
-            //         alignItems = Align.Center,
-            //         paddingBottom = 3,
-            //         paddingTop = 3,
-            //         paddingLeft = 3,
-            //         paddingRight = 3,
-            //         height = 24, // Fixed height for header
-            //         flexShrink = 0, // Prevent shrinking
-            //         borderBottomWidth = 1, // Separator line
-            //         borderBottomColor = Color.gray,
-            //     },
-            // };
-            // objectColumn.Add(objectHeader); // Add header first
-            //
-            // objectColumn.Add(
-            //     new Label("Objects")
-            //     {
-            //         style = { unityFontStyleAndWeight = FontStyle.Bold, paddingBottom = 5 },
-            //     }
-            // );
-            //
-            // var createButton = new Button(CreateNewObject)
-            // {
-            //     text = "+",
-            //     tooltip = "Create New Object",
-            //     name = "create-object-button",
-            //     style =
-            //     {
-            //         width = 20,
-            //         height = 20,
-            //         paddingLeft = 0,
-            //         paddingRight = 0,
-            //     }, // Style as small button
-            // };
-            // createButton.AddToClassList("icon-button"); // Use existing or new style
-            // objectHeader.Add(createButton);
-
-            // _objectScrollView = new ScrollView(ScrollViewMode.Vertical)
-            // {
-            //     name = "object-scrollview",
-            //     style = { flexGrow = 1 },
-            // };
-            // _objectListContainer = new VisualElement { name = "object-list" };
-            // _objectScrollView.Add(_objectListContainer);
-            // objectColumn.Add(_objectScrollView);
-            // mainContainer.Add(objectColumn);
-
-            // VisualElement inspectorColumn = new()
-            // {
-            //     name = "inspector-column",
-            //     style = { flexGrow = 1 },
-            // };
-            // _inspectorScrollView = new ScrollView(ScrollViewMode.Vertical)
-            // {
-            //     name = "inspector-scrollview",
-            //     style = { flexGrow = 1 },
-            // };
-            // _inspectorContainer = new VisualElement { name = "inspector-content" };
-            // _inspectorScrollView.Add(_inspectorContainer);
-            // inspectorColumn.Add(_inspectorScrollView);
-            // mainContainer.Add(inspectorColumn);
 
             _settingsPopup = new VisualElement
             {
@@ -915,7 +737,7 @@
                     borderRightWidth = 1,
                     borderRightColor = Color.gray,
                     height = Length.Percent(100),
-                }, // Height 100% for SplitView pane
+                },
             };
             ScrollView namespaceScrollView = new(ScrollViewMode.Vertical)
             {
@@ -932,6 +754,8 @@
                         unityFontStyleAndWeight = FontStyle.Bold,
                         paddingBottom = 5,
                         paddingLeft = 3,
+                        marginTop = 4,
+                        marginLeft = 1,
                     },
                 }
             );
@@ -950,51 +774,61 @@
                     borderRightColor = Color.gray,
                     flexDirection = FlexDirection.Column,
                     height = Length.Percent(100),
-                }, // Height 100%
+                },
             };
-            // Header
-            var objectHeader = new VisualElement
+
+            VisualElement objectHeader = new()
             {
                 name = "object-header",
                 style =
                 {
-                    flexDirection = FlexDirection.Row, // Align label and button horizontally
-                    justifyContent = Justify.SpaceBetween, // Push label left, button right
+                    flexDirection = FlexDirection.Row,
+                    //justifyContent = Justify.SpaceBetween,
+                    justifyContent = Justify.FlexStart,
                     alignItems = Align.Center,
                     paddingBottom = 3,
                     paddingTop = 3,
                     paddingLeft = 3,
                     paddingRight = 3,
-                    height = 24, // Fixed height for header
-                    flexShrink = 0, // Prevent shrinking
-                    borderBottomWidth = 1, // Separator line
+                    height = 24,
+                    flexShrink = 0,
+                    borderBottomWidth = 1,
                     borderBottomColor = Color.gray,
                 },
             };
 
-            objectColumn.Add(
+            objectHeader.Add(
                 new Label("Objects")
                 {
-                    style = { unityFontStyleAndWeight = FontStyle.Bold, paddingBottom = 5 },
+                    style =
+                    {
+                        unityFontStyleAndWeight = FontStyle.Bold,
+                        paddingBottom = 5,
+                        marginRight = 5,
+                        marginTop = 1,
+                    },
                 }
             );
-            var createButton = new Button(CreateNewObject)
+            Button createButton = new(CreateNewObject)
             {
                 text = "+",
                 tooltip = "Create New Object",
                 name = "create-object-button",
                 style =
                 {
+                    unityFontStyleAndWeight = FontStyle.Bold,
+                    color = Color.black,
+                    backgroundColor = new Color(0f, 0.8f, 0f),
                     width = 20,
                     height = 20,
                     paddingLeft = 0,
                     paddingRight = 0,
-                }, // Style as small button
+                    marginBottom = 2,
+                },
             };
             createButton.AddToClassList("icon-button");
             objectHeader.Add(createButton);
             objectColumn.Add(objectHeader);
-            // ScrollView
             _objectScrollView = new ScrollView(ScrollViewMode.Vertical)
             {
                 name = "object-scrollview",
@@ -1011,7 +845,7 @@
             VisualElement inspectorColumn = new()
             {
                 name = "inspector-column",
-                style = { flexGrow = 1, height = Length.Percent(100) }, // Height 100%
+                style = { flexGrow = 1, height = Length.Percent(100) },
             };
             _inspectorScrollView = new ScrollView(ScrollViewMode.Vertical)
             {
@@ -1026,7 +860,6 @@
 
         private void CreateNewObject()
         {
-            // 1. Check if a Type is selected
             if (_selectedType == null)
             {
                 EditorUtility.DisplayDialog(
@@ -1037,7 +870,6 @@
                 return;
             }
 
-            // 2. Check if Settings and DataFolderPath are valid
             if (_settings == null || string.IsNullOrWhiteSpace(_settings.DataFolderPath))
             {
                 EditorUtility.DisplayDialog(
@@ -1048,14 +880,12 @@
                 return;
             }
 
-            // 3. Ensure target directory exists
             string targetDirectory = Path.Combine(
                 Directory.GetCurrentDirectory(),
                 _settings.DataFolderPath
-            ); // Get full path
-            targetDirectory = Path.GetFullPath(targetDirectory).Replace('\\', '/'); // Normalize
+            );
+            targetDirectory = Path.GetFullPath(targetDirectory).Replace('\\', '/');
 
-            // Double-check it's within Assets (should be from settings validation, but be safe)
             string projectAssetsPath = Path.GetFullPath(Application.dataPath).Replace('\\', '/');
             if (!targetDirectory.StartsWith(projectAssetsPath, StringComparison.OrdinalIgnoreCase))
             {
@@ -1072,7 +902,6 @@
                 if (!Directory.Exists(targetDirectory))
                 {
                     Directory.CreateDirectory(targetDirectory);
-                    Debug.Log($"Created data directory: {_settings.DataFolderPath}");
                 }
             }
             catch (Exception e)
@@ -1085,8 +914,7 @@
                 return;
             }
 
-            // 4. Create Instance
-            ScriptableObject instance = ScriptableObject.CreateInstance(_selectedType);
+            ScriptableObject instance = CreateInstance(_selectedType);
             if (instance == null)
             {
                 EditorUtility.DisplayDialog(
@@ -1097,42 +925,31 @@
                 return;
             }
 
-            // 5. Generate Unique Asset Path
-            // Use relative path for asset database functions
             string baseAssetName = $"New {_selectedType.Name}.asset";
             string proposedPath = Path.Combine(_settings.DataFolderPath, baseAssetName)
                 .Replace('\\', '/');
             string uniquePath = AssetDatabase.GenerateUniqueAssetPath(proposedPath);
 
-            // 6. Create Asset
             try
             {
                 AssetDatabase.CreateAsset(instance, uniquePath);
-                AssetDatabase.SaveAssets(); // Save immediately
-                AssetDatabase.Refresh(); // Make sure Unity recognizes it
+                AssetDatabase.SaveAssets();
+                AssetDatabase.Refresh();
 
-                Debug.Log($"Created new object asset at: {uniquePath}");
-
-                // Load the newly created asset to get the correct instance
                 BaseDataObject newObject = AssetDatabase.LoadAssetAtPath<BaseDataObject>(
                     uniquePath
                 );
 
                 if (newObject != null)
                 {
-                    // --- Update UI ---
-                    // Add to the beginning of the current list
                     _selectedObjects.Insert(0, newObject);
                     UpdateAndSaveObjectCustomOrder();
-                    // Rebuild the view
                     BuildObjectsView();
-                    // Select the new object
                     SelectObject(newObject);
                 }
                 else
                 {
-                    Debug.LogError($"Failed to load the newly created asset at {uniquePath}");
-                    // Might still want to rebuild view even if selection fails
+                    this.LogError($"Failed to load the newly created asset at {uniquePath}");
                     BuildObjectsView();
                     SelectObject(null);
                 }
@@ -1144,8 +961,7 @@
                     $"Failed to create asset at '{uniquePath}': {e.Message}",
                     "OK"
                 );
-                // Clean up the instance if asset creation failed?
-                UnityEngine.Object.DestroyImmediate(instance); // Destroy the SO instance if saving failed
+                DestroyImmediate(instance);
             }
         }
 
@@ -1500,98 +1316,81 @@
                 {
                     name = $"object-item-row-{dataObject.GetInstanceID()}",
                 };
-                objectItemRow.AddToClassList(objectItemClass); // Apply base style if needed
-                // Store data object reference for event handlers (like selection)
-                objectItemRow.style.flexDirection = FlexDirection.Row; // Explicitly set row
-                objectItemRow.style.alignItems = Align.Center; // Align items vertically
+                objectItemRow.AddToClassList(ObjectItemClass);
+                objectItemRow.style.flexDirection = FlexDirection.Row;
+                objectItemRow.style.alignItems = Align.Center;
                 objectItemRow.userData = dataObject;
-                // Register Pointer Down Event for Selection and Drag Start (on the ROW)
                 objectItemRow.RegisterCallback<PointerDownEvent>(OnObjectPointerDown);
 
-                VisualElement contentArea = new VisualElement { name = "content" };
-                contentArea.AddToClassList(objectItemContentClass);
+                VisualElement contentArea = new() { name = "content" };
+                contentArea.AddToClassList(ObjectItemContentClass);
                 objectItemRow.Add(contentArea);
 
-                Label titleLabel = new Label(dataObject.Title) { name = "object-item-label" };
-                titleLabel.AddToClassList("object-item__label"); // Apply style
+                Label titleLabel = new(dataObject.Title) { name = "object-item-label" };
+                titleLabel.AddToClassList("object-item__label");
                 contentArea.Add(titleLabel);
 
-                VisualElement actionsArea = new VisualElement
+                VisualElement actionsArea = new()
                 {
                     name = "actions",
                     style =
                     {
-                        flexDirection = FlexDirection.Row, // <<< SET HORIZONTAL LAYOUT
-                        alignItems = Align.Center, // Align buttons vertically if their heights differ slightly
-                        flexShrink = 0, // Ensure this container doesn't shrink horizontally
+                        flexDirection = FlexDirection.Row,
+                        alignItems = Align.Center,
+                        flexShrink = 0,
                     },
                 };
-                actionsArea.AddToClassList(objectItemActionsClass);
+                actionsArea.AddToClassList(ObjectItemActionsClass);
                 objectItemRow.Add(actionsArea);
 
-                var cloneButton = new Button(() => CloneObject(dataObject))
+                Button cloneButton = new(() => CloneObject(dataObject))
                 {
-                    text = "++", // Document emoji or "⎘" U+2398
+                    text = "++",
                     tooltip = "Clone Object",
-                    style = { color = new Color(0.4f, 0.7f, 0.4f) },
+                    style =
+                    {
+                        unityFontStyleAndWeight = FontStyle.Bold,
+                        color = new Color(0.4f, 0.7f, 0.4f),
+                    },
                 };
-                cloneButton.AddToClassList(actionButtonClass);
+                cloneButton.AddToClassList(ActionButtonClass);
                 actionsArea.Add(cloneButton);
 
-                // Rename Button
-                var renameButton = new Button(() => OpenRenamePopup(dataObject))
+                Button renameButton = new(() => OpenRenamePopup(dataObject))
                 {
-                    text = "✎", // Pencil emoji or "Rename"
+                    text = "✎",
                     tooltip = "Rename Asset",
-                    style = { color = new Color(0.2f, 0.6f, 0.9f) },
+                    style =
+                    {
+                        unityFontStyleAndWeight = FontStyle.Bold,
+                        color = new Color(0.2f, 0.6f, 0.9f),
+                    },
                 };
-                renameButton.AddToClassList(actionButtonClass);
+                renameButton.AddToClassList(ActionButtonClass);
                 actionsArea.Add(renameButton);
 
-                // Delete Button
-                var deleteButton = new Button(() => DeleteObject(dataObject))
+                Button deleteButton = new(() => DeleteObject(dataObject))
                 {
-                    text = "X", // Trash can emoji U+1F5D1
+                    text = "X",
                     tooltip = "Delete Object",
-                    style = { color = new Color(0.9f, 0.4f, 0.4f) }, // Make delete reddish? Requires USS usually
+                    style =
+                    {
+                        unityFontStyleAndWeight = FontStyle.Bold,
+                        color = new Color(0.9f, 0.4f, 0.4f),
+                    },
                 };
-                deleteButton.AddToClassList(actionButtonClass);
+                deleteButton.AddToClassList(ActionButtonClass);
                 deleteButton.AddToClassList("delete-button");
-                // deleteButton.AddToClassList("delete-button"); // For specific styling via USS
                 actionsArea.Add(deleteButton);
 
-                // Store mapping (use the main row element for selection/drag)
                 _objectVisualElementMap[dataObject] = objectItemRow;
                 _objectListContainer.Add(objectItemRow);
 
-                // Re-apply selection style if needed
                 if (_selectedObject != null && _selectedObject == dataObject)
                 {
                     objectItemRow.AddToClassList("selected");
                     _selectedElement = objectItemRow;
                 }
-
-                // VisualElement objectItem = new()
-                // {
-                //     name = $"object-item-{dataObject.GetInstanceID()}",
-                // };
-                // objectItem.AddToClassList("object-item");
-                // objectItem.userData = dataObject;
-                //
-                // Label titleLabel = new(dataObject.Title) { name = "object-item-label" };
-                // titleLabel.AddToClassList("object-item__label");
-                // objectItem.Add(titleLabel);
-                //
-                // objectItem.RegisterCallback<PointerDownEvent>(OnObjectPointerDown);
-                //
-                // _objectVisualElementMap[dataObject] = objectItem;
-                // _objectListContainer.Add(objectItem);
-                //
-                // if (_selectedObject != null && _selectedObject == dataObject)
-                // {
-                //     objectItem.AddToClassList("selected");
-                //     _selectedElement = objectItem;
-                // }
             }
         }
 
@@ -1771,11 +1570,12 @@
         private void DeleteObject(BaseDataObject objectToDelete)
         {
             if (objectToDelete == null)
+            {
                 return;
+            }
 
-            // Confirmation Dialog
             if (
-                EditorUtility.DisplayDialog(
+                !EditorUtility.DisplayDialog(
                     "Confirm Delete",
                     $"Are you sure you want to delete the asset '{objectToDelete.name}'?\nThis action cannot be undone.",
                     "Delete",
@@ -1783,59 +1583,50 @@
                 )
             )
             {
-                string path = AssetDatabase.GetAssetPath(objectToDelete);
-                if (string.IsNullOrEmpty(path))
+                return;
+            }
+
+            string path = AssetDatabase.GetAssetPath(objectToDelete);
+            if (string.IsNullOrEmpty(path))
+            {
+                this.LogError(
+                    $"Could not find asset path for '{objectToDelete.name}'. Cannot delete."
+                );
+                return;
+            }
+
+            _selectedObjects.Remove(objectToDelete);
+            _objectVisualElementMap.Remove(objectToDelete, out VisualElement visualElement);
+            bool deleted = AssetDatabase.DeleteAsset(path);
+            if (deleted)
+            {
+                AssetDatabase.Refresh();
+
+                visualElement?.RemoveFromHierarchy();
+
+                if (_selectedObject != objectToDelete)
                 {
-                    Debug.LogError(
-                        $"Could not find asset path for '{objectToDelete.name}'. Cannot delete."
-                    );
                     return;
                 }
 
-                Debug.Log($"Attempting to delete asset: {path}");
-
-                // Remove from internal list and map FIRST
-                bool removed = _selectedObjects.Remove(objectToDelete);
-                _objectVisualElementMap.Remove(objectToDelete, out var visualElement);
-
-                // Delete the asset file
-                bool deleted = AssetDatabase.DeleteAsset(path);
-
-                if (deleted)
-                {
-                    Debug.Log($"Asset '{path}' deleted successfully.");
-                    // Optionally save/refresh database
-                    // AssetDatabase.SaveAssets(); // Usually not needed after DeleteAsset
-                    AssetDatabase.Refresh();
-
-                    // Remove visual element from the list container
-                    visualElement?.RemoveFromHierarchy();
-
-                    // Clear selection if the deleted object was selected
-                    if (_selectedObject == objectToDelete)
-                    {
-                        SelectObject(null); // This will clear selection and update inspector
-                    }
-                    // No need to call BuildObjectsView if we manually remove the element.
-                    // If list order matters beyond _customOrder, might need rebuild.
-                }
-                else
-                {
-                    Debug.LogError($"Failed to delete asset at '{path}'.");
-                    // If delete failed, add object back to list? Or refresh view?
-                    // For safety, let's rebuild the view to reflect actual state.
-                    LoadObjectTypes(_selectedType); // Reload objects for current type
-                    BuildObjectsView(); // Rebuild view fully
-                    // Re-select previously selected if it wasn't the one we tried to delete
-                    SelectObject(_selectedObject);
-                }
+                SelectObject(_selectedObjects.Any() ? _selectedObjects[0] : null);
+            }
+            else
+            {
+                this.LogError($"Failed to delete asset at '{path}'.");
+                LoadObjectTypes(_selectedType);
+                BuildObjectsView();
+                SelectObject(_selectedObject);
             }
         }
 
         private void OpenRenamePopup(BaseDataObject objectToRename)
         {
             if (objectToRename == null)
+            {
                 return;
+            }
+
             string currentPath = AssetDatabase.GetAssetPath(objectToRename);
             if (string.IsNullOrEmpty(currentPath))
             {
@@ -1847,36 +1638,25 @@
                 return;
             }
 
-            // Get reference to this window to pass to popup for callback
             DataVisualizer mainVisualizerWindow = this;
 
-            // Create and show the modal window
             RenameAssetPopup.ShowWindow(
                 currentPath,
                 (renameSuccessful) =>
                 {
-                    // This callback executes after the popup closes
-                    Debug.Log($"Rename popup closed. Success: {renameSuccessful}");
                     if (renameSuccessful)
                     {
-                        // Refreshing the object view might be needed if title depends on name,
-                        // or just refresh the specific element. AssetDatabase refresh might trigger some updates too.
-                        // Find the element associated with the (now potentially renamed) object.
-                        // Note: objectToRename instance might still hold old name until reloaded?
-                        // Safest bet is to fully reload and rebuild.
                         if (_selectedType != null)
-                        { // Ensure type context is still valid
+                        {
                             LoadObjectTypes(_selectedType);
                             BuildObjectsView();
-                            // Try to re-select the object (it's the same instance)
                             SelectObject(objectToRename);
                         }
                         else
                         {
-                            BuildObjectsView(); // Rebuild without type context if needed
+                            BuildObjectsView();
                         }
                     }
-                    // Ensure focus returns to main window (ShowModalUtility usually handles this)
                     mainVisualizerWindow?.Focus();
                 }
             );
@@ -1898,8 +1678,7 @@
                 return;
             }
 
-            // 1. Instantiate a copy
-            BaseDataObject cloneInstance = Instantiate(originalObject); // Copies serialized data
+            BaseDataObject cloneInstance = Instantiate(originalObject);
             if (cloneInstance == null)
             {
                 EditorUtility.DisplayDialog(
@@ -1909,38 +1688,39 @@
                 );
                 return;
             }
-            cloneInstance._assetGuid = Guid.NewGuid().ToString(); // Generate a new GUID
-            // Note: Instantiate often triggers OnEnable/Awake. Ensure any Guid generation in BaseDataObject handles cloning (e.g., assigns a NEW Guid).
+            cloneInstance._assetGuid = Guid.NewGuid().ToString();
 
+            string originalDirectory = Path.GetDirectoryName(originalPath);
+            if (string.IsNullOrWhiteSpace(originalDirectory))
+            {
+                EditorUtility.DisplayDialog(
+                    "Error",
+                    "Cannot clone object: Original asset path is invalid.",
+                    "OK"
+                );
+                return;
+            }
 
-            // 2. Generate Unique Path in the same directory
-            string directory = Path.GetDirectoryName(originalPath).Replace('\\', '/');
+            string directory = originalPath.Replace('\\', '/');
             string originalName = Path.GetFileNameWithoutExtension(originalPath);
-            string extension = Path.GetExtension(originalPath); // Should be ".asset"
-            string proposedName = $"{originalName} (Clone){extension}"; // Suggest a name
+            string extension = Path.GetExtension(originalPath);
+            string proposedName = $"{originalName} (Clone){extension}";
             string proposedPath = Path.Combine(directory, proposedName).Replace('\\', '/');
             string uniquePath = AssetDatabase.GenerateUniqueAssetPath(proposedPath);
-            string uniqueName = Path.GetFileNameWithoutExtension(uniquePath); // Get the final unique name
+            string uniqueName = Path.GetFileNameWithoutExtension(uniquePath);
+            cloneInstance._title = uniqueName;
 
-            // 3. Update Clone's Title (optional, based on new unique asset name)
-            cloneInstance._title = uniqueName; // Set title to match unique asset name
-
-            // 4. Create Asset
             try
             {
                 AssetDatabase.CreateAsset(cloneInstance, uniquePath);
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
-                Debug.Log($"Cloned object to: {uniquePath}");
 
-                // Load the clone to work with the asset instance
                 BaseDataObject cloneAsset = AssetDatabase.LoadAssetAtPath<BaseDataObject>(
                     uniquePath
                 );
                 if (cloneAsset != null)
                 {
-                    // --- Update UI ---
-                    // Add clone to list (e.g., after original or at end)
                     int originalIndex = _selectedObjects.IndexOf(originalObject);
                     if (originalIndex >= 0)
                     {
@@ -1948,20 +1728,17 @@
                     }
                     else
                     {
-                        _selectedObjects.Add(cloneAsset); // Add to end if original somehow wasn't found
+                        _selectedObjects.Add(cloneAsset);
                     }
 
-                    // Optional: Update _customOrder if using it, might need to shift subsequent items
-                    // For now, let's assume LoadObjectTypes will sort correctly on next load.
                     UpdateAndSaveObjectCustomOrder();
-                    // Rebuild view and select clone
                     BuildObjectsView();
                     SelectObject(cloneAsset);
                 }
                 else
                 {
-                    Debug.LogError($"Failed to load the cloned asset at {uniquePath}");
-                    BuildObjectsView(); // Rebuild anyway
+                    this.LogError($"Failed to load the cloned asset at {uniquePath}");
+                    BuildObjectsView();
                 }
             }
             catch (Exception e)
@@ -1971,7 +1748,7 @@
                     $"Failed to create cloned asset at '{uniquePath}': {e.Message}",
                     "OK"
                 );
-                DestroyImmediate(cloneInstance); // Clean up instance if saving failed
+                DestroyImmediate(cloneInstance);
             }
         }
 
