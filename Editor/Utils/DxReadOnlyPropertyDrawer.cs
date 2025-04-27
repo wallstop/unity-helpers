@@ -1,9 +1,9 @@
-﻿namespace UnityHelpers.Editor.Utils
+﻿namespace WallstopStudios.UnityHelpers.Editor.Utils
 {
 #if UNITY_EDITOR
-    using Core.Attributes;
     using UnityEditor;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Attributes;
 
     // https://www.patrykgalach.com/2020/01/20/readonly-attribute-in-unity-editor/
     [CustomPropertyDrawer(typeof(DxReadOnlyAttribute))]

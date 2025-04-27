@@ -1,4 +1,4 @@
-﻿namespace UnityHelpers.Core.Helper
+﻿namespace WallstopStudios.UnityHelpers.Core.Helper
 {
     using System;
     using UnityEngine;

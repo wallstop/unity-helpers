@@ -1,12 +1,12 @@
-﻿namespace UnityHelpers.Editor
+﻿namespace WallstopStudios.UnityHelpers.Editor
 {
 #if UNITY_EDITOR
     using System;
     using System.Collections.Generic;
     using System.Linq;
-    using Core.Extension;
     using UnityEditor;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Extension;
     using Object = UnityEngine.Object;
 
     [Serializable]

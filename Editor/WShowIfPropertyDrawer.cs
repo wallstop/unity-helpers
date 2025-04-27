@@ -1,11 +1,11 @@
-﻿namespace UnityHelpers.Editor
+﻿namespace WallstopStudios.UnityHelpers.Editor
 {
 #if UNITY_EDITOR
     using System.Reflection;
-    using Core.Attributes;
-    using Core.Extension;
-    using UnityEngine;
     using UnityEditor;
+    using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Core.Extension;
 
     [CustomPropertyDrawer(typeof(WShowIfAttribute))]
     public sealed class WShowIfPropertyDrawer : PropertyDrawer

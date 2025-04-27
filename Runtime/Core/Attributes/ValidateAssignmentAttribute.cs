@@ -1,4 +1,4 @@
-﻿namespace UnityHelpers.Core.Attributes
+﻿namespace WallstopStudios.UnityHelpers.Core.Attributes
 {
     using System;
     using System.Collections;
@@ -6,7 +6,7 @@
     using System.Linq;
     using System.Reflection;
     using Extension;
-    using Helper;
+    using Helper.Partials;
     using JetBrains.Annotations;
     using Object = UnityEngine.Object;
 
@@ -23,11 +23,16 @@
             return FieldsByType.GetOrAdd(
                 objectType,
                 type =>
-                    type.GetFields(
-                            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
-                        )
-                        .Where(prop =>
-                            Attribute.IsDefined(prop, typeof(ValidateAssignmentAttribute))
+                    Enumerable
+                        .Where<FieldInfo>(
+                            type.GetFields(
+                                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+                            ),
+                            prop =>
+                                Attribute.IsDefined(
+                                    (MemberInfo)prop,
+                                    typeof(ValidateAssignmentAttribute)
+                                )
                         )
                         .ToArray()
             );

@@ -1,9 +1,8 @@
-﻿namespace UnityHelpers.Core.Extension
+﻿namespace WallstopStudios.UnityHelpers.Core.Extension
 {
     using System;
     using System.Collections.Generic;
     using System.Linq;
-    using System.Threading.Tasks;
     using DataStructure;
     using DataStructure.Adapters;
     using Helper;

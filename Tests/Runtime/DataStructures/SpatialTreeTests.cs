@@ -1,11 +1,11 @@
-﻿namespace UnityHelpers.Tests.DataStructures
+﻿namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 {
     using System.Collections.Generic;
     using System.Linq;
-    using Core.DataStructure;
-    using Core.Helper;
-    using Core.Random;
     using NUnit.Framework;
+    using WallstopStudios.UnityHelpers.Core.DataStructure;
+    using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Core.Random;
     using Vector2 = UnityEngine.Vector2;
 
     public abstract class SpatialTreeTests<TTree>

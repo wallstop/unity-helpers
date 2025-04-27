@@ -1,4 +1,4 @@
-﻿namespace UnityHelpers.Core.Serialization.JsonConverters
+﻿namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
 {
     using System;
     using System.Text.Json;

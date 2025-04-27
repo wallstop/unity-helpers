@@ -1,14 +1,12 @@
-﻿namespace UnityHelpers.Core.Helper
+﻿namespace WallstopStudios.UnityHelpers.Core.Helper
 {
     using System;
     using Extension;
+    using UnityEditor;
+    using UnityEditor.SceneManagement;
     using UnityEngine;
     using UnityEngine.SceneManagement;
     using Object = UnityEngine.Object;
-#if UNITY_EDITOR
-    using UnityEditor;
-    using UnityEditor.SceneManagement;
-#endif
 
     public static partial class Helpers
     {

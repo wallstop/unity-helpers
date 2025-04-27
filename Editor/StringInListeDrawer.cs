@@ -1,10 +1,10 @@
-﻿namespace UnityHelpers.Editor
+﻿namespace WallstopStudios.UnityHelpers.Editor
 {
 #if UNITY_EDITOR
     using System;
     using UnityEditor;
     using UnityEngine;
-    using UnityHelpers.Core.Helper;
+    using Core.Helper;
 
     [CustomPropertyDrawer(typeof(StringInList))]
     public class StringInListDrawer : PropertyDrawer

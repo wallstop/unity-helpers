@@ -1,21 +1,22 @@
-﻿namespace UnityHelpers.Editor
+﻿namespace WallstopStudios.UnityHelpers.Editor.DataVisualizer
 {
 #if UNITY_EDITOR
     using System;
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;
-    using Core.Attributes;
-    using Core.DataVisualizer;
-    using Core.Extension;
-    using Core.Helper;
-    using Core.Serialization;
+    using Sirenix.OdinInspector.Editor;
     using UnityEditor;
     using UnityEngine;
     using UnityEngine.UIElements;
+    using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Core.DataVisualizer;
+    using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Core.Serialization;
     using Object = UnityEngine.Object;
 #if ODIN_INSPECTOR
-    using Sirenix.OdinInspector.Editor;
+
 #else
     using UnityEditor.UIElements;
 #endif
@@ -786,7 +787,7 @@
             if (_isDragging)
             {
                 // --- Finalize Drop ---
-                PerformDrop();
+                //PerformDrop();
             }
             else
             {

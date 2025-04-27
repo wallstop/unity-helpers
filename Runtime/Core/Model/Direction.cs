@@ -1,4 +1,4 @@
-﻿namespace UnityHelpers.Core.Model
+﻿namespace WallstopStudios.UnityHelpers.Core.Model
 {
     using System;
     using System.Runtime.Serialization;

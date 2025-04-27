@@ -1,8 +1,8 @@
-﻿namespace UnityHelpers.Tests.Extensions
+﻿namespace WallstopStudios.UnityHelpers.Tests.Extensions
 {
-    using Core.Extension;
     using NUnit.Framework;
     using UnityEngine.TestTools.Constraints;
+    using WallstopStudios.UnityHelpers.Core.Extension;
     using Is = NUnit.Framework.Is;
 
     public sealed class EnumExtensionTests

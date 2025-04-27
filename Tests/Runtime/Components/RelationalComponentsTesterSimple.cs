@@ -1,10 +1,10 @@
-﻿namespace UnityHelpers.Tests.Components
+﻿namespace WallstopStudios.UnityHelpers.Tests.Components
 {
+    using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Attributes;
+
     namespace UnityHelpers.Tests.Components
     {
-        using Core.Attributes;
-        using UnityEngine;
-
         [DisallowMultipleComponent]
         [RequireComponent(typeof(SpriteRenderer))]
         [RequireComponent(typeof(BoxCollider2D))]

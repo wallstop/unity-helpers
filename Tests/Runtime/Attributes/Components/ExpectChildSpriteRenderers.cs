@@ -1,8 +1,8 @@
-﻿namespace UnityHelpers.Tests.Attributes.Components
+﻿namespace WallstopStudios.UnityHelpers.Tests.Attributes.Components
 {
     using System.Collections.Generic;
-    using Core.Attributes;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Attributes;
 
     [DisallowMultipleComponent]
     public sealed class ExpectChildSpriteRenderers : MonoBehaviour

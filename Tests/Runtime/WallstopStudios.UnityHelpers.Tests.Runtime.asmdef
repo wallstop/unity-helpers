@@ -1,6 +1,6 @@
 {
     "name": "WallstopStudios.UnityHelpers.Tests.Runtime",
-    "rootNamespace": "UnityHelpers.Tests",
+    "rootNamespace": "WallstopStudios.UnityHelpers.Tests",
     "references": [
         "UnityEditor.TestRunner",
         "UnityEngine.TestRunner",

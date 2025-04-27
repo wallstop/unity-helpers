@@ -1,4 +1,4 @@
-﻿namespace UnityHelpers.Utils
+﻿namespace WallstopStudios.UnityHelpers.Utils
 {
     using UnityEditor;
     using UnityEngine;

@@ -2,7 +2,7 @@
 #define ENABLE_UBERLOGGING
 #endif
 
-namespace UnityHelpers.Core.Extension
+namespace WallstopStudios.UnityHelpers.Core.Extension
 {
     using System;
     using System.Collections.Generic;

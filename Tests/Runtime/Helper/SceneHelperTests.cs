@@ -1,15 +1,15 @@
-﻿namespace UnityHelpers.Tests.Helper
+﻿namespace WallstopStudios.UnityHelpers.Tests.Helper
 {
     using System;
     using System.Collections;
     using System.Collections.Generic;
     using System.Linq;
     using System.Threading.Tasks;
-    using Core.Helper;
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.TestTools;
-    using UnityHelpers.Utils;
+    using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Utils;
 
     public sealed class SceneHelperTests
     {

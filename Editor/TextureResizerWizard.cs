@@ -1,4 +1,4 @@
-﻿namespace UnityHelpers.Editor
+﻿namespace WallstopStudios.UnityHelpers.Editor
 {
 #if UNITY_EDITOR
     using System;
@@ -6,13 +6,12 @@
     using System.ComponentModel;
     using System.IO;
     using System.Linq;
-    using Core.Extension;
-    using Core.Helper;
     using UnityEditor;
     using UnityEngine;
     using UnityEngine.Serialization;
-    using UnityHelpers.Utils;
-    using Utils;
+    using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
     public sealed class TextureResizerWizard : ScriptableWizard

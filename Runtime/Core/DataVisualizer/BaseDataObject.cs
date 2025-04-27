@@ -2,7 +2,7 @@
 
 [assembly: InternalsVisibleTo(assemblyName: "WallstopStudios.UnityHelpers.Editor")]
 
-namespace UnityHelpers.Core.DataVisualizer
+namespace WallstopStudios.UnityHelpers.Core.DataVisualizer
 {
     using System;
     using System.Collections.Generic;

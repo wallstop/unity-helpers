@@ -1,4 +1,4 @@
-﻿namespace UnityHelpers.Utils
+﻿namespace WallstopStudios.UnityHelpers.Utils
 {
     using System.Threading;
     using UnityEngine;

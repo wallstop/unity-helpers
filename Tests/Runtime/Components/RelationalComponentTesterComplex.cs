@@ -1,7 +1,7 @@
-﻿namespace UnityHelpers.Tests.Components
+﻿namespace WallstopStudios.UnityHelpers.Tests.Components
 {
-    using Core.Attributes;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Attributes;
 
     [DisallowMultipleComponent]
     [RequireComponent(typeof(SpriteRenderer))]

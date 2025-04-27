@@ -1,12 +1,12 @@
-﻿namespace UnityHelpers.Tests.Attributes
+﻿namespace WallstopStudios.UnityHelpers.Tests.Attributes
 {
     using System.Collections;
     using System.Linq;
     using Components;
-    using Core.Attributes;
     using UnityEngine;
     using UnityEngine.Assertions;
     using UnityEngine.TestTools;
+    using WallstopStudios.UnityHelpers.Core.Attributes;
 
     public sealed class ParentComponentTests
     {

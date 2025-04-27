@@ -1,6 +1,6 @@
-﻿namespace UnityHelpers.Tests.Random
+﻿namespace WallstopStudios.UnityHelpers.Tests.Random
 {
-    using Core.Random;
+    using WallstopStudios.UnityHelpers.Core.Random;
 
     public sealed class XorShiroRandomTests : RandomTestBase
     {

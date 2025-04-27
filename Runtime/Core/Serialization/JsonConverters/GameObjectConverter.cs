@@ -1,10 +1,9 @@
-﻿namespace UnityHelpers.Core.Serialization.JsonConverters
+﻿namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
 {
     using System;
     using System.Text.Json;
     using System.Text.Json.Serialization;
     using UnityEngine;
-    using Object = UnityEngine.Object;
 
     public sealed class GameObjectConverter : JsonConverter<GameObject>
     {
