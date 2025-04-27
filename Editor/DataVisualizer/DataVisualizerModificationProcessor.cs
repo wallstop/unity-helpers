@@ -27,10 +27,27 @@
                     continue;
                 }
 
-                if (
-                    typeof(BaseDataObject).IsAssignableFrom(assetType)
-                    || typeof(DataVisualizerSettings).IsAssignableFrom(assetType)
-                )
+                bool isSettingsAsset = typeof(DataVisualizerSettings).IsAssignableFrom(assetType);
+                bool isBDOAsset = typeof(BaseDataObject).IsAssignableFrom(assetType);
+
+                if (isBDOAsset)
+                { // Always refresh if a BaseDataObject is saved
+                    needsRefresh = true;
+                }
+                else if (isSettingsAsset)
+                {
+                    // Only refresh from settings save IF the window is NOT using EditorPrefs
+                    // (because if using EditorPrefs, saving settings file doesn't affect window state)
+                    var settingsInstance = AssetDatabase.LoadAssetAtPath<DataVisualizerSettings>(
+                        path
+                    );
+                    if (settingsInstance != null && !settingsInstance.UseEditorPrefsForState)
+                    {
+                        needsRefresh = true; // Settings file changed AND it's the active persistence method
+                    }
+                }
+
+                if (needsRefresh)
                 {
                     if (openWindow == null)
                     {
