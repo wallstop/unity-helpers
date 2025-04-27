@@ -73,6 +73,7 @@
         private Vector2 _dragStartPosition;
         private bool _isDragging;
         private float _lastDragUpdateTime;
+        private SerializedObject _currentInspectorSO;
 
 #if ODIN_INSPECTOR
         private PropertyTree _odinPropertyTree;
@@ -113,6 +114,8 @@
         private void Cleanup()
         {
             CancelDrag();
+            _currentInspectorSO?.Dispose();
+            _currentInspectorSO = null;
             _dragGhost?.RemoveFromHierarchy();
             _dragGhost = null;
             _draggedElement = null;
@@ -599,7 +602,7 @@
             _inspectorContainer.Clear();
             _inspectorScrollView.scrollOffset = Vector2.zero;
 
-            if (_selectedObject == null)
+            if (_selectedObject == null || _currentInspectorSO == null)
             {
                 _inspectorContainer.Add(
                     new Label("Select an object to inspect.")
@@ -619,17 +622,13 @@
                 return;
             }
 
-            using SerializedObject serializedObject = new(_selectedObject);
             bool useOdinInspector = false;
 #if ODIN_INSPECTOR
-            if (
-                _selectedObject
+            useOdinInspector =
+                !_selectedObject
                     .GetType()
                     .IsAttributeDefined(out DataVisualizerCustomPropertiesAttribute attribute)
-            )
-            {
-                useOdinInspector = attribute.UseOdinInspector;
-            }
+                || attribute.UseOdinInspector;
 
             if (useOdinInspector)
             {
@@ -686,9 +685,21 @@
 #endif
             if (!useOdinInspector)
             {
+#if ODIN_INSPECTOR
+                if (
+                    _odinInspectorContainer != null
+                    && _odinInspectorContainer.parent == _inspectorContainer
+                )
+                {
+                    _odinInspectorContainer.RemoveFromHierarchy();
+                }
+                _odinPropertyTree?.Dispose();
+                _odinPropertyTree = null;
+#endif
                 try
                 {
-                    SerializedProperty serializedProperty = serializedObject.GetIterator();
+                    _currentInspectorSO.UpdateIfRequiredOrScript();
+                    SerializedProperty serializedProperty = _currentInspectorSO.GetIterator();
                     bool enterChildren = true;
                     const string titleFieldName = nameof(BaseDataObject._title);
 
@@ -701,7 +712,7 @@
                         )
                         {
                             PropertyField scriptField = new(serializedProperty);
-                            scriptField.Bind(serializedObject);
+                            scriptField.Bind(_currentInspectorSO);
                             _inspectorContainer.Add(scriptField);
                         }
 
@@ -712,7 +723,7 @@
                     {
                         SerializedProperty currentPropCopy = serializedProperty.Copy();
                         PropertyField propertyField = new(currentPropCopy);
-                        propertyField.Bind(serializedObject);
+                        propertyField.Bind(_currentInspectorSO);
 
                         if (
                             string.Equals(
@@ -724,6 +735,7 @@
                         {
                             propertyField.RegisterValueChangeCallback(evt =>
                             {
+                                _currentInspectorSO.ApplyModifiedProperties();
                                 rootVisualElement
                                     .schedule.Execute(
                                         () => RefreshSelectedElementVisuals(_selectedObject)
@@ -736,21 +748,19 @@
                         enterChildren = false;
                     }
 
-                    serializedObject.ApplyModifiedProperties();
+                    VisualElement customElement = _selectedObject.BuildGUI(
+                        new DataVisualizerGUIContext(_currentInspectorSO)
+                    );
+                    if (customElement != null)
+                    {
+                        _inspectorContainer.Add(customElement);
+                    }
                 }
                 catch (Exception e)
                 {
                     this.LogError($"Error creating standard inspector.", e);
                     _inspectorContainer.Add(new Label($"Inspector Error: {e.Message}"));
                 }
-            }
-
-            VisualElement customElement = _selectedObject.BuildGUI(
-                new DataVisualizerGUIContext(serializedObject)
-            );
-            if (customElement != null)
-            {
-                _inspectorContainer.Add(customElement);
             }
         }
 
@@ -985,6 +995,8 @@
                 Selection.activeObject = null;
             }
 
+            _currentInspectorSO?.Dispose();
+            _currentInspectorSO = (dataObject != null) ? new SerializedObject(dataObject) : null;
             BuildInspectorView();
         }
 
