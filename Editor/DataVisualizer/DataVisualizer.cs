@@ -22,7 +22,6 @@
 
     public sealed class DataVisualizer : EditorWindow
     {
-        private const float DragUpdateThrottleTime = 0.05f;
         private const string PrefsPrefix = "WallstopStudios.UnityHelpers.DataVisualizer.";
         private const string NamespaceCollapsedStateFormat = PrefsPrefix + "NamespaceCollapsed.{0}";
         private const string LastSelectedNamespaceKey = PrefsPrefix + "LastSelectedNamespace";
@@ -32,6 +31,8 @@
         private const string CustomNamespaceOrderKey = PrefsPrefix + "CustomNamespaceOrder";
         private const string CustomTypeOrderKeyFormat = PrefsPrefix + "CustomTypeOrder.{0}";
 
+        private const string SettingsDefaultPath = "Assets/DataVisualizerSettings.asset";
+
         private const string NamespaceItemClass = "object-item";
         private const string NamespaceHeaderClass = "namespace-header";
         private const string NamespaceIndicatorClass = "namespace-indicator";
@@ -40,6 +41,8 @@
         private const string TypeLabelClass = "type-item__label";
         private const string ArrowCollapsed = "►";
         private const string ArrowExpanded = "▼";
+
+        private const float DragUpdateThrottleTime = 0.05f;
 
         private enum DragType
         {
@@ -73,15 +76,18 @@
         private Vector2 _dragStartPosition;
         private bool _isDragging;
         private float _lastDragUpdateTime;
-        private SerializedObject _currentInspectorSO;
+        private SerializedObject _currentInspectorScriptableObject;
 
+        private DataVisualizerSettings _settings;
+        private VisualElement _settingsPopup;
+        private Label _dataFolderPathDisplay;
 #if ODIN_INSPECTOR
         private PropertyTree _odinPropertyTree;
         private IMGUIContainer _odinInspectorContainer;
         private IVisualElementScheduledItem _odinRepaintSchedule;
 #endif
 
-        [MenuItem("Tools/Unity Helpers/Data Visualizer")]
+        [MenuItem("Tools/Data Visualizer")]
         public static void ShowWindow()
         {
             DataVisualizer window = GetWindow<DataVisualizer>("Data Visualizer");
@@ -97,6 +103,8 @@
 #if ODIN_INSPECTOR
             _odinPropertyTree = null;
 #endif
+            _settings = LoadOrCreateSettings();
+
             LoadScriptableObjectTypes();
             rootVisualElement.schedule.Execute(RestorePreviousSelection).ExecuteLater(10);
         }
@@ -114,8 +122,8 @@
         private void Cleanup()
         {
             CancelDrag();
-            _currentInspectorSO?.Dispose();
-            _currentInspectorSO = null;
+            _currentInspectorScriptableObject?.Dispose();
+            _currentInspectorScriptableObject = null;
             _dragGhost?.RemoveFromHierarchy();
             _dragGhost = null;
             _draggedElement = null;
@@ -132,6 +140,80 @@
             _odinInspectorContainer?.Dispose();
             _odinInspectorContainer = null;
 #endif
+        }
+
+        private DataVisualizerSettings LoadOrCreateSettings()
+        {
+            DataVisualizerSettings settings = null;
+
+            string[] guids = AssetDatabase.FindAssets($"t:{nameof(DataVisualizerSettings)}");
+
+            if (guids.Length > 0)
+            {
+                if (guids.Length > 1)
+                {
+                    this.LogWarn(
+                        $"Multiple DataVisualizerSettings assets found ({guids.Length}). Using the first one."
+                    );
+                }
+
+                foreach (string guid in guids)
+                {
+                    string path = AssetDatabase.GUIDToAssetPath(guid);
+                    if (string.IsNullOrWhiteSpace(path))
+                    {
+                        continue;
+                    }
+                    settings = AssetDatabase.LoadAssetAtPath<DataVisualizerSettings>(path);
+                    if (settings != null)
+                    {
+                        break;
+                    }
+                }
+            }
+
+            if (settings == null)
+            {
+                this.Log(
+                    $"No DataVisualizerSettings found, creating default at '{SettingsDefaultPath}'"
+                );
+                settings = CreateInstance<DataVisualizerSettings>();
+                settings._dataFolderPath = DataVisualizerSettings.DefaultDataFolderPath;
+
+                string dir = Path.GetDirectoryName(SettingsDefaultPath);
+                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                {
+                    Directory.CreateDirectory(dir);
+                }
+
+                try
+                {
+                    AssetDatabase.CreateAsset(settings, SettingsDefaultPath);
+                    AssetDatabase.SaveAssets();
+                    AssetDatabase.Refresh();
+                    settings = AssetDatabase.LoadAssetAtPath<DataVisualizerSettings>(
+                        SettingsDefaultPath
+                    );
+                }
+                catch (Exception e)
+                {
+                    this.LogError($"Failed to create DataVisualizerSettings asset.", e);
+                    settings = CreateInstance<DataVisualizerSettings>();
+                    settings._dataFolderPath = DataVisualizerSettings.DefaultDataFolderPath;
+                }
+            }
+
+            if (settings != null)
+            {
+                return settings;
+            }
+
+            this.LogError(
+                $"Failed to load or create DataVisualizerSettings. Using temporary instance."
+            );
+            settings = CreateInstance<DataVisualizerSettings>();
+            settings._dataFolderPath = DataVisualizerSettings.DefaultDataFolderPath;
+            return settings;
         }
 
         private void RestorePreviousSelection()
@@ -312,6 +394,31 @@
                 this.LogError($"Failed to find Data Visualizer style sheet.");
             }
 
+            VisualElement headerRow = new()
+            {
+                name = "header-row",
+                style =
+                {
+                    flexDirection = FlexDirection.Row,
+                    justifyContent = Justify.FlexStart,
+                    paddingTop = 5,
+                    paddingBottom = 5,
+                    paddingLeft = 5,
+                    paddingRight = 5,
+                    borderBottomWidth = 1,
+                    borderBottomColor = Color.gray,
+                },
+            };
+            root.Add(headerRow);
+
+            Button settingsButton = new(ToggleSettingsPopup)
+            {
+                text = "…", //"⚙",
+                name = "settings-button",
+                tooltip = "Open Settings",
+            };
+            headerRow.Add(settingsButton);
+
             VisualElement mainContainer = new()
             {
                 name = "main-container",
@@ -386,9 +493,59 @@
             inspectorColumn.Add(_inspectorScrollView);
             mainContainer.Add(inspectorColumn);
 
+            _settingsPopup = new VisualElement
+            {
+                name = "settings-popup",
+                style =
+                {
+                    position = Position.Absolute,
+                    top = 30,
+                    left = 10,
+                    width = 350,
+                    backgroundColor = new Color(0.2f, 0.2f, 0.2f, 0.95f),
+                    borderLeftWidth = 1,
+                    borderRightWidth = 1,
+                    borderTopWidth = 1,
+                    borderBottomWidth = 1,
+                    borderBottomColor = Color.gray,
+                    borderLeftColor = Color.gray,
+                    borderRightColor = Color.gray,
+                    borderTopColor = Color.gray,
+                    borderBottomLeftRadius = 5,
+                    borderBottomRightRadius = 5,
+                    borderTopLeftRadius = 5,
+                    borderTopRightRadius = 5,
+                    paddingBottom = 10,
+                    paddingLeft = 10,
+                    paddingRight = 10,
+                    paddingTop = 10,
+                    display = DisplayStyle.None,
+                },
+            };
+            root.Add(_settingsPopup);
+
+            BuildSettingsPopup();
+
             BuildNamespaceView();
             BuildObjectsView();
             BuildInspectorView();
+        }
+
+        private void ToggleSettingsPopup()
+        {
+            if (_settingsPopup == null)
+            {
+                return;
+            }
+
+            if (_settingsPopup.style.display == DisplayStyle.None && _settings != null)
+            {
+                _dataFolderPathDisplay.text = _settings.DataFolderPath;
+            }
+            _settingsPopup.style.display =
+                _settingsPopup.style.display == DisplayStyle.None
+                    ? DisplayStyle.Flex
+                    : DisplayStyle.None;
         }
 
 #if ODIN_INSPECTOR
@@ -419,6 +576,144 @@
             }
         }
 #endif
+
+        private void SelectDataFolder()
+        {
+            if (_settings == null)
+            {
+                return;
+            }
+
+            string currentFullPath = Path.GetFullPath(
+                Path.Combine(Directory.GetCurrentDirectory(), _settings.DataFolderPath)
+            );
+            string startDir = Directory.Exists(currentFullPath)
+                ? currentFullPath
+                : Application.dataPath;
+
+            string selectedAbsolutePath = EditorUtility.OpenFolderPanel(
+                "Select Data Folder",
+                startDir,
+                string.Empty
+            );
+
+            if (string.IsNullOrWhiteSpace(selectedAbsolutePath))
+            {
+                return;
+            }
+
+            string projectAssetsPath = Path.GetFullPath(Application.dataPath);
+            selectedAbsolutePath = Path.GetFullPath(selectedAbsolutePath).Replace('\\', '/');
+            projectAssetsPath = projectAssetsPath.Replace('\\', '/');
+            if (
+                !selectedAbsolutePath.StartsWith(
+                    projectAssetsPath,
+                    StringComparison.OrdinalIgnoreCase
+                )
+            )
+            {
+                this.LogError($"Selected folder must be inside the project's Assets folder.");
+                EditorUtility.DisplayDialog(
+                    "Invalid Folder",
+                    "The selected folder must be inside the project's 'Assets' directory.",
+                    "OK"
+                );
+                return;
+            }
+
+            string relativePath;
+            if (selectedAbsolutePath.Equals(projectAssetsPath, StringComparison.OrdinalIgnoreCase))
+            {
+                relativePath = "Assets";
+            }
+            else
+            {
+                relativePath = "Assets" + selectedAbsolutePath.Substring(projectAssetsPath.Length);
+            }
+
+            if (
+                string.Equals(
+                    _settings.DataFolderPath,
+                    relativePath,
+                    StringComparison.OrdinalIgnoreCase
+                )
+            )
+            {
+                return;
+            }
+
+            _settings._dataFolderPath = relativePath;
+            EditorUtility.SetDirty(_settings);
+            AssetDatabase.SaveAssets();
+            _dataFolderPathDisplay.text = _settings.DataFolderPath;
+            this.Log($"Data folder updated to: {_settings.DataFolderPath}");
+        }
+
+        private void BuildSettingsPopup()
+        {
+            _settingsPopup.Clear();
+
+            _settingsPopup.Add(
+                new Label("Settings")
+                {
+                    style = { unityFontStyleAndWeight = FontStyle.Bold, marginBottom = 10 },
+                }
+            );
+
+            Button closeButton = new(() => _settingsPopup.style.display = DisplayStyle.None)
+            {
+                text = "X",
+                style =
+                {
+                    position = Position.Absolute,
+                    top = 2,
+                    right = 2,
+                    width = 20,
+                    height = 20,
+                },
+            };
+            _settingsPopup.Add(closeButton);
+
+            VisualElement dataFolderContainer = new()
+            {
+                style =
+                {
+                    flexDirection = FlexDirection.Row,
+                    alignItems = Align.Center,
+                    marginBottom = 5,
+                },
+            };
+            _settingsPopup.Add(dataFolderContainer);
+
+            dataFolderContainer.Add(
+                new Label("Data Folder:") { style = { width = 80, flexShrink = 0 } }
+            );
+
+            _dataFolderPathDisplay = new Label(_settings?.DataFolderPath ?? "N/A")
+            {
+                name = "data-folder-display",
+                style =
+                {
+                    flexGrow = 1,
+                    backgroundColor = new Color(0.1f, 0.1f, 0.1f),
+                    paddingBottom = 2,
+                    paddingLeft = 2,
+                    paddingRight = 2,
+                    paddingTop = 2,
+                    marginLeft = 5,
+                    marginRight = 5,
+                },
+                pickingMode = PickingMode.Ignore,
+            };
+            dataFolderContainer.Add(_dataFolderPathDisplay);
+
+            Button selectFolderButton = new(SelectDataFolder)
+            {
+                text = "Select...",
+                style = { flexShrink = 0 },
+            };
+            dataFolderContainer.Add(selectFolderButton);
+        }
 
         private void BuildNamespaceView()
         {
@@ -612,7 +907,7 @@
             _inspectorContainer.Clear();
             _inspectorScrollView.scrollOffset = Vector2.zero;
 
-            if (_selectedObject == null || _currentInspectorSO == null)
+            if (_selectedObject == null || _currentInspectorScriptableObject == null)
             {
                 _inspectorContainer.Add(
                     new Label("Select an object to inspect.")
@@ -708,8 +1003,9 @@
 #endif
                 try
                 {
-                    _currentInspectorSO.UpdateIfRequiredOrScript();
-                    SerializedProperty serializedProperty = _currentInspectorSO.GetIterator();
+                    _currentInspectorScriptableObject.UpdateIfRequiredOrScript();
+                    SerializedProperty serializedProperty =
+                        _currentInspectorScriptableObject.GetIterator();
                     bool enterChildren = true;
                     const string titleFieldName = nameof(BaseDataObject._title);
 
@@ -722,7 +1018,7 @@
                         )
                         {
                             PropertyField scriptField = new(serializedProperty);
-                            scriptField.Bind(_currentInspectorSO);
+                            scriptField.Bind(_currentInspectorScriptableObject);
                             _inspectorContainer.Add(scriptField);
                         }
 
@@ -733,7 +1029,7 @@
                     {
                         SerializedProperty currentPropCopy = serializedProperty.Copy();
                         PropertyField propertyField = new(currentPropCopy);
-                        propertyField.Bind(_currentInspectorSO);
+                        propertyField.Bind(_currentInspectorScriptableObject);
 
                         if (
                             string.Equals(
@@ -745,7 +1041,7 @@
                         {
                             propertyField.RegisterValueChangeCallback(evt =>
                             {
-                                _currentInspectorSO.ApplyModifiedProperties();
+                                _currentInspectorScriptableObject.ApplyModifiedProperties();
                                 rootVisualElement
                                     .schedule.Execute(
                                         () => RefreshSelectedElementVisuals(_selectedObject)
@@ -759,7 +1055,7 @@
                     }
 
                     VisualElement customElement = _selectedObject.BuildGUI(
-                        new DataVisualizerGUIContext(_currentInspectorSO)
+                        new DataVisualizerGUIContext(_currentInspectorScriptableObject)
                     );
                     if (customElement != null)
                     {
@@ -1042,8 +1338,9 @@
                 Selection.activeObject = null;
             }
 
-            _currentInspectorSO?.Dispose();
-            _currentInspectorSO = (dataObject != null) ? new SerializedObject(dataObject) : null;
+            _currentInspectorScriptableObject?.Dispose();
+            _currentInspectorScriptableObject =
+                (dataObject != null) ? new SerializedObject(dataObject) : null;
             BuildInspectorView();
         }
 
