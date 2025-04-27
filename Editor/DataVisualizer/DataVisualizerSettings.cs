@@ -28,7 +28,7 @@
 
         private void OnValidate()
         {
-            if (!Application.isEditor || !Application.isPlaying)
+            if (Application.isEditor && !Application.isPlaying)
             {
                 if (string.IsNullOrWhiteSpace(_dataFolderPath))
                 {

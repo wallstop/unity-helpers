@@ -60,9 +60,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataVisualizer
 
         protected virtual void OnValidate()
         {
-            if (string.IsNullOrWhiteSpace(_assetGuid))
+            if (Application.isEditor && !Application.isPlaying)
             {
-                _assetGuid = Guid.NewGuid().ToString();
+                if (string.IsNullOrWhiteSpace(_assetGuid))
+                {
+                    _assetGuid = Guid.NewGuid().ToString();
+                }
             }
         }
 
