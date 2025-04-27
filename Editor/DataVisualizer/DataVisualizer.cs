@@ -90,15 +90,11 @@
             _odinPropertyTree = null;
 #endif
             LoadScriptableObjectTypes();
-            rootVisualElement.RegisterCallback<PointerUpEvent>(OnGlobalPointerUp);
-            rootVisualElement.RegisterCallback<PointerMoveEvent>(OnGlobalPointerMove);
         }
 
         private void OnDisable()
         {
             Cleanup();
-            rootVisualElement?.UnregisterCallback<PointerUpEvent>(OnGlobalPointerUp);
-            rootVisualElement?.UnregisterCallback<PointerMoveEvent>(OnGlobalPointerMove);
         }
 
         private void OnDestroy()
@@ -736,18 +732,10 @@
         private void OnObjectPointerDown(PointerDownEvent evt)
         {
             VisualElement targetElement = evt.currentTarget as VisualElement;
-            if (
-                targetElement == null
-                || targetElement.userData == null
-                || !(targetElement.userData is BaseDataObject)
-            )
-            {
-                Debug.LogWarning("PointerDown target is not a valid object item.");
+            if (targetElement?.userData is not BaseDataObject clickedObject)
                 return;
-            }
 
-            // --- Handle Selection ---
-            BaseDataObject clickedObject = targetElement.userData as BaseDataObject;
+            // --- Handle Selection --- (Remains the same)
             if (_selectedObject != clickedObject)
             {
                 SelectObject(clickedObject);
@@ -755,34 +743,71 @@
 
             // --- Initiate Drag ---
             // Check for left mouse button to start drag
-            if (evt.button == 0) // 0 = Left mouse button
+            if (evt.button == 0) // Left mouse button
             {
                 _draggedElement = targetElement;
-                _draggedObject = clickedObject;
-                _dragStartPosition = evt.position; // Use event position relative to window/panel
-                //_draggedElement.CapturePointer(evt.pointerId); // Capture pointer for drag events
-                _isDragging = false; // Set to true only after a minimum move distance if desired
-                // Don't set isDragging = true yet, wait for PointerMove to confirm drag intent
+                _draggedData = clickedObject;
+                _activeDragType = DragType.Object;
+                _dragStartPosition = evt.position;
+                targetElement.CapturePointer(evt.pointerId);
+                targetElement.RegisterCallback<PointerMoveEvent>(OnCapturedPointerMove);
+                targetElement.RegisterCallback<PointerUpEvent>(OnCapturedPointerUp);
+                targetElement.RegisterCallback<PointerCaptureOutEvent>(OnPointerCaptureOut);
+                evt.StopPropagation();
             }
-
-            evt.StopPropagation(); // Prevent event from bubbling up further if needed
         }
 
-        private void OnGlobalPointerMove(PointerMoveEvent evt)
+        private void OnPointerCaptureOut(PointerCaptureOutEvent evt)
         {
-            if (_draggedElement == null || !_draggedElement.HasPointerCapture(evt.pointerId))
+            // This handler is attached to _draggedElement
+            // Debug.LogWarning($"Pointer Capture Out detected on {_draggedElement?.name}. Cleaning up drag state.");
+
+            // Check if we were actually dragging with this element
+            if (_activeDragType != DragType.None && _draggedElement != null)
             {
-                return; // Not dragging or lost capture
+                // We lost capture unexpectedly, likely means the drag is cancelled externally.
+                // Clean up everything as if the drag ended.
+
+                // Ensure local handlers are unregistered (might be redundant if called after Up, but safe)
+                // Debug.Log($"Unregistering handlers due to Capture Out on {_draggedElement.name}");
+                _draggedElement.UnregisterCallback<PointerMoveEvent>(OnCapturedPointerMove);
+                _draggedElement.UnregisterCallback<PointerUpEvent>(OnCapturedPointerUp);
+                _draggedElement.UnregisterCallback<PointerCaptureOutEvent>(OnPointerCaptureOut);
+
+                // Reset state and visuals
+                CancelDrag();
+            }
+        }
+
+        private void OnCapturedPointerMove(PointerMoveEvent evt)
+        {
+            // This handler is attached to _draggedElement
+
+            // Ensure we are actually in a drag state initiated by this element
+            if (
+                _draggedElement == null
+                || !_draggedElement.HasPointerCapture(evt.pointerId)
+                || _activeDragType == DragType.None
+            )
+            {
+                // Should not happen if registration/capture is correct, but good safety check
+                return;
             }
 
-            // Check if we've moved enough to consider it a drag
+            // Check if we've moved enough to start the visual drag
             if (!_isDragging)
             {
-                // Simple distance check (adjust threshold as needed)
                 if (Vector2.Distance(evt.position, _dragStartPosition) > 5.0f)
                 {
                     _isDragging = true;
-                    StartDragVisuals(evt.position); // Create ghost etc.
+                    string dragText = _draggedData switch
+                    {
+                        BaseDataObject dataObj => dataObj.Title,
+                        string nsKey => nsKey,
+                        Type type => type.Name,
+                        _ => "Dragging Item",
+                    };
+                    StartDragVisuals(evt.position, dragText);
                 }
                 else
                 {
@@ -790,53 +815,59 @@
                 }
             }
 
-            // --- Update Drag Visuals ---
-            if (_dragGhost != null)
+            // --- Update Drag Visuals (if dragging started) ---
+            if (_isDragging) // Check again as it might have just been set true
             {
-                // Position ghost relative to the rootVisualElement
-                _dragGhost.style.left = evt.position.x - (_dragGhost.resolvedStyle.width / 2);
-                _dragGhost.style.top = evt.position.y - (_dragGhost.resolvedStyle.height / 2);
+                // Update Ghost Position (using evt.position relative to window/panel)
+                if (_dragGhost != null)
+                {
+                    // Calculate center offset if desired
+                    float ghostOffsetX = _dragGhost.resolvedStyle.width / 2f;
+                    float ghostOffsetY = _dragGhost.resolvedStyle.height / 2f;
+                    _dragGhost.style.left = evt.position.x - ghostOffsetX;
+                    _dragGhost.style.top = evt.position.y - ghostOffsetY;
+                }
+
+                // Update Drop Indicator Position
+                UpdateDropIndicator(evt.position);
             }
 
-            // --- Determine Drop Target and Update Indicator ---
-            UpdateDropIndicator(evt.position);
-
-            evt.StopPropagation();
+            // Stop propagation? Usually not needed here as the capturing element gets priority.
+            // evt.StopPropagation();
         }
 
-        private void OnGlobalPointerUp(PointerUpEvent evt)
+        private void OnCapturedPointerUp(PointerUpEvent evt)
         {
-            // Check if we were actually dragging with the pointer that was released
+            // This handler is attached to _draggedElement
+
+            // Ensure this is the pointer we captured
             if (
                 _draggedElement == null
                 || !_draggedElement.HasPointerCapture(evt.pointerId)
                 || _activeDragType == DragType.None
             )
             {
-                // This pointer wasn't the one we were tracking for a drag.
-                // It might be a right-click release or something else. Ignore it for drag purposes.
+                // Debug.LogWarning($"OnCapturedPointerUp received event for pointer {evt.pointerId}, but not actively dragging or element mismatch.");
                 return;
             }
 
-            // Store necessary info before potential modification in CancelDrag
-            bool wasDragging = _isDragging;
-            DragType finishedDragType = _activeDragType;
-            VisualElement releasedElement = _draggedElement; // Keep ref for logging if needed
             int pointerId = evt.pointerId;
+            bool performDrop = _isDragging; // Check if we moved enough to count as a drop
+            DragType dropType = _activeDragType; // Store before potentially resetting in CancelDrag
 
-            // --- CRITICAL: Release the pointer and cleanup state in a finally block ---
+            var draggedElement = _draggedElement;
+            // Use try...finally to guarantee pointer release and handler unregistration
             try
             {
-                // 1. Release Pointer Immediately
-                // Debug.Log($"Releasing Pointer {pointerId} from {_draggedElement.name}");
+                // 1. Release Pointer - CRITICAL
+                // Debug.Log($"Releasing pointer {pointerId} in OnCapturedPointerUp for {_draggedElement.name}");
                 _draggedElement.ReleasePointer(pointerId);
 
-                // 2. Perform Drop Logic if we were actually dragging
-                if (wasDragging)
+                // 2. Perform Drop Logic (only if we actually dragged)
+                if (performDrop)
                 {
-                    // Debug.Log($"Performing drop for {finishedDragType}...");
-                    // --- Finalize Drop based on type ---
-                    switch (finishedDragType)
+                    // Debug.Log($"Performing drop for {dropType}...");
+                    switch (dropType)
                     {
                         case DragType.Object:
                             PerformObjectDrop();
@@ -848,25 +879,28 @@
                             PerformTypeDrop();
                             break;
                     }
-                    // Debug.Log($"Drop performed for {finishedDragType}.");
+                    // Debug.Log($"Drop performed for {dropType}.");
                 }
-                // else: It was just a click, selection logic might have happened on PointerDown/Up on the item.
             }
             catch (Exception ex)
             {
-                // Log any error during drop logic
-                Debug.LogError($"Error during drop execution for {finishedDragType}: {ex}");
+                Debug.LogError($"Error during drop execution for {dropType}: {ex}");
             }
             finally
             {
-                // 3. ALWAYS Reset State via CancelDrag
-                // Pass the specific pointer ID for context, though CancelDrag might not strictly need it now.
-                // We reset state *after* potentially using it in the drop logic.
-                // Debug.Log($"Calling CancelDrag from finally block.");
-                CancelDrag(pointerId);
+                // 3. Unregister Local Handlers - CRITICAL
+                // Debug.Log($"Unregistering drag handlers from {_draggedElement.name}");
+                draggedElement.UnregisterCallback<PointerMoveEvent>(OnCapturedPointerMove);
+                draggedElement.UnregisterCallback<PointerUpEvent>(OnCapturedPointerUp);
+                // Also unregister PointerCaptureOutEvent if you handle it (see step 6)
+                draggedElement.UnregisterCallback<PointerCaptureOutEvent>(OnPointerCaptureOut);
+
+                // 4. Reset State via CancelDrag (which no longer needs to release pointer)
+                // Debug.Log("Calling CancelDrag from OnCapturedPointerUp finally block.");
+                CancelDrag(); // Reset state variables and visuals
             }
 
-            // We handled the drag event, stop it from propagating further.
+            // Stop the event after handling it here
             evt.StopPropagation();
         }
 
@@ -901,11 +935,6 @@
                 return;
             }
 
-            // Adjust target index if moving item downwards
-            if (currentIndex < targetIndex)
-            {
-                targetIndex--;
-            }
             targetIndex = Mathf.Clamp(targetIndex, 0, _namespaceListContainer.childCount - 1);
             _namespaceListContainer.Insert(targetIndex, _draggedElement);
 
@@ -950,11 +979,12 @@
                 _draggedData = namespaceKey; // Store the namespace key string
                 _activeDragType = DragType.Namespace; // << SET DRAG TYPE
                 _dragStartPosition = evt.position;
-                //_draggedElement.CapturePointer(evt.pointerId);
-                _isDragging = false; // Set to true only after movement threshold
+                targetElement.CapturePointer(evt.pointerId);
+                targetElement.RegisterCallback<PointerMoveEvent>(OnCapturedPointerMove);
+                targetElement.RegisterCallback<PointerUpEvent>(OnCapturedPointerUp);
+                targetElement.RegisterCallback<PointerCaptureOutEvent>(OnPointerCaptureOut);
+                evt.StopPropagation();
             }
-
-            evt.StopPropagation();
         }
 
         private void UpdateAndSaveNamespaceOrder()
@@ -992,10 +1022,13 @@
                 _draggedData = type; // Store the System.Type
                 _activeDragType = DragType.Type; // << SET DRAG TYPE
                 _dragStartPosition = evt.position;
-                //_draggedElement.CapturePointer(evt.pointerId);
                 _isDragging = false;
+                targetElement.CapturePointer(evt.pointerId);
+                targetElement.RegisterCallback<PointerMoveEvent>(OnCapturedPointerMove);
+                targetElement.RegisterCallback<PointerUpEvent>(OnCapturedPointerUp);
+                targetElement.RegisterCallback<PointerCaptureOutEvent>(OnPointerCaptureOut);
+                evt.StopPropagation();
             }
-            evt.StopPropagation();
         }
 
         private void PerformTypeDrop()
@@ -1034,8 +1067,7 @@
                 CancelDrag();
                 return;
             }
-            if (currentIndex < targetIndex)
-                targetIndex--;
+
             targetIndex = Mathf.Clamp(targetIndex, 0, typesContainer.childCount - 1);
             typesContainer.Insert(targetIndex, _draggedElement);
 
@@ -1204,9 +1236,9 @@
             }
         }
 
-        private void StartDragVisuals(Vector2 currentPosition)
+        private void StartDragVisuals(Vector2 currentPosition, string dragText) // << Added dragText parameter
         {
-            if (_draggedElement == null || _draggedObject == null)
+            if (_draggedElement == null || _draggedData == null)
                 return;
 
             // Create Ghost Element
@@ -1214,113 +1246,328 @@
             {
                 _dragGhost = new VisualElement();
                 _dragGhost.AddToClassList("drag-ghost");
-                // Add a label to the ghost for better visual feedback
-                Label ghostLabel = new Label(_draggedObject.Title);
+                // Use a label inside the ghost
+                Label ghostLabel = new Label(dragText); // << Use parameter
                 ghostLabel.style.unityTextAlign = TextAnchor.MiddleLeft;
                 _dragGhost.Add(ghostLabel);
-                // Add to root so it can be positioned anywhere
                 rootVisualElement.Add(_dragGhost);
+            }
+            else
+            {
+                // Update text if ghost already exists (e.g., if StartDragVisuals was called multiple times)
+                var ghostLabel = _dragGhost.Q<Label>();
+                if (ghostLabel != null)
+                    ghostLabel.text = dragText; // << Update text
             }
 
             _dragGhost.style.visibility = Visibility.Visible;
             _dragGhost.style.left = currentPosition.x - (_draggedElement.resolvedStyle.width / 2);
             _dragGhost.style.top = currentPosition.y - (_draggedElement.resolvedStyle.height / 2);
-            _dragGhost.BringToFront(); // Ensure ghost is on top
+            _dragGhost.BringToFront();
 
-            // Hide original element slightly
             _draggedElement.style.opacity = 0.5f;
 
-            // Show drop indicator (it will be positioned in PointerMove)
-            _dropIndicator.style.visibility = Visibility.Visible;
-            _dropIndicator.BringToFront(); // Ensure indicator is visible over items
+            // Show drop indicator (position calculated in UpdateDropIndicator)
+            if (_dropIndicator != null)
+            {
+                _dropIndicator.style.visibility = Visibility.Visible;
+                _dropIndicator.BringToFront();
+            }
         }
 
         private void UpdateDropIndicator(Vector2 pointerPosition)
         {
-            if (_objectListContainer == null || _draggedElement == null || _dropIndicator == null)
-                return;
+            VisualElement container = null;
+            string itemClassName = null;
 
-            int childCount = _objectListContainer.childCount;
-            if (childCount == 0)
+            // --- Determine container and item class based on drag type ---
+            switch (_activeDragType)
             {
-                _dropIndicator.style.visibility = Visibility.Hidden;
+                case DragType.Object:
+                    container = _objectListContainer;
+                    itemClassName = "object-item"; // Class assigned to object items
+                    break;
+                case DragType.Namespace:
+                    container = _namespaceListContainer;
+                    // Ensure this class matches what's assigned in BuildNamespaceView to namespace group containers
+                    itemClassName = "object-item"; // Or "namespace-group-item" if you used a specific one
+                    break;
+                case DragType.Type:
+                    // Container is the parent of the dragged type element (the 'typesContainer')
+                    if (_draggedElement != null)
+                        container = _draggedElement.parent;
+                    itemClassName = "type-item"; // Class assigned to type items
+                    break;
+                default:
+                    // If drag type is None or unhandled, hide indicator and exit
+                    if (_dropIndicator != null)
+                        _dropIndicator.style.visibility = Visibility.Hidden;
+                    return;
+            }
+
+            // --- Detailed Logging (for debugging container/child count issues) ---
+            string containerName = container?.name ?? "null";
+            // Get expected counts directly from member fields for comparison
+            int expectedNamespaceChildCount = _namespaceListContainer?.childCount ?? -1;
+            int expectedObjectChildCount = _objectListContainer?.childCount ?? -1;
+            int actualContainerChildCount = container?.childCount ?? -1; // Get count from the variable 'container'
+
+            Debug.Log(
+                $"UpdateDropIndicator - DragType: {_activeDragType}, "
+                    + $"Container Variable Name: {containerName}, "
+                    +
+                    // Optional deeper checks:
+                    // $"Is Container _namespaceListContainer?: {ReferenceEquals(container, _namespaceListContainer)}, " +
+                    // $"Is Container _objectListContainer?: {ReferenceEquals(container, _objectListContainer)}, " +
+                    $"_namespaceListContainer?.childCount (Expected): {expectedNamespaceChildCount}, "
+                    + $"_objectListContainer?.childCount (Expected): {expectedObjectChildCount}, "
+                    + $"container.childCount (Actual): {actualContainerChildCount}"
+            );
+            // --- End Logging ---
+
+
+            // --- Validate container and essential elements before proceeding ---
+            if (
+                container == null
+                || _draggedElement == null
+                || _dropIndicator == null
+                || itemClassName == null
+            )
+            {
+                if (_dropIndicator != null)
+                    _dropIndicator.style.visibility = Visibility.Hidden;
+                // Log specific failure if container is unexpectedly null for a known drag type
+                if (
+                    (
+                        _activeDragType == DragType.Namespace
+                        || _activeDragType == DragType.Object
+                        || _activeDragType == DragType.Type
+                    )
+                    && container == null
+                )
+                {
+                    Debug.LogError(
+                        $"UpdateDropIndicator: Container variable is unexpectedly null for DragType: {_activeDragType}!"
+                    );
+                }
                 return;
             }
 
-            // Convert pointer position to the object list container's local space
-            Vector2 localPointerPos = _objectListContainer.WorldToLocal(pointerPosition);
+            // --- Logic for finding drop position relative to items in the container ---
+            int childCount = container.childCount; // Use the count from the identified 'container'
+            int targetIndex = -1; // The index where the item should be inserted BEFORE
+            VisualElement elementBefore = null; // The element the indicator should appear AFTER
+            Vector2 localPointerPos = container.WorldToLocal(pointerPosition); // Convert window/panel pointer to container's local space
 
-            int targetIndex = -1;
-            VisualElement elementBefore = null; // The element the indicator should appear after
+            // Log if the identified container is empty when member field suggests it shouldn't be
+            if (
+                (
+                    _activeDragType == DragType.Namespace
+                    && childCount == 0
+                    && expectedNamespaceChildCount > 0
+                )
+                || (
+                    _activeDragType == DragType.Object
+                    && childCount == 0
+                    && expectedObjectChildCount > 0
+                )
+            )
+            {
+                Debug.LogWarning(
+                    $"UpdateDropIndicator: container.childCount is 0 for {_activeDragType} drag, but the corresponding member list container has children. Container reference or timing issue suspected."
+                );
+            }
 
-            // Iterate through children to find where the pointer is relative to them
+            // Iterate through the container's children to find the insertion point
             for (int i = 0; i < childCount; ++i)
             {
-                VisualElement child = _objectListContainer.ElementAt(i);
-                if (child == _draggedElement || !child.ClassListContains("object-item"))
-                    continue; // Skip dragged item and non-items
+                VisualElement child = container.ElementAt(i);
+                // Skip children that aren't relevant items or the item being dragged
+                if (
+                    child == _draggedElement
+                    || !child.ClassListContains(itemClassName)
+                    || child.style.display == DisplayStyle.None
+                )
+                    continue;
 
+                // Determine if the pointer is above the vertical midpoint of the child
                 float childMidY = child.layout.yMin + child.resolvedStyle.height / 2f;
-
                 if (localPointerPos.y < childMidY)
                 {
-                    targetIndex = i; // Found insert position before this child
-                    break;
+                    targetIndex = i; // Found insert position (BEFORE this child)
+                    break; // Exit loop once position is found
                 }
-                elementBefore = child; // This child is before the potential drop position
+                elementBefore = child; // This child is confirmed to be BEFORE the potential drop position
             }
 
-            // If pointer is below all elements, insert at the end
-            if (targetIndex == -1)
+            // --- Handle cases: Pointer below all items, or list empty/only contains dragged item ---
+            if (targetIndex == -1) // Loop completed without finding an item to insert before
             {
-                targetIndex = childCount;
-                elementBefore = _objectListContainer.ElementAt(childCount - 1); // Place after the last valid item
-                // Ensure we don't target the dragged element itself if it's last
-                if (elementBefore == _draggedElement && childCount > 1)
+                if (childCount == 0)
                 {
-                    elementBefore = _objectListContainer.ElementAt(childCount - 2);
+                    targetIndex = 0; // Dropping into an empty list, insert at index 0
+                    elementBefore = null;
                 }
-                else if (elementBefore == _draggedElement && childCount <= 1)
+                else
                 {
-                    elementBefore = null; // Drop at the beginning if only dragging the single element
-                    targetIndex = 0;
+                    targetIndex = childCount; // Append at the end (index equals current count)
+                    // Find the last valid item that isn't the dragged element to place indicator AFTER it
+                    elementBefore = null; // Reset first
+                    for (int i = childCount - 1; i >= 0; i--)
+                    {
+                        var child = container.ElementAt(i);
+                        // Check if it's a valid item and not the one being dragged
+                        if (
+                            child != _draggedElement
+                            && child.ClassListContains(itemClassName)
+                            && child.style.display != DisplayStyle.None
+                        )
+                        {
+                            elementBefore = child;
+                            break;
+                        }
+                    }
+                    // If elementBefore is still null here, it implies only the dragged element exists (or no valid items found).
+                    // If only the dragged element exists, we should treat it as dropping at the beginning (index 0).
+                    if (elementBefore == null)
+                    {
+                        // Check if the container actually contains the dragged element as its only valid item
+                        int validItemCount = 0;
+                        bool draggedItemPresent = false;
+                        for (int i = 0; i < childCount; ++i)
+                        {
+                            var child = container.ElementAt(i);
+                            if (
+                                child.ClassListContains(itemClassName)
+                                && child.style.display != DisplayStyle.None
+                            )
+                            {
+                                validItemCount++;
+                                if (child == _draggedElement)
+                                    draggedItemPresent = true;
+                            }
+                        }
+                        if (validItemCount == 1 && draggedItemPresent)
+                        {
+                            targetIndex = 0; // Only dragged item exists, drop target is index 0
+                        }
+                        // If no valid items found at all, targetIndex remains childCount (which might be 0)
+                    }
                 }
             }
 
-            // Calculate indicator position
-            float indicatorY;
-            if (targetIndex == 0)
+            // --- Calculate indicator's vertical position based on targetIndex and elementBefore ---
+            float indicatorY = 0;
+            bool placeVisible = false; // Flag to determine if the indicator should be shown
+
+            if (targetIndex == 0) // Target is the very beginning
             {
-                // Place indicator at the top of the container or first element
-                VisualElement firstChild = _objectListContainer.ElementAt(0);
-                indicatorY =
-                    (firstChild == _draggedElement && childCount > 1)
-                        ? _objectListContainer.ElementAt(1).layout.yMin
-                            - (_dropIndicator.resolvedStyle.height / 2f)
-                            - 1 // Above second element
-                        : firstChild.layout.yMin - (_dropIndicator.resolvedStyle.height / 2f) - 1; // Above first element
+                // Try to find the first actual item element to place indicator above it
+                VisualElement firstVisibleItem = null;
+                for (int i = 0; i < childCount; ++i)
+                {
+                    var child = container.ElementAt(i);
+                    if (
+                        child.ClassListContains(itemClassName)
+                        && child.style.display != DisplayStyle.None
+                    )
+                    {
+                        firstVisibleItem = child;
+                        break;
+                    }
+                }
+
+                if (firstVisibleItem != null)
+                {
+                    // Place slightly above the top edge of the first item
+                    indicatorY =
+                        firstVisibleItem.layout.yMin
+                        - (_dropIndicator.resolvedStyle.height / 2f)
+                        - 1;
+                    placeVisible = true;
+                }
+                else
+                {
+                    // No visible items found (container might be empty or only contain non-item elements), place at top of container
+                    indicatorY = 0;
+                    placeVisible = true;
+                }
             }
-            else if (elementBefore != null)
+            else if (elementBefore != null) // Target is after 'elementBefore'
             {
-                // Place indicator below the elementBefore
+                // Place indicator slightly below the bottom edge of 'elementBefore'
                 indicatorY =
                     elementBefore.layout.yMax - (_dropIndicator.resolvedStyle.height / 2f) + 1;
+                placeVisible = true;
             }
             else
             {
-                // Fallback or case where list might be empty during calculation
-                indicatorY = 0;
+                // Fallback scenario: targetIndex > 0 but elementBefore is null (should be rare).
+                // Hide the indicator if position is uncertain.
+                // Debug.LogWarning($"UpdateDropIndicator: Uncertain indicator position calculation. targetIndex={targetIndex}, elementBefore=null, childCount={childCount}");
+                placeVisible = false;
             }
 
-            _dropIndicator.style.top = Mathf.Clamp(
-                indicatorY,
-                0,
-                _objectListContainer.contentContainer.layout.height
-            ); // Clamp within bounds
-            _dropIndicator.style.visibility = Visibility.Visible;
+            // --- Set Indicator Parent, Position, Visibility, and Store Target Index ---
+            if (placeVisible)
+            {
+                // Determine the correct parent element for the indicator visual
+                VisualElement indicatorParent = null;
+                switch (_activeDragType)
+                {
+                    case DragType.Object:
+                        // Place inside the ScrollView's content container for objects
+                        indicatorParent = _objectScrollView?.contentContainer;
+                        break;
+                    case DragType.Namespace:
+                        // Place directly inside the namespace list container
+                        indicatorParent = _namespaceListContainer;
+                        break;
+                    case DragType.Type:
+                        // Place directly inside the types container (which is 'container' in this case)
+                        indicatorParent = container;
+                        break;
+                }
 
-            // Store target index in userData for PerformDrop to use
-            _dropIndicator.userData = targetIndex;
+                // Ensure indicator is added to the hierarchy under the correct parent
+                if (indicatorParent != null && _dropIndicator.parent != indicatorParent)
+                {
+                    // Add will handle reparenting if it's already elsewhere
+                    indicatorParent.Add(_dropIndicator);
+                }
+                else if (indicatorParent == null)
+                {
+                    // Could not determine parent, hide indicator
+                    placeVisible = false;
+                    Debug.LogWarning(
+                        $"UpdateDropIndicator: Could not determine indicator parent for DragType {_activeDragType}. Hiding indicator."
+                    );
+                }
+
+                // Final check before showing and positioning
+                if (placeVisible && indicatorParent != null)
+                {
+                    // Clamp Y position within the bounds of the determined parent container
+                    float parentHeight = float.IsNaN(indicatorParent.layout.height)
+                        ? 0
+                        : indicatorParent.layout.height; // Handle potential NaN layout height
+                    _dropIndicator.style.top = Mathf.Clamp(indicatorY, 0, parentHeight);
+                    _dropIndicator.style.visibility = Visibility.Visible;
+                    _dropIndicator.BringToFront(); // Ensure it's visually on top within its current parent
+                    _dropIndicator.userData = targetIndex; // Store calculated index for use in PerformDrop methods
+                }
+                else
+                {
+                    // Hide if parenting failed or placeVisible became false during parenting logic
+                    _dropIndicator.style.visibility = Visibility.Hidden;
+                    _dropIndicator.userData = -1; // Invalidate stored index
+                }
+            }
+            else // placeVisible was false from the position calculation phase
+            {
+                _dropIndicator.style.visibility = Visibility.Hidden;
+                _dropIndicator.userData = -1; // Invalidate stored index
+            }
         }
 
         private void UpdateAndSaveObjectCustomOrder()
@@ -1377,25 +1624,15 @@
             }
         }
 
-        private void CancelDrag(int pointerIdContext = -1)
+        private void CancelDrag() // No longer needs pointerId parameter
         {
-            // Debug.Log($"CancelDrag called (Context Pointer ID: {pointerIdContext})");
+            // Debug.Log("CancelDrag called.");
 
-            // Restore visual appearance of the element that was dragged (if any)
+            // Restore visual appearance
             if (_draggedElement != null)
             {
                 _draggedElement.style.opacity = 1.0f;
-
-                // Attempting release here is mostly a fallback/safety net,
-                // as the primary release should happen in OnGlobalPointerUp's try block.
-                // Check if it *still* has capture for any reason (e.g., error before release in Up handler)
-                if (_draggedElement.HasPointerCapture(-1)) // Check for *any* pointer capture
-                {
-                    Debug.LogWarning(
-                        $"CancelDrag found lingering pointer capture on {_draggedElement.name}. Releasing (-1)."
-                    );
-                    _draggedElement.ReleasePointer(-1); // Release any pointer it might still hold
-                }
+                // No need to release pointer here - OnCapturedPointerUp handles it.
             }
 
             // Hide drag visuals
@@ -1406,7 +1643,7 @@
 
             // Reset state variables - CRITICAL
             _isDragging = false;
-            _draggedElement = null; // Allows garbage collection
+            _draggedElement = null;
             _draggedData = null;
             _activeDragType = DragType.None;
 
