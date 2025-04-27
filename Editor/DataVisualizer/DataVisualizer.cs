@@ -6,6 +6,8 @@
     using System.ComponentModel;
     using System.IO;
     using System.Linq;
+    using Components;
+    using Components.UnityHelpers.Editor;
 #if ODIN_INSPECTOR
     using Sirenix.OdinInspector.Editor;
 #endif
@@ -640,12 +642,26 @@
             };
             root.Add(headerRow);
 
-            Button settingsButton = new(ToggleSettingsPopup)
+            var settingsButton = new Button(() =>
             {
-                text = "…", //"⚙",
+                // Store current persistence mode *before* opening popup
+                bool wasUsingEditorPrefs = _settings.UseEditorPrefsForState;
+                // Show the modal window, passing settings and the callback
+                var popup = CreateInstance<DataVisualizerSettingsPopup>();
+                popup.titleContent = new GUIContent("Data Visualizer Settings");
+                popup._settings = _settings; // Pass settings from main window
+                popup._onCloseCallback = () => HandleSettingsPopupClosed(wasUsingEditorPrefs); // Pass callback
+                popup.minSize = new Vector2(370, 130);
+                popup.maxSize = new Vector2(370, 130);
+                popup.ShowModal(); // Call ShowModal() on the instance FROM the parent.
+                //
+            })
+            {
+                text = "…",
                 name = "settings-button",
                 tooltip = "Open Settings",
             };
+            settingsButton.AddToClassList("icon-button");
             headerRow.Add(settingsButton);
 
             float initialOuterWidth = EditorPrefs.GetFloat(
@@ -722,6 +738,40 @@
             BuildNamespaceView();
             BuildObjectsView();
             BuildInspectorView();
+        }
+
+        private void HandleSettingsPopupClosed(bool previousModeWasEditorPrefs)
+        {
+            Debug.Log("Settings popup closed. Checking for changes.");
+
+            // Settings might have been modified, so save the asset now.
+            if (_settings != null && EditorUtility.IsDirty(_settings))
+            {
+                Debug.Log("Saving dirty settings asset...");
+                AssetDatabase.SaveAssets();
+            }
+
+            // Check if the persistence mode was toggled
+            bool migrationNeeded = (
+                _settings != null && previousModeWasEditorPrefs != _settings.UseEditorPrefsForState
+            );
+
+            if (migrationNeeded)
+            {
+                Debug.Log("Persistence mode changed, performing migration...");
+                MigratePersistenceState(!_settings.UseEditorPrefsForState); // Pass TRUE if NEW mode is Settings Object
+                // Save again AFTER migration if migrating TO settings object
+                if (!_settings.UseEditorPrefsForState)
+                {
+                    // MarkSettingsDirty(); // MigratePersistenceState should handle this
+                    AssetDatabase.SaveAssets();
+                }
+            }
+
+            // Optional: Trigger a full refresh if certain settings were changed that
+            // require immediate UI update beyond what happens automatically via saves.
+            // For now, assume the AssetModificationProcessor handles necessary refreshes on save.
+            // ScheduleRefresh(); // Uncomment if you need to force refresh after *any* setting change
         }
 
         private VisualElement CreateNamespaceColumn()

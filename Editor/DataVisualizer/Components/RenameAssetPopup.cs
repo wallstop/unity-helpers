@@ -1,10 +1,12 @@
-﻿namespace WallstopStudios.UnityHelpers.Editor.DataVisualizer
+﻿namespace WallstopStudios.UnityHelpers.Editor.DataVisualizer.Components
 {
-    using System; // For Action
+    using System;
     using System.IO;
     using UnityEditor;
     using UnityEngine;
     using UnityEngine.UIElements;
+
+    // For Action
 
     public class RenameAssetPopup : EditorWindow
     {
