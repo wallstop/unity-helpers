@@ -30,6 +30,8 @@
         private const string CustomTypeOrderKey = PrefsPrefix + "CustomTypeOrder";
         private const string CustomNamespaceOrderKey = PrefsPrefix + "CustomNamespaceOrder";
         private const string CustomTypeOrderKeyFormat = PrefsPrefix + "CustomTypeOrder.{0}";
+        private const string PrefsSplitterOuterKey = PrefsPrefix + "SplitterOuterFixedPaneWidth";
+        private const string PrefsSplitterInnerKey = PrefsPrefix + "SplitterInnerFixedPaneWidth";
 
         private const string SettingsDefaultPath = "Assets/DataVisualizerSettings.asset";
 
@@ -48,6 +50,8 @@
         private const string ArrowExpanded = "▼";
 
         private const float DragUpdateThrottleTime = 0.05f;
+        private const float DefaultOuterSplitWidth = 200f;
+        private const float DefaultInnerSplitWidth = 250f;
 
         private enum DragType
         {
@@ -68,6 +72,15 @@
         private VisualElement _inspectorContainer;
         private ScrollView _objectScrollView;
         private ScrollView _inspectorScrollView;
+
+        private TwoPaneSplitView _outerSplitView;
+        private TwoPaneSplitView _innerSplitView;
+        private VisualElement _namespaceColumnVE; // Need reference to the actual column VE
+        private VisualElement _objectColumnVE; // Need reference to the actual column VE
+
+        private float _lastSavedOuterWidth = -1f; // Track last saved value to avoid redundant writes
+        private float _lastSavedInnerWidth = -1f;
+        private IVisualElementScheduledItem _saveWidthsTask; // Reference to the scheduled task
 
         private DragType _activeDragType = DragType.None;
         private object _draggedData;
@@ -111,7 +124,13 @@
             _settings = LoadOrCreateSettings();
 
             LoadScriptableObjectTypes();
-            rootVisualElement.schedule.Execute(RestorePreviousSelection).ExecuteLater(10);
+            rootVisualElement
+                .schedule.Execute(() =>
+                {
+                    RestorePreviousSelection();
+                    StartPeriodicWidthSave();
+                })
+                .ExecuteLater(10);
         }
 
         private void OnDisable()
@@ -127,6 +146,8 @@
         private void Cleanup()
         {
             CancelDrag();
+            _saveWidthsTask?.Pause();
+            _saveWidthsTask = null;
             _currentInspectorScriptableObject?.Dispose();
             _currentInspectorScriptableObject = null;
             _dragGhost?.RemoveFromHierarchy();
@@ -423,6 +444,65 @@
             return settings;
         }
 
+        private void StartPeriodicWidthSave()
+        {
+            // Ensure it runs only once / stop previous if needed
+            _saveWidthsTask?.Pause();
+            // Schedule CheckAndSaveSplitterWidths to run every 1000ms (1 second)
+            _saveWidthsTask = rootVisualElement
+                .schedule.Execute(CheckAndSaveSplitterWidths)
+                .Every(1000);
+            Debug.Log("Started periodic splitter width saving.");
+        }
+
+        private void CheckAndSaveSplitterWidths()
+        {
+            // Check if split views and target columns have been created and have valid layout
+            if (
+                _outerSplitView == null
+                || _innerSplitView == null
+                || _namespaceColumnVE == null
+                || _objectColumnVE == null
+                || float.IsNaN(_namespaceColumnVE.resolvedStyle.width)
+                || // Wait for layout pass
+                float.IsNaN(_objectColumnVE.resolvedStyle.width)
+            )
+            {
+                // Debug.Log("Skipping width save check - elements not ready or layout invalid.");
+                return;
+            }
+
+            // Get CURRENT actual widths of the columns within the fixed panes
+            float currentOuterWidth = _namespaceColumnVE.resolvedStyle.width;
+            float currentInnerWidth = _objectColumnVE.resolvedStyle.width;
+
+            bool changed = false;
+
+            // Compare with last saved values (using approximation for floats)
+            if (!Mathf.Approximately(currentOuterWidth, _lastSavedOuterWidth))
+            {
+                Debug.Log(
+                    $"Outer width changed: {_lastSavedOuterWidth} -> {currentOuterWidth}. Saving."
+                );
+                EditorPrefs.SetFloat(PrefsSplitterOuterKey, currentOuterWidth);
+                _lastSavedOuterWidth = currentOuterWidth; // Update tracking value
+                changed = true;
+            }
+
+            if (!Mathf.Approximately(currentInnerWidth, _lastSavedInnerWidth))
+            {
+                Debug.Log(
+                    $"Inner width changed: {_lastSavedInnerWidth} -> {currentInnerWidth}. Saving."
+                );
+                EditorPrefs.SetFloat(PrefsSplitterInnerKey, currentInnerWidth);
+                _lastSavedInnerWidth = currentInnerWidth; // Update tracking value
+                changed = true;
+            }
+
+            // Optional: If EditorPrefs saving is slow, maybe call EditorPrefs.Save() periodically? Usually not needed.
+            // if (changed) { EditorPrefs.Save(); } // Likely unnecessary
+        }
+
         private void RestorePreviousSelection()
         {
             if (_scriptableObjectTypes.Count == 0)
@@ -626,6 +706,21 @@
             };
             headerRow.Add(settingsButton);
 
+            float initialOuterWidth = EditorPrefs.GetFloat(
+                PrefsSplitterOuterKey,
+                DefaultOuterSplitWidth
+            );
+            float initialInnerWidth = EditorPrefs.GetFloat(
+                PrefsSplitterInnerKey,
+                DefaultInnerSplitWidth
+            );
+
+            _lastSavedOuterWidth = initialOuterWidth;
+            _lastSavedInnerWidth = initialInnerWidth;
+            Debug.Log(
+                $"Loaded initial widths: Outer={initialOuterWidth}, Inner={initialInnerWidth}"
+            );
+
             // VisualElement mainContainer = new()
             // {
             //     name = "main-container",
@@ -633,13 +728,13 @@
             // };
             // root.Add(mainContainer);
 
-            VisualElement namespaceColumn = CreateNamespaceColumn(); // Extract creation logic
-            VisualElement objectColumn = CreateObjectColumn(); // Extract creation logic
+            _namespaceColumnVE = CreateNamespaceColumn(); // Extract creation logic
+            _objectColumnVE = CreateObjectColumn(); // Extract creation logic
             VisualElement inspectorColumn = CreateInspectorColumn(); // Extract creation logic
 
-            var innerSplitView = new TwoPaneSplitView(
+            _innerSplitView = new TwoPaneSplitView(
                 0,
-                250,
+                (int)initialInnerWidth,
                 TwoPaneSplitViewOrientation.Horizontal
             )
             {
@@ -647,28 +742,26 @@
                 style = { flexGrow = 1 }, // Grow within outer split view
             };
 
-            innerSplitView.Add(objectColumn); // Add object column VE directly
+            _innerSplitView.Add(_objectColumnVE); // Add object column VE directly
 
-            // Pane 1 (Right/Flexible): Inspector Column
-            innerSplitView.Add(inspectorColumn); // Add inspector column VE directly
+            _innerSplitView.Add(inspectorColumn);
 
-            var outerSplitView = new TwoPaneSplitView(
+            _outerSplitView = new TwoPaneSplitView(
                 0,
-                200,
+                (int)initialOuterWidth,
                 TwoPaneSplitViewOrientation.Horizontal
             )
             {
                 name = "outer-split-view",
-                style = { flexGrow = 1 }, // Take up all space under header
+                style = { flexGrow = 1 },
             };
-            // Pane 0 (Left/Fixed): Namespace Column
-            outerSplitView.Add(namespaceColumn);
+            _outerSplitView.Add(_namespaceColumnVE);
 
             // Pane 1 (Right/Flexible): Inner Split View
-            outerSplitView.Add(innerSplitView);
+            _outerSplitView.Add(_innerSplitView);
 
             // Add the outer split view to the root
-            root.Add(outerSplitView);
+            root.Add(_outerSplitView);
 
             // VisualElement namespaceColumn = new()
             // {
