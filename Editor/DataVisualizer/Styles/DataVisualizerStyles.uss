@@ -78,3 +78,11 @@
 .type-item__label {
     font-size: 11px; /* Smaller font for types */
 }
+
+.in-place-ghost {
+    opacity: 0.5; /* Make it semi-transparent */
+    /* Optional: Add a dashed border or different background */
+    /* border-style: dashed; */ /* Note: Not standard USS, but illustrates intent */
+    border-color: grey;
+    background-color: rgba(150, 150, 150, 0.2);
+}

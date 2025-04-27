@@ -60,10 +60,13 @@
         private DragType _activeDragType = DragType.None;
         private object _draggedData; // Holds BaseDataObject, namespace key (string), or Type
 
+        // Add near other drag state variables
+        private VisualElement _inPlaceGhost = null;
+        private int _lastGhostInsertIndex = -1; // Track where the in-place ghost was last put
+        private VisualElement _lastGhostParent = null; // Track which container it was in
         private VisualElement _draggedElement;
         private BaseDataObject _draggedObject;
         private VisualElement _dragGhost;
-        private VisualElement _dropIndicator;
         private Vector2 _dragStartPosition;
         private bool _isDragging;
 
@@ -106,9 +109,7 @@
         {
             CancelDrag();
             _dragGhost?.RemoveFromHierarchy();
-            _dropIndicator?.RemoveFromHierarchy();
             _dragGhost = null;
-            _dropIndicator = null;
             _draggedElement = null;
             _draggedObject = null;
 #if ODIN_INSPECTOR
@@ -217,11 +218,6 @@
             _objectScrollView.Add(_objectListContainer);
             objectColumn.Add(_objectScrollView);
             mainContainer.Add(objectColumn);
-
-            _dropIndicator = new VisualElement { name = "drop-indicator" };
-            _dropIndicator.AddToClassList("dtop-indicator");
-            _dropIndicator.style.visibility = Visibility.Hidden;
-            _objectScrollView.Add(_dropIndicator);
 
             VisualElement inspectorColumn = new()
             {
@@ -829,7 +825,7 @@
                 }
 
                 // Update Drop Indicator Position
-                UpdateDropIndicator(evt.position);
+                UpdateDragTargeting(evt.position);
             }
 
             // Stop propagation? Usually not needed here as the capturing element gets priority.
@@ -906,36 +902,38 @@
 
         private void PerformNamespaceDrop()
         {
+            // Retrieve target index from where the in-place ghost was visually placed
+            int targetIndex = (_inPlaceGhost?.userData is int index) ? index : -1;
+            // Debug.Log($"PerformNamespaceDrop - Target Index from InPlaceGhost: {targetIndex}");
+
+            // Validate essential elements and data
             if (
                 _draggedElement == null
                 || !(_draggedData is string draggedKey)
                 || _namespaceListContainer == null
-                || _dropIndicator == null
             )
             {
-                CancelDrag(); // Includes resetting _activeDragType
+                // Cleanup is handled by OnCapturedPointerUp's finally block calling CancelDrag
                 return;
             }
-
-            // Get target index from indicator (calculated by the modified UpdateDropIndicator)
-            int targetIndex = _dropIndicator.userData is int index ? index : -1;
 
             if (targetIndex == -1)
             {
-                // Debug.LogWarning("Namespace drop target index invalid.");
-                CancelDrag();
+                Debug.LogWarning(
+                    "PerformNamespaceDrop: Invalid target index (-1) retrieved from ghost. Aborting drop."
+                );
+                // Cleanup is handled by OnCapturedPointerUp's finally block calling CancelDrag
                 return;
             }
 
-            // --- Reorder Visual Element ---
-            int currentIndex = _namespaceListContainer.IndexOf(_draggedElement);
-            if (currentIndex == targetIndex || currentIndex + 1 == targetIndex)
-            {
-                CancelDrag();
-                return;
-            }
+            // --- Reorder Visual Element (Place ORIGINAL element) ---
+            int maxIndex = _namespaceListContainer.childCount; // Max index for insertion
+            targetIndex = Mathf.Clamp(targetIndex, 0, maxIndex);
 
-            targetIndex = Mathf.Clamp(targetIndex, 0, _namespaceListContainer.childCount - 1);
+            // Make original element visible again before inserting
+            _draggedElement.style.display = DisplayStyle.Flex;
+
+            // Insert original element at the target visual index
             _namespaceListContainer.Insert(targetIndex, _draggedElement);
 
             // --- Reorder Data (_scriptableObjectTypes list and save to EditorPrefs) ---
@@ -945,19 +943,22 @@
                 var draggedItem = _scriptableObjectTypes[oldDataIndex];
                 _scriptableObjectTypes.RemoveAt(oldDataIndex);
 
-                int dataInsertIndex = targetIndex; // Visual index corresponds to data index before insertion
-                dataInsertIndex = Mathf.Clamp(dataInsertIndex, 0, _scriptableObjectTypes.Count);
+                // The visual targetIndex directly corresponds to the desired data index
+                int dataInsertIndex = targetIndex;
+                dataInsertIndex = Mathf.Clamp(dataInsertIndex, 0, _scriptableObjectTypes.Count); // Clamp against current data list size
                 _scriptableObjectTypes.Insert(dataInsertIndex, draggedItem);
 
-                // --- Update and Save Namespace Order ---
+                // Update and Save Namespace Order to EditorPrefs
                 UpdateAndSaveNamespaceOrder();
             }
             else
             {
-                Debug.LogError($"Dragged namespace key '{draggedKey}' not found in data list!");
+                Debug.LogError(
+                    $"PerformNamespaceDrop: Dragged namespace key '{draggedKey}' not found in data list!"
+                );
             }
 
-            // Cleanup happens in CancelDrag called by OnGlobalPointerUp
+            // Note: Cleanup (_inPlaceGhost removal, state reset) happens in OnCapturedPointerUp/CancelDrag
         }
 
         private void OnNamespacePointerDown(PointerDownEvent evt)
@@ -1033,42 +1034,45 @@
 
         private void PerformTypeDrop()
         {
+            // Retrieve target index from where the in-place ghost was visually placed
+            int targetIndex = (_inPlaceGhost?.userData is int index) ? index : -1;
+            // Debug.Log($"PerformTypeDrop - Target Index from InPlaceGhost: {targetIndex}");
+
+            // Validate essential elements and data
+            VisualElement typesContainer = _draggedElement?.parent; // Parent should be the types container
+            string namespaceKey = typesContainer?.userData as string; // Get namespace key from container
+
             if (
                 _draggedElement == null
                 || !(_draggedData is Type draggedType)
-                || _dropIndicator == null
+                || typesContainer == null
+                || string.IsNullOrEmpty(namespaceKey)
             )
             {
-                CancelDrag();
+                Debug.LogError(
+                    "PerformTypeDrop: Missing dragged element, type data, parent container, or namespace key."
+                );
+                // Cleanup is handled by OnCapturedPointerUp's finally block calling CancelDrag
                 return;
             }
 
-            // The drop indicator's target container should be the typesContainer
-            VisualElement typesContainer = _draggedElement.parent; // The parent should be the typesContainer
-            if (typesContainer == null || !(typesContainer.userData is string namespaceKey))
-            {
-                Debug.LogError("Could not determine parent types container or its namespace key.");
-                CancelDrag();
-                return;
-            }
-
-            // Get target index from indicator (calculated relative to typesContainer)
-            int targetIndex = _dropIndicator.userData is int index ? index : -1;
             if (targetIndex == -1)
             {
-                CancelDrag();
+                Debug.LogWarning(
+                    "PerformTypeDrop: Invalid target index (-1) retrieved from ghost. Aborting drop."
+                );
+                // Cleanup is handled by OnCapturedPointerUp's finally block calling CancelDrag
                 return;
             }
 
-            // --- Reorder Visual Element ---
-            int currentIndex = typesContainer.IndexOf(_draggedElement);
-            if (currentIndex == targetIndex || currentIndex + 1 == targetIndex)
-            {
-                CancelDrag();
-                return;
-            }
+            // --- Reorder Visual Element (Place ORIGINAL element) ---
+            int maxIndex = typesContainer.childCount; // Max index for insertion
+            targetIndex = Mathf.Clamp(targetIndex, 0, maxIndex);
 
-            targetIndex = Mathf.Clamp(targetIndex, 0, typesContainer.childCount - 1);
+            // Make original element visible again before inserting
+            _draggedElement.style.display = DisplayStyle.Flex;
+
+            // Insert original element at the target visual index within its parent container
             typesContainer.Insert(targetIndex, _draggedElement);
 
             // --- Reorder Data (Types list within _scriptableObjectTypes and save to EditorPrefs) ---
@@ -1080,28 +1084,30 @@
                 if (oldDataIndex >= 0)
                 {
                     typesList.RemoveAt(oldDataIndex);
-                    int dataInsertIndex = targetIndex; // Visual index corresponds to data index
-                    dataInsertIndex = Mathf.Clamp(dataInsertIndex, 0, typesList.Count);
+
+                    // Visual targetIndex corresponds to data index
+                    int dataInsertIndex = targetIndex;
+                    dataInsertIndex = Mathf.Clamp(dataInsertIndex, 0, typesList.Count); // Clamp against current data list size
                     typesList.Insert(dataInsertIndex, draggedType);
 
-                    // --- Update and Save Type Order for this Namespace ---
+                    // Update and Save Type Order for this Namespace to EditorPrefs
                     UpdateAndSaveTypeOrder(namespaceKey, typesList);
                 }
                 else
                 {
                     Debug.LogError(
-                        $"Dragged type '{draggedType.Name}' not found in data list for namespace '{namespaceKey}'!"
+                        $"PerformTypeDrop: Dragged type '{draggedType.Name}' not found in data list for namespace '{namespaceKey}'!"
                     );
                 }
             }
             else
             {
                 Debug.LogError(
-                    $"Namespace key '{namespaceKey}' not found in _scriptableObjectTypes!"
+                    $"PerformTypeDrop: Namespace key '{namespaceKey}' not found in _scriptableObjectTypes!"
                 );
             }
 
-            // Cleanup happens in CancelDrag
+            // Note: Cleanup (_inPlaceGhost removal, state reset) happens in OnCapturedPointerUp/CancelDrag
         }
 
         private void UpdateAndSaveTypeOrder(string namespaceKey, List<Type> orderedTypes)
@@ -1125,18 +1131,18 @@
 
         private void PerformObjectDrop()
         {
+            int targetIndex = (_inPlaceGhost?.userData is int index) ? index : -1;
+
             if (
                 _draggedElement == null
                 || !(_draggedData is BaseDataObject draggedObject)
                 || _objectListContainer == null
-                || _dropIndicator == null
             )
             {
                 CancelDrag();
                 return;
             }
 
-            int targetIndex = _dropIndicator.userData is int index ? index : -1;
             if (targetIndex == -1)
             {
                 CancelDrag();
@@ -1150,9 +1156,13 @@
                 return;
             }
 
-            if (currentIndex < targetIndex)
-                targetIndex--;
-            targetIndex = Mathf.Clamp(targetIndex, 0, _objectListContainer.childCount - 1);
+            int maxIndex = _objectListContainer.childCount; // Current count is max insert index
+            targetIndex = Mathf.Clamp(targetIndex, 0, maxIndex);
+
+            // Make original element visible again before inserting
+            _draggedElement.style.display = DisplayStyle.Flex; // Or Visible if using visibility property
+
+            // Insert original element at the target index
             _objectListContainer.Insert(targetIndex, _draggedElement);
 
             // --- Reorder Data (_selectedObjects list) ---
@@ -1160,20 +1170,22 @@
             if (oldDataIndex >= 0)
             {
                 _selectedObjects.RemoveAt(oldDataIndex);
+                // dataInsertIndex should match the visual targetIndex where it was placed
                 int dataInsertIndex = targetIndex;
-                dataInsertIndex = Mathf.Clamp(dataInsertIndex, 0, _selectedObjects.Count);
+                // If we inserted visually *after* the original data index, the data index needs adjustment
+                // because the list is one shorter *before* insertion compared to visual list *after* insertion.
+                // Example: [A, B(dragged), C] -> Drag B after C -> Visual Insert Index = 2. Data list [A, C]. Insert B at index 2 -> [A, C, B] Correct.
+                // Example: [A, B, C(dragged)] -> Drag C before B -> Visual Insert Index = 1. Data list [A, B]. Insert C at index 1 -> [A, C, B] Correct.
+                // Example: [A(dragged), B, C] -> Drag A after C -> Visual Insert Index = 2. Data list [B, C]. Insert A at index 2 -> [B, C, A] Correct.
+                dataInsertIndex = Mathf.Clamp(dataInsertIndex, 0, _selectedObjects.Count); // Clamp against current data list size
                 _selectedObjects.Insert(dataInsertIndex, draggedObject);
 
-                // --- Update and Save Object Order (GUIDs) using EditorPrefs ---
-                if (_selectedObjects.Count > 0) // Need at least one object to know the Type
-                {
-                    Type objectType = _selectedObjects[0].GetType(); // Assuming all objects in the list are of the same type
-                    UpdateAndSaveObjectOrder(objectType, _selectedObjects);
-                }
+                // Update persistence (_customOrder)
+                UpdateAndSaveObjectCustomOrder();
             }
             else
             {
-                Debug.LogError("Dragged object not found in data list!");
+                Debug.LogError("PerformObjectDrop: Dragged object not found in data list!");
             }
 
             // Cleanup in CancelDrag
@@ -1244,7 +1256,7 @@
             // Create Ghost Element
             if (_dragGhost == null)
             {
-                _dragGhost = new VisualElement();
+                _dragGhost = new VisualElement() { name = "drag-ghost-cursor" };
                 _dragGhost.AddToClassList("drag-ghost");
                 // Use a label inside the ghost
                 Label ghostLabel = new Label(dragText); // << Use parameter
@@ -1265,309 +1277,227 @@
             _dragGhost.style.top = currentPosition.y - (_draggedElement.resolvedStyle.height / 2);
             _dragGhost.BringToFront();
 
-            _draggedElement.style.opacity = 0.5f;
-
-            // Show drop indicator (position calculated in UpdateDropIndicator)
-            if (_dropIndicator != null)
+            if (_inPlaceGhost == null)
             {
-                _dropIndicator.style.visibility = Visibility.Visible;
-                _dropIndicator.BringToFront();
+                try
+                {
+                    // 1. Create the basic element
+                    _inPlaceGhost = new VisualElement();
+                    _inPlaceGhost.name = "drag-ghost-inplace";
+
+                    // 2. Copy relevant style classes from the original element
+                    //    (Assumes classes define the general look)
+                    foreach (var className in _draggedElement.GetClasses())
+                    {
+                        _inPlaceGhost.AddToClassList(className);
+                    }
+                    // 3. Add the specific styling class for the ghost effect (opacity etc.)
+                    _inPlaceGhost.AddToClassList("in-place-ghost");
+
+                    // 4. Copy size and margins to ensure correct layout spacing
+                    //    Using resolvedStyle ensures we get the computed values.
+                    _inPlaceGhost.style.height = _draggedElement.resolvedStyle.height;
+                    // Width might often be determined by flexbox/parent, but copy if fixed.
+                    // _inPlaceGhost.style.width = _draggedElement.resolvedStyle.width;
+                    _inPlaceGhost.style.marginTop = _draggedElement.resolvedStyle.marginTop;
+                    _inPlaceGhost.style.marginBottom = _draggedElement.resolvedStyle.marginBottom;
+                    _inPlaceGhost.style.marginLeft = _draggedElement.resolvedStyle.marginLeft;
+                    _inPlaceGhost.style.marginRight = _draggedElement.resolvedStyle.marginRight;
+
+                    // 5. Recreate essential children (e.g., the primary Label)
+                    //    Query the original element for its label
+                    var originalLabel =
+                        _draggedElement.Q<Label>(className: "object-item__label") // Be specific if possible
+                        ?? _draggedElement.Q<Label>(className: "type-item__label")
+                        ?? _draggedElement.Q<Label>(); // Fallback to first label
+
+                    if (originalLabel != null)
+                    {
+                        var ghostLabel = new Label(originalLabel.text);
+                        // Copy label's classes for consistent text styling
+                        foreach (var className in originalLabel.GetClasses())
+                        {
+                            ghostLabel.AddToClassList(className);
+                        }
+                        ghostLabel.pickingMode = PickingMode.Ignore; // Ensure label is not interactive
+                        _inPlaceGhost.Add(ghostLabel);
+                    }
+                    else
+                    {
+                        // Fallback: If no specific label found, maybe add the generic dragText
+                        var fallbackLabel = new Label(dragText);
+                        fallbackLabel.pickingMode = PickingMode.Ignore;
+                        _inPlaceGhost.Add(fallbackLabel);
+                    }
+                    // Note: This does NOT copy complex child hierarchies. Adapt if your items are more complex.
+
+                    // 6. Set essential properties for the ghost role
+                    _inPlaceGhost.pickingMode = PickingMode.Ignore; // Must not interfere with drop target detection
+                    _inPlaceGhost.style.visibility = Visibility.Hidden; // Hide initially
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogError($"Error creating in-place ghost: {ex}");
+                    _inPlaceGhost = null; // Ensure it's null if creation failed
+                }
             }
+            _lastGhostInsertIndex = -1; // Reset insert tracking
+            _lastGhostParent = null;
+
+            _draggedElement.style.display = DisplayStyle.None; // Remove original from layout
         }
 
-        private void UpdateDropIndicator(Vector2 pointerPosition)
+        private void UpdateDragTargeting(Vector2 pointerPosition)
         {
             VisualElement container = null;
             string itemClassName = null;
+            VisualElement indicatorParent = null; // Parent where the in-place ghost should live
 
-            // --- Determine container and item class based on drag type ---
+            // --- Determine container, item class, and indicator parent ---
             switch (_activeDragType)
             {
                 case DragType.Object:
                     container = _objectListContainer;
-                    itemClassName = "object-item"; // Class assigned to object items
+                    itemClassName = "object-item";
+                    indicatorParent = _objectListContainer; // Ghost goes directly in list
                     break;
                 case DragType.Namespace:
                     container = _namespaceListContainer;
-                    // Ensure this class matches what's assigned in BuildNamespaceView to namespace group containers
-                    itemClassName = "object-item"; // Or "namespace-group-item" if you used a specific one
+                    itemClassName = "object-item"; // Or "namespace-group-item"
+                    indicatorParent = _namespaceListContainer; // Ghost goes directly in list
                     break;
                 case DragType.Type:
-                    // Container is the parent of the dragged type element (the 'typesContainer')
                     if (_draggedElement != null)
                         container = _draggedElement.parent;
-                    itemClassName = "type-item"; // Class assigned to type items
+                    itemClassName = "type-item";
+                    indicatorParent = container; // Ghost goes directly in the types container
                     break;
                 default:
-                    // If drag type is None or unhandled, hide indicator and exit
-                    if (_dropIndicator != null)
-                        _dropIndicator.style.visibility = Visibility.Hidden;
+                    // Hide and remove in-place ghost if drag type is invalid
+                    if (_inPlaceGhost != null)
+                    {
+                        _inPlaceGhost.style.visibility = Visibility.Hidden;
+                        _inPlaceGhost.RemoveFromHierarchy(); // Ensure removal
+                        _lastGhostInsertIndex = -1;
+                        _lastGhostParent = null;
+                    }
                     return;
             }
 
-            // --- Detailed Logging (for debugging container/child count issues) ---
-            string containerName = container?.name ?? "null";
-            // Get expected counts directly from member fields for comparison
-            int expectedNamespaceChildCount = _namespaceListContainer?.childCount ?? -1;
-            int expectedObjectChildCount = _objectListContainer?.childCount ?? -1;
-            int actualContainerChildCount = container?.childCount ?? -1; // Get count from the variable 'container'
-
-            Debug.Log(
-                $"UpdateDropIndicator - DragType: {_activeDragType}, "
-                    + $"Container Variable Name: {containerName}, "
-                    +
-                    // Optional deeper checks:
-                    // $"Is Container _namespaceListContainer?: {ReferenceEquals(container, _namespaceListContainer)}, " +
-                    // $"Is Container _objectListContainer?: {ReferenceEquals(container, _objectListContainer)}, " +
-                    $"_namespaceListContainer?.childCount (Expected): {expectedNamespaceChildCount}, "
-                    + $"_objectListContainer?.childCount (Expected): {expectedObjectChildCount}, "
-                    + $"container.childCount (Actual): {actualContainerChildCount}"
-            );
-            // --- End Logging ---
-
-
-            // --- Validate container and essential elements before proceeding ---
+            // Basic validation
             if (
                 container == null
                 || _draggedElement == null
-                || _dropIndicator == null
                 || itemClassName == null
+                || indicatorParent == null
+                || _inPlaceGhost == null
             )
             {
-                if (_dropIndicator != null)
-                    _dropIndicator.style.visibility = Visibility.Hidden;
-                // Log specific failure if container is unexpectedly null for a known drag type
-                if (
-                    (
-                        _activeDragType == DragType.Namespace
-                        || _activeDragType == DragType.Object
-                        || _activeDragType == DragType.Type
-                    )
-                    && container == null
-                )
+                // Hide and remove in-place ghost if something is wrong
+                if (_inPlaceGhost != null)
                 {
-                    Debug.LogError(
-                        $"UpdateDropIndicator: Container variable is unexpectedly null for DragType: {_activeDragType}!"
-                    );
+                    _inPlaceGhost.style.visibility = Visibility.Hidden;
+                    _inPlaceGhost.RemoveFromHierarchy();
+                    _lastGhostInsertIndex = -1;
+                    _lastGhostParent = null;
                 }
                 return;
             }
 
-            // --- Logic for finding drop position relative to items in the container ---
-            int childCount = container.childCount; // Use the count from the identified 'container'
-            int targetIndex = -1; // The index where the item should be inserted BEFORE
-            VisualElement elementBefore = null; // The element the indicator should appear AFTER
-            Vector2 localPointerPos = container.WorldToLocal(pointerPosition); // Convert window/panel pointer to container's local space
+            // --- Calculate Target Index (logic reused from UpdateDropIndicator) ---
+            int childCount = container.childCount;
+            int targetIndex = -1;
+            VisualElement elementBefore = null;
+            Vector2 localPointerPos = container.WorldToLocal(pointerPosition);
 
-            // Log if the identified container is empty when member field suggests it shouldn't be
-            if (
-                (
-                    _activeDragType == DragType.Namespace
-                    && childCount == 0
-                    && expectedNamespaceChildCount > 0
-                )
-                || (
-                    _activeDragType == DragType.Object
-                    && childCount == 0
-                    && expectedObjectChildCount > 0
-                )
-            )
-            {
-                Debug.LogWarning(
-                    $"UpdateDropIndicator: container.childCount is 0 for {_activeDragType} drag, but the corresponding member list container has children. Container reference or timing issue suspected."
-                );
-            }
-
-            // Iterate through the container's children to find the insertion point
+            // Iterate through children to find insert position (ignoring original element which is hidden)
             for (int i = 0; i < childCount; ++i)
             {
                 VisualElement child = container.ElementAt(i);
-                // Skip children that aren't relevant items or the item being dragged
+                // Skip non-items, the in-place ghost itself, or hidden elements (like original)
                 if (
-                    child == _draggedElement
-                    || !child.ClassListContains(itemClassName)
+                    !child.ClassListContains(itemClassName)
+                    || child == _inPlaceGhost
                     || child.style.display == DisplayStyle.None
                 )
                     continue;
 
-                // Determine if the pointer is above the vertical midpoint of the child
                 float childMidY = child.layout.yMin + child.resolvedStyle.height / 2f;
                 if (localPointerPos.y < childMidY)
                 {
-                    targetIndex = i; // Found insert position (BEFORE this child)
-                    break; // Exit loop once position is found
+                    targetIndex = i;
+                    break;
                 }
-                elementBefore = child; // This child is confirmed to be BEFORE the potential drop position
+                elementBefore = child;
             }
 
-            // --- Handle cases: Pointer below all items, or list empty/only contains dragged item ---
-            if (targetIndex == -1) // Loop completed without finding an item to insert before
+            if (targetIndex == -1) // Below all items or list empty/only contained ghost
             {
-                if (childCount == 0)
+                if (childCount == 0 || (childCount == 1 && container.Contains(_inPlaceGhost)))
                 {
-                    targetIndex = 0; // Dropping into an empty list, insert at index 0
-                    elementBefore = null;
+                    targetIndex = 0; // Insert at beginning if empty or only ghost present
                 }
                 else
                 {
-                    targetIndex = childCount; // Append at the end (index equals current count)
-                    // Find the last valid item that isn't the dragged element to place indicator AFTER it
-                    elementBefore = null; // Reset first
-                    for (int i = childCount - 1; i >= 0; i--)
-                    {
-                        var child = container.ElementAt(i);
-                        // Check if it's a valid item and not the one being dragged
-                        if (
-                            child != _draggedElement
-                            && child.ClassListContains(itemClassName)
-                            && child.style.display != DisplayStyle.None
-                        )
-                        {
-                            elementBefore = child;
-                            break;
-                        }
-                    }
-                    // If elementBefore is still null here, it implies only the dragged element exists (or no valid items found).
-                    // If only the dragged element exists, we should treat it as dropping at the beginning (index 0).
-                    if (elementBefore == null)
-                    {
-                        // Check if the container actually contains the dragged element as its only valid item
-                        int validItemCount = 0;
-                        bool draggedItemPresent = false;
-                        for (int i = 0; i < childCount; ++i)
-                        {
-                            var child = container.ElementAt(i);
-                            if (
-                                child.ClassListContains(itemClassName)
-                                && child.style.display != DisplayStyle.None
-                            )
-                            {
-                                validItemCount++;
-                                if (child == _draggedElement)
-                                    draggedItemPresent = true;
-                            }
-                        }
-                        if (validItemCount == 1 && draggedItemPresent)
-                        {
-                            targetIndex = 0; // Only dragged item exists, drop target is index 0
-                        }
-                        // If no valid items found at all, targetIndex remains childCount (which might be 0)
-                    }
+                    targetIndex = container.childCount; // Append at the end (adjusting for potential ghost presence)
+                    if (container.Contains(_inPlaceGhost))
+                        targetIndex--; // If ghost is present, target index is before it if appending
+                    targetIndex = Math.Max(0, targetIndex); // Ensure not negative
                 }
             }
+            // --- End Target Index Calculation ---
 
-            // --- Calculate indicator's vertical position based on targetIndex and elementBefore ---
-            float indicatorY = 0;
-            bool placeVisible = false; // Flag to determine if the indicator should be shown
 
-            if (targetIndex == 0) // Target is the very beginning
+            // --- Manage In-Place Ghost ---
+            bool targetIndexValid = targetIndex >= 0;
+
+            if (targetIndexValid)
             {
-                // Try to find the first actual item element to place indicator above it
-                VisualElement firstVisibleItem = null;
-                for (int i = 0; i < childCount; ++i)
-                {
-                    var child = container.ElementAt(i);
-                    if (
-                        child.ClassListContains(itemClassName)
-                        && child.style.display != DisplayStyle.None
-                    )
-                    {
-                        firstVisibleItem = child;
-                        break;
-                    }
-                }
+                // Clamp index just in case calculation went out of bounds
+                int maxIndex = indicatorParent.childCount; // Max index is current count
+                targetIndex = Mathf.Clamp(targetIndex, 0, maxIndex);
 
-                if (firstVisibleItem != null)
+                // Check if position needs update (different index or different parent)
+                if (targetIndex != _lastGhostInsertIndex || indicatorParent != _lastGhostParent)
                 {
-                    // Place slightly above the top edge of the first item
-                    indicatorY =
-                        firstVisibleItem.layout.yMin
-                        - (_dropIndicator.resolvedStyle.height / 2f)
-                        - 1;
-                    placeVisible = true;
+                    // Debug.Log($"Updating in-place ghost. New Index: {targetIndex}, Old Index: {_lastGhostInsertIndex}, Parent: {indicatorParent.name}");
+
+                    // Remove from old position first (if any)
+                    // Note: Add/Insert automatically handles reparenting if needed, but explicit remove can be clearer
+                    _inPlaceGhost.RemoveFromHierarchy();
+
+                    // Insert into the correct parent at the new index
+                    indicatorParent.Insert(targetIndex, _inPlaceGhost);
+
+                    // Make sure it's visible
+                    _inPlaceGhost.style.visibility = Visibility.Visible;
+
+                    // Update tracking
+                    _lastGhostInsertIndex = targetIndex;
+                    _lastGhostParent = indicatorParent;
                 }
                 else
                 {
-                    // No visible items found (container might be empty or only contain non-item elements), place at top of container
-                    indicatorY = 0;
-                    placeVisible = true;
+                    // Index and parent are the same, ensure it's visible
+                    _inPlaceGhost.style.visibility = Visibility.Visible;
                 }
             }
-            else if (elementBefore != null) // Target is after 'elementBefore'
+            else // Target index calculation failed, hide the ghost
             {
-                // Place indicator slightly below the bottom edge of 'elementBefore'
-                indicatorY =
-                    elementBefore.layout.yMax - (_dropIndicator.resolvedStyle.height / 2f) + 1;
-                placeVisible = true;
-            }
-            else
-            {
-                // Fallback scenario: targetIndex > 0 but elementBefore is null (should be rare).
-                // Hide the indicator if position is uncertain.
-                // Debug.LogWarning($"UpdateDropIndicator: Uncertain indicator position calculation. targetIndex={targetIndex}, elementBefore=null, childCount={childCount}");
-                placeVisible = false;
+                if (_inPlaceGhost.parent != null) // Only remove if it's in the hierarchy
+                {
+                    // Debug.Log($"Hiding in-place ghost. Invalid Target Index.");
+                    _inPlaceGhost.style.visibility = Visibility.Hidden;
+                    _inPlaceGhost.RemoveFromHierarchy();
+                }
+                _lastGhostInsertIndex = -1;
+                _lastGhostParent = null;
             }
 
-            // --- Set Indicator Parent, Position, Visibility, and Store Target Index ---
-            if (placeVisible)
-            {
-                // Determine the correct parent element for the indicator visual
-                VisualElement indicatorParent = null;
-                switch (_activeDragType)
-                {
-                    case DragType.Object:
-                        // Place inside the ScrollView's content container for objects
-                        indicatorParent = _objectScrollView?.contentContainer;
-                        break;
-                    case DragType.Namespace:
-                        // Place directly inside the namespace list container
-                        indicatorParent = _namespaceListContainer;
-                        break;
-                    case DragType.Type:
-                        // Place directly inside the types container (which is 'container' in this case)
-                        indicatorParent = container;
-                        break;
-                }
-
-                // Ensure indicator is added to the hierarchy under the correct parent
-                if (indicatorParent != null && _dropIndicator.parent != indicatorParent)
-                {
-                    // Add will handle reparenting if it's already elsewhere
-                    indicatorParent.Add(_dropIndicator);
-                }
-                else if (indicatorParent == null)
-                {
-                    // Could not determine parent, hide indicator
-                    placeVisible = false;
-                    Debug.LogWarning(
-                        $"UpdateDropIndicator: Could not determine indicator parent for DragType {_activeDragType}. Hiding indicator."
-                    );
-                }
-
-                // Final check before showing and positioning
-                if (placeVisible && indicatorParent != null)
-                {
-                    // Clamp Y position within the bounds of the determined parent container
-                    float parentHeight = float.IsNaN(indicatorParent.layout.height)
-                        ? 0
-                        : indicatorParent.layout.height; // Handle potential NaN layout height
-                    _dropIndicator.style.top = Mathf.Clamp(indicatorY, 0, parentHeight);
-                    _dropIndicator.style.visibility = Visibility.Visible;
-                    _dropIndicator.BringToFront(); // Ensure it's visually on top within its current parent
-                    _dropIndicator.userData = targetIndex; // Store calculated index for use in PerformDrop methods
-                }
-                else
-                {
-                    // Hide if parenting failed or placeVisible became false during parenting logic
-                    _dropIndicator.style.visibility = Visibility.Hidden;
-                    _dropIndicator.userData = -1; // Invalidate stored index
-                }
-            }
-            else // placeVisible was false from the position calculation phase
-            {
-                _dropIndicator.style.visibility = Visibility.Hidden;
-                _dropIndicator.userData = -1; // Invalidate stored index
-            }
+            // Store the calculated valid target index on the ghost itself (or dragged element)
+            // so PerformDrop methods can easily retrieve it without recalculating.
+            // Using userData on _inPlaceGhost is convenient.
+            _inPlaceGhost.userData = targetIndex; // Store the index where the ghost IS currently placed
         }
 
         private void UpdateAndSaveObjectCustomOrder()
@@ -1631,17 +1561,25 @@
             // Restore visual appearance
             if (_draggedElement != null)
             {
-                _draggedElement.style.opacity = 1.0f;
-                // No need to release pointer here - OnCapturedPointerUp handles it.
+                _draggedElement.style.display = DisplayStyle.Flex; // Restore display
+                _draggedElement.style.opacity = 1.0f; // Restore opacity just in case
+                // No pointer release needed here
             }
 
-            // Hide drag visuals
             if (_dragGhost != null)
                 _dragGhost.style.visibility = Visibility.Hidden;
-            if (_dropIndicator != null)
-                _dropIndicator.style.visibility = Visibility.Hidden;
 
-            // Reset state variables - CRITICAL
+            // Remove in-place ghost from hierarchy
+            if (_inPlaceGhost != null)
+            {
+                _inPlaceGhost.RemoveFromHierarchy();
+                // Optional: Could pool ghosts instead of destroying/nulling if performance is critical
+                _inPlaceGhost = null;
+            }
+            _lastGhostInsertIndex = -1; // Reset tracking
+            _lastGhostParent = null;
+
+            // Reset state variables
             _isDragging = false;
             _draggedElement = null;
             _draggedData = null;
