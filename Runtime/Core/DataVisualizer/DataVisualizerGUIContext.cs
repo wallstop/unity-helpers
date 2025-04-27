@@ -1,8 +1,6 @@
 ﻿namespace WallstopStudios.UnityHelpers.Core.DataVisualizer
 {
 #if UNITY_EDITOR
-
-
     using UnityEditor;
 #endif
 
@@ -10,17 +8,13 @@
     {
 #if UNITY_EDITOR
         public readonly SerializedObject serializedObject;
-#endif
 
-        public DataVisualizerGUIContext(
-#if UNITY_EDITOR
-            SerializedObject serializedObject
-#endif
-        )
+        internal DataVisualizerGUIContext(SerializedObject serializedObject)
         {
-#if UNITY_EDITOR
             this.serializedObject = serializedObject;
-#endif
         }
+#else
+        internal DataVisualizerGUIContext() { }
+#endif
     }
 }

@@ -1,66 +1,47 @@
-﻿/* DataVisualizerStyles.uss (Corrected for UI Toolkit) */
+﻿.object-item {
 
-/* Style for each item in the object list */
-.object-item {
-    /* Layout */
-    padding: 4px 8px; /* Internal spacing */
-    margin: 2px 0; /* Vertical spacing between items */
-
-    /* Appearance */
-    /* Note: border-style: dotted is not supported in USS. Using solid border. */
+    padding: 4px 8px;
+    margin: 2px 0;
     border-width: 1px;
-    border-color: rgba(128, 128, 128, 0.5); /* Semi-transparent grey */
+    border-color: rgba(128, 128, 128, 0.5);
     border-radius: 3px;
     background-color: rgba(80, 80, 80, 0.2);
-    /* Removed invalid cursor property; rely on hover/selection states */
 }
 
-/* Style for the label inside the item */
 .object-item__label {
 
 }
 
-/* Style when the mouse is hovering over an item */
 .object-item:hover {
     background-color: rgba(100, 100, 100, 0.4);
     border-color: rgba(180, 180, 180, 0.7);
 }
 
-/* Style for the selected item */
 .object-item.selected {
-    background-color: #4A6A8A; /* A distinct selection color */
+    background-color: #4A6A8A;
     border-color: #6E98C2;
-    /* If you wanted a thicker border on selection: */
-    /* border-width: 2px; */
+    border-width: 2px;
 }
 
-/* Style for the visual ghost element shown during drag */
 .drag-ghost {
-    /* Using absolute positioning controlled by C# (left/top style props) */
     position: absolute;
     border-width: 1px;
     border-color: white;
-    background-color: rgba(70, 130, 180, 0.7); /* Semi-transparent blue */
+    background-color: rgba(70, 130, 180, 0.7);
     border-radius: 3px;
     padding: 4px 8px;
     opacity: 0.8;
-
-    /* Removed z-index; stacking is handled via BringToFront() in C# */
 }
 
-/* Style for the drop indicator line */
 .drop-indicator {
-    /* Using absolute positioning controlled by C# (left/top style props) */
     position: absolute;
     height: 2px;
-    background-color: #6E98C2; /* Match selected border color */
-    width: 100%; /* Span the width of the container */
-
-    /* Removed z-index; stacking is handled via BringToFront() in C# */
+    background-color: #6E98C2;
+    width: 100%;
 }
 
 .type-item {
-    margin-left: 10px; /* Indentation */
+    margin-left: 10px;
     padding: 2px 6px;
     margin-top: 1px;
     margin-bottom: 1px;
@@ -76,32 +57,39 @@
 }
 
 .type-item__label {
-    font-size: 11px; /* Smaller font for types */
+    font-size: 11px;
 }
 
 .type-item.selected {
-    background-color: #4A6A8A; /* Or a slightly different color */
+    background-color: #4A6A8A;
     border-color: #6E98C2;
     -unity-font-style: bold;
 }
 
 .in-place-ghost {
     opacity: 0.5;
-    /* Ensure it doesn't prevent interactions below (though it shouldn't be interactive anyway) */
-    /* Optional: dashed border to indicate it's a ghost */
     border-width: 1px;
     border-color: grey;
 }
 
 .overlay-ghost {
-    position: absolute; /* IMPORTANT for overlay effect */
+    position: absolute;
     opacity: 0.5;
-
-    /* Add visual cues like a border */
     border-width: 1px;
     border-color: cornflowerblue;
-    /* Background can help distinguish it */
     background-color: rgba(100, 150, 255, 0.1);
-    /* Ensure it appears above list items */
-    /* Z-index isn't USS, handled by hierarchy/BringToFront if needed */
+}
+
+.namespace-header {
+    flex-direction: row;
+    align-items: center;
+    cursor: link;
+}
+
+.namespace-indicator {
+    width: 16px;
+    margin-right: 3px;
+    font-size: 10px;
+    -unity-font-style: bold;
+    flex-shrink: 0;
 }

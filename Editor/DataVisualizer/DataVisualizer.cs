@@ -6,7 +6,9 @@
     using System.ComponentModel;
     using System.IO;
     using System.Linq;
+#if ODIN_INSPECTOR
     using Sirenix.OdinInspector.Editor;
+#endif
     using UnityEditor;
     using UnityEngine;
     using UnityEngine.UIElements;
@@ -15,23 +17,29 @@
     using Core.Extension;
     using Core.Helper;
     using Core.Serialization;
-    using Object = UnityEngine.Object;
-#if ODIN_INSPECTOR
-
-#else
     using UnityEditor.UIElements;
-#endif
+    using Object = UnityEngine.Object;
 
     public sealed class DataVisualizer : EditorWindow
     {
         private const float DragUpdateThrottleTime = 0.05f;
         private const string PrefsPrefix = "WallstopStudios.UnityHelpers.DataVisualizer.";
+        private const string NamespaceCollapsedStateFormat = PrefsPrefix + "NamespaceCollapsed.{0}";
         private const string LastSelectedNamespaceKey = PrefsPrefix + "LastSelectedNamespace";
         private const string LastSelectedTypeFormat = PrefsPrefix + "LastSelectedType.{0}";
         private const string LastSelectedObjectFormat = PrefsPrefix + "LastSelectedObject.{0}";
         private const string CustomTypeOrderKey = PrefsPrefix + "CustomTypeOrder";
         private const string CustomNamespaceOrderKey = PrefsPrefix + "CustomNamespaceOrder";
         private const string CustomTypeOrderKeyFormat = PrefsPrefix + "CustomTypeOrder.{0}";
+
+        private const string NamespaceItemClass = "object-item";
+        private const string NamespaceHeaderClass = "namespace-header";
+        private const string NamespaceIndicatorClass = "namespace-indicator";
+        private const string NamespaceLabelClass = "object-item__label";
+        private const string TypeItemClass = "type-item";
+        private const string TypeLabelClass = "type-item__label";
+        private const string ArrowCollapsed = "►";
+        private const string ArrowExpanded = "▼";
 
         private enum DragType
         {
@@ -176,7 +184,6 @@
             _selectedType = selectedType;
 
             LoadObjectTypes(_selectedType);
-
             BuildNamespaceView();
             BuildObjectsView();
 
@@ -186,6 +193,35 @@
                 _selectedTypeElement?.RemoveFromClassList("selected");
                 _selectedTypeElement = typeElementToSelect;
                 _selectedTypeElement.AddToClassList("selected");
+
+                VisualElement ancestorGroup = null;
+                VisualElement currentElement = _selectedTypeElement;
+                while (currentElement != null && currentElement != _namespaceListContainer)
+                {
+                    if (currentElement.ClassListContains(NamespaceItemClass))
+                    {
+                        ancestorGroup = currentElement;
+                        break;
+                    }
+                    currentElement = currentElement.parent;
+                }
+
+                if (ancestorGroup != null)
+                {
+                    Label indicator = ancestorGroup.Q<Label>(className: NamespaceIndicatorClass);
+                    VisualElement typesContainer = ancestorGroup.Q<VisualElement>(
+                        $"types-container-{ancestorGroup.userData as string}"
+                    );
+
+                    if (
+                        indicator != null
+                        && typesContainer != null
+                        && typesContainer.style.display == DisplayStyle.None
+                    )
+                    {
+                        ApplyNamespaceCollapsedState(indicator, typesContainer, false, false);
+                    }
+                }
             }
 
             string objPrefsKey = string.Format(LastSelectedObjectFormat, _selectedType.Name);
@@ -386,11 +422,6 @@
 
             _namespaceListContainer.Clear();
 
-            const string namespaceItemClass = "object-item";
-            const string namespaceLabelClass = "object-item__label";
-            const string typeItemClass = "type-item";
-            const string typeLabelClass = "type-item__label";
-
             foreach ((string key, List<Type> types) in _scriptableObjectTypes)
             {
                 VisualElement namespaceGroupItem = new()
@@ -399,22 +430,75 @@
                     userData = key,
                 };
 
-                namespaceGroupItem.AddToClassList(namespaceItemClass);
+                namespaceGroupItem.AddToClassList(NamespaceItemClass);
+                namespaceGroupItem.userData = key;
+                _namespaceListContainer.Add(namespaceGroupItem);
+                namespaceGroupItem.RegisterCallback<PointerDownEvent>(OnNamespacePointerDown);
+
+                VisualElement header = new() { name = $"namespace-header-{key}" };
+                header.AddToClassList(NamespaceHeaderClass);
+                namespaceGroupItem.Add(header);
+
+                Label indicator = new(ArrowExpanded) { name = $"namespace-indicator-{key}" };
+                indicator.AddToClassList(NamespaceIndicatorClass);
+                header.Add(indicator);
+
                 Label namespaceLabel = new(key)
                 {
-                    style = { unityFontStyleAndWeight = FontStyle.Bold, marginTop = 5 },
+                    name = $"namespace-name-{key}",
+                    style = { unityFontStyleAndWeight = FontStyle.Bold },
                 };
-                namespaceLabel.AddToClassList(namespaceLabelClass);
-                namespaceGroupItem.Add(namespaceLabel);
-                namespaceGroupItem.RegisterCallback<PointerDownEvent>(OnNamespacePointerDown);
-                _namespaceListContainer.Add(namespaceGroupItem);
+                namespaceLabel.AddToClassList(NamespaceLabelClass);
+                header.Add(namespaceLabel);
 
                 VisualElement typesContainer = new()
                 {
                     name = $"types-container-{key}",
+                    style = { marginLeft = 10 },
                     userData = key,
                 };
                 namespaceGroupItem.Add(typesContainer);
+
+                string collapsePrefsKey = string.Format(NamespaceCollapsedStateFormat, key);
+                bool isCollapsed = EditorPrefs.GetBool(collapsePrefsKey, false);
+                ApplyNamespaceCollapsedState(indicator, typesContainer, isCollapsed, false);
+
+                header.RegisterCallback<PointerDownEvent>(evt =>
+                {
+                    if (evt.button != 0 || evt.propagationPhase == PropagationPhase.TrickleDown)
+                    {
+                        return;
+                    }
+
+                    VisualElement parentGroup = header.parent;
+                    Label associatedIndicator = parentGroup?.Q<Label>(
+                        className: NamespaceIndicatorClass
+                    );
+                    VisualElement associatedTypesContainer = parentGroup?.Q<VisualElement>(
+                        $"types-container-{key}"
+                    );
+                    string nsKey = parentGroup?.userData as string;
+
+                    if (
+                        associatedIndicator != null
+                        && associatedTypesContainer != null
+                        && !string.IsNullOrEmpty(nsKey)
+                    )
+                    {
+                        bool currentlyCollapsed =
+                            associatedTypesContainer.style.display == DisplayStyle.None;
+                        bool newCollapsedState = !currentlyCollapsed;
+
+                        ApplyNamespaceCollapsedState(
+                            associatedIndicator,
+                            associatedTypesContainer,
+                            newCollapsedState,
+                            true
+                        );
+                    }
+
+                    evt.StopPropagation();
+                });
 
                 foreach (Type type in types)
                 {
@@ -423,64 +507,43 @@
                         name = $"type-item-{type.Name}",
                         userData = type,
                     };
-                    typeItem.AddToClassList(typeItemClass);
 
+                    typeItem.AddToClassList(TypeItemClass);
                     Label typeLabel = new(type.Name) { name = "type-item-label" };
-                    typeLabel.AddToClassList(typeLabelClass);
+                    typeLabel.AddToClassList(TypeLabelClass);
                     typeItem.Add(typeLabel);
 
                     typeItem.RegisterCallback<PointerDownEvent>(OnTypePointerDown);
                     typeItem.RegisterCallback<PointerUpEvent>(evt =>
                     {
-                        if (!_isDragging && evt.button == 0)
+                        if (_isDragging || evt.button != 0)
                         {
-                            if (typeItem.userData is Type clickedType)
-                            {
-                                _selectedTypeElement?.RemoveFromClassList("selected");
-                                _selectedType = clickedType;
-                                _selectedTypeElement = typeItem;
-                                _selectedTypeElement.AddToClassList("selected");
-
-                                try
-                                {
-                                    string namespaceKey = GetNamespaceKey(_selectedType);
-                                    string typeName = _selectedType.Name;
-
-                                    if (!string.IsNullOrWhiteSpace(namespaceKey))
-                                    {
-                                        EditorPrefs.SetString(
-                                            LastSelectedNamespaceKey,
-                                            namespaceKey
-                                        );
-                                        if (!string.IsNullOrWhiteSpace(typeName))
-                                        {
-                                            string typePrefsKey = string.Format(
-                                                LastSelectedTypeFormat,
-                                                namespaceKey
-                                            );
-                                            EditorPrefs.SetString(typePrefsKey, typeName);
-                                            string objPrefsKey = string.Format(
-                                                LastSelectedObjectFormat,
-                                                typeName
-                                            );
-                                            EditorPrefs.DeleteKey(objPrefsKey);
-                                        }
-                                    }
-                                }
-                                catch (Exception e)
-                                {
-                                    this.LogError(
-                                        $"Error saving type/namespace selection state.",
-                                        e
-                                    );
-                                }
-
-                                LoadObjectTypes(clickedType);
-                                BuildObjectsView();
-                                SelectObject(null);
-                                evt.StopPropagation();
-                            }
+                            return;
                         }
+
+                        if (typeItem.userData is not Type clickedType)
+                        {
+                            return;
+                        }
+
+                        if (_selectedTypeElement != null)
+                        {
+                            _selectedTypeElement.RemoveFromClassList("selected");
+                        }
+
+                        _selectedType = clickedType;
+                        _selectedTypeElement = typeItem;
+                        _selectedTypeElement.AddToClassList("selected");
+
+                        SaveNamespaceAndTypeSelectionState(
+                            GetNamespaceKey(_selectedType),
+                            _selectedType.Name
+                        );
+
+                        LoadObjectTypes(clickedType);
+                        BuildObjectsView();
+                        SelectObject(null);
+                        evt.StopPropagation();
                     });
 
                     typesContainer.Add(typeItem);
@@ -557,115 +620,194 @@
             }
 
             using SerializedObject serializedObject = new(_selectedObject);
+            bool useOdinInspector = false;
 #if ODIN_INSPECTOR
-            try
+            if (
+                _selectedObject
+                    .GetType()
+                    .IsAttributeDefined(out DataVisualizerCustomPropertiesAttribute attribute)
+            )
             {
-                bool recreateTree =
-                    _odinPropertyTree?.WeakTargets == null
-                    || _odinPropertyTree.WeakTargets.Count == 0
-                    || !ReferenceEquals(_odinPropertyTree.WeakTargets[0], _selectedObject);
-
-                if (recreateTree)
-                {
-                    if (_odinPropertyTree != null)
-                    {
-                        _odinPropertyTree.OnPropertyValueChanged -= HandleOdinPropertyValueChanged;
-                        _odinPropertyTree.Dispose();
-                    }
-                    _odinPropertyTree = PropertyTree.Create(_selectedObject);
-                    _odinPropertyTree.OnPropertyValueChanged += HandleOdinPropertyValueChanged;
-                    _odinInspectorContainer?.MarkDirtyRepaint();
-                }
-
-                if (_odinInspectorContainer == null)
-                {
-                    _odinInspectorContainer = new IMGUIContainer(() => _odinPropertyTree?.Draw())
-                    {
-                        name = "odin-inspector",
-                        style = { flexGrow = 1 },
-                    };
-                }
-                else
-                {
-                    _odinInspectorContainer.onGUIHandler = () => _odinPropertyTree?.Draw();
-                }
-
-                if (_odinInspectorContainer.parent != _inspectorContainer)
-                {
-                    _inspectorContainer.Add(_odinInspectorContainer);
-                }
-                _odinInspectorContainer.MarkDirtyRepaint();
+                useOdinInspector = attribute.UseOdinInspector;
             }
-            catch (Exception e)
+
+            if (useOdinInspector)
             {
-                this.LogError($"Error setting up Odin Inspector.", e);
-                _inspectorContainer.Add(new Label($"Odin Inspector Error: {e.Message}"));
-                _odinPropertyTree = null;
-            }
-#else
-            try
-            {
-                SerializedProperty serializedProperty = serializedObject.GetIterator();
-                bool enterChildren = true;
-                const string titleFieldName = nameof(BaseDataObject._title);
-
-                // Draw the default script field
-                if (serializedProperty.NextVisible(enterChildren))
+                try
                 {
-                    using (
-                        new EditorGUI.DisabledScope("m_Script" == serializedProperty.propertyPath)
-                    )
-                    {
-                        PropertyField scriptField = new PropertyField(serializedProperty);
-                        scriptField.Bind(serializedObject); // Bind is important
-                        _inspectorContainer.Add(scriptField);
-                    }
-                    enterChildren = false; // Don't re-enter children for the script field itself
-                }
+                    bool recreateTree =
+                        _odinPropertyTree?.WeakTargets == null
+                        || _odinPropertyTree.WeakTargets.Count == 0
+                        || !ReferenceEquals(_odinPropertyTree.WeakTargets[0], _selectedObject);
 
-                while (serializedProperty.NextVisible(enterChildren))
-                {
-                    SerializedProperty currentPropCopy = serializedProperty.Copy(); // Use copy for safety
-                    PropertyField propertyField = new(currentPropCopy);
-                    propertyField.Bind(serializedObject); // Bind the field
-
-                    // Check if this is the title field and register callback
-                    if (
-                        string.Equals(
-                            currentPropCopy.propertyPath,
-                            titleFieldName,
-                            StringComparison.Ordinal
-                        )
-                    )
+                    if (recreateTree)
                     {
-                        propertyField.RegisterValueChangeCallback(evt =>
+                        if (_odinPropertyTree != null)
                         {
-                            // Use schedule to avoid modifying data during UI build/event
-                            rootVisualElement
-                                .schedule.Execute(
-                                    () => RefreshSelectedElementVisuals(_selectedObject)
-                                )
-                                .ExecuteLater(1);
-                        });
+                            _odinPropertyTree.OnPropertyValueChanged -=
+                                HandleOdinPropertyValueChanged;
+                            _odinPropertyTree.Dispose();
+                        }
+
+                        _odinPropertyTree = PropertyTree.Create(_selectedObject);
+                        _odinPropertyTree.OnPropertyValueChanged += HandleOdinPropertyValueChanged;
+                        _odinInspectorContainer?.MarkDirtyRepaint();
                     }
-                    _inspectorContainer.Add(propertyField);
-                    enterChildren = false; // Only step through top-level properties after the first one
+
+                    if (_odinInspectorContainer == null)
+                    {
+                        _odinInspectorContainer = new IMGUIContainer(
+                            () => _odinPropertyTree?.Draw()
+                        )
+                        {
+                            name = "odin-inspector",
+                            style = { flexGrow = 1 },
+                        };
+                    }
+                    else
+                    {
+                        _odinInspectorContainer.onGUIHandler = () => _odinPropertyTree?.Draw();
+                    }
+
+                    if (_odinInspectorContainer.parent != _inspectorContainer)
+                    {
+                        _inspectorContainer.Add(_odinInspectorContainer);
+                    }
+
+                    _odinInspectorContainer.MarkDirtyRepaint();
                 }
-                // Apply changes if any occurred
-                serializedObject.ApplyModifiedProperties();
-            }
-            catch (Exception e)
-            {
-                this.LogError($"Error creating standard inspector.", e);
-                _inspectorContainer.Add(new Label($"Inspector Error: {e.Message}"));
+                catch (Exception e)
+                {
+                    this.LogError($"Error setting up Odin Inspector.", e);
+                    _inspectorContainer.Add(new Label($"Odin Inspector Error: {e.Message}"));
+                    _odinPropertyTree = null;
+                }
             }
 #endif
+            if (!useOdinInspector)
+            {
+                try
+                {
+                    SerializedProperty serializedProperty = serializedObject.GetIterator();
+                    bool enterChildren = true;
+                    const string titleFieldName = nameof(BaseDataObject._title);
+
+                    if (serializedProperty.NextVisible(enterChildren))
+                    {
+                        using (
+                            new EditorGUI.DisabledScope(
+                                "m_Script" == serializedProperty.propertyPath
+                            )
+                        )
+                        {
+                            PropertyField scriptField = new(serializedProperty);
+                            scriptField.Bind(serializedObject);
+                            _inspectorContainer.Add(scriptField);
+                        }
+
+                        enterChildren = false;
+                    }
+
+                    while (serializedProperty.NextVisible(enterChildren))
+                    {
+                        SerializedProperty currentPropCopy = serializedProperty.Copy();
+                        PropertyField propertyField = new(currentPropCopy);
+                        propertyField.Bind(serializedObject);
+
+                        if (
+                            string.Equals(
+                                currentPropCopy.propertyPath,
+                                titleFieldName,
+                                StringComparison.Ordinal
+                            )
+                        )
+                        {
+                            propertyField.RegisterValueChangeCallback(evt =>
+                            {
+                                rootVisualElement
+                                    .schedule.Execute(
+                                        () => RefreshSelectedElementVisuals(_selectedObject)
+                                    )
+                                    .ExecuteLater(1);
+                            });
+                        }
+
+                        _inspectorContainer.Add(propertyField);
+                        enterChildren = false;
+                    }
+
+                    serializedObject.ApplyModifiedProperties();
+                }
+                catch (Exception e)
+                {
+                    this.LogError($"Error creating standard inspector.", e);
+                    _inspectorContainer.Add(new Label($"Inspector Error: {e.Message}"));
+                }
+            }
+
             VisualElement customElement = _selectedObject.BuildGUI(
                 new DataVisualizerGUIContext(serializedObject)
             );
             if (customElement != null)
             {
                 _inspectorContainer.Add(customElement);
+            }
+        }
+
+        private static void ApplyNamespaceCollapsedState(
+            Label indicator,
+            VisualElement typesContainer,
+            bool collapsed,
+            bool saveState
+        )
+        {
+            if (indicator == null || typesContainer == null)
+            {
+                return;
+            }
+
+            indicator.text = collapsed ? ArrowCollapsed : ArrowExpanded;
+            typesContainer.style.display = collapsed ? DisplayStyle.None : DisplayStyle.Flex;
+
+            if (saveState)
+            {
+                string namespaceKey = typesContainer.parent?.userData as string;
+                if (string.IsNullOrWhiteSpace(namespaceKey))
+                {
+                    return;
+                }
+
+                string collapsePrefsKey = string.Format(
+                    NamespaceCollapsedStateFormat,
+                    namespaceKey
+                );
+                EditorPrefs.SetBool(collapsePrefsKey, collapsed);
+            }
+        }
+
+        private void SaveNamespaceAndTypeSelectionState(string namespaceKey, string typeName)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(namespaceKey))
+                {
+                    return;
+                }
+
+                EditorPrefs.SetString(LastSelectedNamespaceKey, namespaceKey);
+                if (string.IsNullOrWhiteSpace(typeName))
+                {
+                    return;
+                }
+
+                string typePrefsKey = string.Format(LastSelectedTypeFormat, namespaceKey);
+                EditorPrefs.SetString(typePrefsKey, typeName);
+                string objPrefsKey = string.Format(LastSelectedObjectFormat, typeName);
+                EditorPrefs.DeleteKey(objPrefsKey);
+            }
+            catch (Exception e)
+            {
+                this.LogError($"Error saving type/namespace selection state.", e);
             }
         }
 
