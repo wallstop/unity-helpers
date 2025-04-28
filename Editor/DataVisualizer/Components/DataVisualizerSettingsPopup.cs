@@ -8,8 +8,10 @@
 
     public sealed class DataVisualizerSettingsPopup : EditorWindow
     {
-        internal DataVisualizerSettings _settings;
-        internal Action _onCloseCallback;
+        private DataVisualizerSettings _settings;
+        private Action _onCloseCallback;
+        private bool _settingsChanged = false;
+        private TextField _dataFolderPathDisplay; // Keep field reference if needed by SelectDataFolder
 
         public static void ShowWindow(DataVisualizerSettings settingsToEdit, Action onCloseCallback)
         {
@@ -19,7 +21,22 @@
             window._onCloseCallback = onCloseCallback;
             window.minSize = new Vector2(370, 130);
             window.maxSize = new Vector2(370, 130);
-            window.ShowUtility();
+            window.ShowModalUtility();
+        }
+
+        public static DataVisualizerSettingsPopup CreateAndConfigureInstance(
+            DataVisualizerSettings settingsToEdit,
+            Action onCloseCallback
+        )
+        {
+            DataVisualizerSettingsPopup window = CreateInstance<DataVisualizerSettingsPopup>();
+            // Configure the instance BEFORE it's shown
+            window.titleContent = new GUIContent("Data Visualizer Settings");
+            window._settings = settingsToEdit;
+            window._onCloseCallback = onCloseCallback;
+            window.minSize = new Vector2(370, 130); // Keep size constraints
+            window.maxSize = new Vector2(370, 130);
+            return window; // Return the ready-to-show instance
         }
 
         public void CreateGUI()
@@ -36,18 +53,18 @@
                 return;
             }
 
-            Toggle prefsToggle = new("Use EditorPrefs for State:")
+            _settingsChanged = false; // Reset flag
+            Toggle prefsToggle = new("Use Settings Asset for State:")
             {
-                value = _settings.UseEditorPrefsForState,
-                tooltip =
-                    "If checked, window state is saved globally in EditorPrefs.\nIf unchecked, state is saved within the DataVisualizerSettings asset file.",
+                value = _settings.PersistStateInSettingsAsset,
             };
             prefsToggle.RegisterValueChangedCallback(evt =>
             {
-                if (_settings.UseEditorPrefsForState != evt.newValue)
+                if (_settings.PersistStateInSettingsAsset != evt.newValue)
                 {
-                    _settings.UseEditorPrefsForState = evt.newValue;
+                    _settings.PersistStateInSettingsAsset = evt.newValue;
                     EditorUtility.SetDirty(_settings);
+                    _settingsChanged = true;
                 }
             });
             root.Add(prefsToggle);
@@ -156,6 +173,7 @@
                 {
                     _settings._dataFolderPath = relativePath;
                     EditorUtility.SetDirty(_settings);
+                    _settingsChanged = true;
                     displayField.value = _settings.DataFolderPath;
                 }
             }

@@ -1,7 +1,9 @@
 ﻿namespace WallstopStudios.UnityHelpers.Editor.DataVisualizer
 {
     using System.Collections.Generic;
+    using Data;
     using UnityEngine;
+    using UnityEngine.Serialization;
 
     [CreateAssetMenu(
         fileName = "DataVisualizerSettings",
@@ -20,10 +22,11 @@
         [SerializeField]
         internal string _dataFolderPath = DefaultDataFolderPath;
 
+        [FormerlySerializedAs("UseEditorPrefsForState")]
         [Tooltip(
             "If true, window state (selection, order, collapse) is saved globally in EditorPrefs. If false, state is saved within this settings asset file."
         )]
-        public bool UseEditorPrefsForState = true; // Default to using EditorPrefs
+        public bool PersistStateInSettingsAsset;
 
         [
             Header("Saved State (Internal - Use only if EditorPrefs is disabled)"),
@@ -36,9 +39,9 @@
         [HideInInspector]
         internal string InternalLastSelectedTypeName;
 
-        [SerializeField]
-        [HideInInspector]
-        internal string InternalLastSelectedObjectGuid;
+        [SerializeField, HideInInspector]
+        internal List<LastObjectSelectionEntry> InternalLastObjectSelections =
+            new List<LastObjectSelectionEntry>();
 
         [SerializeField]
         [HideInInspector]
@@ -78,6 +81,28 @@
 
                 _dataFolderPath = _dataFolderPath.Replace('\\', '/');
             }
+        }
+
+        internal void SetLastObjectForType(string typeName, string guid)
+        {
+            if (string.IsNullOrEmpty(typeName))
+                return;
+            // Remove existing entry for this type first
+            // Add new entry only if guid is valid
+            if (!string.IsNullOrEmpty(guid))
+            {
+                InternalLastObjectSelections.RemoveAll(e => e.TypeName == typeName);
+                InternalLastObjectSelections.Add(
+                    new LastObjectSelectionEntry { TypeName = typeName, ObjectGuid = guid }
+                );
+            }
+        }
+
+        internal string GetLastObjectForType(string typeName)
+        {
+            if (string.IsNullOrEmpty(typeName))
+                return null;
+            return InternalLastObjectSelections.Find(e => e.TypeName == typeName)?.ObjectGuid;
         }
 
         internal List<string> GetOrCreateTypeOrderList(string namespaceKey)

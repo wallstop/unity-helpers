@@ -41,7 +41,7 @@
                     var settingsInstance = AssetDatabase.LoadAssetAtPath<DataVisualizerSettings>(
                         path
                     );
-                    if (settingsInstance != null && !settingsInstance.UseEditorPrefsForState)
+                    if (settingsInstance != null && !settingsInstance.PersistStateInSettingsAsset)
                     {
                         needsRefresh = true; // Settings file changed AND it's the active persistence method
                     }

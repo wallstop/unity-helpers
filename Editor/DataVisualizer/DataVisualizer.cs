@@ -17,24 +17,19 @@
     using WallstopStudios.UnityHelpers.Core.DataVisualizer;
     using Core.Extension;
     using Core.Helper;
-    using Core.Serialization;
+    using Data;
     using UnityEditor.UIElements;
     using Object = UnityEngine.Object;
 
     public sealed class DataVisualizer : EditorWindow
     {
         private const string PrefsPrefix = "WallstopStudios.UnityHelpers.DataVisualizer.";
-        private const string NamespaceCollapsedStateFormat = PrefsPrefix + "NamespaceCollapsed.{0}";
-        private const string LastSelectedNamespaceKey = PrefsPrefix + "LastSelectedNamespace";
-        private const string LastSelectedTypeFormat = PrefsPrefix + "LastSelectedType.{0}";
-        private const string LastSelectedObjectFormat = PrefsPrefix + "LastSelectedObject.{0}";
-        private const string CustomTypeOrderKey = PrefsPrefix + "CustomTypeOrder";
-        private const string CustomNamespaceOrderKey = PrefsPrefix + "CustomNamespaceOrder";
-        private const string CustomTypeOrderKeyFormat = PrefsPrefix + "CustomTypeOrder.{0}";
+
         private const string PrefsSplitterOuterKey = PrefsPrefix + "SplitterOuterFixedPaneWidth";
         private const string PrefsSplitterInnerKey = PrefsPrefix + "SplitterInnerFixedPaneWidth";
 
         private const string SettingsDefaultPath = "Assets/DataVisualizerSettings.asset";
+        private const string UserStateFileName = "DataVisualizerUserState.json";
 
         private const string NamespaceItemClass = "object-item";
         private const string NamespaceHeaderClass = "namespace-header";
@@ -98,6 +93,10 @@
         private float _lastDragUpdateTime;
         private SerializedObject _currentInspectorScriptableObject;
 
+        private string _userStateFilePath; // Full path, determined in OnEnable
+        private DataVisualizerUserState _userState; // Holds state when using file persistence
+        private bool _userStateDirty = false; // Track if file needs saving
+
         private DataVisualizerSettings _settings;
         private VisualElement _settingsPopup;
         private Label _dataFolderPathDisplay;
@@ -124,6 +123,15 @@
             _odinPropertyTree = null;
 #endif
             _settings = LoadOrCreateSettings();
+            _userStateFilePath = Path.Combine(Application.persistentDataPath, UserStateFileName);
+            if (!_settings.PersistStateInSettingsAsset)
+            {
+                LoadUserStateFromFile();
+            }
+            else
+            {
+                _userState = new DataVisualizerUserState(); // Have an empty object if using settings asset
+            }
 
             LoadScriptableObjectTypes();
             Undo.undoRedoPerformed += OnUndoRedoPerformed;
@@ -151,6 +159,11 @@
         {
             CancelDrag();
             _saveWidthsTask?.Pause();
+            if (!_settings.PersistStateInSettingsAsset && _userStateDirty)
+            {
+                SaveUserStateToFile();
+            }
+
             _saveWidthsTask = null;
             _currentInspectorScriptableObject?.Dispose();
             _currentInspectorScriptableObject = null;
@@ -454,8 +467,7 @@
                 return;
             }
 
-            string savedNamespaceKey = GetPersistentString(LastSelectedNamespaceKey, string.Empty);
-            string selectedNamespaceKey;
+            string savedNamespaceKey = GetLastSelectedNamespaceKey();
             List<Type> typesInNamespace;
             int namespaceIndex = -1;
 
@@ -468,18 +480,15 @@
 
             if (0 <= namespaceIndex)
             {
-                selectedNamespaceKey = savedNamespaceKey;
                 typesInNamespace = _scriptableObjectTypes[namespaceIndex].types;
             }
             else if (0 < _scriptableObjectTypes.Count)
             {
                 (string key, List<Type> types) types = _scriptableObjectTypes[0];
-                selectedNamespaceKey = types.key;
                 typesInNamespace = types.types;
             }
             else
             {
-                selectedNamespaceKey = null;
                 typesInNamespace = null;
             }
 
@@ -488,8 +497,7 @@
                 return;
             }
 
-            string typePrefsKey = string.Format(LastSelectedTypeFormat, selectedNamespaceKey);
-            string savedTypeName = GetPersistentString(typePrefsKey, string.Empty);
+            string savedTypeName = GetLastSelectedTypeName();
             Type selectedType = null;
 
             if (!string.IsNullOrWhiteSpace(savedTypeName))
@@ -543,8 +551,11 @@
                 }
             }
 
-            string objPrefsKey = string.Format(LastSelectedObjectFormat, _selectedType.Name);
-            string savedObjectGuid = GetPersistentString(objPrefsKey, string.Empty);
+            string savedObjectGuid = null;
+            if (_selectedType != null)
+            {
+                savedObjectGuid = GetLastSelectedObjectGuidForType(_selectedType.Name); // Use helper
+            }
             BaseDataObject objectToSelect = null;
 
             if (!string.IsNullOrWhiteSpace(savedObjectGuid) && 0 < _selectedObjects.Count)
@@ -647,14 +658,18 @@
 
             Button settingsButton = new(() =>
             {
-                bool wasUsingEditorPrefs = _settings.UseEditorPrefsForState;
-                DataVisualizerSettingsPopup popup = CreateInstance<DataVisualizerSettingsPopup>();
-                popup.titleContent = new GUIContent("Data Visualizer Settings");
-                popup._settings = _settings;
-                popup._onCloseCallback = () => HandleSettingsPopupClosed(wasUsingEditorPrefs);
-                popup.minSize = new Vector2(370, 130);
-                popup.maxSize = new Vector2(370, 130);
-                popup.ShowModal();
+                if (_settings == null)
+                {
+                    _settings = LoadOrCreateSettings();
+                }
+
+                bool wasSettingsAssetMode = _settings.PersistStateInSettingsAsset;
+                // Show the modal window, passing settings and the callback with the original mode
+                var popupWindow = DataVisualizerSettingsPopup.CreateAndConfigureInstance(
+                    _settings,
+                    () => HandleSettingsPopupClosed(wasSettingsAssetMode) // Pass callback referencing original mode
+                );
+                popupWindow.ShowModal();
             })
             {
                 text = "…",
@@ -734,30 +749,58 @@
                 },
             };
             root.Add(_settingsPopup);
-            BuildSettingsPopup();
             BuildNamespaceView();
             BuildObjectsView();
             BuildInspectorView();
         }
 
-        private void HandleSettingsPopupClosed(bool previousModeWasEditorPrefs)
+        private void HandleSettingsPopupClosed(bool previousModeWasSettingsAsset)
         {
+            if (_settings == null)
+            {
+                _settings = LoadOrCreateSettings();
+            }
+
             if (_settings != null && EditorUtility.IsDirty(_settings))
             {
                 AssetDatabase.SaveAssets();
             }
 
-            bool migrationNeeded =
-                _settings != null && previousModeWasEditorPrefs != _settings.UseEditorPrefsForState;
+            bool currentModeIsSettingsAsset = _settings.PersistStateInSettingsAsset;
+            bool migrationNeeded = (previousModeWasSettingsAsset != currentModeIsSettingsAsset);
 
+            // 4. Perform Migration if needed
             if (migrationNeeded)
             {
-                MigratePersistenceState(!_settings.UseEditorPrefsForState);
-                if (!_settings.UseEditorPrefsForState)
+                Debug.Log(
+                    $"Persistence mode changed from {(previousModeWasSettingsAsset ? "SettingsAsset" : "UserFile")} to {(currentModeIsSettingsAsset ? "SettingsAsset" : "UserFile")}. Migrating state..."
+                );
+                MigratePersistenceState(migrateToSettingsAsset: currentModeIsSettingsAsset); // Pass the NEW mode as target
+
+                // 5. Persist Migrated Data
+                if (currentModeIsSettingsAsset)
                 {
-                    AssetDatabase.SaveAssets();
+                    // Data was migrated TO settings asset, MarkSettingsDirty was called inside Migrate...
+                    // Save the settings asset again to persist migrated list data etc.
+                    if (EditorUtility.IsDirty(_settings))
+                    { // Check if migration actually changed anything
+                        Debug.Log("Saving settings asset again after migration.");
+                        AssetDatabase.SaveAssets();
+                    }
+                }
+                else
+                {
+                    // Data was migrated TO user state object (_userState)
+                    // Save the user state file
+                    Debug.Log("Saving user state file after migration.");
+                    SaveUserStateToFile(); // Save the migrated state to the JSON file
                 }
             }
+
+            // 6. Optional: Force a full refresh of the main window UI
+            //    This might be good practice after changing persistence method or settings.
+            Debug.Log("Scheduling full refresh after settings close.");
+            ScheduleRefresh();
         }
 
         private VisualElement CreateNamespaceColumn()
@@ -1139,26 +1182,43 @@
             };
             _settingsPopup.Add(prefsToggleContainer);
 
-            Toggle prefsToggle = new("Use EditorPrefs for State:")
+            Toggle prefsToggle = new("Use Settings Asset for State:")
             {
-                value = _settings.UseEditorPrefsForState,
+                value = _settings.PersistStateInSettingsAsset,
                 tooltip =
-                    "If checked, window state (selection, order, collapse) is saved globally in EditorPrefs.\nIf unchecked, state is saved within the DataVisualizerSettings asset file.",
+                    $"If checked, window state (selection, order, collapse) is saved within the DataVisualizerSettings asset file.{Environment.NewLine}If unchecked state is saved locally in a JSON file (persistent data path).",
             };
             prefsToggle.RegisterValueChangedCallback(evt =>
             {
                 if (_settings != null)
                 {
-                    bool migratingToSettingsObject = !evt.newValue;
-                    bool previousModeWasEditorPrefs = _settings.UseEditorPrefsForState;
-                    _settings.UseEditorPrefsForState = evt.newValue;
-                    if (previousModeWasEditorPrefs != evt.newValue)
-                    {
-                        MigratePersistenceState(migratingToSettingsObject);
-                    }
+                    bool newModeIsSettingsAsset = evt.newValue;
+                    bool previousModeWasSettingsAsset = _settings.PersistStateInSettingsAsset;
 
-                    MarkSettingsDirty();
-                    AssetDatabase.SaveAssets();
+                    if (previousModeWasSettingsAsset != newModeIsSettingsAsset)
+                    {
+                        // Update flag FIRST
+                        _settings.PersistStateInSettingsAsset = newModeIsSettingsAsset;
+                        Debug.Log(
+                            $"Persistence mode changed to: {(newModeIsSettingsAsset ? "Settings Asset" : "User File")}"
+                        );
+
+                        // Perform Migration
+                        MigratePersistenceState(migrateToSettingsAsset: newModeIsSettingsAsset); // Pass the NEW mode flag
+
+                        // Mark settings SO dirty (flag changed, maybe data too)
+                        MarkSettingsDirty();
+                        // Save settings SO immediately to persist flag change and potential migrated data
+                        AssetDatabase.SaveAssets();
+
+                        // Save user state file if THAT is the new mode
+                        if (!newModeIsSettingsAsset)
+                        {
+                            SaveUserStateToFile();
+                        }
+
+                        Debug.Log("Persistence mode change and migration complete.");
+                    }
                 }
             });
             prefsToggleContainer.Add(prefsToggle);
@@ -1254,11 +1314,10 @@
                 };
                 namespaceGroupItem.Add(typesContainer);
 
-                string collapsePrefsKey = string.Format(NamespaceCollapsedStateFormat, key);
-                bool isCollapsed = GetPersistentBool(collapsePrefsKey, false);
+                bool isCollapsed = GetIsNamespaceCollapsed(key);
                 ApplyNamespaceCollapsedState(indicator, typesContainer, isCollapsed, false);
 
-                header.RegisterCallback<PointerDownEvent>(evt =>
+                indicator.RegisterCallback<PointerDownEvent>(evt =>
                 {
                     if (evt.button != 0 || evt.propagationPhase == PropagationPhase.TrickleDown)
                     {
@@ -1821,38 +1880,71 @@
             }
         }
 
+        // Helper method called when a Type is selected to decide which object to auto-select
         private BaseDataObject DetermineObjectToAutoSelect()
         {
-            if (_selectedObjects.Count == 0 || _selectedType == null)
-            {
-                return null;
-            }
-
             BaseDataObject objectToSelect = null;
-            string objPrefsKey = string.Format(LastSelectedObjectFormat, _selectedType.Name);
-            string savedObjectGuid = GetPersistentString(objPrefsKey, string.Empty);
-            if (!string.IsNullOrWhiteSpace(savedObjectGuid))
-            {
-                objectToSelect = _selectedObjects.Find(obj =>
-                {
-                    if (obj == null)
-                    {
-                        return false;
-                    }
 
-                    string path = AssetDatabase.GetAssetPath(obj);
-                    return !string.IsNullOrWhiteSpace(path)
-                        && string.Equals(
-                            AssetDatabase.AssetPathToGUID(path),
-                            savedObjectGuid,
-                            StringComparison.OrdinalIgnoreCase
-                        );
-                });
-            }
-            if (objectToSelect == null)
+            // 1. Ensure there's a selected type and objects have been loaded for it
+            if (_selectedType == null || _selectedObjects == null || _selectedObjects.Count == 0)
             {
+                // Debug.Log("DetermineObjectToAutoSelect: No selected type or no objects loaded.");
+                return null; // No objects available for this type
+            }
+
+            // 2. Get the last selected Object GUID using the persistence helper
+            //    The helper handles checking _settings.PersistStateInSettingsAsset
+            string savedObjectGuid = GetLastSelectedObjectGuidForType(_selectedType.Name);
+            // ... (Find objectToSelect using savedObjectGuid, fallback to first object) ...
+            if (!string.IsNullOrEmpty(savedObjectGuid))
+            {
+                objectToSelect = _selectedObjects.FirstOrDefault(obj =>
+                    obj != null
+                    && AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(obj))
+                        == savedObjectGuid
+                );
+            }
+            if (objectToSelect == null && _selectedObjects.Count > 0)
+            { // Fallback
                 objectToSelect = _selectedObjects[0];
             }
+
+            // Debug.Log($"DetermineObjectToAutoSelect: Checking for last object for type '{_selectedType.Name}'. Saved GUID: '{savedObjectGuid ?? "None"}'");
+
+            // 3. Try to find the object matching the GUID in the current list
+            if (!string.IsNullOrEmpty(savedObjectGuid))
+            {
+                objectToSelect = _selectedObjects.FirstOrDefault(obj =>
+                {
+                    if (obj == null)
+                        return false;
+                    string path = AssetDatabase.GetAssetPath(obj);
+                    // Safely compare GUIDs
+                    return !string.IsNullOrEmpty(path)
+                        && AssetDatabase.AssetPathToGUID(path) == savedObjectGuid;
+                });
+
+                if (objectToSelect != null)
+                {
+                    // Debug.Log($"DetermineObjectToAutoSelect: Found last selected object by GUID: {objectToSelect.name}");
+                }
+                else
+                {
+                    // Debug.Log($"DetermineObjectToAutoSelect: Saved object GUID '{savedObjectGuid}' not found or invalid for type '{_selectedType.Name}'.");
+                    // Optionally clear the now-stale preference?
+                    // ClearLastSelectedObjectGuid();
+                }
+            }
+
+            // 4. Fallback: If no GUID was saved, or the saved object wasn't found
+            if (objectToSelect == null)
+            {
+                // Select the first object in the list (_selectedObjects should be correctly sorted by LoadObjectTypes)
+                objectToSelect = _selectedObjects[0];
+                // Debug.Log($"DetermineObjectToAutoSelect: Falling back to first object: {objectToSelect?.name}");
+            }
+
+            // Return the object to be selected (could be last selected, first, or potentially null if list was empty initially)
             return objectToSelect;
         }
 
@@ -1878,12 +1970,7 @@
                 {
                     return;
                 }
-
-                string collapsePrefsKey = string.Format(
-                    NamespaceCollapsedStateFormat,
-                    namespaceKey
-                );
-                SetPersistentBool(collapsePrefsKey, collapsed);
+                SetIsNamespaceCollapsed(namespaceKey, collapsed);
             }
         }
 
@@ -1901,27 +1988,16 @@
                     return;
                 }
 
-                SetPersistentString(LastSelectedNamespaceKey, namespaceKey);
+                SetLastSelectedNamespaceKey(namespaceKey);
                 if (string.IsNullOrWhiteSpace(typeName))
                 {
                     return;
                 }
 
-                SetPersistentString(LastSelectedTypeFormat + namespaceKey, typeName);
-                string objPrefsKey = string.Format(LastSelectedObjectFormat, typeName);
-                if (_settings.UseEditorPrefsForState)
+                if (!string.IsNullOrEmpty(typeName))
                 {
-                    DeletePersistentKey(objPrefsKey);
-                }
-                else
-                {
-                    if (_settings.InternalLastSelectedObjectGuid == null)
-                    {
-                        return;
-                    }
-
-                    _settings.InternalLastSelectedObjectGuid = null;
-                    MarkSettingsDirty();
+                    SetLastSelectedTypeName(typeName); // Save *new* type
+                    // DO NOT clear object Guid here. Let SelectObject(null) handle clearing for the type that WAS selected.
                 }
             }
             catch (Exception e)
@@ -2033,34 +2109,13 @@
                 _settings = LoadOrCreateSettings();
             }
 
-            List<string> customNamespaceOrder;
-            if (_settings.UseEditorPrefsForState)
-            {
-                customNamespaceOrder = LoadCustomOrder(CustomNamespaceOrderKey);
-            }
-            else
-            {
-                customNamespaceOrder = _settings.InternalNamespaceOrder ?? new List<string>();
-            }
+            List<string> customNamespaceOrder = GetNamespaceOrder();
             _scriptableObjectTypes.Sort(
                 (lhs, rhs) => CompareUsingCustomOrder(lhs.key, rhs.key, customNamespaceOrder)
             );
             foreach ((string key, List<Type> types) in _scriptableObjectTypes)
             {
-                List<string> customTypeNameOrder;
-                if (_settings.UseEditorPrefsForState)
-                {
-                    string prefsKey = string.Format(CustomTypeOrderKeyFormat, key);
-                    customTypeNameOrder = LoadCustomOrder(prefsKey);
-                }
-                else
-                {
-                    DataVisualizerSettings.NamespaceTypeOrder orderEntry =
-                        _settings.InternalTypeOrders.Find(o =>
-                            string.Equals(o.NamespaceKey, key, StringComparison.Ordinal)
-                        );
-                    customTypeNameOrder = orderEntry?.TypeNames ?? new List<string>();
-                }
+                List<string> customTypeNameOrder = GetTypeOrderForNamespace(key);
                 types.Sort(
                     (lhs, rhs) => CompareUsingCustomOrder(lhs.Name, rhs.Name, customTypeNameOrder)
                 );
@@ -2097,31 +2152,9 @@
                         {
                             objectGuid = AssetDatabase.AssetPathToGUID(assetPath);
                         }
-
-                        if (!string.IsNullOrWhiteSpace(namespaceKey))
-                        {
-                            SetPersistentString(LastSelectedNamespaceKey, namespaceKey);
-                        }
-
-                        if (!string.IsNullOrWhiteSpace(typeName))
-                        {
-                            string typePrefsKey = string.Format(
-                                LastSelectedTypeFormat,
-                                namespaceKey
-                            );
-                            SetPersistentString(typePrefsKey, typeName);
-                        }
-
-                        if (!string.IsNullOrWhiteSpace(objectGuid))
-                        {
-                            string objPrefsKey = string.Format(LastSelectedObjectFormat, typeName);
-                            SetPersistentString(objPrefsKey, objectGuid);
-                        }
-                        else
-                        {
-                            string objPrefsKey = string.Format(LastSelectedObjectFormat, typeName);
-                            DeletePersistentKey(objPrefsKey);
-                        }
+                        SetLastSelectedNamespaceKey(namespaceKey);
+                        SetLastSelectedTypeName(typeName);
+                        SetLastSelectedObjectGuidForType(typeName, objectGuid);
                     }
                 }
                 catch (Exception e)
@@ -2131,7 +2164,13 @@
             }
             else
             {
-                Selection.activeObject = null;
+                if (_selectedType != null)
+                {
+                    string typeName = _selectedType.Name;
+                    // Debug.Log($"Clearing last object pref for type {typeName} due to null/invalid selection.");
+                    // Call SET with null guid to clear/remove the entry for this specific type
+                    SetLastSelectedObjectGuidForType(typeName, null);
+                }
             }
 
             _currentInspectorScriptableObject?.Dispose();
@@ -2375,26 +2414,7 @@
             }
 
             List<string> newNamespaceOrder = _scriptableObjectTypes.Select(kvp => kvp.key).ToList();
-            if (_settings.UseEditorPrefsForState)
-            {
-                try
-                {
-                    string json = Serializer.JsonStringify(newNamespaceOrder);
-                    EditorPrefs.SetString(CustomNamespaceOrderKey, json);
-                }
-                catch (Exception e)
-                {
-                    this.LogError($"Failed to serialize or save custom namespace order.", e);
-                }
-            }
-            else
-            {
-                if (!_settings.InternalNamespaceOrder.SequenceEqual(newNamespaceOrder))
-                {
-                    _settings.InternalNamespaceOrder = newNamespaceOrder;
-                    MarkSettingsDirty();
-                }
-            }
+            SetNamespaceOrder(newNamespaceOrder);
         }
 
         private void OnTypePointerDown(PointerDownEvent evt)
@@ -2479,32 +2499,7 @@
             }
 
             List<string> newTypeNameOrder = orderedTypes.Select(t => t.Name).ToList();
-            if (_settings.UseEditorPrefsForState)
-            {
-                string prefsKey = string.Format(CustomTypeOrderKeyFormat, namespaceKey);
-                try
-                {
-                    string json = Serializer.JsonStringify(newTypeNameOrder);
-                    EditorPrefs.SetString(prefsKey, json);
-                }
-                catch (Exception e)
-                {
-                    this.LogError(
-                        $"Failed to serialize or save custom type order for namespace '{namespaceKey}'.",
-                        e
-                    );
-                }
-            }
-            else
-            {
-                List<string> orderEntry = _settings.GetOrCreateTypeOrderList(namespaceKey);
-                if (!orderEntry.SequenceEqual(newTypeNameOrder))
-                {
-                    orderEntry.Clear();
-                    orderEntry.AddRange(newTypeNameOrder);
-                    MarkSettingsDirty();
-                }
-            }
+            SetTypeOrderForNamespace(namespaceKey, newTypeNameOrder);
         }
 
         private void PerformObjectDrop()
@@ -2872,237 +2867,6 @@
             _activeDragType = DragType.None;
         }
 
-        private void DeletePersistentKey(string key)
-        {
-            if (_settings == null)
-            {
-                return;
-            }
-
-            if (_settings.UseEditorPrefsForState)
-            {
-                EditorPrefs.DeleteKey(key);
-            }
-            else
-            {
-                bool changed = false;
-
-                if (string.Equals(key, LastSelectedNamespaceKey, StringComparison.Ordinal))
-                {
-                    if (_settings.InternalLastSelectedNamespaceKey != null)
-                    {
-                        _settings.InternalLastSelectedNamespaceKey = null;
-                        changed = true;
-                    }
-                }
-                else if (
-                    key.StartsWith(
-                        LastSelectedTypeFormat.Substring(0, LastSelectedTypeFormat.Length - 3),
-                        StringComparison.Ordinal
-                    )
-                )
-                {
-                    if (_settings.InternalLastSelectedTypeName != null)
-                    {
-                        _settings.InternalLastSelectedTypeName = null;
-                        changed = true;
-                    }
-                }
-                else if (
-                    key.StartsWith(
-                        LastSelectedObjectFormat.Substring(0, LastSelectedObjectFormat.Length - 3),
-                        StringComparison.Ordinal
-                    )
-                )
-                {
-                    if (_settings.InternalLastSelectedObjectGuid != null)
-                    {
-                        _settings.InternalLastSelectedObjectGuid = null;
-                        changed = true;
-                    }
-                }
-                else if (
-                    key.StartsWith(
-                        NamespaceCollapsedStateFormat.Substring(
-                            0,
-                            NamespaceCollapsedStateFormat.Length - 3
-                        ),
-                        StringComparison.Ordinal
-                    )
-                )
-                {
-                    string namespaceKey = key.Substring(NamespaceCollapsedStateFormat.Length - 2);
-
-                    int removedIndex = _settings.InternalNamespaceCollapseStates.FindIndex(o =>
-                        string.Equals(o.NamespaceKey, namespaceKey, StringComparison.Ordinal)
-                    );
-                    if (removedIndex != -1)
-                    {
-                        _settings.InternalNamespaceCollapseStates.RemoveAt(removedIndex);
-                        changed = true;
-                    }
-                }
-
-                if (changed)
-                {
-                    MarkSettingsDirty();
-                }
-            }
-        }
-
-        private void SetPersistentString(string key, string value)
-        {
-            if (_settings.UseEditorPrefsForState)
-            {
-                EditorPrefs.SetString(key, value);
-            }
-            else if (_settings != null)
-            {
-                bool changed = false;
-                if (string.Equals(key, LastSelectedNamespaceKey, StringComparison.Ordinal))
-                {
-                    if (_settings.InternalLastSelectedNamespaceKey != value)
-                    {
-                        _settings.InternalLastSelectedNamespaceKey = value;
-                        changed = true;
-                    }
-                }
-                else if (
-                    key.StartsWith(
-                        LastSelectedTypeFormat.Substring(0, LastSelectedTypeFormat.Length - 3),
-                        StringComparison.Ordinal
-                    )
-                )
-                {
-                    if (_settings.InternalLastSelectedTypeName != value)
-                    {
-                        _settings.InternalLastSelectedTypeName = value;
-                        changed = true;
-                    }
-                }
-                else if (
-                    key.StartsWith(
-                        LastSelectedObjectFormat.Substring(0, LastSelectedObjectFormat.Length - 3),
-                        StringComparison.Ordinal
-                    )
-                )
-                {
-                    if (_settings.InternalLastSelectedObjectGuid != value)
-                    {
-                        _settings.InternalLastSelectedObjectGuid = value;
-                        changed = true;
-                    }
-                }
-
-                if (changed)
-                {
-                    MarkSettingsDirty();
-                }
-            }
-        }
-
-        private string GetPersistentString(string key, string defaultValue)
-        {
-            if (_settings.UseEditorPrefsForState)
-            {
-                return EditorPrefs.GetString(key, defaultValue);
-            }
-
-            if (_settings == null)
-            {
-                return defaultValue;
-            }
-
-            if (string.Equals(key, LastSelectedNamespaceKey, StringComparison.Ordinal))
-            {
-                return string.IsNullOrWhiteSpace(_settings.InternalLastSelectedNamespaceKey)
-                    ? defaultValue
-                    : _settings.InternalLastSelectedNamespaceKey;
-            }
-            if (
-                key.StartsWith(
-                    LastSelectedTypeFormat.Substring(0, LastSelectedTypeFormat.Length - 3),
-                    StringComparison.Ordinal
-                )
-            )
-            {
-                return string.IsNullOrWhiteSpace(_settings.InternalLastSelectedTypeName)
-                    ? defaultValue
-                    : _settings.InternalLastSelectedTypeName;
-            }
-            if (
-                key.StartsWith(
-                    LastSelectedObjectFormat.Substring(0, LastSelectedObjectFormat.Length - 3),
-                    StringComparison.Ordinal
-                )
-            )
-            {
-                return string.IsNullOrWhiteSpace(_settings.InternalLastSelectedObjectGuid)
-                    ? defaultValue
-                    : _settings.InternalLastSelectedObjectGuid;
-            }
-            return defaultValue;
-        }
-
-        private void SetPersistentBool(string key, bool value)
-        {
-            if (_settings.UseEditorPrefsForState)
-            {
-                EditorPrefs.SetBool(key, value);
-            }
-            else if (_settings != null)
-            {
-                if (
-                    key.StartsWith(
-                        NamespaceCollapsedStateFormat.Substring(
-                            0,
-                            NamespaceCollapsedStateFormat.Length - 3
-                        ),
-                        StringComparison.Ordinal
-                    )
-                )
-                {
-                    string namespaceKey = key.Substring(NamespaceCollapsedStateFormat.Length - 2);
-                    DataVisualizerSettings.NamespaceCollapseState stateEntry =
-                        _settings.GetOrCreateCollapseState(namespaceKey);
-                    if (stateEntry.IsCollapsed != value)
-                    {
-                        stateEntry.IsCollapsed = value;
-                        MarkSettingsDirty();
-                    }
-                }
-            }
-        }
-
-        private bool GetPersistentBool(string key, bool defaultValue)
-        {
-            if (_settings.UseEditorPrefsForState)
-            {
-                return EditorPrefs.GetBool(key, defaultValue);
-            }
-            if (_settings != null)
-            {
-                if (
-                    key.StartsWith(
-                        NamespaceCollapsedStateFormat.Substring(
-                            0,
-                            NamespaceCollapsedStateFormat.Length - 3
-                        ),
-                        StringComparison.Ordinal
-                    )
-                )
-                {
-                    string namespaceKey = key.Substring(NamespaceCollapsedStateFormat.Length - 2);
-                    DataVisualizerSettings.NamespaceCollapseState stateEntry =
-                        _settings.InternalNamespaceCollapseStates.Find(o =>
-                            string.Equals(o.NamespaceKey, namespaceKey, StringComparison.Ordinal)
-                        );
-                    return stateEntry?.IsCollapsed ?? defaultValue;
-                }
-            }
-            return defaultValue;
-        }
-
         private void MarkSettingsDirty()
         {
             if (_settings != null)
@@ -3111,169 +2875,451 @@
             }
         }
 
-        private void MigratePersistenceState(bool targetIsSettingsObject)
+        private void LoadUserStateFromFile()
         {
-            if (_settings == null)
+            if (File.Exists(_userStateFilePath))
             {
-                this.LogError($"Cannot migrate state: Settings object is null.");
-                return;
+                try
+                {
+                    string json = File.ReadAllText(_userStateFilePath);
+                    _userState = JsonUtility.FromJson<DataVisualizerUserState>(json); // Or your preferred JSON lib
+                    if (_userState == null)
+                    { // Handle case where file is empty or invalid JSON
+                        Debug.LogWarning(
+                            $"User state file '{_userStateFilePath}' was empty or invalid. Creating new state."
+                        );
+                        _userState = new DataVisualizerUserState();
+                    }
+                    else
+                    {
+                        Debug.Log("Loaded user state from file.");
+                    }
+                    // Optional: Version check/migration if _userState.Version is old
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError(
+                        $"Error loading user state from '{_userStateFilePath}': {e}. Using default state."
+                    );
+                    _userState = new DataVisualizerUserState();
+                }
             }
+            else
+            {
+                Debug.Log(
+                    $"User state file not found at '{_userStateFilePath}'. Creating new state."
+                );
+                _userState = new DataVisualizerUserState();
+                // No need to save immediately, save happens on first change.
+            }
+            _userStateDirty = false; // Reset dirty flag after loading
+        }
 
-            if (_scriptableObjectTypes == null || _scriptableObjectTypes.Count == 0)
-            {
-                LoadScriptableObjectTypes();
-            }
-            List<string> currentNamespaceKeys =
-                _scriptableObjectTypes?.Select(kvp => kvp.key).ToList() ?? new List<string>();
+        private void SaveUserStateToFile()
+        {
+            if (_userState == null)
+                return; // Should not happen if loaded correctly
 
             try
             {
-                if (targetIsSettingsObject)
+                string json = JsonUtility.ToJson(_userState, true); // Use pretty print
+                File.WriteAllText(_userStateFilePath, json);
+                _userStateDirty = false; // Reset dirty flag after saving
+                // Debug.Log($"User state saved to '{_userStateFilePath}'");
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"Error saving user state to '{_userStateFilePath}': {e}");
+            }
+        }
+
+        // Helper to mark user state dirty and trigger save (if in file mode)
+        private void MarkUserStateDirty()
+        {
+            if (!_settings.PersistStateInSettingsAsset)
+            {
+                _userStateDirty = true;
+                // Save immediately? Or rely on OnDisable/periodically?
+                // Let's save immediately for simplicity now.
+                SaveUserStateToFile();
+            }
+        }
+
+        // Update Migration Method
+        private void MigratePersistenceState(bool migrateToSettingsAsset)
+        {
+            Debug.Log(
+                $"Migrating persistence state. Target is now: {(migrateToSettingsAsset ? "Settings Asset" : "User File")}"
+            );
+            if (_settings == null)
+                return;
+            if (!migrateToSettingsAsset && _userState == null)
+            {
+                LoadUserStateFromFile(); // Ensure user state loaded if migrating TO file
+                if (_userState == null)
                 {
-                    _settings.InternalLastSelectedNamespaceKey = EditorPrefs.GetString(
-                        LastSelectedNamespaceKey,
-                        null
+                    Debug.LogError(
+                        "Cannot migrate state to file: User state failed to load/create."
                     );
-
-                    string nsKeyForTypePref = _settings.InternalLastSelectedNamespaceKey;
-                    string typeNameForObjPref = null;
-                    if (!string.IsNullOrWhiteSpace(nsKeyForTypePref))
-                    {
-                        string typePrefsKey = string.Format(
-                            LastSelectedTypeFormat,
-                            nsKeyForTypePref
-                        );
-                        typeNameForObjPref = EditorPrefs.GetString(typePrefsKey, null);
-                        _settings.InternalLastSelectedTypeName = typeNameForObjPref;
-                    }
-                    else
-                    {
-                        _settings.InternalLastSelectedTypeName = null;
-                    }
-                    if (!string.IsNullOrWhiteSpace(typeNameForObjPref))
-                    {
-                        string objPrefsKey = string.Format(
-                            LastSelectedObjectFormat,
-                            typeNameForObjPref
-                        );
-                        _settings.InternalLastSelectedObjectGuid = EditorPrefs.GetString(
-                            objPrefsKey,
-                            null
-                        );
-                    }
-                    else
-                    {
-                        _settings.InternalLastSelectedObjectGuid = null;
-                    }
-
-                    string nsOrderJson = EditorPrefs.GetString(CustomNamespaceOrderKey, "[]");
-                    _settings.InternalNamespaceOrder =
-                        Serializer.JsonDeserialize<List<string>>(nsOrderJson) ?? new List<string>();
-
-                    _settings.InternalTypeOrders =
-                        new List<DataVisualizerSettings.NamespaceTypeOrder>();
-                    foreach (string namespaceKey in currentNamespaceKeys)
-                    {
-                        string typeOrderPrefsKey = string.Format(
-                            CustomTypeOrderKeyFormat,
-                            namespaceKey
-                        );
-                        string typeOrderJson = EditorPrefs.GetString(typeOrderPrefsKey, "[]");
-                        List<string> typeNames = Serializer.JsonDeserialize<List<string>>(
-                            typeOrderJson
-                        );
-                        if (typeNames is { Count: > 0 })
-                        {
-                            List<string> entry = _settings.GetOrCreateTypeOrderList(namespaceKey);
-                            entry.Clear();
-                            entry.AddRange(typeNames);
-                        }
-                    }
-
-                    _settings.InternalNamespaceCollapseStates =
-                        new List<DataVisualizerSettings.NamespaceCollapseState>();
-                    foreach (string namespaceKey in currentNamespaceKeys)
-                    {
-                        string collapsePrefsKey = string.Format(
-                            NamespaceCollapsedStateFormat,
-                            namespaceKey
-                        );
-                        if (EditorPrefs.HasKey(collapsePrefsKey))
-                        {
-                            bool isCollapsed = EditorPrefs.GetBool(collapsePrefsKey, false);
-                            DataVisualizerSettings.NamespaceCollapseState entry =
-                                _settings.GetOrCreateCollapseState(namespaceKey);
-                            entry.IsCollapsed = isCollapsed;
-                        }
-                    }
+                    return;
                 }
-                else
+            }
+
+            try
+            {
+                if (migrateToSettingsAsset) // Migrating FROM User File TO Settings Object
                 {
-                    EditorPrefs.SetString(
-                        LastSelectedNamespaceKey,
-                        _settings.InternalLastSelectedNamespaceKey
+                    Debug.Log("Migrating FROM User File TO Settings Object...");
+                    if (_userState == null)
+                    {
+                        Debug.LogWarning("User state is null during migration to settings asset.");
+                        return;
+                    }
+
+                    // Simple Key/Value Pairs
+                    _settings.InternalLastSelectedNamespaceKey =
+                        _userState.LastSelectedNamespaceKey;
+                    _settings.InternalLastSelectedTypeName = _userState.LastSelectedTypeName;
+                    // --- Migrate Last Object Selections List ---
+                    _settings.InternalLastObjectSelections =
+                        _userState
+                            .LastObjectSelections?.Select(us => new LastObjectSelectionEntry
+                            {
+                                TypeName = us.TypeName,
+                                ObjectGuid = us.ObjectGuid,
+                            })
+                            .ToList() ?? new List<LastObjectSelectionEntry>();
+                    // ---
+
+                    // Lists (create copies)
+                    _settings.InternalNamespaceOrder = new List<string>(
+                        _userState.NamespaceOrder ?? new List<string>()
                     );
+                    _settings.InternalTypeOrders =
+                        _userState
+                            .TypeOrders?.Select(uo => new DataVisualizerSettings.NamespaceTypeOrder
+                            {
+                                NamespaceKey = uo.NamespaceKey,
+                                TypeNames = new List<string>(uo.TypeNames ?? new List<string>()),
+                            })
+                            .ToList() ?? new List<DataVisualizerSettings.NamespaceTypeOrder>();
+                    _settings.InternalNamespaceCollapseStates =
+                        _userState
+                            .NamespaceCollapseStates?.Select(
+                                ucs => new DataVisualizerSettings.NamespaceCollapseState
+                                {
+                                    NamespaceKey = ucs.NamespaceKey,
+                                    IsCollapsed = ucs.IsCollapsed,
+                                }
+                            )
+                            .ToList() ?? new List<DataVisualizerSettings.NamespaceCollapseState>();
 
-                    string nsKeyForTypePref = _settings.InternalLastSelectedNamespaceKey;
-                    string typeNameForObjPref = _settings.InternalLastSelectedTypeName;
+                    MarkSettingsDirty(); // Mark settings dirty as they received data
+                    Debug.Log("Migration TO Settings Object complete.");
+                }
+                else // Migrating FROM Settings Object TO User File
+                {
+                    Debug.Log("Migrating FROM Settings Object TO User File...");
+                    if (_userState == null)
+                        _userState = new DataVisualizerUserState(); // Ensure instance exists
 
-                    if (!string.IsNullOrWhiteSpace(nsKeyForTypePref))
-                    {
-                        string typePrefsKey = string.Format(
-                            LastSelectedTypeFormat,
-                            nsKeyForTypePref
-                        );
-                        EditorPrefs.SetString(typePrefsKey, typeNameForObjPref);
-                    }
+                    // Simple Key/Value Pairs
+                    _userState.LastSelectedNamespaceKey =
+                        _settings.InternalLastSelectedNamespaceKey;
+                    _userState.LastSelectedTypeName = _settings.InternalLastSelectedTypeName;
+                    // --- Migrate Last Object Selections List ---
+                    _userState.LastObjectSelections =
+                        _settings
+                            .InternalLastObjectSelections?.Select(so => new LastObjectSelectionEntry
+                            {
+                                TypeName = so.TypeName,
+                                ObjectGuid = so.ObjectGuid,
+                            })
+                            .ToList() ?? new List<LastObjectSelectionEntry>();
+                    // ---
 
-                    if (!string.IsNullOrWhiteSpace(typeNameForObjPref))
-                    {
-                        string objPrefsKey = string.Format(
-                            LastSelectedObjectFormat,
-                            typeNameForObjPref
-                        );
-                        EditorPrefs.SetString(
-                            objPrefsKey,
-                            _settings.InternalLastSelectedObjectGuid
-                        );
-                    }
-
-                    string nsOrderJson = Serializer.JsonStringify(
+                    // Lists (create copies)
+                    _userState.NamespaceOrder = new List<string>(
                         _settings.InternalNamespaceOrder ?? new List<string>()
                     );
-                    EditorPrefs.SetString(CustomNamespaceOrderKey, nsOrderJson);
+                    _userState.TypeOrders =
+                        _settings
+                            .InternalTypeOrders?.Select(so => new UserStateTypeOrder
+                            {
+                                NamespaceKey = so.NamespaceKey,
+                                TypeNames = new List<string>(so.TypeNames ?? new List<string>()),
+                            })
+                            .ToList() ?? new List<UserStateTypeOrder>();
+                    _userState.NamespaceCollapseStates =
+                        _settings
+                            .InternalNamespaceCollapseStates?.Select(
+                                scs => new UserStateNamespaceCollapseState
+                                {
+                                    NamespaceKey = scs.NamespaceKey,
+                                    IsCollapsed = scs.IsCollapsed,
+                                }
+                            )
+                            .ToList() ?? new List<UserStateNamespaceCollapseState>();
 
-                    foreach (
-                        DataVisualizerSettings.NamespaceTypeOrder typeOrderEntry in _settings.InternalTypeOrders
-                    )
-                    {
-                        string typeOrderPrefsKey = string.Format(
-                            CustomTypeOrderKeyFormat,
-                            typeOrderEntry.NamespaceKey
-                        );
-                        string typeOrderJson = Serializer.JsonStringify(
-                            typeOrderEntry.TypeNames ?? new List<string>()
-                        );
-                        EditorPrefs.SetString(typeOrderPrefsKey, typeOrderJson);
-                    }
-
-                    foreach (
-                        DataVisualizerSettings.NamespaceCollapseState collapseEntry in _settings.InternalNamespaceCollapseStates
-                    )
-                    {
-                        string collapsePrefsKey = string.Format(
-                            NamespaceCollapsedStateFormat,
-                            collapseEntry.NamespaceKey
-                        );
-                        EditorPrefs.SetBool(collapsePrefsKey, collapseEntry.IsCollapsed);
-                    }
+                    MarkUserStateDirty(); // Mark user state dirty so it gets saved
+                    Debug.Log("Migration TO User File complete.");
                 }
             }
             catch (Exception e)
             {
-                this.LogError($"Error during persistence state migration.", e);
+                Debug.LogError($"Error during persistence state migration: {e}");
             }
         }
+
+        // --- Specific Persistence Accessors ---
+
+        private string GetLastSelectedNamespaceKey()
+        {
+            if (_settings == null)
+                return null;
+            return _settings.PersistStateInSettingsAsset
+                ? _settings.InternalLastSelectedNamespaceKey
+                : _userState?.LastSelectedNamespaceKey;
+        }
+
+        private void SetLastSelectedNamespaceKey(string value)
+        {
+            if (_settings == null)
+                return;
+            if (_settings.PersistStateInSettingsAsset)
+            {
+                if (_settings.InternalLastSelectedNamespaceKey != value)
+                {
+                    _settings.InternalLastSelectedNamespaceKey = value;
+                    MarkSettingsDirty();
+                }
+            }
+            else if (_userState != null)
+            {
+                if (_userState.LastSelectedNamespaceKey != value)
+                {
+                    _userState.LastSelectedNamespaceKey = value;
+                    MarkUserStateDirty();
+                }
+            }
+        }
+
+        private string GetLastSelectedTypeName()
+        { // Type depends on the *context* of the last namespace
+            if (_settings == null)
+                return null;
+            // This state is simple enough to store directly without context mapping for now
+            return _settings.PersistStateInSettingsAsset
+                ? _settings.InternalLastSelectedTypeName
+                : _userState?.LastSelectedTypeName;
+        }
+
+        private void SetLastSelectedTypeName(string value)
+        {
+            Debug.Log($"Setting Last Selected Type Name to '{value}'");
+            if (_settings == null)
+                return;
+            if (_settings.PersistStateInSettingsAsset)
+            {
+                if (_settings.InternalLastSelectedTypeName != value)
+                {
+                    _settings.InternalLastSelectedTypeName = value;
+                    MarkSettingsDirty();
+                }
+            }
+            else if (_userState != null)
+            {
+                if (_userState.LastSelectedTypeName != value)
+                {
+                    _userState.LastSelectedTypeName = value;
+                    MarkUserStateDirty();
+                }
+            }
+        }
+
+        private string GetLastSelectedObjectGuidForType(string typeName)
+        {
+            if (_settings == null || string.IsNullOrEmpty(typeName))
+                return null;
+
+            if (_settings.PersistStateInSettingsAsset)
+            {
+                // Use helper on settings object or find manually
+                return _settings.GetLastObjectForType(typeName);
+                // Manual find: return _settings.InternalLastObjectSelections?.Find(e => e.TypeName == typeName)?.ObjectGuid;
+            }
+            else
+            {
+                if (_userState == null)
+                    LoadUserStateFromFile(); // Load if needed
+                // Use helper on user state object or find manually
+                return _userState?.GetLastObjectForType(typeName);
+                // Manual find: return _userState?.LastObjectSelections?.Find(e => e.TypeName == typeName)?.ObjectGuid;
+            }
+        }
+
+        private void SetLastSelectedObjectGuidForType(string typeName, string objectGuid)
+        {
+            Debug.Log($"Setting Last Selected Object Guid for Type '{typeName}' to '{objectGuid}'");
+            if (_settings == null || string.IsNullOrEmpty(typeName))
+                return;
+
+            if (_settings.PersistStateInSettingsAsset)
+            {
+                // Use helper on settings object
+                _settings.SetLastObjectForType(typeName, objectGuid);
+                MarkSettingsDirty(); // Mark dirty as list might have changed
+            }
+            else if (_userState != null)
+            {
+                // Use helper on user state object
+                _userState.SetLastObjectForType(typeName, objectGuid);
+                MarkUserStateDirty(); // Mark user state dirty as list might have changed
+            }
+        }
+
+        private List<string> GetNamespaceOrder()
+        {
+            if (_settings == null)
+                return new List<string>();
+            // Ensure list exists in chosen backend
+            if (_settings.PersistStateInSettingsAsset)
+            {
+                if (_settings.InternalNamespaceOrder == null)
+                    _settings.InternalNamespaceOrder = new List<string>();
+                return _settings.InternalNamespaceOrder;
+            }
+            else
+            {
+                if (_userState == null)
+                    LoadUserStateFromFile(); // Load if missing
+                if (_userState.NamespaceOrder == null)
+                    _userState.NamespaceOrder = new List<string>();
+                return _userState.NamespaceOrder;
+            }
+        }
+
+        private void SetNamespaceOrder(List<string> value)
+        {
+            if (_settings == null || value == null)
+                return;
+            if (_settings.PersistStateInSettingsAsset)
+            {
+                // Check if different before assigning and marking dirty
+                if (
+                    _settings.InternalNamespaceOrder == null
+                    || !_settings.InternalNamespaceOrder.SequenceEqual(value)
+                )
+                {
+                    _settings.InternalNamespaceOrder = new List<string>(value); // Assign copy
+                    MarkSettingsDirty();
+                }
+            }
+            else if (_userState != null)
+            {
+                if (
+                    _userState.NamespaceOrder == null
+                    || !_userState.NamespaceOrder.SequenceEqual(value)
+                )
+                {
+                    _userState.NamespaceOrder = new List<string>(value); // Assign copy
+                    MarkUserStateDirty();
+                }
+            }
+        }
+
+        private List<string> GetTypeOrderForNamespace(string namespaceKey)
+        {
+            if (_settings == null || string.IsNullOrEmpty(namespaceKey))
+                return new List<string>();
+            if (_settings.PersistStateInSettingsAsset)
+            {
+                var entry = _settings.InternalTypeOrders?.Find(o => o.NamespaceKey == namespaceKey);
+                return entry?.TypeNames ?? new List<string>(); // Return empty if not found
+            }
+            else
+            {
+                if (_userState == null)
+                    LoadUserStateFromFile();
+                var entry = _userState.TypeOrders?.Find(o => o.NamespaceKey == namespaceKey);
+                return entry?.TypeNames ?? new List<string>();
+            }
+        }
+
+        private void SetTypeOrderForNamespace(string namespaceKey, List<string> typeNames)
+        {
+            if (_settings == null || string.IsNullOrEmpty(namespaceKey) || typeNames == null)
+                return;
+            if (_settings.PersistStateInSettingsAsset)
+            {
+                // Use helper to get/create entry, check if different
+                var entryList = _settings.GetOrCreateTypeOrderList(namespaceKey);
+                if (!entryList.SequenceEqual(typeNames))
+                {
+                    entryList.Clear();
+                    entryList.AddRange(typeNames);
+                    MarkSettingsDirty();
+                }
+            }
+            else if (_userState != null)
+            {
+                var entryList = _userState.GetOrCreateTypeOrderList(namespaceKey);
+                if (!entryList.SequenceEqual(typeNames))
+                {
+                    entryList.Clear();
+                    entryList.AddRange(typeNames);
+                    MarkUserStateDirty();
+                }
+            }
+        }
+
+        private bool GetIsNamespaceCollapsed(string namespaceKey)
+        {
+            if (_settings == null || string.IsNullOrEmpty(namespaceKey))
+                return false; // Default to expanded
+            if (_settings.PersistStateInSettingsAsset)
+            {
+                var entry = _settings.InternalNamespaceCollapseStates?.Find(o =>
+                    o.NamespaceKey == namespaceKey
+                );
+                return entry?.IsCollapsed ?? false; // Default to false (expanded)
+            }
+            else
+            {
+                if (_userState == null)
+                    LoadUserStateFromFile();
+                var entry = _userState.NamespaceCollapseStates?.Find(o =>
+                    o.NamespaceKey == namespaceKey
+                );
+                return entry?.IsCollapsed ?? false;
+            }
+        }
+
+        private void SetIsNamespaceCollapsed(string namespaceKey, bool isCollapsed)
+        {
+            if (_settings == null || string.IsNullOrEmpty(namespaceKey))
+                return;
+            if (_settings.PersistStateInSettingsAsset)
+            {
+                var entry = _settings.GetOrCreateCollapseState(namespaceKey);
+                if (entry.IsCollapsed != isCollapsed)
+                {
+                    entry.IsCollapsed = isCollapsed;
+                    MarkSettingsDirty();
+                }
+            }
+            else if (_userState != null)
+            {
+                var entry = _userState.GetOrCreateCollapseState(namespaceKey);
+                if (entry.IsCollapsed != isCollapsed)
+                {
+                    entry.IsCollapsed = isCollapsed;
+                    MarkUserStateDirty();
+                }
+            }
+        }
+
+        // Remove generic helpers Set/Get/DeletePersistentString/Bool
 
         private static int CompareUsingCustomOrder(
             string keyA,
@@ -3293,23 +3339,6 @@
             }
 
             return 0 <= indexB ? 1 : string.Compare(keyA, keyB, StringComparison.OrdinalIgnoreCase);
-        }
-
-        private List<string> LoadCustomOrder(string customOrderKey)
-        {
-            try
-            {
-                string json = EditorPrefs.GetString(customOrderKey, "[]");
-                return Serializer.JsonDeserialize<List<string>>(json) ?? new List<string>();
-            }
-            catch (Exception e)
-            {
-                this.Log(
-                    $"Failed to load custom order for key '{customOrderKey}'. Using default order.",
-                    e
-                );
-                return new List<string>();
-            }
         }
 
         private static string GetNamespaceKey(Type type)
