@@ -7,7 +7,6 @@
     using System.IO;
     using System.Linq;
     using Components;
-    using Components.UnityHelpers.Editor;
 #if ODIN_INSPECTOR
     using Sirenix.OdinInspector.Editor;
 #endif
@@ -51,6 +50,7 @@
         private const string ArrowCollapsed = "►";
         private const string ArrowExpanded = "▼";
 
+        private const float DragDistanceThreshold = 5f;
         private const float DragUpdateThrottleTime = 0.05f;
         private const float DefaultOuterSplitWidth = 200f;
         private const float DefaultInnerSplitWidth = 250f;
@@ -197,7 +197,7 @@
             if (_selectedObject != null)
             {
                 string path = AssetDatabase.GetAssetPath(_selectedObject);
-                if (!string.IsNullOrEmpty(path))
+                if (!string.IsNullOrWhiteSpace(path))
                 {
                     previousObjectGuid = AssetDatabase.AssetPathToGUID(path);
                 }
@@ -214,10 +214,10 @@
             if (!string.IsNullOrWhiteSpace(previousNamespaceKey))
             {
                 namespaceIndex = _scriptableObjectTypes.FindIndex(kvp =>
-                    kvp.key == previousNamespaceKey
+                    string.Equals(kvp.key, previousNamespaceKey, StringComparison.Ordinal)
                 );
             }
-            if (namespaceIndex < 0 && _scriptableObjectTypes.Any())
+            if (namespaceIndex < 0 && 0 < _scriptableObjectTypes.Count)
             {
                 namespaceIndex = 0;
             }
@@ -225,12 +225,12 @@
             if (0 <= namespaceIndex)
             {
                 List<Type> typesInNamespace = _scriptableObjectTypes[namespaceIndex].types;
-                if (typesInNamespace.Any())
+                if (0 < typesInNamespace.Count)
                 {
                     if (!string.IsNullOrWhiteSpace(previousTypeName))
                     {
                         _selectedType = typesInNamespace.FirstOrDefault(t =>
-                            t.Name == previousTypeName
+                            string.Equals(t.Name, previousTypeName, StringComparison.Ordinal)
                         );
                     }
 
@@ -250,7 +250,7 @@
             if (
                 _selectedType != null
                 && !string.IsNullOrWhiteSpace(previousObjectGuid)
-                && _selectedObjects.Any()
+                && 0 < _selectedObjects.Count
             )
             {
                 _selectedObject = _selectedObjects.Find(obj =>
@@ -261,7 +261,7 @@
                     }
 
                     string path = AssetDatabase.GetAssetPath(obj);
-                    return !string.IsNullOrEmpty(path)
+                    return !string.IsNullOrWhiteSpace(path)
                         && string.Equals(
                             AssetDatabase.AssetPathToGUID(path),
                             previousObjectGuid,
@@ -336,9 +336,9 @@
 
             string[] guids = AssetDatabase.FindAssets($"t:{nameof(DataVisualizerSettings)}");
 
-            if (guids.Length > 0)
+            if (0 < guids.Length)
             {
-                if (guids.Length > 1)
+                if (1 < guids.Length)
                 {
                     this.LogWarn(
                         $"Multiple DataVisualizerSettings assets found ({guids.Length}). Using the first one."
@@ -369,7 +369,7 @@
                 settings._dataFolderPath = DataVisualizerSettings.DefaultDataFolderPath;
 
                 string dir = Path.GetDirectoryName(SettingsDefaultPath);
-                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                if (!string.IsNullOrWhiteSpace(dir) && !Directory.Exists(dir))
                 {
                     Directory.CreateDirectory(dir);
                 }
@@ -462,7 +462,7 @@
             if (!string.IsNullOrWhiteSpace(savedNamespaceKey))
             {
                 namespaceIndex = _scriptableObjectTypes.FindIndex(kvp =>
-                    kvp.key == savedNamespaceKey
+                    string.Equals(kvp.key, savedNamespaceKey, StringComparison.Ordinal)
                 );
             }
 
@@ -471,10 +471,11 @@
                 selectedNamespaceKey = savedNamespaceKey;
                 typesInNamespace = _scriptableObjectTypes[namespaceIndex].types;
             }
-            else if (_scriptableObjectTypes.Any())
+            else if (0 < _scriptableObjectTypes.Count)
             {
-                selectedNamespaceKey = _scriptableObjectTypes[0].key;
-                typesInNamespace = _scriptableObjectTypes[0].types;
+                (string key, List<Type> types) types = _scriptableObjectTypes[0];
+                selectedNamespaceKey = types.key;
+                typesInNamespace = types.types;
             }
             else
             {
@@ -493,7 +494,9 @@
 
             if (!string.IsNullOrWhiteSpace(savedTypeName))
             {
-                selectedType = typesInNamespace.Find(t => t.Name == savedTypeName);
+                selectedType = typesInNamespace.Find(t =>
+                    string.Equals(t.Name, savedTypeName, StringComparison.Ordinal)
+                );
             }
 
             selectedType ??= typesInNamespace[0];
@@ -563,7 +566,7 @@
                 });
             }
 
-            if (objectToSelect == null && _selectedObjects.Count > 0)
+            if (objectToSelect == null && 0 < _selectedObjects.Count)
             {
                 objectToSelect = _selectedObjects[0];
             }
@@ -642,19 +645,16 @@
             };
             root.Add(headerRow);
 
-            var settingsButton = new Button(() =>
+            Button settingsButton = new(() =>
             {
-                // Store current persistence mode *before* opening popup
                 bool wasUsingEditorPrefs = _settings.UseEditorPrefsForState;
-                // Show the modal window, passing settings and the callback
-                var popup = CreateInstance<DataVisualizerSettingsPopup>();
+                DataVisualizerSettingsPopup popup = CreateInstance<DataVisualizerSettingsPopup>();
                 popup.titleContent = new GUIContent("Data Visualizer Settings");
-                popup._settings = _settings; // Pass settings from main window
-                popup._onCloseCallback = () => HandleSettingsPopupClosed(wasUsingEditorPrefs); // Pass callback
+                popup._settings = _settings;
+                popup._onCloseCallback = () => HandleSettingsPopupClosed(wasUsingEditorPrefs);
                 popup.minSize = new Vector2(370, 130);
                 popup.maxSize = new Vector2(370, 130);
-                popup.ShowModal(); // Call ShowModal() on the instance FROM the parent.
-                //
+                popup.ShowModal();
             })
             {
                 text = "…",
@@ -742,36 +742,22 @@
 
         private void HandleSettingsPopupClosed(bool previousModeWasEditorPrefs)
         {
-            Debug.Log("Settings popup closed. Checking for changes.");
-
-            // Settings might have been modified, so save the asset now.
             if (_settings != null && EditorUtility.IsDirty(_settings))
             {
-                Debug.Log("Saving dirty settings asset...");
                 AssetDatabase.SaveAssets();
             }
 
-            // Check if the persistence mode was toggled
-            bool migrationNeeded = (
-                _settings != null && previousModeWasEditorPrefs != _settings.UseEditorPrefsForState
-            );
+            bool migrationNeeded =
+                _settings != null && previousModeWasEditorPrefs != _settings.UseEditorPrefsForState;
 
             if (migrationNeeded)
             {
-                Debug.Log("Persistence mode changed, performing migration...");
-                MigratePersistenceState(!_settings.UseEditorPrefsForState); // Pass TRUE if NEW mode is Settings Object
-                // Save again AFTER migration if migrating TO settings object
+                MigratePersistenceState(!_settings.UseEditorPrefsForState);
                 if (!_settings.UseEditorPrefsForState)
                 {
-                    // MarkSettingsDirty(); // MigratePersistenceState should handle this
                     AssetDatabase.SaveAssets();
                 }
             }
-
-            // Optional: Trigger a full refresh if certain settings were changed that
-            // require immediate UI update beyond what happens automatically via saves.
-            // For now, assume the AssetModificationProcessor handles necessary refreshes on save.
-            // ScheduleRefresh(); // Uncomment if you need to force refresh after *any* setting change
         }
 
         private VisualElement CreateNamespaceColumn()
@@ -1012,23 +998,6 @@
             }
         }
 
-        private void ToggleSettingsPopup()
-        {
-            if (_settingsPopup == null)
-            {
-                return;
-            }
-
-            if (_settingsPopup.style.display == DisplayStyle.None && _settings != null)
-            {
-                _dataFolderPathDisplay.text = _settings.DataFolderPath;
-            }
-            _settingsPopup.style.display =
-                _settingsPopup.style.display == DisplayStyle.None
-                    ? DisplayStyle.Flex
-                    : DisplayStyle.None;
-        }
-
 #if ODIN_INSPECTOR
         private void HandleOdinPropertyValueChanged(InspectorProperty property, int selectionIndex)
         {
@@ -1047,7 +1016,11 @@
             }
 
             const string titleFieldName = nameof(BaseDataObject._title);
-            bool titlePotentiallyChanged = property.Name == titleFieldName;
+            bool titlePotentiallyChanged = string.Equals(
+                property.Name,
+                titleFieldName,
+                StringComparison.Ordinal
+            );
 
             if (titlePotentiallyChanged)
             {
@@ -1155,7 +1128,7 @@
             };
             _settingsPopup.Add(closeButton);
 
-            var prefsToggleContainer = new VisualElement
+            VisualElement prefsToggleContainer = new()
             {
                 style =
                 {
@@ -1166,7 +1139,7 @@
             };
             _settingsPopup.Add(prefsToggleContainer);
 
-            var prefsToggle = new Toggle("Use EditorPrefs for State:")
+            Toggle prefsToggle = new("Use EditorPrefs for State:")
             {
                 value = _settings.UseEditorPrefsForState,
                 tooltip =
@@ -1176,31 +1149,16 @@
             {
                 if (_settings != null)
                 {
-                    bool migratingToSettingsObject = !evt.newValue; // Are we switching TO settings object mode?
-                    bool previousModeWasEditorPrefs = _settings.UseEditorPrefsForState; // Get state BEFORE changing it
-
-                    // 1. Update the flag
+                    bool migratingToSettingsObject = !evt.newValue;
+                    bool previousModeWasEditorPrefs = _settings.UseEditorPrefsForState;
                     _settings.UseEditorPrefsForState = evt.newValue;
-                    Debug.Log(
-                        $"Persistence mode changed to: {(_settings.UseEditorPrefsForState ? "EditorPrefs" : "Settings Object")}"
-                    );
-
-                    // 2. Perform Migration IF the mode actually changed
                     if (previousModeWasEditorPrefs != evt.newValue)
                     {
                         MigratePersistenceState(migratingToSettingsObject);
                     }
 
-                    // 3. Mark settings dirty (flag changed, and maybe data if migrated TO settings)
                     MarkSettingsDirty();
-
-                    // 4. Save the settings asset immediately to persist the flag change and migrated data
                     AssetDatabase.SaveAssets();
-
-                    Debug.Log("Persistence mode change and migration (if needed) complete.");
-                    // Optional: Add info telling user a restart might be needed for full effect,
-                    // although reading should adapt immediately based on the new flag value.
-                    // EditorUtility.DisplayDialog("Persistence Changed", "Persistence mode updated. Some changes might require reopening the window.", "OK");
                 }
             });
             prefsToggleContainer.Add(prefsToggle);
@@ -1265,6 +1223,10 @@
 
                 namespaceGroupItem.AddToClassList(NamespaceItemClass);
                 namespaceGroupItem.userData = key;
+                if (types.Count == 0)
+                {
+                    namespaceGroupItem.AddToClassList("namespace-group-item--empty");
+                }
                 _namespaceListContainer.Add(namespaceGroupItem);
                 namespaceGroupItem.RegisterCallback<PointerDownEvent>(OnNamespacePointerDown);
 
@@ -1315,7 +1277,7 @@
                     if (
                         associatedIndicator != null
                         && associatedTypesContainer != null
-                        && !string.IsNullOrEmpty(nsKey)
+                        && !string.IsNullOrWhiteSpace(nsKey)
                     )
                     {
                         bool currentlyCollapsed =
@@ -1335,12 +1297,12 @@
 
                 foreach (Type type in types)
                 {
-                    bool hasObjects = AssetDatabase.FindAssets($"t:{type.Name}").Length > 0;
-
                     VisualElement typeItem = new()
                     {
                         name = $"type-item-{type.Name}",
                         userData = type,
+                        pickingMode = PickingMode.Position,
+                        focusable = true,
                     };
 
                     typeItem.AddToClassList(TypeItemClass);
@@ -1348,44 +1310,34 @@
                     typeLabel.AddToClassList(TypeLabelClass);
                     typeItem.Add(typeLabel);
 
-                    if (hasObjects)
+                    typeItem.RegisterCallback<PointerDownEvent>(OnTypePointerDown);
+                    typeItem.RegisterCallback<PointerUpEvent>(evt =>
                     {
-                        typeItem.RegisterCallback<PointerDownEvent>(OnTypePointerDown);
-                        typeItem.RegisterCallback<PointerUpEvent>(evt =>
+                        if (_isDragging || evt.button != 0)
                         {
-                            if (_isDragging || evt.button != 0)
-                            {
-                                return;
-                            }
+                            return;
+                        }
 
-                            if (typeItem.userData is not Type clickedType)
-                            {
-                                return;
-                            }
+                        if (typeItem.userData is not Type clickedType)
+                        {
+                            return;
+                        }
 
-                            _selectedTypeElement?.RemoveFromClassList("selected");
-                            _selectedType = clickedType;
-                            _selectedTypeElement = typeItem;
-                            _selectedTypeElement.AddToClassList("selected");
-                            SaveNamespaceAndTypeSelectionState(
-                                GetNamespaceKey(_selectedType),
-                                _selectedType.Name
-                            );
+                        _selectedTypeElement?.RemoveFromClassList("selected");
+                        _selectedType = clickedType;
+                        _selectedTypeElement = typeItem;
+                        _selectedTypeElement.AddToClassList("selected");
+                        SaveNamespaceAndTypeSelectionState(
+                            GetNamespaceKey(_selectedType),
+                            _selectedType.Name
+                        );
 
-                            LoadObjectTypes(clickedType);
-                            BaseDataObject objectToSelect = DetermineObjectToAutoSelect();
-                            BuildObjectsView();
-                            SelectObject(objectToSelect);
-                            evt.StopPropagation();
-                        });
-                    }
-                    else
-                    {
-                        typeItem.AddToClassList("type-item--disabled");
-                        typeItem.pickingMode = PickingMode.Ignore;
-                        typeItem.focusable = false;
-                    }
-
+                        LoadObjectTypes(clickedType);
+                        BaseDataObject objectToSelect = DetermineObjectToAutoSelect();
+                        BuildObjectsView();
+                        SelectObject(objectToSelect);
+                        evt.StopPropagation();
+                    });
                     typesContainer.Add(typeItem);
                 }
             }
@@ -1401,6 +1353,18 @@
             _objectListContainer.Clear();
             _objectVisualElementMap.Clear();
             _objectScrollView.scrollOffset = Vector2.zero;
+
+            if (_selectedType != null && _selectedObjects.Count == 0)
+            {
+                Label emptyLabel = new(
+                    $"No objects of type '{_selectedType.Name}' found.\nUse the '+' button above to create one."
+                )
+                {
+                    name = "empty-object-list-label",
+                };
+                emptyLabel.AddToClassList("empty-object-list-label");
+                _objectListContainer.Add(emptyLabel);
+            }
 
             foreach (BaseDataObject dataObject in _selectedObjects)
             {
@@ -1483,7 +1447,7 @@
                 _objectVisualElementMap[dataObject] = objectItemRow;
                 _objectListContainer.Add(objectItemRow);
 
-                if (_selectedObject != null && _selectedObject == dataObject)
+                if (_selectedObject == dataObject)
                 {
                     objectItemRow.AddToClassList("selected");
                     _selectedElement = objectItemRow;
@@ -1603,11 +1567,15 @@
                     bool enterChildren = true;
                     const string titleFieldName = nameof(BaseDataObject._title);
 
-                    if (serializedProperty.NextVisible(enterChildren))
+                    if (serializedProperty.NextVisible(true))
                     {
                         using (
                             new EditorGUI.DisabledScope(
-                                "m_Script" == serializedProperty.propertyPath
+                                string.Equals(
+                                    "m_Script",
+                                    serializedProperty.propertyPath,
+                                    StringComparison.Ordinal
+                                )
                             )
                         )
                         {
@@ -1684,7 +1652,7 @@
             }
 
             string path = AssetDatabase.GetAssetPath(objectToDelete);
-            if (string.IsNullOrEmpty(path))
+            if (string.IsNullOrWhiteSpace(path))
             {
                 this.LogError(
                     $"Could not find asset path for '{objectToDelete.name}'. Cannot delete."
@@ -1698,15 +1666,17 @@
             if (deleted)
             {
                 AssetDatabase.Refresh();
-
                 visualElement?.RemoveFromHierarchy();
-
-                if (_selectedObject != objectToDelete)
+                foreach (BaseDataObject dataObject in _selectedObjects)
                 {
-                    return;
+                    if (dataObject != null)
+                    {
+                        SelectObject(dataObject);
+                        return;
+                    }
                 }
 
-                SelectObject(_selectedObjects.Any() ? _selectedObjects[0] : null);
+                SelectObject(null);
             }
             else
             {
@@ -1725,7 +1695,7 @@
             }
 
             string currentPath = AssetDatabase.GetAssetPath(objectToRename);
-            if (string.IsNullOrEmpty(currentPath))
+            if (string.IsNullOrWhiteSpace(currentPath))
             {
                 EditorUtility.DisplayDialog(
                     "Error",
@@ -1762,10 +1732,12 @@
         private void CloneObject(BaseDataObject originalObject)
         {
             if (originalObject == null)
+            {
                 return;
+            }
 
             string originalPath = AssetDatabase.GetAssetPath(originalObject);
-            if (string.IsNullOrEmpty(originalPath))
+            if (string.IsNullOrWhiteSpace(originalPath))
             {
                 EditorUtility.DisplayDialog(
                     "Error",
@@ -1819,7 +1791,7 @@
                 if (cloneAsset != null)
                 {
                     int originalIndex = _selectedObjects.IndexOf(originalObject);
-                    if (originalIndex >= 0)
+                    if (0 <= originalIndex)
                     {
                         _selectedObjects.Insert(originalIndex + 1, cloneAsset);
                     }
@@ -1851,7 +1823,7 @@
 
         private BaseDataObject DetermineObjectToAutoSelect()
         {
-            if (!_selectedObjects.Any() || _selectedType == null)
+            if (_selectedObjects.Count == 0 || _selectedType == null)
             {
                 return null;
             }
@@ -1869,7 +1841,7 @@
                     }
 
                     string path = AssetDatabase.GetAssetPath(obj);
-                    return !string.IsNullOrEmpty(path)
+                    return !string.IsNullOrWhiteSpace(path)
                         && string.Equals(
                             AssetDatabase.AssetPathToGUID(path),
                             savedObjectGuid,
@@ -1918,31 +1890,38 @@
         private void SaveNamespaceAndTypeSelectionState(string namespaceKey, string typeName)
         {
             if (_settings == null)
+            {
                 return;
+            }
+
             try
             {
-                if (!string.IsNullOrEmpty(namespaceKey))
+                if (string.IsNullOrWhiteSpace(namespaceKey))
                 {
-                    SetPersistentString(LastSelectedNamespaceKey, namespaceKey);
-                    if (!string.IsNullOrEmpty(typeName))
+                    return;
+                }
+
+                SetPersistentString(LastSelectedNamespaceKey, namespaceKey);
+                if (string.IsNullOrWhiteSpace(typeName))
+                {
+                    return;
+                }
+
+                SetPersistentString(LastSelectedTypeFormat + namespaceKey, typeName);
+                string objPrefsKey = string.Format(LastSelectedObjectFormat, typeName);
+                if (_settings.UseEditorPrefsForState)
+                {
+                    DeletePersistentKey(objPrefsKey);
+                }
+                else
+                {
+                    if (_settings.InternalLastSelectedObjectGuid == null)
                     {
-                        // Pass key for context if helper needs it for EditorPrefs mode
-                        SetPersistentString(LastSelectedTypeFormat + namespaceKey, typeName);
-                        // Clear last selected object (use appropriate method based on mode)
-                        string objPrefsKey = string.Format(LastSelectedObjectFormat, typeName);
-                        if (_settings.UseEditorPrefsForState)
-                        {
-                            DeletePersistentKey(objPrefsKey);
-                        }
-                        else
-                        {
-                            if (_settings.InternalLastSelectedObjectGuid != null)
-                            {
-                                _settings.InternalLastSelectedObjectGuid = null; // Clear setting field
-                                MarkSettingsDirty();
-                            }
-                        }
+                        return;
                     }
+
+                    _settings.InternalLastSelectedObjectGuid = null;
+                    MarkSettingsDirty();
                 }
             }
             catch (Exception e)
@@ -1993,7 +1972,7 @@
             foreach (string assetGuid in AssetDatabase.FindAssets($"t:{type.Name}"))
             {
                 string assetPath = AssetDatabase.GUIDToAssetPath(assetGuid);
-                if (string.IsNullOrEmpty(assetPath))
+                if (string.IsNullOrWhiteSpace(assetPath))
                 {
                     continue;
                 }
@@ -2050,7 +2029,9 @@
             }
 
             if (_settings == null)
+            {
                 _settings = LoadOrCreateSettings();
+            }
 
             List<string> customNamespaceOrder;
             if (_settings.UseEditorPrefsForState)
@@ -2066,7 +2047,7 @@
             );
             foreach ((string key, List<Type> types) in _scriptableObjectTypes)
             {
-                List<string> customTypeNameOrder; // = LoadCustomOrder($"{CustomTypeOrderKey}.{key}");
+                List<string> customTypeNameOrder;
                 if (_settings.UseEditorPrefsForState)
                 {
                     string prefsKey = string.Format(CustomTypeOrderKeyFormat, key);
@@ -2074,8 +2055,10 @@
                 }
                 else
                 {
-                    // Find the order list within the settings object
-                    var orderEntry = _settings.InternalTypeOrders.Find(o => o.NamespaceKey == key);
+                    DataVisualizerSettings.NamespaceTypeOrder orderEntry =
+                        _settings.InternalTypeOrders.Find(o =>
+                            string.Equals(o.NamespaceKey, key, StringComparison.Ordinal)
+                        );
                     customTypeNameOrder = orderEntry?.TypeNames ?? new List<string>();
                 }
                 types.Sort(
@@ -2221,7 +2204,7 @@
 
             if (!_isDragging)
             {
-                if (Vector2.Distance(evt.position, _dragStartPosition) > 5.0f)
+                if (DragDistanceThreshold < Vector2.Distance(evt.position, _dragStartPosition))
                 {
                     _isDragging = true;
                     string dragText = _draggedData switch
@@ -2346,7 +2329,9 @@
             _draggedElement.style.opacity = 1.0f;
             _namespaceListContainer.Insert(targetIndex, _draggedElement);
 
-            int oldDataIndex = _scriptableObjectTypes.FindIndex(kvp => kvp.key == draggedKey);
+            int oldDataIndex = _scriptableObjectTypes.FindIndex(kvp =>
+                string.Equals(kvp.key, draggedKey, StringComparison.Ordinal)
+            );
             if (0 <= oldDataIndex)
             {
                 (string key, List<Type> types) draggedItem = _scriptableObjectTypes[oldDataIndex];
@@ -2404,7 +2389,6 @@
             }
             else
             {
-                // Update settings object directly (check for actual change)
                 if (!_settings.InternalNamespaceOrder.SequenceEqual(newNamespaceOrder))
                 {
                     _settings.InternalNamespaceOrder = newNamespaceOrder;
@@ -2447,7 +2431,7 @@
                 _draggedElement == null
                 || _draggedData is not Type draggedType
                 || typesContainer == null
-                || string.IsNullOrEmpty(namespaceKey)
+                || string.IsNullOrWhiteSpace(namespaceKey)
             )
             {
                 return;
@@ -2468,7 +2452,9 @@
             _draggedElement.style.opacity = 1.0f;
             typesContainer.Insert(targetIndex, _draggedElement);
 
-            int namespaceIndex = _scriptableObjectTypes.FindIndex(kvp => kvp.key == namespaceKey);
+            int namespaceIndex = _scriptableObjectTypes.FindIndex(kvp =>
+                string.Equals(kvp.key, namespaceKey, StringComparison.Ordinal)
+            );
             if (0 <= namespaceIndex)
             {
                 List<Type> typesList = _scriptableObjectTypes[namespaceIndex].types;
@@ -2493,7 +2479,6 @@
             }
 
             List<string> newTypeNameOrder = orderedTypes.Select(t => t.Name).ToList();
-
             if (_settings.UseEditorPrefsForState)
             {
                 string prefsKey = string.Format(CustomTypeOrderKeyFormat, namespaceKey);
@@ -2512,11 +2497,9 @@
             }
             else
             {
-                // Update settings object directly
-                var orderEntry = _settings.GetOrCreateTypeOrderList(namespaceKey);
+                List<string> orderEntry = _settings.GetOrCreateTypeOrderList(namespaceKey);
                 if (!orderEntry.SequenceEqual(newTypeNameOrder))
                 {
-                    // GetOrCreate returns the list, just clear and add new items
                     orderEntry.Clear();
                     orderEntry.AddRange(newTypeNameOrder);
                     MarkSettingsDirty();
@@ -2856,7 +2839,7 @@
                 }
             }
 
-            if (dirtyObjects.Count > 0)
+            if (0 < dirtyObjects.Count)
             {
                 AssetDatabase.SaveAssets();
             }
@@ -2889,115 +2872,80 @@
             _activeDragType = DragType.None;
         }
 
-        // --- Persistence Helpers ---
-        // ... (Add this alongside SetPersistentString, GetPersistentString, etc.) ...
-
         private void DeletePersistentKey(string key)
         {
             if (_settings == null)
-                return; // Cannot operate without settings
+            {
+                return;
+            }
 
             if (_settings.UseEditorPrefsForState)
             {
-                // Use standard EditorPrefs delete
                 EditorPrefs.DeleteKey(key);
-                // Debug.Log($"[EditorPrefs] Deleted key: {key}");
             }
             else
             {
-                // Delete from the _settings ScriptableObject fields
                 bool changed = false;
 
-                // Map generic keys to specific fields in _settings object and clear them
-                if (key == LastSelectedNamespaceKey)
+                if (string.Equals(key, LastSelectedNamespaceKey, StringComparison.Ordinal))
                 {
                     if (_settings.InternalLastSelectedNamespaceKey != null)
-                    { // Check if change needed
+                    {
                         _settings.InternalLastSelectedNamespaceKey = null;
                         changed = true;
                     }
                 }
-                // Key format for type requires namespace: PrefsPrefix + "LastSelectedType." + namespaceKey
                 else if (
                     key.StartsWith(
-                        LastSelectedTypeFormat.Substring(0, LastSelectedTypeFormat.Length - 3)
+                        LastSelectedTypeFormat.Substring(0, LastSelectedTypeFormat.Length - 3),
+                        StringComparison.Ordinal
                     )
-                ) // Check prefix
+                )
                 {
-                    // Type name is saved directly, just clear the single field
                     if (_settings.InternalLastSelectedTypeName != null)
                     {
                         _settings.InternalLastSelectedTypeName = null;
                         changed = true;
                     }
                 }
-                // Key format for object requires type name: PrefsPrefix + "LastSelectedObject." + typeName
                 else if (
                     key.StartsWith(
-                        LastSelectedObjectFormat.Substring(0, LastSelectedObjectFormat.Length - 3)
+                        LastSelectedObjectFormat.Substring(0, LastSelectedObjectFormat.Length - 3),
+                        StringComparison.Ordinal
                     )
-                ) // Check prefix
+                )
                 {
-                    // Object GUID is saved directly, clear the single field
                     if (_settings.InternalLastSelectedObjectGuid != null)
                     {
                         _settings.InternalLastSelectedObjectGuid = null;
                         changed = true;
                     }
                 }
-                // Key format for collapse state requires namespace: PrefsPrefix + "NamespaceCollapsed." + namespaceKey
                 else if (
                     key.StartsWith(
                         NamespaceCollapsedStateFormat.Substring(
                             0,
                             NamespaceCollapsedStateFormat.Length - 3
-                        )
+                        ),
+                        StringComparison.Ordinal
                     )
                 )
                 {
-                    // Extract namespace key from the EditorPrefs-style key
                     string namespaceKey = key.Substring(NamespaceCollapsedStateFormat.Length - 2);
-                    // Find the entry and remove it (or set to default)
+
                     int removedIndex = _settings.InternalNamespaceCollapseStates.FindIndex(o =>
-                        o.NamespaceKey == namespaceKey
+                        string.Equals(o.NamespaceKey, namespaceKey, StringComparison.Ordinal)
                     );
                     if (removedIndex != -1)
                     {
                         _settings.InternalNamespaceCollapseStates.RemoveAt(removedIndex);
-                        changed = true; // State removed counts as change
-                        // Debug.Log($"[SettingsObj] Removed collapse state for key: {namespaceKey}");
+                        changed = true;
                     }
-                    // Alternatively, set to default:
-                    // var stateEntry = _settings.InternalNamespaceCollapseStates.Find(o => o.NamespaceKey == namespaceKey);
-                    // if(stateEntry != null && stateEntry.IsCollapsed != false) { // If exists and not already default
-                    //      stateEntry.IsCollapsed = false; // Set to default (expanded)
-                    //      changed = true;
-                    // }
                 }
-                // --- Add logic for other keys if needed (e.g., List keys like NamespaceOrder) ---
-                // else if (key == CustomNamespaceOrderKey) { // If handling this key
-                //     if (_settings.InternalNamespaceOrder.Count > 0) {
-                //         _settings.InternalNamespaceOrder.Clear();
-                //         changed = true;
-                //     }
-                // }
-                // else if (key.StartsWith(CustomTypeOrderKeyFormat.Substring(0, CustomTypeOrderKeyFormat.Length - 3))) { // If handling this key
-                //     string namespaceKey = key.Substring(CustomTypeOrderKeyFormat.Length - 2);
-                //     int removedIndex = _settings.InternalTypeOrders.FindIndex(o => o.NamespaceKey == namespaceKey);
-                //     if (removedIndex != -1) {
-                //         _settings.InternalTypeOrders.RemoveAt(removedIndex);
-                //         changed = true;
-                //     }
-                // }
 
-
-                // If any field was changed (cleared), mark the settings asset dirty
                 if (changed)
                 {
-                    Debug.Log($"[SettingsObj] Cleared field corresponding to key: {key}");
                     MarkSettingsDirty();
-                    // Optionally save immediately?
-                    // AssetDatabase.SaveAssets();
                 }
             }
         }
@@ -3011,8 +2959,7 @@
             else if (_settings != null)
             {
                 bool changed = false;
-                // Map generic keys to specific fields in _settings object
-                if (key == LastSelectedNamespaceKey)
+                if (string.Equals(key, LastSelectedNamespaceKey, StringComparison.Ordinal))
                 {
                     if (_settings.InternalLastSelectedNamespaceKey != value)
                     {
@@ -3022,11 +2969,11 @@
                 }
                 else if (
                     key.StartsWith(
-                        LastSelectedTypeFormat.Substring(0, LastSelectedTypeFormat.Length - 3)
+                        LastSelectedTypeFormat.Substring(0, LastSelectedTypeFormat.Length - 3),
+                        StringComparison.Ordinal
                     )
                 )
-                { // Check prefix
-                    // Type name is saved directly now, key isn't needed for settings object
+                {
                     if (_settings.InternalLastSelectedTypeName != value)
                     {
                         _settings.InternalLastSelectedTypeName = value;
@@ -3035,21 +2982,22 @@
                 }
                 else if (
                     key.StartsWith(
-                        LastSelectedObjectFormat.Substring(0, LastSelectedObjectFormat.Length - 3)
+                        LastSelectedObjectFormat.Substring(0, LastSelectedObjectFormat.Length - 3),
+                        StringComparison.Ordinal
                     )
                 )
-                { // Check prefix
-                    // Object GUID is saved directly now
+                {
                     if (_settings.InternalLastSelectedObjectGuid != value)
                     {
                         _settings.InternalLastSelectedObjectGuid = value;
                         changed = true;
                     }
                 }
-                // Add other key mappings if needed
 
                 if (changed)
+                {
                     MarkSettingsDirty();
+                }
             }
         }
 
@@ -3059,38 +3007,39 @@
             {
                 return EditorPrefs.GetString(key, defaultValue);
             }
-            else if (_settings != null)
+
+            if (_settings == null)
             {
-                // Map generic keys to specific fields in _settings object
-                if (key == LastSelectedNamespaceKey)
-                {
-                    return string.IsNullOrEmpty(_settings.InternalLastSelectedNamespaceKey)
-                        ? defaultValue
-                        : _settings.InternalLastSelectedNamespaceKey;
-                }
-                else if (
-                    key.StartsWith(
-                        LastSelectedTypeFormat.Substring(0, LastSelectedTypeFormat.Length - 3)
-                    )
+                return defaultValue;
+            }
+
+            if (string.Equals(key, LastSelectedNamespaceKey, StringComparison.Ordinal))
+            {
+                return string.IsNullOrWhiteSpace(_settings.InternalLastSelectedNamespaceKey)
+                    ? defaultValue
+                    : _settings.InternalLastSelectedNamespaceKey;
+            }
+            if (
+                key.StartsWith(
+                    LastSelectedTypeFormat.Substring(0, LastSelectedTypeFormat.Length - 3),
+                    StringComparison.Ordinal
                 )
-                {
-                    // Type name stored directly
-                    return string.IsNullOrEmpty(_settings.InternalLastSelectedTypeName)
-                        ? defaultValue
-                        : _settings.InternalLastSelectedTypeName;
-                }
-                else if (
-                    key.StartsWith(
-                        LastSelectedObjectFormat.Substring(0, LastSelectedObjectFormat.Length - 3)
-                    )
+            )
+            {
+                return string.IsNullOrWhiteSpace(_settings.InternalLastSelectedTypeName)
+                    ? defaultValue
+                    : _settings.InternalLastSelectedTypeName;
+            }
+            if (
+                key.StartsWith(
+                    LastSelectedObjectFormat.Substring(0, LastSelectedObjectFormat.Length - 3),
+                    StringComparison.Ordinal
                 )
-                {
-                    // Object GUID stored directly
-                    return string.IsNullOrEmpty(_settings.InternalLastSelectedObjectGuid)
-                        ? defaultValue
-                        : _settings.InternalLastSelectedObjectGuid;
-                }
-                // Add other key mappings if needed
+            )
+            {
+                return string.IsNullOrWhiteSpace(_settings.InternalLastSelectedObjectGuid)
+                    ? defaultValue
+                    : _settings.InternalLastSelectedObjectGuid;
             }
             return defaultValue;
         }
@@ -3103,26 +3052,25 @@
             }
             else if (_settings != null)
             {
-                // Handle collapse state (key contains namespace)
                 if (
                     key.StartsWith(
                         NamespaceCollapsedStateFormat.Substring(
                             0,
                             NamespaceCollapsedStateFormat.Length - 3
-                        )
+                        ),
+                        StringComparison.Ordinal
                     )
                 )
                 {
-                    // Extract namespace key from the EditorPrefs-style key
-                    string namespaceKey = key.Substring(NamespaceCollapsedStateFormat.Length - 2); // Extract key part
-                    var stateEntry = _settings.GetOrCreateCollapseState(namespaceKey);
+                    string namespaceKey = key.Substring(NamespaceCollapsedStateFormat.Length - 2);
+                    DataVisualizerSettings.NamespaceCollapseState stateEntry =
+                        _settings.GetOrCreateCollapseState(namespaceKey);
                     if (stateEntry.IsCollapsed != value)
                     {
                         stateEntry.IsCollapsed = value;
                         MarkSettingsDirty();
                     }
                 }
-                // Add other bool settings if needed
             }
         }
 
@@ -3132,92 +3080,77 @@
             {
                 return EditorPrefs.GetBool(key, defaultValue);
             }
-            else if (_settings != null)
+            if (_settings != null)
             {
-                // Handle collapse state
                 if (
                     key.StartsWith(
                         NamespaceCollapsedStateFormat.Substring(
                             0,
                             NamespaceCollapsedStateFormat.Length - 3
-                        )
+                        ),
+                        StringComparison.Ordinal
                     )
                 )
                 {
                     string namespaceKey = key.Substring(NamespaceCollapsedStateFormat.Length - 2);
-                    // Find doesn't create, use GetOrCreate helper
-                    var stateEntry = _settings.InternalNamespaceCollapseStates.Find(o =>
-                        o.NamespaceKey == namespaceKey
-                    );
-                    return stateEntry?.IsCollapsed ?? defaultValue; // Return saved value or default
+                    DataVisualizerSettings.NamespaceCollapseState stateEntry =
+                        _settings.InternalNamespaceCollapseStates.Find(o =>
+                            string.Equals(o.NamespaceKey, namespaceKey, StringComparison.Ordinal)
+                        );
+                    return stateEntry?.IsCollapsed ?? defaultValue;
                 }
             }
             return defaultValue;
         }
 
-        // Helper to mark settings dirty and save (call this after modifying _settings fields)
         private void MarkSettingsDirty()
         {
             if (_settings != null)
             {
                 EditorUtility.SetDirty(_settings);
-                // SaveAssets() might be too frequent if called every time.
-                // Consider saving only periodically or on window close/disable.
-                // For now, let the modification processor handle saving on Ctrl+S.
-                // AssetDatabase.SaveAssets();
-                // Debug.Log("Settings marked dirty.");
             }
         }
 
-        // New method to copy state between EditorPrefs and Settings Object
         private void MigratePersistenceState(bool targetIsSettingsObject)
         {
-            Debug.Log(
-                $"Migrating persistence state. Target is now: {(targetIsSettingsObject ? "Settings Object" : "EditorPrefs")}"
-            );
             if (_settings == null)
             {
-                Debug.LogError("Cannot migrate state: Settings object is null.");
+                this.LogError($"Cannot migrate state: Settings object is null.");
                 return;
             }
 
-            // We need the current list of namespaces to handle list-based settings like TypeOrder/Collapse
-            // Ensure types are loaded if possible, otherwise migration might be incomplete.
             if (_scriptableObjectTypes == null || _scriptableObjectTypes.Count == 0)
             {
-                LoadScriptableObjectTypes(); // Load if needed
+                LoadScriptableObjectTypes();
             }
-            // Still possible there are no types, handle gracefully.
             List<string> currentNamespaceKeys =
                 _scriptableObjectTypes?.Select(kvp => kvp.key).ToList() ?? new List<string>();
 
             try
             {
-                if (targetIsSettingsObject) // Migrating FROM EditorPrefs TO Settings Object
+                if (targetIsSettingsObject)
                 {
-                    // --- Simple Key/Value Pairs ---
                     _settings.InternalLastSelectedNamespaceKey = EditorPrefs.GetString(
                         LastSelectedNamespaceKey,
                         null
                     );
 
-                    // Get context keys needed to read from EditorPrefs
                     string nsKeyForTypePref = _settings.InternalLastSelectedNamespaceKey;
-                    string typeNameForObjPref = null; // Need to read type pref first
-                    if (!string.IsNullOrEmpty(nsKeyForTypePref))
+                    string typeNameForObjPref = null;
+                    if (!string.IsNullOrWhiteSpace(nsKeyForTypePref))
                     {
                         string typePrefsKey = string.Format(
                             LastSelectedTypeFormat,
                             nsKeyForTypePref
                         );
                         typeNameForObjPref = EditorPrefs.GetString(typePrefsKey, null);
-                        _settings.InternalLastSelectedTypeName = typeNameForObjPref; // Store type name
+                        _settings.InternalLastSelectedTypeName = typeNameForObjPref;
                     }
                     else
                     {
                         _settings.InternalLastSelectedTypeName = null;
                     }
-                    if (!string.IsNullOrEmpty(typeNameForObjPref))
+                    if (!string.IsNullOrWhiteSpace(typeNameForObjPref))
                     {
                         string objPrefsKey = string.Format(
                             LastSelectedObjectFormat,
@@ -3233,54 +3166,49 @@
                         _settings.InternalLastSelectedObjectGuid = null;
                     }
 
-                    // --- Lists ---
-                    // Namespace Order
                     string nsOrderJson = EditorPrefs.GetString(CustomNamespaceOrderKey, "[]");
                     _settings.InternalNamespaceOrder =
                         Serializer.JsonDeserialize<List<string>>(nsOrderJson) ?? new List<string>();
 
-                    // Type Orders
                     _settings.InternalTypeOrders =
-                        new List<DataVisualizerSettings.NamespaceTypeOrder>(); // Clear/reset
-                    foreach (string nsKey in currentNamespaceKeys)
+                        new List<DataVisualizerSettings.NamespaceTypeOrder>();
+                    foreach (string namespaceKey in currentNamespaceKeys)
                     {
-                        string typeOrderPrefsKey = string.Format(CustomTypeOrderKeyFormat, nsKey);
+                        string typeOrderPrefsKey = string.Format(
+                            CustomTypeOrderKeyFormat,
+                            namespaceKey
+                        );
                         string typeOrderJson = EditorPrefs.GetString(typeOrderPrefsKey, "[]");
                         List<string> typeNames = Serializer.JsonDeserialize<List<string>>(
                             typeOrderJson
                         );
-                        if (typeNames != null && typeNames.Count > 0)
+                        if (typeNames is { Count: > 0 })
                         {
-                            // Use helper to ensure list exists before adding
-                            var entry = _settings.GetOrCreateTypeOrderList(nsKey);
+                            List<string> entry = _settings.GetOrCreateTypeOrderList(namespaceKey);
                             entry.Clear();
                             entry.AddRange(typeNames);
                         }
                     }
 
-                    // Collapse States
                     _settings.InternalNamespaceCollapseStates =
-                        new List<DataVisualizerSettings.NamespaceCollapseState>(); // Clear/reset
-                    foreach (string nsKey in currentNamespaceKeys)
+                        new List<DataVisualizerSettings.NamespaceCollapseState>();
+                    foreach (string namespaceKey in currentNamespaceKeys)
                     {
                         string collapsePrefsKey = string.Format(
                             NamespaceCollapsedStateFormat,
-                            nsKey
+                            namespaceKey
                         );
                         if (EditorPrefs.HasKey(collapsePrefsKey))
-                        { // Only migrate if pref exists
+                        {
                             bool isCollapsed = EditorPrefs.GetBool(collapsePrefsKey, false);
-                            // Use helper to ensure entry exists before setting
-                            var entry = _settings.GetOrCreateCollapseState(nsKey);
+                            DataVisualizerSettings.NamespaceCollapseState entry =
+                                _settings.GetOrCreateCollapseState(namespaceKey);
                             entry.IsCollapsed = isCollapsed;
                         }
                     }
-                    Debug.Log("Migration FROM EditorPrefs TO Settings Object complete.");
                 }
-                else // Migrating FROM Settings Object TO EditorPrefs
+                else
                 {
-                    Debug.Log("Migrating FROM Settings Object TO EditorPrefs...");
-                    // --- Simple Key/Value Pairs ---
                     EditorPrefs.SetString(
                         LastSelectedNamespaceKey,
                         _settings.InternalLastSelectedNamespaceKey
@@ -3288,8 +3216,8 @@
 
                     string nsKeyForTypePref = _settings.InternalLastSelectedNamespaceKey;
                     string typeNameForObjPref = _settings.InternalLastSelectedTypeName;
-                    // Set type pref (use known namespace context)
-                    if (!string.IsNullOrEmpty(nsKeyForTypePref))
+
+                    if (!string.IsNullOrWhiteSpace(nsKeyForTypePref))
                     {
                         string typePrefsKey = string.Format(
                             LastSelectedTypeFormat,
@@ -3297,8 +3225,8 @@
                         );
                         EditorPrefs.SetString(typePrefsKey, typeNameForObjPref);
                     }
-                    // Set object pref (use known type name context)
-                    if (!string.IsNullOrEmpty(typeNameForObjPref))
+
+                    if (!string.IsNullOrWhiteSpace(typeNameForObjPref))
                     {
                         string objPrefsKey = string.Format(
                             LastSelectedObjectFormat,
@@ -3310,16 +3238,14 @@
                         );
                     }
 
-                    // --- Lists ---
-                    // Namespace Order
                     string nsOrderJson = Serializer.JsonStringify(
                         _settings.InternalNamespaceOrder ?? new List<string>()
                     );
                     EditorPrefs.SetString(CustomNamespaceOrderKey, nsOrderJson);
 
-                    // Type Orders (Delete old keys for namespaces not in current settings?)
-                    // For simplicity, just overwrite based on settings data.
-                    foreach (var typeOrderEntry in _settings.InternalTypeOrders)
+                    foreach (
+                        DataVisualizerSettings.NamespaceTypeOrder typeOrderEntry in _settings.InternalTypeOrders
+                    )
                     {
                         string typeOrderPrefsKey = string.Format(
                             CustomTypeOrderKeyFormat,
@@ -3331,8 +3257,9 @@
                         EditorPrefs.SetString(typeOrderPrefsKey, typeOrderJson);
                     }
 
-                    // Collapse States
-                    foreach (var collapseEntry in _settings.InternalNamespaceCollapseStates)
+                    foreach (
+                        DataVisualizerSettings.NamespaceCollapseState collapseEntry in _settings.InternalNamespaceCollapseStates
+                    )
                     {
                         string collapsePrefsKey = string.Format(
                             NamespaceCollapsedStateFormat,
@@ -3340,12 +3267,11 @@
                         );
                         EditorPrefs.SetBool(collapsePrefsKey, collapseEntry.IsCollapsed);
                     }
-                    Debug.Log("Migration FROM Settings Object TO EditorPrefs complete.");
                 }
             }
             catch (Exception e)
             {
-                Debug.LogError($"Error during persistence state migration: {e}");
+                this.LogError($"Error during persistence state migration.", e);
             }
         }
 
@@ -3366,7 +3292,7 @@
                     return -1;
             }
 
-            return indexB >= 0 ? 1 : string.Compare(keyA, keyB, StringComparison.OrdinalIgnoreCase);
+            return 0 <= indexB ? 1 : string.Compare(keyA, keyB, StringComparison.OrdinalIgnoreCase);
         }
 
         private List<string> LoadCustomOrder(string customOrderKey)

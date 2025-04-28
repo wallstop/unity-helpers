@@ -2,52 +2,46 @@
 {
     using System;
     using System.IO;
+    using Core.Extension;
     using UnityEditor;
     using UnityEngine;
     using UnityEngine.UIElements;
 
-    // For Action
-
-    public class RenameAssetPopup : EditorWindow
+    public sealed class RenameAssetPopup : EditorWindow
     {
         private string _originalPath;
         private string _originalNameWithoutExtension;
-        private Action<bool> _onCompleteCallback; // Action<wasSuccessful>
+        private Action<bool> _onCompleteCallback;
         private TextField _nameTextField;
         private Label _errorLabel;
 
-        // Method to open the window
         public static void ShowWindow(string assetPath, Action<bool> onComplete)
         {
-            RenameAssetPopup window = GetWindow<RenameAssetPopup>(true, "Rename Asset", true); // Create modal, utility window
+            RenameAssetPopup window = GetWindow<RenameAssetPopup>(true, "Rename Asset", true);
             window.minSize = new Vector2(350, 100);
             window.maxSize = new Vector2(350, 100);
             window._originalPath = assetPath;
             window._originalNameWithoutExtension = Path.GetFileNameWithoutExtension(assetPath);
             window._onCompleteCallback = onComplete;
-            // window.ShowModalUtility(); // ShowUtility opens non-modal, use GetWindow(utility=true) for modal-like focus
+            window.ShowModalUtility();
         }
 
         public void CreateGUI()
         {
             VisualElement root = rootVisualElement;
 
-            // Instructions
             root.Add(
                 new Label("Enter new name (without extension):") { style = { marginBottom = 5 } }
             );
 
-            // Text Field
             _nameTextField = new TextField
             {
                 value = _originalNameWithoutExtension,
                 style = { marginBottom = 5 },
             };
-            // Select text initially for easy replacement
             _nameTextField.schedule.Execute(() => _nameTextField.SelectAll()).ExecuteLater(50);
             root.Add(_nameTextField);
 
-            // Error Label
             _errorLabel = new Label
             {
                 name = "error-label",
@@ -60,8 +54,7 @@
             };
             root.Add(_errorLabel);
 
-            // Buttons Container
-            var buttonContainer = new VisualElement
+            VisualElement buttonContainer = new()
             {
                 style =
                 {
@@ -72,28 +65,24 @@
             };
             root.Add(buttonContainer);
 
-            // Cancel Button
-            var cancelButton = new Button(Cancel) { text = "Cancel", style = { marginRight = 5 } };
+            Button cancelButton = new(Cancel) { text = "Cancel", style = { marginRight = 5 } };
             buttonContainer.Add(cancelButton);
 
-            // Rename Button
-            var renameButton = new Button(ConfirmRename) { text = "Rename" };
+            Button renameButton = new(ConfirmRename) { text = "Rename" };
             buttonContainer.Add(renameButton);
         }
 
         private void ConfirmRename()
         {
-            _errorLabel.style.display = DisplayStyle.None; // Hide previous error
+            _errorLabel.style.display = DisplayStyle.None;
             string newName = _nameTextField.value;
 
-            // --- Validation ---
             if (string.IsNullOrWhiteSpace(newName))
             {
                 ShowError("Name cannot be empty.");
                 return;
             }
-            // Check for invalid filename characters (basic check)
-            if (newName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+            if (0 <= newName.IndexOfAny(Path.GetInvalidFileNameChars()))
             {
                 ShowError("Name contains invalid characters.");
                 return;
@@ -103,37 +92,30 @@
                 ShowError("New name is the same as the old name.");
                 return;
             }
-            // --- End Validation ---
-
-
-            // --- Check Uniqueness ---
             string directory = Path.GetDirectoryName(_originalPath);
+            if (string.IsNullOrWhiteSpace(directory))
+            {
+                ShowError("Unable to determine directory.");
+                return;
+            }
             string newPath = Path.Combine(directory, newName + Path.GetExtension(_originalPath))
-                .Replace('\\', '/'); // Add extension back
+                .Replace('\\', '/');
 
             string validationError = AssetDatabase.ValidateMoveAsset(_originalPath, newPath);
-
-            if (!string.IsNullOrEmpty(validationError))
+            if (!string.IsNullOrWhiteSpace(validationError))
             {
-                // Name collision or other validation error
                 ShowError($"Invalid name: {validationError}");
                 return;
             }
 
-            // --- Perform Rename ---
             string error = AssetDatabase.RenameAsset(_originalPath, newName);
-            if (string.IsNullOrEmpty(error)) // Rename successful if error string is empty/null
+            if (string.IsNullOrWhiteSpace(error))
             {
-                Debug.Log($"Asset renamed successfully to: {newName}");
-                // AssetDatabase.SaveAssets(); // Good practice to save after rename
-                // AssetDatabase.Refresh(); // Refresh might be needed
-
-                // Close window and invoke callback
                 ClosePopup(true);
             }
             else
             {
-                Debug.LogError($"Asset rename failed: {error}");
+                this.LogError($"Asset rename failed: {error}");
                 ShowError($"Failed to rename: {error}");
             }
         }
@@ -151,15 +133,8 @@
 
         private void ClosePopup(bool success)
         {
-            _onCompleteCallback?.Invoke(success); // Notify main window
-            this.Close(); // Close this popup window
-        }
-
-        // Ensure callback is invoked even if window is closed manually
-        private void OnDestroy()
-        {
-            // Check if callback exists and maybe hasn't been called yet? Difficult to track perfectly.
-            // Usually, just letting it close is fine. Callback is primarily for success/cancel paths.
+            _onCompleteCallback?.Invoke(success);
+            Close();
         }
     }
 }

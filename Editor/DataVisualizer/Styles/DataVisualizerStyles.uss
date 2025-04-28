@@ -140,12 +140,23 @@
 }
 
 .delete-button {
-    /* Use !important cautiously if needed to override default button styles */
-    color: rgb(217, 83, 79) !important; /* A common 'danger' red */
+    color: rgb(217, 83, 79) !important; 
     -unity-font-style: bold;
 }
 
 .delete-button:hover {
-    color: rgb(200, 60, 56) !important; /* Darker red on hover */
-    background-color: rgba(217, 83, 79, 0.1); /* Slight red background on hover */
+    color: rgb(200, 60, 56) !important; 
+    background-color: rgba(217, 83, 79, 0.1); 
+}
+
+.namespace-group-item--empty {
+    opacity: 0.6;
+}
+
+.empty-object-list-label {
+    color: grey;
+    white-space: normal;
+    margin-top: 20px;
+    padding: 5px;
+    font-size: 11px;
 }
