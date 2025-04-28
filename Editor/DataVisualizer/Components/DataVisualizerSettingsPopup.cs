@@ -13,17 +13,6 @@
         private bool _settingsChanged = false;
         private TextField _dataFolderPathDisplay; // Keep field reference if needed by SelectDataFolder
 
-        public static void ShowWindow(DataVisualizerSettings settingsToEdit, Action onCloseCallback)
-        {
-            DataVisualizerSettingsPopup window = CreateInstance<DataVisualizerSettingsPopup>();
-            window.titleContent = new GUIContent("Data Visualizer Settings");
-            window._settings = settingsToEdit;
-            window._onCloseCallback = onCloseCallback;
-            window.minSize = new Vector2(370, 130);
-            window.maxSize = new Vector2(370, 130);
-            window.ShowModalUtility();
-        }
-
         public static DataVisualizerSettingsPopup CreateAndConfigureInstance(
             DataVisualizerSettings settingsToEdit,
             Action onCloseCallback

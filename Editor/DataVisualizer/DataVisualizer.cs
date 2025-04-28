@@ -7,6 +7,7 @@
     using System.IO;
     using System.Linq;
     using Components;
+    using Components.UnityHelpers.Editor;
 #if ODIN_INSPECTOR
     using Sirenix.OdinInspector.Editor;
 #endif
@@ -674,7 +675,6 @@
             {
                 text = "…",
                 name = "settings-button",
-                tooltip = "Open Settings",
             };
             settingsButton.AddToClassList("icon-button");
             headerRow.Add(settingsButton);
@@ -1479,7 +1479,6 @@
                 Button renameButton = new(() => OpenRenamePopup(dataObject))
                 {
                     text = "✎",
-                    tooltip = "Rename Asset",
                     style =
                     {
                         unityFontStyleAndWeight = FontStyle.Bold,
@@ -1492,7 +1491,6 @@
                 Button deleteButton = new(() => DeleteObject(dataObject))
                 {
                     text = "X",
-                    tooltip = "Delete Object",
                     style =
                     {
                         unityFontStyleAndWeight = FontStyle.Bold,
@@ -1694,56 +1692,82 @@
         private void DeleteObject(BaseDataObject objectToDelete)
         {
             if (objectToDelete == null)
-            {
                 return;
-            }
+            string objectName = objectToDelete.name; // Capture name before potential deletion
 
-            if (
-                !EditorUtility.DisplayDialog(
-                    "Confirm Delete",
-                    $"Are you sure you want to delete the asset '{objectToDelete.name}'?\nThis action cannot be undone.",
-                    "Delete",
-                    "Cancel"
-                )
-            )
-            {
-                return;
-            }
-
-            string path = AssetDatabase.GetAssetPath(objectToDelete);
-            if (string.IsNullOrWhiteSpace(path))
-            {
-                this.LogError(
-                    $"Could not find asset path for '{objectToDelete.name}'. Cannot delete."
-                );
-                return;
-            }
-
-            _selectedObjects.Remove(objectToDelete);
-            _objectVisualElementMap.Remove(objectToDelete, out VisualElement visualElement);
-            bool deleted = AssetDatabase.DeleteAsset(path);
-            if (deleted)
-            {
-                AssetDatabase.Refresh();
-                visualElement?.RemoveFromHierarchy();
-                foreach (BaseDataObject dataObject in _selectedObjects)
-                {
-                    if (dataObject != null)
+            // --- Show Custom Confirmation Dialog ---
+            var popup = ConfirmActionPopup.CreateAndConfigureInstance(
+                title: "Confirm Delete",
+                message: $"Are you sure you want to delete the asset '{objectName}'?\nThis action cannot be undone.",
+                confirmButtonText: "Delete", // Text for the confirmation button
+                cancelButtonText: "Cancel", // Text for the cancel button
+                position,
+                onComplete: (confirmed) =>
+                { // Callback executed AFTER popup closes
+                    // Only proceed if the user clicked "Delete" (confirmed is true)
+                    if (confirmed)
                     {
-                        SelectObject(dataObject);
-                        return;
-                    }
-                }
+                        // --- Deletion Logic (Now inside the callback) ---
+                        string path = AssetDatabase.GetAssetPath(objectToDelete);
+                        if (string.IsNullOrEmpty(path))
+                        {
+                            Debug.LogError(
+                                $"Could not find asset path for '{objectName}' post-confirmation. Cannot delete."
+                            );
+                            // Maybe refresh UI here just in case?
+                            ScheduleRefresh();
+                            return;
+                        }
 
-                SelectObject(null);
-            }
-            else
-            {
-                this.LogError($"Failed to delete asset at '{path}'.");
-                LoadObjectTypes(_selectedType);
-                BuildObjectsView();
-                SelectObject(_selectedObject);
-            }
+                        Debug.Log($"User confirmed deletion. Attempting to delete asset: {path}");
+
+                        // Remove from internal list and map FIRST
+                        bool removed = _selectedObjects.Remove(objectToDelete);
+                        _objectVisualElementMap.Remove(objectToDelete, out var visualElement);
+
+                        // Delete the asset file
+                        bool deleted = AssetDatabase.DeleteAsset(path);
+
+                        if (deleted)
+                        {
+                            Debug.Log($"Asset '{path}' deleted successfully.");
+                            // Don't need SaveAssets after DeleteAsset usually. Refresh is good.
+                            AssetDatabase.Refresh();
+
+                            // Remove visual element from the list container
+                            visualElement?.RemoveFromHierarchy();
+
+                            // Clear selection if the deleted object was selected
+                            if (_selectedObject == objectToDelete)
+                            {
+                                SelectObject(null); // Clears selection & updates inspector
+                            }
+                            // The AssetPostprocessor might trigger a refresh anyway,
+                            // but removing the element manually provides immediate feedback.
+                        }
+                        else
+                        {
+                            Debug.LogError(
+                                $"Failed to delete asset at '{path}'. Rebuilding view to sync."
+                            );
+                            // Rebuild view fully to reflect actual state if delete failed
+                            ScheduleRefresh(); // Use the reliable refresh mechanism
+                        }
+                        // --- End Deletion Logic ---
+                    }
+                    else
+                    {
+                        Debug.Log("User cancelled deletion.");
+                    }
+                } // End callback lambda
+            ); // End CreateAndConfigureInstance call
+
+            // --- End Custom Confirmation Dialog ---
+
+            // Show the popup modally relative to this DataVisualizer window
+            // This ensures it's centered and blocks input to the parent.
+            popup.ShowModalUtility();
+            // Remove the old EditorUtility.DisplayDialog call entirely
         }
 
         private void OpenRenamePopup(BaseDataObject objectToRename)
@@ -1829,7 +1853,7 @@
                 return;
             }
 
-            string directory = originalPath.Replace('\\', '/');
+            string directory = originalDirectory.Replace('\\', '/');
             string originalName = Path.GetFileNameWithoutExtension(originalPath);
             string extension = Path.GetExtension(originalPath);
             string proposedName = $"{originalName} (Clone){extension}";
