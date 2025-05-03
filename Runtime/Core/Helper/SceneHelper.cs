@@ -4,13 +4,15 @@
     using System.Linq;
     using System.Threading.Tasks;
     using Extension;
-    using UnityEditor;
-    using UnityEditor.SceneManagement;
     using UnityEngine;
     using UnityEngine.Events;
     using UnityEngine.SceneManagement;
     using Utils;
     using Object = UnityEngine.Object;
+#if UNITY_EDITOR
+    using UnityEditor;
+    using UnityEditor.SceneManagement;
+#endif
 
     public static class SceneHelper
     {
