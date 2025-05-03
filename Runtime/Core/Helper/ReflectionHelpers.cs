@@ -1,4 +1,4 @@
-﻿namespace UnityHelpers.Core.Helper
+﻿namespace WallstopStudios.UnityHelpers.Core.Helper
 {
     using System;
     using System.Collections;
@@ -16,6 +16,29 @@
         private static readonly Dictionary<Type, Func<int, Array>> ArrayCreators = new();
         private static readonly Dictionary<Type, Func<IList>> ListCreators = new();
         private static readonly Dictionary<Type, Func<int, IList>> ListWithCapacityCreators = new();
+
+        public static bool IsAttributeDefined<T>(
+            this ICustomAttributeProvider provider,
+            out T attribute,
+            bool inherit = true
+        )
+            where T : Attribute
+        {
+            try
+            {
+                if (provider.IsDefined(typeof(T), inherit))
+                {
+                    attribute = (T)provider.GetCustomAttributes(typeof(T), inherit)[0];
+                    return true;
+                }
+            }
+            catch
+            {
+                // Swallow
+            }
+            attribute = default;
+            return false;
+        }
 
         public static Dictionary<string, PropertyInfo> LoadStaticPropertiesForType<T>()
         {

@@ -1,4 +1,4 @@
-﻿namespace UnityHelpers.Core.Helper
+﻿namespace WallstopStudios.UnityHelpers.Core.Helper
 {
     using System;
     using System.Collections;
@@ -7,15 +7,12 @@
     using System.Reflection;
     using DataStructure.Adapters;
     using Extension;
+    using Partials;
     using Random;
+    using UnityEditor;
     using UnityEngine;
-    using UnityEngine.SceneManagement;
     using Utils;
     using Object = UnityEngine.Object;
-#if UNITY_EDITOR
-    using UnityEditor;
-    using UnityEditor.SceneManagement;
-#endif
 
     public static partial class Helpers
     {

@@ -1,4 +1,4 @@
-﻿namespace UnityHelpers.Core.DataStructure
+﻿namespace WallstopStudios.UnityHelpers.Core.DataStructure
 {
     using System;
     using Helper;

@@ -1,4 +1,4 @@
-﻿namespace UnityHelpers.Core.Attributes
+﻿namespace WallstopStudios.UnityHelpers.Core.Attributes
 {
     using System;
     using System.Collections;
@@ -7,6 +7,7 @@
     using System.Reflection;
     using Extension;
     using Helper;
+    using Helper.Partials;
     using JetBrains.Annotations;
     using UnityEngine;
 

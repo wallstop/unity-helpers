@@ -1,9 +1,9 @@
-﻿namespace UnityHelpers.Core.Extension
+﻿namespace WallstopStudios.UnityHelpers.Core.Extension
 {
 #if UNITY_EDITOR
-    using UnityEditor;
     using System;
     using System.Reflection;
+    using UnityEditor;
 
     public static class SerializedPropertyExtensions
     {

@@ -1,4 +1,4 @@
-﻿namespace UnityHelpers.Core.DataStructure.Adapters
+﻿namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 {
     using System;
     using System.Runtime.CompilerServices;

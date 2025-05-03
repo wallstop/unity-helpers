@@ -1,10 +1,10 @@
-﻿namespace UnityHelpers.Editor.CustomEditors
+﻿namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
 {
 #if UNITY_EDITOR
-    using Core.Extension;
     using UnityEditor;
     using UnityEngine;
-    using UnityHelpers.Utils;
+    using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Utils;
 
     [CustomEditor(typeof(MatchColliderToSprite))]
     public sealed class MatchColliderToSpriteEditor : Editor

@@ -1,9 +1,9 @@
-﻿namespace UnityHelpers.Tests.Performance
+﻿namespace WallstopStudios.UnityHelpers.Tests.Performance
 {
     using System;
     using System.Diagnostics;
     using NUnit.Framework;
-    using UnityHelpers.Core.Random;
+    using WallstopStudios.UnityHelpers.Core.Random;
 
     public sealed class RandomPerformanceTests
     {

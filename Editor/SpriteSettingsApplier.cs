@@ -1,15 +1,15 @@
-﻿namespace UnityHelpers.Editor
+﻿namespace WallstopStudios.UnityHelpers.Editor
 {
 #if UNITY_EDITOR
     using System;
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;
+    using UnityEditor;
+    using UnityEngine;
     using Core.Attributes;
     using Core.Extension;
     using Core.Helper;
-    using UnityEditor;
-    using UnityEngine;
     using Object = UnityEngine.Object;
 
     [Serializable]

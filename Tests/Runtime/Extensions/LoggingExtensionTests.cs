@@ -1,13 +1,13 @@
-﻿namespace UnityHelpers.Tests.Extensions
+﻿namespace WallstopStudios.UnityHelpers.Tests.Extensions
 {
     using System;
     using System.Collections.Generic;
     using System.Linq;
-    using Core.Extension;
-    using Core.Helper;
-    using Core.Helper.Logging;
     using NUnit.Framework;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Core.Helper.Logging;
 
     public sealed class LoggingExtensionTests
     {

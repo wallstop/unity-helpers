@@ -1,4 +1,4 @@
-﻿namespace UnityHelpers.Core.Math
+﻿namespace WallstopStudios.UnityHelpers.Core.Math
 {
     using System;
     using System.Runtime.Serialization;

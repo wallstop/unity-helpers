@@ -1,6 +1,6 @@
 {
     "name": "WallstopStudios.UnityHelpers.Editor",
-    "rootNamespace": "UnityHelpers",
+    "rootNamespace": "WallstopStudios.UnityHelpers.Editor",
     "references": [
         "WallstopStudios.UnityHelpers"
     ],

@@ -1,4 +1,4 @@
-﻿namespace UnityHelpers.Core.Extension
+﻿namespace WallstopStudios.UnityHelpers.Core.Extension
 {
     using System.Collections.Generic;
     using System.ComponentModel;

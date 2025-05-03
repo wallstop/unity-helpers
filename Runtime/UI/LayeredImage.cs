@@ -1,4 +1,4 @@
-﻿namespace UnityHelpers.UI
+﻿namespace WallstopStudios.UnityHelpers.UI
 {
     using System;
     using System.Collections.Generic;

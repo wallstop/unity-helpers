@@ -1,16 +1,16 @@
-﻿namespace UnityHelpers.Tests.Serialization
+﻿namespace WallstopStudios.UnityHelpers.Tests.Serialization
 {
     using System;
     using System.Collections.Generic;
     using System.Linq;
     using System.Runtime.Serialization;
     using System.Text.Json.Serialization;
-    using Core.Extension;
-    using Core.Helper;
-    using Core.Random;
-    using Core.Serialization;
     using NUnit.Framework;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Core.Random;
+    using WallstopStudios.UnityHelpers.Core.Serialization;
 
     [DataContract]
     public sealed class TestDataObject

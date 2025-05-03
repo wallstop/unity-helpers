@@ -1,13 +1,13 @@
-﻿namespace UnityHelpers.Editor
+﻿namespace WallstopStudios.UnityHelpers.Editor
 {
 #if UNITY_EDITOR
     using System;
     using System.IO;
-    using Core.Attributes;
-    using Core.Extension;
     using UnityEditor;
     using UnityEngine;
     using Utils;
+    using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Core.Extension;
 
     public sealed class AnimatorControllerCopier : ScriptableWizard
     {

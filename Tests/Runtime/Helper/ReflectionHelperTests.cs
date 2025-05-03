@@ -1,12 +1,12 @@
-﻿namespace UnityHelpers.Tests.Helper
+﻿namespace WallstopStudios.UnityHelpers.Tests.Helper
 {
     using System;
     using System.Collections;
     using System.Collections.Generic;
     using System.Reflection;
     using NUnit.Framework;
-    using UnityHelpers.Core.Helper;
-    using UnityHelpers.Core.Random;
+    using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Core.Random;
 
     public struct TestStruct
     {

@@ -1,14 +1,13 @@
-﻿namespace UnityHelpers.Tests.Utils
+﻿namespace WallstopStudios.UnityHelpers.Tests.Utils
 {
     using System.Collections;
     using System.Collections.Generic;
     using System.Linq;
-    using Core.Helper;
-    using Core.Random;
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.TestTools;
-    using UnityHelpers.Utils;
+    using WallstopStudios.UnityHelpers.Core.Random;
+    using WallstopStudios.UnityHelpers.Utils;
 
     public sealed class SpriteRendererMetadataTests
     {

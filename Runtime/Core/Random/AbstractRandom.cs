@@ -1,4 +1,4 @@
-﻿namespace UnityHelpers.Core.Random
+﻿namespace WallstopStudios.UnityHelpers.Core.Random
 {
     using System;
     using System.Collections.Concurrent;

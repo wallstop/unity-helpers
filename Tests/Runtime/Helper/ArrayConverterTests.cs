@@ -1,9 +1,9 @@
-﻿namespace UnityHelpers.Tests.Helper
+﻿namespace WallstopStudios.UnityHelpers.Tests.Helper
 {
     using System.Linq;
     using NUnit.Framework;
-    using UnityHelpers.Core.Helper;
-    using UnityHelpers.Core.Random;
+    using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Core.Random;
 
     public sealed class ArrayConverterTests
     {

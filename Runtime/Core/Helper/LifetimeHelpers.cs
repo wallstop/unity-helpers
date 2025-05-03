@@ -1,5 +1,6 @@
-﻿namespace UnityHelpers.Core.Helper
+﻿namespace WallstopStudios.UnityHelpers.Core.Helper
 {
+    using Partials;
     using Object = UnityEngine.Object;
 
     public static class LifetimeHelpers

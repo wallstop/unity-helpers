@@ -1,4 +1,4 @@
-﻿namespace UnityHelpers.Editor
+﻿namespace WallstopStudios.UnityHelpers.Editor
 {
 #if UNITY_EDITOR
     using System;
@@ -6,12 +6,12 @@
     using System.Collections.Generic;
     using System.Linq;
     using System.Reflection;
-    using Core.Attributes;
     using UnityEditor;
     using UnityEngine;
+    using Core.Attributes;
     using Core.Extension;
     using Core.Helper;
-    using UnityHelpers.Utils;
+    using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
     public sealed class PrefabCheckWizard : ScriptableWizard

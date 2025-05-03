@@ -1,14 +1,14 @@
-﻿namespace UnityHelpers.Tests.Random
+﻿namespace WallstopStudios.UnityHelpers.Tests.Random
 {
     using System;
     using System.Collections.Generic;
     using System.Linq;
     using System.Runtime.CompilerServices;
-    using Core.DataStructure.Adapters;
-    using Core.Extension;
-    using Core.Serialization;
     using NUnit.Framework;
-    using UnityHelpers.Core.Random;
+    using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
+    using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Core.Random;
+    using WallstopStudios.UnityHelpers.Core.Serialization;
 
     public enum TestValues
     {
