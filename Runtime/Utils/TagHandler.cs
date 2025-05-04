@@ -1,5 +1,6 @@
 ﻿namespace WallstopStudios.UnityHelpers.Utils
 {
+    using System;
     using System.Collections.Generic;
     using Core.Extension;
     using UnityEngine;
@@ -7,10 +8,12 @@
     [DisallowMultipleComponent]
     public class TagHandler : MonoBehaviour
     {
+        public IReadOnlyCollection<string> Tags => _tagCount.Keys;
+
         [SerializeField]
         protected List<string> _initialEffectTags = new();
 
-        protected readonly Dictionary<string, uint> _tagCount = new();
+        protected readonly Dictionary<string, uint> _tagCount = new(StringComparer.Ordinal);
 
         protected virtual void Awake()
         {
@@ -32,8 +35,7 @@
         {
             foreach (string effectTag in effectTags)
             {
-                bool hasTag = _tagCount.ContainsKey(effectTag);
-                if (hasTag)
+                if (_tagCount.ContainsKey(effectTag))
                 {
                     return true;
                 }
@@ -47,14 +49,29 @@
             for (int i = 0; i < effectTags.Count; ++i)
             {
                 string effectTag = effectTags[i];
-                bool hasTag = _tagCount.ContainsKey(effectTag);
-                if (hasTag)
+                if (_tagCount.ContainsKey(effectTag))
                 {
                     return true;
                 }
             }
 
             return false;
+        }
+
+        public void ApplyTag(string effectTag)
+        {
+            InternalApplyTag(effectTag);
+        }
+
+        public void RemoveTag(string effectTag, bool allInstances)
+        {
+            if (allInstances)
+            {
+                _tagCount.Remove(effectTag);
+                return;
+            }
+
+            InternalRemoveTag(effectTag);
         }
 
         private void InternalApplyTag(string effectTag)
