@@ -20,7 +20,7 @@
     {
         private static readonly WaitForEndOfFrame WaitForEndOfFrame = new();
         private static readonly Dictionary<Type, MethodInfo> AwakeMethodsByType = new();
-        private static readonly Object LogObject = new() { name = "Wallstop Log Helper" };
+        private static readonly Object LogObject = new();
         private static readonly Dictionary<string, Object> ObjectsByTag = new(
             StringComparer.Ordinal
         );
