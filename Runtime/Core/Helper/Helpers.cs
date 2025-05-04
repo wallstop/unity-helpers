@@ -9,17 +9,21 @@
     using Extension;
     using Partials;
     using Random;
-    using UnityEditor;
     using UnityEngine;
     using Utils;
     using Object = UnityEngine.Object;
+#if UNITY_EDITOR
+    using UnityEditor;
+#endif
 
     public static partial class Helpers
     {
         private static readonly WaitForEndOfFrame WaitForEndOfFrame = new();
         private static readonly Dictionary<Type, MethodInfo> AwakeMethodsByType = new();
-        private static readonly Object LogObject = new();
-        private static readonly Dictionary<string, Object> ObjectsByTag = new();
+        private static readonly Object LogObject = new() { name = "Wallstop Log Helper" };
+        private static readonly Dictionary<string, Object> ObjectsByTag = new(
+            StringComparer.Ordinal
+        );
 
         // https://gamedevelopment.tutsplus.com/tutorials/unity-solution-for-hitting-moving-targets--cms-29633
         public static Vector2 PredictCurrentTarget(
@@ -597,11 +601,6 @@
             if (string.Equals(lhs.name, rhs.name))
             {
                 return true;
-            }
-
-            if (lhs.name == null || rhs.name == null)
-            {
-                return false;
             }
 
             const string clone = "(Clone)";

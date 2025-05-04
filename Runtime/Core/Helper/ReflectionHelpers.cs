@@ -1,4 +1,8 @@
-﻿namespace WallstopStudios.UnityHelpers.Core.Helper
+﻿#if !((UNITY_WEBGL && !UNITY_EDITOR) || ENABLE_IL2CPP)
+#define EMIT_DYNAMIC_IL
+#endif
+
+namespace WallstopStudios.UnityHelpers.Core.Helper
 {
     using System;
     using System.Collections;
@@ -91,7 +95,7 @@
 
         public static Func<object, object> GetFieldGetter(FieldInfo field)
         {
-#if UNITY_WEBGL && !UNITY_EDITOR
+#if !EMIT_DYNAMIC_IL
             return field.GetValue;
 #else
             DynamicMethod dynamicMethod = new(
@@ -125,7 +129,7 @@
 
         public static Func<object, object> GetPropertyGetter(PropertyInfo property)
         {
-#if UNITY_WEBGL && !UNITY_EDITOR
+#if !EMIT_DYNAMIC_IL
             return property.GetValue;
 #else
             MethodInfo getMethod = property.GetGetMethod(true);
@@ -167,7 +171,7 @@
                 throw new ArgumentException(nameof(field));
             }
 
-#if UNITY_WEBGL && !UNITY_EDITOR
+#if !EMIT_DYNAMIC_IL
             return () => field.GetValue(null);
 #else
             DynamicMethod dynamicMethod = new(
@@ -197,7 +201,7 @@
 
         public static Func<TInstance, TValue> GetFieldGetter<TInstance, TValue>(FieldInfo field)
         {
-#if UNITY_WEBGL && !UNITY_EDITOR
+#if !EMIT_DYNAMIC_IL
             return Getter;
             TValue Getter(TInstance instance)
             {
@@ -268,9 +272,7 @@
         public static Func<TValue> GetStaticPropertyGetter<TValue>(PropertyInfo property)
         {
             MethodInfo getMethod = property.GetGetMethod(true);
-
-#if UNITY_WEBGL && !UNITY_EDITOR
-
+#if !EMIT_DYNAMIC_IL
             return Getter;
             TValue Getter()
             {
@@ -278,7 +280,6 @@
                 return (TValue)property.GetValue(null, null);
             }
 #endif
-
             DynamicMethod dynamicMethod = new(
                 $"GetStatic_{property.DeclaringType.Name}_{property.Name}",
                 typeof(TValue),
@@ -324,7 +325,7 @@
                 throw new ArgumentException(nameof(field));
             }
 
-#if UNITY_WEBGL && !UNITY_EDITOR
+#if !EMIT_DYNAMIC_IL
             return Getter;
             TValue Getter()
             {
@@ -374,7 +375,7 @@
             FieldInfo field
         )
         {
-#if UNITY_WEBGL && !UNITY_EDITOR
+#if !EMIT_DYNAMIC_IL
             return Setter;
             void Setter(ref TInstance instance, TValue newValue)
             {
@@ -418,7 +419,7 @@
             {
                 throw new ArgumentException(nameof(field));
             }
-#if UNITY_WEBGL && !UNITY_EDITOR
+#if !EMIT_DYNAMIC_IL
             return Setter;
             void Setter(TValue newValue)
             {
@@ -444,7 +445,7 @@
 
         public static Action<object, object> GetFieldSetter(FieldInfo field)
         {
-#if UNITY_WEBGL && !UNITY_EDITOR
+#if !EMIT_DYNAMIC_IL
             return field.SetValue;
 #else
             DynamicMethod dynamicMethod = new(
@@ -481,7 +482,7 @@
             {
                 throw new ArgumentException(nameof(field));
             }
-#if UNITY_WEBGL && !UNITY_EDITOR
+#if !EMIT_DYNAMIC_IL
             return value => field.SetValue(null, value);
 #else
             DynamicMethod dynamicMethod = new(
@@ -511,7 +512,7 @@
 
         public static Func<int, Array> GetArrayCreator(Type elementType)
         {
-#if UNITY_WEBGL && !UNITY_EDITOR
+#if !EMIT_DYNAMIC_IL
             return size => Array.CreateInstance(elementType, size);
 #else
             DynamicMethod dynamicMethod = new(
@@ -532,7 +533,7 @@
         public static Func<IList> GetListCreator(Type elementType)
         {
             Type listType = typeof(List<>).MakeGenericType(elementType);
-#if UNITY_WEBGL && !UNITY_EDITOR
+#if !EMIT_DYNAMIC_IL
             return () => (IList)Activator.CreateInstance(listType);
 #else
             DynamicMethod dynamicMethod = new(
@@ -560,7 +561,7 @@
         public static Func<int, IList> GetListWithCapacityCreator(Type elementType)
         {
             Type listType = typeof(List<>).MakeGenericType(elementType);
-#if UNITY_WEBGL && !UNITY_EDITOR
+#if !EMIT_DYNAMIC_IL
             return _ => (IList)Activator.CreateInstance(listType);
 #else
             DynamicMethod dynamicMethod = new(
