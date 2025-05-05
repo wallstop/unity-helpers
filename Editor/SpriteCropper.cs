@@ -250,7 +250,9 @@
 
             Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(assetPath);
             if (tex == null)
+            {
                 return null;
+            }
 
             TextureImporter resultImporter;
             try
