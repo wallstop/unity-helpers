@@ -1,4 +1,4 @@
-﻿namespace WallstopStudios.UnityHelpers.Core.Helper.Partials
+﻿namespace WallstopStudios.UnityHelpers.Core.Helper
 {
     using UnityEngine;
 

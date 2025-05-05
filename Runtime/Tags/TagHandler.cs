@@ -1,21 +1,23 @@
-﻿namespace WallstopStudios.UnityHelpers.Utils
+﻿namespace WallstopStudios.UnityHelpers.Tags
 {
     using System;
     using System.Collections.Generic;
+    using Core.DataStructure.Adapters;
     using Core.Extension;
     using UnityEngine;
 
     [DisallowMultipleComponent]
-    public class TagHandler : MonoBehaviour
+    public sealed class TagHandler : MonoBehaviour
     {
         public IReadOnlyCollection<string> Tags => _tagCount.Keys;
 
         [SerializeField]
-        protected List<string> _initialEffectTags = new();
+        private List<string> _initialEffectTags = new();
 
-        protected readonly Dictionary<string, uint> _tagCount = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, uint> _tagCount = new(StringComparer.Ordinal);
+        private readonly Dictionary<KGuid, EffectHandle> _effectHandles = new();
 
-        protected virtual void Awake()
+        private void Awake()
         {
             if (_initialEffectTags is { Count: > 0 })
             {
@@ -72,6 +74,41 @@
             }
 
             InternalRemoveTag(effectTag);
+        }
+
+        public void ForceApplyTags(EffectHandle handle)
+        {
+            KGuid id = handle.id;
+            if (!_effectHandles.TryAdd(id, handle))
+            {
+                return;
+            }
+
+            ForceApplyEffect(handle.effect);
+        }
+
+        public void ForceApplyEffect(AttributeEffect effect)
+        {
+            foreach (string effectTag in effect.effectTags)
+            {
+                InternalApplyTag(effectTag);
+            }
+        }
+
+        public bool ForceRemoveTags(EffectHandle handle)
+        {
+            KGuid id = handle.id;
+            if (!_effectHandles.Remove(id, out EffectHandle appliedHandle))
+            {
+                return false;
+            }
+
+            foreach (string effectTag in appliedHandle.effect.effectTags)
+            {
+                InternalRemoveTag(effectTag);
+            }
+
+            return true;
         }
 
         private void InternalApplyTag(string effectTag)

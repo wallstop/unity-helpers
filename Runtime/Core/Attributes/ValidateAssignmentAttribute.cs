@@ -6,7 +6,7 @@
     using System.Linq;
     using System.Reflection;
     using Extension;
-    using Helper.Partials;
+    using Helper;
     using JetBrains.Annotations;
     using Object = UnityEngine.Object;
 
