@@ -10,7 +10,6 @@
     using Core.Attributes;
     using Core.Extension;
     using Core.Helper;
-    using UnityEditor.VersionControl;
     using Object = UnityEngine.Object;
 
     [Serializable]
