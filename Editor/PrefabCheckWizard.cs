@@ -23,7 +23,7 @@
         )]
         public List<Object> assetPaths = new();
 
-        [MenuItem("Tools/Unity Helpers/Prefab Check Wizard", priority = -1)]
+        [MenuItem("Tools/Wallstop Studios/Unity Helpers/Prefab Check Wizard", priority = -1)]
         public static void CreatePrefabCheckWizard()
         {
             _ = DisplayWizard<PrefabCheckWizard>("Prefab sanity check", "Run");

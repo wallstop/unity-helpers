@@ -20,7 +20,7 @@
 
         public List<Object> textureSourcePaths = new();
 
-        [MenuItem("Tools/Unity Helpers/Fit Texture Size", priority = -1)]
+        [MenuItem("Tools/Wallstop Studios/Unity Helpers/Fit Texture Size", priority = -1)]
         public static void EnsureSizes()
         {
             _ = DisplayWizard<FitTextureSizeWizard>("Fit Texture Size", "Run");

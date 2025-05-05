@@ -42,7 +42,7 @@
         )]
         public List<Object> directories = new();
 
-        [MenuItem("Tools/Unity Helpers/Texture Settings Applier")]
+        [MenuItem("Tools/Wallstop Studios/Unity Helpers/Texture Settings Applier")]
         public static void CreateAnimation()
         {
             _ = DisplayWizard<TextureSettingsApplier>("Texture Settings Directory Applier", "Set");

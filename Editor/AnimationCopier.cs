@@ -43,7 +43,7 @@
             }
         }
 
-        [MenuItem("Tools/Unity Helpers/Animation Copier", priority = -2)]
+        [MenuItem("Tools/Wallstop Studios/Unity Helpers/Animation Copier", priority = -2)]
         public static void CopyAnimations()
         {
             _ = DisplayWizard<AnimationCopier>("Animation Copier", "Copy");

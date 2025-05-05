@@ -20,7 +20,7 @@
         [DxReadOnly]
         public string controllerDestinationPath;
 
-        [MenuItem("Tools/Unity Helpers/Animator Controller Copier")]
+        [MenuItem("Tools/Wallstop Studios/Unity Helpers/Animator Controller Copier")]
         public static void CopyAnimations()
         {
             _ = DisplayWizard<AnimatorControllerCopier>("Animator Controller Copier", "Copy");

@@ -38,7 +38,7 @@
             TypesToMethods = typesToMethods;
         }
 
-        [MenuItem("Tools/Unity Helpers/AnimationEvent Editor")]
+        [MenuItem("Tools/Wallstop Studios/Unity Helpers/AnimationEvent Editor")]
         private static void AnimationEventEditorMenu()
         {
             GetWindow(typeof(AnimationEventEditor));

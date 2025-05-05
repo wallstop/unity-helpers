@@ -84,7 +84,7 @@
         )]
         public List<Object> directories = new();
 
-        [MenuItem("Tools/Unity Helpers/Sprite Settings Applier", priority = -2)]
+        [MenuItem("Tools/Wallstop Studios/Unity Helpers/Sprite Settings Applier", priority = -2)]
         public static void CreateAnimation()
         {
             _ = DisplayWizard<SpriteSettingsApplier>("Sprite Settings Directory Applier", "Set");
