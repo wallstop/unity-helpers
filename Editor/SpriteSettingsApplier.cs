@@ -10,6 +10,7 @@
     using Core.Attributes;
     using Core.Extension;
     using Core.Helper;
+    using UnityEditor.VersionControl;
     using Object = UnityEngine.Object;
 
     [Serializable]
@@ -66,6 +67,12 @@
         [WShowIf(nameof(applyCrunchCompression))]
         public bool useCrunchCompression;
 
+        public bool applyCompression;
+
+        [WShowIf(nameof(applyCompression))]
+        [SerializeField]
+        public TextureImporterCompression compressionLevel = TextureImporterCompression.Compressed;
+
         public string name = string.Empty;
     }
 
@@ -109,6 +116,8 @@
             HashSet<string> processedSpritePaths = new(StringComparer.OrdinalIgnoreCase);
             Queue<string> directoriesToCheck = new(uniqueDirectories);
             int spriteCount = 0;
+            List<TextureImporter> updatedImporters = new();
+            List<(string fullFilePath, string filePath)> filePaths = new();
             while (directoriesToCheck.TryDequeue(out string directoryPath))
             {
                 foreach (string fullFilePath in Directory.EnumerateFiles(directoryPath))
@@ -133,11 +142,9 @@
                     }
 
                     string filePath = fullFilePath.Substring(index);
-                    if (
-                        processedSpritePaths.Add(fullFilePath) && TryUpdateTextureSettings(filePath)
-                    )
+                    if (processedSpritePaths.Add(fullFilePath))
                     {
-                        ++spriteCount;
+                        filePaths.Add((fullFilePath, filePath));
                     }
                 }
 
@@ -163,30 +170,58 @@
                     .Where(path => !string.IsNullOrWhiteSpace(path))
             )
             {
-                if (
-                    processedSpritePaths.Add(Application.dataPath + filePath)
-                    && TryUpdateTextureSettings(filePath)
-                )
+                string fullFilePath = Application.dataPath + filePath;
+                if (processedSpritePaths.Add(fullFilePath))
                 {
-                    ++spriteCount;
+                    filePaths.Add((fullFilePath, filePath));
                 }
             }
-
-            this.Log($"Processed {spriteCount} sprites.");
-            if (0 < spriteCount)
+            AssetDatabase.StartAssetEditing();
+            try
             {
-                AssetDatabase.Refresh();
+                foreach ((string _, string filePath) in filePaths)
+                {
+                    if (TryUpdateTextureSettings(filePath, out TextureImporter textureImporter))
+                    {
+                        updatedImporters.Add(textureImporter);
+                        ++spriteCount;
+                    }
+                }
+
+                for (int i = 0; i < updatedImporters.Count; i++)
+                {
+                    TextureImporter importer = updatedImporters[i];
+                    EditorUtility.DisplayProgressBar(
+                        "Updating Sprite Settings",
+                        $"Processing '{importer.name}' ({i}/{updatedImporters.Count})",
+                        (float)i / updatedImporters.Count
+                    );
+                    importer.SaveAndReimport();
+                }
+
+                AssetDatabase.StopAssetEditing();
+                this.Log($"Processed {spriteCount} sprites.");
+                if (0 < spriteCount)
+                {
+                    AssetDatabase.SaveAssets();
+                    AssetDatabase.Refresh();
+                }
+            }
+            finally
+            {
+                EditorUtility.ClearProgressBar();
             }
         }
 
-        private bool TryUpdateTextureSettings(string filePath)
+        private bool TryUpdateTextureSettings(string filePath, out TextureImporter textureImporter)
         {
+            textureImporter = default;
             if (string.IsNullOrWhiteSpace(filePath))
             {
                 return false;
             }
 
-            TextureImporter textureImporter = AssetImporter.GetAtPath(filePath) as TextureImporter;
+            textureImporter = AssetImporter.GetAtPath(filePath) as TextureImporter;
             if (textureImporter == null)
             {
                 return false;
@@ -225,6 +260,12 @@
             {
                 changed |= textureImporter.crunchedCompression != spriteData.useCrunchCompression;
                 textureImporter.crunchedCompression = spriteData.useCrunchCompression;
+            }
+
+            if (spriteData.applyCompression)
+            {
+                changed |= textureImporter.textureCompression != spriteData.compressionLevel;
+                textureImporter.textureCompression = spriteData.compressionLevel;
             }
 
             bool changedSettings = false;
@@ -277,11 +318,6 @@
                 textureImporter.SetTextureSettings(settings);
             }
             changed |= changedSettings;
-            if (changed)
-            {
-                textureImporter.SaveAndReimport();
-            }
-
             return changed;
         }
     }

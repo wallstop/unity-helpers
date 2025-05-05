@@ -7,6 +7,8 @@
     using System.Linq;
     using System.Text.RegularExpressions;
     using Core.Extension;
+    using Core.Helper;
+    using Extensions;
     using UnityEditor;
     using UnityEditor.U2D;
     using UnityEngine;
@@ -321,13 +323,46 @@
                         }
 
                         atlas.Add(chunk.Select(sprite => sprite as Object).ToArray());
+                        atlas.SetIncludeInBuild(true);
                         string path = Path.Combine(_outputFolder, atlasName + ".spriteatlas");
                         AssetDatabase.CreateAsset(atlas, path);
                     }
                 }
-
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
+                SpriteAtlasUtility.PackAllAtlases(EditorUserBuildSettings.activeBuildTarget, false);
+
+                bool anyChanged = false;
+                foreach (
+                    SpriteAtlas atlas in atlases
+                        .Select(AssetDatabase.GetAssetPath)
+                        .Select(AssetDatabase.LoadAssetAtPath<SpriteAtlas>)
+                        .Where(Objects.NotNull)
+                )
+                {
+                    Texture2D preview = atlas.GetPreviewTexture();
+                    if (preview == null)
+                    {
+                        continue;
+                    }
+
+                    TextureImporterPlatformSettings platformSettings = atlas.GetPlatformSettings(
+                        DefaultPlatformName
+                    );
+                    if (platformSettings == null)
+                    {
+                        continue;
+                    }
+                    platformSettings.maxTextureSize = Mathf.Max(preview.width, preview.height);
+                    atlas.SetPlatformSettings(platformSettings);
+                    anyChanged = true;
+                }
+
+                if (anyChanged)
+                {
+                    AssetDatabase.SaveAssets();
+                    AssetDatabase.Refresh();
+                }
             }
             finally
             {

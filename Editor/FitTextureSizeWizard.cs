@@ -1,10 +1,13 @@
 ﻿namespace WallstopStudios.UnityHelpers.Editor
 {
+#if UNITY_EDITOR
     using System.Collections.Generic;
+    using System.IO;
     using System.Linq;
     using UnityEditor;
     using UnityEngine;
-    using WallstopStudios.UnityHelpers.Core.Extension;
+    using Core.Extension;
+    using Object = UnityEngine.Object;
 
     public enum FitMode
     {
@@ -24,6 +27,21 @@
         public static void EnsureSizes()
         {
             _ = DisplayWizard<FitTextureSizeWizard>("Fit Texture Size", "Run");
+        }
+
+        private void OnEnable()
+        {
+            if (textureSourcePaths is { Count: > 0 })
+            {
+                return;
+            }
+
+            Object defaultFolder = AssetDatabase.LoadAssetAtPath<Object>("Assets/Sprites");
+            if (defaultFolder != null)
+            {
+                textureSourcePaths ??= new List<Object>();
+                textureSourcePaths.Add(defaultFolder);
+            }
         }
 
         private void OnWizardCreate()
@@ -76,72 +94,98 @@
             }
 
             int changedCount = 0;
-            foreach (Texture2D texture in textures)
+            List<TextureImporter> updatedImporters = new();
+            AssetDatabase.StartAssetEditing();
+            try
             {
-                string assetPath = AssetDatabase.GetAssetPath(texture);
-                if (string.IsNullOrWhiteSpace(assetPath))
+                float totalAssets = textures.Count;
+                for (int i = 0; i < textures.Count; i++)
                 {
-                    continue;
-                }
-
-                TextureImporter textureImporter =
-                    AssetImporter.GetAtPath(assetPath) as TextureImporter;
-                if (textureImporter == null)
-                {
-                    continue;
-                }
-                textureImporter.GetSourceTextureWidthAndHeight(out int width, out int height);
-
-                float size = Mathf.Max(width, height);
-                int textureSize = textureImporter.maxTextureSize;
-                int originalTextureSize = textureSize;
-                bool changed = false;
-                if (fitMode is FitMode.GrowAndShrink or FitMode.GrowOnly)
-                {
-                    while (textureSize < size)
+                    Texture2D texture = textures[i];
+                    string assetPath = AssetDatabase.GetAssetPath(texture);
+                    float progress = (i + 1) / totalAssets;
+                    EditorUtility.DisplayProgressBar(
+                        "Fitting Texture Size",
+                        $"Checking: {Path.GetFileName(assetPath)} ({i + 1}/{textures.Count})",
+                        progress
+                    );
+                    if (string.IsNullOrWhiteSpace(assetPath))
                     {
-                        changed = true;
-                        textureSize <<= 1;
+                        continue;
                     }
-                }
 
-                if (fitMode is FitMode.GrowAndShrink or FitMode.ShrinkOnly)
-                {
-                    while (0 < textureSize && size <= (textureSize >> 1))
+                    TextureImporter textureImporter =
+                        AssetImporter.GetAtPath(assetPath) as TextureImporter;
+                    if (textureImporter == null)
                     {
-                        changed = true;
-                        textureSize >>= 1;
+                        continue;
                     }
-                }
 
-                textureImporter.maxTextureSize = textureSize;
+                    textureImporter.GetSourceTextureWidthAndHeight(out int width, out int height);
 
-                if (changed)
-                {
-                    ++changedCount;
-                    textureImporter.SaveAndReimport();
-                    if (textureImporter.maxTextureSize != textureSize)
+                    float size = Mathf.Max(width, height);
+                    int textureSize = textureImporter.maxTextureSize;
+                    int originalTextureSize = textureSize;
+                    bool changed = false;
+                    if (fitMode is FitMode.GrowAndShrink or FitMode.GrowOnly)
                     {
-                        this.LogError(
-                            $"Failed to update {texture.name}, need texture size {textureSize} but got {textureImporter.maxTextureSize}. Path: '{assetPath}'."
-                        );
-                        if (originalTextureSize != textureImporter.maxTextureSize)
+                        while (textureSize < size)
                         {
-                            --changedCount;
+                            changed = true;
+                            textureSize <<= 1;
+                        }
+                    }
+
+                    if (fitMode is FitMode.GrowAndShrink or FitMode.ShrinkOnly)
+                    {
+                        while (0 < textureSize && size <= (textureSize >> 1))
+                        {
+                            changed = true;
+                            textureSize >>= 1;
+                        }
+                    }
+
+                    textureImporter.maxTextureSize = textureSize;
+
+                    if (changed)
+                    {
+                        ++changedCount;
+                        updatedImporters.Add(textureImporter);
+                        if (textureImporter.maxTextureSize != textureSize)
+                        {
+                            this.LogError(
+                                $"Failed to update {texture.name}, need texture size {textureSize} but got {textureImporter.maxTextureSize}. Path: '{assetPath}'."
+                            );
+                            if (originalTextureSize != textureImporter.maxTextureSize)
+                            {
+                                --changedCount;
+                            }
                         }
                     }
                 }
-            }
 
-            if (changedCount != 0)
-            {
-                this.Log($"Updated {changedCount} textures.");
-                AssetDatabase.Refresh();
+                foreach (TextureImporter importer in updatedImporters)
+                {
+                    importer.SaveAndReimport();
+                }
+
+                AssetDatabase.StopAssetEditing();
+                if (changedCount != 0)
+                {
+                    this.Log($"Updated {changedCount} textures.");
+                    AssetDatabase.SaveAssets();
+                    AssetDatabase.Refresh();
+                }
+                else
+                {
+                    this.Log($"No textures updated.");
+                }
             }
-            else
+            finally
             {
-                this.Log($"No textures updated.");
+                EditorUtility.ClearProgressBar();
             }
         }
     }
+#endif
 }

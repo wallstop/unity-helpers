@@ -76,6 +76,7 @@
                     }
                 }
 
+                AssetDatabase.StartAssetEditing();
                 try
                 {
                     int total = allFiles.Count;
@@ -99,12 +100,14 @@
                     {
                         newImporter.SaveAndReimport();
                     }
+                    AssetDatabase.StopAssetEditing();
+                    AssetDatabase.SaveAssets();
+                    AssetDatabase.Refresh();
                 }
                 finally
                 {
                     EditorUtility.ClearProgressBar();
                 }
-                AssetDatabase.Refresh();
             }
         }
 
