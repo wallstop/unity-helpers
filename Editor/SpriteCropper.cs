@@ -1,5 +1,6 @@
 ﻿namespace WallstopStudios.UnityHelpers.Editor
 {
+#if UNITY_EDITOR
     using System;
     using System.Collections.Generic;
     using System.ComponentModel;
@@ -13,6 +14,8 @@
 
     public sealed class SpriteCropper : EditorWindow
     {
+        private const string Name = "Sprite Cropper";
+
         private const string CroppedPrefix = "Cropped_";
         private static readonly string[] ImageFileExtensions =
         {
@@ -30,8 +33,8 @@
         [SerializeField]
         private Object[] _inputDirectories;
 
-        [MenuItem("Tools/Wallstop Studios/Unity Helpers/Sprite Cropper")]
-        private static void ShowWindow() => GetWindow<SpriteCropper>("Sprite Cropper");
+        [MenuItem("Tools/Wallstop Studios/Unity Helpers/" + Name)]
+        private static void ShowWindow() => GetWindow<SpriteCropper>(Name);
 
         private void OnGUI()
         {
@@ -43,54 +46,90 @@
 
             if (GUILayout.Button("Process Sprites"))
             {
+                List<string> allFiles = new();
                 foreach (Object maybeDirectory in _inputDirectories.Where(Objects.NotNull))
                 {
                     string assetPath = AssetDatabase.GetAssetPath(maybeDirectory);
-                    if (Directory.Exists(assetPath))
+                    if (!AssetDatabase.IsValidFolder(assetPath))
                     {
-                        IEnumerable<string> files = Directory
-                            .GetFiles(assetPath, "*.*", SearchOption.AllDirectories)
-                            .Where(file =>
-                                Array.Exists(
-                                    ImageFileExtensions,
-                                    extension =>
-                                        file.EndsWith(extension, StringComparison.OrdinalIgnoreCase)
-                                )
-                            );
+                        continue;
+                    }
 
-                        foreach (string file in files)
+                    IEnumerable<string> files = Directory
+                        .GetFiles(assetPath, "*.*", SearchOption.AllDirectories)
+                        .Where(file =>
+                            Array.Exists(
+                                ImageFileExtensions,
+                                extension =>
+                                    file.EndsWith(extension, StringComparison.OrdinalIgnoreCase)
+                            )
+                        );
+
+                    foreach (string file in files)
+                    {
+                        if (file.Contains(CroppedPrefix, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (file.Contains(CroppedPrefix, StringComparison.OrdinalIgnoreCase))
-                            {
-                                continue;
-                            }
-                            ProcessSprite(file);
+                            continue;
+                        }
+
+                        allFiles.Add(file);
+                    }
+                }
+
+                try
+                {
+                    int total = allFiles.Count;
+                    List<TextureImporter> newImporters = new();
+                    for (int i = 0; i < allFiles.Count; ++i)
+                    {
+                        string file = allFiles[i];
+                        EditorUtility.DisplayProgressBar(
+                            Name,
+                            $"Processing {i + 1}/{total}: {Path.GetFileName(file)}",
+                            i / (float)total
+                        );
+                        TextureImporter newImporter = ProcessSprite(file);
+                        if (newImporter != null)
+                        {
+                            newImporters.Add(newImporter);
                         }
                     }
+
+                    foreach (TextureImporter newImporter in newImporters)
+                    {
+                        newImporter.SaveAndReimport();
+                    }
+                }
+                finally
+                {
+                    EditorUtility.ClearProgressBar();
                 }
                 AssetDatabase.Refresh();
             }
         }
 
-        private static void ProcessSprite(string assetPath)
+        private static TextureImporter ProcessSprite(string assetPath)
         {
             string assetDirectory = Path.GetDirectoryName(assetPath);
             if (string.IsNullOrWhiteSpace(assetDirectory))
             {
-                return;
+                return null;
             }
 
             TextureImporter importer = AssetImporter.GetAtPath(assetPath) as TextureImporter;
             if (importer == null || !importer.textureType.Equals(TextureImporterType.Sprite))
             {
-                return;
+                return null;
             }
 
             TextureImporterSettings originalSettings = new();
             importer.ReadTextureSettings(originalSettings);
 
-            importer.isReadable = true;
-            importer.SaveAndReimport();
+            if (!importer.isReadable)
+            {
+                importer.isReadable = true;
+                importer.SaveAndReimport();
+            }
 
             Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(assetPath);
             Color32[] pixels = tex.GetPixels32();
@@ -127,7 +166,7 @@
 
             if (!hasVisible)
             {
-                return;
+                return null;
             }
 
             int cropWidth = maxX - minX + 1;
@@ -159,7 +198,7 @@
             TextureImporter newImporter = AssetImporter.GetAtPath(newPath) as TextureImporter;
             if (newImporter == null)
             {
-                return;
+                return null;
             }
 
             newImporter.textureType = importer.textureType;
@@ -185,8 +224,9 @@
             newSettings.spriteAlignment = (int)SpriteAlignment.Custom;
 
             newImporter.SetTextureSettings(newSettings);
-            newImporter.isReadable = false;
-            newImporter.SaveAndReimport();
+            newImporter.isReadable = true;
+
+            return newImporter;
         }
 
         private static Vector2 GetSpritePivot(TextureImporter importer)
@@ -202,4 +242,5 @@
             );
         }
     }
+#endif
 }

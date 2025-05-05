@@ -74,9 +74,8 @@
                 return null;
             }
 
-            return target.TryGetComponent(out EffectHandler effectHandler)
-                ? effectHandler.ApplyEffect(attributeEffect)
-                : null;
+            EffectHandler effectHandler = target.GetGameObject().GetOrAddComponent<EffectHandler>();
+            return effectHandler.ApplyEffect(attributeEffect);
         }
 
         public static void ApplyEffectsNoAlloc(
@@ -89,11 +88,11 @@
                 return;
             }
 
-            if (target == null || !target.TryGetComponent(out EffectHandler effectHandler))
+            if (target == null)
             {
                 return;
             }
-
+            EffectHandler effectHandler = target.GetGameObject().GetOrAddComponent<EffectHandler>();
             foreach (AttributeEffect attributeEffect in attributeEffects)
             {
                 _ = effectHandler.ApplyEffect(attributeEffect);
@@ -105,11 +104,12 @@
             IEnumerable<AttributeEffect> attributeEffects
         )
         {
-            if (target == null || !target.TryGetComponent(out EffectHandler effectHandler))
+            if (target == null)
             {
                 return;
             }
 
+            EffectHandler effectHandler = target.GetGameObject().GetOrAddComponent<EffectHandler>();
             foreach (AttributeEffect attributeEffect in attributeEffects)
             {
                 _ = effectHandler.ApplyEffect(attributeEffect);
@@ -122,11 +122,12 @@
             List<EffectHandle> effectHandles
         )
         {
-            if (target == null || !target.TryGetComponent(out EffectHandler effectHandler))
+            if (target == null)
             {
                 return;
             }
 
+            EffectHandler effectHandler = target.GetGameObject().GetOrAddComponent<EffectHandler>();
             foreach (AttributeEffect attributeEffect in attributeEffects)
             {
                 EffectHandle? handle = effectHandler.ApplyEffect(attributeEffect);
