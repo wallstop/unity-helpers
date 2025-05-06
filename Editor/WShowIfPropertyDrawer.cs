@@ -4,8 +4,8 @@
     using System.Reflection;
     using UnityEditor;
     using UnityEngine;
-    using WallstopStudios.UnityHelpers.Core.Attributes;
-    using WallstopStudios.UnityHelpers.Core.Extension;
+    using Core.Attributes;
+    using Core.Extension;
 
     [CustomPropertyDrawer(typeof(WShowIfAttribute))]
     public sealed class WShowIfPropertyDrawer : PropertyDrawer

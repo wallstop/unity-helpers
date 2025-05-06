@@ -453,7 +453,7 @@
                     {
                         continue;
                     }
-                    var fileInfo = new AnimationFileInfo
+                    AnimationFileInfo fileInfo = new()
                     {
                         RelativePath = sourceRelPath,
                         FullPath = sourceFullPath,
@@ -485,7 +485,7 @@
 
                 for (int i = 0; i < _sourceAnimations.Count; i++)
                 {
-                    var sourceInfo = _sourceAnimations[i];
+                    AnimationFileInfo sourceInfo = _sourceAnimations[i];
                     current++;
                     EditorUtility.DisplayProgressBar(
                         "Analyzing Animations",
@@ -599,7 +599,7 @@
             {
                 for (int i = 0; i < animationsToCopy.Count; i++)
                 {
-                    var animInfo = animationsToCopy[i];
+                    AnimationFileInfo animInfo = animationsToCopy[i];
                     float progress = (float)(i + 1) / animationsToCopy.Count;
                     bool userCancelled = EditorUtility.DisplayCancelableProgressBar(
                         $"Copying Animations ({mode})",
@@ -690,7 +690,7 @@
                 return;
             }
 
-            var animationsToDelete = _unchangedAnimations.ToList();
+            List<AnimationFileInfo> animationsToDelete = _unchangedAnimations.ToList();
 
             if (animationsToDelete.Count == 0)
             {
@@ -713,7 +713,7 @@
             {
                 for (int i = 0; i < animationsToDelete.Count; i++)
                 {
-                    var animInfo = animationsToDelete[i];
+                    AnimationFileInfo animInfo = animationsToDelete[i];
                     float progress = (float)(i + 1) / animationsToDelete.Count;
                     bool userCancelled = EditorUtility.DisplayCancelableProgressBar(
                         "Deleting Source Duplicates",
@@ -870,8 +870,8 @@
         {
             try
             {
-                using (var md5 = MD5.Create())
-                using (var stream = File.OpenRead(filePath))
+                using (MD5 md5 = MD5.Create())
+                using (FileStream stream = File.OpenRead(filePath))
                 {
                     byte[] hashBytes = md5.ComputeHash(stream);
                     return BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();

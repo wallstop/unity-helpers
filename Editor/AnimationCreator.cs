@@ -476,7 +476,7 @@
             }
             else
             {
-                foreach (var data in animationData)
+                foreach (AnimationData data in animationData)
                 {
                     string lowerName = (data.animationName ?? string.Empty).ToLowerInvariant();
                     if (searchTerms.All(term => lowerName.Contains(term)))
