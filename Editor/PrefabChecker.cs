@@ -17,6 +17,9 @@
 
     public sealed class PrefabChecker : EditorWindow
     {
+        private const float ToggleWidth = 18f;
+        private const float ToggleSpacing = 4f;
+
         private static readonly Dictionary<Type, List<FieldInfo>> FieldsByType = new();
         private static readonly Dictionary<Type, List<FieldInfo>> ListFieldsByType = new();
         private static readonly Dictionary<Type, List<FieldInfo>> StringFieldsByType = new();
@@ -86,67 +89,185 @@
         private void DrawConfigurationOptions()
         {
             EditorGUILayout.LabelField("Validation Checks", EditorStyles.boldLabel);
-            _checkMissingScripts = EditorGUILayout.Toggle(
+
+            var drawRightAlignedToggle = SetupDrawRightAlignedToggle();
+
+            float targetAlignmentX = 0f;
+            bool alignmentCalculated = false;
+
+            DrawAndAlign(
                 new GUIContent(
                     "Missing Scripts",
                     "Check for GameObjects with missing script references."
                 ),
-                _checkMissingScripts
+                () => _checkMissingScripts,
+                v => _checkMissingScripts = v,
+                false
             );
-            _checkNullElementsInLists = EditorGUILayout.Toggle(
+            DrawAndAlign(
                 new GUIContent(
                     "Nulls in Lists/Arrays",
                     "Check for null elements within serialized lists or arrays."
                 ),
-                _checkNullElementsInLists
+                () => _checkNullElementsInLists,
+                v => _checkNullElementsInLists = v,
+                false
             );
-            _checkMissingRequiredComponents = EditorGUILayout.Toggle(
+            DrawAndAlign(
                 new GUIContent(
                     "Missing Required Components",
                     "Check if components are missing dependencies defined by [RequireComponent]."
                 ),
-                _checkMissingRequiredComponents
+                () => _checkMissingRequiredComponents,
+                v => _checkMissingRequiredComponents = v,
+                false
             );
-            _checkEmptyStringFields = EditorGUILayout.Toggle(
+            DrawAndAlign(
                 new GUIContent(
                     "Empty String Fields",
                     "Check for serialized string fields that are empty."
                 ),
-                _checkEmptyStringFields
+                () => _checkEmptyStringFields,
+                v => _checkEmptyStringFields = v,
+                false
             );
 
-            _checkNullObjectReferences = EditorGUILayout.BeginToggleGroup(
+            DrawAndAlign(
                 new GUIContent(
                     "Null Object References",
                     "Check for serialized UnityEngine.Object fields that are null."
                 ),
-                _checkNullObjectReferences
+                () => _checkNullObjectReferences,
+                v => _checkNullObjectReferences = v,
+                false
             );
-            EditorGUI.indentLevel++;
-            _onlyCheckNullObjectsWithAttribute = EditorGUILayout.Toggle(
-                new GUIContent(
-                    "Only if [ValidateAssignment]",
-                    "Only report null object references if the field has the [ValidateAssignment] attribute."
-                ),
-                _onlyCheckNullObjectsWithAttribute
-            );
-            EditorGUI.indentLevel--;
-            EditorGUILayout.EndToggleGroup();
 
-            _checkDisabledRootGameObjects = EditorGUILayout.Toggle(
+            bool wasEnabled = GUI.enabled;
+            GUI.enabled = wasEnabled && _checkNullObjectReferences;
+            try
+            {
+                EditorGUI.indentLevel++;
+                try
+                {
+                    DrawAndAlign(
+                        new GUIContent(
+                            "Only if [ValidateAssignment]",
+                            "Only report null object references if the field has the [ValidateAssignment] attribute."
+                        ),
+                        () => _onlyCheckNullObjectsWithAttribute,
+                        v => _onlyCheckNullObjectsWithAttribute = v,
+                        true
+                    );
+                }
+                finally
+                {
+                    EditorGUI.indentLevel--;
+                }
+            }
+            finally
+            {
+                GUI.enabled = wasEnabled;
+            }
+
+            DrawAndAlign(
                 new GUIContent(
                     "Disabled Root GameObject",
                     "Check if the prefab's root GameObject is inactive."
                 ),
-                _checkDisabledRootGameObjects
+                () => _checkDisabledRootGameObjects,
+                v => _checkDisabledRootGameObjects = v,
+                false
             );
-            _checkDisabledComponents = EditorGUILayout.Toggle(
+            DrawAndAlign(
                 new GUIContent(
                     "Disabled Components",
                     "Check for any components on the prefab that are disabled."
                 ),
-                _checkDisabledComponents
+                () => _checkDisabledComponents,
+                v => _checkDisabledComponents = v,
+                false
             );
+            return;
+
+            void DrawAndAlign(
+                GUIContent content,
+                Func<bool> getter,
+                Action<bool> setter,
+                bool isNested
+            )
+            {
+                switch (alignmentCalculated)
+                {
+                    case false when !isNested:
+                    {
+                        float viewWidth = EditorGUIUtility.currentViewWidth;
+
+                        float availableWidth = viewWidth - 18f;
+                        targetAlignmentX = availableWidth - ToggleWidth;
+                        alignmentCalculated = true;
+                        break;
+                    }
+                    case false when isNested:
+                    {
+                        float viewWidth = EditorGUIUtility.currentViewWidth;
+                        float availableWidth = viewWidth - 20f - 15f;
+                        targetAlignmentX = availableWidth - ToggleWidth;
+                        alignmentCalculated = true;
+                        this.LogWarn(
+                            $"Calculated alignment X based on first item being nested. Alignment might be approximate."
+                        );
+                        break;
+                    }
+                }
+
+                float? overrideX = isNested ? targetAlignmentX : null;
+
+                bool newValue = drawRightAlignedToggle(content, getter(), overrideX, isNested);
+                if (newValue != getter())
+                {
+                    setter(newValue);
+                }
+            }
+        }
+
+        private static Func<GUIContent, bool, float?, bool, bool> SetupDrawRightAlignedToggle()
+        {
+            return (label, value, overrideToggleX, isNested) =>
+            {
+                Rect lineRect;
+                if (isNested)
+                {
+                    EditorGUI.indentLevel++;
+                }
+
+                try
+                {
+                    lineRect = EditorGUILayout.GetControlRect(
+                        true,
+                        EditorGUIUtility.singleLineHeight
+                    );
+                }
+                finally
+                {
+                    if (isNested)
+                    {
+                        EditorGUI.indentLevel--;
+                    }
+                }
+
+                float defaultToggleX = lineRect.x + lineRect.width - ToggleWidth;
+                float finalToggleX = overrideToggleX ?? defaultToggleX;
+
+                finalToggleX = Mathf.Max(finalToggleX, lineRect.x + ToggleSpacing);
+
+                Rect toggleRect = new(finalToggleX, lineRect.y, ToggleWidth, lineRect.height);
+
+                float labelWidth = Mathf.Max(0, finalToggleX - lineRect.x - ToggleSpacing);
+                Rect labelRect = new(lineRect.x, lineRect.y, labelWidth, lineRect.height);
+
+                EditorGUI.LabelField(labelRect, label);
+                return EditorGUI.Toggle(toggleRect, value);
+            };
         }
 
         private void DrawAssetPaths()
