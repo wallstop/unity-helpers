@@ -573,13 +573,12 @@
                 int index = 0;
                 if (list is Object unityObject)
                 {
-                    if (unityObject == null)
+                    if (list.GetType() != typeof(Transform) && unityObject == null)
                     {
                         unityObject.LogError(
                             $"Field '{field.Name}' ({field.FieldType.Name}) on component '{componentType.Name}' has a null enumerable."
                         );
                     }
-                    // Ignore all enumerable unity objects, they're spooky
                     continue;
                 }
                 foreach (object element in list)
