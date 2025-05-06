@@ -6,10 +6,10 @@
     using System.Diagnostics;
     using System.Linq;
     using System.Threading.Tasks;
+    using Core.DataStructure;
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.TestTools;
-    using WallstopStudios.UnityHelpers.Core.DataStructure;
 
     public abstract class SpatialTreePerformanceTest<TTree>
         where TTree : ISpatialTree<Vector2>

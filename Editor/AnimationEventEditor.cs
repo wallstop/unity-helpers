@@ -7,8 +7,8 @@
     using System.Reflection;
     using UnityEditor;
     using UnityEngine;
-    using WallstopStudios.UnityHelpers.Core.Attributes;
-    using WallstopStudios.UnityHelpers.Core.Helper;
+    using Core.Attributes;
+    using Core.Helper;
     using WallstopStudios.UnityHelpers.Utils;
 
     // https://gist.githubusercontent.com/yujen/5e1cd78e2a341260b38029de08a449da/raw/ac60c1002e0e14375de5b2b0a167af00df3f74b4/SeniaAnimationEventEditor.cs
@@ -76,7 +76,7 @@
         private Animator _sourceAnimator;
         private AnimationClip _currentClip;
         private bool _explicitMode = true;
-        private bool _controlFrameTime = false;
+        private bool _controlFrameTime;
         private string _animationSearchString = string.Empty;
         private List<ObjectReferenceKeyframe> _referenceCurve;
 

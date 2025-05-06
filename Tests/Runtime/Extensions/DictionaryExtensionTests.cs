@@ -2,8 +2,8 @@
 {
     using System.Collections.Generic;
     using System.Linq;
+    using Core.Extension;
     using NUnit.Framework;
-    using WallstopStudios.UnityHelpers.Core.Extension;
 
     public sealed class DictionaryExtensionTests
     {

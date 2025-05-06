@@ -9,8 +9,8 @@
     using UnityEditor;
     using UnityEngine;
     using UnityEngine.Serialization;
-    using WallstopStudios.UnityHelpers.Core.Extension;
-    using WallstopStudios.UnityHelpers.Core.Helper;
+    using Core.Extension;
+    using Core.Helper;
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 

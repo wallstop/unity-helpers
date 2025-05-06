@@ -7,23 +7,23 @@
     using System.Linq;
     using UnityEditor;
     using UnityEngine;
-    using WallstopStudios.UnityHelpers.Core.Attributes;
-    using WallstopStudios.UnityHelpers.Core.Extension;
+    using Core.Attributes;
+    using Core.Extension;
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
     public sealed class TextureSettingsApplier : ScriptableWizard
     {
-        public bool applyReadOnly = false;
-        public bool isReadOnly = false;
-        public bool applyMipMaps = false;
-        public bool generateMipMaps = false;
-        public bool applyWrapMode = false;
+        public bool applyReadOnly;
+        public bool isReadOnly;
+        public bool applyMipMaps;
+        public bool generateMipMaps;
+        public bool applyWrapMode;
 
         [WShowIf(nameof(applyWrapMode))]
         public TextureWrapMode wrapMode = TextureWrapMode.Clamp;
 
-        public bool applyFilterMode = false;
+        public bool applyFilterMode;
 
         [WShowIf(nameof(applyFilterMode))]
         public FilterMode filterMode = FilterMode.Trilinear;

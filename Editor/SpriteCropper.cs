@@ -55,7 +55,7 @@
                 FindFilesToProcess();
             }
 
-            if (_filesToProcess != null && _filesToProcess.Count > 0)
+            if (_filesToProcess is { Count: > 0 })
             {
                 GUILayout.Label(
                     $"Found {_filesToProcess.Count} sprites to process.",

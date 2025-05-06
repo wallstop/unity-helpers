@@ -4,6 +4,7 @@
     using System;
     using System.Collections;
     using System.Collections.Generic;
+    using System.IO;
     using System.Linq;
     using System.Reflection;
     using UnityEditor;
@@ -14,153 +15,580 @@
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
-    public sealed class PrefabCheckWizard : ScriptableWizard
+    public sealed class PrefabChecker : EditorWindow
     {
         private static readonly Dictionary<Type, List<FieldInfo>> FieldsByType = new();
+        private static readonly Dictionary<Type, List<FieldInfo>> ListFieldsByType = new();
+        private static readonly Dictionary<Type, List<FieldInfo>> StringFieldsByType = new();
+        private static readonly Dictionary<Type, List<FieldInfo>> ObjectFieldsByType = new();
+        private static readonly Dictionary<Type, List<RequireComponent>> RequiredComponentsByType =
+            new();
 
-        [Tooltip(
-            "Drag a folder from Unity here to validate all prefabs under it. Defaults to Assets/Prefabs and Assets/Resources if none specified."
-        )]
-        public List<Object> assetPaths = new();
+        private readonly List<string> _assetPaths = new();
+        private Vector2 _scrollPosition;
 
-        [MenuItem("Tools/Wallstop Studios/Unity Helpers/Prefab Check Wizard", priority = -1)]
-        public static void CreatePrefabCheckWizard()
+        private bool _checkMissingScripts = true;
+        private bool _checkNullElementsInLists = true;
+        private bool _checkMissingRequiredComponents = true;
+        private bool _checkEmptyStringFields;
+        private bool _checkNullObjectReferences = true;
+        private bool _onlyCheckNullObjectsWithAttribute = true;
+        private bool _checkDisabledRootGameObjects = true;
+        private bool _checkDisabledComponents;
+
+        private const string DefaultPrefabsFolder = "Assets/Prefabs";
+
+        [MenuItem("Tools/Wallstop Studios/Unity Helpers/Prefab Checker", priority = -1)]
+        public static void ShowWindow()
         {
-            _ = DisplayWizard<PrefabCheckWizard>("Prefab sanity check", "Run");
+            GetWindow<PrefabChecker>("Prefab Check");
         }
 
-        private void OnWizardCreate()
+        private void OnEnable()
         {
-            List<string> parsedAssetPaths;
-            if (assetPaths is { Count: > 0 })
+            PopulateDefaultPaths();
+        }
+
+        private void PopulateDefaultPaths()
+        {
+            if (_assetPaths.Count == 0 && AssetDatabase.IsValidFolder(DefaultPrefabsFolder))
             {
-                parsedAssetPaths = assetPaths
-                    .Where(Objects.NotNull)
-                    .Select(AssetDatabase.GetAssetPath)
-                    .ToList();
-                parsedAssetPaths.RemoveAll(string.IsNullOrEmpty);
-                if (parsedAssetPaths.Count <= 0)
-                {
-                    parsedAssetPaths = null;
-                }
+                _assetPaths.Add(DefaultPrefabsFolder);
             }
-            else
+        }
+
+        private void OnGUI()
+        {
+            _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
+
+            DrawConfigurationOptions();
+
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Target Folders", EditorStyles.boldLabel);
+
+            DrawAssetPaths();
+
+            if (GUILayout.Button("Add Folder"))
             {
-                parsedAssetPaths = null;
+                AddFolder();
             }
 
-            foreach (GameObject prefab in Helpers.EnumeratePrefabs(parsedAssetPaths))
+            EditorGUILayout.Space();
+
+            if (GUILayout.Button("Run Checks", GUILayout.Height(30)))
             {
-                List<MonoBehaviour> componentBuffer = Buffers<MonoBehaviour>.List;
-                prefab.GetComponentsInChildren(true, componentBuffer);
-                foreach (MonoBehaviour script in componentBuffer)
+                RunChecks();
+            }
+
+            EditorGUILayout.EndScrollView();
+        }
+
+        private void DrawConfigurationOptions()
+        {
+            EditorGUILayout.LabelField("Validation Checks", EditorStyles.boldLabel);
+            _checkMissingScripts = EditorGUILayout.Toggle(
+                new GUIContent(
+                    "Missing Scripts",
+                    "Check for GameObjects with missing script references."
+                ),
+                _checkMissingScripts
+            );
+            _checkNullElementsInLists = EditorGUILayout.Toggle(
+                new GUIContent(
+                    "Nulls in Lists/Arrays",
+                    "Check for null elements within serialized lists or arrays."
+                ),
+                _checkNullElementsInLists
+            );
+            _checkMissingRequiredComponents = EditorGUILayout.Toggle(
+                new GUIContent(
+                    "Missing Required Components",
+                    "Check if components are missing dependencies defined by [RequireComponent]."
+                ),
+                _checkMissingRequiredComponents
+            );
+            _checkEmptyStringFields = EditorGUILayout.Toggle(
+                new GUIContent(
+                    "Empty String Fields",
+                    "Check for serialized string fields that are empty."
+                ),
+                _checkEmptyStringFields
+            );
+
+            _checkNullObjectReferences = EditorGUILayout.BeginToggleGroup(
+                new GUIContent(
+                    "Null Object References",
+                    "Check for serialized UnityEngine.Object fields that are null."
+                ),
+                _checkNullObjectReferences
+            );
+            EditorGUI.indentLevel++;
+            _onlyCheckNullObjectsWithAttribute = EditorGUILayout.Toggle(
+                new GUIContent(
+                    "Only if [ValidateAssignment]",
+                    "Only report null object references if the field has the [ValidateAssignment] attribute."
+                ),
+                _onlyCheckNullObjectsWithAttribute
+            );
+            EditorGUI.indentLevel--;
+            EditorGUILayout.EndToggleGroup();
+
+            _checkDisabledRootGameObjects = EditorGUILayout.Toggle(
+                new GUIContent(
+                    "Disabled Root GameObject",
+                    "Check if the prefab's root GameObject is inactive."
+                ),
+                _checkDisabledRootGameObjects
+            );
+            _checkDisabledComponents = EditorGUILayout.Toggle(
+                new GUIContent(
+                    "Disabled Components",
+                    "Check for any components on the prefab that are disabled."
+                ),
+                _checkDisabledComponents
+            );
+        }
+
+        private void DrawAssetPaths()
+        {
+            if (_assetPaths.Count == 0)
+            {
+                EditorGUILayout.HelpBox(
+                    "No target folders specified. Add folders containing prefabs to check.",
+                    MessageType.Info
+                );
+            }
+
+            List<string> pathsToRemove = null;
+
+            foreach (string assetPath in _assetPaths)
+            {
+                using (new EditorGUILayout.HorizontalScope())
                 {
-                    if (!script)
+                    string currentPath = assetPath;
+                    EditorGUILayout.LabelField(currentPath);
+
+                    DefaultAsset folderAsset = AssetDatabase.LoadAssetAtPath<DefaultAsset>(
+                        currentPath
+                    );
+                    if (folderAsset != null)
                     {
-                        Type scriptType = script?.GetType();
-                        if (scriptType == null)
+                        if (GUILayout.Button("Ping", GUILayout.Width(50)))
                         {
-                            prefab.LogError($"Detected missing script.");
+                            EditorGUIUtility.PingObject(folderAsset);
+                        }
+                    }
+                    else
+                    {
+                        GUILayout.Space(56);
+                    }
+
+                    if (GUILayout.Button("X", GUILayout.Width(25)))
+                    {
+                        pathsToRemove ??= new List<string>();
+                        pathsToRemove.Add(currentPath);
+                    }
+                }
+            }
+
+            if (pathsToRemove != null)
+            {
+                foreach (string path in pathsToRemove)
+                {
+                    _assetPaths.Remove(path);
+                }
+                Repaint();
+            }
+        }
+
+        private void AddFolder()
+        {
+            string projectPath = Directory.GetParent(Application.dataPath)?.FullName;
+            if (string.IsNullOrWhiteSpace(projectPath))
+            {
+                this.LogError($"Failed to find project path!");
+                return;
+            }
+            string absolutePath = EditorUtility.OpenFolderPanel(
+                "Select Prefab Folder",
+                "Assets",
+                ""
+            );
+
+            if (!string.IsNullOrEmpty(absolutePath))
+            {
+                if (absolutePath.StartsWith(projectPath, StringComparison.Ordinal))
+                {
+                    string relativePath =
+                        "Assets" + absolutePath.Substring(projectPath.Length).Replace('\\', '/');
+
+                    if (AssetDatabase.IsValidFolder(relativePath))
+                    {
+                        if (!_assetPaths.Contains(relativePath))
+                        {
+                            _assetPaths.Add(relativePath);
                         }
                         else
                         {
-                            prefab.LogError(
-                                $"Detected missing script for script type {scriptType}."
-                            );
+                            this.LogWarn($"Folder '{relativePath}' is already in the list.");
                         }
-
-                        continue;
                     }
-                    ValidateNoNullsInLists(script);
+                    else
+                    {
+                        this.LogWarn(
+                            $"Selected path '{relativePath}' is not a valid Unity folder."
+                        );
+                    }
+                }
+                else
+                {
+                    this.LogError(
+                        $"Selected folder must be inside the Unity project's Assets folder. Project path: {projectPath}, Selected path: {absolutePath}"
+                    );
                 }
             }
         }
 
-        private static void ValidateNoNullsInLists(Object component)
+        private void RunChecks()
         {
+            if (_assetPaths == null || _assetPaths.Count == 0)
+            {
+                this.LogError($"No asset paths specified. Add folders containing prefabs.");
+                return;
+            }
+
+            List<string> validPaths = _assetPaths
+                .Where(p => !string.IsNullOrEmpty(p) && AssetDatabase.IsValidFolder(p))
+                .ToList();
+
+            if (validPaths.Count == 0)
+            {
+                this.LogError(
+                    $"None of the specified paths are valid folders: {string.Join(", ", _assetPaths)}"
+                );
+                return;
+            }
+
+            this.Log($"Starting prefab check for folders: {string.Join(", ", validPaths)}");
+            int totalPrefabsChecked = 0;
+            int totalIssuesFound = 0;
+
+            foreach (GameObject prefab in Helpers.EnumeratePrefabs(validPaths))
+            {
+                totalPrefabsChecked++;
+                int issuesForThisPrefab = 0;
+                string prefabPath = AssetDatabase.GetAssetPath(prefab);
+
+                if (_checkDisabledRootGameObjects && !prefab.activeSelf)
+                {
+                    prefab.LogWarn($"Prefab root GameObject is disabled.");
+                    issuesForThisPrefab++;
+                }
+
+                List<MonoBehaviour> componentBuffer = Buffers<MonoBehaviour>.List;
+                prefab.GetComponentsInChildren(true, componentBuffer);
+
+                foreach (MonoBehaviour script in componentBuffer)
+                {
+                    if (_checkMissingScripts && !script)
+                    {
+                        GameObject owner = FindOwnerOfMissingScript(prefab, componentBuffer);
+                        string ownerName = owner ? owner.name : "[[Unknown GameObject]]";
+                        Object context = owner ? (Object)owner : prefab;
+                        context.LogError($"Detected missing script on GameObject '{ownerName}'.");
+                        issuesForThisPrefab++;
+                        continue;
+                    }
+
+                    if (!script)
+                    {
+                        continue;
+                    }
+
+                    Type scriptType = script.GetType();
+                    GameObject ownerGameObject = script.gameObject;
+
+                    if (_checkNullElementsInLists)
+                    {
+                        issuesForThisPrefab += ValidateNoNullsInLists(script, ownerGameObject);
+                    }
+
+                    if (_checkMissingRequiredComponents)
+                    {
+                        issuesForThisPrefab += ValidateRequiredComponents(script, ownerGameObject);
+                    }
+
+                    if (_checkEmptyStringFields)
+                    {
+                        issuesForThisPrefab += ValidateEmptyStrings(script, ownerGameObject);
+                    }
+
+                    if (_checkNullObjectReferences)
+                    {
+                        issuesForThisPrefab += ValidateNullObjectReferences(
+                            script,
+                            ownerGameObject
+                        );
+                    }
+
+                    if (_checkDisabledComponents && script is Behaviour { enabled: false })
+                    {
+                        ownerGameObject.LogWarn(
+                            $"Component '{scriptType.Name}' on GameObject '{ownerGameObject.name}' is disabled."
+                        );
+                        issuesForThisPrefab++;
+                    }
+                }
+
+                if (issuesForThisPrefab > 0)
+                {
+                    prefab.LogWarn(
+                        $"Prefab '{prefab.name}' at path '{prefabPath}' has {issuesForThisPrefab} potential issues."
+                    );
+                    totalIssuesFound += issuesForThisPrefab;
+                }
+            }
+
+            if (totalIssuesFound > 0)
+            {
+                this.LogError(
+                    $"Prefab check complete. Found {totalIssuesFound} potential issues across {totalPrefabsChecked} prefabs."
+                );
+            }
+            else
+            {
+                this.Log(
+                    $"Prefab check complete. No issues found in {totalPrefabsChecked} prefabs."
+                );
+            }
+        }
+
+        private GameObject FindOwnerOfMissingScript(
+            GameObject prefabRoot,
+            List<MonoBehaviour> buffer
+        )
+        {
+            Transform[] allTransforms = prefabRoot.GetComponentsInChildren<Transform>(true);
+            foreach (Transform transform in allTransforms)
+            {
+                MonoBehaviour[] components = transform.GetComponents<MonoBehaviour>();
+                if (
+                    components.Length
+                    != buffer.Count(c => c != null && c.gameObject == transform.gameObject)
+                )
+                {
+                    bool foundInNonNullBuffer = false;
+                    foreach (MonoBehaviour comp in components)
+                    {
+                        if (buffer.Contains(comp))
+                        {
+                            foundInNonNullBuffer = true;
+                            break;
+                        }
+                    }
+
+                    if (foundInNonNullBuffer)
+                    {
+                        return transform.gameObject;
+                    }
+
+                    if (components.Length == 0 && buffer.Any(c => c == null))
+                    {
+                        IEnumerable<GameObject> gameObjectsWithComponentsInBufer = buffer
+                            .Where(c => c != null)
+                            .Select(c => c.gameObject)
+                            .Distinct();
+                        if (!gameObjectsWithComponentsInBufer.Contains(transform.gameObject))
+                        {
+                            return transform.gameObject;
+                        }
+                    }
+                }
+            }
+
+            return prefabRoot;
+        }
+
+        private static IEnumerable<FieldInfo> GetFieldsToCheck(
+            Type componentType,
+            Dictionary<Type, List<FieldInfo>> cache
+        )
+        {
+            return cache.GetOrAdd(
+                componentType,
+                type =>
+                    type.GetFields(
+                            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+                        )
+                        .Where(field =>
+                            field.IsPublic
+                            || field.GetCustomAttributes(typeof(SerializeField), true).Any()
+                        )
+                        .ToList()
+            );
+        }
+
+        private int ValidateNoNullsInLists(Object component, GameObject context)
+        {
+            int issueCount = 0;
+            Type componentType = component.GetType();
+
             foreach (
-                FieldInfo field in FieldsByType.GetOrAdd(
-                    component.GetType(),
+                FieldInfo field in ListFieldsByType.GetOrAdd(
+                    componentType,
                     type =>
-                        type.GetFields(BindingFlags.Instance | BindingFlags.Public)
-                            .Concat(
-                                type.GetFields(BindingFlags.Instance | BindingFlags.NonPublic)
-                                    .Where(field =>
-                                        field.GetCustomAttributes(typeof(SerializeField)).Any()
-                                        || field
-                                            .GetCustomAttributes(
-                                                typeof(ValidateAssignmentAttribute)
-                                            )
-                                            .Any()
-                                    )
+                        GetFieldsToCheck(type, FieldsByType)
+                            .Where(f =>
+                                typeof(IEnumerable).IsAssignableFrom(f.FieldType)
+                                && f.FieldType != typeof(string)
                             )
-                            .Where(field =>
-                                typeof(IEnumerable).IsAssignableFrom(field.FieldType)
-                                || field.FieldType.IsArray
-                            )
-                            .Where(field => !typeof(Transform).IsAssignableFrom(field.FieldType))
-                            .Where(field => !typeof(Object).IsAssignableFrom(field.FieldType))
                             .ToList()
                 )
             )
             {
                 object fieldValue = field.GetValue(component);
 
-                if (field.FieldType.IsArray)
-                {
-                    if (fieldValue == null)
-                    {
-                        component.LogError($"Field {field.Name} (array) was null.");
-                        continue;
-                    }
-
-                    Array array = (Array)fieldValue;
-                    foreach (object thing in array)
-                    {
-                        bool nullElement = LogIfNull(thing);
-                        if (nullElement)
-                        {
-                            break;
-                        }
-                    }
-
-                    continue;
-                }
-
-                if (fieldValue is not IEnumerable list)
+                if (fieldValue == null)
                 {
                     continue;
                 }
 
-                int position = 0;
-                foreach (object thing in list)
+                if (fieldValue is IEnumerable list)
                 {
-                    _ = LogIfNull(thing, position++);
-                }
-
-                continue;
-
-                bool LogIfNull(object thing, int? elementIndex = null)
-                {
-                    if (thing == null || (thing is Object unityThing && !unityThing))
+                    int index = 0;
+                    foreach (object element in list)
                     {
-                        if (elementIndex == null)
+                        if (element == null || (element is Object unityObj && !unityObj))
                         {
-                            component.LogError($"Field {field.Name} has a null element in it.");
-                        }
-                        else
-                        {
-                            component.LogError(
-                                $"Field {field.Name} has a null element at position {elementIndex}."
+                            context.LogError(
+                                $"Field '{field.Name}' ({field.FieldType.Name}) on component '{componentType.Name}' has a null or missing element at index {index}."
                             );
+                            issueCount++;
                         }
-
-                        return true;
+                        index++;
                     }
-
-                    return false;
                 }
             }
+            return issueCount;
+        }
+
+        private int ValidateRequiredComponents(Component component, GameObject context)
+        {
+            int issueCount = 0;
+            Type componentType = component.GetType();
+
+            List<RequireComponent> required = RequiredComponentsByType.GetOrAdd(
+                componentType,
+                type =>
+                    type.GetCustomAttributes(typeof(RequireComponent), true)
+                        .Cast<RequireComponent>()
+                        .ToList()
+            );
+
+            if (required.Count > 0)
+            {
+                foreach (RequireComponent requirement in required)
+                {
+                    if (
+                        requirement.m_Type0 != null
+                        && component.GetComponent(requirement.m_Type0) == null
+                    )
+                    {
+                        context.LogError(
+                            $"Component '{componentType.Name}' requires component '{requirement.m_Type0.Name}', but it is missing."
+                        );
+                        issueCount++;
+                    }
+                    if (
+                        requirement.m_Type1 != null
+                        && component.GetComponent(requirement.m_Type1) == null
+                    )
+                    {
+                        context.LogError(
+                            $"Component '{componentType.Name}' requires component '{requirement.m_Type1.Name}', but it is missing."
+                        );
+                        issueCount++;
+                    }
+                    if (
+                        requirement.m_Type2 != null
+                        && component.GetComponent(requirement.m_Type2) == null
+                    )
+                    {
+                        context.LogError(
+                            $"Component '{componentType.Name}' requires component '{requirement.m_Type2.Name}', but it is missing."
+                        );
+                        issueCount++;
+                    }
+                }
+            }
+            return issueCount;
+        }
+
+        private int ValidateEmptyStrings(Object component, GameObject context)
+        {
+            int issueCount = 0;
+            Type componentType = component.GetType();
+
+            foreach (
+                FieldInfo field in StringFieldsByType.GetOrAdd(
+                    componentType,
+                    type =>
+                        GetFieldsToCheck(type, FieldsByType)
+                            .Where(f => f.FieldType == typeof(string))
+                            .ToList()
+                )
+            )
+            {
+                object fieldValue = field.GetValue(component);
+                if (fieldValue is string stringValue && string.IsNullOrEmpty(stringValue))
+                {
+                    context.LogWarn(
+                        $"String field '{field.Name}' on component '{componentType.Name}' is null or empty."
+                    );
+                    issueCount++;
+                }
+            }
+            return issueCount;
+        }
+
+        private int ValidateNullObjectReferences(Object component, GameObject context)
+        {
+            int issueCount = 0;
+            Type componentType = component.GetType();
+
+            foreach (
+                FieldInfo field in ObjectFieldsByType.GetOrAdd(
+                    componentType,
+                    type =>
+                        GetFieldsToCheck(type, FieldsByType)
+                            .Where(f => typeof(Object).IsAssignableFrom(f.FieldType))
+                            .ToList()
+                )
+            )
+            {
+                bool hasValidateAttribute = field
+                    .GetCustomAttributes(typeof(ValidateAssignmentAttribute), true)
+                    .Any();
+
+                if (_onlyCheckNullObjectsWithAttribute && !hasValidateAttribute)
+                {
+                    continue;
+                }
+
+                object fieldValue = field.GetValue(component);
+
+                if (fieldValue != null && (fieldValue is not Object unityObj || unityObj))
+                {
+                    continue;
+                }
+
+                string attributeMarker = hasValidateAttribute ? " (has [ValidateAssignment])" : "";
+                context.LogError(
+                    $"Object reference field '{field.Name}'{attributeMarker} on component '{componentType.Name}' is null or missing."
+                );
+                issueCount++;
+            }
+            return issueCount;
         }
     }
 #endif

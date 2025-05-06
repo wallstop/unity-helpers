@@ -1508,7 +1508,7 @@
             );
         }
 
-        public static void SetColors(this UnityEngine.UI.Slider slider, Color color)
+        public static void SetColors(this Slider slider, Color color)
         {
             ColorBlock block = slider.colors;
 
