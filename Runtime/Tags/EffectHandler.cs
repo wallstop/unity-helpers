@@ -10,9 +10,10 @@
     using Utils;
 
     [DisallowMultipleComponent]
+    [RequireComponent(typeof(TagHandler))]
     public sealed class EffectHandler : MonoBehaviour
     {
-        [SiblingComponent(optional = true)]
+        [SiblingComponent()]
         private TagHandler _tagHandler;
 
         [SiblingComponent(optional = true)]

@@ -6,8 +6,8 @@
     using UnityEditor;
     using UnityEngine;
     using Utils;
-    using WallstopStudios.UnityHelpers.Core.Attributes;
-    using WallstopStudios.UnityHelpers.Core.Extension;
+    using Core.Attributes;
+    using Core.Extension;
 
     public sealed class AnimatorControllerCopier : ScriptableWizard
     {
@@ -20,7 +20,7 @@
         [DxReadOnly]
         public string controllerDestinationPath;
 
-        [MenuItem("Tools/Unity Helpers/Animator Controller Copier")]
+        [MenuItem("Tools/Wallstop Studios/Unity Helpers/Animator Controller Copier")]
         public static void CopyAnimations()
         {
             _ = DisplayWizard<AnimatorControllerCopier>("Animator Controller Copier", "Copy");

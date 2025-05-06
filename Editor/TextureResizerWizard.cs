@@ -9,8 +9,8 @@
     using UnityEditor;
     using UnityEngine;
     using UnityEngine.Serialization;
-    using WallstopStudios.UnityHelpers.Core.Extension;
-    using WallstopStudios.UnityHelpers.Core.Helper;
+    using Core.Extension;
+    using Core.Helper;
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
@@ -39,7 +39,7 @@
         public float widthMultiplier = 0.54f;
         public float heightMultiplier = 0.245f;
 
-        [MenuItem("Tools/Unity Helpers/Texture Resizer")]
+        [MenuItem("Tools/Wallstop Studios/Unity Helpers/Texture Resizer")]
         public static void ResizeTextures()
         {
             _ = DisplayWizard<TextureResizerWizard>("Texture Resizer", "Resize");
