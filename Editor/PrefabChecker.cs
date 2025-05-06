@@ -63,27 +63,28 @@
         private void OnGUI()
         {
             _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
-
-            DrawConfigurationOptions();
-
-            EditorGUILayout.Space();
-            EditorGUILayout.LabelField("Target Folders", EditorStyles.boldLabel);
-
-            DrawAssetPaths();
-
-            if (GUILayout.Button("Add Folder"))
+            try
             {
-                AddFolder();
+                DrawConfigurationOptions();
+
+                EditorGUILayout.Space();
+                EditorGUILayout.LabelField("Target Folders", EditorStyles.boldLabel);
+                DrawAssetPaths();
+                if (GUILayout.Button("Add Folder"))
+                {
+                    AddFolder();
+                }
+
+                EditorGUILayout.Space();
+                if (GUILayout.Button("Run Checks", GUILayout.Height(30)))
+                {
+                    RunChecks();
+                }
             }
-
-            EditorGUILayout.Space();
-
-            if (GUILayout.Button("Run Checks", GUILayout.Height(30)))
+            finally
             {
-                RunChecks();
+                EditorGUILayout.EndScrollView();
             }
-
-            EditorGUILayout.EndScrollView();
         }
 
         private void DrawConfigurationOptions()
@@ -484,7 +485,7 @@
             }
         }
 
-        private GameObject FindOwnerOfMissingScript(
+        private static GameObject FindOwnerOfMissingScript(
             GameObject prefabRoot,
             List<MonoBehaviour> buffer
         )
@@ -495,35 +496,30 @@
                 MonoBehaviour[] components = transform.GetComponents<MonoBehaviour>();
                 if (
                     components.Length
-                    != buffer.Count(c => c != null && c.gameObject == transform.gameObject)
+                    == buffer.Count(c => c != null && c.gameObject == transform.gameObject)
                 )
                 {
-                    bool foundInNonNullBuffer = false;
-                    foreach (MonoBehaviour comp in components)
-                    {
-                        if (buffer.Contains(comp))
-                        {
-                            foundInNonNullBuffer = true;
-                            break;
-                        }
-                    }
+                    continue;
+                }
 
-                    if (foundInNonNullBuffer)
-                    {
-                        return transform.gameObject;
-                    }
+                bool foundInNonNullBuffer = components.Any(buffer.Contains);
+                if (foundInNonNullBuffer)
+                {
+                    return transform.gameObject;
+                }
 
-                    if (components.Length == 0 && buffer.Any(c => c == null))
-                    {
-                        IEnumerable<GameObject> gameObjectsWithComponentsInBufer = buffer
-                            .Where(c => c != null)
-                            .Select(c => c.gameObject)
-                            .Distinct();
-                        if (!gameObjectsWithComponentsInBufer.Contains(transform.gameObject))
-                        {
-                            return transform.gameObject;
-                        }
-                    }
+                if (components.Length != 0 || !buffer.Exists(c => c == null))
+                {
+                    continue;
+                }
+
+                HashSet<GameObject> gameObjectsWithComponentsInBuffer = buffer
+                    .Where(c => c != null)
+                    .Select(c => c.gameObject)
+                    .ToHashSet();
+                if (!gameObjectsWithComponentsInBuffer.Contains(transform.gameObject))
+                {
+                    return transform.gameObject;
                 }
             }
 
@@ -549,7 +545,7 @@
             );
         }
 
-        private int ValidateNoNullsInLists(Object component, GameObject context)
+        private static int ValidateNoNullsInLists(Object component, GameObject context)
         {
             int issueCount = 0;
             Type componentType = component.GetType();
@@ -569,31 +565,39 @@
             {
                 object fieldValue = field.GetValue(component);
 
-                if (fieldValue == null)
+                if (fieldValue is not IEnumerable list)
                 {
                     continue;
                 }
 
-                if (fieldValue is IEnumerable list)
+                int index = 0;
+                if (list is Object unityObject)
                 {
-                    int index = 0;
-                    foreach (object element in list)
+                    if (unityObject == null)
                     {
-                        if (element == null || (element is Object unityObj && !unityObj))
-                        {
-                            context.LogError(
-                                $"Field '{field.Name}' ({field.FieldType.Name}) on component '{componentType.Name}' has a null or missing element at index {index}."
-                            );
-                            issueCount++;
-                        }
-                        index++;
+                        unityObject.LogError(
+                            $"Field '{field.Name}' ({field.FieldType.Name}) on component '{componentType.Name}' has a null enumerable."
+                        );
                     }
+                    // Ignore all enumerable unity objects, they're spooky
+                    continue;
+                }
+                foreach (object element in list)
+                {
+                    if (element == null || (element is Object unityObj && !unityObj))
+                    {
+                        context.LogError(
+                            $"Field '{field.Name}' ({field.FieldType.Name}) on component '{componentType.Name}' has a null or missing element at index {index}."
+                        );
+                        issueCount++;
+                    }
+                    index++;
                 }
             }
             return issueCount;
         }
 
-        private int ValidateRequiredComponents(Component component, GameObject context)
+        private static int ValidateRequiredComponents(Component component, GameObject context)
         {
             int issueCount = 0;
             Type componentType = component.GetType();
@@ -606,46 +610,48 @@
                         .ToList()
             );
 
-            if (required.Count > 0)
+            if (required.Count <= 0)
             {
-                foreach (RequireComponent requirement in required)
+                return issueCount;
+            }
+
+            foreach (RequireComponent requirement in required)
+            {
+                if (
+                    requirement.m_Type0 != null
+                    && component.GetComponent(requirement.m_Type0) == null
+                )
                 {
-                    if (
-                        requirement.m_Type0 != null
-                        && component.GetComponent(requirement.m_Type0) == null
-                    )
-                    {
-                        context.LogError(
-                            $"Component '{componentType.Name}' requires component '{requirement.m_Type0.Name}', but it is missing."
-                        );
-                        issueCount++;
-                    }
-                    if (
-                        requirement.m_Type1 != null
-                        && component.GetComponent(requirement.m_Type1) == null
-                    )
-                    {
-                        context.LogError(
-                            $"Component '{componentType.Name}' requires component '{requirement.m_Type1.Name}', but it is missing."
-                        );
-                        issueCount++;
-                    }
-                    if (
-                        requirement.m_Type2 != null
-                        && component.GetComponent(requirement.m_Type2) == null
-                    )
-                    {
-                        context.LogError(
-                            $"Component '{componentType.Name}' requires component '{requirement.m_Type2.Name}', but it is missing."
-                        );
-                        issueCount++;
-                    }
+                    context.LogError(
+                        $"Component '{componentType.Name}' requires component '{requirement.m_Type0.Name}', but it is missing."
+                    );
+                    issueCount++;
+                }
+                if (
+                    requirement.m_Type1 != null
+                    && component.GetComponent(requirement.m_Type1) == null
+                )
+                {
+                    context.LogError(
+                        $"Component '{componentType.Name}' requires component '{requirement.m_Type1.Name}', but it is missing."
+                    );
+                    issueCount++;
+                }
+                if (
+                    requirement.m_Type2 != null
+                    && component.GetComponent(requirement.m_Type2) == null
+                )
+                {
+                    context.LogError(
+                        $"Component '{componentType.Name}' requires component '{requirement.m_Type2.Name}', but it is missing."
+                    );
+                    issueCount++;
                 }
             }
             return issueCount;
         }
 
-        private int ValidateEmptyStrings(Object component, GameObject context)
+        private static int ValidateEmptyStrings(Object component, GameObject context)
         {
             int issueCount = 0;
             Type componentType = component.GetType();
