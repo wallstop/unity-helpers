@@ -1,6 +1,6 @@
 {
   "name": "com.wallstop-studios.unity-helpers",
-  "version": "2.0.0-rc73",
+  "version": "2.0.0-rc73.1",
   "displayName": "Unity Helpers",
   "description": "Various Unity Helper Library",
   "dependencies": {},
@@ -36,3 +36,4 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   }
 }
+

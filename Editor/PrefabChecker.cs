@@ -91,7 +91,8 @@
         {
             EditorGUILayout.LabelField("Validation Checks", EditorStyles.boldLabel);
 
-            var drawRightAlignedToggle = SetupDrawRightAlignedToggle();
+            Func<GUIContent, bool, float?, bool, bool> drawRightAlignedToggle =
+                SetupDrawRightAlignedToggle();
 
             float targetAlignmentX = 0f;
             bool alignmentCalculated = false;

@@ -219,7 +219,7 @@
                 );
 
                 string currentName =
-                    nameProp != null ? (nameProp.stringValue ?? string.Empty) : string.Empty;
+                    nameProp != null ? nameProp.stringValue ?? string.Empty : string.Empty;
 
                 bool matchesSearch = true;
                 if (searchTerms.Length > 0)
