@@ -5,10 +5,12 @@
     using System.ComponentModel;
     using System.Linq;
     using System.Text;
+    using System.Text.Json.Serialization;
     using Core.Extension;
     using Core.Helper;
-    using Newtonsoft.Json;
+#if ODIN_INSPECTOR
     using Sirenix.OdinInspector;
+#endif
 
     [Serializable]
     public sealed class AttributeEffect :
@@ -219,7 +221,9 @@
 
                 for (int i = 0; i < effectTags.Count; ++i)
                 {
-                    if (effectTags[i] != other.effectTags[i])
+                    if (
+                        !string.Equals(effectTags[i], other.effectTags[i], StringComparison.Ordinal)
+                    )
                     {
                         return false;
                     }

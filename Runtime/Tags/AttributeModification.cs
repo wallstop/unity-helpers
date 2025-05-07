@@ -25,10 +25,7 @@
 
         public static bool operator ==(AttributeModification lhs, AttributeModification rhs)
         {
-            // ReSharper disable once CompareOfFloatsByEqualityOperator
-            return string.Equals(lhs.attribute, rhs.attribute)
-                && lhs.action == rhs.action
-                && lhs.value == rhs.value;
+            return lhs.Equals(rhs);
         }
 
         public override bool Equals(object obj)
@@ -36,16 +33,16 @@
             return obj is AttributeModification other && Equals(other);
         }
 
-        public override int GetHashCode()
-        {
-            return Objects.HashCode(attribute, action, value);
-        }
-
         public bool Equals(AttributeModification other)
         {
             return string.Equals(attribute, other.attribute, StringComparison.Ordinal)
                 && action == other.action
                 && value.Equals(other.value);
+        }
+
+        public override int GetHashCode()
+        {
+            return Objects.HashCode(attribute, action, value);
         }
     }
 }
