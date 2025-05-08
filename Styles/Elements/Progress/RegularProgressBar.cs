@@ -1,4 +1,4 @@
-﻿namespace WallstopStudios.UnityHelpers.Styles.Elements
+﻿namespace WallstopStudios.UnityHelpers.Styles.Elements.Progress
 {
     using System.ComponentModel;
     using UnityEngine;
@@ -18,7 +18,7 @@
         private readonly VisualElement _trackElement;
         private readonly VisualElement _fillElement;
 
-        public enum BarOrientation
+        public enum OrientationType
         {
             Horizontal = 0,
             Vertical = 1,
@@ -36,6 +36,10 @@
             get => _progress;
             set
             {
+                if (float.IsNaN(value) || float.IsInfinity(value))
+                {
+                    return;
+                }
                 _progress = Mathf.Clamp01(value);
                 UpdateFillVisuals();
             }
@@ -69,8 +73,8 @@
             }
         }
 
-        private BarOrientation _orientation = BarOrientation.Horizontal;
-        public BarOrientation Orientation
+        private OrientationType _orientation = OrientationType.Horizontal;
+        public OrientationType Orientation
         {
             get => _orientation;
             set
@@ -100,6 +104,10 @@
             get => _borderRadius;
             set
             {
+                if (float.IsNaN(value) || float.IsInfinity(value))
+                {
+                    return;
+                }
                 _borderRadius = Mathf.Max(0, value);
                 ApplyBorderRadius();
             }
@@ -111,6 +119,10 @@
             get => _thickness;
             set
             {
+                if (float.IsNaN(value) || float.IsInfinity(value))
+                {
+                    return;
+                }
                 _thickness = Mathf.Max(1, value);
                 UpdateThicknessVisuals();
             }
@@ -138,8 +150,8 @@
                 defaultValue = new Color(0.2f, 0.7f, 0.2f, 1f),
             };
 
-            private readonly UxmlEnumAttributeDescription<BarOrientation> _orientationAttribute =
-                new() { name = "orientation", defaultValue = BarOrientation.Horizontal };
+            private readonly UxmlEnumAttributeDescription<OrientationType> _orientationAttribute =
+                new() { name = "orientation", defaultValue = OrientationType.Horizontal };
 
             private readonly UxmlEnumAttributeDescription<FillDirection> _fillAttribute = new()
             {
@@ -167,7 +179,6 @@
                     Debug.LogError(
                         $"Initialization failed, expected {nameof(RegularProgressBar)}, found {ve?.GetType()}.)"
                     );
-
                     return;
                 }
 
@@ -260,7 +271,7 @@
 
             switch (_orientation)
             {
-                case BarOrientation.Horizontal:
+                case OrientationType.Horizontal:
                 {
                     switch (_fillDirection)
                     {
@@ -294,7 +305,7 @@
 
                     break;
                 }
-                case BarOrientation.Vertical:
+                case OrientationType.Vertical:
                 {
                     switch (_fillDirection)
                     {
@@ -333,7 +344,7 @@
                     throw new InvalidEnumArgumentException(
                         nameof(_orientation),
                         (int)_orientation,
-                        typeof(BarOrientation)
+                        typeof(OrientationType)
                     );
                 }
             }
@@ -368,13 +379,13 @@
 
             switch (_orientation)
             {
-                case BarOrientation.Horizontal:
+                case OrientationType.Horizontal:
                 {
                     _fillElement.style.width = Length.Percent(clampedProgress * 100f);
                     _fillElement.style.height = Length.Percent(100);
                     break;
                 }
-                case BarOrientation.Vertical:
+                case OrientationType.Vertical:
                 {
                     _fillElement.style.height = Length.Percent(clampedProgress * 100f);
                     _fillElement.style.width = Length.Percent(100);
@@ -385,7 +396,7 @@
                     throw new InvalidEnumArgumentException(
                         nameof(_orientation),
                         (int)_orientation,
-                        typeof(BarOrientation)
+                        typeof(OrientationType)
                     );
                 }
             }
