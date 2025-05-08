@@ -1,0 +1,17 @@
+{
+    "name": "WallstopStudios.UnityHelpers.Styles",
+    "rootNamespace": "WallstopStudios.UnityHelpers.Styles",
+    "references": [
+        "UnityEngine.UI",
+        "WallstopStudios.UnityHelpers"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

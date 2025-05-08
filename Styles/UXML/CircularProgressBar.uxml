@@ -1,0 +1,11 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:custom="WallstopStudios.UnityHelpers.Styles.Elements">
+    <ui:VisualElement style="flex-grow: 1; align-items: center; justify-content: space-around;">
+        <custom:CircularProgressBar radius="60" thickness="12" progress="0.75"
+                                    start-at="Top" direction="Clockwise"
+                                    progress-color-attr="blue" track-color-attr="lightgrey" />
+        <custom:CircularProgressBar progress="0.3" radius="40" />
+        <custom:CircularProgressBar class="warning" progress="0.9" radius="50" start-at="Bottom"
+                                    direction="CounterClockwise" />
+        <custom:CircularProgressBar class="slim" progress="0.5" radius="70" start-at="Left" direction="Clockwise" />
+    </ui:VisualElement>
+</ui:UXML>

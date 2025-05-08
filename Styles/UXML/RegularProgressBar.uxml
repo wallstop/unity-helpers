@@ -1,0 +1,22 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements"
+         xmlns:custom="WallstopStudios.UnityHelpers.Styles.Elements">
+    <ui:VisualElement style="flex-direction: column; align-items: stretch; padding: 20px; width: 300px;">
+        <ui:Label text="Horizontal Progress Bars" />
+        <custom:RegularProgressBar progress="0.65" orientation="Horizontal"
+                                   thickness="20" border-radius="5"
+                                   progress-color-attr="#FFC107" track-color-attr="#424242" />
+        <custom:RegularProgressBar progress="0.3" orientation="Horizontal" />
+        <custom:RegularProgressBar class="slim-style" progress="0.8" orientation="Horizontal" />
+        <ui:Label text="Vertical Progress Bars" style="margin-top: 20px;" />
+        <ui:VisualElement
+            style="flex-direction: row; height: 150px; justify-content: space-around; align-items: stretch;">
+            <custom:RegularProgressBar progress="0.75" orientation="Vertical"
+                                       thickness="25" border-radius="8"
+                                       style="height: 120px;" />
+            <custom:RegularProgressBar class="warning-state" progress="0.5"
+                                       orientation="Vertical"
+                                       thickness="18"
+                                       style="height: 100px;" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

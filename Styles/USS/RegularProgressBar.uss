@@ -1,0 +1,33 @@
+﻿.regular-progress-bar {
+    --rpb-track-color: rgb(60, 60, 60);
+    --rpb-progress-color: rgb(76, 175, 80);
+    --rpb-border-radius: 3px;
+    --rpb-thickness: 15px;
+    flex-shrink: 0;
+    margin: 5px 0;
+}
+
+.regular-progress-bar__track {
+    background-color: var(--rpb-track-color);
+    border-radius: var(--rpb-border-radius);
+    overflow: hidden;
+    position: relative;
+}
+
+.regular-progress-bar__fill {
+    background-color: var(--rpb-progress-color);
+    border-radius: var(--rpb-border-radius);
+}
+
+
+.regular-progress-bar.warning-state {
+    --rpb-progress-color: orange;
+    --rpb-thickness: 12px;
+}
+
+.regular-progress-bar.slim-style {
+    --rpb-track-color: #e0e0e0;
+    --rpb-progress-color: #2196F3;
+    --rpb-border-radius: 2px;
+    --rpb-thickness: 8px;
+}
