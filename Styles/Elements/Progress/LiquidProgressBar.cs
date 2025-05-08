@@ -1,31 +1,15 @@
 ﻿namespace WallstopStudios.UnityHelpers.Styles.Elements.Progress
 {
-    using System.Collections.Generic;
-    using System.Collections.Generic;
-    using System.Collections.Generic;
-    using System.Collections.Generic;
-    using System.Collections.Generic;
-    using System.Collections.Generic;
     using UnityEngine;
-    using UnityEngine;
-    using UnityEngine;
-    using UnityEngine;
-    using UnityEngine;
-    using UnityEngine;
-    using UnityEngine.UIElements;
-    using UnityEngine.UIElements;
-    using UnityEngine.UIElements;
-    using UnityEngine.UIElements;
-    using UnityEngine.UIElements;
     using UnityEngine.UIElements;
 
-    public class LiquidProgressBar : VisualElement
+    public sealed class LiquidProgressBar : VisualElement
     {
-        public static readonly string ussClassName = "liquid-progress-bar";
-        public static readonly string ussTrackColorVarName = "--lpb-track-color";
-        public static readonly string ussTrackThicknessVarName = "--lpb-track-thickness";
-        public static readonly string ussProgressColorVarName = "--lpb-progress-color";
-        public static readonly string ussBorderRadiusVarName = "--lpb-border-radius";
+        public const string USSClassName = "liquid-progress-bar";
+        public const string USSTrackColorVarName = "--lpb-track-color";
+        public const string USSTrackThicknessVarName = "--lpb-track-thickness";
+        public const string USSProgressColorVarName = "--lpb-progress-color";
+        public const string USSBorderRadiusVarName = "--lpb-border-radius";
 
         private float _progress = 0.5f;
         public float Progress
@@ -33,12 +17,16 @@
             get => _progress;
             set
             {
-                _progress = Mathf.Clamp01(value);
+                if (float.IsNaN(value) || float.IsInfinity(value))
+                {
+                    return;
+                }
+                _progress = Mathf.Clamp(value, 0.1095f, 1);
                 MarkDirtyRepaint();
             }
         }
 
-        private Color _trackColor = new Color(0.4f, 0.4f, 0.4f, 1f);
+        private Color _trackColor = new(0.4f, 0.4f, 0.4f, 1f);
         public Color TrackColor
         {
             get => _trackColor;
@@ -55,12 +43,16 @@
             get => _trackThickness;
             set
             {
+                if (float.IsNaN(value) || float.IsInfinity(value))
+                {
+                    return;
+                }
                 _trackThickness = Mathf.Max(0.01f, value);
                 MarkDirtyRepaint();
             }
-        } // Ensure min thickness for visibility if stroked
+        }
 
-        private Color _progressColor = new Color(0.3f, 0.7f, 1f, 1f);
+        private Color _progressColor = new(0.3f, 0.7f, 1f, 1f);
         public Color ProgressColor
         {
             get => _progressColor;
@@ -77,6 +69,10 @@
             get => _borderRadius;
             set
             {
+                if (float.IsNaN(value) || float.IsInfinity(value))
+                {
+                    return;
+                }
                 _borderRadius = Mathf.Max(0, value);
                 MarkDirtyRepaint();
             }
@@ -88,6 +84,10 @@
             get => _leadingEdgeCurvature;
             set
             {
+                if (float.IsNaN(value) || float.IsInfinity(value))
+                {
+                    return;
+                }
                 _leadingEdgeCurvature = Mathf.Clamp01(value);
                 MarkDirtyRepaint();
             }
@@ -97,14 +97,28 @@
         public float AnimationSpeed
         {
             get => _animationSpeed;
-            set => _animationSpeed = Mathf.Max(0, value);
+            set
+            {
+                if (float.IsNaN(value) || float.IsInfinity(value))
+                {
+                    return;
+                }
+                _animationSpeed = Mathf.Max(0, value);
+            }
         }
 
         private float _wobbleMagnitude = 0.3f;
         public float WobbleMagnitude
         {
             get => _wobbleMagnitude;
-            set => _wobbleMagnitude = Mathf.Clamp(value, 0f, 1f);
+            set
+            {
+                if (float.IsNaN(value) || float.IsInfinity(value))
+                {
+                    return;
+                }
+                _wobbleMagnitude = Mathf.Clamp(value, 0f, 1f);
+            }
         }
 
         private bool _animateLeadingEdge = true;
@@ -114,12 +128,17 @@
             set
             {
                 if (_animateLeadingEdge == value)
+                {
                     return;
+                }
+
                 _animateLeadingEdge = value;
                 if (_animateLeadingEdge)
                 {
                     if (panel != null)
+                    {
                         StartAnimationUpdate();
+                    }
                 }
                 else
                 {
@@ -130,78 +149,104 @@
             }
         }
 
-        private float _wobbleOffset = 0f;
+        private float _wobbleOffset;
         private IVisualElementScheduledItem _animationUpdateItem;
 
         public new class UxmlFactory : UxmlFactory<LiquidProgressBar, UxmlTraits> { }
 
         public new class UxmlTraits : VisualElement.UxmlTraits
         {
-            UxmlFloatAttributeDescription m_ProgressAttribute = new UxmlFloatAttributeDescription
+            private readonly UxmlFloatAttributeDescription _progressAttribute = new()
             {
                 name = "progress",
                 defaultValue = 0.5f,
             };
-            UxmlColorAttributeDescription m_TrackColorAttribute = new UxmlColorAttributeDescription
+
+            private readonly UxmlColorAttributeDescription _trackColorAttribute = new()
             {
                 name = "track-color",
                 defaultValue = new Color(0.4f, 0.4f, 0.4f, 1),
             };
-            UxmlFloatAttributeDescription m_TrackThicknessAttribute =
-                new UxmlFloatAttributeDescription { name = "track-thickness", defaultValue = 2f };
-            UxmlColorAttributeDescription m_ProgressColorAttribute =
-                new UxmlColorAttributeDescription
-                {
-                    name = "progress-color",
-                    defaultValue = new Color(0.3f, 0.7f, 1, 1),
-                };
-            UxmlFloatAttributeDescription m_BorderRadiusAttribute =
-                new UxmlFloatAttributeDescription { name = "border-radius", defaultValue = 7f };
-            UxmlFloatAttributeDescription m_LeadingEdgeCurvatureAttribute =
-                new UxmlFloatAttributeDescription
-                {
-                    name = "leading-edge-curvature",
-                    defaultValue = 0.6f,
-                };
-            UxmlFloatAttributeDescription m_AnimationSpeedAttribute =
-                new UxmlFloatAttributeDescription { name = "animation-speed", defaultValue = 2.5f };
-            UxmlFloatAttributeDescription m_WobbleMagnitudeAttribute =
-                new UxmlFloatAttributeDescription
-                {
-                    name = "wobble-magnitude",
-                    defaultValue = 0.3f,
-                };
-            UxmlBoolAttributeDescription m_AnimateLeadingEdgeAttribute =
-                new UxmlBoolAttributeDescription
-                {
-                    name = "animate-leading-edge",
-                    defaultValue = true,
-                };
+
+            private readonly UxmlFloatAttributeDescription _trackThicknessAttribute = new()
+            {
+                name = "track-thickness",
+                defaultValue = 2f,
+            };
+
+            private readonly UxmlColorAttributeDescription _progressColorAttribute = new()
+            {
+                name = "progress-color",
+                defaultValue = new Color(0.3f, 0.7f, 1, 1),
+            };
+
+            private readonly UxmlFloatAttributeDescription _borderRadiusAttribute = new()
+            {
+                name = "border-radius",
+                defaultValue = 7f,
+            };
+
+            private readonly UxmlFloatAttributeDescription _leadingEdgeCurvatureAttribute = new()
+            {
+                name = "leading-edge-curvature",
+                defaultValue = 0.6f,
+            };
+
+            private readonly UxmlFloatAttributeDescription _animationSpeedAttribute = new()
+            {
+                name = "animation-speed",
+                defaultValue = 2.5f,
+            };
+
+            private readonly UxmlFloatAttributeDescription _wobbleMagnitudeAttribute = new()
+            {
+                name = "wobble-magnitude",
+                defaultValue = 0.3f,
+            };
+
+            private readonly UxmlBoolAttributeDescription _animateLeadingEdgeAttribute = new()
+            {
+                name = "animate-leading-edge",
+                defaultValue = true,
+            };
 
             public override void Init(VisualElement ve, IUxmlAttributes bag, CreationContext cc)
             {
                 base.Init(ve, bag, cc);
-                var bar = ve as LiquidProgressBar;
-                bar.Progress = m_ProgressAttribute.GetValueFromBag(bag, cc);
-                bar.TrackColor = m_TrackColorAttribute.GetValueFromBag(bag, cc);
-                bar.TrackThickness = m_TrackThicknessAttribute.GetValueFromBag(bag, cc);
-                bar.ProgressColor = m_ProgressColorAttribute.GetValueFromBag(bag, cc);
-                bar.BorderRadius = m_BorderRadiusAttribute.GetValueFromBag(bag, cc);
-                bar.LeadingEdgeCurvature = m_LeadingEdgeCurvatureAttribute.GetValueFromBag(bag, cc);
-                bar.AnimationSpeed = m_AnimationSpeedAttribute.GetValueFromBag(bag, cc);
-                bar.WobbleMagnitude = m_WobbleMagnitudeAttribute.GetValueFromBag(bag, cc);
-                bar.AnimateLeadingEdge = m_AnimateLeadingEdgeAttribute.GetValueFromBag(bag, cc);
+
+                if (ve is not LiquidProgressBar bar)
+                {
+                    Debug.LogError(
+                        $"Initialization failed, expected {nameof(LiquidProgressBar)}, found {ve?.GetType()}.)"
+                    );
+                    return;
+                }
+
+                bar.Progress = _progressAttribute.GetValueFromBag(bag, cc);
+                bar.TrackColor = _trackColorAttribute.GetValueFromBag(bag, cc);
+                bar.TrackThickness = _trackThicknessAttribute.GetValueFromBag(bag, cc);
+                bar.ProgressColor = _progressColorAttribute.GetValueFromBag(bag, cc);
+                bar.BorderRadius = _borderRadiusAttribute.GetValueFromBag(bag, cc);
+                bar.LeadingEdgeCurvature = _leadingEdgeCurvatureAttribute.GetValueFromBag(bag, cc);
+                bar.AnimationSpeed = _animationSpeedAttribute.GetValueFromBag(bag, cc);
+                bar.WobbleMagnitude = _wobbleMagnitudeAttribute.GetValueFromBag(bag, cc);
+                bar.AnimateLeadingEdge = _animateLeadingEdgeAttribute.GetValueFromBag(bag, cc);
 
                 if (bar.style.height.keyword == StyleKeyword.Auto || bar.style.height.value == 0)
+                {
                     bar.style.height = 22;
+                }
+
                 if (bar.style.width.keyword == StyleKeyword.Auto || bar.style.width.value == 0)
+                {
                     bar.style.width = 200;
+                }
             }
         }
 
         public LiquidProgressBar()
         {
-            AddToClassList(ussClassName);
+            AddToClassList(USSClassName);
             generateVisualContent += OnGenerateVisualContent;
             RegisterCallback<CustomStyleResolvedEvent>(OnCustomStyleResolved);
             RegisterCallback<AttachToPanelEvent>(OnAttachToPanel);
@@ -211,7 +256,9 @@
         private void OnAttachToPanel(AttachToPanelEvent evt)
         {
             if (_animateLeadingEdge)
+            {
                 StartAnimationUpdate();
+            }
         }
 
         private void OnDetachFromPanel(DetachFromPanelEvent evt)
@@ -222,7 +269,10 @@
         private void StartAnimationUpdate()
         {
             if (!_animateLeadingEdge || panel == null || _animationUpdateItem != null)
+            {
                 return;
+            }
+
             _animationUpdateItem = schedule.Execute(UpdateAnimation).Every(33);
         }
 
@@ -242,8 +292,7 @@
                 return;
             }
             _wobbleOffset =
-                Mathf.Sin(UnityEngine.Time.realtimeSinceStartup * _animationSpeed * 4f)
-                * _wobbleMagnitude;
+                Mathf.Sin(Time.realtimeSinceStartup * _animationSpeed * 4f) * _wobbleMagnitude;
             MarkDirtyRepaint();
         }
 
@@ -251,273 +300,332 @@
         {
             if (
                 customStyle.TryGetValue(
-                    new CustomStyleProperty<Color>(ussTrackColorVarName),
+                    new CustomStyleProperty<Color>(USSTrackColorVarName),
                     out Color c
                 )
             )
+            {
                 TrackColor = c;
+            }
+
             if (
                 customStyle.TryGetValue(
-                    new CustomStyleProperty<float>(ussTrackThicknessVarName),
+                    new CustomStyleProperty<float>(USSTrackThicknessVarName),
                     out float tt
                 )
             )
+            {
                 TrackThickness = tt;
+            }
+
             if (
                 customStyle.TryGetValue(
-                    new CustomStyleProperty<Color>(ussProgressColorVarName),
+                    new CustomStyleProperty<Color>(USSProgressColorVarName),
                     out Color pc
                 )
             )
+            {
                 ProgressColor = pc;
+            }
+
             if (
                 customStyle.TryGetValue(
-                    new CustomStyleProperty<float>(ussBorderRadiusVarName),
+                    new CustomStyleProperty<float>(USSBorderRadiusVarName),
                     out float br
                 )
             )
+            {
                 BorderRadius = br;
+            }
         }
 
         private void OnGenerateVisualContent(MeshGenerationContext mgc)
         {
-            var painter = mgc.painter2D;
+            Painter2D painter = mgc.painter2D;
             Rect r = contentRect;
 
             if (r.width <= 0 || r.height <= 0)
+            {
                 return;
+            }
 
             float barHeight = r.height;
             float halfHeight = barHeight / 2f;
 
             float outerRadius = Mathf.Min(_borderRadius, halfHeight, r.width / 2f);
-            if (outerRadius < 0.01f)
+            if (Mathf.Approximately(outerRadius, 0))
+            {
                 outerRadius = 0;
+            }
 
-            float halfTrackThickness = _trackThickness / 2f;
-            if (halfTrackThickness < 0.01f)
-                halfTrackThickness = 0;
+            float trackThickness = _trackThickness;
+            if (Mathf.Approximately(trackThickness, 0))
+            {
+                trackThickness = 0;
+            }
 
-            Rect fillRect = new Rect(
+            float halfTrackThickness = trackThickness / 2f;
+            Rect fillRect = new(
                 r.xMin + halfTrackThickness,
                 r.yMin + halfTrackThickness,
-                r.width - _trackThickness,
-                r.height - _trackThickness
+                r.width - trackThickness,
+                r.height - trackThickness
             );
 
-            if (fillRect.width <= 0 || fillRect.height <= 0)
-                return;
-
-            // Effective radius for the static corners of the fill.
-            // This is the outer _borderRadius adjusted for the track thickness.
+            bool fillRectIsValid = fillRect is { width: > 0, height: > 0 };
             float innerRadius = Mathf.Max(0, outerRadius - halfTrackThickness);
 
-            // === 1. Draw Track (as a STROKE) ===
-            if (_trackThickness > 0.01f)
+            if (!Mathf.Approximately(trackThickness, 0))
             {
                 painter.strokeColor = _trackColor;
-                painter.lineWidth = _trackThickness;
-                painter.lineCap = LineCap.Round;
-                painter.lineJoin = LineJoin.Round;
+                painter.fillColor = Color.clear;
+                painter.lineWidth = trackThickness;
+                painter.lineCap = LineCap.Butt;
+                painter.lineJoin = LineJoin.Miter;
 
                 painter.BeginPath();
                 painter.MoveTo(new Vector2(r.xMin + outerRadius, r.yMin));
-                painter.LineTo(new Vector2(r.xMax - outerRadius, r.yMin)); // Top
+                painter.LineTo(new Vector2(r.xMax - outerRadius, r.yMin));
                 if (outerRadius > 0)
+                {
                     painter.Arc(
                         new Vector2(r.xMax - outerRadius, r.yMin + outerRadius),
                         outerRadius,
                         270f,
                         90f
-                    ); // TR
-                painter.LineTo(new Vector2(r.xMax, r.yMax - outerRadius)); // Right
+                    );
+                }
+
+                painter.LineTo(new Vector2(r.xMax, r.yMax - outerRadius));
                 if (outerRadius > 0)
+                {
                     painter.Arc(
                         new Vector2(r.xMax - outerRadius, r.yMax - outerRadius),
                         outerRadius,
                         0f,
                         90f
-                    ); // BR
-                painter.LineTo(new Vector2(r.xMin + outerRadius, r.yMax)); // Bottom
+                    );
+                }
+
+                painter.LineTo(new Vector2(r.xMin + outerRadius, r.yMax));
                 if (outerRadius > 0)
+                {
                     painter.Arc(
                         new Vector2(r.xMin + outerRadius, r.yMax - outerRadius),
                         outerRadius,
                         90f,
                         90f
-                    ); // BL
-                painter.LineTo(new Vector2(r.xMin, r.yMin + outerRadius)); // Left
+                    );
+                }
+
+                painter.LineTo(new Vector2(r.xMin, r.yMin + outerRadius));
                 if (outerRadius > 0)
+                {
                     painter.Arc(
                         new Vector2(r.xMin + outerRadius, r.yMin + outerRadius),
                         outerRadius,
                         180f,
                         90f
-                    ); // TL
-                painter.ClosePath();
+                    );
+                }
                 painter.Stroke();
             }
 
-            // === 2. Draw Liquid Fill ===
-            if (_progress <= 0.0001f)
+            if (
+                !fillRectIsValid
+                || (
+                    Mathf.Approximately(_progress, 0)
+                    && Mathf.Approximately(_wobbleOffset, 0)
+                    && Mathf.Approximately(_wobbleMagnitude, 0)
+                )
+            )
+            {
                 return;
+            }
 
             painter.fillColor = _progressColor;
-
             float baseFillWidth = fillRect.width * _progress;
-            float animatedPeakXTarget =
-                fillRect.xMin + baseFillWidth + (_wobbleOffset * fillRect.height * 0.3f);
-            animatedPeakXTarget = Mathf.Clamp(animatedPeakXTarget, fillRect.xMin, fillRect.xMax);
+            float wobbleExtension = _wobbleOffset * fillRect.height * 0.3f;
+            float currentTotalFillWidth = baseFillWidth + wobbleExtension;
+            currentTotalFillWidth = Mathf.Clamp(currentTotalFillWidth, 0, fillRect.width);
 
-            float currentFillWidth = animatedPeakXTarget - fillRect.xMin;
-            if (currentFillWidth < 0.01f)
-                currentFillWidth = 0;
-
-            bool drawPillShape = (
-                currentFillWidth < fillRect.height && _progress < 0.99f && currentFillWidth > 0.01f
-            );
+            if (currentTotalFillWidth < 0.5f)
+            {
+                return;
+            }
 
             painter.BeginPath();
 
+            float capRadius = fillRect.height / 2f;
+            if (Mathf.Approximately(capRadius, 0))
+            {
+                capRadius = 0;
+            }
+
+            bool drawPillShape = currentTotalFillWidth < fillRect.height && _progress < 0.99f;
+
             if (drawPillShape)
             {
-                float pillCapRadius = fillRect.height / 2f;
-                // In this case, currentFillWidth is the total width of the pill
-                float straightSegmentWidth = Mathf.Max(0, currentFillWidth - 2 * pillCapRadius);
+                float pillActualRadius = Mathf.Min(currentTotalFillWidth / 2.0f, capRadius);
+                if (Mathf.Approximately(pillActualRadius, 0))
+                {
+                    pillActualRadius = 0;
+                }
 
-                // Start at the beginning of the top-left curve (top point of left cap)
-                painter.MoveTo(new Vector2(fillRect.xMin + pillCapRadius, fillRect.yMin));
+                float straightSegmentWidth = Mathf.Max(
+                    0,
+                    currentTotalFillWidth - 2 * pillActualRadius
+                );
 
-                if (straightSegmentWidth > 0) // Top line if pill is wider than just two caps
+                painter.MoveTo(new Vector2(fillRect.xMin + pillActualRadius, fillRect.yMin));
+                if (straightSegmentWidth > 0)
+                {
                     painter.LineTo(
                         new Vector2(
-                            fillRect.xMin + pillCapRadius + straightSegmentWidth,
+                            fillRect.xMin + pillActualRadius + straightSegmentWidth,
                             fillRect.yMin
                         )
                     );
+                }
 
-                // Right semi-circle cap
-                painter.Arc(
-                    new Vector2(
-                        fillRect.xMin + pillCapRadius + straightSegmentWidth,
-                        fillRect.yMin + pillCapRadius
-                    ),
-                    pillCapRadius,
-                    270f,
-                    180f
-                ); // From top to bottom
+                if (pillActualRadius > 0)
+                {
+                    painter.Arc(
+                        new Vector2(
+                            fillRect.xMin + pillActualRadius + straightSegmentWidth,
+                            fillRect.yMin + pillActualRadius
+                        ),
+                        pillActualRadius,
+                        270f,
+                        180f
+                    );
+                }
+                else
+                {
+                    painter.LineTo(
+                        new Vector2(fillRect.xMin + currentTotalFillWidth, fillRect.yMax)
+                    );
+                }
 
-                if (straightSegmentWidth > 0) // Bottom line
-                    painter.LineTo(new Vector2(fillRect.xMin + pillCapRadius, fillRect.yMax));
+                if (straightSegmentWidth > 0)
+                {
+                    painter.LineTo(new Vector2(fillRect.xMin + pillActualRadius, fillRect.yMax));
+                }
 
-                // Left semi-circle cap
-                painter.Arc(
-                    new Vector2(fillRect.xMin + pillCapRadius, fillRect.yMin + pillCapRadius),
-                    pillCapRadius,
-                    90f,
-                    180f
-                ); // From bottom to top
+                if (pillActualRadius > 0)
+                {
+                    painter.Arc(
+                        new Vector2(
+                            fillRect.xMin + pillActualRadius,
+                            fillRect.yMin + pillActualRadius
+                        ),
+                        pillActualRadius,
+                        90f,
+                        180f
+                    );
+                }
             }
-            else // Draw the main liquid/rounded rectangle fill
+            else
             {
-                // Start: Top-left point, after potential corner
-                painter.MoveTo(new Vector2(fillRect.xMin + innerRadius, fillRect.yMin)); // Point A
+                float animatedPeakX = fillRect.xMin + currentTotalFillWidth;
+                painter.MoveTo(new Vector2(fillRect.xMin + innerRadius, fillRect.yMin));
 
                 bool useLiquidEdge =
                     _progress < 0.995f
                     && _leadingEdgeCurvature > 0.01f
-                    && (animatedPeakXTarget < fillRect.xMax - innerRadius - 0.1f)
-                    && currentFillWidth > innerRadius;
+                    && animatedPeakX < fillRect.xMax - innerRadius - 0.1f
+                    && currentTotalFillWidth > innerRadius * 2.1f;
 
                 if (useLiquidEdge)
                 {
                     float curveStartBaseX =
-                        animatedPeakXTarget - (fillRect.height * _leadingEdgeCurvature * 0.4f);
+                        animatedPeakX - fillRect.height * _leadingEdgeCurvature * 0.4f;
                     curveStartBaseX = Mathf.Max(fillRect.xMin + innerRadius, curveStartBaseX);
-                    painter.LineTo(new Vector2(curveStartBaseX, fillRect.yMin)); // Line A to B (start of curve)
+                    painter.LineTo(new Vector2(curveStartBaseX, fillRect.yMin));
 
-                    Vector2 peak = new Vector2(
-                        animatedPeakXTarget,
-                        fillRect.yMin + fillRect.height / 2f
-                    );
+                    Vector2 peak = new(animatedPeakX, fillRect.yMin + fillRect.height / 2f);
                     float controlPointBulgeXFactor = fillRect.height * _leadingEdgeCurvature * 0.5f;
-
-                    Vector2 cp1_top = new Vector2(
+                    Vector2 cp1Top = new(
                         curveStartBaseX + (peak.x - curveStartBaseX) * 0.35f,
                         fillRect.yMin
                     );
-                    Vector2 cp2_top = new Vector2(
+                    Vector2 cp2Top = new(
                         peak.x + controlPointBulgeXFactor,
                         peak.y - fillRect.height * 0.25f
                     );
-                    painter.BezierCurveTo(cp1_top, cp2_top, peak); // Curve B to Peak
+                    painter.BezierCurveTo(cp1Top, cp2Top, peak);
 
-                    Vector2 cp1_bottom = new Vector2(
+                    Vector2 cp1Bottom = new(
                         peak.x + controlPointBulgeXFactor,
                         peak.y + fillRect.height * 0.25f
                     );
-                    Vector2 cp2_bottom = new Vector2(
+                    Vector2 cp2Bottom = new(
                         curveStartBaseX + (peak.x - curveStartBaseX) * 0.35f,
                         fillRect.yMax
                     );
                     painter.BezierCurveTo(
-                        cp1_bottom,
-                        cp2_bottom,
+                        cp1Bottom,
+                        cp2Bottom,
                         new Vector2(curveStartBaseX, fillRect.yMax)
-                    ); // Curve Peak to C (end of curve)
-
-                    painter.LineTo(new Vector2(fillRect.xMin + innerRadius, fillRect.yMax)); // Line C to D (bottom edge)
+                    );
                 }
-                else // Standard rounded rectangle fill for the right edge
+                else
                 {
-                    float fillRightX = animatedPeakXTarget;
-                    painter.LineTo(new Vector2(fillRightX - innerRadius, fillRect.yMin)); // Line A to B' (top edge)
+                    painter.LineTo(new Vector2(animatedPeakX - innerRadius, fillRect.yMin));
                     if (innerRadius > 0)
+                    {
                         painter.Arc(
-                            new Vector2(fillRightX - innerRadius, fillRect.yMin + innerRadius),
+                            new Vector2(animatedPeakX - innerRadius, fillRect.yMin + innerRadius),
                             innerRadius,
                             270f,
                             90f
-                        ); // TR Corner
-                    // Now at (fillRightX, fillRect.yMin + innerRadius)
-                    painter.LineTo(new Vector2(fillRightX, fillRect.yMax - innerRadius)); // Right Vertical Line
-                    // Now at (fillRightX, fillRect.yMax - innerRadius)
+                        );
+                    }
+                    else
+                    {
+                        painter.LineTo(new Vector2(animatedPeakX, fillRect.yMin));
+                    }
+
+                    painter.LineTo(new Vector2(animatedPeakX, fillRect.yMax - innerRadius));
                     if (innerRadius > 0)
+                    {
                         painter.Arc(
-                            new Vector2(fillRightX - innerRadius, fillRect.yMax - innerRadius),
+                            new Vector2(animatedPeakX - innerRadius, fillRect.yMax - innerRadius),
                             innerRadius,
                             0f,
                             90f
-                        ); // BR Corner
-                    // Now at (fillRightX - innerRadius, fillRect.yMax)
-                    painter.LineTo(new Vector2(fillRect.xMin + innerRadius, fillRect.yMax)); // Line to D (bottom edge)
+                        );
+                    }
+                    else
+                    {
+                        painter.LineTo(new Vector2(animatedPeakX, fillRect.yMax));
+                    }
                 }
 
-                // Common path for left side:
-                // Current point is (fillRect.xMin + innerRadius, fillRect.yMax)
+                painter.LineTo(new Vector2(fillRect.xMin + innerRadius, fillRect.yMax));
                 if (innerRadius > 0)
+                {
                     painter.Arc(
                         new Vector2(fillRect.xMin + innerRadius, fillRect.yMax - innerRadius),
                         innerRadius,
                         90f,
                         90f
-                    ); // BL Corner
-                // Now at (fillRect.xMin, fillRect.yMax - innerRadius)
+                    );
+                }
 
-                // Explicitly draw left vertical line back to start of Top-Left arc/corner
-                painter.LineTo(new Vector2(fillRect.xMin, fillRect.yMin + innerRadius)); // E (point before TL arc)
-
+                painter.LineTo(new Vector2(fillRect.xMin, fillRect.yMin + innerRadius));
                 if (innerRadius > 0)
+                {
                     painter.Arc(
                         new Vector2(fillRect.xMin + innerRadius, fillRect.yMin + innerRadius),
                         innerRadius,
                         180f,
                         90f
-                    ); // TL Corner
-                // Path should now be at the MoveTo point A: (fillRect.xMin + innerRadius, fillRect.yMin)
+                    );
+                }
             }
 
-            painter.ClosePath(); // This should now correctly close from A back to A.
+            painter.ClosePath();
             painter.Fill();
         }
     }

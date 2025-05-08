@@ -245,7 +245,7 @@
             }
         }
 
-        private float _arcRadius = 0f;
+        private float _arcRadius;
 
         public float ArcRadius
         {
