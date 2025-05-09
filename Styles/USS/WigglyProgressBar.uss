@@ -1,0 +1,17 @@
+﻿.wiggly-progress-bar {
+    --wiggly-track-color: rgb(70, 70, 70);
+    --wiggly-progress-color: rgb(51, 153, 255);
+    --wiggly-thickness: 5px;
+}
+
+.wiggly-progress-bar.funky-wave {
+    --wiggly-progress-color: #FF00FF;
+    --wiggly-track-color: #FFFF00;
+    --wiggly-thickness: 8px;
+}
+
+.wiggly-progress-bar.subtle-ripple {
+    --wiggly-track-color: #e0e0e0;
+    --wiggly-progress-color: #77ccff;
+    --wiggly-thickness: 3px;
+}

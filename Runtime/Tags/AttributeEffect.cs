@@ -8,6 +8,7 @@
     using System.Text.Json.Serialization;
     using Core.Extension;
     using Core.Helper;
+    using UnityEngine;
 #if ODIN_INSPECTOR
     using Sirenix.OdinInspector;
 #endif

@@ -1,0 +1,19 @@
+﻿.arced-progress-bar {
+    --arc-track-color: rgb(80, 80, 80);
+    --arc-progress-color: #FF9800;
+    --arc-thickness: 12px;
+    margin: 10px;
+    align-self: center;
+}
+
+.arced-progress-bar.sharp-ends {
+    --arc-progress-color: #E91E63;
+    --arc-track-color: #4CAF50;
+    --arc-thickness: 8px;
+}
+
+.arced-progress-bar.gauge-style {
+    --arc-track-color: #607D8B;
+    --arc-progress-color: #00BCD4;
+    --arc-thickness: 20px;
+}

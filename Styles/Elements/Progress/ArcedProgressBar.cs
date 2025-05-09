@@ -1,47 +1,50 @@
-﻿namespace WallstopStudios.UnityHelpers.Styles.Elements
+﻿namespace WallstopStudios.UnityHelpers.Styles.Elements.Progress
 {
     using System.ComponentModel;
+    using Core.Helper;
     using UnityEngine;
     using UnityEngine.UIElements;
 
-    public sealed class CircularProgressBar : VisualElement
+    public sealed class ArcedProgressBar : VisualElement
     {
-        public enum StartPointLocation
-        {
-            Top = 0,
-            Right = 1,
-            Bottom = 2,
-            Left = 3,
-        }
-
         public enum FillDirection
         {
-            Clockwise = 0,
-            CounterClockwise = 1,
+            Forward = 0,
+            Reverse = 1,
         }
 
-        public const string USSClassName = "circular-progress-bar";
-        public const string USSTrackColorVarName = "--track-color";
-        public const string USSProgressColorVarName = "--progress-color";
-        public const string USSThicknessVarName = "--thickness";
+        public const string USSClassName = "arced-progress-bar";
+        public const string USSTrackColorVarName = "--arc-track-color";
+        public const string USSProgressColorVarName = "--arc-progress-color";
+        public const string USSThicknessVarName = "--arc-thickness";
 
         private float _progress = 0.5f;
+
         public float Progress
         {
             get => _progress;
             set
             {
+                if (float.IsNaN(value) || float.IsInfinity(value))
+                {
+                    return;
+                }
                 _progress = Mathf.Clamp01(value);
                 MarkDirtyRepaint();
             }
         }
 
         private float _radius = 50f;
+
         public float Radius
         {
             get => _radius;
             set
             {
+                if (float.IsNaN(value) || float.IsInfinity(value))
+                {
+                    return;
+                }
                 _radius = Mathf.Max(1f, value);
                 UpdateSize();
                 MarkDirtyRepaint();
@@ -49,29 +52,56 @@
         }
 
         private float _thickness = 10f;
+
         public float Thickness
         {
             get => _thickness;
             set
             {
+                if (float.IsNaN(value) || float.IsInfinity(value))
+                {
+                    return;
+                }
                 _thickness = Mathf.Max(1f, value);
                 UpdateSize();
                 MarkDirtyRepaint();
             }
         }
 
-        private StartPointLocation _startPoint = StartPointLocation.Top;
-        public StartPointLocation StartAt
+        private float _startAngleDegrees = -90f;
+
+        public float StartAngleDegrees
         {
-            get => _startPoint;
+            get => _startAngleDegrees;
             set
             {
-                _startPoint = value;
+                if (float.IsNaN(value) || float.IsInfinity(value))
+                {
+                    return;
+                }
+                _startAngleDegrees = value;
                 MarkDirtyRepaint();
             }
         }
 
-        private FillDirection _fillDirection = FillDirection.Clockwise;
+        private float _endAngleDegrees = 90f;
+
+        public float EndAngleDegrees
+        {
+            get => _endAngleDegrees;
+            set
+            {
+                if (float.IsNaN(value) || float.IsInfinity(value))
+                {
+                    return;
+                }
+                _endAngleDegrees = value;
+                MarkDirtyRepaint();
+            }
+        }
+
+        private FillDirection _fillDirection = FillDirection.Forward;
+
         public FillDirection Direction
         {
             get => _fillDirection;
@@ -82,7 +112,20 @@
             }
         }
 
+        private bool _roundedCaps = true;
+
+        public bool RoundedCaps
+        {
+            get => _roundedCaps;
+            set
+            {
+                _roundedCaps = value;
+                MarkDirtyRepaint();
+            }
+        }
+
         private Color _trackColor = Color.gray;
+
         public Color TrackColor
         {
             get => _trackColor;
@@ -93,7 +136,8 @@
             }
         }
 
-        private Color _progressColor = Color.green;
+        private Color _progressColor = Color.cyan;
+
         public Color ProgressColor
         {
             get => _progressColor;
@@ -104,7 +148,7 @@
             }
         }
 
-        public new class UxmlFactory : UxmlFactory<CircularProgressBar, UxmlTraits> { }
+        public new class UxmlFactory : UxmlFactory<ArcedProgressBar, UxmlTraits> { }
 
         public new class UxmlTraits : VisualElement.UxmlTraits
         {
@@ -126,11 +170,26 @@
                 defaultValue = 10f,
             };
 
-            private readonly UxmlEnumAttributeDescription<StartPointLocation> _startPointAttribute =
-                new() { name = "start-at", defaultValue = StartPointLocation.Top };
+            private readonly UxmlFloatAttributeDescription _startAngleAttribute = new()
+            {
+                name = "start-angle",
+                defaultValue = -90f,
+            };
+
+            private readonly UxmlFloatAttributeDescription _endAngleAttribute = new()
+            {
+                name = "end-angle",
+                defaultValue = 90f,
+            };
 
             private readonly UxmlEnumAttributeDescription<FillDirection> _fillDirectionAttribute =
-                new() { name = "direction", defaultValue = FillDirection.Clockwise };
+                new() { name = "fill-direction", defaultValue = FillDirection.Forward };
+
+            private readonly UxmlBoolAttributeDescription _roundedCapsAttribute = new()
+            {
+                name = "rounded-caps",
+                defaultValue = true,
+            };
 
             private readonly UxmlColorAttributeDescription _trackColorAttribute = new()
             {
@@ -141,16 +200,16 @@
             private readonly UxmlColorAttributeDescription _progressColorAttribute = new()
             {
                 name = "progress-color-attr",
-                defaultValue = Color.green,
+                defaultValue = Color.cyan,
             };
 
             public override void Init(VisualElement ve, IUxmlAttributes bag, CreationContext cc)
             {
                 base.Init(ve, bag, cc);
-                if (ve is not CircularProgressBar bar)
+                if (ve is not ArcedProgressBar bar)
                 {
                     Debug.LogError(
-                        $"Initialization failed, expected {nameof(CircularProgressBar)}, found {ve?.GetType()}.)"
+                        $"Initialization failed, expected {nameof(ArcedProgressBar)}, found {ve?.GetType()}.)"
                     );
                     return;
                 }
@@ -158,14 +217,16 @@
                 bar.Progress = _progressAttribute.GetValueFromBag(bag, cc);
                 bar.Radius = _radiusAttribute.GetValueFromBag(bag, cc);
                 bar.Thickness = _thicknessAttribute.GetValueFromBag(bag, cc);
-                bar.StartAt = _startPointAttribute.GetValueFromBag(bag, cc);
+                bar.StartAngleDegrees = _startAngleAttribute.GetValueFromBag(bag, cc);
+                bar.EndAngleDegrees = _endAngleAttribute.GetValueFromBag(bag, cc);
                 bar.Direction = _fillDirectionAttribute.GetValueFromBag(bag, cc);
+                bar.RoundedCaps = _roundedCapsAttribute.GetValueFromBag(bag, cc);
                 bar.TrackColor = _trackColorAttribute.GetValueFromBag(bag, cc);
                 bar.ProgressColor = _progressColorAttribute.GetValueFromBag(bag, cc);
             }
         }
 
-        public CircularProgressBar()
+        public ArcedProgressBar()
         {
             AddToClassList(USSClassName);
             generateVisualContent += OnGenerateVisualContent;
@@ -193,6 +254,7 @@
             {
                 _trackColor = trackCol;
             }
+
             if (
                 customStyle.TryGetValue(
                     new CustomStyleProperty<Color>(USSProgressColorVarName),
@@ -202,6 +264,7 @@
             {
                 _progressColor = progressCol;
             }
+
             if (
                 customStyle.TryGetValue(
                     new CustomStyleProperty<float>(USSThicknessVarName),
@@ -211,74 +274,54 @@
             {
                 _thickness = Mathf.Max(1f, thickVal);
             }
+
             MarkDirtyRepaint();
         }
 
         private void OnGenerateVisualContent(MeshGenerationContext mgc)
         {
-            Painter2D painter = mgc.painter2D;
-            Rect rect = contentRect;
-
-            float drawRadius = _radius;
-            Vector2 center = rect.center;
-
-            if (_progress <= 0.01f)
+            if (_thickness <= 0)
             {
-                painter.strokeColor = _trackColor;
-                painter.lineWidth = _thickness;
-                painter.BeginPath();
-                painter.Arc(center, drawRadius, 0f, 360f);
-                painter.Stroke();
                 return;
             }
 
+            Painter2D painter = mgc.painter2D;
+            Rect rect = contentRect;
+            Vector2 center = rect.center;
+
+            painter.lineWidth = _thickness;
+            painter.lineCap = _roundedCaps ? LineCap.Round : LineCap.Butt;
+
+            painter.strokeColor = _trackColor;
+            painter.BeginPath();
+            painter.Arc(center, _radius, _startAngleDegrees, _endAngleDegrees);
+            painter.Stroke();
+
+            if (Mathf.Approximately(_progress, 0f))
+            {
+                return;
+            }
+
+            float startAngle;
+            ArcDirection direction;
+            float sweepAngleDegrees;
             switch (_fillDirection)
             {
-                case FillDirection.CounterClockwise:
+                case FillDirection.Forward:
                 {
-                    painter.strokeColor = _progressColor;
-                    painter.lineWidth = _thickness;
-                    painter.BeginPath();
-                    painter.Arc(center, drawRadius, 0f, 360f);
-                    painter.Stroke();
-
-                    float startAngleDegrees = GetStartAngleInDegrees(_startPoint);
-                    float sweepAngleDegrees = -1 * _progress * 360f;
-
-                    painter.strokeColor = _trackColor;
-                    painter.lineWidth = _thickness;
-                    painter.BeginPath();
-                    painter.Arc(
-                        center,
-                        drawRadius,
-                        startAngleDegrees,
-                        (startAngleDegrees + sweepAngleDegrees)
-                    );
-                    painter.Stroke();
-                    return;
+                    startAngle = _startAngleDegrees;
+                    direction = ArcDirection.Clockwise;
+                    sweepAngleDegrees =
+                        _progress * (_endAngleDegrees - _startAngleDegrees).PositiveMod(360f);
+                    break;
                 }
-                case FillDirection.Clockwise:
+                case FillDirection.Reverse:
                 {
-                    painter.strokeColor = _trackColor;
-                    painter.lineWidth = _thickness;
-                    painter.BeginPath();
-                    painter.Arc(center, drawRadius, 0f, 360f);
-                    painter.Stroke();
-
-                    float startAngleDegrees = GetStartAngleInDegrees(_startPoint);
-                    float sweepAngleDegrees = _progress * 360f;
-
-                    painter.strokeColor = _progressColor;
-                    painter.lineWidth = _thickness;
-                    painter.BeginPath();
-                    painter.Arc(
-                        center,
-                        drawRadius,
-                        startAngleDegrees,
-                        (startAngleDegrees + sweepAngleDegrees)
-                    );
-                    painter.Stroke();
-                    return;
+                    startAngle = _endAngleDegrees;
+                    direction = ArcDirection.CounterClockwise;
+                    sweepAngleDegrees =
+                        -1 * _progress * (_endAngleDegrees - _startAngleDegrees).PositiveMod(360f);
+                    break;
                 }
                 default:
                 {
@@ -289,18 +332,14 @@
                     );
                 }
             }
-        }
 
-        private static float GetStartAngleInDegrees(StartPointLocation location)
-        {
-            return location switch
+            if (!Mathf.Approximately(sweepAngleDegrees, 0))
             {
-                StartPointLocation.Top => -90f,
-                StartPointLocation.Right => 0f,
-                StartPointLocation.Bottom => 90f,
-                StartPointLocation.Left => 180f,
-                _ => 90f,
-            };
+                painter.strokeColor = _progressColor;
+                painter.BeginPath();
+                painter.Arc(center, _radius, startAngle, startAngle + sweepAngleDegrees, direction);
+                painter.Stroke();
+            }
         }
     }
 }
