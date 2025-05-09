@@ -297,7 +297,7 @@
                     if (cosmeticEffectData.RequiresInstancing)
                     {
                         this.LogWarn(
-                            $"Double-deregistration detected for handle {handle:json}. Existing handles: [{(string.Join(",", _instancedCosmeticEffects.Keys))}]."
+                            $"Double-deregistration detected for handle {handle:json}. Existing handles: [{string.Join(",", _instancedCosmeticEffects.Keys)}]."
                         );
                         continue;
                     }

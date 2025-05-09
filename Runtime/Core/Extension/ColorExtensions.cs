@@ -534,14 +534,14 @@
                 rgb.b > 0.04045 ? Mathf.Pow((rgb.b + 0.055f) / 1.055f, 2.4f) : rgb.b / 12.92f;
 
             double x = (r * 0.4124 + g * 0.3576 + b * 0.1805) / 0.95047;
-            double y = (r * 0.2126 + g * 0.7152 + b * 0.0722);
+            double y = r * 0.2126 + g * 0.7152 + b * 0.0722;
             double z = (r * 0.0193 + g * 0.1192 + b * 0.9505) / 1.08883;
 
-            x = x > 0.008856 ? Mathf.Pow((float)x, 1f / 3f) : (7.787 * x) + 16f / 116f;
-            y = y > 0.008856 ? Mathf.Pow((float)y, 1f / 3f) : (7.787 * y) + 16f / 116f;
-            z = z > 0.008856 ? Mathf.Pow((float)z, 1f / 3f) : (7.787 * z) + 16f / 116f;
+            x = x > 0.008856 ? Mathf.Pow((float)x, 1f / 3f) : 7.787 * x + 16f / 116f;
+            y = y > 0.008856 ? Mathf.Pow((float)y, 1f / 3f) : 7.787 * y + 16f / 116f;
+            z = z > 0.008856 ? Mathf.Pow((float)z, 1f / 3f) : 7.787 * z + 16f / 116f;
 
-            return new LABColor((116 * y) - 16, 500 * (x - y), 200 * (y - z));
+            return new LABColor(116 * y - 16, 500 * (x - y), 200 * (y - z));
         }
 
         private static Color LABToRGB(double l, double a, double b)

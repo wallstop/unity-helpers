@@ -137,11 +137,9 @@
             const string sizeCheck = "size=";
             AddDecoration(
                 format =>
-                    (
-                        format.StartsWith(sizeCheck, StringComparison.OrdinalIgnoreCase)
-                            && int.TryParse(format.Substring(sizeCheck.Length), out _)
-                        || int.TryParse(format, out _)
-                    ),
+                    format.StartsWith(sizeCheck, StringComparison.OrdinalIgnoreCase)
+                        && int.TryParse(format.Substring(sizeCheck.Length), out _)
+                    || int.TryParse(format, out _),
                 format: (format, value) =>
                 {
                     if (!int.TryParse(format, out int size))
@@ -373,11 +371,26 @@
         )
         {
             bool stopLooping = false;
-            foreach (var entry in _matchingDecorations)
+            foreach (
+                KeyValuePair<
+                    int,
+                    List<(
+                        string tag,
+                        bool editorOnly,
+                        Func<string, bool> predicate,
+                        Func<string, object, string> formatter
+                    )>
+                > entry in _matchingDecorations
+            )
             {
                 for (int i = 0; i < entry.Value.Count; i++)
                 {
-                    var existingDecoration = entry.Value[i];
+                    (
+                        string tag,
+                        bool editorOnly,
+                        Func<string, bool> predicate,
+                        Func<string, object, string> formatter
+                    ) existingDecoration = entry.Value[i];
                     if (
                         !string.Equals(
                             existingDecoration.tag,
@@ -459,7 +472,17 @@
             ) decoration
         )
         {
-            foreach (var entry in _matchingDecorations)
+            foreach (
+                KeyValuePair<
+                    int,
+                    List<(
+                        string tag,
+                        bool editorOnly,
+                        Func<string, bool> predicate,
+                        Func<string, object, string> formatter
+                    )>
+                > entry in _matchingDecorations
+            )
             {
                 for (int i = 0; i < entry.Value.Count; ++i)
                 {

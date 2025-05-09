@@ -16,7 +16,7 @@
 
         public static WyRandom Instance => ThreadLocalRandom<WyRandom>.Instance;
 
-        public override RandomState InternalState => new RandomState(_state);
+        public override RandomState InternalState => new(_state);
 
         private ulong _state;
 

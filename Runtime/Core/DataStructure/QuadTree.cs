@@ -45,7 +45,7 @@
 
                 Bounds[] quadrants =
                 {
-                    new Bounds(
+                    new(
                         new Vector3(
                             boundary.center.x - halfQuadrantSize.x,
                             boundary.center.y + halfQuadrantSize.y,
@@ -53,7 +53,7 @@
                         ),
                         quadrantSize
                     ),
-                    new Bounds(
+                    new(
                         new Vector3(
                             boundary.center.x + halfQuadrantSize.x,
                             boundary.center.y + halfQuadrantSize.y,
@@ -61,7 +61,7 @@
                         ),
                         quadrantSize
                     ),
-                    new Bounds(
+                    new(
                         new Vector3(
                             boundary.center.x + halfQuadrantSize.x,
                             boundary.center.y - halfQuadrantSize.y,
@@ -69,7 +69,7 @@
                         ),
                         quadrantSize
                     ),
-                    new Bounds(
+                    new(
                         new Vector3(
                             boundary.center.x - halfQuadrantSize.x,
                             boundary.center.y - halfQuadrantSize.y,

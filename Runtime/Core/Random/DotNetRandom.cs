@@ -11,7 +11,7 @@
         public static DotNetRandom Instance => ThreadLocalRandom<DotNetRandom>.Instance;
 
         public override RandomState InternalState =>
-            new RandomState(unchecked((ulong)_seed), state2: _numberGenerated);
+            new(unchecked((ulong)_seed), state2: _numberGenerated);
 
         private ulong _numberGenerated;
         private int _seed;

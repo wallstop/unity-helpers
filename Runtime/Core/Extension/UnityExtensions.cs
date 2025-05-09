@@ -126,9 +126,9 @@
                 xMin,
                 yMin,
                 zMin,
-                (xMax - xMin) + 1,
-                (yMax - yMin) + 1,
-                (zMax - zMin) + 1
+                xMax - xMin + 1,
+                yMax - yMin + 1,
+                zMax - zMin + 1
             );
         }
 
@@ -160,9 +160,9 @@
                 xMin,
                 yMin,
                 zMin,
-                (xMax - xMin) + 1,
-                (yMax - yMin) + 1,
-                (zMax - zMin) + 1
+                xMax - xMin + 1,
+                yMax - yMin + 1,
+                zMax - zMin + 1
             );
         }
 
@@ -584,8 +584,8 @@
             public float LargestAngle(FastVector3Int point)
             {
                 Vector2 worldPoint = _grid.CellToWorld(point);
-                float angleFrom = Vector2.Angle((toWorld - fromWorld), (worldPoint - fromWorld));
-                float angleTo = Vector2.Angle((fromWorld - toWorld), (worldPoint - toWorld));
+                float angleFrom = Vector2.Angle(toWorld - fromWorld, worldPoint - fromWorld);
+                float angleTo = Vector2.Angle(fromWorld - toWorld, worldPoint - toWorld);
                 return Math.Max(angleFrom, angleTo);
             }
         }
@@ -1126,7 +1126,7 @@
                 }
 
                 if (
-                    (newVector.x < position.x) == (position.x <= oldVector.x)
+                    newVector.x < position.x == position.x <= oldVector.x
                     && (position.y - (long)lhs.y) * (rhs.x - lhs.x)
                         < (rhs.y - (long)lhs.y) * (position.x - lhs.x)
                 )
@@ -1274,7 +1274,7 @@
                     yield break;
                 }
 
-                scaleFactor *= (4 / 3f);
+                scaleFactor *= 4 / 3f;
             }
         }
 
@@ -1416,8 +1416,8 @@
             float ty = v.y;
 
             Vector2 rotatedVector;
-            rotatedVector.x = (cos * tx) - (sin * ty);
-            rotatedVector.y = (sin * tx) + (cos * ty);
+            rotatedVector.x = cos * tx - sin * ty;
+            rotatedVector.y = sin * tx + cos * ty;
 
             return rotatedVector;
         }
@@ -1564,12 +1564,12 @@
 
         public static bool IsOnEdge2D(this FastVector3Int position, BoundsInt bounds)
         {
-            if (bounds.xMin == position.x || (bounds.xMax - 1) == position.x)
+            if (bounds.xMin == position.x || bounds.xMax - 1 == position.x)
             {
                 return bounds.yMin <= position.y && position.y < bounds.yMax;
             }
 
-            if (bounds.yMin == position.y || (bounds.yMax - 1) == position.y)
+            if (bounds.yMin == position.y || bounds.yMax - 1 == position.y)
             {
                 return bounds.xMin <= position.x && position.x < bounds.xMax;
             }

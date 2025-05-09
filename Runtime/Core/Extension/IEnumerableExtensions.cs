@@ -78,7 +78,7 @@
 
         public static IEnumerable<IEnumerable<T>> Partition<T>(this IEnumerable<T> items, int size)
         {
-            using var enumerator = items.GetEnumerator();
+            using IEnumerator<T> enumerator = items.GetEnumerator();
             bool hasNext = enumerator.MoveNext();
 
             IEnumerable<T> NextPartitionOf()

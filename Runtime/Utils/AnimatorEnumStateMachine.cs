@@ -21,7 +21,7 @@
 
         [JsonIgnore]
         [IgnoreDataMember]
-        private readonly HashSet<string> _availableBools = new HashSet<string>();
+        private readonly HashSet<string> _availableBools = new();
 
         [JsonIgnore]
         [IgnoreDataMember]

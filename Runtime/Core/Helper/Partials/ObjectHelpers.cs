@@ -156,7 +156,7 @@
                 }
             }
 
-            Transform transform = (component as Transform) ?? component.transform;
+            Transform transform = component as Transform ?? component.transform;
             if (transform == null)
             {
                 return;
@@ -187,7 +187,7 @@
                 behavior.enabled = enabled;
             }
 
-            Transform transform = (component as Transform) ?? component.transform;
+            Transform transform = component as Transform ?? component.transform;
             if (transform == null)
             {
                 return;

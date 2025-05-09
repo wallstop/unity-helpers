@@ -54,11 +54,11 @@
         private static uint NextUintInternal(ref uint seed)
         {
             seed *= BitNoise1;
-            seed ^= (seed >> 8);
+            seed ^= seed >> 8;
             seed += BitNoise2;
-            seed ^= (seed << 8);
+            seed ^= seed << 8;
             seed *= BitNoise3;
-            seed ^= (seed >> 8);
+            seed ^= seed >> 8;
             return seed;
         }
 
@@ -68,17 +68,17 @@
             uint result = unchecked((uint)x);
             result *= BitNoise1;
             result += seed;
-            result ^= (result >> 8);
+            result ^= result >> 8;
             result += BitNoise2;
-            result ^= (result << 8);
+            result ^= result << 8;
             result *= BitNoise3;
-            result ^= (result >> 8);
+            result ^= result >> 8;
             return (result >> 8) * MagicFloat;
         }
 
         private static float NextNoise(int x, int y, uint seed)
         {
-            return NextNoise(x + (LargePrime * y), seed);
+            return NextNoise(x + LargePrime * y, seed);
         }
     }
 }

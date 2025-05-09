@@ -54,8 +54,8 @@
             }
             else
             {
-                ratioX = ((float)tex.width) / newWidth;
-                ratioY = ((float)tex.height) / newHeight;
+                ratioX = (float)tex.width / newWidth;
+                ratioY = (float)tex.height / newHeight;
             }
 
             w = tex.width;
@@ -123,7 +123,7 @@
                 int y2 = (yFloor + 1) * w;
                 int yw = y * w2;
 
-                for (var x = 0; x < w2; x++)
+                for (int x = 0; x < w2; x++)
                 {
                     int xFloor = (int)Mathf.Floor(x * ratioX);
                     float xLerp = x * ratioX - xFloor;
@@ -155,7 +155,7 @@
             {
                 int thisY = (int)(ratioY * y) * w;
                 int yw = y * w2;
-                for (var x = 0; x < w2; x++)
+                for (int x = 0; x < w2; x++)
                 {
                     newColors[yw + x] = texColors[(int)(thisY + ratioX * x)];
                 }

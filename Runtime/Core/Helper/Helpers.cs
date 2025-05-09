@@ -47,9 +47,9 @@
             }
 
             float a =
-                (targetVelocity.x * targetVelocity.x)
-                + (targetVelocity.y * targetVelocity.y)
-                - (projectileSpeed * projectileSpeed);
+                targetVelocity.x * targetVelocity.x
+                + targetVelocity.y * targetVelocity.y
+                - projectileSpeed * projectileSpeed;
 
             float b =
                 2
@@ -59,10 +59,10 @@
                 );
 
             float c =
-                ((target.x - launchLocation.x) * (target.x - launchLocation.x))
-                + ((target.y - launchLocation.y) * (target.y - launchLocation.y));
+                (target.x - launchLocation.x) * (target.x - launchLocation.x)
+                + (target.y - launchLocation.y) * (target.y - launchLocation.y);
 
-            float disc = b * b - (4 * a * c);
+            float disc = b * b - 4 * a * c;
             if (disc < 0)
             {
                 return target;
@@ -72,8 +72,8 @@
             float t2 = (-1 * b - Mathf.Sqrt(disc)) / (2 * a);
             float t = Mathf.Max(t1, t2); // let us take the larger time value
 
-            float aimX = target.x + (targetVelocity.x * t);
-            float aimY = target.y + (targetVelocity.y * t);
+            float aimX = target.x + targetVelocity.x * t;
+            float aimY = target.y + targetVelocity.y * t;
 
             if (float.IsNaN(aimX) || float.IsNaN(aimY))
             {
@@ -283,7 +283,7 @@
                 // optional delay execution from happening on 0, 1, 2, ... n-1 to 1, 2, ... n
                 if (
                     totalExecuted < totalCount
-                    && ((totalExecuted + (delay ? 1f : 0f)) / totalCount) <= percent
+                    && (totalExecuted + (delay ? 1f : 0f)) / totalCount <= percent
                 )
                 {
                     action();

@@ -53,7 +53,7 @@
 
             tImporter.isReadable = isReadable;
 
-            TextureImporterPlatformSettings importerSettings = new TextureImporterPlatformSettings
+            TextureImporterPlatformSettings importerSettings = new()
             {
                 resizeAlgorithm = TextureResizeAlgorithm.Bilinear,
                 maxTextureSize = MaxTextureSize,
