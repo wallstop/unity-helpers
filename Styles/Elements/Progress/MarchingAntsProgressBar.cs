@@ -13,16 +13,16 @@
             Vertical = 1,
         }
 
-        public const string ussClassName = "marching-ants-progress-bar";
-        public const string ussTrackClassName = ussClassName + "__track";
-        public const string ussFillContainerClassName = ussClassName + "__fill-container";
-        public const string ussFillClassName = ussClassName + "__fill";
-        public const string ussTrackColorVarName = "--ants-track-color";
-        public const string ussProgressColorVarName = "--ants-progress-color";
-        public const string ussThicknessVarName = "--ants-thickness";
-        public const string ussBorderRadiusVarName = "--ants-border-radius";
-        public const string ussDashOnVarName = "--ants-dash-on";
-        public const string ussDashOffVarName = "--ants-dash-off";
+        public const string USSClassName = "marching-ants-progress-bar";
+        public const string USSTrackClassName = USSClassName + "__track";
+        public const string USSFillContainerClassName = USSClassName + "__fill-container";
+        public const string USSFillClassName = USSClassName + "__fill";
+        public const string USSTrackColorVarName = "--ants-track-color";
+        public const string USSProgressColorVarName = "--ants-progress-color";
+        public const string USSThicknessVarName = "--ants-thickness";
+        public const string USSBorderRadiusVarName = "--ants-border-radius";
+        public const string USSDashOnVarName = "--ants-dash-on";
+        public const string USSDashOffVarName = "--ants-dash-off";
 
         private readonly VisualElement _trackElement;
         private readonly VisualElement _fillContainer;
@@ -288,9 +288,9 @@
 
         public MarchingAntsProgressBar()
         {
-            AddToClassList(ussClassName);
+            AddToClassList(USSClassName);
             _trackElement = new VisualElement { name = "track", pickingMode = PickingMode.Ignore };
-            _trackElement.AddToClassList(ussTrackClassName);
+            _trackElement.AddToClassList(USSTrackClassName);
             _trackElement.style.position = Position.Absolute;
             _trackElement.style.left = 0;
             _trackElement.style.top = 0;
@@ -303,7 +303,7 @@
                 name = "fill-container",
                 pickingMode = PickingMode.Ignore,
             };
-            _fillContainer.AddToClassList(ussFillContainerClassName);
+            _fillContainer.AddToClassList(USSFillContainerClassName);
             _fillContainer.style.overflow = Overflow.Hidden;
             _fillContainer.style.position = Position.Absolute;
             _fillContainer.style.left = 0;
@@ -312,7 +312,7 @@
             _fillContainer.style.height = Length.Percent(100);
             Add(_fillContainer);
             _fillElement = new VisualElement { name = "fill", pickingMode = PickingMode.Ignore };
-            _fillElement.AddToClassList(ussFillClassName);
+            _fillElement.AddToClassList(USSFillClassName);
             _fillElement.style.position = Position.Absolute;
             _fillElement.style.left = 0;
             _fillElement.style.top = 0;
@@ -453,7 +453,7 @@
         {
             if (
                 customStyle.TryGetValue(
-                    new CustomStyleProperty<Color>(ussTrackColorVarName),
+                    new CustomStyleProperty<Color>(USSTrackColorVarName),
                     out Color tc
                 )
             )
@@ -463,7 +463,7 @@
 
             if (
                 customStyle.TryGetValue(
-                    new CustomStyleProperty<Color>(ussProgressColorVarName),
+                    new CustomStyleProperty<Color>(USSProgressColorVarName),
                     out Color pc
                 )
             )
@@ -473,7 +473,7 @@
 
             if (
                 customStyle.TryGetValue(
-                    new CustomStyleProperty<float>(ussThicknessVarName),
+                    new CustomStyleProperty<float>(USSThicknessVarName),
                     out float th
                 )
             )
@@ -483,7 +483,7 @@
 
             if (
                 customStyle.TryGetValue(
-                    new CustomStyleProperty<float>(ussBorderRadiusVarName),
+                    new CustomStyleProperty<float>(USSBorderRadiusVarName),
                     out float br
                 )
             )
@@ -493,7 +493,7 @@
 
             if (
                 customStyle.TryGetValue(
-                    new CustomStyleProperty<float>(ussDashOnVarName),
+                    new CustomStyleProperty<float>(USSDashOnVarName),
                     out float don
                 )
             )
@@ -503,7 +503,7 @@
 
             if (
                 customStyle.TryGetValue(
-                    new CustomStyleProperty<float>(ussDashOffVarName),
+                    new CustomStyleProperty<float>(USSDashOffVarName),
                     out float doff
                 )
             )

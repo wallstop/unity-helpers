@@ -9,6 +9,7 @@
     using UnityEditor;
     using UnityEngine;
     using Core.Extension;
+    using Core.Helper;
 
     public sealed class AnimationCopierWindow : EditorWindow
     {
@@ -58,7 +59,7 @@
             public string DestinationRelativePath { get; set; }
         }
 
-        [MenuItem("Tools/Wallstop Studios/Unity Helpers/Animation Copier Window", priority = -2)]
+        [MenuItem("Tools/Wallstop Studios/Unity Helpers/Animation Copier", priority = -2)]
         public static void ShowWindow()
         {
             GetWindow<AnimationCopierWindow>("Animation Copier");
@@ -185,7 +186,7 @@
                     if (newRelPath != null)
                     {
                         relativePath = newRelPath;
-                        fullPath = selectedPath.Replace(Path.DirectorySeparatorChar, '/');
+                        fullPath = selectedPath.SanitizePath();
                         EditorPrefs.SetString(prefKey, relativePath);
                         this.Log($"{label} set to: {relativePath}");
                         ValidatePaths();
@@ -460,7 +461,7 @@
                         FileName = Path.GetFileName(sourceRelPath),
                         RelativeDirectory = GetRelativeSubPath(
                             _animationSourcePathRelative,
-                            directoryName.Replace(Path.DirectorySeparatorChar, '/')
+                            directoryName.SanitizePath()
                         ),
                         Hash = CalculateFileHash(sourceFullPath),
                     };
@@ -469,7 +470,7 @@
                             fileInfo.RelativeDirectory,
                             fileInfo.FileName
                         )
-                        .Replace(Path.DirectorySeparatorChar, '/');
+                        .SanitizePath();
                     _sourceAnimations.Add(fileInfo);
 
                     EditorUtility.DisplayProgressBar(
@@ -615,7 +616,8 @@
 
                     string sourceAssetPath = animInfo.RelativePath;
                     string destinationAssetPath = animInfo.DestinationRelativePath;
-                    string destDirectory = Path.GetDirectoryName(destinationAssetPath);
+                    string destDirectory = Path.GetDirectoryName(destinationAssetPath)
+                        .SanitizePath();
 
                     if (
                         !string.IsNullOrEmpty(destDirectory)
@@ -784,7 +786,7 @@
                 return null;
             }
 
-            fullPath = fullPath.Replace(Path.DirectorySeparatorChar, '/');
+            fullPath = fullPath.SanitizePath();
             if (
                 fullPath.EndsWith("/Assets", StringComparison.OrdinalIgnoreCase)
                 && Path.GetFileName(fullPath).Equals("Assets", StringComparison.OrdinalIgnoreCase)
@@ -793,7 +795,7 @@
                 return "Assets";
             }
 
-            string assetsPath = Application.dataPath.Replace(Path.DirectorySeparatorChar, '/');
+            string assetsPath = Application.dataPath.SanitizePath();
             if (fullPath.StartsWith(assetsPath, StringComparison.OrdinalIgnoreCase))
             {
                 if (fullPath.Length == assetsPath.Length)
@@ -828,7 +830,7 @@
 
             if (relativePath.Equals("Assets", StringComparison.OrdinalIgnoreCase))
             {
-                return Application.dataPath.Replace(Path.DirectorySeparatorChar, '/');
+                return Application.dataPath.SanitizePath();
             }
 
             if (relativePath.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))
@@ -837,7 +839,7 @@
                     0,
                     Application.dataPath.Length - "Assets".Length
                 );
-                return (projectRoot + relativePath).Replace(Path.DirectorySeparatorChar, '/');
+                return (projectRoot + relativePath).SanitizePath();
             }
             return null;
         }
@@ -920,8 +922,7 @@
                 return;
             }
 
-            string parentPath = Path.GetDirectoryName(relativeDirectoryPath)
-                ?.Replace(Path.DirectorySeparatorChar, '/');
+            string parentPath = Path.GetDirectoryName(relativeDirectoryPath).SanitizePath();
 
             if (
                 string.IsNullOrEmpty(parentPath)
