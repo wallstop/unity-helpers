@@ -213,11 +213,6 @@
                             newImporters.Add(newImporter);
                         }
                     }
-
-                    foreach (TextureImporter newImporter in newImporters)
-                    {
-                        newImporter.SaveAndReimport();
-                    }
                 }
                 finally
                 {
@@ -276,8 +271,10 @@
                 return null;
             }
 
-            TextureImporter importer = AssetImporter.GetAtPath(assetPath) as TextureImporter;
-            if (importer is not { textureType: TextureImporterType.Sprite })
+            if (
+                AssetImporter.GetAtPath(assetPath)
+                is not TextureImporter { textureType: TextureImporterType.Sprite } importer
+            )
             {
                 return null;
             }
@@ -285,7 +282,6 @@
             TextureImporterSettings originalSettings = new();
             importer.ReadTextureSettings(originalSettings);
 
-            bool originalReadableState = importer.isReadable;
             if (!importer.isReadable)
             {
                 importer.isReadable = true;
@@ -298,142 +294,128 @@
                 return null;
             }
 
-            TextureImporter resultImporter;
-            try
-            {
-                Color32[] pixels = tex.GetPixels32();
+            Color32[] pixels = tex.GetPixels32();
+            int width = tex.width;
+            int height = tex.height;
+            int minX = width;
+            int minY = height;
+            int maxX = 0;
+            int maxY = 0;
+            bool hasVisible = false;
 
-                int width = tex.width;
-                int height = tex.height;
-                int minX = width;
-                int minY = height;
-                int maxX = 0;
-                int maxY = 0;
-                bool hasVisible = false;
+            object lockObject = new();
 
-                object lockObject = new();
+            Parallel.For(
+                0,
+                width * height,
+                () => (minX: width, minY: height, maxX: 0, maxY: 0, hasVisible: false),
+                (index, _, localState) =>
+                {
+                    int x = index % width;
+                    int y = index / width;
 
-                Parallel.For(
-                    0,
-                    width * height,
-                    () => (minX: width, minY: height, maxX: 0, maxY: 0, hasVisible: false),
-                    (index, _, localState) =>
+                    float a = pixels[index].a / 255f;
+                    if (a > AlphaThreshold)
                     {
-                        int x = index % width;
-                        int y = index / width;
-
-                        float a = pixels[index].a / 255f;
-                        if (a > AlphaThreshold)
-                        {
-                            localState.hasVisible = true;
-                            localState.minX = Mathf.Min(localState.minX, x);
-                            localState.minY = Mathf.Min(localState.minY, y);
-                            localState.maxX = Mathf.Max(localState.maxX, x);
-                            localState.maxY = Mathf.Max(localState.maxY, y);
-                        }
-                        return localState;
-                    },
-                    finalLocalState =>
+                        localState.hasVisible = true;
+                        localState.minX = Mathf.Min(localState.minX, x);
+                        localState.minY = Mathf.Min(localState.minY, y);
+                        localState.maxX = Mathf.Max(localState.maxX, x);
+                        localState.maxY = Mathf.Max(localState.maxY, y);
+                    }
+                    return localState;
+                },
+                finalLocalState =>
+                {
+                    if (finalLocalState.hasVisible)
                     {
-                        if (finalLocalState.hasVisible)
+                        lock (lockObject)
                         {
-                            lock (lockObject)
-                            {
-                                hasVisible = true;
-                                minX = Mathf.Min(minX, finalLocalState.minX);
-                                minY = Mathf.Min(minY, finalLocalState.minY);
-                                maxX = Mathf.Max(maxX, finalLocalState.maxX);
-                                maxY = Mathf.Max(maxY, finalLocalState.maxY);
-                            }
+                            hasVisible = true;
+                            minX = Mathf.Min(minX, finalLocalState.minX);
+                            minY = Mathf.Min(minY, finalLocalState.minY);
+                            maxX = Mathf.Max(maxX, finalLocalState.maxX);
+                            maxY = Mathf.Max(maxY, finalLocalState.maxY);
                         }
                     }
-                );
-
-                if (!hasVisible)
-                {
-                    return null;
                 }
+            );
 
-                int cropWidth = maxX - minX + 1;
-                int cropHeight = maxY - minY + 1;
-
-                if (_onlyNecessary && cropWidth == width && cropHeight == height)
-                {
-                    return null;
-                }
-
-                Texture2D cropped = new(cropWidth, cropHeight, TextureFormat.RGBA32, false);
-                Color32[] croppedPixels = new Color32[cropWidth * cropHeight];
-
-                Parallel.For(
-                    0,
-                    cropHeight,
-                    y =>
-                    {
-                        int sourceYOffset = (y + minY) * width;
-                        int destYOffset = y * cropWidth;
-                        for (int x = 0; x < cropWidth; ++x)
-                        {
-                            croppedPixels[destYOffset + x] = pixels[sourceYOffset + x + minX];
-                        }
-                    }
-                );
-
-                cropped.SetPixels32(croppedPixels);
-                cropped.Apply();
-
-                string newPath = Path.Combine(
-                    assetDirectory,
-                    CroppedPrefix + Path.GetFileName(assetPath)
-                );
-                File.WriteAllBytes(newPath, cropped.EncodeToPNG());
-                DestroyImmediate(cropped);
-                AssetDatabase.ImportAsset(newPath);
-                TextureImporter newImporter = AssetImporter.GetAtPath(newPath) as TextureImporter;
-                if (newImporter == null)
-                {
-                    return null;
-                }
-
-                newImporter.textureType = importer.textureType;
-                newImporter.spriteImportMode = importer.spriteImportMode;
-                newImporter.filterMode = importer.filterMode;
-                newImporter.textureCompression = importer.textureCompression;
-                newImporter.wrapMode = importer.wrapMode;
-                newImporter.mipmapEnabled = importer.mipmapEnabled;
-                newImporter.spritePixelsPerUnit = importer.spritePixelsPerUnit;
-
-                TextureImporterSettings newSettings = new();
-                newImporter.ReadTextureSettings(newSettings);
-                newSettings.spriteExtrude = originalSettings.spriteExtrude;
-
-                Vector2 origPivot = GetSpritePivot(importer);
-                Vector2 origCenter = new(width * origPivot.x, height * origPivot.y);
-                Vector2 newPivotPixels = origCenter - new Vector2(minX, minY);
-                Vector2 newPivotNorm = new(
-                    cropWidth > 0 ? newPivotPixels.x / cropWidth : 0.5f,
-                    cropHeight > 0 ? newPivotPixels.y / cropHeight : 0.5f
-                );
-
-                newImporter.spriteImportMode = SpriteImportMode.Single;
-                newImporter.spritePivot = newPivotNorm;
-                newSettings.spritePivot = newPivotNorm;
-                newSettings.spriteAlignment = (int)SpriteAlignment.Custom;
-
-                newImporter.SetTextureSettings(newSettings);
-                newImporter.isReadable = false;
-
-                resultImporter = newImporter;
-            }
-            finally
+            if (!hasVisible)
             {
-                if (importer != null && importer.isReadable != originalReadableState)
-                {
-                    importer.isReadable = originalReadableState;
-                    importer.SaveAndReimport();
-                }
+                return null;
             }
 
+            int cropWidth = maxX - minX + 1;
+            int cropHeight = maxY - minY + 1;
+
+            if (_onlyNecessary && cropWidth == width && cropHeight == height)
+            {
+                return null;
+            }
+
+            Texture2D cropped = new(cropWidth, cropHeight, TextureFormat.RGBA32, false);
+            Color32[] croppedPixels = new Color32[cropWidth * cropHeight];
+
+            Parallel.For(
+                0,
+                cropHeight,
+                y =>
+                {
+                    int sourceYOffset = (y + minY) * width;
+                    int destYOffset = y * cropWidth;
+                    for (int x = 0; x < cropWidth; ++x)
+                    {
+                        croppedPixels[destYOffset + x] = pixels[sourceYOffset + x + minX];
+                    }
+                }
+            );
+
+            cropped.SetPixels32(croppedPixels);
+            cropped.Apply();
+
+            string newPath = Path.Combine(
+                assetDirectory,
+                CroppedPrefix + Path.GetFileName(assetPath)
+            );
+            File.WriteAllBytes(newPath, cropped.EncodeToPNG());
+            DestroyImmediate(cropped);
+            AssetDatabase.ImportAsset(newPath);
+            TextureImporter newImporter = AssetImporter.GetAtPath(newPath) as TextureImporter;
+            if (newImporter == null)
+            {
+                return null;
+            }
+
+            newImporter.textureType = importer.textureType;
+            newImporter.spriteImportMode = importer.spriteImportMode;
+            newImporter.filterMode = importer.filterMode;
+            newImporter.textureCompression = importer.textureCompression;
+            newImporter.wrapMode = importer.wrapMode;
+            newImporter.mipmapEnabled = importer.mipmapEnabled;
+            newImporter.spritePixelsPerUnit = importer.spritePixelsPerUnit;
+
+            TextureImporterSettings newSettings = new();
+            importer.ReadTextureSettings(newSettings);
+
+            Vector2 origPivot = GetSpritePivot(importer);
+            Vector2 origCenter = new(width * origPivot.x, height * origPivot.y);
+            Vector2 newPivotPixels = origCenter - new Vector2(minX, minY);
+            Vector2 newPivotNorm = new(
+                cropWidth > 0 ? newPivotPixels.x / cropWidth : 0.5f,
+                cropHeight > 0 ? newPivotPixels.y / cropHeight : 0.5f
+            );
+
+            newImporter.spriteImportMode = SpriteImportMode.Single;
+            newImporter.spritePivot = newPivotNorm;
+            newSettings.spritePivot = newPivotNorm;
+            newSettings.spriteAlignment = (int)SpriteAlignment.Custom;
+
+            newImporter.SetTextureSettings(newSettings);
+            newImporter.isReadable = true;
+            newImporter.SaveAndReimport();
+
+            TextureImporter resultImporter = newImporter;
             return resultImporter;
         }
 

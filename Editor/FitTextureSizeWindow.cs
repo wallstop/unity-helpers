@@ -336,6 +336,14 @@
                         _ = updatedImporters.Remove(textureImporter);
                     }
                 }
+            }
+            finally
+            {
+                if (applyChanges)
+                {
+                    AssetDatabase.StopAssetEditing();
+                }
+                EditorUtility.ClearProgressBar();
 
                 if (applyChanges)
                 {
@@ -355,14 +363,6 @@
                         this.Log($"No textures updated.");
                     }
                 }
-            }
-            finally
-            {
-                if (applyChanges)
-                {
-                    AssetDatabase.StopAssetEditing();
-                }
-                EditorUtility.ClearProgressBar();
             }
             return changedCount;
         }

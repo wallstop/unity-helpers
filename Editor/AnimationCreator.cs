@@ -140,7 +140,7 @@
                 return;
             }
 
-            absolutePath = absolutePath.Replace("\\", "/");
+            absolutePath = absolutePath.SanitizePath();
             if (absolutePath.StartsWith(Application.dataPath, StringComparison.OrdinalIgnoreCase))
             {
                 string relativePath =
@@ -595,7 +595,7 @@
 
                     string firstFramePath = AssetDatabase.GetAssetPath(validFrames[0]);
                     string assetPath =
-                        Path.GetDirectoryName(firstFramePath)?.Replace("\\", "/") ?? "Assets";
+                        Path.GetDirectoryName(firstFramePath).SanitizePath() ?? "Assets";
                     if (!assetPath.EndsWith("/"))
                     {
                         assetPath += "/";
@@ -775,8 +775,7 @@
                     }
 
                     string assetPath = AssetDatabase.GetAssetPath(sprite);
-                    string directoryPath =
-                        Path.GetDirectoryName(assetPath)?.Replace("\\", "/") ?? "";
+                    string directoryPath = Path.GetDirectoryName(assetPath).SanitizePath() ?? "";
                     string frameName = sprite.name;
 
                     int splitIndex = frameName.LastIndexOf('_');
