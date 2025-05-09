@@ -139,11 +139,14 @@
                     TimeSpan fpsSpan = TimeSpan.FromMilliseconds(1000f / fps);
                     int index = 0;
                     Stopwatch timer = Stopwatch.StartNew();
-                    EditorApplication.update += () =>
+                    EditorApplication.update += Tick;
+                    return;
+
+                    void Tick()
                     {
                         if (panel == null)
                         {
-                            EditorApplication.update = null;
+                            EditorApplication.update -= Tick;
                             return;
                         }
                         TimeSpan elapsed = timer.Elapsed;
@@ -152,11 +155,10 @@
                             return;
                         }
 
-                        index = (index + 1) % _computed.Length;
+                        index = index.WrappedIncrement(_computed.Length);
                         lastTick = elapsed;
                         Render(index);
-                    };
-                    return;
+                    }
                 }
 #endif
                 if (Application.isPlaying && CoroutineHandler.Instance != null)
@@ -170,7 +172,7 @@
                                 return;
                             }
 
-                            index = (index + 1) % _computed.Length;
+                            index = index.WrappedIncrement(_computed.Length);
                             Render(index);
                         },
                         1f / fps
