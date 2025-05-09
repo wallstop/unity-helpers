@@ -3,11 +3,12 @@
     using System;
     using Extension;
     using UnityEditor;
-    using UnityEditor.SceneManagement;
     using UnityEngine;
     using UnityEngine.SceneManagement;
     using Object = UnityEngine.Object;
-
+#if UNITY_EDITOR
+    using UnityEditor.SceneManagement;
+#endif
     public static partial class Helpers
     {
         public static T Find<T>(this Object component, string tag, bool log = true)
