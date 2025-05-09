@@ -437,7 +437,10 @@
                     string sourceRelPath = AssetDatabase.GUIDToAssetPath(guid);
                     if (
                         string.IsNullOrWhiteSpace(sourceRelPath)
-                        || !sourceRelPath.StartsWith(_animationSourcePathRelative)
+                        || !sourceRelPath.StartsWith(
+                            _animationSourcePathRelative,
+                            StringComparison.OrdinalIgnoreCase
+                        )
                     )
                     {
                         continue;
@@ -506,7 +509,10 @@
                     else
                     {
                         string destHash = CalculateFileHash(destFullPath);
-                        if (string.IsNullOrEmpty(sourceInfo.Hash) || string.IsNullOrEmpty(destHash))
+                        if (
+                            string.IsNullOrWhiteSpace(sourceInfo.Hash)
+                            || string.IsNullOrWhiteSpace(destHash)
+                        )
                         {
                             this.LogWarn(
                                 $"Could not compare '{sourceInfo.FileName}' due to hashing error. Treating as 'Changed'."
@@ -594,8 +600,32 @@
 
             int successCount = 0;
             int errorCount = 0;
-            AssetDatabase.StartAssetEditing();
+            foreach (AnimationFileInfo animInfo in animationsToCopy)
+            {
+                string destinationAssetPath = animInfo.DestinationRelativePath;
+                string destDirectory = Path.GetDirectoryName(destinationAssetPath).SanitizePath();
 
+                if (
+                    string.IsNullOrWhiteSpace(destDirectory)
+                    || AssetDatabase.IsValidFolder(destDirectory)
+                )
+                {
+                    continue;
+                }
+
+                try
+                {
+                    EnsureDirectoryExists(destDirectory);
+                }
+                catch (Exception ex)
+                {
+                    this.LogError(
+                        $"Failed to create destination directory '{destDirectory}' for animation '{animInfo.FileName}'. Error: {ex.Message}. Skipping."
+                    );
+                }
+            }
+
+            AssetDatabase.StartAssetEditing();
             try
             {
                 for (int i = 0; i < animationsToCopy.Count; i++)
@@ -616,28 +646,6 @@
 
                     string sourceAssetPath = animInfo.RelativePath;
                     string destinationAssetPath = animInfo.DestinationRelativePath;
-                    string destDirectory = Path.GetDirectoryName(destinationAssetPath)
-                        .SanitizePath();
-
-                    if (
-                        !string.IsNullOrEmpty(destDirectory)
-                        && !AssetDatabase.IsValidFolder(destDirectory)
-                    )
-                    {
-                        try
-                        {
-                            EnsureDirectoryExists(destDirectory);
-                        }
-                        catch (Exception ex)
-                        {
-                            this.LogError(
-                                $"Failed to create destination directory '{destDirectory}' for animation '{animInfo.FileName}'. Error: {ex.Message}. Skipping."
-                            );
-                            errorCount++;
-                            continue;
-                        }
-                    }
-
                     bool copySuccessful = AssetDatabase.CopyAsset(
                         sourceAssetPath,
                         destinationAssetPath
@@ -868,28 +876,28 @@
             return string.Empty;
         }
 
-        private static string CalculateFileHash(string filePath)
+        private string CalculateFileHash(string filePath)
         {
             try
             {
-                using (MD5 md5 = MD5.Create())
-                using (FileStream stream = File.OpenRead(filePath))
-                {
-                    byte[] hashBytes = md5.ComputeHash(stream);
-                    return BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
-                }
+                using MD5 md5 = MD5.Create();
+                using FileStream stream = File.OpenRead(filePath);
+                byte[] hashBytes = md5.ComputeHash(stream);
+                return BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
             }
             catch (IOException ioEx)
             {
-                Debug.LogError(
-                    $"[AnimationCopierWindow] IO Error calculating hash for {filePath}: {ioEx.Message}"
+                this.LogError(
+                    $"[AnimationCopierWindow] IO Error calculating hash for {filePath}.",
+                    ioEx
                 );
                 return string.Empty;
             }
             catch (Exception ex)
             {
-                Debug.LogError(
-                    $"[AnimationCopierWindow] Error calculating hash for {filePath}: {ex.Message}"
+                this.LogError(
+                    $"[AnimationCopierWindow] Error calculating hash for {filePath}.",
+                    ex
                 );
                 return string.Empty;
             }
@@ -901,6 +909,7 @@
             {
                 return;
             }
+
             if (!relativeDirectoryPath.StartsWith("Assets/"))
             {
                 if (relativeDirectoryPath.Equals("Assets", StringComparison.OrdinalIgnoreCase))
@@ -923,15 +932,14 @@
             }
 
             string parentPath = Path.GetDirectoryName(relativeDirectoryPath).SanitizePath();
-
             if (
-                string.IsNullOrEmpty(parentPath)
+                string.IsNullOrWhiteSpace(parentPath)
                 || parentPath.Equals("Assets", StringComparison.OrdinalIgnoreCase)
             )
             {
                 string folderNameToCreate = Path.GetFileName(relativeDirectoryPath);
                 if (
-                    !string.IsNullOrEmpty(folderNameToCreate)
+                    !string.IsNullOrWhiteSpace(folderNameToCreate)
                     && !AssetDatabase.IsValidFolder(relativeDirectoryPath)
                 )
                 {
@@ -941,10 +949,9 @@
             }
 
             EnsureDirectoryExists(parentPath);
-
             string currentFolderName = Path.GetFileName(relativeDirectoryPath);
             if (
-                !string.IsNullOrEmpty(currentFolderName)
+                !string.IsNullOrWhiteSpace(currentFolderName)
                 && !AssetDatabase.IsValidFolder(relativeDirectoryPath)
             )
             {
