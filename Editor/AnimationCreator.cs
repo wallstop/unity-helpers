@@ -337,6 +337,13 @@
                 }
             }
 
+            if (GUILayout.Button("Create new Animation Data"))
+            {
+                animationData.Add(new AnimationData());
+                _serializedObject.Update();
+                Repaint();
+            }
+
             if (_filteredSprites.Count == 0)
             {
                 EditorGUILayout.HelpBox(
