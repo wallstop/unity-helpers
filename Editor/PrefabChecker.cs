@@ -12,6 +12,7 @@
     using Core.Attributes;
     using Core.Extension;
     using Core.Helper;
+    using Utils;
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
@@ -148,23 +149,16 @@
             GUI.enabled = wasEnabled && _checkNullObjectReferences;
             try
             {
-                EditorGUI.indentLevel++;
-                try
-                {
-                    DrawAndAlign(
-                        new GUIContent(
-                            "Only if [ValidateAssignment]",
-                            "Only report null object references if the field has the [ValidateAssignment] attribute."
-                        ),
-                        () => _onlyCheckNullObjectsWithAttribute,
-                        v => _onlyCheckNullObjectsWithAttribute = v,
-                        true
-                    );
-                }
-                finally
-                {
-                    EditorGUI.indentLevel--;
-                }
+                using GUIIndentScope indent = new();
+                DrawAndAlign(
+                    new GUIContent(
+                        "Only if [ValidateAssignment]",
+                        "Only report null object references if the field has the [ValidateAssignment] attribute."
+                    ),
+                    () => _onlyCheckNullObjectsWithAttribute,
+                    v => _onlyCheckNullObjectsWithAttribute = v,
+                    true
+                );
             }
             finally
             {
@@ -374,7 +368,7 @@
 
         private void RunChecks()
         {
-            if (_assetPaths == null || _assetPaths.Count == 0)
+            if (_assetPaths is not { Count: > 0 })
             {
                 this.LogError($"No asset paths specified. Add folders containing prefabs.");
                 return;

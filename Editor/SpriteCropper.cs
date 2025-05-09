@@ -30,7 +30,7 @@
         private const float AlphaThreshold = 0.01f;
 
         [SerializeField]
-        private Object[] _inputDirectories;
+        private List<Object> _inputDirectories = new();
 
         [SerializeField]
         private bool _onlyNecessary;
@@ -44,11 +44,55 @@
         {
             GUILayout.Label("Drag folders below", EditorStyles.boldLabel);
             SerializedObject so = new(this);
+            so.Update();
             SerializedProperty dirs = so.FindProperty(nameof(_inputDirectories));
             EditorGUILayout.PropertyField(dirs, true);
             SerializedProperty onlyNecessary = so.FindProperty(nameof(_onlyNecessary));
             EditorGUILayout.PropertyField(onlyNecessary, true);
             so.ApplyModifiedProperties();
+
+            if (GUILayout.Button("Select Input Folder"))
+            {
+                string path = EditorUtility.OpenFolderPanel(
+                    "Select Sprite Input Folder",
+                    Application.dataPath,
+                    ""
+                );
+                if (!string.IsNullOrWhiteSpace(path))
+                {
+                    if (path.StartsWith(Application.dataPath, StringComparison.Ordinal))
+                    {
+                        path = "Assets" + path.Substring(Application.dataPath.Length);
+                        if (
+                            !_inputDirectories
+                                .Select(AssetDatabase.GetAssetPath)
+                                .Any(directory =>
+                                    string.Equals(
+                                        directory,
+                                        path,
+                                        StringComparison.OrdinalIgnoreCase
+                                    )
+                                )
+                        )
+                        {
+                            Object folder = AssetDatabase.LoadAssetAtPath<Object>(path);
+                            if (folder == null)
+                            {
+                                return;
+                            }
+                            _inputDirectories.Add(folder);
+                        }
+                    }
+                    else
+                    {
+                        EditorUtility.DisplayDialog(
+                            "Invalid Folder",
+                            "Please select a folder inside the project's Assets directory.",
+                            "OK"
+                        );
+                    }
+                }
+            }
 
             if (GUILayout.Button("Find Sprites To Process"))
             {
@@ -79,7 +123,7 @@
         private void FindFilesToProcess()
         {
             _filesToProcess = new List<string>();
-            if (_inputDirectories == null || _inputDirectories.Length == 0)
+            if (_inputDirectories is not { Count: > 0 })
             {
                 this.LogWarn($"No input directories selected.");
                 return;
@@ -118,7 +162,7 @@
 
         private void ProcessFoundSprites()
         {
-            if (_filesToProcess == null || _filesToProcess.Count == 0)
+            if (_filesToProcess is not { Count: > 0 })
             {
                 this.LogWarn($"No files found or selected for processing.");
                 return;
@@ -209,7 +253,7 @@
             }
 
             TextureImporter importer = AssetImporter.GetAtPath(assetPath) as TextureImporter;
-            if (importer == null || !importer.textureType.Equals(TextureImporterType.Sprite))
+            if (importer is not { textureType: TextureImporterType.Sprite })
             {
                 return;
             }
@@ -233,7 +277,7 @@
             }
 
             TextureImporter importer = AssetImporter.GetAtPath(assetPath) as TextureImporter;
-            if (importer == null || !importer.textureType.Equals(TextureImporterType.Sprite))
+            if (importer is not { textureType: TextureImporterType.Sprite })
             {
                 return null;
             }

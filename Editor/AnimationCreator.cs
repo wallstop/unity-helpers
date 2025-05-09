@@ -7,8 +7,10 @@
     using System.IO;
     using System.Linq;
     using System.Text.RegularExpressions;
+    using Core.Helper;
     using UnityEditor;
     using UnityEngine;
+    using Utils;
     using Object = UnityEngine.Object;
 
     [Serializable]
@@ -25,6 +27,8 @@
 
     public sealed class AnimationCreatorWindow : EditorWindow
     {
+        private static readonly char[] WhiteSpaceSplitters = { ' ', '\t', '\n', '\r' };
+
         private SerializedObject _serializedObject;
         private SerializedProperty _animationDataProp;
         private SerializedProperty _animationSourcesProp;
@@ -87,7 +91,7 @@
             else if (
                 _animationSourcesProp.arraySize == 0
                 || _animationSourcesProp.FindPropertyRelative("Array.size").intValue == 0
-                || animationSources.TrueForAll(s => s == null)
+                || animationSources.TrueForAll(Objects.Null)
             )
             {
                 EditorGUILayout.HelpBox(
@@ -205,10 +209,7 @@
             int listSize = _animationDataProp.arraySize;
             string[] searchTerms = string.IsNullOrWhiteSpace(_searchString)
                 ? Array.Empty<string>()
-                : _searchString.Split(
-                    new[] { ' ', '\t', '\n', '\r' },
-                    StringSplitOptions.RemoveEmptyEntries
-                );
+                : _searchString.Split(WhiteSpaceSplitters, StringSplitOptions.RemoveEmptyEntries);
 
             List<int> matchingIndices = new();
             for (int i = 0; i < listSize; ++i)
@@ -245,7 +246,7 @@
 
             if (_animationDataIsExpanded)
             {
-                EditorGUI.indentLevel++;
+                using GUIIndentScope indent = new();
                 if (matchCount > 0)
                 {
                     foreach (int index in matchingIndices)
@@ -273,8 +274,6 @@
                         MessageType.Info
                     );
                 }
-
-                EditorGUI.indentLevel--;
             }
         }
 
@@ -439,14 +438,14 @@
             }
 
             EditorGUILayout.Space();
-            using (new EditorGUI.DisabledScope(animationData == null || animationData.Count == 0))
+            using (new EditorGUI.DisabledScope(animationData is not { Count: > 0 }))
             {
                 if (GUILayout.Button("Create Animations"))
                 {
                     CreateAnimations();
                 }
             }
-            if (animationData == null || animationData.Count == 0)
+            if (animationData is not { Count: > 0 })
             {
                 EditorGUILayout.HelpBox(
                     "Add Animation Data entries before creating.",
@@ -457,7 +456,7 @@
 
         private void CreateAnimations()
         {
-            if (animationData is not { Count: not 0 })
+            if (animationData is not { Count: > 0 })
             {
                 this.LogError($"No animation data to create.");
                 return;
@@ -532,7 +531,7 @@
                     }
 
                     List<Sprite> frames = data.frames;
-                    if (frames is not { Count: not 0 })
+                    if (frames is not { Count: > 0 })
                     {
                         this.LogWarn(
                             $"Ignoring animation '{animationName}' because it has no frames."
@@ -659,7 +658,7 @@
             _matchedSpriteCount = 0;
             _unmatchedSpriteCount = 0;
 
-            if (animationSources is not { Count: not 0 } || _compiledRegex == null)
+            if (animationSources is not { Count: > 0 } || _compiledRegex == null)
             {
                 if (_compiledRegex == null && !string.IsNullOrWhiteSpace(spriteNameRegex))
                 {
@@ -667,7 +666,7 @@
                         $"Cannot find sprites, regex pattern '{spriteNameRegex}' is invalid."
                     );
                 }
-                else if (animationSources is not { Count: not 0 })
+                else if (animationSources is not { Count: > 0 })
                 {
                     this.LogWarn($"Cannot find sprites, no animation sources specified.");
                 }
@@ -675,13 +674,8 @@
             }
 
             List<string> searchPaths = new();
-            foreach (Object source in animationSources)
+            foreach (Object source in animationSources.Where(Objects.NotNull))
             {
-                if (source == null)
-                {
-                    continue;
-                }
-
                 string path = AssetDatabase.GetAssetPath(source);
                 if (!string.IsNullOrWhiteSpace(path) && AssetDatabase.IsValidFolder(path))
                 {

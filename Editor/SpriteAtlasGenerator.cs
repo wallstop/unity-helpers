@@ -45,7 +45,7 @@
                 {
                     foreach (Sprite sprite in Sprites)
                     {
-                        if (sprite != null && sprite.rect is { width: > 0, height: > 0 })
+                        if (sprite is { rect: { width: > 0, height: > 0 } })
                         {
                             TotalArea += (long)(sprite.rect.width * sprite.rect.height);
                         }
@@ -249,7 +249,7 @@
                     Application.dataPath,
                     ""
                 );
-                if (!string.IsNullOrEmpty(absPath))
+                if (!string.IsNullOrWhiteSpace(absPath))
                 {
                     if (absPath.StartsWith(Application.dataPath, StringComparison.Ordinal))
                     {
@@ -295,16 +295,12 @@
             try
             {
                 float total = _sourceFolders.Length;
-                foreach (Object obj in _sourceFolders)
+                foreach (Object obj in _sourceFolders.Where(Objects.NotNull))
                 {
-                    if (obj == null)
-                    {
-                        continue;
-                    }
-
                     string folderPath = AssetDatabase.GetAssetPath(obj);
                     if (
-                        string.IsNullOrEmpty(folderPath) || !AssetDatabase.IsValidFolder(folderPath)
+                        string.IsNullOrWhiteSpace(folderPath)
+                        || !AssetDatabase.IsValidFolder(folderPath)
                     )
                     {
                         this.LogWarn($"Skipping invalid or null source folder entry.");
@@ -312,7 +308,7 @@
                     }
 
                     string[] guids = AssetDatabase.FindAssets("t:Sprite", new[] { folderPath });
-                    for (int i = 0; i < guids.Length; i++)
+                    for (int i = 0; i < guids.Length; ++i)
                     {
                         EditorUtility.DisplayProgressBar(
                             Name,
@@ -329,14 +325,8 @@
                             continue;
                         }
 
-                        IEnumerable<Sprite> sprites = assets.OfType<Sprite>();
-                        foreach (Sprite sp in sprites)
+                        foreach (Sprite sp in assets.OfType<Sprite>().Where(Objects.NotNull))
                         {
-                            if (sp == null)
-                            {
-                                continue;
-                            }
-
                             _totalCount++;
                             if (regex.IsMatch(sp.name))
                             {
@@ -369,11 +359,7 @@
                     return;
                 }
 
-                if (
-                    _sourceFolders == null
-                    || _sourceFolders.Length == 0
-                    || _sourceFolders.All(f => f == null)
-                )
+                if (_sourceFolders == null || Array.TrueForAll(_sourceFolders, Objects.Null))
                 {
                     this.LogError($"No valid source folders specified.");
                     EditorUtility.ClearProgressBar();
@@ -386,7 +372,10 @@
                     {
                         string parent = Path.GetDirectoryName(_outputFolder);
                         string newFolderName = Path.GetFileName(_outputFolder);
-                        if (string.IsNullOrEmpty(parent) || string.IsNullOrEmpty(newFolderName))
+                        if (
+                            string.IsNullOrWhiteSpace(parent)
+                            || string.IsNullOrWhiteSpace(newFolderName)
+                        )
                         {
                             this.LogError($"Output folder path '{_outputFolder}' is invalid.");
                             EditorUtility.ClearProgressBar();
@@ -415,7 +404,7 @@
                 string[] existing = AssetDatabase
                     .FindAssets("t:SpriteAtlas", new[] { _outputFolder })
                     .Select(AssetDatabase.GUIDToAssetPath)
-                    .Where(p => !string.IsNullOrEmpty(p))
+                    .Where(path => !string.IsNullOrWhiteSpace(path))
                     .ToArray();
 
                 if (existing.Length > 0)
@@ -439,7 +428,7 @@
                 Regex regex;
                 try
                 {
-                    regex = new(_nameRegex);
+                    regex = new Regex(_nameRegex);
                 }
                 catch (ArgumentException ex)
                 {
@@ -455,13 +444,8 @@
                     _sourceFolders.Length > 0 ? 0.2f / _sourceFolders.Length : 0f;
                 float sourceFolderProgress = 0.1f;
 
-                foreach (Object sourceDirectory in _sourceFolders)
+                foreach (Object sourceDirectory in _sourceFolders.Where(Objects.NotNull))
                 {
-                    if (sourceDirectory == null)
-                    {
-                        continue;
-                    }
-
                     string folderPath = AssetDatabase.GetAssetPath(sourceDirectory);
                     if (!AssetDatabase.IsValidFolder(folderPath))
                     {
@@ -485,7 +469,7 @@
                     )
                     {
                         string assetPath = AssetDatabase.GUIDToAssetPath(assetGuid);
-                        if (string.IsNullOrEmpty(assetPath))
+                        if (string.IsNullOrWhiteSpace(assetPath))
                         {
                             continue;
                         }
@@ -496,13 +480,8 @@
                             continue;
                         }
 
-                        foreach (Sprite sub in allAssets.OfType<Sprite>())
+                        foreach (Sprite sub in allAssets.OfType<Sprite>().Where(Objects.NotNull))
                         {
-                            if (sub == null)
-                            {
-                                continue;
-                            }
-
                             string assetName = sub.name;
                             if (!regex.IsMatch(assetName))
                             {
@@ -518,14 +497,13 @@
 
                 int totalChunks = 0;
                 Dictionary<string, List<List<Sprite>>> groupChunks = new();
-
                 EditorUtility.DisplayProgressBar(Name, "Calculating chunks...", 0.3f);
-
                 foreach (KeyValuePair<string, List<Sprite>> kv in groups)
                 {
                     List<Sprite> spritesInGroup = kv
-                        .Value.Where(s => s != null && s.rect is { width: > 0, height: > 0 })
-                        .OrderByDescending(s => s.rect.width * s.rect.height)
+                        .Value.Where(Objects.NotNull)
+                        .Where(sprite => sprite.rect is { width: > 0, height: > 0 })
+                        .OrderByDescending(sprite => sprite.rect.width * sprite.rect.height)
                         .ToList();
                     if (!spritesInGroup.Any())
                     {
@@ -599,7 +577,7 @@
                         ) in groupChunks
                     )
                     {
-                        for (int i = 0; i < chunksForThisGroup.Count; i++)
+                        for (int i = 0; i < chunksForThisGroup.Count; ++i)
                         {
                             if (!chunksForThisGroup[i].Any())
                             {
@@ -621,21 +599,21 @@
                     }
 
                     allInitialCandidates = allInitialCandidates
-                        .OrderByDescending(c => c.TotalArea)
-                        .ThenBy(c => c.CandidateName, StringComparer.Ordinal)
+                        .OrderByDescending(candidate => candidate.TotalArea)
+                        .ThenBy(candidate => candidate.CandidateName, StringComparer.Ordinal)
                         .ToList();
 
                     List<MergeableAtlas> workingAtlases = allInitialCandidates
-                        .Select(c => new MergeableAtlas(
-                            c.OriginalGroupKey,
-                            c.Sprites,
-                            c.CandidateName,
-                            c.TotalArea
+                        .Select(candidate => new MergeableAtlas(
+                            candidate.OriginalGroupKey,
+                            candidate.Sprites,
+                            candidate.CandidateName,
+                            candidate.TotalArea
                         ))
                         .ToList();
                     int passNumber = 0;
-                    float mergeOptimizationProgressStart = 0.30f;
-                    float mergeOptimizationProgressRange = 0.50f;
+                    const float mergeOptimizationProgressStart = 0.3f;
+                    const float mergeOptimizationProgressRange = 0.5f;
 
                     while (true)
                     {
@@ -643,7 +621,7 @@
                         bool mergedInThisPass = false;
                         float currentPassProgress =
                             mergeOptimizationProgressStart
-                            + passNumber * (mergeOptimizationProgressRange / 15.0f);
+                            + passNumber * (mergeOptimizationProgressRange / 15f);
                         EditorUtility.DisplayProgressBar(
                             Name,
                             $"Optimizing atlas count (Pass {passNumber}, {workingAtlases.Count} atlases)...",
@@ -654,13 +632,16 @@
                         );
 
                         workingAtlases = workingAtlases
-                            .OrderByDescending(a => a.TotalArea)
-                            .ThenBy(a => a.RepresentativeInitialName, StringComparer.Ordinal)
+                            .OrderByDescending(atlas => atlas.TotalArea)
+                            .ThenBy(
+                                atlas => atlas.RepresentativeInitialName,
+                                StringComparer.Ordinal
+                            )
                             .ToList();
 
                         bool[] isSubsumed = new bool[workingAtlases.Count];
 
-                        for (int i = 0; i < workingAtlases.Count; i++)
+                        for (int i = 0; i < workingAtlases.Count; ++i)
                         {
                             if (isSubsumed[i])
                             {
@@ -669,14 +650,14 @@
 
                             MergeableAtlas baseAtlas = workingAtlases[i];
                             string baseRepresentativeKey = baseAtlas
-                                .OriginalGroupKeys.OrderBy(k => k, StringComparer.Ordinal)
+                                .OriginalGroupKeys.OrderBy(key => key, StringComparer.Ordinal)
                                 .First();
 
                             int bestPartnerIndex = -1;
                             MergeableAtlas bestPartnerObject = null;
                             int currentMinLevenshtein = int.MaxValue;
 
-                            for (int j = i + 1; j < workingAtlases.Count; j++)
+                            for (int j = i + 1; j < workingAtlases.Count; ++j)
                             {
                                 if (isSubsumed[j])
                                 {
@@ -693,7 +674,7 @@
                                 }
 
                                 string partnerRepresentativeKey = potentialPartner
-                                    .OriginalGroupKeys.OrderBy(k => k, StringComparer.Ordinal)
+                                    .OriginalGroupKeys.OrderBy(key => key, StringComparer.Ordinal)
                                     .First();
                                 int distance = baseRepresentativeKey.LevenshteinDistance(
                                     partnerRepresentativeKey
@@ -754,8 +735,8 @@
                     }
 
                     finalAtlasesData = workingAtlases
-                        .Select(a => (Name: a.GenerateFinalName(), Sprites: a.Sprites))
-                        .OrderBy(a => a.Name)
+                        .Select(atlas => (Name: atlas.GenerateFinalName(), atlas.Sprites))
+                        .OrderBy(atlas => atlas.Name, StringComparer.Ordinal)
                         .ToList();
                 }
                 else
@@ -766,7 +747,7 @@
                             string prefix = chunk.Key;
                             List<List<Sprite>> chunks = chunk.Value;
                             List<(string, List<Sprite>)> finalChunks = new();
-                            for (int i = 0; i < chunks.Count; i++)
+                            for (int i = 0; i < chunks.Count; ++i)
                             {
                                 string atlasName = chunks.Count > 1 ? $"{prefix}_{i}" : prefix;
                                 finalChunks.Add((atlasName, chunks[i]));
@@ -775,15 +756,15 @@
                         })
                         .ToList();
                     int chunkIndex = 0;
-                    float atlasCreationProgressStart = 0.45f;
-                    float atlasCreationProgressRange = 0.5f;
+                    const float atlasCreationProgressStart = 0.45f;
+                    const float atlasCreationProgressRange = 0.5f;
 
                     foreach ((string prefix, List<List<Sprite>> chunks) in groupChunks)
                     {
-                        for (int i = 0; i < chunks.Count; i++)
+                        for (int i = 0; i < chunks.Count; ++i)
                         {
                             List<Sprite> chunk = chunks[i];
-                            if (chunk == null || chunk.Count == 0)
+                            if (chunk is not { Count: > 0 })
                             {
                                 continue;
                             }

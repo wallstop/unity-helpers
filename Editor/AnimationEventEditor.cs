@@ -9,6 +9,7 @@
     using UnityEngine;
     using Core.Attributes;
     using Core.Helper;
+    using Utils;
     using WallstopStudios.UnityHelpers.Utils;
 
     // https://gist.githubusercontent.com/yujen/5e1cd78e2a341260b38029de08a449da/raw/ac60c1002e0e14375de5b2b0a167af00df3f74b4/SeniaAnimationEventEditor.cs
@@ -172,16 +173,15 @@
 
                 DrawSpritePreview(item);
 
-                EditorGUI.indentLevel++;
-                RenderAnimationEventItem(item, frame, frameRate);
-
-                if (i != stateCopy.Count - 1)
+                using (new GUIIndentScope())
                 {
-                    DrawGuiLine(height: 3, color: new Color(0f, 1f, 0.3f, 1f));
-                    EditorGUILayout.Space();
+                    RenderAnimationEventItem(item, frame, frameRate);
+                    if (i != stateCopy.Count - 1)
+                    {
+                        DrawGuiLine(height: 3, color: new Color(0f, 1f, 0.3f, 1f));
+                        EditorGUILayout.Space();
+                    }
                 }
-
-                EditorGUI.indentLevel--;
             }
 
             EditorGUILayout.EndScrollView();
@@ -320,8 +320,7 @@
         private void RenderAnimationEventItem(AnimationEventItem item, int frame, float frameRate)
         {
             int index = _state.IndexOf(item);
-            EditorGUILayout.BeginHorizontal();
-            try
+            using (new GUIHorizontalScope())
             {
                 if (
                     1 <= index
@@ -368,10 +367,6 @@
                     _state.Remove(item);
                     return;
                 }
-            }
-            finally
-            {
-                EditorGUILayout.EndHorizontal();
             }
 
             IReadOnlyDictionary<Type, IReadOnlyList<MethodInfo>> lookup = FilterLookup(item);
@@ -541,7 +536,7 @@
             ParameterInfo[] arrayParameterInfo = item.selectedMethod.GetParameters();
             if (arrayParameterInfo.Length == 1)
             {
-                EditorGUI.indentLevel++;
+                using GUIIndentScope indent = new();
 
                 Type paramType = arrayParameterInfo[0].ParameterType;
                 if (paramType == typeof(int))
@@ -602,8 +597,6 @@
                         true
                     );
                 }
-
-                EditorGUI.indentLevel--;
             }
         }
 
@@ -686,8 +679,7 @@
             }
             else if (!item.isTextureReadable && !string.IsNullOrEmpty(spriteName))
             {
-                EditorGUILayout.BeginHorizontal();
-                try
+                using (new GUIHorizontalScope())
                 {
                     GUILayout.Label($"Sprite '{spriteName}' required \"Read/Write\" enabled");
                     if (item.sprite != null && GUILayout.Button("Fix"))
@@ -710,10 +702,6 @@
                         tImporter.SaveAndReimport();
                         EditorUtility.SetDirty(item.sprite);
                     }
-                }
-                finally
-                {
-                    EditorGUILayout.EndHorizontal();
                 }
             }
             else if (item.isInvalidTextureRect && !string.IsNullOrEmpty(spriteName))

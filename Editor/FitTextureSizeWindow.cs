@@ -40,7 +40,7 @@
                 nameof(_textureSourcePaths)
             );
 
-            if (_textureSourcePaths != null && _textureSourcePaths.Count != 0)
+            if (_textureSourcePaths is { Count: > 0 })
             {
                 return;
             }

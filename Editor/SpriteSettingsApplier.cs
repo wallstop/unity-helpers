@@ -10,6 +10,7 @@ namespace WallstopStudios.UnityHelpers.Editor
     using System.Linq;
     using UnityEditor;
     using UnityEngine;
+    using Utils;
     using Object = UnityEngine.Object;
 
     [Serializable]
@@ -203,9 +204,10 @@ namespace WallstopStudios.UnityHelpers.Editor
                         valuePropHeight
                     );
 
-                    EditorGUI.indentLevel++;
-                    EditorGUI.PropertyField(valueRect, valueProp, GUIContent.none, true);
-                    EditorGUI.indentLevel--;
+                    using (new GUIIndentScope())
+                    {
+                        EditorGUI.PropertyField(valueRect, valueProp, GUIContent.none, true);
+                    }
 
                     currentRect.y += valueRect.height + EditorGUIUtility.standardVerticalSpacing;
                 }
