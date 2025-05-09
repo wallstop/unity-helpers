@@ -24,7 +24,7 @@
 
         public AnimatedSpriteLayer(
             IEnumerable<Sprite> sprites,
-            IEnumerable<Vector2>? worldSpaceOffsets = null,
+            IEnumerable<Vector2> worldSpaceOffsets = null,
             float alpha = 1
         )
         {
@@ -75,7 +75,7 @@
 
         public AnimatedSpriteLayer(
             AnimationClip clip,
-            IEnumerable<Vector2>? worldSpaceOffsets = null,
+            IEnumerable<Vector2> worldSpaceOffsets = null,
             float alpha = 1
         )
             : this(
