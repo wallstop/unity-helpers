@@ -35,6 +35,18 @@
         [SerializeField]
         private bool _onlyNecessary;
 
+        [SerializeField]
+        private int _leftPadding;
+
+        [SerializeField]
+        private int _rightPadding;
+
+        [SerializeField]
+        private int _topPadding;
+
+        [SerializeField]
+        private int _bottomPadding;
+
         private List<string> _filesToProcess;
 
         [MenuItem("Tools/Wallstop Studios/Unity Helpers/" + Name)]
@@ -45,11 +57,7 @@
             GUILayout.Label("Drag folders below", EditorStyles.boldLabel);
             SerializedObject so = new(this);
             so.Update();
-            SerializedProperty dirs = so.FindProperty(nameof(_inputDirectories));
-            EditorGUILayout.PropertyField(dirs, true);
-            SerializedProperty onlyNecessary = so.FindProperty(nameof(_onlyNecessary));
-            EditorGUILayout.PropertyField(onlyNecessary, true);
-            so.ApplyModifiedProperties();
+            EditorGUILayout.PropertyField(so.FindProperty(nameof(_inputDirectories)), true);
 
             if (GUILayout.Button("Select Input Folder"))
             {
@@ -93,6 +101,13 @@
                     }
                 }
             }
+
+            EditorGUILayout.PropertyField(so.FindProperty(nameof(_onlyNecessary)), true);
+            EditorGUILayout.PropertyField(so.FindProperty(nameof(_leftPadding)), true);
+            EditorGUILayout.PropertyField(so.FindProperty(nameof(_rightPadding)), true);
+            EditorGUILayout.PropertyField(so.FindProperty(nameof(_topPadding)), true);
+            EditorGUILayout.PropertyField(so.FindProperty(nameof(_bottomPadding)), true);
+            so.ApplyModifiedProperties();
 
             if (GUILayout.Button("Find Sprites To Process"))
             {
@@ -229,9 +244,6 @@
                     $"An error occurred during processing. Last processed: {lastProcessed}.",
                     e
                 );
-                AssetDatabase.StopAssetEditing();
-                AssetDatabase.SaveAssets();
-                AssetDatabase.Refresh();
             }
             finally
             {
@@ -354,6 +366,15 @@
                 minX = 0;
                 minY = 0;
             }
+            else
+            {
+                minX = Mathf.Max(0, minX - _leftPadding);
+                minY = Mathf.Max(0, minY - _bottomPadding);
+                maxX = Mathf.Min(width, maxX + _rightPadding);
+                maxY = Mathf.Min(height, maxY + _topPadding);
+                cropWidth = maxX - minX + 1;
+                cropHeight = maxY - minY + 1;
+            }
 
             Texture2D cropped = new(cropWidth, cropHeight, TextureFormat.RGBA32, false);
             Color32[] croppedPixels = new Color32[cropWidth * cropHeight];
@@ -406,6 +427,11 @@
                 cropWidth > 0 ? newPivotPixels.x / cropWidth : 0.5f,
                 cropHeight > 0 ? newPivotPixels.y / cropHeight : 0.5f
             );
+
+            if (!hasVisible)
+            {
+                newPivotNorm = new Vector2(0.5f, 0.5f);
+            }
 
             newImporter.spriteImportMode = SpriteImportMode.Single;
             newImporter.spritePivot = newPivotNorm;
