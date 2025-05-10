@@ -10,6 +10,7 @@
     using UnityEngine;
     using Core.Extension;
     using Core.Helper;
+    using CustomEditors;
     using Object = UnityEngine.Object;
 
     [Serializable]
@@ -77,11 +78,12 @@
             _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
 
             EditorGUILayout.LabelField("Configuration", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(_animationSourcesProp, true);
+            PersistentDirectoryGUI.PathSelectorObjectArray(
+                _animationSourcesProp,
+                nameof(AnimationCreatorWindow)
+            );
             EditorGUILayout.PropertyField(_spriteNameRegexProp);
             EditorGUILayout.PropertyField(_textProp);
-
-            DrawAddSourceFolderButton();
 
             if (!string.IsNullOrWhiteSpace(_errorMessage))
             {
@@ -119,78 +121,6 @@
             EditorGUILayout.EndScrollView();
 
             _ = _serializedObject.ApplyModifiedProperties();
-        }
-
-        private void DrawAddSourceFolderButton()
-        {
-            if (!GUILayout.Button("Add Source Folder..."))
-            {
-                return;
-            }
-
-            string absolutePath = EditorUtility.OpenFolderPanel(
-                "Select Animation Source Folder",
-                "Assets",
-                ""
-            );
-
-            if (string.IsNullOrWhiteSpace(absolutePath))
-            {
-                return;
-            }
-
-            absolutePath = absolutePath.SanitizePath();
-            if (absolutePath.StartsWith(Application.dataPath, StringComparison.OrdinalIgnoreCase))
-            {
-                string relativePath =
-                    "Assets" + absolutePath.Substring(Application.dataPath.Length);
-
-                DefaultAsset folderAsset = AssetDatabase.LoadAssetAtPath<DefaultAsset>(
-                    relativePath
-                );
-
-                if (folderAsset != null && AssetDatabase.IsValidFolder(relativePath))
-                {
-                    bool alreadyExists = false;
-                    for (int i = 0; i < _animationSourcesProp.arraySize; ++i)
-                    {
-                        if (
-                            _animationSourcesProp.GetArrayElementAtIndex(i).objectReferenceValue
-                            == folderAsset
-                        )
-                        {
-                            alreadyExists = true;
-                            this.LogWarn($"Folder '{relativePath}' is already in the list.");
-                            break;
-                        }
-                    }
-
-                    if (!alreadyExists)
-                    {
-                        _animationSourcesProp.arraySize++;
-                        _animationSourcesProp
-                            .GetArrayElementAtIndex(_animationSourcesProp.arraySize - 1)
-                            .objectReferenceValue = folderAsset;
-                        this.Log($"Added source folder: {relativePath}");
-
-                        _serializedObject.ApplyModifiedProperties();
-                        FindAndFilterSprites();
-                        Repaint();
-                    }
-                }
-                else
-                {
-                    this.LogError(
-                        $"Could not load folder asset at path: {relativePath}. Is it a valid folder within the project?"
-                    );
-                }
-            }
-            else
-            {
-                this.LogError(
-                    $"Selected folder must be inside the project's Assets folder. Path selected: {absolutePath}"
-                );
-            }
         }
 
         private void DrawCheckSpritesButton()

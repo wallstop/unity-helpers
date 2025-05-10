@@ -1,5 +1,6 @@
 ﻿namespace WallstopStudios.UnityHelpers.Editor.Sprites
 {
+#if UNITY_EDITOR
     using System;
     using System.Collections.Generic;
     using System.IO;
@@ -488,7 +489,7 @@
                                     break;
                                 }
                             }
-                            catch (System.ArgumentException ex)
+                            catch (ArgumentException ex)
                             {
                                 this.LogError(
                                     $"'{config.name}', Folder '{entry.folderPath}': Invalid Regex pattern '{regexPattern}': {ex.Message}. File '{fileName}' will not be matched by this entry due to this error."
@@ -504,7 +505,7 @@
                         Object[] assets = AssetDatabase.LoadAllAssetsAtPath(assetPath);
                         foreach (Object asset in assets)
                         {
-                            if (asset is Sprite spriteAsset)
+                            if (asset is Sprite spriteAsset && spriteAsset != null)
                             {
                                 foundSpritesInFolders.Add(spriteAsset);
                             }
@@ -535,94 +536,96 @@
 
         private void AddScannedSprites(ScriptableSpriteAtlas config, ScanResult result)
         {
-            if (result.spritesToAdd.Count > 0)
+            if (result.spritesToAdd.Count <= 0)
             {
-                SerializedObject so = new(config);
-                SerializedProperty spritesListProp = so.FindProperty(
-                    nameof(ScriptableSpriteAtlas.spritesToPack)
-                );
-
-                Undo.RecordObject(config, "Add Scanned Sprites to Atlas Config");
-
-                int addedCount = 0;
-                foreach (Sprite sprite in result.spritesToAdd)
-                {
-                    bool alreadyExists = false;
-                    for (int i = 0; i < spritesListProp.arraySize; i++)
-                    {
-                        if (
-                            spritesListProp.GetArrayElementAtIndex(i).objectReferenceValue == sprite
-                        )
-                        {
-                            alreadyExists = true;
-                            break;
-                        }
-                    }
-                    if (!alreadyExists)
-                    {
-                        spritesListProp.InsertArrayElementAtIndex(spritesListProp.arraySize);
-                        spritesListProp
-                            .GetArrayElementAtIndex(spritesListProp.arraySize - 1)
-                            .objectReferenceValue = sprite;
-                        addedCount++;
-                    }
-                }
-
-                if (addedCount > 0)
-                {
-                    so.ApplyModifiedProperties();
-                    this.Log($"'{config.name}': Added {addedCount} sprites.");
-                }
-                else
-                {
-                    this.Log(
-                        $"'{config.name}': No new sprites to add (all found sprites might already be in the list)."
-                    );
-                }
-
-                result.spritesToAdd.Clear();
-                ScanFoldersForConfig(config);
-                Repaint();
+                return;
             }
+
+            SerializedObject so = new(config);
+            SerializedProperty spritesListProp = so.FindProperty(
+                nameof(ScriptableSpriteAtlas.spritesToPack)
+            );
+
+            Undo.RecordObject(config, "Add Scanned Sprites to Atlas Config");
+
+            int addedCount = 0;
+            foreach (Sprite sprite in result.spritesToAdd)
+            {
+                bool alreadyExists = false;
+                for (int i = 0; i < spritesListProp.arraySize; i++)
+                {
+                    if (spritesListProp.GetArrayElementAtIndex(i).objectReferenceValue == sprite)
+                    {
+                        alreadyExists = true;
+                        break;
+                    }
+                }
+                if (!alreadyExists)
+                {
+                    spritesListProp.InsertArrayElementAtIndex(spritesListProp.arraySize);
+                    spritesListProp
+                        .GetArrayElementAtIndex(spritesListProp.arraySize - 1)
+                        .objectReferenceValue = sprite;
+                    addedCount++;
+                }
+            }
+
+            if (addedCount > 0)
+            {
+                so.ApplyModifiedProperties();
+                this.Log($"'{config.name}': Added {addedCount} sprites.");
+            }
+            else
+            {
+                this.Log(
+                    $"'{config.name}': No new sprites to add (all found sprites might already be in the list)."
+                );
+            }
+
+            result.spritesToAdd.Clear();
+            ScanFoldersForConfig(config);
+            Repaint();
         }
 
         private void RemoveUnfoundSprites(ScriptableSpriteAtlas config, ScanResult result)
         {
-            if (result.spritesToRemove.Count > 0)
+            if (result.spritesToRemove.Count <= 0)
             {
-                SerializedObject so = new(config);
-                SerializedProperty spritesListProp = so.FindProperty("spritesToPack");
-
-                Undo.RecordObject(config, "Remove Unfound Sprites from Atlas Config");
-
-                int countRemoved = 0;
-                List<Sprite> spritesActuallyToRemove = new(result.spritesToRemove);
-
-                for (int i = spritesListProp.arraySize - 1; i >= 0; i--)
-                {
-                    SerializedProperty element = spritesListProp.GetArrayElementAtIndex(i);
-                    if (
-                        element.objectReferenceValue != null
-                        && spritesActuallyToRemove.Contains(element.objectReferenceValue as Sprite)
-                    )
-                    {
-                        element.objectReferenceValue = null;
-                        spritesListProp.DeleteArrayElementAtIndex(i);
-                        countRemoved++;
-                    }
-                }
-
-                if (countRemoved > 0)
-                {
-                    so.ApplyModifiedProperties();
-                    this.Log(
-                        $"'{config.name}': Removed {countRemoved} sprites that were no longer found by scan."
-                    );
-                }
-                result.spritesToRemove.Clear();
-                ScanFoldersForConfig(config);
-                Repaint();
+                return;
             }
+
+            SerializedObject so = new(config);
+            SerializedProperty spritesListProp = so.FindProperty("spritesToPack");
+
+            Undo.RecordObject(config, "Remove Unfound Sprites from Atlas Config");
+
+            int countRemoved = 0;
+            List<Sprite> spritesActuallyToRemove = new(result.spritesToRemove);
+
+            for (int i = spritesListProp.arraySize - 1; i >= 0; i--)
+            {
+                SerializedProperty element = spritesListProp.GetArrayElementAtIndex(i);
+                if (
+                    element.objectReferenceValue != null
+                    && spritesActuallyToRemove.Contains(element.objectReferenceValue as Sprite)
+                )
+                {
+                    element.objectReferenceValue = null;
+                    spritesListProp.DeleteArrayElementAtIndex(i);
+                    countRemoved++;
+                }
+            }
+
+            if (countRemoved > 0)
+            {
+                so.ApplyModifiedProperties();
+                this.Log(
+                    $"'{config.name}': Removed {countRemoved} sprites that were no longer found by scan."
+                );
+            }
+            result.spritesToRemove.Clear();
+            ScanFoldersForConfig(config);
+            Repaint();
         }
 
         private void GenerateAllAtlases()
@@ -931,4 +934,5 @@
             this.Log($"{summaryMessage}");
         }
     }
+#endif
 }

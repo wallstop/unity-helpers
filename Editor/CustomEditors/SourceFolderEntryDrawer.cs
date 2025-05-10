@@ -7,27 +7,18 @@
     using UnityEditor;
     using System.Collections.Generic;
     using System.IO;
-    using System.Text.RegularExpressions;
     using Core.Helper;
+    using System.Linq;
 
     [CustomPropertyDrawer(typeof(SourceFolderEntry))]
     public sealed class SourceFolderEntryDrawer : PropertyDrawer
     {
         private static readonly Dictionary<string, bool> RegexesFoldoutState = new();
 
-        private static int GetElementIndex(SerializedProperty property)
-        {
-            Match match = Regex.Match(property.propertyPath, @"\[(\d+)\]$");
-            if (match.Success)
-            {
-                return int.Parse(match.Groups[1].Value);
-            }
-            return -1;
-        }
-
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
             EditorGUI.BeginProperty(position, label, property);
+
             Rect foldoutRect = new(
                 position.x,
                 position.y,
@@ -38,13 +29,12 @@
 
             if (property.isExpanded)
             {
-                int originalIndentLevel = EditorGUI.indentLevel;
+                int originalIndent = EditorGUI.indentLevel;
                 EditorGUI.indentLevel++;
 
-                float currentY =
-                    position.y
-                    + EditorGUIUtility.singleLineHeight
-                    + EditorGUIUtility.standardVerticalSpacing;
+                float currentY = foldoutRect.yMax + EditorGUIUtility.standardVerticalSpacing;
+                float availableWidth = position.width - EditorGUI.indentLevel * 15f;
+                float startX = position.x + EditorGUI.indentLevel * 15f;
 
                 SerializedProperty folderPathProp = property.FindPropertyRelative(
                     nameof(SourceFolderEntry.folderPath)
@@ -53,143 +43,159 @@
                     nameof(SourceFolderEntry.regexes)
                 );
 
-                Rect folderPathRect = new(
-                    position.x,
+                Rect folderPathLabelRect = new(
+                    startX,
                     currentY,
-                    position.width,
-                    EditorGUI.GetPropertyHeight(folderPathProp, true)
-                );
-                EditorGUI.PropertyField(
-                    folderPathRect,
-                    folderPathProp,
-                    new GUIContent("Folder Path")
-                );
-                currentY += folderPathRect.height + EditorGUIUtility.standardVerticalSpacing;
-
-                Rect buttonRect = new(
-                    position.x + EditorGUI.indentLevel * 15f,
-                    currentY,
-                    position.width - EditorGUI.indentLevel * 15f,
+                    availableWidth,
                     EditorGUIUtility.singleLineHeight
                 );
-                if (GUI.Button(buttonRect, "Set/Change Folder Path for this Entry"))
+                EditorGUI.LabelField(folderPathLabelRect, "Folder Path", EditorStyles.boldLabel);
+                currentY += folderPathLabelRect.height + EditorGUIUtility.standardVerticalSpacing;
+
+                Rect pathFieldRect = new(
+                    startX,
+                    currentY,
+                    availableWidth - 75,
+                    EditorGUIUtility.singleLineHeight
+                );
+                Rect browseButtonRect = new(
+                    pathFieldRect.xMax + 5,
+                    currentY,
+                    70,
+                    EditorGUIUtility.singleLineHeight
+                );
+
+                EditorGUI.BeginChangeCheck();
+                string newPath = EditorGUI.TextField(
+                    pathFieldRect,
+                    new GUIContent("Path:"),
+                    folderPathProp.stringValue
+                );
+                if (EditorGUI.EndChangeCheck())
                 {
-                    string initialPath = string.IsNullOrWhiteSpace(folderPathProp.stringValue)
-                        ? Application.dataPath
-                        : folderPathProp.stringValue;
-                    if (!initialPath.StartsWith(Application.dataPath))
+                    folderPathProp.stringValue = newPath;
+                }
+
+                if (GUI.Button(browseButtonRect, "Browse..."))
+                {
+                    string initialBrowsePath = Application.dataPath;
+                    if (
+                        !string.IsNullOrWhiteSpace(folderPathProp.stringValue)
+                        && Directory.Exists(folderPathProp.stringValue)
+                    )
                     {
-                        initialPath = Application.dataPath;
+                        initialBrowsePath = folderPathProp.stringValue;
                     }
 
-                    string selectedPath = EditorUtility.OpenFolderPanel(
+                    string selectedPathSys = EditorUtility.OpenFolderPanel(
                         "Select Source Folder",
-                        Path.GetDirectoryName(initialPath),
-                        Path.GetFileName(initialPath)
+                        initialBrowsePath,
+                        ""
                     );
-
-                    if (!string.IsNullOrWhiteSpace(selectedPath))
+                    if (!string.IsNullOrWhiteSpace(selectedPathSys))
                     {
-                        if (selectedPath.StartsWith(Application.dataPath))
+                        string processedPath = selectedPathSys.SanitizePath();
+                        if (
+                            processedPath.StartsWith(
+                                Application.dataPath.SanitizePath(),
+                                StringComparison.Ordinal
+                            )
+                        )
                         {
-                            string relativePath =
-                                "Assets" + selectedPath.Substring(Application.dataPath.Length);
-                            relativePath = relativePath.SanitizePath();
-
-                            bool isPathUnique = true;
-                            int currentIndex = GetElementIndex(property);
-
-                            string parentPropertyPath = property.propertyPath.Substring(
-                                0,
-                                property.propertyPath.LastIndexOf(
-                                    ".Array.data[",
-                                    StringComparison.Ordinal
-                                )
-                            );
-                            SerializedProperty parentListProp =
-                                property.serializedObject.FindProperty(parentPropertyPath);
-
-                            if (parentListProp is { isArray: true })
-                            {
-                                for (int i = 0; i < parentListProp.arraySize; i++)
-                                {
-                                    if (i == currentIndex)
-                                    {
-                                        continue;
-                                    }
-
-                                    SerializedProperty otherEntryProp =
-                                        parentListProp.GetArrayElementAtIndex(i);
-                                    SerializedProperty otherFolderPathProp =
-                                        otherEntryProp.FindPropertyRelative(
-                                            nameof(SourceFolderEntry.folderPath)
-                                        );
-                                    if (
-                                        string.Equals(
-                                            otherFolderPathProp.stringValue,
-                                            relativePath,
-                                            StringComparison.Ordinal
-                                        )
-                                    )
-                                    {
-                                        isPathUnique = false;
-                                        Debug.LogWarning(
-                                            $"Path '{relativePath}' is already used by another entry (Element {i}) in this configuration. Please choose a unique path or edit the existing entry."
-                                        );
-                                        EditorUtility.DisplayDialog(
-                                            "Path Not Unique",
-                                            $"The path '{relativePath}' is already used by Element {i} in this configuration. \n\nPlease choose a different path or manage the existing entry.",
-                                            "OK"
-                                        );
-                                        break;
-                                    }
-                                }
-                            }
-
-                            if (isPathUnique)
-                            {
-                                folderPathProp.stringValue = relativePath;
-                                property.serializedObject.ApplyModifiedProperties();
-                            }
+                            processedPath =
+                                "Assets"
+                                + processedPath.Substring(
+                                    Application.dataPath.SanitizePath().Length
+                                );
                         }
-                        else
-                        {
-                            EditorUtility.DisplayDialog(
-                                "Invalid Folder",
-                                "The selected folder must be within the project's 'Assets' directory.",
-                                "OK"
-                            );
-                        }
+                        folderPathProp.stringValue = processedPath;
+
+                        string toolName = "SpriteAtlasTool_Drawer";
+                        string contextKey =
+                            $"{property.serializedObject.targetObject.GetType().Name}_{folderPathProp.propertyPath}";
+                        PersistentDirectorySettings.Instance.RecordPath(
+                            toolName,
+                            contextKey,
+                            processedPath
+                        );
+                        property.serializedObject.ApplyModifiedProperties();
+                        GUI.FocusControl(null);
                     }
                 }
-                currentY += buttonRect.height + EditorGUIUtility.standardVerticalSpacing;
+                currentY += pathFieldRect.height + EditorGUIUtility.standardVerticalSpacing;
 
-                string regexesFoldoutKey = property.propertyPath + ".regexes";
-                RegexesFoldoutState.TryAdd(regexesFoldoutKey, true);
+                string historyContextKey =
+                    $"{property.serializedObject.targetObject.GetType().Name}_{folderPathProp.propertyPath}";
+                DirectoryUsageData[] historyPaths = PersistentDirectorySettings.Instance.GetPaths(
+                    nameof(ScriptableSpriteAtlasEditor),
+                    historyContextKey,
+                    true,
+                    3
+                );
+                if (historyPaths.Any())
+                {
+                    Rect historyLabelRect = new(
+                        startX,
+                        currentY,
+                        availableWidth,
+                        EditorGUIUtility.singleLineHeight
+                    );
+                    EditorGUI.LabelField(historyLabelRect, "History:", EditorStyles.miniBoldLabel);
+                    currentY += historyLabelRect.height;
 
-                Rect regexesLabelRect = new(
-                    position.x,
+                    foreach (DirectoryUsageData dirData in historyPaths)
+                    {
+                        Rect historyButtonRect = new(
+                            startX + 15f,
+                            currentY,
+                            availableWidth - 15f,
+                            EditorGUIUtility.singleLineHeight
+                        );
+                        if (
+                            GUI.Button(
+                                historyButtonRect,
+                                new GUIContent($"({dirData.count}) {dirData.path}", dirData.path),
+                                EditorStyles.miniButtonLeft
+                            )
+                        )
+                        {
+                            folderPathProp.stringValue = dirData.path;
+                            PersistentDirectorySettings.Instance.RecordPath(
+                                nameof(ScriptableSpriteAtlasEditor),
+                                historyContextKey,
+                                dirData.path
+                            );
+                            property.serializedObject.ApplyModifiedProperties();
+                            GUI.FocusControl(null);
+                        }
+                        currentY += historyButtonRect.height;
+                    }
+                    currentY += EditorGUIUtility.standardVerticalSpacing;
+                }
+
+                Rect regexFoldoutLabelRect = new(
+                    startX,
                     currentY,
-                    position.width,
+                    availableWidth,
                     EditorGUIUtility.singleLineHeight
                 );
+                string regexesFoldoutKey = property.propertyPath + ".regexesList";
+                RegexesFoldoutState.TryAdd(regexesFoldoutKey, true);
                 RegexesFoldoutState[regexesFoldoutKey] = EditorGUI.Foldout(
-                    regexesLabelRect,
+                    regexFoldoutLabelRect,
                     RegexesFoldoutState[regexesFoldoutKey],
                     "Regexes (AND logic)",
                     true
                 );
-                currentY += regexesLabelRect.height + EditorGUIUtility.standardVerticalSpacing;
-
+                currentY += regexFoldoutLabelRect.height + EditorGUIUtility.standardVerticalSpacing;
                 if (RegexesFoldoutState[regexesFoldoutKey])
                 {
-                    int listIndent = EditorGUI.indentLevel;
+                    int listElementIndent = EditorGUI.indentLevel;
                     EditorGUI.indentLevel++;
-
                     Rect sizeFieldRect = new(
-                        position.x,
+                        startX,
                         currentY,
-                        position.width,
+                        availableWidth,
                         EditorGUIUtility.singleLineHeight
                     );
                     EditorGUI.BeginChangeCheck();
@@ -209,27 +215,27 @@
                     {
                         SerializedProperty elementProp = regexesProp.GetArrayElementAtIndex(i);
                         Rect elementRect = new(
-                            position.x,
+                            startX,
                             currentY,
-                            position.width,
+                            availableWidth,
                             EditorGUIUtility.singleLineHeight
                         );
-
                         EditorGUI.BeginChangeCheck();
-                        string newValue = EditorGUI.TextField(
+                        string newStringValue = EditorGUI.TextField(
                             elementRect,
                             $"Element {i}",
                             elementProp.stringValue
                         );
                         if (EditorGUI.EndChangeCheck())
                         {
-                            elementProp.stringValue = newValue;
+                            elementProp.stringValue = newStringValue;
                         }
                         currentY += elementRect.height + EditorGUIUtility.standardVerticalSpacing;
                     }
-                    EditorGUI.indentLevel = listIndent;
+                    EditorGUI.indentLevel = listElementIndent;
                 }
-                EditorGUI.indentLevel = originalIndentLevel;
+
+                EditorGUI.indentLevel = originalIndent;
             }
             EditorGUI.EndProperty();
         }
@@ -237,31 +243,41 @@
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {
             float height = EditorGUIUtility.singleLineHeight;
-
-            if (property.isExpanded)
+            if (!property.isExpanded)
             {
-                height += EditorGUIUtility.standardVerticalSpacing;
+                return height;
+            }
 
-                SerializedProperty folderPathProp = property.FindPropertyRelative(
-                    nameof(SourceFolderEntry.folderPath)
-                );
-                height += EditorGUI.GetPropertyHeight(folderPathProp, true);
-                height += EditorGUIUtility.standardVerticalSpacing;
+            height += EditorGUIUtility.standardVerticalSpacing;
+            height += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
+            height += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
+
+            SerializedProperty folderPathProp = property.FindPropertyRelative(
+                nameof(SourceFolderEntry.folderPath)
+            );
+            string historyToolName = "SpriteAtlasTool_Drawer";
+            string historyContextKey =
+                $"{property.serializedObject.targetObject.GetType().Name}_{folderPathProp.propertyPath}";
+            DirectoryUsageData[] historyPaths = PersistentDirectorySettings.Instance.GetPaths(
+                historyToolName,
+                historyContextKey,
+                true,
+                3
+            );
+            if (historyPaths.Any())
+            {
                 height += EditorGUIUtility.singleLineHeight;
+                height += historyPaths.Length * EditorGUIUtility.singleLineHeight;
                 height += EditorGUIUtility.standardVerticalSpacing;
-                height += EditorGUIUtility.singleLineHeight;
-                string regexesFoldoutKey = property.propertyPath + ".regexes";
-                bool isRegexesExpanded = RegexesFoldoutState.GetValueOrDefault(
-                    regexesFoldoutKey,
-                    true
-                );
+            }
 
-                if (!isRegexesExpanded)
-                {
-                    return height;
-                }
+            height += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
 
-                height += EditorGUIUtility.standardVerticalSpacing;
+            string regexesFoldoutKey = property.propertyPath + ".regexesList";
+            bool isRegexesExpanded = RegexesFoldoutState.GetValueOrDefault(regexesFoldoutKey, true);
+
+            if (isRegexesExpanded)
+            {
                 SerializedProperty regexesProp = property.FindPropertyRelative(
                     nameof(SourceFolderEntry.regexes)
                 );
@@ -274,6 +290,7 @@
                         + EditorGUIUtility.standardVerticalSpacing;
                 }
             }
+            height += EditorGUIUtility.standardVerticalSpacing;
             return height;
         }
     }

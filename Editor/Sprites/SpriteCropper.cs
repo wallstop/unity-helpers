@@ -9,6 +9,7 @@
     using UnityEditor;
     using UnityEngine;
     using Core.Extension;
+    using CustomEditors;
     using Object = UnityEngine.Object;
 
     public sealed class SpriteCropper : EditorWindow
@@ -48,66 +49,42 @@
         private int _bottomPadding;
 
         private List<string> _filesToProcess;
+        private SerializedObject _serializedObject;
+        private SerializedProperty _inputDirectoriesProperty;
+        private SerializedProperty _onlyNecessaryProperty;
+        private SerializedProperty _leftPaddingProperty;
+        private SerializedProperty _rightPaddingProperty;
+        private SerializedProperty _topPaddingProperty;
+        private SerializedProperty _bottomPaddingProperty;
 
         [MenuItem("Tools/Wallstop Studios/Unity Helpers/" + Name)]
         private static void ShowWindow() => GetWindow<SpriteCropper>(Name);
 
+        private void OnEnable()
+        {
+            _serializedObject = new SerializedObject(this);
+            _inputDirectoriesProperty = _serializedObject.FindProperty(nameof(_inputDirectories));
+            _onlyNecessaryProperty = _serializedObject.FindProperty(nameof(_onlyNecessary));
+            _leftPaddingProperty = _serializedObject.FindProperty(nameof(_leftPadding));
+            _rightPaddingProperty = _serializedObject.FindProperty(nameof(_rightPadding));
+            _topPaddingProperty = _serializedObject.FindProperty(nameof(_topPadding));
+            _bottomPaddingProperty = _serializedObject.FindProperty(nameof(_bottomPadding));
+        }
+
         private void OnGUI()
         {
-            GUILayout.Label("Drag folders below", EditorStyles.boldLabel);
-            SerializedObject so = new(this);
-            so.Update();
-            EditorGUILayout.PropertyField(so.FindProperty(nameof(_inputDirectories)), true);
-
-            if (GUILayout.Button("Select Input Folder"))
-            {
-                string path = EditorUtility.OpenFolderPanel(
-                    "Select Sprite Input Folder",
-                    Application.dataPath,
-                    ""
-                );
-                if (!string.IsNullOrWhiteSpace(path))
-                {
-                    if (path.StartsWith(Application.dataPath, StringComparison.Ordinal))
-                    {
-                        path = "Assets" + path.Substring(Application.dataPath.Length);
-                        if (
-                            !_inputDirectories
-                                .Select(AssetDatabase.GetAssetPath)
-                                .Any(directory =>
-                                    string.Equals(
-                                        directory,
-                                        path,
-                                        StringComparison.OrdinalIgnoreCase
-                                    )
-                                )
-                        )
-                        {
-                            Object folder = AssetDatabase.LoadAssetAtPath<Object>(path);
-                            if (folder == null)
-                            {
-                                return;
-                            }
-                            _inputDirectories.Add(folder);
-                        }
-                    }
-                    else
-                    {
-                        EditorUtility.DisplayDialog(
-                            "Invalid Folder",
-                            "Please select a folder inside the project's Assets directory.",
-                            "OK"
-                        );
-                    }
-                }
-            }
-
-            EditorGUILayout.PropertyField(so.FindProperty(nameof(_onlyNecessary)), true);
-            EditorGUILayout.PropertyField(so.FindProperty(nameof(_leftPadding)), true);
-            EditorGUILayout.PropertyField(so.FindProperty(nameof(_rightPadding)), true);
-            EditorGUILayout.PropertyField(so.FindProperty(nameof(_topPadding)), true);
-            EditorGUILayout.PropertyField(so.FindProperty(nameof(_bottomPadding)), true);
-            so.ApplyModifiedProperties();
+            EditorGUILayout.LabelField("Input directories", EditorStyles.boldLabel);
+            _serializedObject.Update();
+            PersistentDirectoryGUI.PathSelectorObjectArray(
+                _inputDirectoriesProperty,
+                nameof(SpriteCropper)
+            );
+            EditorGUILayout.PropertyField(_onlyNecessaryProperty, true);
+            EditorGUILayout.PropertyField(_leftPaddingProperty, true);
+            EditorGUILayout.PropertyField(_rightPaddingProperty, true);
+            EditorGUILayout.PropertyField(_topPaddingProperty, true);
+            EditorGUILayout.PropertyField(_bottomPaddingProperty, true);
+            _serializedObject.ApplyModifiedProperties();
 
             if (GUILayout.Button("Find Sprites To Process"))
             {

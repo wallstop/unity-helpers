@@ -7,6 +7,7 @@
     using UnityEditor;
     using UnityEngine;
     using Core.Extension;
+    using CustomEditors;
     using Object = UnityEngine.Object;
 
     public enum FitMode
@@ -65,50 +66,10 @@
             _fitMode = (FitMode)EditorGUILayout.EnumPopup("Fit Mode", _fitMode);
 
             EditorGUILayout.Space();
-            EditorGUILayout.LabelField("Source Folders", EditorStyles.boldLabel);
-
-            if (GUILayout.Button("Add Source Directory"))
-            {
-                string path = EditorUtility.OpenFolderPanel(
-                    "Select Texture Source Directory",
-                    "Assets",
-                    ""
-                );
-                if (!string.IsNullOrWhiteSpace(path))
-                {
-                    if (path.StartsWith(Application.dataPath))
-                    {
-                        string relativePath =
-                            "Assets" + path.Substring(Application.dataPath.Length);
-                        Object folderObject = AssetDatabase.LoadAssetAtPath<Object>(relativePath);
-                        if (folderObject != null)
-                        {
-                            _textureSourcePaths ??= new List<Object>();
-                            if (!_textureSourcePaths.Contains(folderObject))
-                            {
-                                _textureSourcePaths.Add(folderObject);
-                                _potentialChangeCount = -1;
-                            }
-                            else
-                            {
-                                this.LogWarn($"Directory '{relativePath}' is already in the list.");
-                            }
-                        }
-                        else
-                        {
-                            this.LogError($"Could not load asset at path: '{relativePath}'");
-                        }
-                    }
-                    else
-                    {
-                        this.LogError(
-                            $"Selected path is outside the project's Assets folder: '{path}'"
-                        );
-                    }
-                }
-            }
-
-            EditorGUILayout.PropertyField(_textureSourcePathsProperty, true);
+            PersistentDirectoryGUI.PathSelectorObjectArray(
+                _textureSourcePathsProperty,
+                nameof(FitTextureSizeWindow)
+            );
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Actions", EditorStyles.boldLabel);
 
