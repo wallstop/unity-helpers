@@ -302,9 +302,7 @@
             int maxX = 0;
             int maxY = 0;
             bool hasVisible = false;
-
             object lockObject = new();
-
             Parallel.For(
                 0,
                 width * height,
@@ -353,6 +351,8 @@
             {
                 cropWidth = 1;
                 cropHeight = 1;
+                minX = 0;
+                minY = 0;
             }
 
             Texture2D cropped = new(cropWidth, cropHeight, TextureFormat.RGBA32, false);
