@@ -341,17 +341,18 @@
                 }
             );
 
-            if (!hasVisible)
+            int cropWidth = maxX - minX + 1;
+            int cropHeight = maxY - minY + 1;
+
+            if (_onlyNecessary && (!hasVisible || (cropWidth == width && cropHeight == height)))
             {
                 return null;
             }
 
-            int cropWidth = maxX - minX + 1;
-            int cropHeight = maxY - minY + 1;
-
-            if (_onlyNecessary && cropWidth == width && cropHeight == height)
+            if (!hasVisible)
             {
-                return null;
+                cropWidth = 1;
+                cropHeight = 1;
             }
 
             Texture2D cropped = new(cropWidth, cropHeight, TextureFormat.RGBA32, false);
