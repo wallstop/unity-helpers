@@ -1,16 +1,15 @@
 ﻿// ReSharper disable CompareOfFloatsByEqualityOperator
-namespace WallstopStudios.UnityHelpers.Editor
+namespace WallstopStudios.UnityHelpers.Editor.Sprites
 {
 #if UNITY_EDITOR
-    using Core.Attributes;
-    using Core.Extension;
     using System;
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;
     using UnityEditor;
     using UnityEngine;
-    using Utils;
+    using Core.Attributes;
+    using Core.Extension;
     using Object = UnityEngine.Object;
 
     [Serializable]
@@ -204,7 +203,7 @@ namespace WallstopStudios.UnityHelpers.Editor
                         valuePropHeight
                     );
 
-                    using (new GUIIndentScope())
+                    using (new EditorGUI.IndentLevelScope())
                     {
                         EditorGUI.PropertyField(valueRect, valueProp, GUIContent.none, true);
                     }

@@ -1,4 +1,4 @@
-﻿namespace WallstopStudios.UnityHelpers.Editor
+﻿namespace WallstopStudios.UnityHelpers.Editor.Sprites
 {
 #if UNITY_EDITOR
     using System;
@@ -6,9 +6,9 @@
     using System.IO;
     using System.Linq;
     using System.Threading.Tasks;
-    using Core.Extension;
     using UnityEditor;
     using UnityEngine;
+    using Core.Extension;
     using Object = UnityEngine.Object;
 
     public sealed class SpriteCropper : EditorWindow
@@ -351,14 +351,8 @@
                 }
             );
 
-            int cropWidth = maxX - minX + 1;
-            int cropHeight = maxY - minY + 1;
-
-            if (_onlyNecessary && (!hasVisible || (cropWidth == width && cropHeight == height)))
-            {
-                return null;
-            }
-
+            int cropWidth;
+            int cropHeight;
             if (!hasVisible)
             {
                 cropWidth = 1;
@@ -374,6 +368,11 @@
                 maxY = Mathf.Min(height, maxY + _topPadding);
                 cropWidth = maxX - minX + 1;
                 cropHeight = maxY - minY + 1;
+            }
+
+            if (_onlyNecessary && (!hasVisible || (cropWidth == width && cropHeight == height)))
+            {
+                return null;
             }
 
             Texture2D cropped = new(cropWidth, cropHeight, TextureFormat.RGBA32, false);

@@ -9,7 +9,6 @@
     using UnityEngine;
     using Core.Attributes;
     using Core.Helper;
-    using Utils;
     using WallstopStudios.UnityHelpers.Utils;
 
     // https://gist.githubusercontent.com/yujen/5e1cd78e2a341260b38029de08a449da/raw/ac60c1002e0e14375de5b2b0a167af00df3f74b4/SeniaAnimationEventEditor.cs
@@ -173,7 +172,7 @@
 
                 DrawSpritePreview(item);
 
-                using (new GUIIndentScope())
+                using (new EditorGUI.IndentLevelScope())
                 {
                     RenderAnimationEventItem(item, frame, frameRate);
                     if (i != stateCopy.Count - 1)
@@ -320,7 +319,7 @@
         private void RenderAnimationEventItem(AnimationEventItem item, int frame, float frameRate)
         {
             int index = _state.IndexOf(item);
-            using (new GUIHorizontalScope())
+            using (new EditorGUILayout.HorizontalScope())
             {
                 if (
                     1 <= index
@@ -536,7 +535,7 @@
             ParameterInfo[] arrayParameterInfo = item.selectedMethod.GetParameters();
             if (arrayParameterInfo.Length == 1)
             {
-                using GUIIndentScope indent = new();
+                using EditorGUI.IndentLevelScope indent = new();
 
                 Type paramType = arrayParameterInfo[0].ParameterType;
                 if (paramType == typeof(int))
@@ -679,7 +678,7 @@
             }
             else if (!item.isTextureReadable && !string.IsNullOrEmpty(spriteName))
             {
-                using (new GUIHorizontalScope())
+                using (new EditorGUILayout.HorizontalScope())
                 {
                     GUILayout.Label($"Sprite '{spriteName}' required \"Read/Write\" enabled");
                     if (item.sprite != null && GUILayout.Button("Fix"))

@@ -1,16 +1,15 @@
-﻿namespace WallstopStudios.UnityHelpers.Editor
+﻿namespace WallstopStudios.UnityHelpers.Editor.Sprites
 {
 #if UNITY_EDITOR
-    using Core.Extension;
     using System;
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;
     using System.Text.RegularExpressions;
-    using Core.Helper;
     using UnityEditor;
     using UnityEngine;
-    using Utils;
+    using Core.Extension;
+    using Core.Helper;
     using Object = UnityEngine.Object;
 
     [Serializable]
@@ -246,7 +245,7 @@
 
             if (_animationDataIsExpanded)
             {
-                using GUIIndentScope indent = new();
+                using EditorGUI.IndentLevelScope indent = new();
                 if (matchCount > 0)
                 {
                     foreach (int index in matchingIndices)

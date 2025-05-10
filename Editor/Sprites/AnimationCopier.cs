@@ -1,4 +1,4 @@
-﻿namespace WallstopStudios.UnityHelpers.Editor
+﻿namespace WallstopStudios.UnityHelpers.Editor.Sprites
 {
 #if UNITY_EDITOR
     using System;
@@ -615,7 +615,7 @@
 
                 try
                 {
-                    EnsureDirectoryExists(destDirectory);
+                    DirectoryHelper.EnsureDirectoryExists(destDirectory);
                 }
                 catch (Exception ex)
                 {
@@ -900,63 +900,6 @@
                     ex
                 );
                 return string.Empty;
-            }
-        }
-
-        private void EnsureDirectoryExists(string relativeDirectoryPath)
-        {
-            if (string.IsNullOrWhiteSpace(relativeDirectoryPath))
-            {
-                return;
-            }
-
-            if (!relativeDirectoryPath.StartsWith("Assets/"))
-            {
-                if (relativeDirectoryPath.Equals("Assets", StringComparison.OrdinalIgnoreCase))
-                {
-                    return;
-                }
-
-                this.LogError(
-                    $"Attempted to create directory outside of Assets: '{relativeDirectoryPath}'"
-                );
-                throw new ArgumentException(
-                    "Cannot create directories outside the Assets folder using AssetDatabase.",
-                    nameof(relativeDirectoryPath)
-                );
-            }
-
-            if (AssetDatabase.IsValidFolder(relativeDirectoryPath))
-            {
-                return;
-            }
-
-            string parentPath = Path.GetDirectoryName(relativeDirectoryPath).SanitizePath();
-            if (
-                string.IsNullOrWhiteSpace(parentPath)
-                || parentPath.Equals("Assets", StringComparison.OrdinalIgnoreCase)
-            )
-            {
-                string folderNameToCreate = Path.GetFileName(relativeDirectoryPath);
-                if (
-                    !string.IsNullOrWhiteSpace(folderNameToCreate)
-                    && !AssetDatabase.IsValidFolder(relativeDirectoryPath)
-                )
-                {
-                    AssetDatabase.CreateFolder("Assets", folderNameToCreate);
-                }
-                return;
-            }
-
-            EnsureDirectoryExists(parentPath);
-            string currentFolderName = Path.GetFileName(relativeDirectoryPath);
-            if (
-                !string.IsNullOrWhiteSpace(currentFolderName)
-                && !AssetDatabase.IsValidFolder(relativeDirectoryPath)
-            )
-            {
-                AssetDatabase.CreateFolder(parentPath, currentFolderName);
-                this.Log($"Created folder: {relativeDirectoryPath}");
             }
         }
     }
