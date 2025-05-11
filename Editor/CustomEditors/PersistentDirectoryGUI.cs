@@ -12,6 +12,230 @@
     {
         private static readonly Dictionary<string, bool> ContextFoldoutStates = new();
 
+        public static float DrawFrequentPathsWithEditorGUI(
+            Rect parentRect,
+            ref float currentY, // Pass Y position by reference to update it
+            string toolName,
+            string contextKey,
+            System.Action<string> onPathClickedFromHistory,
+            bool allowExpansion = true,
+            int topN = 5,
+            string listLabel = "History:"
+        )
+        {
+            if (PersistentDirectorySettings.Instance == null)
+            {
+                return 0f;
+            }
+
+            if (onPathClickedFromHistory == null)
+            {
+                Debug.LogError(
+                    "PersistentDirectoryGUI.DrawFrequentPathsWithEditorGUI: onPathClickedFromHistory callback cannot be null."
+                );
+                return 0f;
+            }
+
+            float startY = currentY;
+            float availableWidth = parentRect.width; // Assume full width of parentRect is available
+            float startX = parentRect.x;
+
+            var topPaths = PersistentDirectorySettings.Instance.GetPaths(
+                toolName,
+                contextKey,
+                true,
+                topN
+            );
+
+            if (topPaths.Length > 0)
+            {
+                // Indent this section slightly if desired, or use parentRect.x directly
+                // float indent = EditorGUI.indentLevel * 15f; // Or a fixed indent
+                // startX += indent;
+                // availableWidth -= indent;
+
+                Rect historyLabelRect = new Rect(
+                    startX,
+                    currentY,
+                    availableWidth,
+                    EditorGUIUtility.singleLineHeight
+                );
+                EditorGUI.LabelField(historyLabelRect, listLabel, EditorStyles.miniBoldLabel);
+                currentY += historyLabelRect.height; // Only add height, no extra spacing here for tight packing
+
+                foreach (var dirData in topPaths)
+                {
+                    // Add a small indent for the buttons themselves
+                    Rect historyButtonRect = new Rect(
+                        startX + 15f,
+                        currentY,
+                        availableWidth - 15f,
+                        EditorGUIUtility.singleLineHeight
+                    );
+                    if (
+                        GUI.Button(
+                            historyButtonRect,
+                            new GUIContent($"({dirData.count}) {dirData.path}", dirData.path),
+                            EditorStyles.miniButtonLeft
+                        )
+                    )
+                    {
+                        onPathClickedFromHistory.Invoke(dirData.path);
+                    }
+                    currentY += historyButtonRect.height;
+                }
+
+                if (allowExpansion)
+                {
+                    string foldoutKey = $"{toolName}/{contextKey}_AllPathsHistory_EditorGUI"; // Unique key
+                    ContextFoldoutStates.TryAdd(foldoutKey, false);
+
+                    var allPaths = PersistentDirectorySettings.Instance.GetPaths(
+                        toolName,
+                        contextKey,
+                        false,
+                        0
+                    );
+                    if (allPaths.Length > topN)
+                    {
+                        Rect expansionFoldoutRect = new Rect(
+                            startX + 15f,
+                            currentY,
+                            availableWidth - 15f,
+                            EditorGUIUtility.singleLineHeight
+                        );
+                        ContextFoldoutStates[foldoutKey] = EditorGUI.Foldout(
+                            expansionFoldoutRect,
+                            ContextFoldoutStates[foldoutKey],
+                            "Show All History (" + allPaths.Length + ")",
+                            true,
+                            EditorStyles.foldout
+                        );
+                        currentY += expansionFoldoutRect.height;
+
+                        if (ContextFoldoutStates[foldoutKey])
+                        {
+                            var pathsNotAlreadyInTop = allPaths.Skip(topN).ToList();
+                            if (pathsNotAlreadyInTop.Any())
+                            {
+                                foreach (var dirData in pathsNotAlreadyInTop)
+                                {
+                                    Rect moreHistoryButtonRect = new Rect(
+                                        startX + 30f,
+                                        currentY,
+                                        availableWidth - 30f,
+                                        EditorGUIUtility.singleLineHeight
+                                    ); // Further indent
+                                    if (
+                                        GUI.Button(
+                                            moreHistoryButtonRect,
+                                            new GUIContent(
+                                                $"({dirData.count}) {dirData.path}",
+                                                dirData.path
+                                            ),
+                                            EditorStyles.miniButtonLeft
+                                        )
+                                    )
+                                    {
+                                        onPathClickedFromHistory.Invoke(dirData.path);
+                                    }
+                                    currentY += moreHistoryButtonRect.height;
+                                }
+                            }
+                            else
+                            {
+                                Rect noMorePathsLabelRect = new Rect(
+                                    startX + 30f,
+                                    currentY,
+                                    availableWidth - 30f,
+                                    EditorGUIUtility.singleLineHeight
+                                );
+                                EditorGUI.LabelField(
+                                    noMorePathsLabelRect,
+                                    "All paths already displayed.",
+                                    EditorStyles.centeredGreyMiniLabel
+                                );
+                                currentY += noMorePathsLabelRect.height;
+                            }
+                        }
+                    }
+                }
+                // Add a little overall padding for the history block if it's drawn
+                currentY += EditorGUIUtility.standardVerticalSpacing;
+            }
+            return currentY - startY; // Return the height consumed
+        }
+
+        // The GetDrawFrequentPathsHeight needs to be updated to match this new EditorGUI drawing logic
+        // This version calculates height based on the new DrawFrequentPathsWithEditorGUI
+        public static float GetDrawFrequentPathsHeightEditorGUI(
+            string toolName,
+            string contextKey,
+            bool allowExpansion = true,
+            int topN = 5
+        )
+        {
+            if (PersistentDirectorySettings.Instance == null)
+            {
+                return 0f;
+            }
+
+            float height = 0f;
+            var topPaths = PersistentDirectorySettings.Instance.GetPaths(
+                toolName,
+                contextKey,
+                true,
+                topN
+            );
+
+            if (topPaths.Length > 0)
+            {
+                height += EditorGUIUtility.singleLineHeight; // History Label
+                foreach (var _ in topPaths)
+                {
+                    height += EditorGUIUtility.singleLineHeight; // Top N buttons
+                }
+
+                if (allowExpansion)
+                {
+                    var allPaths = PersistentDirectorySettings.Instance.GetPaths(
+                        toolName,
+                        contextKey,
+                        false,
+                        0
+                    );
+                    if (allPaths.Length > topN)
+                    {
+                        height += EditorGUIUtility.singleLineHeight; // "Show All" Foldout
+
+                        string foldoutKey = $"{toolName}/{contextKey}_AllPathsHistory_EditorGUI";
+                        // For height calculation, we usually assume it might be expanded if state is unknown,
+                        // or we'd need to pass the actual expanded state. Let's assume we check current state.
+                        bool isExpanded = ContextFoldoutStates.ContainsKey(foldoutKey)
+                            ? ContextFoldoutStates[foldoutKey]
+                            : false; // Default to not expanded for height if unknown
+                        if (isExpanded)
+                        {
+                            var pathsNotAlreadyInTop = allPaths.Skip(topN).ToList();
+                            if (pathsNotAlreadyInTop.Any())
+                            {
+                                foreach (var _ in pathsNotAlreadyInTop)
+                                {
+                                    height += EditorGUIUtility.singleLineHeight;
+                                }
+                            }
+                            else
+                            {
+                                height += EditorGUIUtility.singleLineHeight; // "All paths displayed" label
+                            }
+                        }
+                    }
+                }
+                height += EditorGUIUtility.standardVerticalSpacing; // Overall bottom padding
+            }
+            return height;
+        }
+
         public static float GetDrawFrequentPathsHeight(
             string toolName,
             string contextKey,
