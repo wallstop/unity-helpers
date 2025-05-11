@@ -7,14 +7,15 @@
     using System.Collections.Generic;
     using System.Linq;
     using System.IO;
-    using Core.Helper; // For Path.GetDirectoryName, Directory.CreateDirectory
+    using Core.Helper;
+    using UnityEngine.Serialization;
 
     [Serializable]
     public sealed class DirectoryUsageData
     {
         public string path;
         public int count;
-        public long lastUsedTicks; // For secondary sorting (most recent if counts are equal)
+        public long lastUsedTicks;
 
         public DirectoryUsageData(string p)
         {
@@ -31,12 +32,12 @@
     }
 
     [Serializable]
-    public class ContextHistory
+    public sealed class ContextHistory
     {
         public string contextKey;
-        public List<DirectoryUsageData> directories = new List<DirectoryUsageData>();
+        public List<DirectoryUsageData> directories = new();
 
-        public ContextHistory() { } // For serialization
+        public ContextHistory() { }
 
         public ContextHistory(string key)
         {
@@ -45,23 +46,27 @@
 
         public DirectoryUsageData GetOrAddDirectory(string path)
         {
-            DirectoryUsageData dirData = directories.FirstOrDefault(d => d.path == path);
-            if (dirData == null)
+            DirectoryUsageData dirData = directories.Find(directoryData =>
+                string.Equals(directoryData.path, path, StringComparison.Ordinal)
+            );
+            if (dirData != null)
             {
-                dirData = new DirectoryUsageData(path);
-                directories.Add(dirData);
+                return dirData;
             }
+
+            dirData = new DirectoryUsageData(path);
+            directories.Add(dirData);
             return dirData;
         }
     }
 
     [Serializable]
-    public class ToolHistory
+    public sealed class ToolHistory
     {
         public string toolName;
-        public List<ContextHistory> contexts = new List<ContextHistory>();
+        public List<ContextHistory> contexts = new();
 
-        public ToolHistory() { } // For serialization
+        public ToolHistory() { }
 
         public ToolHistory(string name)
         {
@@ -70,23 +75,27 @@
 
         public ContextHistory GetOrAddContext(string contextKey)
         {
-            ContextHistory context = contexts.FirstOrDefault(c => c.contextKey == contextKey);
-            if (context == null)
+            ContextHistory context = contexts.Find(c =>
+                string.Equals(c.contextKey, contextKey, StringComparison.Ordinal)
+            );
+            if (context != null)
             {
-                context = new ContextHistory(contextKey);
-                contexts.Add(context);
+                return context;
             }
+
+            context = new ContextHistory(contextKey);
+            contexts.Add(context);
             return context;
         }
     }
 
-    // Not using CreateAssetMenu as it's intended to be a singleton managed by code.
-    public class PersistentDirectorySettings : ScriptableObject
+    public sealed class PersistentDirectorySettings : ScriptableObject
     {
-        private const string DEFAULT_ASSET_PATH = "Assets/Editor/PersistentDirectorySettings.asset";
+        private const string DefaultAssetPath = "Assets/Editor/PersistentDirectorySettings.asset";
 
+        [FormerlySerializedAs("allToolHistories")]
         [SerializeField]
-        private List<ToolHistory> allToolHistories = new List<ToolHistory>();
+        private List<ToolHistory> _allToolHistories = new();
 
         private static PersistentDirectorySettings _instance;
 
@@ -96,44 +105,43 @@
             {
                 if (_instance == null)
                 {
-                    string[] guids = AssetDatabase.FindAssets(
-                        $"t:{nameof(PersistentDirectorySettings)}"
-                    );
-                    if (guids.Length > 0)
+                    PersistentDirectorySettings[] settings = AssetDatabase
+                        .FindAssets($"t:{nameof(PersistentDirectorySettings)}")
+                        .Select(AssetDatabase.GUIDToAssetPath)
+                        .Select(AssetDatabase.LoadAssetAtPath<PersistentDirectorySettings>)
+                        .Where(Objects.NotNull)
+                        .ToArray();
+
+                    if (settings.Length > 0)
                     {
-                        if (guids.Length > 1)
+                        if (settings.Length > 1)
                         {
                             Debug.LogWarning(
-                                $"Multiple instances of {nameof(PersistentDirectorySettings)} found. Using the first one at: {AssetDatabase.GUIDToAssetPath(guids[0])}. Please ensure only one instance exists for consistent behavior."
+                                $"Multiple instances of {nameof(PersistentDirectorySettings)} found. Using the first one at: {AssetDatabase.GetAssetPath(settings[0])}. Please ensure only one instance exists for consistent behavior."
                             );
                         }
 
-                        string path = AssetDatabase.GUIDToAssetPath(guids[0]);
-                        _instance = AssetDatabase.LoadAssetAtPath<PersistentDirectorySettings>(
-                            path
-                        );
+                        _instance = settings[0];
                     }
                     else
                     {
-                        // Try to load from a Resources/Editor folder (less ideal for editor-only assets but a fallback)
-                        // _instance = Resources.Load<PersistentDirectorySettings>(Path.Combine("Editor", RESOURCE_LOAD_PATH));
-                        // Unity doesn't really support Resources/Editor loading well.
-                        // Stick to AssetDatabase.FindAssets and create if not found.
-
                         if (_instance == null)
                         {
                             Debug.Log(
-                                $"No instance of {nameof(PersistentDirectorySettings)} found. Creating a new one at {DEFAULT_ASSET_PATH}."
+                                $"No instance of {nameof(PersistentDirectorySettings)} found. Creating a new one at {DefaultAssetPath}."
                             );
                             _instance = CreateInstance<PersistentDirectorySettings>();
 
-                            string dirPath = Path.GetDirectoryName(DEFAULT_ASSET_PATH);
-                            if (!Directory.Exists(dirPath))
+                            string directoryPath = Path.GetDirectoryName(DefaultAssetPath);
+                            if (
+                                !string.IsNullOrWhiteSpace(directoryPath)
+                                && !Directory.Exists(directoryPath)
+                            )
                             {
-                                Directory.CreateDirectory(dirPath);
+                                Directory.CreateDirectory(directoryPath);
                             }
 
-                            AssetDatabase.CreateAsset(_instance, DEFAULT_ASSET_PATH);
+                            AssetDatabase.CreateAsset(_instance, DefaultAssetPath);
                             AssetDatabase.SaveAssets();
                             AssetDatabase.Refresh();
                             EditorUtility.FocusProjectWindow();
@@ -142,7 +150,7 @@
                     }
                 }
 
-                if (_instance == null) // Should only happen if creation failed catastrophically
+                if (_instance == null)
                 {
                     Debug.LogError(
                         $"Failed to find or create {nameof(PersistentDirectorySettings)}. Directory persistence will not work."
@@ -155,14 +163,16 @@
 
         private ToolHistory GetOrAddToolHistory(string toolName)
         {
-            ToolHistory toolHistory = allToolHistories.FirstOrDefault(th =>
-                th.toolName == toolName
+            ToolHistory toolHistory = _allToolHistories.Find(toolHistory =>
+                string.Equals(toolHistory.toolName, toolName, StringComparison.Ordinal)
             );
-            if (toolHistory == null)
+            if (toolHistory != null)
             {
-                toolHistory = new ToolHistory(toolName);
-                allToolHistories.Add(toolHistory);
+                return toolHistory;
             }
+
+            toolHistory = new ToolHistory(toolName);
+            _allToolHistories.Add(toolHistory);
 
             return toolHistory;
         }
@@ -179,12 +189,16 @@
                 return;
             }
 
-            string sanitizedPath = path.SanitizePath(); // Assuming your StringPathExtensions
-            if (!sanitizedPath.StartsWith("Assets/") || !AssetDatabase.IsValidFolder(sanitizedPath))
+            string sanitizedPath = path.SanitizePath();
+            if (
+                !sanitizedPath.StartsWith("Assets/", StringComparison.Ordinal)
+                || !AssetDatabase.IsValidFolder(sanitizedPath)
+            )
             {
-                // Allow non-asset paths too, but maybe log if they are not absolute
-                // For now, let's primarily focus on Asset paths, but be flexible
-                if (!Path.IsPathRooted(sanitizedPath) && !sanitizedPath.StartsWith("Assets/"))
+                if (
+                    !Path.IsPathRooted(sanitizedPath)
+                    && !sanitizedPath.StartsWith("Assets/", StringComparison.Ordinal)
+                )
                 {
                     Debug.LogWarning(
                         $"Recording path '{sanitizedPath}' that is not an 'Assets/' relative path or an absolute path. This might be intentional."
@@ -196,9 +210,7 @@
             ContextHistory context = tool.GetOrAddContext(contextKey);
             DirectoryUsageData dirData = context.GetOrAddDirectory(sanitizedPath);
             dirData.MarkUsed();
-
-            EditorUtility.SetDirty(this); // Mark for saving
-            // AssetDatabase.SaveAssets(); // Saving too frequently can be slow. Let Unity's auto-save or user save handle it.
+            EditorUtility.SetDirty(this);
         }
 
         public DirectoryUsageData[] GetPaths(
@@ -208,7 +220,7 @@
             int topN = 5
         )
         {
-            ToolHistory tool = allToolHistories.FirstOrDefault(th =>
+            ToolHistory tool = _allToolHistories.Find(th =>
                 string.Equals(th.toolName, toolName, StringComparison.Ordinal)
             );
             if (tool == null)
@@ -216,7 +228,7 @@
                 return Array.Empty<DirectoryUsageData>();
             }
 
-            ContextHistory context = tool.contexts.FirstOrDefault(c =>
+            ContextHistory context = tool.contexts.Find(c =>
                 string.Equals(c.contextKey, contextKey, StringComparison.Ordinal)
             );
             if (context == null)
