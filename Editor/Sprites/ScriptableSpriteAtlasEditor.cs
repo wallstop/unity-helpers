@@ -178,6 +178,37 @@
                     SerializedObject serializedConfig = new(config);
                     serializedConfig.Update();
                     EditorGUI.BeginChangeCheck();
+
+                    string currentAssetName = config.name;
+                    Rect nameRect = EditorGUILayout.GetControlRect();
+                    EditorGUI.BeginChangeCheck();
+                    string newAssetName = EditorGUI.TextField(
+                        new Rect(nameRect.x, nameRect.y, nameRect.width - 60, nameRect.height),
+                        "Asset Name",
+                        currentAssetName
+                    );
+                    if (EditorGUI.EndChangeCheck())
+                    {
+                        if (
+                            !string.IsNullOrWhiteSpace(newAssetName)
+                            && newAssetName != currentAssetName
+                            && AssetDatabase.Contains(config)
+                        )
+                        {
+                            string assetPath = AssetDatabase.GetAssetPath(config);
+                            string error = AssetDatabase.RenameAsset(assetPath, newAssetName);
+                            if (string.IsNullOrWhiteSpace(error))
+                            {
+                                LoadAtlasConfigs();
+                                GUIUtility.ExitGUI();
+                            }
+                            else
+                            {
+                                this.LogError($"Failed to rename asset: {error}");
+                            }
+                        }
+                    }
+
                     SerializedProperty scriptProperty = serializedConfig.FindProperty("m_Script");
                     if (scriptProperty != null)
                     {
@@ -191,7 +222,7 @@
                     while (property.NextVisible(enterChildren))
                     {
                         enterChildren = false;
-                        if (property.name == "m_Script")
+                        if (string.Equals(property.name, "m_Script", StringComparison.Ordinal))
                         {
                             continue;
                         }
