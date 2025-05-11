@@ -13,7 +13,9 @@
     [CustomPropertyDrawer(typeof(SourceFolderEntry))]
     public sealed class SourceFolderEntryDrawer : PropertyDrawer
     {
-        private static readonly Dictionary<string, bool> RegexesFoldoutState = new();
+        private static readonly Dictionary<string, bool> RegexesFoldoutState = new(
+            StringComparer.Ordinal
+        );
 
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
@@ -179,7 +181,10 @@
                     availableWidth,
                     EditorGUIUtility.singleLineHeight
                 );
-                string regexesFoldoutKey = property.propertyPath + ".regexesList";
+                string regexesFoldoutKey =
+                    property.serializedObject.targetObject.name
+                    + property.propertyPath
+                    + ".regexesList";
                 RegexesFoldoutState.TryAdd(regexesFoldoutKey, true);
                 RegexesFoldoutState[regexesFoldoutKey] = EditorGUI.Foldout(
                     regexFoldoutLabelRect,
