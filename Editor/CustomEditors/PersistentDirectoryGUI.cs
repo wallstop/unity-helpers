@@ -1,23 +1,27 @@
 ﻿namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
 {
 #if UNITY_EDITOR
+    using System;
     using UnityEngine;
     using UnityEditor;
     using System.Collections.Generic;
     using System.Linq;
     using Core.Helper;
     using System.IO;
+    using Object = UnityEngine.Object;
 
     public static class PersistentDirectoryGUI
     {
-        private static readonly Dictionary<string, bool> ContextFoldoutStates = new();
+        private static readonly Dictionary<string, bool> ContextFoldoutStates = new(
+            StringComparer.Ordinal
+        );
 
         public static float DrawFrequentPathsWithEditorGUI(
             Rect parentRect,
-            ref float currentY, // Pass Y position by reference to update it
+            ref float currentY,
             string toolName,
             string contextKey,
-            System.Action<string> onPathClickedFromHistory,
+            Action<string> onPathClickedFromHistory,
             bool allowExpansion = true,
             int topN = 5,
             string listLabel = "History:"
@@ -37,137 +41,132 @@
             }
 
             float startY = currentY;
-            float availableWidth = parentRect.width; // Assume full width of parentRect is available
+            float availableWidth = parentRect.width;
             float startX = parentRect.x;
 
-            var topPaths = PersistentDirectorySettings.Instance.GetPaths(
+            DirectoryUsageData[] topPaths = PersistentDirectorySettings.Instance.GetPaths(
                 toolName,
                 contextKey,
                 true,
                 topN
             );
 
-            if (topPaths.Length > 0)
+            if (topPaths.Length <= 0)
             {
-                // Indent this section slightly if desired, or use parentRect.x directly
-                // float indent = EditorGUI.indentLevel * 15f; // Or a fixed indent
-                // startX += indent;
-                // availableWidth -= indent;
+                return currentY - startY;
+            }
 
-                Rect historyLabelRect = new Rect(
-                    startX,
+            Rect historyLabelRect = new(
+                startX,
+                currentY,
+                availableWidth,
+                EditorGUIUtility.singleLineHeight
+            );
+            EditorGUI.LabelField(historyLabelRect, listLabel, EditorStyles.miniBoldLabel);
+            currentY += historyLabelRect.height;
+
+            foreach (DirectoryUsageData dirData in topPaths)
+            {
+                Rect historyButtonRect = new(
+                    startX + 15f,
                     currentY,
-                    availableWidth,
+                    availableWidth - 15f,
                     EditorGUIUtility.singleLineHeight
                 );
-                EditorGUI.LabelField(historyLabelRect, listLabel, EditorStyles.miniBoldLabel);
-                currentY += historyLabelRect.height; // Only add height, no extra spacing here for tight packing
-
-                foreach (var dirData in topPaths)
+                if (
+                    GUI.Button(
+                        historyButtonRect,
+                        new GUIContent($"({dirData.count}) {dirData.path}", dirData.path),
+                        EditorStyles.miniButtonLeft
+                    )
+                )
                 {
-                    // Add a small indent for the buttons themselves
-                    Rect historyButtonRect = new Rect(
+                    onPathClickedFromHistory.Invoke(dirData.path);
+                }
+                currentY += historyButtonRect.height;
+            }
+
+            if (allowExpansion)
+            {
+                string foldoutKey = $"{toolName}/{contextKey}_AllPathsHistory_EditorGUI";
+                ContextFoldoutStates.TryAdd(foldoutKey, false);
+                DirectoryUsageData[] allPaths = PersistentDirectorySettings.Instance.GetPaths(
+                    toolName,
+                    contextKey,
+                    false,
+                    0
+                );
+                if (allPaths.Length > topN)
+                {
+                    Rect expansionFoldoutRect = new(
                         startX + 15f,
                         currentY,
                         availableWidth - 15f,
                         EditorGUIUtility.singleLineHeight
                     );
-                    if (
-                        GUI.Button(
-                            historyButtonRect,
-                            new GUIContent($"({dirData.count}) {dirData.path}", dirData.path),
-                            EditorStyles.miniButtonLeft
-                        )
-                    )
-                    {
-                        onPathClickedFromHistory.Invoke(dirData.path);
-                    }
-                    currentY += historyButtonRect.height;
-                }
-
-                if (allowExpansion)
-                {
-                    string foldoutKey = $"{toolName}/{contextKey}_AllPathsHistory_EditorGUI"; // Unique key
-                    ContextFoldoutStates.TryAdd(foldoutKey, false);
-
-                    var allPaths = PersistentDirectorySettings.Instance.GetPaths(
-                        toolName,
-                        contextKey,
-                        false,
-                        0
+                    ContextFoldoutStates[foldoutKey] = EditorGUI.Foldout(
+                        expansionFoldoutRect,
+                        ContextFoldoutStates[foldoutKey],
+                        "Show All History (" + allPaths.Length + ")",
+                        true,
+                        EditorStyles.foldout
                     );
-                    if (allPaths.Length > topN)
-                    {
-                        Rect expansionFoldoutRect = new Rect(
-                            startX + 15f,
-                            currentY,
-                            availableWidth - 15f,
-                            EditorGUIUtility.singleLineHeight
-                        );
-                        ContextFoldoutStates[foldoutKey] = EditorGUI.Foldout(
-                            expansionFoldoutRect,
-                            ContextFoldoutStates[foldoutKey],
-                            "Show All History (" + allPaths.Length + ")",
-                            true,
-                            EditorStyles.foldout
-                        );
-                        currentY += expansionFoldoutRect.height;
+                    currentY += expansionFoldoutRect.height;
 
-                        if (ContextFoldoutStates[foldoutKey])
+                    if (ContextFoldoutStates[foldoutKey])
+                    {
+                        List<DirectoryUsageData> pathsNotAlreadyInTop = allPaths
+                            .Skip(topN)
+                            .ToList();
+                        if (pathsNotAlreadyInTop.Any())
                         {
-                            var pathsNotAlreadyInTop = allPaths.Skip(topN).ToList();
-                            if (pathsNotAlreadyInTop.Any())
+                            foreach (DirectoryUsageData dirData in pathsNotAlreadyInTop)
                             {
-                                foreach (var dirData in pathsNotAlreadyInTop)
-                                {
-                                    Rect moreHistoryButtonRect = new Rect(
-                                        startX + 30f,
-                                        currentY,
-                                        availableWidth - 30f,
-                                        EditorGUIUtility.singleLineHeight
-                                    ); // Further indent
-                                    if (
-                                        GUI.Button(
-                                            moreHistoryButtonRect,
-                                            new GUIContent(
-                                                $"({dirData.count}) {dirData.path}",
-                                                dirData.path
-                                            ),
-                                            EditorStyles.miniButtonLeft
-                                        )
-                                    )
-                                    {
-                                        onPathClickedFromHistory.Invoke(dirData.path);
-                                    }
-                                    currentY += moreHistoryButtonRect.height;
-                                }
-                            }
-                            else
-                            {
-                                Rect noMorePathsLabelRect = new Rect(
+                                Rect moreHistoryButtonRect = new(
                                     startX + 30f,
                                     currentY,
                                     availableWidth - 30f,
                                     EditorGUIUtility.singleLineHeight
                                 );
-                                EditorGUI.LabelField(
-                                    noMorePathsLabelRect,
-                                    "All paths already displayed.",
-                                    EditorStyles.centeredGreyMiniLabel
-                                );
-                                currentY += noMorePathsLabelRect.height;
+                                if (
+                                    GUI.Button(
+                                        moreHistoryButtonRect,
+                                        new GUIContent(
+                                            $"({dirData.count}) {dirData.path}",
+                                            dirData.path
+                                        ),
+                                        EditorStyles.miniButtonLeft
+                                    )
+                                )
+                                {
+                                    onPathClickedFromHistory.Invoke(dirData.path);
+                                }
+                                currentY += moreHistoryButtonRect.height;
                             }
+                        }
+                        else
+                        {
+                            Rect noMorePathsLabelRect = new(
+                                startX + 30f,
+                                currentY,
+                                availableWidth - 30f,
+                                EditorGUIUtility.singleLineHeight
+                            );
+                            EditorGUI.LabelField(
+                                noMorePathsLabelRect,
+                                "All paths already displayed.",
+                                EditorStyles.centeredGreyMiniLabel
+                            );
+                            currentY += noMorePathsLabelRect.height;
                         }
                     }
                 }
-                // Add a little overall padding for the history block if it's drawn
-                currentY += EditorGUIUtility.standardVerticalSpacing;
             }
-            return currentY - startY; // Return the height consumed
+
+            currentY += EditorGUIUtility.standardVerticalSpacing;
+            return currentY - startY;
         }
 
-        // The GetDrawFrequentPathsHeight needs to be updated to match this new EditorGUI drawing logic
-        // This version calculates height based on the new DrawFrequentPathsWithEditorGUI
         public static float GetDrawFrequentPathsHeightEditorGUI(
             string toolName,
             string contextKey,
@@ -181,57 +180,47 @@
             }
 
             float height = 0f;
-            var topPaths = PersistentDirectorySettings.Instance.GetPaths(
+            DirectoryUsageData[] topPaths = PersistentDirectorySettings.Instance.GetPaths(
                 toolName,
                 contextKey,
                 true,
                 topN
             );
 
-            if (topPaths.Length > 0)
+            if (topPaths.Length <= 0)
             {
-                height += EditorGUIUtility.singleLineHeight; // History Label
-                foreach (var _ in topPaths)
-                {
-                    height += EditorGUIUtility.singleLineHeight; // Top N buttons
-                }
+                return height;
+            }
 
-                if (allowExpansion)
+            height +=
+                (topPaths.Length + 1)
+                * (EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing);
+            if (allowExpansion)
+            {
+                DirectoryUsageData[] allPaths = PersistentDirectorySettings.Instance.GetPaths(
+                    toolName,
+                    contextKey,
+                    false,
+                    0
+                );
+                if (allPaths.Length > topN)
                 {
-                    var allPaths = PersistentDirectorySettings.Instance.GetPaths(
-                        toolName,
-                        contextKey,
-                        false,
-                        0
-                    );
-                    if (allPaths.Length > topN)
+                    height +=
+                        EditorGUIUtility.singleLineHeight
+                        + EditorGUIUtility.standardVerticalSpacing;
+
+                    string foldoutKey = $"{toolName}/{contextKey}_AllPathsHistory_EditorGUI";
+                    bool isExpanded = ContextFoldoutStates.GetValueOrDefault(foldoutKey, false);
+                    if (isExpanded)
                     {
-                        height += EditorGUIUtility.singleLineHeight; // "Show All" Foldout
-
-                        string foldoutKey = $"{toolName}/{contextKey}_AllPathsHistory_EditorGUI";
-                        // For height calculation, we usually assume it might be expanded if state is unknown,
-                        // or we'd need to pass the actual expanded state. Let's assume we check current state.
-                        bool isExpanded = ContextFoldoutStates.ContainsKey(foldoutKey)
-                            ? ContextFoldoutStates[foldoutKey]
-                            : false; // Default to not expanded for height if unknown
-                        if (isExpanded)
-                        {
-                            var pathsNotAlreadyInTop = allPaths.Skip(topN).ToList();
-                            if (pathsNotAlreadyInTop.Any())
-                            {
-                                foreach (var _ in pathsNotAlreadyInTop)
-                                {
-                                    height += EditorGUIUtility.singleLineHeight;
-                                }
-                            }
-                            else
-                            {
-                                height += EditorGUIUtility.singleLineHeight; // "All paths displayed" label
-                            }
-                        }
+                        height +=
+                            Mathf.Max(1, allPaths.Skip(topN).Count())
+                            * (
+                                EditorGUIUtility.singleLineHeight
+                                + EditorGUIUtility.standardVerticalSpacing
+                            );
                     }
                 }
-                height += EditorGUIUtility.standardVerticalSpacing; // Overall bottom padding
             }
             return height;
         }
@@ -261,8 +250,9 @@
                 return height;
             }
 
-            height += EditorGUIUtility.singleLineHeight;
-            height += topPaths.Length * EditorGUIUtility.singleLineHeight;
+            height +=
+                (1 + topPaths.Length)
+                * (EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing);
 
             if (allowExpansion)
             {
@@ -274,21 +264,19 @@
                 );
                 if (allPaths.Length > topN)
                 {
-                    height += EditorGUIUtility.singleLineHeight;
+                    height +=
+                        EditorGUIUtility.singleLineHeight
+                        + EditorGUIUtility.standardVerticalSpacing;
                     string foldoutKey = $"{toolName}/{contextKey}_AllPathsHistory";
                     bool isExpanded = ContextFoldoutStates.GetValueOrDefault(foldoutKey, false);
                     if (isExpanded)
                     {
-                        DirectoryUsageData[] pathsNotAlreadyInTop = allPaths.Skip(topN).ToArray();
-                        if (pathsNotAlreadyInTop.Any())
-                        {
-                            height +=
-                                pathsNotAlreadyInTop.Length * EditorGUIUtility.singleLineHeight;
-                        }
-                        else
-                        {
-                            height += EditorGUIUtility.singleLineHeight;
-                        }
+                        height +=
+                            Mathf.Max(1, allPaths.Skip(topN).Count())
+                            * (
+                                EditorGUIUtility.singleLineHeight
+                                + EditorGUIUtility.standardVerticalSpacing
+                            );
                     }
                 }
             }
@@ -335,11 +323,8 @@
             }
 
             float height = 0f;
-
             height += EditorGUIUtility.singleLineHeight;
-
             height += EditorGUIUtility.standardVerticalSpacing;
-
             string internalContextKey =
                 $"{propertyForContext.serializedObject.targetObject.GetType().Name}_{propertyForContext.propertyPath}";
             height += GetPathSelectorHeight(toolName, internalContextKey);
@@ -580,7 +565,7 @@
             string currentPath,
             string toolName,
             string contextKey,
-            System.Action<string> onPathChosen,
+            Action<string> onPathChosen,
             string dialogTitle = "Select Folder",
             float textFieldWidthOverride = -1f
         )
@@ -635,10 +620,7 @@
                                 }
                             }
                         }
-                        catch
-                        {
-                            // Swallow
-                        }
+                        catch { }
                     }
                     if (!Directory.Exists(initialBrowsePath))
                     {
@@ -700,7 +682,7 @@
         public static void DrawFrequentPaths(
             string toolName,
             string contextKey,
-            System.Action<string> onPathClickedFromHistory,
+            Action<string> onPathClickedFromHistory,
             bool allowExpansion = true,
             int topN = 5,
             string listLabel = "Frequent Paths:"

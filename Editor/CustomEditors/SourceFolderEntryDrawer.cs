@@ -6,13 +6,12 @@
     using UnityEngine;
     using UnityEditor;
     using System.Collections.Generic;
-    using System.IO;
     using Core.Helper;
-    using System.Linq;
 
     [CustomPropertyDrawer(typeof(SourceFolderEntry))]
     public sealed class SourceFolderEntryDrawer : PropertyDrawer
     {
+        private const string HistoryToolName = nameof(SourceFolderEntryDrawer);
         private static readonly Dictionary<string, bool> RegexesFoldoutState = new(
             StringComparer.Ordinal
         );
@@ -20,32 +19,30 @@
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
             EditorGUI.BeginProperty(position, label, property);
-
-            Rect foldoutRect = new Rect(
+            Rect foldoutRect = new(
                 position.x,
                 position.y,
                 position.width,
                 EditorGUIUtility.singleLineHeight
             );
             property.isExpanded = EditorGUI.Foldout(foldoutRect, property.isExpanded, label, true);
-
             if (property.isExpanded)
             {
                 int originalIndent = EditorGUI.indentLevel;
                 EditorGUI.indentLevel++;
-
                 float currentY = foldoutRect.yMax + EditorGUIUtility.standardVerticalSpacing;
-                // Calculate available width and startX based on current indent level for content
-                // This means content will be indented under the "Element X" foldout.
-                float indentOffset = EditorGUI.indentLevel * 15f; // Standard indent width per level
+                float indentOffset = EditorGUI.indentLevel * 15f;
                 float startX = position.x + indentOffset;
                 float availableWidth = position.width - indentOffset;
 
-                SerializedProperty folderPathProp = property.FindPropertyRelative("folderPath");
-                SerializedProperty regexesProp = property.FindPropertyRelative("regexes");
+                SerializedProperty folderPathProp = property.FindPropertyRelative(
+                    nameof(SourceFolderEntry.folderPath)
+                );
+                SerializedProperty regexesProp = property.FindPropertyRelative(
+                    nameof(SourceFolderEntry.regexes)
+                );
 
-                // --- Folder Path Section (manual EditorGUI) ---
-                Rect folderPathLabelRect = new Rect(
+                Rect folderPathLabelRect = new(
                     startX,
                     currentY,
                     availableWidth,
@@ -54,13 +51,13 @@
                 EditorGUI.LabelField(folderPathLabelRect, "Folder Path", EditorStyles.boldLabel);
                 currentY += folderPathLabelRect.height + EditorGUIUtility.standardVerticalSpacing;
 
-                Rect pathFieldRect = new Rect(
+                Rect pathFieldRect = new(
                     startX,
                     currentY,
                     availableWidth - 75,
                     EditorGUIUtility.singleLineHeight
                 );
-                Rect browseButtonRect = new Rect(
+                Rect browseButtonRect = new(
                     pathFieldRect.xMax + 5,
                     currentY,
                     70,
@@ -80,7 +77,6 @@
 
                 if (GUI.Button(browseButtonRect, "Browse..."))
                 {
-                    // ... (Browse button logic remains the same, records path to history) ...
                     string initialBrowsePath = Application.dataPath; /* ... */
                     string selectedPathSys = EditorUtility.OpenFolderPanel(
                         "Select Source Folder",
@@ -99,11 +95,9 @@
                                 );
                         }
                         folderPathProp.stringValue = processedPath;
-                        string toolName = "SpriteAtlasTool_Drawer";
-                        string contextKey =
-                            $"{property.serializedObject.targetObject.GetType().Name}_{folderPathProp.propertyPath}";
+                        string contextKey = GetFolderPathFoldoutKey(folderPathProp);
                         PersistentDirectorySettings.Instance.RecordPath(
-                            toolName,
+                            HistoryToolName,
                             contextKey,
                             processedPath
                         );
@@ -112,61 +106,43 @@
                     }
                 }
                 currentY += pathFieldRect.height + EditorGUIUtility.standardVerticalSpacing;
+                string historyContextKey = GetFolderPathFoldoutKey(folderPathProp);
 
-                // --- Draw Frequent Paths using the new EditorGUI version ---
-                string historyToolName = "SpriteAtlasTool_Drawer";
-                string historyContextKey =
-                    $"{property.serializedObject.targetObject.GetType().Name}_{folderPathProp.propertyPath}";
-
-                // Define the area for DrawFrequentPaths. It will draw starting at currentY.
-                // It needs the full available width from this point.
-                Rect historyParentRect = new Rect(
+                Rect historyParentRect = new(
                     startX,
                     currentY,
                     availableWidth,
                     position.yMax - currentY
-                ); // Give it remaining height
+                );
 
-                // currentY will be updated by DrawFrequentPathsWithEditorGUI
                 PersistentDirectoryGUI.DrawFrequentPathsWithEditorGUI(
-                    historyParentRect, // This rect is relative to the PropertyDrawer's `position`
-                    ref currentY, // Pass currentY by ref
-                    historyToolName,
+                    historyParentRect,
+                    ref currentY,
+                    HistoryToolName,
                     historyContextKey,
-                    (chosenPath) =>
+                    chosenPath =>
                     {
                         folderPathProp.stringValue = chosenPath;
                         PersistentDirectorySettings.Instance.RecordPath(
-                            historyToolName,
+                            HistoryToolName,
                             historyContextKey,
                             chosenPath
                         );
                         property.serializedObject.ApplyModifiedProperties();
                         GUI.FocusControl(null);
                     }
-                // Default topN and allowExpansion
                 );
-                // currentY is now updated to be below the history section
-                // No need to explicitly add its height again here, as currentY tracks it.
-                // --- End Folder Path Section ---
 
-
-                // --- Regexes List Section (manual EditorGUI) ---
-                // Adjust currentY if there wasn't any history, to add some space.
-                // currentY already includes spacing if history was drawn by DrawFrequentPathsWithEditorGUI
-                currentY += EditorGUIUtility.standardVerticalSpacing; // General space before regexes
-
-                Rect regexFoldoutLabelRect = new Rect(
+                currentY += EditorGUIUtility.standardVerticalSpacing;
+                Rect regexFoldoutLabelRect = new(
                     startX,
                     currentY,
                     availableWidth,
                     EditorGUIUtility.singleLineHeight
                 );
-                // ... (rest of regex list drawing using currentY, startX, availableWidth) ...
-                string regexesFoldoutKey = property.propertyPath + ".regexesList";
-                if (!RegexesFoldoutState.ContainsKey(regexesFoldoutKey))
-                    RegexesFoldoutState[regexesFoldoutKey] = true;
 
+                string regexesFoldoutKey = GetRegexFoldoutKey(property);
+                RegexesFoldoutState.TryAdd(regexesFoldoutKey, true);
                 RegexesFoldoutState[regexesFoldoutKey] = EditorGUI.Foldout(
                     regexFoldoutLabelRect,
                     RegexesFoldoutState[regexesFoldoutKey],
@@ -177,28 +153,22 @@
 
                 if (RegexesFoldoutState[regexesFoldoutKey])
                 {
-                    int listElementIndentLvl = EditorGUI.indentLevel; // Store current indent
-                    EditorGUI.indentLevel++; // Indent elements under "Regexes" foldout
-
-                    // Recalculate startX and availableWidth for this deeper indent level if needed,
-                    // or assume controls inside will handle their own indent based on EditorGUI.indentLevel.
-                    // For simple fields, current EditorGUI.indentLevel is usually enough.
-                    float regexStartX = startX + 15f; // Example of further indent for elements
+                    int listElementIndentLvl = EditorGUI.indentLevel;
+                    EditorGUI.indentLevel++;
+                    float regexStartX = startX + 15f;
                     float regexAvailableWidth = availableWidth - 15f;
-
-                    Rect sizeFieldRect = new Rect(
+                    Rect sizeFieldRect = new(
                         regexStartX,
                         currentY,
                         regexAvailableWidth,
                         EditorGUIUtility.singleLineHeight
                     );
-                    // ... (Size field and loop for regex elements, using regexStartX, regexAvailableWidth, and updating currentY) ...
+
                     EditorGUI.BeginChangeCheck();
                     int newSize = EditorGUI.IntField(sizeFieldRect, "Size", regexesProp.arraySize);
                     if (EditorGUI.EndChangeCheck())
                     {
-                        if (newSize < 0)
-                            newSize = 0;
+                        newSize = Mathf.Max(0, newSize);
                         regexesProp.arraySize = newSize;
                     }
                     currentY += sizeFieldRect.height + EditorGUIUtility.standardVerticalSpacing;
@@ -206,7 +176,7 @@
                     for (int i = 0; i < regexesProp.arraySize; i++)
                     {
                         SerializedProperty elementProp = regexesProp.GetArrayElementAtIndex(i);
-                        Rect elementRect = new Rect(
+                        Rect elementRect = new(
                             regexStartX,
                             currentY,
                             regexAvailableWidth,
@@ -224,9 +194,8 @@
                         }
                         currentY += elementRect.height + EditorGUIUtility.standardVerticalSpacing;
                     }
-                    EditorGUI.indentLevel = listElementIndentLvl; // Restore indent
+                    EditorGUI.indentLevel = listElementIndentLvl;
                 }
-
                 EditorGUI.indentLevel = originalIndent;
             }
             EditorGUI.EndProperty();
@@ -234,59 +203,72 @@
 
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {
-            float height = EditorGUIUtility.singleLineHeight; // "Element X" foldout
-
-            if (property.isExpanded)
+            float height = EditorGUIUtility.singleLineHeight;
+            if (!property.isExpanded)
             {
-                height += EditorGUIUtility.standardVerticalSpacing; // Space after "Element X"
-
-                // Folder Path Section
-                height +=
-                    EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing; // "Folder Path" bold label
-                height +=
-                    EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing; // Path TextField + Browse
-
-                // History Paths using the new GetHeight method
-                SerializedProperty folderPathProp = property.FindPropertyRelative("folderPath");
-                string historyToolName = "SpriteAtlasTool_Drawer";
-                // Ensure folderPathProp is valid before creating contextKey based on it
-                string historyContextKey =
-                    (folderPathProp != null && property.serializedObject.targetObject != null)
-                        ? $"{property.serializedObject.targetObject.GetType().Name}_{folderPathProp.propertyPath}"
-                        : "DefaultHistoryContext"; // Fallback context key
-
-                height += PersistentDirectoryGUI.GetDrawFrequentPathsHeightEditorGUI(
-                    historyToolName,
-                    historyContextKey
-                );
-                // No extra spacing here, GetDrawFrequentPathsHeightEditorGUI includes its own final spacing if content drawn.
-
-                // Regexes List Section
-                height += EditorGUIUtility.standardVerticalSpacing; // General space before regexes
-                height +=
-                    EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing; // "Regexes" foldout label
-
-                string regexesFoldoutKey = property.propertyPath + ".regexesList";
-                bool isRegexesExpanded = RegexesFoldoutState.ContainsKey(regexesFoldoutKey)
-                    ? RegexesFoldoutState[regexesFoldoutKey]
-                    : true;
-
-                if (isRegexesExpanded)
-                {
-                    SerializedProperty regexesProp = property.FindPropertyRelative("regexes");
-                    height +=
-                        EditorGUIUtility.singleLineHeight
-                        + EditorGUIUtility.standardVerticalSpacing; // "Size" field
-                    for (int i = 0; i < regexesProp.arraySize; i++)
-                    {
-                        height +=
-                            EditorGUIUtility.singleLineHeight
-                            + EditorGUIUtility.standardVerticalSpacing;
-                    }
-                }
-                height += EditorGUIUtility.standardVerticalSpacing; // Bottom padding
+                return height;
             }
+
+            height += EditorGUIUtility.standardVerticalSpacing;
+            height += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
+            height += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
+            SerializedProperty folderPathProp = property.FindPropertyRelative(
+                nameof(SourceFolderEntry.folderPath)
+            );
+
+            string historyContextKey = GetFolderPathFoldoutKey(folderPathProp);
+
+            height += PersistentDirectoryGUI.GetDrawFrequentPathsHeightEditorGUI(
+                HistoryToolName,
+                historyContextKey
+            );
+
+            height += EditorGUIUtility.standardVerticalSpacing;
+            height += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
+            string regexesFoldoutKey = GetRegexFoldoutKey(property);
+            bool isRegexesExpanded = RegexesFoldoutState.GetValueOrDefault(regexesFoldoutKey, true);
+            if (isRegexesExpanded)
+            {
+                SerializedProperty regexesProp = property.FindPropertyRelative(
+                    nameof(SourceFolderEntry.regexes)
+                );
+                height +=
+                    (1 + regexesProp.arraySize)
+                    * (
+                        EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing
+                    );
+            }
+            height += EditorGUIUtility.standardVerticalSpacing;
             return height;
+        }
+
+        private static string GetHistoryContextKey(SerializedProperty property)
+        {
+            return (
+                    property.serializedObject.targetObject != null
+                        ? property.serializedObject.targetObject.name
+                        : "NULL"
+                ) + ".DefaultHistoryContext";
+        }
+
+        private static string GetFolderPathFoldoutKey(SerializedProperty property)
+        {
+            return (
+                    property.serializedObject.targetObject != null
+                        ? property.serializedObject.targetObject.name
+                        : "NULL"
+                ) + ".folderList";
+        }
+
+        private static string GetRegexFoldoutKey(SerializedProperty property)
+        {
+            return (
+                    property.serializedObject.targetObject != null
+                        ? property.serializedObject.targetObject.name
+                        : "NULL"
+                )
+                + property.propertyPath
+                + ".regexesList";
         }
     }
 #endif
