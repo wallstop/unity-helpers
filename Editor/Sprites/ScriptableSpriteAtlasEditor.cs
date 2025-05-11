@@ -111,32 +111,12 @@
 
             if (GUILayout.Button("Generate/Update All .spriteatlas Assets", GUILayout.Height(40)))
             {
-                if (
-                    EditorUtility.DisplayDialog(
-                        "Generate All Atlases",
-                        "This will create or update .spriteatlas assets based on all loaded configurations. Continue?",
-                        "Yes",
-                        "No"
-                    )
-                )
-                {
-                    GenerateAllAtlases();
-                }
+                GenerateAllAtlases();
             }
 
             if (GUILayout.Button("Pack All Generated Sprite Atlases", GUILayout.Height(40)))
             {
-                if (
-                    EditorUtility.DisplayDialog(
-                        "Pack All Atlases",
-                        "This will pack all .spriteatlas assets in the project into textures. This can take some time. Continue?",
-                        "Yes",
-                        "No"
-                    )
-                )
-                {
-                    PackAllProjectAtlases();
-                }
+                PackAllProjectAtlases();
             }
             EditorGUILayout.Space(20);
             _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
@@ -583,7 +563,7 @@
             foreach (Sprite sprite in result.spritesToAdd)
             {
                 bool alreadyExists = false;
-                for (int i = 0; i < spritesListProp.arraySize; i++)
+                for (int i = 0; i < spritesListProp.arraySize; ++i)
                 {
                     if (spritesListProp.GetArrayElementAtIndex(i).objectReferenceValue == sprite)
                     {
@@ -633,7 +613,7 @@
             int countRemoved = 0;
             List<Sprite> spritesActuallyToRemove = new(result.spritesToRemove);
 
-            for (int i = spritesListProp.arraySize - 1; i >= 0; i--)
+            for (int i = spritesListProp.arraySize - 1; 0 <= i; --i)
             {
                 SerializedProperty element = spritesListProp.GetArrayElementAtIndex(i);
                 if (
@@ -700,11 +680,6 @@
                 EditorUtility.ClearProgressBar();
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
-                EditorUtility.DisplayDialog(
-                    "Generation Complete",
-                    $"Processed {totalConfigs} atlas configurations.",
-                    "OK"
-                );
             }
         }
 
@@ -844,7 +819,7 @@
             AssetDatabase.StartAssetEditing();
             try
             {
-                for (int i = 0; i < spritesToProcess.Count; i++)
+                for (int i = 0; i < spritesToProcess.Count; ++i)
                 {
                     Sprite sprite = spritesToProcess[i];
                     EditorUtility.DisplayProgressBar(
@@ -948,11 +923,6 @@
                 $"Finished processing source sprite textures for '{config.name}'.\n"
                 + $"Successfully modified importers for: {modifiedCount} textures.\n"
                 + $"Errors/Skipped duplicates: {errorCount + (spritesToProcess.Count - processedAssetPaths.Count)}.";
-            EditorUtility.DisplayDialog(
-                "Source Sprite Modification Complete",
-                summaryMessage,
-                "OK"
-            );
             this.Log($"{summaryMessage}");
         }
     }
