@@ -12,7 +12,6 @@
     using Core.Attributes;
     using Core.Extension;
     using Core.Helper;
-    using Utils;
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
@@ -149,7 +148,7 @@
             GUI.enabled = wasEnabled && _checkNullObjectReferences;
             try
             {
-                using GUIIndentScope indent = new();
+                using EditorGUI.IndentLevelScope indent = new();
                 DrawAndAlign(
                     new GUIContent(
                         "Only if [ValidateAssignment]",

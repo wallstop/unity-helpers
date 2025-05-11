@@ -1,16 +1,16 @@
 ﻿// ReSharper disable CompareOfFloatsByEqualityOperator
-namespace WallstopStudios.UnityHelpers.Editor
+namespace WallstopStudios.UnityHelpers.Editor.Sprites
 {
 #if UNITY_EDITOR
-    using Core.Attributes;
-    using Core.Extension;
     using System;
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;
     using UnityEditor;
     using UnityEngine;
-    using Utils;
+    using Core.Attributes;
+    using Core.Extension;
+    using CustomEditors;
     using Object = UnityEngine.Object;
 
     [Serializable]
@@ -77,7 +77,7 @@ namespace WallstopStudios.UnityHelpers.Editor
     }
 
     [CustomPropertyDrawer(typeof(SpriteSettings))]
-    public class SpriteSettingsDrawer : PropertyDrawer
+    public sealed class SpriteSettingsDrawer : PropertyDrawer
     {
         private const float CheckboxWidth = 18f;
         private const float HorizontalSpacing = 5f;
@@ -204,7 +204,7 @@ namespace WallstopStudios.UnityHelpers.Editor
                         valuePropHeight
                     );
 
-                    using (new GUIIndentScope())
+                    using (new EditorGUI.IndentLevelScope())
                     {
                         EditorGUI.PropertyField(valueRect, valueProp, GUIContent.none, true);
                     }
@@ -301,25 +301,16 @@ namespace WallstopStudios.UnityHelpers.Editor
         private void OnGUI()
         {
             _serializedObject.Update();
-
             _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
 
             EditorGUILayout.LabelField("Sprite Sources", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(_spritesProp, new GUIContent("Specific Sprites"), true);
-
             EditorGUILayout.Space();
-
             EditorGUILayout.LabelField("Directory Sources", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(
+            PersistentDirectoryGUI.PathSelectorObjectArray(
                 _directoriesProp,
-                new GUIContent("Scan Directories"),
-                true
+                nameof(SpriteSettingsApplierWindow)
             );
-            if (GUILayout.Button("Add Directory via Browser"))
-            {
-                AddDirectory();
-            }
-
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Settings", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(
@@ -332,7 +323,6 @@ namespace WallstopStudios.UnityHelpers.Editor
                 new GUIContent("Sprite Settings Profiles"),
                 true
             );
-
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Actions", EditorStyles.boldLabel);
 
@@ -363,67 +353,10 @@ namespace WallstopStudios.UnityHelpers.Editor
             _serializedObject.ApplyModifiedProperties();
         }
 
-        private void AddDirectory()
-        {
-            string path = EditorUtility.OpenFolderPanel("Select Directory", "Assets", "");
-            if (string.IsNullOrWhiteSpace(path))
-            {
-                return;
-            }
-
-            if (path.StartsWith(Application.dataPath, StringComparison.Ordinal))
-            {
-                string relativePath = "Assets" + path.Substring(Application.dataPath.Length);
-                Object folderAsset = AssetDatabase.LoadAssetAtPath<Object>(relativePath);
-                if (folderAsset != null)
-                {
-                    _directoriesProp.serializedObject.Update();
-                    bool alreadyExists = false;
-                    for (int i = 0; i < _directoriesProp.arraySize; i++)
-                    {
-                        if (
-                            _directoriesProp.GetArrayElementAtIndex(i).objectReferenceValue
-                            == folderAsset
-                        )
-                        {
-                            alreadyExists = true;
-                            break;
-                        }
-                    }
-
-                    if (!alreadyExists)
-                    {
-                        int newIndex = _directoriesProp.arraySize;
-                        _directoriesProp.InsertArrayElementAtIndex(newIndex);
-                        _directoriesProp.GetArrayElementAtIndex(newIndex).objectReferenceValue =
-                            folderAsset;
-                        this.Log($"Added directory: {relativePath}");
-                    }
-                    else
-                    {
-                        this.LogWarn($"Directory already in list: {relativePath}");
-                    }
-                    _directoriesProp.serializedObject.ApplyModifiedProperties();
-                }
-                else
-                {
-                    this.LogError(
-                        $"Could not load asset at path: {relativePath}. Is it a valid folder within Assets?"
-                    );
-                }
-            }
-            else
-            {
-                this.LogError(
-                    $"Selected folder must be inside the project's Assets folder. Path selected: {path}"
-                );
-            }
-        }
-
         private List<(string fullFilePath, string relativePath)> GetTargetSpritePaths()
         {
             HashSet<string> uniqueRelativePaths = new(StringComparer.OrdinalIgnoreCase);
-            List<Object> validDirectories = new();
+            HashSet<Object> validDirectories = new();
 
             for (int i = 0; i < _directoriesProp.arraySize; i++)
             {

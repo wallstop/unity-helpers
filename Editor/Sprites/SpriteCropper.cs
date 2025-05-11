@@ -1,4 +1,4 @@
-﻿namespace WallstopStudios.UnityHelpers.Editor
+﻿namespace WallstopStudios.UnityHelpers.Editor.Sprites
 {
 #if UNITY_EDITOR
     using System;
@@ -6,9 +6,10 @@
     using System.IO;
     using System.Linq;
     using System.Threading.Tasks;
-    using Core.Extension;
     using UnityEditor;
     using UnityEngine;
+    using Core.Extension;
+    using CustomEditors;
     using Object = UnityEngine.Object;
 
     public sealed class SpriteCropper : EditorWindow
@@ -35,64 +36,55 @@
         [SerializeField]
         private bool _onlyNecessary;
 
+        [SerializeField]
+        private int _leftPadding;
+
+        [SerializeField]
+        private int _rightPadding;
+
+        [SerializeField]
+        private int _topPadding;
+
+        [SerializeField]
+        private int _bottomPadding;
+
         private List<string> _filesToProcess;
+        private SerializedObject _serializedObject;
+        private SerializedProperty _inputDirectoriesProperty;
+        private SerializedProperty _onlyNecessaryProperty;
+        private SerializedProperty _leftPaddingProperty;
+        private SerializedProperty _rightPaddingProperty;
+        private SerializedProperty _topPaddingProperty;
+        private SerializedProperty _bottomPaddingProperty;
 
         [MenuItem("Tools/Wallstop Studios/Unity Helpers/" + Name)]
         private static void ShowWindow() => GetWindow<SpriteCropper>(Name);
 
+        private void OnEnable()
+        {
+            _serializedObject = new SerializedObject(this);
+            _inputDirectoriesProperty = _serializedObject.FindProperty(nameof(_inputDirectories));
+            _onlyNecessaryProperty = _serializedObject.FindProperty(nameof(_onlyNecessary));
+            _leftPaddingProperty = _serializedObject.FindProperty(nameof(_leftPadding));
+            _rightPaddingProperty = _serializedObject.FindProperty(nameof(_rightPadding));
+            _topPaddingProperty = _serializedObject.FindProperty(nameof(_topPadding));
+            _bottomPaddingProperty = _serializedObject.FindProperty(nameof(_bottomPadding));
+        }
+
         private void OnGUI()
         {
-            GUILayout.Label("Drag folders below", EditorStyles.boldLabel);
-            SerializedObject so = new(this);
-            so.Update();
-            SerializedProperty dirs = so.FindProperty(nameof(_inputDirectories));
-            EditorGUILayout.PropertyField(dirs, true);
-            SerializedProperty onlyNecessary = so.FindProperty(nameof(_onlyNecessary));
-            EditorGUILayout.PropertyField(onlyNecessary, true);
-            so.ApplyModifiedProperties();
-
-            if (GUILayout.Button("Select Input Folder"))
-            {
-                string path = EditorUtility.OpenFolderPanel(
-                    "Select Sprite Input Folder",
-                    Application.dataPath,
-                    ""
-                );
-                if (!string.IsNullOrWhiteSpace(path))
-                {
-                    if (path.StartsWith(Application.dataPath, StringComparison.Ordinal))
-                    {
-                        path = "Assets" + path.Substring(Application.dataPath.Length);
-                        if (
-                            !_inputDirectories
-                                .Select(AssetDatabase.GetAssetPath)
-                                .Any(directory =>
-                                    string.Equals(
-                                        directory,
-                                        path,
-                                        StringComparison.OrdinalIgnoreCase
-                                    )
-                                )
-                        )
-                        {
-                            Object folder = AssetDatabase.LoadAssetAtPath<Object>(path);
-                            if (folder == null)
-                            {
-                                return;
-                            }
-                            _inputDirectories.Add(folder);
-                        }
-                    }
-                    else
-                    {
-                        EditorUtility.DisplayDialog(
-                            "Invalid Folder",
-                            "Please select a folder inside the project's Assets directory.",
-                            "OK"
-                        );
-                    }
-                }
-            }
+            EditorGUILayout.LabelField("Input directories", EditorStyles.boldLabel);
+            _serializedObject.Update();
+            PersistentDirectoryGUI.PathSelectorObjectArray(
+                _inputDirectoriesProperty,
+                nameof(SpriteCropper)
+            );
+            EditorGUILayout.PropertyField(_onlyNecessaryProperty, true);
+            EditorGUILayout.PropertyField(_leftPaddingProperty, true);
+            EditorGUILayout.PropertyField(_rightPaddingProperty, true);
+            EditorGUILayout.PropertyField(_topPaddingProperty, true);
+            EditorGUILayout.PropertyField(_bottomPaddingProperty, true);
+            _serializedObject.ApplyModifiedProperties();
 
             if (GUILayout.Button("Find Sprites To Process"))
             {
@@ -229,9 +221,6 @@
                     $"An error occurred during processing. Last processed: {lastProcessed}.",
                     e
                 );
-                AssetDatabase.StopAssetEditing();
-                AssetDatabase.SaveAssets();
-                AssetDatabase.Refresh();
             }
             finally
             {
@@ -339,20 +328,28 @@
                 }
             );
 
-            int cropWidth = maxX - minX + 1;
-            int cropHeight = maxY - minY + 1;
-
-            if (_onlyNecessary && (!hasVisible || (cropWidth == width && cropHeight == height)))
-            {
-                return null;
-            }
-
+            int cropWidth;
+            int cropHeight;
             if (!hasVisible)
             {
                 cropWidth = 1;
                 cropHeight = 1;
                 minX = 0;
                 minY = 0;
+            }
+            else
+            {
+                minX = Mathf.Max(0, minX - _leftPadding);
+                minY = Mathf.Max(0, minY - _bottomPadding);
+                maxX = Mathf.Min(width, maxX + _rightPadding);
+                maxY = Mathf.Min(height, maxY + _topPadding);
+                cropWidth = maxX - minX + 1;
+                cropHeight = maxY - minY + 1;
+            }
+
+            if (_onlyNecessary && (!hasVisible || (cropWidth == width && cropHeight == height)))
+            {
+                return null;
             }
 
             Texture2D cropped = new(cropWidth, cropHeight, TextureFormat.RGBA32, false);
@@ -406,6 +403,11 @@
                 cropWidth > 0 ? newPivotPixels.x / cropWidth : 0.5f,
                 cropHeight > 0 ? newPivotPixels.y / cropHeight : 0.5f
             );
+
+            if (!hasVisible)
+            {
+                newPivotNorm = new Vector2(0.5f, 0.5f);
+            }
 
             newImporter.spriteImportMode = SpriteImportMode.Single;
             newImporter.spritePivot = newPivotNorm;

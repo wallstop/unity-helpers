@@ -1,4 +1,4 @@
-﻿namespace WallstopStudios.UnityHelpers.Editor
+﻿namespace WallstopStudios.UnityHelpers.Editor.Sprites
 {
 #if UNITY_EDITOR
     using System;
@@ -10,16 +10,15 @@
     using UnityEngine;
     using Core.Extension;
     using Core.Helper;
+    using CustomEditors;
 
     public sealed class AnimationCopierWindow : EditorWindow
     {
-        private const string SourcePathPrefKey = "AnimationCopier_SourcePathRelative";
-        private const string DestPathPrefKey = "AnimationCopier_DestPathRelative";
-        private const string DefaultSourcePath = "Assets/Sprites";
-        private const string DefaultDestPath = "Assets/Animations";
+        [SerializeField]
+        private string _animationSourcePathRelative = "Assets/Sprites";
 
-        private string _animationSourcePathRelative = "";
-        private string _animationDestinationPathRelative = "";
+        [SerializeField]
+        private string _animationDestinationPathRelative = "Assets/Animations";
         private string _fullSourcePath = "";
         private string _fullDestinationPath = "";
 
@@ -27,6 +26,10 @@
         private bool _isAnalyzing;
         private bool _isCopying;
         private bool _isDeleting;
+
+        private SerializedObject _serializedObject;
+        private SerializedProperty _animationSourcesPathProperty;
+        private SerializedProperty _animationDestinationPathProperty;
 
         private readonly List<AnimationFileInfo> _sourceAnimations = new();
         private readonly List<AnimationFileInfo> _newAnimations = new();
@@ -67,7 +70,13 @@
 
         private void OnEnable()
         {
-            LoadPaths();
+            _serializedObject = new SerializedObject(this);
+            _animationSourcesPathProperty = _serializedObject.FindProperty(
+                nameof(_animationSourcePathRelative)
+            );
+            _animationDestinationPathProperty = _serializedObject.FindProperty(
+                nameof(_animationDestinationPathRelative)
+            );
             ValidatePaths();
             _analysisNeeded = true;
             this.Log($"Animation Copier Window opened.");
@@ -75,6 +84,7 @@
 
         private void OnGUI()
         {
+            _serializedObject.Update();
             bool operationInProgress = _isAnalyzing || _isCopying || _isDeleting;
 
             if (operationInProgress)
@@ -88,18 +98,18 @@
 
             EditorGUI.BeginDisabledGroup(operationInProgress);
 
-            DrawPathSection(
+            PersistentDirectoryGUI.PathSelectorString(
+                _animationSourcesPathProperty,
+                nameof(AnimationCopierWindow),
                 "Source Path",
-                ref _animationSourcePathRelative,
-                ref _fullSourcePath,
-                SourcePathPrefKey
+                new GUIContent("Source Path")
             );
             EditorGUILayout.Separator();
-            DrawPathSection(
+            PersistentDirectoryGUI.PathSelectorString(
+                _animationDestinationPathProperty,
+                nameof(AnimationCopierWindow),
                 "Destination Path",
-                ref _animationDestinationPathRelative,
-                ref _fullDestinationPath,
-                DestPathPrefKey
+                new GUIContent("Destination Path")
             );
             EditorGUILayout.Separator();
 
@@ -123,85 +133,6 @@
                 }
                 _analysisNeeded = false;
                 Repaint();
-            }
-        }
-
-        private void DrawPathSection(
-            string label,
-            ref string relativePath,
-            ref string fullPath,
-            string prefKey
-        )
-        {
-            if (!prefKey.StartsWith("WallstopStudios.UnityHelpers.Editor"))
-            {
-                prefKey = "WallstopStudios.UnityHelpers.Editor" + prefKey;
-            }
-            EditorGUILayout.LabelField(label + ":", EditorStyles.boldLabel);
-
-            EditorGUI.BeginChangeCheck();
-            string newRelativePath = EditorGUILayout.TextField(relativePath ?? "");
-            if (EditorGUI.EndChangeCheck() && newRelativePath != relativePath)
-            {
-                if (string.IsNullOrWhiteSpace(newRelativePath))
-                {
-                    relativePath = "";
-                    fullPath = "";
-                    EditorPrefs.SetString(prefKey, "");
-                    ValidatePaths();
-                    _analysisNeeded = true;
-                }
-                else
-                {
-                    string tempFullPath = GetFullPathFromRelative(newRelativePath);
-                    if (tempFullPath != null && Directory.Exists(tempFullPath))
-                    {
-                        relativePath = newRelativePath;
-                        fullPath = tempFullPath;
-                        EditorPrefs.SetString(prefKey, relativePath);
-                        ValidatePaths();
-                        _analysisNeeded = true;
-                    }
-                    else
-                    {
-                        this.LogWarn(
-                            $"Manual path entry '{newRelativePath}' is invalid or not inside Assets. Please use the button."
-                        );
-                    }
-                }
-            }
-
-            if (GUILayout.Button("Browse..."))
-            {
-                string initialPath = Directory.Exists(fullPath) ? fullPath : Application.dataPath;
-                string selectedPath = EditorUtility.OpenFolderPanel(
-                    $"Select {label}",
-                    initialPath,
-                    string.Empty
-                );
-
-                if (!string.IsNullOrWhiteSpace(selectedPath))
-                {
-                    string newRelPath = GetRelativeAssetPath(selectedPath);
-                    if (newRelPath != null)
-                    {
-                        relativePath = newRelPath;
-                        fullPath = selectedPath.SanitizePath();
-                        EditorPrefs.SetString(prefKey, relativePath);
-                        this.Log($"{label} set to: {relativePath}");
-                        ValidatePaths();
-                        _analysisNeeded = true;
-                        Repaint();
-                    }
-                    else
-                    {
-                        EditorUtility.DisplayDialog(
-                            "Invalid Path",
-                            "The selected path must be inside the project's 'Assets' folder.",
-                            "OK"
-                        );
-                    }
-                }
             }
         }
 
@@ -339,18 +270,6 @@
             }
         }
 
-        private void LoadPaths()
-        {
-            _animationSourcePathRelative = EditorPrefs.GetString(
-                SourcePathPrefKey,
-                DefaultSourcePath
-            );
-            _animationDestinationPathRelative = EditorPrefs.GetString(
-                DestPathPrefKey,
-                DefaultDestPath
-            );
-        }
-
         private void ValidatePaths()
         {
             _fullSourcePath = GetFullPathFromRelative(_animationSourcePathRelative);
@@ -390,7 +309,12 @@
             return !string.IsNullOrWhiteSpace(_animationSourcePathRelative)
                 && !string.IsNullOrWhiteSpace(_animationDestinationPathRelative)
                 && _fullSourcePath != null
-                && _fullDestinationPath != null;
+                && _fullDestinationPath != null
+                && !string.Equals(
+                    _animationSourcePathRelative,
+                    _animationDestinationPathRelative,
+                    StringComparison.Ordinal
+                );
         }
 
         private void AnalyzeAnimations()
@@ -615,7 +539,7 @@
 
                 try
                 {
-                    EnsureDirectoryExists(destDirectory);
+                    DirectoryHelper.EnsureDirectoryExists(destDirectory);
                 }
                 catch (Exception ex)
                 {
@@ -900,63 +824,6 @@
                     ex
                 );
                 return string.Empty;
-            }
-        }
-
-        private void EnsureDirectoryExists(string relativeDirectoryPath)
-        {
-            if (string.IsNullOrWhiteSpace(relativeDirectoryPath))
-            {
-                return;
-            }
-
-            if (!relativeDirectoryPath.StartsWith("Assets/"))
-            {
-                if (relativeDirectoryPath.Equals("Assets", StringComparison.OrdinalIgnoreCase))
-                {
-                    return;
-                }
-
-                this.LogError(
-                    $"Attempted to create directory outside of Assets: '{relativeDirectoryPath}'"
-                );
-                throw new ArgumentException(
-                    "Cannot create directories outside the Assets folder using AssetDatabase.",
-                    nameof(relativeDirectoryPath)
-                );
-            }
-
-            if (AssetDatabase.IsValidFolder(relativeDirectoryPath))
-            {
-                return;
-            }
-
-            string parentPath = Path.GetDirectoryName(relativeDirectoryPath).SanitizePath();
-            if (
-                string.IsNullOrWhiteSpace(parentPath)
-                || parentPath.Equals("Assets", StringComparison.OrdinalIgnoreCase)
-            )
-            {
-                string folderNameToCreate = Path.GetFileName(relativeDirectoryPath);
-                if (
-                    !string.IsNullOrWhiteSpace(folderNameToCreate)
-                    && !AssetDatabase.IsValidFolder(relativeDirectoryPath)
-                )
-                {
-                    AssetDatabase.CreateFolder("Assets", folderNameToCreate);
-                }
-                return;
-            }
-
-            EnsureDirectoryExists(parentPath);
-            string currentFolderName = Path.GetFileName(relativeDirectoryPath);
-            if (
-                !string.IsNullOrWhiteSpace(currentFolderName)
-                && !AssetDatabase.IsValidFolder(relativeDirectoryPath)
-            )
-            {
-                AssetDatabase.CreateFolder(parentPath, currentFolderName);
-                this.Log($"Created folder: {relativeDirectoryPath}");
             }
         }
     }

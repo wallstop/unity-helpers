@@ -3,7 +3,7 @@
 #if UNITY_EDITOR
     using UnityEditor;
     using UnityEngine;
-    using WallstopStudios.UnityHelpers.Core.Attributes;
+    using Core.Attributes;
 
     // https://www.patrykgalach.com/2020/01/20/readonly-attribute-in-unity-editor/
     [CustomPropertyDrawer(typeof(DxReadOnlyAttribute))]
