@@ -767,18 +767,9 @@
 
             platformSettings.overridden = true;
             platformSettings.maxTextureSize = config.maxTextureSize;
-
-            if (config.useCrunchCompression)
-            {
-                platformSettings.format = TextureImporterFormat.DXT5Crunched;
-                platformSettings.crunchedCompression = true;
-                platformSettings.compressionQuality = config.crunchCompressionLevel;
-            }
-            else
-            {
-                platformSettings.crunchedCompression = false;
-                platformSettings.format = TextureImporterFormat.Automatic;
-            }
+            platformSettings.crunchedCompression = config.useCrunchCompression;
+            platformSettings.compressionQuality = config.crunchCompressionLevel;
+            platformSettings.format = TextureImporterFormat.Automatic;
             platformSettings.textureCompression = config.compression;
             atlas.SetPlatformSettings(platformSettings);
 
