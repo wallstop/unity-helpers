@@ -209,6 +209,10 @@
                 finally
                 {
                     AssetDatabase.StopAssetEditing();
+                    foreach (TextureImporter newImporter in newImporters)
+                    {
+                        newImporter.SaveAndReimport();
+                    }
                     AssetDatabase.SaveAssets();
                     AssetDatabase.Refresh();
                 }
@@ -385,17 +389,8 @@
                 return null;
             }
 
-            newImporter.textureType = importer.textureType;
-            newImporter.spriteImportMode = importer.spriteImportMode;
-            newImporter.filterMode = importer.filterMode;
-            newImporter.textureCompression = importer.textureCompression;
-            newImporter.wrapMode = importer.wrapMode;
-            newImporter.mipmapEnabled = importer.mipmapEnabled;
-            newImporter.spritePixelsPerUnit = importer.spritePixelsPerUnit;
-
             TextureImporterSettings newSettings = new();
             importer.ReadTextureSettings(newSettings);
-
             Vector2 origPivot = GetSpritePivot(importer);
             Vector2 origCenter = new(width * origPivot.x, height * origPivot.y);
             Vector2 newPivotPixels = origCenter - new Vector2(minX, minY);
@@ -409,17 +404,22 @@
                 newPivotNorm = new Vector2(0.5f, 0.5f);
             }
 
-            newImporter.spriteImportMode = SpriteImportMode.Single;
-            newImporter.spritePivot = newPivotNorm;
             newSettings.spritePivot = newPivotNorm;
             newSettings.spriteAlignment = (int)SpriteAlignment.Custom;
-
             newImporter.SetTextureSettings(newSettings);
+            newImporter.spriteImportMode = SpriteImportMode.Single;
+            newImporter.spritePivot = newPivotNorm;
+            newImporter.textureType = importer.textureType;
+            newImporter.spriteImportMode = importer.spriteImportMode;
+            newImporter.filterMode = importer.filterMode;
+            newImporter.textureCompression = importer.textureCompression;
+            newImporter.wrapMode = importer.wrapMode;
+            newImporter.mipmapEnabled = importer.mipmapEnabled;
+            newImporter.spritePixelsPerUnit = importer.spritePixelsPerUnit;
             newImporter.isReadable = true;
             newImporter.SaveAndReimport();
 
-            TextureImporter resultImporter = newImporter;
-            return resultImporter;
+            return newImporter;
         }
 
         private static Vector2 GetSpritePivot(TextureImporter importer)
