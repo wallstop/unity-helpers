@@ -1,79 +1,107 @@
-﻿namespace WallstopStudios.UnityHelpers.Core.Helper.Partials
+﻿namespace WallstopStudios.UnityHelpers.Core.Helper
 {
     using System.Collections.Generic;
     using UnityEngine;
+    using Utils;
 
     public static partial class Helpers
     {
-        public static IEnumerable<GameObject> IterateOverChildGameObjects(
-            this GameObject gameObject
+        public static List<T> IterateOverAllParentComponentsRecursively<T>(
+            this Component component,
+            List<T> buffer,
+            bool includeSelf = false
         )
         {
-            for (int i = 0; i < gameObject.transform.childCount; i++)
+            buffer.Clear();
+            if (component == null)
             {
-                yield return gameObject.transform.GetChild(i).gameObject;
+                return buffer;
             }
-        }
 
-        public static IEnumerable<GameObject> IterateOverChildGameObjectsRecursively(
-            this GameObject gameObject
-        )
-        {
-            for (int i = 0; i < gameObject.transform.childCount; i++)
+            List<T> internalBuffer = Buffers<T>.List;
+            if (includeSelf)
             {
-                GameObject child = gameObject.transform.GetChild(i).gameObject;
-                yield return child;
-                foreach (GameObject go in child.IterateOverChildGameObjectsRecursively())
+                component.GetComponents(internalBuffer);
+                foreach (T c in internalBuffer)
                 {
-                    yield return go;
+                    buffer.Add(c);
                 }
             }
+
+            Transform parent = component.transform.parent;
+            while (parent != null)
+            {
+                parent.GetComponents(internalBuffer);
+                foreach (T c in internalBuffer)
+                {
+                    buffer.Add(c);
+                }
+                parent = parent.parent;
+            }
+
+            return buffer;
         }
 
-        public static IEnumerable<GameObject> IterateOverChildGameObjectsRecursivelyIncludingSelf(
-            this GameObject gameObject
+        public static IEnumerable<T> IterateOverAllParentComponentsRecursively<T>(
+            this Component component,
+            bool includeSelf = false
         )
         {
-            yield return gameObject;
-
-            for (int i = 0; i < gameObject.transform.childCount; ++i)
+            if (component == null)
             {
-                GameObject child = gameObject.transform.GetChild(i).gameObject;
-                foreach (
-                    GameObject c in child.IterateOverChildGameObjectsRecursivelyIncludingSelf()
-                )
+                yield break;
+            }
+
+            List<T> buffer = new();
+            foreach (Transform parent in IterateOverAllParents(component, includeSelf))
+            {
+                parent.GetComponents(buffer);
+                foreach (T c in buffer)
                 {
                     yield return c;
                 }
             }
         }
 
-        public static IEnumerable<GameObject> IterateOverParentGameObjects(
-            this GameObject gameObject
+        public static List<T> IterateOverAllChildComponentsRecursively<T>(
+            this Component component,
+            List<T> buffer,
+            bool includeSelf = false
         )
         {
-            Transform currentTransform = gameObject.transform.parent;
-            while (currentTransform != null)
+            buffer.Clear();
+            if (component == null)
             {
-                yield return currentTransform.gameObject;
-                currentTransform = currentTransform.parent;
+                return buffer;
             }
-        }
 
-        public static IEnumerable<GameObject> IterateOverParentGameObjectsRecursivelyIncludingSelf(
-            this GameObject gameObject
-        )
-        {
-            yield return gameObject;
-
-            foreach (GameObject parent in IterateOverParentGameObjects(gameObject))
+            List<T> internalBuffer = Buffers<T>.List;
+            if (includeSelf)
             {
-                yield return parent;
+                component.GetComponents(internalBuffer);
+                foreach (T c in internalBuffer)
+                {
+                    buffer.Add(c);
+                }
             }
+
+            Transform transform = component.transform;
+            for (int i = 0; i < transform.childCount; ++i)
+            {
+                Transform child = transform.GetChild(i);
+                child.GetComponentsInChildren(true, internalBuffer);
+                foreach (T c in internalBuffer)
+                {
+                    buffer.Add(c);
+                }
+            }
+
+            return buffer;
         }
 
         public static IEnumerable<T> IterateOverAllChildComponentsRecursively<T>(
-            this Component component
+            this Component component,
+            bool includeSelf = false
         )
         {
             if (component == null)
@@ -81,52 +109,31 @@
                 yield break;
             }
 
-            foreach (T c in component.gameObject.GetComponents<T>())
+            List<T> buffer = new();
+            if (includeSelf)
             {
-                yield return c;
+                component.GetComponents(buffer);
+                foreach (T c in buffer)
+                {
+                    yield return c;
+                }
             }
 
-            for (int i = 0; i < component.transform.childCount; ++i)
+            Transform transform = component.transform;
+            for (int i = 0; i < transform.childCount; ++i)
             {
-                Transform child = component.transform.GetChild(i);
-
-                foreach (T c in child.IterateOverAllChildComponentsRecursively<T>())
+                Transform child = transform.GetChild(i);
+                child.GetComponentsInChildren(true, buffer);
+                foreach (T c in buffer)
                 {
                     yield return c;
                 }
             }
         }
 
-        public static IEnumerable<Transform> IterateOverAllChildren(this Component component)
-        {
-            if (component == null)
-            {
-                yield break;
-            }
-
-            for (int i = 0; i < component.transform.childCount; ++i)
-            {
-                yield return component.transform.GetChild(i);
-            }
-        }
-
-        public static IEnumerable<Transform> IterateOverAllParents(this Component component)
-        {
-            if (component == null)
-            {
-                yield break;
-            }
-
-            Transform transform = component.transform;
-            while (transform.parent != null)
-            {
-                yield return transform.parent;
-                transform = transform.parent;
-            }
-        }
-
-        public static IEnumerable<Transform> IterateOverAllParentsIncludingSelf(
-            this Component component
+        public static IEnumerable<Transform> IterateOverAllChildren(
+            this Component component,
+            bool includeSelf = false
         )
         {
             if (component == null)
@@ -135,15 +142,98 @@
             }
 
             Transform transform = component.transform;
-            while (transform != null)
+            if (includeSelf)
             {
                 yield return transform;
-                transform = transform.parent;
             }
+
+            for (int i = 0; i < transform.childCount; ++i)
+            {
+                yield return transform.GetChild(i);
+            }
+        }
+
+        public static List<Transform> IterateOverAllChildren(
+            this Component component,
+            List<Transform> buffer,
+            bool includeSelf = false
+        )
+        {
+            buffer.Clear();
+            if (component == null)
+            {
+                return buffer;
+            }
+
+            Transform transform = component.transform;
+            if (includeSelf)
+            {
+                buffer.Add(transform);
+            }
+
+            for (int i = 0; i < transform.childCount; ++i)
+            {
+                buffer.Add(transform.GetChild(i));
+            }
+
+            return buffer;
+        }
+
+        public static IEnumerable<Transform> IterateOverAllParents(
+            this Component component,
+            bool includeSelf = false
+        )
+        {
+            if (component == null)
+            {
+                yield break;
+            }
+
+            Transform transform = component.transform;
+            if (includeSelf)
+            {
+                yield return transform;
+            }
+
+            Transform parent = transform.parent;
+            while (parent != null)
+            {
+                yield return parent;
+                parent = parent.parent;
+            }
+        }
+
+        public static List<Transform> IterateOverAllParents(
+            this Component component,
+            List<Transform> buffer,
+            bool includeSelf = false
+        )
+        {
+            buffer.Clear();
+            if (component == null)
+            {
+                return buffer;
+            }
+
+            Transform transform = component.transform;
+            if (includeSelf)
+            {
+                buffer.Add(transform);
+            }
+
+            Transform parent = transform.parent;
+            while (parent != null)
+            {
+                buffer.Add(parent);
+                parent = parent.parent;
+            }
+
+            return buffer;
         }
 
         public static IEnumerable<Transform> IterateOverAllChildrenRecursively(
-            this Component component
+            this Component component,
+            bool includeSelf = false
         )
         {
             if (component == null)
@@ -151,21 +241,65 @@
                 yield break;
             }
 
-            for (int i = 0; i < component.transform.childCount; ++i)
+            Transform transform = component.transform;
+            if (includeSelf)
             {
-                Transform childTransform = component.transform.GetChild(i);
-                yield return childTransform;
+                yield return transform;
+            }
+
+            for (int i = 0; i < transform.childCount; ++i)
+            {
                 foreach (
-                    Transform childChildTransform in childTransform.IterateOverAllChildrenRecursively()
+                    Transform child in IterateOverAllChildrenRecursively(
+                        transform.GetChild(i),
+                        includeSelf: true
+                    )
                 )
                 {
-                    yield return childChildTransform;
+                    yield return child;
                 }
             }
         }
 
+        public static List<Transform> IterateOverAllChildrenRecursively(
+            this Component component,
+            List<Transform> buffer,
+            bool includeSelf = false
+        )
+        {
+            buffer.Clear();
+            if (component == null)
+            {
+                return buffer;
+            }
+
+            Transform transform = component.transform;
+            if (includeSelf)
+            {
+                buffer.Add(transform);
+            }
+
+            return InternalIterateOverAllChildrenRecursively(transform, buffer);
+        }
+
+        private static List<Transform> InternalIterateOverAllChildrenRecursively(
+            this Transform transform,
+            List<Transform> buffer
+        )
+        {
+            for (int i = 0; i < transform.childCount; ++i)
+            {
+                Transform child = transform.GetChild(i);
+                buffer.Add(child);
+                InternalIterateOverAllChildrenRecursively(child, buffer);
+            }
+
+            return buffer;
+        }
+
         public static IEnumerable<Transform> IterateOverAllChildrenRecursivelyBreadthFirst(
-            this Component component
+            this Component component,
+            bool includeSelf = false
         )
         {
             if (component == null)
@@ -173,8 +307,14 @@
                 yield break;
             }
 
+            Transform transform = component.transform;
+            if (includeSelf)
+            {
+                yield return transform;
+            }
+
             Queue<Transform> iteration = new();
-            iteration.Enqueue(component.transform);
+            iteration.Enqueue(transform);
             while (iteration.TryDequeue(out Transform current))
             {
                 for (int i = 0; i < current.childCount; ++i)
@@ -184,6 +324,39 @@
                     yield return childTransform;
                 }
             }
+        }
+
+        public static List<Transform> IterateOverAllChildrenRecursivelyBreadthFirst(
+            this Component component,
+            List<Transform> buffer,
+            bool includeSelf = false
+        )
+        {
+            buffer.Clear();
+            if (component == null)
+            {
+                return buffer;
+            }
+
+            Transform transform = component.transform;
+            if (includeSelf)
+            {
+                buffer.Add(transform);
+            }
+
+            Queue<Transform> iteration = Buffers<Transform>.Queue;
+            iteration.Clear();
+            iteration.Enqueue(transform);
+            while (iteration.TryDequeue(out Transform current))
+            {
+                for (int i = 0; i < current.childCount; ++i)
+                {
+                    Transform childTransform = current.GetChild(i);
+                    iteration.Enqueue(childTransform);
+                    buffer.Add(childTransform);
+                }
+            }
+            return buffer;
         }
     }
 }

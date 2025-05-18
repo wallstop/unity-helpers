@@ -5,14 +5,23 @@
     using Core.Extension;
     using Core.Helper;
     using UnityEngine;
+#if ODIN_INSPECTOR
+    using Sirenix.OdinInspector;
+#endif
 
     [DisallowMultipleComponent]
-    public abstract class RuntimeSingleton<T> : MonoBehaviour
+    public abstract class RuntimeSingleton<T> :
+#if ODIN_INSPECTOR
+        SerializedMonoBehaviour
+#else
+        MonoBehaviour
+#endif
         where T : RuntimeSingleton<T>
     {
         public static bool HasInstance => _instance != null;
 
         protected static T _instance;
+        protected static bool _isQuitting;
 
         protected virtual bool Preserve => true;
 
@@ -23,6 +32,11 @@
                 if (_instance != null)
                 {
                     return _instance;
+                }
+
+                if (_isQuitting)
+                {
+                    return null;
                 }
 
                 Type type = typeof(T);
@@ -66,6 +80,11 @@
             {
                 _instance = null;
             }
+        }
+
+        protected virtual void OnApplicationQuit()
+        {
+            _isQuitting = true;
         }
     }
 }

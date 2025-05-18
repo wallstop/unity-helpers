@@ -2,7 +2,6 @@
 {
     using System.Collections;
     using Core.Helper;
-    using Core.Helper.Partials;
     using JetBrains.Annotations;
     using NUnit.Framework;
     using UnityEngine;

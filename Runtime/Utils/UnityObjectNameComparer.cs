@@ -2,6 +2,9 @@
 {
     using System;
     using System.Collections.Generic;
+#if UNITY_EDITOR
+    using UnityEditor;
+#endif
 
     public sealed class UnityObjectNameComparer<T> : IComparer<T>
         where T : UnityEngine.Object
@@ -27,7 +30,25 @@
                 return -1;
             }
 
-            return string.Compare(x.name, y.name, StringComparison.OrdinalIgnoreCase);
+            int comparison = string.Compare(x.name, y.name, StringComparison.OrdinalIgnoreCase);
+            if (comparison != 0)
+            {
+                return comparison;
+            }
+
+#if UNITY_EDITOR
+            comparison = string.Compare(
+                AssetDatabase.GetAssetOrScenePath(x),
+                AssetDatabase.GetAssetOrScenePath(y),
+                StringComparison.OrdinalIgnoreCase
+            );
+#endif
+            if (comparison == 0)
+            {
+                return x.GetInstanceID().CompareTo(y.GetInstanceID());
+            }
+
+            return comparison;
         }
     }
 }

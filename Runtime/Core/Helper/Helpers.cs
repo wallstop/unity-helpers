@@ -7,7 +7,6 @@
     using System.Reflection;
     using DataStructure.Adapters;
     using Extension;
-    using Partials;
     using Random;
     using UnityEngine;
     using Utils;
@@ -132,7 +131,8 @@
         public static GameObject FindChildGameObjectWithTag(this GameObject gameObject, string tag)
         {
             return gameObject
-                .IterateOverChildGameObjectsRecursivelyIncludingSelf()
+                .transform.IterateOverAllChildrenRecursively(includeSelf: true)
+                .Select(t => t.gameObject)
                 .FirstOrDefault(child => child.CompareTag(tag));
         }
 
@@ -485,7 +485,8 @@
         )
         {
             return gameObject
-                .IterateOverChildGameObjectsRecursivelyIncludingSelf()
+                .transform.IterateOverAllChildrenRecursively(includeSelf: true)
+                .Select(t => t.gameObject)
                 .FirstOrDefault(go => go.CompareTag(tag));
         }
 
