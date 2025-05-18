@@ -7,14 +7,14 @@
     using Object = UnityEngine.Object;
 
     [InitializeOnLoad]
-    public static class ScriptableSingletonCreator
+    public static class ScriptableObjectSingletonCreator
     {
-        static ScriptableSingletonCreator()
+        static ScriptableObjectSingletonCreator()
         {
             bool anyCreated = false;
             foreach (
                 Type derivedType in TypeCache.GetTypesDerivedFrom(
-                    typeof(UnityHelpers.Utils.ScriptableSingleton<>)
+                    typeof(UnityHelpers.Utils.ScriptableObjectSingleton<>)
                 )
             )
             {

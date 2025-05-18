@@ -6,13 +6,13 @@
     using Sirenix.OdinInspector;
 #endif
 
-    public abstract class ScriptableSingleton<T> :
+    public abstract class ScriptableObjectSingleton<T> :
 #if ODIN_INSPECTOR
         SerializedScriptableObject
 #else
         ScriptableObject
 #endif
-        where T : ScriptableSingleton<T>
+        where T : ScriptableObjectSingleton<T>
     {
         protected static readonly Lazy<T> LazyInstance = new(() =>
         {
