@@ -5,11 +5,13 @@
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;
+    using System.Text.RegularExpressions;
     using System.Threading.Tasks;
     using UnityEditor;
     using UnityEngine;
     using Core.Extension;
     using CustomEditors;
+    using Microsoft.CodeAnalysis.CSharp.Syntax;
     using Object = UnityEngine.Object;
 
     public sealed class SpriteCropper : EditorWindow
@@ -34,6 +36,9 @@
         private List<Object> _inputDirectories = new();
 
         [SerializeField]
+        private string _spriteNameRegex = ".*";
+
+        [SerializeField]
         private bool _onlyNecessary;
 
         [SerializeField]
@@ -56,6 +61,9 @@
         private SerializedProperty _rightPaddingProperty;
         private SerializedProperty _topPaddingProperty;
         private SerializedProperty _bottomPaddingProperty;
+        private SerializedProperty _spriteNameRegexProperty;
+
+        private Regex _regex;
 
         [MenuItem("Tools/Wallstop Studios/Unity Helpers/" + Name)]
         private static void ShowWindow() => GetWindow<SpriteCropper>(Name);
@@ -69,6 +77,7 @@
             _rightPaddingProperty = _serializedObject.FindProperty(nameof(_rightPadding));
             _topPaddingProperty = _serializedObject.FindProperty(nameof(_topPadding));
             _bottomPaddingProperty = _serializedObject.FindProperty(nameof(_bottomPadding));
+            _spriteNameRegexProperty = _serializedObject.FindProperty(nameof(_spriteNameRegex));
         }
 
         private void OnGUI()
@@ -79,6 +88,7 @@
                 _inputDirectoriesProperty,
                 nameof(SpriteCropper)
             );
+            EditorGUILayout.PropertyField(_spriteNameRegexProperty, true);
             EditorGUILayout.PropertyField(_onlyNecessaryProperty, true);
             EditorGUILayout.PropertyField(_leftPaddingProperty, true);
             EditorGUILayout.PropertyField(_rightPaddingProperty, true);
@@ -88,6 +98,9 @@
 
             if (GUILayout.Button("Find Sprites To Process"))
             {
+                _regex = !string.IsNullOrWhiteSpace(_spriteNameRegex)
+                    ? new Regex(_spriteNameRegex)
+                    : null;
                 FindFilesToProcess();
             }
 
@@ -146,6 +159,13 @@
                     {
                         continue;
                     }
+
+                    string fileName = Path.GetFileNameWithoutExtension(file);
+                    if (_regex != null && !_regex.IsMatch(fileName))
+                    {
+                        continue;
+                    }
+
                     _filesToProcess.Add(file);
                 }
             }
