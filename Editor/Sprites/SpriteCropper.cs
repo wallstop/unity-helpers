@@ -363,10 +363,10 @@
             }
             else
             {
-                minX = Mathf.Max(0, minX - _leftPadding);
-                minY = Mathf.Max(0, minY - _bottomPadding);
-                maxX = Mathf.Min(width, maxX + _rightPadding);
-                maxY = Mathf.Min(height, maxY + _topPadding);
+                minX -= _leftPadding;
+                minY -= _bottomPadding;
+                maxX += _rightPadding;
+                maxY += _topPadding;
                 cropWidth = maxX - minX + 1;
                 cropHeight = maxY - minY + 1;
             }
@@ -388,7 +388,17 @@
                     int destYOffset = y * cropWidth;
                     for (int x = 0; x < cropWidth; ++x)
                     {
-                        croppedPixels[destYOffset + x] = pixels[sourceYOffset + x + minX];
+                        int sourceIndex = sourceYOffset + x + minX;
+                        Color32 sourcePixel;
+                        if (sourceIndex < 0 || pixels.Length <= sourceIndex)
+                        {
+                            sourcePixel = Color.clear;
+                        }
+                        else
+                        {
+                            sourcePixel = pixels[sourceIndex];
+                        }
+                        croppedPixels[destYOffset + x] = sourcePixel;
                     }
                 }
             );
