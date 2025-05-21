@@ -816,6 +816,7 @@
             int errorCount = 0;
             HashSet<string> processedAssetPaths = new();
 
+            List<TextureImporter> importers = new();
             AssetDatabase.StartAssetEditing();
             try
             {
@@ -901,6 +902,7 @@
                     if (settingsActuallyModified)
                     {
                         importer.SaveAndReimport();
+                        importers.Add(importer);
                         modifiedCount++;
                         this.Log(
                             $"Set import settings for texture: {assetPath} (from sprite: {sprite.name}) to uncompressed ({targetFormat})."
@@ -914,8 +916,14 @@
                 EditorUtility.ClearProgressBar();
             }
 
+            foreach (TextureImporter importer in importers)
+            {
+                importer.SaveAndReimport();
+            }
+
             if (modifiedCount > 0 || errorCount > 0)
             {
+                AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
             }
 

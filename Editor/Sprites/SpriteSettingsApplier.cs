@@ -559,6 +559,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 return;
             }
 
+            List<TextureImporter> importers = new();
             AssetDatabase.StartAssetEditing();
             try
             {
@@ -591,6 +592,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     try
                     {
                         importer.SaveAndReimport();
+                        importers.Add(importer);
                     }
                     catch (Exception ex)
                     {
@@ -604,6 +606,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 AssetDatabase.StopAssetEditing();
                 EditorUtility.ClearProgressBar();
+                foreach (TextureImporter importer in importers)
+                {
+                    importer.SaveAndReimport();
+                }
+
                 this.Log($"Processed {spriteCount} sprites.");
                 if (0 < spriteCount)
                 {
