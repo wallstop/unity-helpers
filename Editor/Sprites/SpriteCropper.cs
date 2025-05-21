@@ -352,24 +352,31 @@
                 }
             );
 
-            int cropWidth;
-            int cropHeight;
-            if (!hasVisible)
+            int origMinX = minX;
+            int origMinY = minY;
+            int origMaxX = maxX;
+            int origMaxY = maxY;
+
+            int visibleMinX = minX;
+            int visibleMinY = minY;
+            int visibleMaxX = maxX;
+            int visibleMaxY = maxY;
+
+            if (hasVisible)
             {
-                cropWidth = 1;
-                cropHeight = 1;
-                minX = 0;
-                minY = 0;
+                visibleMinX -= _leftPadding;
+                visibleMinY -= _bottomPadding;
+                visibleMaxX += _rightPadding;
+                visibleMaxY += _topPadding;
             }
             else
             {
-                minX -= _leftPadding;
-                minY -= _bottomPadding;
-                maxX += _rightPadding;
-                maxY += _topPadding;
-                cropWidth = maxX - minX + 1;
-                cropHeight = maxY - minY + 1;
+                visibleMinX = visibleMinY = 0;
+                visibleMaxX = visibleMaxY = 0;
             }
+
+            int cropWidth = visibleMaxX - visibleMinX + 1;
+            int cropHeight = visibleMaxY - visibleMinY + 1;
 
             if (_onlyNecessary && (!hasVisible || (cropWidth == width && cropHeight == height)))
             {
@@ -384,21 +391,33 @@
                 cropHeight,
                 y =>
                 {
-                    int sourceYOffset = (y + minY) * width;
-                    int destYOffset = y * cropWidth;
+                    int destRow = y * cropWidth;
                     for (int x = 0; x < cropWidth; ++x)
                     {
-                        int sourceIndex = sourceYOffset + x + minX;
-                        Color32 sourcePixel;
-                        if (sourceIndex < 0 || pixels.Length <= sourceIndex)
+                        int srcX = visibleMinX + x;
+                        int srcY = visibleMinY + y;
+
+                        bool insideOriginal =
+                            srcX >= origMinX
+                            && srcX <= origMaxX
+                            && srcY >= origMinY
+                            && srcY <= origMaxY;
+
+                        if (insideOriginal)
                         {
-                            sourcePixel = Color.clear;
+                            if (0 <= srcX && srcX < width && 0 <= srcY && srcY < height)
+                            {
+                                croppedPixels[destRow + x] = pixels[srcY * width + srcX];
+                            }
+                            else
+                            {
+                                croppedPixels[destRow + x] = Color.clear;
+                            }
                         }
                         else
                         {
-                            sourcePixel = pixels[sourceIndex];
+                            croppedPixels[destRow + x] = Color.clear;
                         }
-                        croppedPixels[destYOffset + x] = sourcePixel;
                     }
                 }
             );
