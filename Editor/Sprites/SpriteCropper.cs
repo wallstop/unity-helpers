@@ -403,16 +403,15 @@
                             && srcY >= origMinY
                             && srcY <= origMaxY;
 
-                        if (insideOriginal)
+                        if (
+                            insideOriginal
+                            && 0 <= srcX
+                            && srcX < width
+                            && 0 <= srcY
+                            && srcY < height
+                        )
                         {
-                            if (0 <= srcX && srcX < width && 0 <= srcY && srcY < height)
-                            {
-                                croppedPixels[destRow + x] = pixels[srcY * width + srcX];
-                            }
-                            else
-                            {
-                                croppedPixels[destRow + x] = Color.clear;
-                            }
+                            croppedPixels[destRow + x] = pixels[srcY * width + srcX];
                         }
                         else
                         {

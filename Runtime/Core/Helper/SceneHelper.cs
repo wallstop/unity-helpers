@@ -16,6 +16,22 @@
 
     public static class SceneHelper
     {
+        public static bool IsSceneLoaded(string sceneNameOrPath)
+        {
+            for (int i = 0; i < SceneManager.sceneCount; ++i)
+            {
+                Scene scene = SceneManager.GetSceneAt(i);
+                if (
+                    string.Equals(scene.name, sceneNameOrPath, StringComparison.Ordinal)
+                    || string.Equals(scene.path, sceneNameOrPath, StringComparison.Ordinal)
+                )
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         public static string[] GetAllScenePaths(string[] searchFolders = null)
         {
 #if UNITY_EDITOR
@@ -68,11 +84,10 @@
                 async () =>
                 {
                     TaskCompletionSource<bool> disposalComplete = new();
-                    UnityMainThreadDispatcher.Instance.RunOnMainThread(
-                        () =>
-                            _ = sceneScope
-                                .DisposeAsync()
-                                .WithContinuation(() => disposalComplete.SetResult(true))
+                    UnityMainThreadDispatcher.Instance.RunOnMainThread(() =>
+                        _ = sceneScope
+                            .DisposeAsync()
+                            .WithContinuation(() => disposalComplete.SetResult(true))
                     );
 
                     await disposalComplete.Task;
