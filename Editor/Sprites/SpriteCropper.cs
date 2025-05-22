@@ -441,7 +441,7 @@
             importer.ReadTextureSettings(newSettings);
             Vector2 origPivot = GetSpritePivot(importer);
             Vector2 origCenter = new(width * origPivot.x, height * origPivot.y);
-            Vector2 newPivotPixels = origCenter - new Vector2(minX, minY);
+            Vector2 newPivotPixels = origCenter - new Vector2(visibleMinX, visibleMinY);
             Vector2 newPivotNorm = new(
                 cropWidth > 0 ? newPivotPixels.x / cropWidth : 0.5f,
                 cropHeight > 0 ? newPivotPixels.y / cropHeight : 0.5f
