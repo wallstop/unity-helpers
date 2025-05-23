@@ -9,6 +9,8 @@
     [DisallowMultipleComponent]
     public sealed class MatchColliderToSprite : MonoBehaviour
     {
+        public event Action colliderUpdated;
+
         public Func<Sprite> spriteOverrideProducer;
 
         [FormerlySerializedAs("_spriteRenderer")]
@@ -54,40 +56,47 @@
                 return;
             }
 
-            Sprite sprite;
-            if (spriteOverrideProducer != null)
+            try
             {
-                sprite = spriteOverrideProducer();
-            }
-            else if (spriteRenderer != null || TryGetComponent(out spriteRenderer))
-            {
-                sprite = spriteRenderer.sprite;
-            }
-            else if (image != null || TryGetComponent(out image))
-            {
-                sprite = image.sprite;
-            }
-            else
-            {
-                sprite = null;
-            }
+                Sprite sprite;
+                if (spriteOverrideProducer != null)
+                {
+                    sprite = spriteOverrideProducer();
+                }
+                else if (spriteRenderer != null || TryGetComponent(out spriteRenderer))
+                {
+                    sprite = spriteRenderer.sprite;
+                }
+                else if (image != null || TryGetComponent(out image))
+                {
+                    sprite = image.sprite;
+                }
+                else
+                {
+                    sprite = null;
+                }
 
-            _lastHandled = sprite;
-            polygonCollider.points = Array.Empty<Vector2>();
-            if (_lastHandled == null)
-            {
-                polygonCollider.pathCount = 0;
-                return;
-            }
+                _lastHandled = sprite;
+                polygonCollider.points = Array.Empty<Vector2>();
+                if (_lastHandled == null)
+                {
+                    polygonCollider.pathCount = 0;
+                    return;
+                }
 
-            int physicsShapes = _lastHandled.GetPhysicsShapeCount();
-            polygonCollider.pathCount = physicsShapes;
-            List<Vector2> buffer = Buffers<Vector2>.List;
-            for (int i = 0; i < physicsShapes; ++i)
+                int physicsShapes = _lastHandled.GetPhysicsShapeCount();
+                polygonCollider.pathCount = physicsShapes;
+                List<Vector2> buffer = Buffers<Vector2>.List;
+                for (int i = 0; i < physicsShapes; ++i)
+                {
+                    buffer.Clear();
+                    _ = _lastHandled.GetPhysicsShape(i, buffer);
+                    polygonCollider.SetPath(i, buffer);
+                }
+            }
+            finally
             {
-                buffer.Clear();
-                _ = _lastHandled.GetPhysicsShape(i, buffer);
-                polygonCollider.SetPath(i, buffer);
+                colliderUpdated?.Invoke();
             }
         }
     }
