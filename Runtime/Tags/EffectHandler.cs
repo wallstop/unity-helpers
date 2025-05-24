@@ -1,9 +1,9 @@
 ﻿namespace WallstopStudios.UnityHelpers.Tags
 {
+    using System;
     using System.Collections.Generic;
     using System.Linq;
     using Core.Attributes;
-    using Core.DataStructure.Adapters;
     using Core.Extension;
     using Core.Helper;
     using UnityEngine;
@@ -13,7 +13,10 @@
     [RequireComponent(typeof(TagHandler))]
     public sealed class EffectHandler : MonoBehaviour
     {
-        [SiblingComponent()]
+        public event Action<EffectHandle> OnEffectApplied;
+        public event Action<EffectHandle> OnEffectRemoved;
+
+        [SiblingComponent]
         private TagHandler _tagHandler;
 
         [SiblingComponent(optional = true)]
@@ -26,11 +29,11 @@
         > _instancedCosmeticEffects = new();
 
         // Stores expiration time of duration effects (We store by Id because it's much cheaper to iterate Guids than it is EffectHandles
-        private readonly Dictionary<KGuid, float> _effectExpirations = new();
-        private readonly Dictionary<KGuid, EffectHandle> _effectHandlesById = new();
+        private readonly Dictionary<long, float> _effectExpirations = new();
+        private readonly Dictionary<long, EffectHandle> _effectHandlesById = new();
 
         // Used only to save allocations in Update()
-        private readonly List<KGuid> _expiredEffectIds = new();
+        private readonly List<long> _expiredEffectIds = new();
         private readonly List<EffectHandle> _appliedEffects = new();
 
         private bool _initialized;
@@ -77,7 +80,7 @@
                     && (effect.resetDurationOnReapplication || !_appliedEffects.Contains(handle))
                 )
                 {
-                    KGuid handleId = handle.id;
+                    long handleId = handle.id;
                     _effectExpirations[handleId] = Time.time + effect.duration;
                     _effectHandlesById[handleId] = handle;
                 }
@@ -123,10 +126,11 @@
                 _ = _tagHandler.ForceRemoveTags(handle);
             }
 
-            KGuid handleId = handle.id;
+            long handleId = handle.id;
             _ = _effectExpirations.Remove(handleId);
             _ = _effectHandlesById.Remove(handleId);
             InternalRemoveCosmeticEffects(handle);
+            OnEffectRemoved?.Invoke(handle);
         }
 
         private void InternalApplyEffect(EffectHandle handle)
@@ -142,7 +146,7 @@
             {
                 if (effect.resetDurationOnReapplication || !exists)
                 {
-                    KGuid handleId = handle.id;
+                    long handleId = handle.id;
                     _effectExpirations[handleId] = Time.time + effect.duration;
                     _effectHandlesById[handleId] = handle;
                 }
@@ -170,6 +174,8 @@
                     attributesComponent.ForceApplyAttributeModifications(handle);
                 }
             }
+
+            OnEffectApplied?.Invoke(handle);
         }
 
         private void InternalApplyEffect(AttributeEffect effect)
@@ -360,7 +366,7 @@
 
             _expiredEffectIds.Clear();
             float currentTime = Time.time;
-            foreach (KeyValuePair<KGuid, float> entry in _effectExpirations)
+            foreach (KeyValuePair<long, float> entry in _effectExpirations)
             {
                 if (entry.Value < currentTime)
                 {
@@ -368,7 +374,7 @@
                 }
             }
 
-            foreach (KGuid expiredHandleId in _expiredEffectIds)
+            foreach (long expiredHandleId in _expiredEffectIds)
             {
                 if (_effectHandlesById.TryGetValue(expiredHandleId, out EffectHandle expiredHandle))
                 {

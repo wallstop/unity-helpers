@@ -2,20 +2,23 @@
 {
     using System;
     using System.Collections.Generic;
-    using Core.DataStructure.Adapters;
     using Core.Extension;
     using UnityEngine;
 
     [DisallowMultipleComponent]
     public sealed class TagHandler : MonoBehaviour
     {
+        public event Action<string> OnTagAdded;
+        public event Action<string> OnTagRemoved;
+        public event Action<string, uint> OnTagCountChanged;
+
         public IReadOnlyCollection<string> Tags => _tagCount.Keys;
 
         [SerializeField]
         private List<string> _initialEffectTags = new();
 
         private readonly Dictionary<string, uint> _tagCount = new(StringComparer.Ordinal);
-        private readonly Dictionary<KGuid, EffectHandle> _effectHandles = new();
+        private readonly Dictionary<long, EffectHandle> _effectHandles = new();
 
         private void Awake()
         {
@@ -78,7 +81,7 @@
 
         public void ForceApplyTags(EffectHandle handle)
         {
-            KGuid id = handle.id;
+            long id = handle.id;
             if (!_effectHandles.TryAdd(id, handle))
             {
                 return;
@@ -97,7 +100,7 @@
 
         public bool ForceRemoveTags(EffectHandle handle)
         {
-            KGuid id = handle.id;
+            long id = handle.id;
             if (!_effectHandles.Remove(id, out EffectHandle appliedHandle))
             {
                 return false;
@@ -113,7 +116,19 @@
 
         private void InternalApplyTag(string effectTag)
         {
-            _ = _tagCount.AddOrUpdate(effectTag, _ => 1U, (_, existing) => existing + 1);
+            uint currentCount = _tagCount.AddOrUpdate(
+                effectTag,
+                _ => 1U,
+                (_, existing) => existing + 1
+            );
+            if (currentCount == 1)
+            {
+                OnTagAdded?.Invoke(effectTag);
+            }
+            else
+            {
+                OnTagCountChanged?.Invoke(effectTag, currentCount);
+            }
         }
 
         private void InternalRemoveTag(string effectTag)
@@ -131,10 +146,12 @@
             if (count == 0)
             {
                 _ = _tagCount.Remove(effectTag);
+                OnTagRemoved?.Invoke(effectTag);
             }
             else
             {
                 _tagCount[effectTag] = count;
+                OnTagCountChanged?.Invoke(effectTag, count);
             }
         }
     }

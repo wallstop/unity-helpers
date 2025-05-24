@@ -1,7 +1,7 @@
 ﻿namespace WallstopStudios.UnityHelpers.Tags
 {
     using System;
-    using Core.DataStructure.Adapters;
+    using System.Threading;
     using Core.Extension;
 
     [Serializable]
@@ -10,16 +10,18 @@
             IComparable<EffectHandle>,
             IComparable
     {
+        private static long Id;
+
         public readonly AttributeEffect effect;
 
-        public readonly KGuid id;
+        public readonly long id;
 
         public static EffectHandle CreateInstance(AttributeEffect effect)
         {
-            return new EffectHandle(Guid.NewGuid(), effect);
+            return new EffectHandle(Interlocked.Increment(ref Id), effect);
         }
 
-        private EffectHandle(KGuid id, AttributeEffect effect)
+        private EffectHandle(long id, AttributeEffect effect)
         {
             this.id = id;
             this.effect = effect;
