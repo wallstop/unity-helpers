@@ -711,48 +711,6 @@
             Repaint();
         }
 
-        private static string GetRelativeAssetPath(string fullPath)
-        {
-            if (string.IsNullOrWhiteSpace(fullPath))
-            {
-                return null;
-            }
-
-            fullPath = fullPath.SanitizePath();
-            if (
-                fullPath.EndsWith("/Assets", StringComparison.OrdinalIgnoreCase)
-                && Path.GetFileName(fullPath).Equals("Assets", StringComparison.OrdinalIgnoreCase)
-            )
-            {
-                return "Assets";
-            }
-
-            string assetsPath = Application.dataPath.SanitizePath();
-            if (fullPath.StartsWith(assetsPath, StringComparison.OrdinalIgnoreCase))
-            {
-                if (fullPath.Length == assetsPath.Length)
-                {
-                    return "Assets";
-                }
-
-                int startIndex = assetsPath.Length;
-                if (fullPath.Length > startIndex && fullPath[startIndex] == '/')
-                {
-                    startIndex++;
-                }
-
-                return "Assets/" + fullPath.Substring(startIndex);
-            }
-
-            int assetIndex = fullPath.IndexOf("/Assets/", StringComparison.OrdinalIgnoreCase);
-            if (assetIndex >= 0)
-            {
-                return fullPath.Substring(assetIndex + 1);
-            }
-
-            return null;
-        }
-
         private static string GetFullPathFromRelative(string relativePath)
         {
             if (string.IsNullOrWhiteSpace(relativePath))
@@ -804,10 +762,10 @@
         {
             try
             {
-                using MD5 md5 = MD5.Create();
+                using SHA256 hashProvider = SHA256.Create();
                 using FileStream stream = File.OpenRead(filePath);
-                byte[] hashBytes = md5.ComputeHash(stream);
-                return BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+                byte[] hash = hashProvider.ComputeHash(stream);
+                return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
             }
             catch (IOException ioEx)
             {

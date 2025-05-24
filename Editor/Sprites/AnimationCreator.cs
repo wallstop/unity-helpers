@@ -16,10 +16,10 @@
     [Serializable]
     public sealed class AnimationData
     {
-        public const int DefaultFramesPerSecond = 12;
+        public const float DefaultFramesPerSecond = 12;
 
         public List<Sprite> frames = new();
-        public int framesPerSecond = DefaultFramesPerSecond;
+        public float framesPerSecond = DefaultFramesPerSecond;
         public string animationName = string.Empty;
         public bool isCreatedFromAutoParse;
         public bool loop;
@@ -457,7 +457,7 @@
                         (float)currentAnimationIndex / totalAnimations
                     );
 
-                    int framesPerSecond = data.framesPerSecond;
+                    float framesPerSecond = data.framesPerSecond;
                     if (framesPerSecond <= 0)
                     {
                         this.LogWarn(
