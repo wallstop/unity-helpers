@@ -39,6 +39,12 @@
                     return null;
                 }
 
+                _instance = FindAnyObjectByType<T>(FindObjectsInactive.Exclude);
+                if (_instance != null)
+                {
+                    return _instance;
+                }
+
                 Type type = typeof(T);
                 GameObject instance = new($"{type.Name}-Singleton", type);
                 if (
