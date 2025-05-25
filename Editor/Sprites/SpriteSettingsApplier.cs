@@ -799,6 +799,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     settings.spriteAlignment = (int)SpriteAlignment.Custom;
                     settingsChanged = true;
                 }
+
+                if (settings.spritePivot != spriteData.pivot)
+                {
+                    settings.spritePivot = spriteData.pivot;
+                    settingsChanged = true;
+                }
             }
 
             if (spriteData.applyGenerateMipMaps)
