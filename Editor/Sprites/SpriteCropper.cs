@@ -180,6 +180,7 @@
                 return;
             }
 
+            List<string> needReprocessing = new();
             string lastProcessed = null;
             try
             {
@@ -224,6 +225,10 @@
                         {
                             newImporters.Add(newImporter);
                         }
+                        else
+                        {
+                            needReprocessing.Add(file);
+                        }
                     }
                 }
                 finally
@@ -235,6 +240,33 @@
                     }
                     AssetDatabase.SaveAssets();
                     AssetDatabase.Refresh();
+                }
+
+                if (needReprocessing.Any())
+                {
+                    newImporters.Clear();
+                    AssetDatabase.StartAssetEditing();
+                    try
+                    {
+                        foreach (string file in needReprocessing)
+                        {
+                            TextureImporter newImporter = ProcessSprite(file);
+                            if (newImporter != null)
+                            {
+                                newImporters.Add(newImporter);
+                            }
+                        }
+                    }
+                    finally
+                    {
+                        AssetDatabase.StopAssetEditing();
+                        foreach (TextureImporter newImporter in newImporters)
+                        {
+                            newImporter.SaveAndReimport();
+                        }
+                        AssetDatabase.SaveAssets();
+                        AssetDatabase.Refresh();
+                    }
                 }
 
                 this.Log($"{newImporters.Count} sprites processed successfully.");

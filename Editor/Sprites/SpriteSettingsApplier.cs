@@ -559,7 +559,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 return;
             }
 
-            List<TextureImporter> importers = new();
             AssetDatabase.StartAssetEditing();
             try
             {
@@ -580,33 +579,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         }
                     }
                 }
-
-                for (int i = 0; i < updatedImporters.Count; i++)
-                {
-                    TextureImporter importer = updatedImporters[i];
-                    EditorUtility.DisplayProgressBar(
-                        "Updating Sprite Settings",
-                        $"Processing '{Path.GetFileName(importer.assetPath)}' ({i + 1}/{updatedImporters.Count})",
-                        (float)(i + 1) / updatedImporters.Count
-                    );
-                    try
-                    {
-                        importer.SaveAndReimport();
-                        importers.Add(importer);
-                    }
-                    catch (Exception ex)
-                    {
-                        this.LogError(
-                            $"Failed to save and reimport asset '{importer.assetPath}': {ex.Message}"
-                        );
-                    }
-                }
             }
             finally
             {
                 AssetDatabase.StopAssetEditing();
                 EditorUtility.ClearProgressBar();
-                foreach (TextureImporter importer in importers)
+                foreach (TextureImporter importer in updatedImporters)
                 {
                     importer.SaveAndReimport();
                 }
@@ -778,12 +756,33 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             TextureImporterSettings settings = new();
             textureImporter.ReadTextureSettings(settings);
 
+            if (spriteData.applySpriteMode)
+            {
+                if (textureImporter.spriteImportMode != spriteData.spriteMode)
+                {
+                    textureImporter.spriteImportMode = spriteData.spriteMode;
+                    changed = true;
+                }
+
+                if (settings.spriteMode != (int)spriteData.spriteMode)
+                {
+                    settings.spriteMode = (int)spriteData.spriteMode;
+                    settingsChanged = true;
+                }
+            }
+
             if (spriteData.applyPixelsPerUnit)
             {
                 if (textureImporter.spritePixelsPerUnit != spriteData.pixelsPerUnit)
                 {
                     textureImporter.spritePixelsPerUnit = spriteData.pixelsPerUnit;
                     changed = true;
+                }
+
+                if (settings.spritePixelsPerUnit != spriteData.pixelsPerUnit)
+                {
+                    settings.spritePixelsPerUnit = spriteData.pixelsPerUnit;
+                    settingsChanged = true;
                 }
             }
 
@@ -809,6 +808,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     textureImporter.mipmapEnabled = spriteData.generateMipMaps;
                     changed = true;
                 }
+                if (settings.mipmapEnabled != spriteData.generateMipMaps)
+                {
+                    settings.mipmapEnabled = spriteData.generateMipMaps;
+                    settingsChanged = true;
+                }
             }
 
             if (spriteData.applyCrunchCompression)
@@ -831,6 +835,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             if (spriteData.applyAlphaIsTransparency)
             {
+                if (textureImporter.alphaIsTransparency != spriteData.alphaIsTransparency)
+                {
+                    textureImporter.alphaIsTransparency = spriteData.alphaIsTransparency;
+                    changed = true;
+                }
                 if (settings.alphaIsTransparency != spriteData.alphaIsTransparency)
                 {
                     settings.alphaIsTransparency = spriteData.alphaIsTransparency;
@@ -840,18 +849,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             if (spriteData.applyReadWriteEnabled)
             {
+                if (textureImporter.isReadable != spriteData.readWriteEnabled)
+                {
+                    textureImporter.isReadable = spriteData.readWriteEnabled;
+                    changed = true;
+                }
+
                 if (settings.readable != spriteData.readWriteEnabled)
                 {
                     settings.readable = spriteData.readWriteEnabled;
-                    settingsChanged = true;
-                }
-            }
-
-            if (spriteData.applySpriteMode)
-            {
-                if (settings.spriteMode != (int)spriteData.spriteMode)
-                {
-                    settings.spriteMode = (int)spriteData.spriteMode;
                     settingsChanged = true;
                 }
             }
@@ -867,6 +873,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             if (spriteData.applyWrapMode)
             {
+                if (textureImporter.wrapMode != spriteData.wrapMode)
+                {
+                    textureImporter.wrapMode = spriteData.wrapMode;
+                    changed = true;
+                }
                 if (settings.wrapMode != spriteData.wrapMode)
                 {
                     settings.wrapMode = spriteData.wrapMode;
@@ -876,6 +887,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             if (spriteData.applyFilterMode)
             {
+                if (textureImporter.filterMode != spriteData.filterMode)
+                {
+                    textureImporter.filterMode = spriteData.filterMode;
+                    changed = true;
+                }
                 if (settings.filterMode != spriteData.filterMode)
                 {
                     settings.filterMode = spriteData.filterMode;
@@ -886,6 +902,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             if (settingsChanged)
             {
                 textureImporter.SetTextureSettings(settings);
+                textureImporter.SaveAndReimport();
             }
 
             return changed || settingsChanged;
