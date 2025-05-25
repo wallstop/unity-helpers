@@ -899,7 +899,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 }
             }
 
-            if (settingsChanged)
+            if (changed || settingsChanged)
             {
                 textureImporter.SetTextureSettings(settings);
                 textureImporter.SaveAndReimport();
