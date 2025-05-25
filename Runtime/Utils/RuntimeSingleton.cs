@@ -21,7 +21,6 @@
         public static bool HasInstance => _instance != null;
 
         protected static T _instance;
-        protected static bool _isQuitting;
 
         protected virtual bool Preserve => true;
 
@@ -32,11 +31,6 @@
                 if (_instance != null)
                 {
                     return _instance;
-                }
-
-                if (_isQuitting)
-                {
-                    return null;
                 }
 
                 _instance = FindAnyObjectByType<T>(FindObjectsInactive.Exclude);
@@ -88,9 +82,6 @@
             }
         }
 
-        protected virtual void OnApplicationQuit()
-        {
-            _isQuitting = true;
-        }
+        protected virtual void OnApplicationQuit() { }
     }
 }
