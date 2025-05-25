@@ -15,7 +15,10 @@
 
         public StringInList(Type type, string methodName)
         {
-            MethodInfo method = type.GetMethod(methodName);
+            MethodInfo method = type.GetMethod(
+                methodName,
+                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic
+            );
             if (method != null)
             {
                 List = method.Invoke(null, null) as string[];
