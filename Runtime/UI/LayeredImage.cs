@@ -14,7 +14,7 @@
     using Utils;
     using Debug = UnityEngine.Debug;
 
-    public readonly struct AnimatedSpriteLayer
+    public readonly struct AnimatedSpriteLayer : IEquatable<AnimatedSpriteLayer>
     {
         public const float FrameRate = 12f;
 
@@ -85,14 +85,131 @@
                 Enumerable.Empty<Sprite>(),
 #endif
                 worldSpaceOffsets, alpha) { }
+
+        public static bool operator ==(AnimatedSpriteLayer left, AnimatedSpriteLayer right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(AnimatedSpriteLayer left, AnimatedSpriteLayer right)
+        {
+            return !left.Equals(right);
+        }
+
+        public bool Equals(AnimatedSpriteLayer other)
+        {
+            bool equal = perFramePixelOffsets.AsSpan().SequenceEqual(other.perFramePixelOffsets);
+            if (!equal)
+            {
+                return false;
+            }
+
+            equal = frames.Length != other.frames.Length;
+            if (!equal)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < frames.Length; ++i)
+            {
+                if (frames[i] != other.frames[i])
+                {
+                    return false;
+                }
+            }
+
+            return alpha.Equals(other.alpha);
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is AnimatedSpriteLayer other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            return Objects.ValueTypeHashCode(perFramePixelOffsets.Length, frames.Length, alpha);
+        }
     }
 
     public sealed class LayeredImage : VisualElement
     {
+        public float Fps
+        {
+            get => _fps;
+            set
+            {
+                if (_fps == value)
+                {
+                    return;
+                }
+
+                _fps = value;
+                if (_computed.Length > 1 && _fps > 0)
+                {
+#if UNITY_EDITOR
+                    if (!Application.isPlaying && !_tickAttached)
+                    {
+                        TimeSpan lastTick = TimeSpan.Zero;
+                        int index = 0;
+                        Stopwatch timer = Stopwatch.StartNew();
+                        EditorApplication.update += Tick;
+                        _tickAttached = true;
+                        return;
+
+                        void Tick()
+                        {
+                            if (panel == null)
+                            {
+                                EditorApplication.update -= Tick;
+                                return;
+                            }
+                            TimeSpan elapsed = timer.Elapsed;
+                            if (lastTick + TimeSpan.FromMilliseconds(1000f / _fps) >= elapsed)
+                            {
+                                return;
+                            }
+
+                            index = index.WrappedIncrement(_computed.Length);
+                            lastTick = elapsed;
+                            Render(index);
+                        }
+                    }
+#endif
+                    if (Application.isPlaying)
+                    {
+                        if (_coroutine != null)
+                        {
+                            CoroutineHandler.Instance.StopCoroutine(_coroutine);
+                        }
+
+                        int index = 0;
+                        _coroutine = CoroutineHandler.Instance.StartFunctionAsCoroutine(
+                            () =>
+                            {
+                                if (panel == null)
+                                {
+                                    return;
+                                }
+
+                                index = index.WrappedIncrement(_computed.Length);
+                                Render(index);
+                            },
+                            1f / _fps
+                        );
+                    }
+                }
+            }
+        }
+
         private readonly AnimatedSpriteLayer[] _layers;
         private readonly Texture2D[] _computed;
         private readonly Color _backgroundColor;
         private readonly Rect? _largestArea;
+
+        private Coroutine _coroutine;
+        private bool _tickAttached;
+        private float _fps;
 
         public LayeredImage(
             IEnumerable<AnimatedSpriteLayer> inputSpriteLayers,
@@ -129,56 +246,7 @@
             }
 
             Render(0);
-
-            if (_computed.Length > 1 && fps > 0)
-            {
-#if UNITY_EDITOR
-                if (!Application.isPlaying)
-                {
-                    TimeSpan lastTick = TimeSpan.Zero;
-                    TimeSpan fpsSpan = TimeSpan.FromMilliseconds(1000f / fps);
-                    int index = 0;
-                    Stopwatch timer = Stopwatch.StartNew();
-                    EditorApplication.update += Tick;
-                    return;
-
-                    void Tick()
-                    {
-                        if (panel == null)
-                        {
-                            EditorApplication.update -= Tick;
-                            return;
-                        }
-                        TimeSpan elapsed = timer.Elapsed;
-                        if (lastTick + fpsSpan >= elapsed)
-                        {
-                            return;
-                        }
-
-                        index = index.WrappedIncrement(_computed.Length);
-                        lastTick = elapsed;
-                        Render(index);
-                    }
-                }
-#endif
-                if (Application.isPlaying && CoroutineHandler.Instance != null)
-                {
-                    int index = 0;
-                    CoroutineHandler.Instance.StartFunctionAsCoroutine(
-                        () =>
-                        {
-                            if (panel == null)
-                            {
-                                return;
-                            }
-
-                            index = index.WrappedIncrement(_computed.Length);
-                            Render(index);
-                        },
-                        1f / fps
-                    );
-                }
-            }
+            Fps = fps;
         }
 
         private void Render(int index)

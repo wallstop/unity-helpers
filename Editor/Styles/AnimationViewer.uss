@@ -1,0 +1,96 @@
+.frame-item {
+    flex-direction: row;
+    align-items: center;
+    padding: 5px;
+    margin-bottom: 5px;
+    border-width: 1px;
+    border-color: rgb(70, 70, 70);
+    background-color: rgb(55, 55, 55);
+    min-height: 60px;
+}
+
+.frame-item:hover {
+    background-color: rgb(65, 65, 65);
+}
+
+.frame-item-dragged {
+    opacity: 0.5;
+    border-width: 2px;
+    border-color: yellow;
+}
+
+.frame-image {
+    width: 50px;
+    height: 50px;
+    margin-right: 10px;
+    border-width: 1px;
+    border-color: rgb(30, 30, 30);
+    background-color: rgb(45, 45, 45);
+}
+
+.frame-info {
+    flex-direction: column;
+}
+
+.frame-index-field {
+    width: 40px;
+    margin-left: auto;
+}
+
+.drop-placeholder {
+    height: 10px;
+    background-color: #4A90E2;
+    margin-top: 2px;
+    margin-bottom: 2px;
+}
+
+.animation-preview-element {
+    width: 256px;
+    height: 256px;
+    min-width: 256px;
+    min-height: 256px;
+    background-color: rgb(60, 60, 60);
+    border-width: 1px;
+    border-color: rgb(30, 30, 30);
+    margin-bottom: 10px;
+}
+
+.loaded-clip-item {
+    flex-direction: row;
+    align-items: center;
+    padding: 3px 5px;
+    margin-bottom: 2px;
+    background-color: rgb(60,60,60);
+    border-radius: 3px;
+}
+
+.loaded-clip-item:hover {
+    background-color: rgb(75,75,75);
+}
+
+.loaded-clip-item--active {
+    background-color: rgb(50, 90, 130); /* A highlight color for active clip */
+    border-width: 1px;
+    border-color: rgb(80,120,160);
+}
+
+.loaded-clip-item Label {
+    flex-grow: 1;
+}
+
+.loaded-clip-item Button {
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+    padding: 0;
+    margin-left: 5px;
+    font-size: 10px;
+}
+
+.animation-preview-container { /* Class for the preview-panel element that will host LayeredImage */
+    width: 256px; /* Desired width for LayeredImage */
+    height: 256px; /* Desired height for LayeredImage */
+    min-width: 150px;
+    min-height: 150px;
+    align-self: center; /* Center it if the parent is set to align-items: center */
+}

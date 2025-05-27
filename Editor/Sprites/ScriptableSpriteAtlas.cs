@@ -44,7 +44,7 @@
 
         [Header("Output Atlas Settings")]
         [Tooltip("Directory where the .spriteatlas asset will be saved. Relative to Assets/.")]
-        public string outputSpriteAtlasDirectory = "Assets/Sprites/SpriteAtlas";
+        public string outputSpriteAtlasDirectory = "Assets/Sprites/Atlases";
         public string outputSpriteAtlasName = "MyNewAtlas";
 
         public string FullOutputPath
@@ -69,12 +69,14 @@
         }
 
         [Header("Packing Settings")]
-        public int maxTextureSize = 16384;
+        [IntDropdown(32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384)]
+        public int maxTextureSize = 8192;
 
         [Tooltip("Allow Unity to rotate sprites to fit them better.")]
         public bool enableRotation = true;
 
         [Tooltip("Padding in pixels between sprites in the atlas.")]
+        [IntDropdown(0, 2, 4, 8, 16, 32)]
         public int padding = 4;
 
         [Tooltip(
