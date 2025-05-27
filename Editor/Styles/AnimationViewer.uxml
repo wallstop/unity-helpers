@@ -1,45 +1,55 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements">
     <ui:VisualElement name="main-container" style="flex-grow: 1;">
         <!-- Toolbar Area -->
-        <ui:VisualElement name="toolbar" style="flex-direction: column; padding: 5px; border-bottom-width: 1px; border-bottom-color: rgb(40,40,40);">
+        <ui:VisualElement name="toolbar"
+                          style="flex-direction: column; padding: 5px; border-bottom-width: 1px; border-bottom-color: rgb(40,40,40);">
             <!-- Clip Management Toolbar -->
             <ui:VisualElement name="clip-management-toolbar" style="flex-direction: row; margin-bottom: 5px;">
-                <uie:ObjectField label="Add Clip:" name="addAnimationClipField" type="UnityEngine.AnimationClip" style="flex-grow: 1; margin-right: 5px;"/>
-                <ui:Button text="Browse Add..." name="browseAndAddButton" style="margin-right: 10px;"/>
+                <uie:ObjectField label="Add Clip:" name="addAnimationClipField"
+                                 style="flex-grow: 1; margin-right: 5px;" />
+                <ui:Button text="Browse Add..." name="browseAndAddButton" style="margin-right: 10px;" />
             </ui:VisualElement>
             <!-- FPS and Save Toolbar -->
             <ui:VisualElement name="fps-toolbar" style="flex-direction: row;">
-                <ui:Label text="Preview FPS:" style="margin-right: 5px; align-self: center;"/>
-                <ui:FloatField name="fpsField" value="12.0" style="width: 50px; margin-right: 10px;"/>
-                <ui:Button text="Apply Preview FPS" name="applyFpsButton"/> <!-- Name updated to match C# -->
-                <ui:Button text="Save Active Clip" name="saveClipButton" style="margin-left: auto;"/>
+                <ui:Label text="Preview FPS:" style="margin-right: 5px; align-self: center;" />
+                <ui:FloatField name="fpsField" value="12.0" style="width: 50px; margin-right: 10px;" />
+                <ui:Button text="Apply Preview FPS" name="applyFpsButton" /> <!-- Name updated to match C# -->
+                <ui:Button text="Save Active Clip" name="saveClipButton" style="margin-left: auto;" />
             </ui:VisualElement>
         </ui:VisualElement>
 
         <!-- Main Content Area -->
         <ui:VisualElement name="content-area" style="flex-grow: 1; flex-direction: row;">
             <!-- Left Panel: Loaded Clips List & Preview -->
-            <ui:VisualElement name="left-panel" style="width: 300px; min-width:200px; padding: 10px; border-right-width: 1px; border-right-color: rgb(40,40,40); flex-direction: column;">
-                <ui:Label text="Loaded Animation Clips" style="font-size: 14px; -unity-font-style: bold; margin-bottom: 5px;"/>
-                <ui:ScrollView name="loadedClipsScrollView" mode="Vertical" style="min-height: 100px; max-height: 200px; margin-bottom:10px; border-width:1px; border-color:rgb(30,30,30);">
-                    <ui:VisualElement name="loadedClipsContainer"/> <!-- Container for dynamically added clip items -->
+            <ui:VisualElement name="left-panel"
+                              style="width: 300px; min-width:200px; padding: 10px; border-right-width: 1px; border-right-color: rgb(40,40,40); flex-direction: column;">
+                <ui:Label text="Loaded Animation Clips"
+                          style="font-size: 14px; -unity-font-style: bold; margin-bottom: 5px;" />
+                <ui:ScrollView name="loadedClipsScrollView" mode="Vertical"
+                               style="min-height: 100px; max-height: 200px; margin-bottom:10px; border-width:1px; border-color:rgb(30,30,30);">
+                    <ui:VisualElement name="loadedClipsContainer" />
+                    <!-- Container for dynamically added clip items -->
                 </ui:ScrollView>
 
-                <ui:Label text="Animation Preview" name="previewTitle" style="font-size: 14px; -unity-font-style: bold; margin-bottom: 10px;"/>
+                <ui:Label text="Animation Preview" name="previewTitle"
+                          style="font-size: 14px; -unity-font-style: bold; margin-bottom: 10px;" />
                 <!-- This is the HOST for the LayeredImage created in C# -->
-                <ui:VisualElement name="preview-panel" style="flex-grow:1; align-items: center; justify-content: center;">
+                <ui:VisualElement name="preview-panel"
+                                  style="flex-grow:1; align-items: center; justify-content: center;">
                     <!-- The LayeredImage VisualElement will be added here by C# -->
                     <!-- The class 'animation-preview-container' will be applied to this 'preview-panel' from C# -->
                 </ui:VisualElement>
-                <ui:Label text="Detected FPS Info (Active Clip):" name="fpsDebugLabel" style="margin-top: 10px; white-space: normal; font-size: 10px; color: grey;"/>
+                <ui:Label text="Detected FPS Info (Active Clip):" name="fpsDebugLabel"
+                          style="margin-top: 10px; white-space: normal; font-size: 10px; color: grey;" />
             </ui:VisualElement>
 
             <!-- Right Panel: Frames of the Active Clip -->
             <ui:VisualElement name="frames-panel" style="flex-grow: 1; padding: 10px;">
-                <ui:Label text="Frames (Active Clip):" name="framesPanelTitle" style="font-size: 14px; -unity-font-style: bold; margin-bottom: 10px;"/>
+                <ui:Label text="Frames (Active Clip):" name="framesPanelTitle"
+                          style="font-size: 14px; -unity-font-style: bold; margin-bottom: 10px;" />
                 <ui:ScrollView name="framesScrollView" mode="Vertical" style="flex-grow: 1;">
                     <!-- Container for dynamically added frame items -->
-                    <ui:VisualElement name="framesContainer" style="flex-direction: column;"/>
+                    <ui:VisualElement name="framesContainer" style="flex-direction: column;" />
                 </ui:ScrollView>
             </ui:VisualElement>
         </ui:VisualElement>

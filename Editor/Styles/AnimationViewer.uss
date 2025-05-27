@@ -1,3 +1,8 @@
+* {
+    --unity-selection-color: rgba(144, 238, 144, 0.3);
+    transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+}
+
 .frame-item {
     flex-direction: row;
     align-items: center;
@@ -40,7 +45,7 @@
 }
 
 .frame-index-field > .unity-text-element {
-    min-width: 0px;
+    min-width: 0;
     width: auto;
 }
 
@@ -71,18 +76,22 @@
     align-items: center;
     padding: 3px 5px;
     margin-bottom: 2px;
-    background-color: rgb(60,60,60);
+    background-color: rgb(60, 60, 60);
     border-radius: 3px;
+    border-width: 1px;
+    border-color: transparent;
 }
 
 .loaded-clip-item:hover {
-    background-color: rgb(75,75,75);
+    background-color: rgb(10, 10, 10);
 }
 
 .loaded-clip-item--active {
-    background-color: rgb(50, 90, 130); /* A highlight color for active clip */
-    border-width: 1px;
-    border-color: rgb(80,120,160);
+    background-color: rgb(50, 90, 130);
+}
+
+.loaded-clip-item--active:hover {
+    background-color: rgb(50, 90, 130);
 }
 
 .loaded-clip-item Label {
@@ -98,10 +107,10 @@
     font-size: 10px;
 }
 
-.animation-preview-container { /* Class for the preview-panel element that will host LayeredImage */
-    width: 256px; /* Desired width for LayeredImage */
-    height: 256px; /* Desired height for LayeredImage */
+.animation-preview-container {
+    width: 256px;
+    height: 256px;
     min-width: 150px;
     min-height: 150px;
-    align-self: center; /* Center it if the parent is set to align-items: center */
+    align-self: center;
 }

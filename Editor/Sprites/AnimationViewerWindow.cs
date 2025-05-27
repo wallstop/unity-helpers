@@ -1,64 +1,41 @@
-﻿namespace WallstopStudios.UnityHelpers.Editor.Sprites
+﻿// ReSharper disable HeapView.CanAvoidClosure
+namespace WallstopStudios.UnityHelpers.Editor.Sprites
 {
+#if UNITY_EDITOR
     using System;
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;
     using Core.Extension;
     using Core.Helper;
-    using UI;
     using UnityEditor;
     using UnityEditor.UIElements;
     using UnityEngine;
     using UnityEngine.UIElements;
+    using UI;
     using Object = UnityEngine.Object;
 
-    public class AnimationViewerWindow : EditorWindow
+    public sealed class AnimationViewerWindow : EditorWindow
     {
         private const string PackageId = "com.wallstop-studios.unity-helpers";
+        private const float DragThresholdSqrMagnitude = 10f * 10f;
+        private const int InvalidPointerId = -1;
 
-        [MenuItem("Tools/2D Animation Viewer (Immutable Layers)")]
-        public static void ShowWindow()
-        {
-            AnimationViewerWindow wnd = GetWindow<AnimationViewerWindow>();
-            wnd.titleContent = new GUIContent("2D Animation Viewer");
-            wnd.minSize = new Vector2(750, 500);
-        }
-
-        private VisualTreeAsset _visualTree;
-        private StyleSheet _styleSheet;
-
-        // --- UI Elements ---
-        private ObjectField _addAnimationClipField;
-        private Button _browseAndAddButton;
-        private FloatField _fpsField;
-        private Button _applyFpsButton; // Renamed from ApplyPreviewFPS for clarity
-        private Button _saveClipButton;
-        private VisualElement _loadedClipsContainer;
-        private VisualElement _previewPanelHost; // The UXML element that will host LayeredImage
-        private LayeredImage _animationPreview; // Instance of user's LayeredImage
-        private VisualElement _framesContainer;
-        private Label _fpsDebugLabel;
-        private Label _framesPanelTitle;
-
-        // --- Data Management ---
-        // Helper class to manage editable state for each conceptual layer
-        private class EditorLayerData
+        private sealed class EditorLayerData
         {
             public AnimationClip SourceClip { get; }
-            public List<Sprite> Sprites { get; set; } // This list is mutable for editing
+            public List<Sprite> Sprites { get; }
             public string ClipName => SourceClip != null ? SourceClip.name : "Unnamed Layer";
             public float OriginalClipFps { get; }
-            public string BindingPath { get; private set; } // Path of the m_Sprite binding
+            public string BindingPath { get; }
 
             public EditorLayerData(AnimationClip clip)
             {
                 SourceClip = clip;
-                Sprites = clip.GetSpritesFromClip()?.ToList(); // Ensure list exists
+                Sprites = clip.GetSpritesFromClip()?.ToList();
                 OriginalClipFps =
                     clip.frameRate > 0 ? clip.frameRate : AnimatedSpriteLayer.FrameRate;
 
-                // Find binding path for saving
                 BindingPath = string.Empty;
                 if (SourceClip != null)
                 {
@@ -81,33 +58,47 @@
             }
         }
 
-        private List<EditorLayerData> _loadedEditorLayers = new List<EditorLayerData>();
-        private EditorLayerData _activeEditorLayer; // The layer whose frames are shown in the frame list
-        private List<SpriteFrameUIData> _currentFramesForEditingUI = new List<SpriteFrameUIData>(); // UI representation
+        [MenuItem("Tools/Wallstop Studios/Unity Helpers/Sprite Animation Editor")]
+        public static void ShowWindow()
+        {
+            AnimationViewerWindow wnd = GetWindow<AnimationViewerWindow>();
+            wnd.titleContent = new GUIContent("2D Animation Viewer");
+            wnd.minSize = new Vector2(750, 500);
+        }
+
+        private VisualTreeAsset _visualTree;
+        private StyleSheet _styleSheet;
+
+        private ObjectField _addAnimationClipField;
+        private Button _browseAndAddButton;
+        private FloatField _fpsField;
+        private Button _applyFpsButton;
+        private Button _saveClipButton;
+        private VisualElement _loadedClipsContainer;
+        private VisualElement _previewPanelHost;
+        private LayeredImage _animationPreview;
+        private VisualElement _framesContainer;
+        private Label _fpsDebugLabel;
+        private Label _framesPanelTitle;
+        private MultiFileSelectorElement _fileSelector;
+
+        private readonly List<EditorLayerData> _loadedEditorLayers = new();
+
+        private EditorLayerData _activeEditorLayer;
         private float _currentPreviewFps = AnimatedSpriteLayer.FrameRate;
 
-        // --- Drag and Drop state for frames ---
-        private VisualElement _draggedFrameElement; // The VisualElement of the frame item being dragged
-        private int _draggedFrameOriginalDataIndex; // Index in _activeEditorLayer.Sprites
-        private VisualElement _frameDropPlaceholder; // Placeholder for frame list (was _dropPlaceholder)
+        private VisualElement _draggedFrameElement;
+        private int _draggedFrameOriginalDataIndex;
+        private VisualElement _frameDropPlaceholder;
 
         private VisualElement _draggedLoadedClipElement;
-        private int _draggedLoadedClipOriginalIndex; // Index in _loadedEditorLayers
+        private int _draggedLoadedClipOriginalIndex;
         private VisualElement _loadedClipDropPlaceholder;
 
-        // Represents a single frame in our editor UI for the *active* clip
-        private class SpriteFrameUIData
-        {
-            public Sprite Sprite;
-            public int DisplayIndex;
-            public VisualElement VisualElement;
-
-            public SpriteFrameUIData(Sprite sprite, int displayIndex)
-            {
-                Sprite = sprite;
-                DisplayIndex = displayIndex;
-            }
-        }
+        private bool _isClipDragPending;
+        private Vector3 _clipDragStartPosition;
+        private VisualElement _clipDragPendingElement;
+        private int _clipDragPendingOriginalIndex;
 
         public void CreateGUI()
         {
@@ -127,21 +118,18 @@
 
             _visualTree.CloneTree(root);
 
-            // Query UI elements (ensure names match your UXML)
             _addAnimationClipField = root.Q<ObjectField>("addAnimationClipField");
             _browseAndAddButton = root.Q<Button>("browseAndAddButton");
             _fpsField = root.Q<FloatField>("fpsField");
-            _applyFpsButton = root.Q<Button>("applyFpsButton"); // Changed name in UXML too
+            _applyFpsButton = root.Q<Button>("applyFpsButton");
             _saveClipButton = root.Q<Button>("saveClipButton");
             _loadedClipsContainer = root.Q<VisualElement>("loadedClipsContainer");
-            _previewPanelHost = root.Q<VisualElement>("preview-panel"); // UXML element to host LayeredImage
+            _previewPanelHost = root.Q<VisualElement>("preview-panel");
             _framesContainer = root.Q<VisualElement>("framesContainer");
             _fpsDebugLabel = root.Q<Label>("fpsDebugLabel");
             _framesPanelTitle = root.Q<Label>("framesPanelTitle");
 
-            // Style the host for LayeredImage (from USS or inline)
-            // LayeredImage will set its own size, so host should accommodate.
-            _previewPanelHost.AddToClassList("animation-preview-container"); // USS class for alignment/max-size
+            _previewPanelHost.AddToClassList("animation-preview-container");
 
             _fpsField.value = _currentPreviewFps;
             _saveClipButton.SetEnabled(false);
@@ -149,26 +137,35 @@
             _addAnimationClipField.RegisterValueChangedCallback(OnAddAnimationClipFieldChanged);
             _browseAndAddButton.text = "Add Selected Clips from Project";
             _browseAndAddButton.clicked -= OnBrowseAndAddClicked;
-            _browseAndAddButton.clicked += OnAddSelectedClipsFromProjectClicked;
+            if (_browseAndAddButton != null)
+            {
+                _browseAndAddButton.text = "Browse Clips (Multi)...";
+                _browseAndAddButton.clicked -= OnAddSelectedClipsFromProjectClicked;
+                _browseAndAddButton.clicked += ToggleMultiFileSelector;
+            }
+            else
+            {
+                this.LogError(
+                    $"'browseAndAddButton' not found in UXML. Multi-file browser cannot be triggered."
+                );
+            }
             _applyFpsButton.clicked += OnApplyFpsToPreviewClicked;
             _saveClipButton.clicked += OnSaveClipClicked;
 
-            _frameDropPlaceholder = new VisualElement(); // Renamed from _dropPlaceholder
+            _frameDropPlaceholder = new VisualElement();
             _frameDropPlaceholder.AddToClassList("drop-placeholder");
-            _frameDropPlaceholder.style.height = 5; // Make it smaller for frame list items
+            _frameDropPlaceholder.style.height = 5;
             _frameDropPlaceholder.style.visibility = Visibility.Hidden;
 
-            // --- Register Drag & Drop Callbacks for the _framesContainer ---
             _framesContainer.RegisterCallback<DragUpdatedEvent>(OnFramesContainerDragUpdated);
             _framesContainer.RegisterCallback<DragPerformEvent>(OnFramesContainerDragPerform);
             _framesContainer.RegisterCallback<DragLeaveEvent>(OnFramesContainerDragLeave);
 
             _loadedClipDropPlaceholder = new VisualElement();
-            _loadedClipDropPlaceholder.AddToClassList("drop-placeholder"); // Reuse existing style or make a new one
-            _loadedClipDropPlaceholder.style.height = 5; // Make it smaller for clip list items
+            _loadedClipDropPlaceholder.AddToClassList("drop-placeholder");
+            _loadedClipDropPlaceholder.style.height = 5;
             _loadedClipDropPlaceholder.style.visibility = Visibility.Hidden;
 
-            // --- Register Drag & Drop Callbacks for the _loadedClipsContainer ---
             _loadedClipsContainer.RegisterCallback<DragUpdatedEvent>(
                 OnLoadedClipsContainerDragUpdated
             );
@@ -179,7 +176,12 @@
 
             UpdateFramesPanelTitle();
             RebuildLoadedClipsUI();
-            RecreatePreviewImage(); // Initial empty preview
+            RecreatePreviewImage();
+        }
+
+        private void Update()
+        {
+            _animationPreview?.Update();
         }
 
         private void TryLoadStyleSheets()
@@ -258,14 +260,14 @@
                         );
                         if (_styleSheet == null)
                         {
-                            Debug.LogError(
+                            this.LogError(
                                 $"Failed to load Animation Viewer style sheet (package root: '{packageRoot}'), relative path '{unityRelativeStyleSheetPath}'."
                             );
                         }
                     }
                     else
                     {
-                        Debug.LogError(
+                        this.LogError(
                             $"Failed to convert absolute path '{styleSheetPath}' to Unity relative path."
                         );
                     }
@@ -319,9 +321,115 @@
             }
             else
             {
-                Debug.LogError(
+                this.LogError(
                     $"Failed to find Animation Viewer style sheet (package root: '{packageRoot}')."
                 );
+            }
+        }
+
+        private void ToggleMultiFileSelector()
+        {
+            VisualElement root = rootVisualElement;
+            if (_fileSelector == null)
+            {
+                _fileSelector = new MultiFileSelectorElement(
+                    ProjectAnimationSettings.Instance.lastAnimationPath,
+                    new[] { ".anim" }
+                );
+                _fileSelector.OnFilesSelected += HandleFilesSelectedFromCustomBrowser;
+                _fileSelector.OnCancelled += HideMultiFileSelector;
+                root.Add(_fileSelector);
+                if (root.childCount > 1)
+                {
+                    _fileSelector.PlaceInFront(root.Children().FirstOrDefault());
+                }
+            }
+            else if (_fileSelector.parent == null)
+            {
+                _fileSelector.ResetAndShow(ProjectAnimationSettings.Instance.lastAnimationPath);
+                root.Add(_fileSelector);
+                if (root.childCount > 1)
+                {
+                    _fileSelector.PlaceInFront(root.Children().FirstOrDefault());
+                }
+            }
+            else
+            {
+                HideMultiFileSelector();
+            }
+        }
+
+        private void HideMultiFileSelector()
+        {
+            if (_fileSelector is { parent: not null })
+            {
+                _fileSelector.parent.Remove(_fileSelector);
+            }
+        }
+
+        private void HandleFilesSelectedFromCustomBrowser(List<string> selectedFullPaths)
+        {
+            HideMultiFileSelector();
+
+            if (selectedFullPaths == null || selectedFullPaths.Count == 0)
+            {
+                return;
+            }
+
+            int clipsAddedCount = 0;
+            string lastValidDirectory = null;
+
+            foreach (string fullPath in selectedFullPaths)
+            {
+                string assetPath = fullPath.SanitizePath();
+                if (!assetPath.StartsWith("Assets", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (
+                        assetPath.StartsWith(
+                            Application.dataPath,
+                            StringComparison.OrdinalIgnoreCase
+                        )
+                    )
+                    {
+                        assetPath = "Assets" + assetPath.Substring(Application.dataPath.Length);
+                    }
+                    else
+                    {
+                        this.LogWarn(
+                            $"Selected file '{fullPath}' is outside the project's Assets folder or path is not project-relative. Skipping."
+                        );
+                        continue;
+                    }
+                }
+
+                AnimationClip clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(assetPath);
+                if (clip != null)
+                {
+                    if (_loadedEditorLayers.All(layer => layer.SourceClip != clip))
+                    {
+                        AddEditorLayer(clip);
+                        clipsAddedCount++;
+                        lastValidDirectory = Path.GetDirectoryName(assetPath);
+                    }
+                    else
+                    {
+                        this.LogWarn($"Clip '{clip.name}' already loaded. Skipping.");
+                    }
+                }
+                else
+                {
+                    this.LogWarn($"Could not load AnimationClip from: {assetPath}");
+                }
+            }
+
+            if (clipsAddedCount > 0)
+            {
+                this.Log($"Added {clipsAddedCount} clip(s).");
+                if (!string.IsNullOrWhiteSpace(lastValidDirectory))
+                {
+                    ProjectAnimationSettings.Instance.lastAnimationPath = lastValidDirectory;
+                    ProjectAnimationSettings.Instance.Save();
+                }
             }
         }
 
@@ -357,49 +465,52 @@
             {
                 if (obj is AnimationClip clip)
                 {
-                    // Use your existing AddEditorLayer but prevent duplicate logging if it handles it
                     bool alreadyExists = _loadedEditorLayers.Any(layer => layer.SourceClip == clip);
                     if (!alreadyExists)
                     {
-                        AddEditorLayer(clip); // Your existing method to add a single clip data representation
+                        AddEditorLayer(clip);
                         clipsAddedCount++;
                     }
                     else
                     {
-                        Debug.LogWarning($"Clip '{clip.name}' is already loaded. Skipping.");
+                        this.LogWarn($"Clip '{clip.name}' is already loaded. Skipping.");
                     }
                 }
             }
 
             if (clipsAddedCount > 0)
             {
-                Debug.Log($"Added {clipsAddedCount} new AnimationClip(s) to the viewer.");
+                this.Log($"Added {clipsAddedCount} new AnimationClip(s) to the viewer.");
             }
-            else if (selectedObjects.Length > 0) // Some were selected, but all were duplicates
+            else if (selectedObjects.Length > 0)
             {
-                Debug.Log("All selected AnimationClips were already loaded.");
+                this.Log($"All selected AnimationClips were already loaded.");
             }
-            // No need to clear _addAnimationClipField here as this button doesn't use it.
         }
 
         private void OnBrowseAndAddClicked()
         {
             string path = EditorUtility.OpenFilePanelWithFilters(
                 "Select Animation Clip to Add",
-                ProjectAnimationSettings.Instance.lastAnimationPath, // Assumes ProjectAnimationSettings.cs exists
-                new string[] { "Animation Clip", "anim" }
+                ProjectAnimationSettings.Instance.lastAnimationPath,
+                new[] { "Animation Clip", "anim" }
             );
 
-            if (!string.IsNullOrEmpty(path))
+            if (!string.IsNullOrWhiteSpace(path))
             {
                 if (path.StartsWith(Application.dataPath))
+                {
                     path = "Assets" + path.Substring(Application.dataPath.Length);
+                }
+
                 ProjectAnimationSettings.Instance.lastAnimationPath = Path.GetDirectoryName(path);
                 ProjectAnimationSettings.Instance.Save();
 
                 AnimationClip clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(path);
                 if (clip != null)
+                {
                     AddEditorLayer(clip);
+                }
             }
         }
 
@@ -407,18 +518,18 @@
         {
             if (clip == null || _loadedEditorLayers.Any(layer => layer.SourceClip == clip))
             {
-                Debug.LogWarning($"Clip '{clip?.name}' is null or already loaded.");
+                this.LogWarn($"Clip '{clip?.name}' is null or already loaded.");
                 return;
             }
 
-            EditorLayerData newEditorLayer = new EditorLayerData(clip);
+            EditorLayerData newEditorLayer = new(clip);
             _loadedEditorLayers.Add(newEditorLayer);
 
             if (_activeEditorLayer == null && newEditorLayer.Sprites.Count > 0)
             {
                 SetActiveEditorLayer(newEditorLayer);
             }
-            else if (_activeEditorLayer == null) // If first clip has no sprites, still make it "active" contextually
+            else if (_activeEditorLayer == null)
             {
                 SetActiveEditorLayer(newEditorLayer);
             }
@@ -430,7 +541,10 @@
         private void RemoveEditorLayer(EditorLayerData layerToRemove)
         {
             if (layerToRemove == null)
+            {
                 return;
+            }
+
             _loadedEditorLayers.Remove(layerToRemove);
 
             if (_activeEditorLayer == layerToRemove)
@@ -445,18 +559,11 @@
         private void SetActiveEditorLayer(EditorLayerData layer)
         {
             _activeEditorLayer = layer;
-            _currentFramesForEditingUI.Clear();
             _framesContainer.Clear();
             _fpsDebugLabel.text = "Detected FPS Info (Active Clip):";
 
             if (_activeEditorLayer != null)
             {
-                for (int i = 0; i < _activeEditorLayer.Sprites.Count; i++)
-                {
-                    _currentFramesForEditingUI.Add(
-                        new SpriteFrameUIData(_activeEditorLayer.Sprites[i], i)
-                    );
-                }
                 UpdateFpsDebugLabelForActiveLayer();
                 _saveClipButton.SetEnabled(_activeEditorLayer.SourceClip != null);
             }
@@ -468,8 +575,6 @@
             RebuildFramesListUI();
             RebuildLoadedClipsUI();
             UpdateFramesPanelTitle();
-            // Preview is handled by RecreatePreviewImage when layers change,
-            // or by setting FPS on existing preview.
         }
 
         private void UpdateFramesPanelTitle()
@@ -484,105 +589,158 @@
         {
             _loadedClipsContainer.Clear();
             if (_loadedClipDropPlaceholder.parent == _loadedClipsContainer)
+            {
                 _loadedClipsContainer.Remove(_loadedClipDropPlaceholder);
+            }
 
             for (int i = 0; i < _loadedEditorLayers.Count; i++)
             {
                 EditorLayerData editorLayer = _loadedEditorLayers[i];
 
-                var itemElement = new VisualElement();
+                VisualElement itemElement = new();
                 itemElement.AddToClassList("loaded-clip-item");
                 if (editorLayer == _activeEditorLayer)
                 {
                     itemElement.AddToClassList("loaded-clip-item--active");
                 }
-                itemElement.userData = i; // Store its current index in _loadedEditorLayers
+                itemElement.userData = i;
 
-                var label = new Label(editorLayer.ClipName);
+                Label label = new(editorLayer.ClipName);
                 itemElement.Add(label);
 
-                var removeButton = new Button(() => RemoveEditorLayer(editorLayer)) { text = "X" };
+                Button removeButton = new(() => RemoveEditorLayer(editorLayer)) { text = "X" };
                 itemElement.Add(removeButton);
 
-                // Click to make active (remains the same)
                 itemElement.RegisterCallback<PointerDownEvent>(evt =>
                 {
-                    if (evt.button == 0 && _draggedLoadedClipElement == null) // Don't activate if starting a drag
+                    if (evt.button == 0 && _draggedLoadedClipElement == null)
                     {
                         SetActiveEditorLayer(editorLayer);
                     }
                 });
 
-                // --- NEW: Register Drag Handlers for this loaded clip item ---
-                int currentIndex = i; // Capture current index for the lambda
+                int currentIndex = i;
                 itemElement.RegisterCallback<PointerDownEvent>(evt =>
-                    OnLoadedClipItemPointerDown(evt, itemElement, currentIndex)
+                    OnLoadedClipItemPointerDownSetup(evt, itemElement, currentIndex)
                 );
-                // PointerUp and PointerLeave on the item itself will be handled similarly to frame dragging for robust cleanup
+                itemElement.RegisterCallback<PointerMoveEvent>(OnLoadedClipItemPointerMove);
+                itemElement.RegisterCallback<PointerUpEvent>(evt =>
+                    OnLoadedClipItemPointerUpForClick(evt, itemElement, currentIndex)
+                );
 
                 _loadedClipsContainer.Add(itemElement);
             }
         }
 
-        private void OnLoadedClipItemPointerDown(
+        private void OnLoadedClipItemPointerDownSetup(
             PointerDownEvent evt,
             VisualElement clipElement,
             int originalListIndex
         )
         {
-            if (evt.button != 0 || _draggedLoadedClipElement != null)
-                return; // Only left click, no concurrent drags
+            if (evt.button != 0 || _draggedLoadedClipElement != null || _isClipDragPending)
+            {
+                return;
+            }
 
-            _draggedLoadedClipElement = clipElement;
-            _draggedLoadedClipOriginalIndex = originalListIndex;
+            _isClipDragPending = true;
+            _clipDragPendingElement = clipElement;
+            _clipDragPendingOriginalIndex = originalListIndex;
+            _clipDragStartPosition = evt.position;
 
-            // Register PointerUp on the item itself for cleanup if drag ends without a valid drop
-            _draggedLoadedClipElement.RegisterCallback<PointerUpEvent>(
-                OnDraggedLoadedClipItemPointerUp
-            );
-            //_draggedLoadedClipElement.RegisterCallback<PointerLeaveEvent>(OnDraggedLoadedClipItemPointerLeave); // Optional
-
-            _draggedLoadedClipElement.CapturePointer(evt.pointerId);
-            _draggedLoadedClipElement.AddToClassList("frame-item-dragged"); // Reuse or make a new style for dragged clip item
-
-            DragAndDrop.PrepareStartDrag();
-            DragAndDrop.SetGenericData("DraggedLoadedClipIndex", _draggedLoadedClipOriginalIndex);
-            // Use a distinct generic data key to avoid conflict with frame dragging if that could somehow overlap.
-
-            Object dragContextObject =
-                (_loadedEditorLayers[_draggedLoadedClipOriginalIndex]?.SourceClip)
-                ?? (Object)ScriptableObject.CreateInstance<ScriptableObject>();
-            DragAndDrop.objectReferences = new Object[] { dragContextObject };
-            DragAndDrop.StartDrag(
-                _loadedEditorLayers[_draggedLoadedClipOriginalIndex].ClipName ?? "Dragging Layer"
-            );
+            clipElement.CapturePointer(evt.pointerId);
 
             evt.StopPropagation();
+        }
+
+        private void OnLoadedClipItemPointerMove(PointerMoveEvent evt)
+        {
+            if (!_isClipDragPending)
+            {
+                return;
+            }
+
+            float diffSqrMagnitude = (evt.position - _clipDragStartPosition).sqrMagnitude;
+
+            if (diffSqrMagnitude >= DragThresholdSqrMagnitude)
+            {
+                _draggedLoadedClipElement = _clipDragPendingElement;
+                _draggedLoadedClipOriginalIndex = _clipDragPendingOriginalIndex;
+
+                _draggedLoadedClipElement.AddToClassList("frame-item-dragged");
+
+                DragAndDrop.PrepareStartDrag();
+                DragAndDrop.SetGenericData(
+                    "DraggedLoadedClipIndex",
+                    _draggedLoadedClipOriginalIndex
+                );
+                Object dragContextObject =
+                    _loadedEditorLayers[_draggedLoadedClipOriginalIndex]?.SourceClip
+                    ?? (Object)CreateInstance<ScriptableObject>();
+                DragAndDrop.objectReferences = new[] { dragContextObject };
+                DragAndDrop.StartDrag(
+                    _loadedEditorLayers[_draggedLoadedClipOriginalIndex].ClipName
+                        ?? "Dragging Layer"
+                );
+
+                _isClipDragPending = false;
+            }
+        }
+
+        private void OnLoadedClipItemPointerUpForClick(
+            PointerUpEvent evt,
+            VisualElement clipElement,
+            int listIndex
+        )
+        {
+            if (evt.button != 0)
+            {
+                return;
+            }
+
+            if (clipElement.HasPointerCapture(evt.pointerId))
+            {
+                clipElement.ReleasePointer(evt.pointerId);
+            }
+            if (_isClipDragPending)
+            {
+                if (listIndex >= 0 && listIndex < _loadedEditorLayers.Count)
+                {
+                    SetActiveEditorLayer(_loadedEditorLayers[listIndex]);
+                }
+                _isClipDragPending = false;
+                _clipDragPendingElement = null;
+                evt.StopPropagation();
+            }
+            else if (_draggedLoadedClipElement == _clipDragPendingElement)
+            {
+                if (DragAndDrop.GetGenericData("DraggedLoadedClipIndex") != null)
+                {
+                    CleanupLoadedClipDragState(evt.pointerId);
+                }
+                evt.StopPropagation();
+            }
+
+            _isClipDragPending = false;
+            _clipDragPendingElement = null;
         }
 
         private void OnDraggedLoadedClipItemPointerUp(PointerUpEvent evt)
         {
             if (_draggedLoadedClipElement == null || evt.currentTarget != _draggedLoadedClipElement)
+            {
                 return;
+            }
 
-            if (DragAndDrop.GetGenericData("DraggedLoadedClipIndex") != null) // A drag we initiated is active and not yet dropped
+            if (
+                DragAndDrop.GetGenericData("DraggedLoadedClipIndex") != null
+                || _draggedLoadedClipElement != null
+                    && _draggedLoadedClipElement.HasPointerCapture(evt.pointerId)
+            )
             {
                 CleanupLoadedClipDragState(evt.pointerId);
             }
-            else if (
-                _draggedLoadedClipElement != null
-                && _draggedLoadedClipElement.HasPointerCapture(evt.pointerId)
-            )
-            {
-                // Minimal cleanup if drag was handled by a drop elsewhere but pointerup still fires here
-                _draggedLoadedClipElement.ReleasePointer(evt.pointerId);
-                _draggedLoadedClipElement.UnregisterCallback<PointerUpEvent>(
-                    OnDraggedLoadedClipItemPointerUp
-                );
-                //_draggedLoadedClipElement.UnregisterCallback<PointerLeaveEvent>(OnDraggedLoadedClipItemPointerLeave);
-                _draggedLoadedClipElement.RemoveFromClassList("frame-item-dragged");
-                _draggedLoadedClipElement = null; // Ensure it's null if not already.
-            }
+
             evt.StopPropagation();
         }
 
@@ -596,13 +754,17 @@
                 int newVisualIndex = -1;
 
                 if (_loadedClipDropPlaceholder.parent == _loadedClipsContainer)
+                {
                     _loadedClipsContainer.Remove(_loadedClipDropPlaceholder);
+                }
 
                 for (int i = 0; i < _loadedClipsContainer.childCount; i++)
                 {
                     VisualElement child = _loadedClipsContainer[i];
                     if (child == _draggedLoadedClipElement)
+                    {
                         continue;
+                    }
 
                     float childMidY = child.layout.yMin + child.layout.height / 2f;
                     if (mouseY < childMidY)
@@ -612,7 +774,7 @@
                     }
                 }
                 if (
-                    newVisualIndex == -1
+                    newVisualIndex < 0
                     && _loadedClipsContainer.childCount > 0
                     && _draggedLoadedClipElement
                         != _loadedClipsContainer.ElementAt(_loadedClipsContainer.childCount - 1)
@@ -621,7 +783,7 @@
                     newVisualIndex = _loadedClipsContainer.childCount;
                 }
 
-                if (newVisualIndex != -1)
+                if (0 <= newVisualIndex)
                 {
                     _loadedClipsContainer.Insert(newVisualIndex, _loadedClipDropPlaceholder);
                     _loadedClipDropPlaceholder.style.visibility = Visibility.Visible;
@@ -634,7 +796,10 @@
                 else
                 {
                     if (_loadedClipDropPlaceholder.parent == _loadedClipsContainer)
+                    {
                         _loadedClipsContainer.Remove(_loadedClipDropPlaceholder);
+                    }
+
                     _loadedClipDropPlaceholder.style.visibility = Visibility.Hidden;
                 }
             }
@@ -654,10 +819,10 @@
 
                 if (originalListIndex < 0 || originalListIndex >= _loadedEditorLayers.Count)
                 {
-                    Debug.LogError(
-                        "DragPerform (LoadedClips): Stale or invalid dragged index. Aborting drop."
+                    this.LogError(
+                        $"DragPerform (LoadedClips): Stale or invalid dragged index. Aborting drop."
                     );
-                    CleanupLoadedClipDragState(-1);
+                    CleanupLoadedClipDragState(InvalidPointerId);
                     evt.StopPropagation();
                     return;
                 }
@@ -670,39 +835,40 @@
                 );
                 int targetListIndex;
 
-                if (placeholderVisualIndex != -1)
+                if (0 <= placeholderVisualIndex)
                 {
-                    int itemsBeforePlaceholder = 0;
+                    int itemsBeforePlaceholder = -1;
                     for (int i = 0; i < placeholderVisualIndex; i++)
                     {
-                        if (
-                            _loadedClipsContainer[i] != _draggedLoadedClipElement
-                            && _loadedClipsContainer[i] != _loadedClipDropPlaceholder
-                        )
+                        if (_loadedClipsContainer[i] != _loadedClipDropPlaceholder)
                         {
                             itemsBeforePlaceholder++;
+                        }
+                        else
+                        {
+                            break;
                         }
                     }
                     targetListIndex = itemsBeforePlaceholder;
                 }
                 else
                 {
-                    targetListIndex = _loadedEditorLayers.Count; // Add to end
+                    targetListIndex = _loadedEditorLayers.Count;
                 }
                 targetListIndex = Mathf.Clamp(targetListIndex, 0, _loadedEditorLayers.Count);
                 _loadedEditorLayers.Insert(targetListIndex, movedLayer);
 
                 DragAndDrop.AcceptDrag();
-                CleanupLoadedClipDragState(-1); // Important: Cleanup after data manipulation
+                CleanupLoadedClipDragState(InvalidPointerId);
 
-                RebuildLoadedClipsUI(); // Rebuild the UI list for loaded clips
-                RecreatePreviewImage(); // Recreate the LayeredImage with new layer order
+                RebuildLoadedClipsUI();
+                RecreatePreviewImage();
             }
             else
             {
                 if (DragAndDrop.GetGenericData("DraggedLoadedClipIndex") != null)
                 {
-                    CleanupLoadedClipDragState(-1);
+                    CleanupLoadedClipDragState(InvalidPointerId);
                 }
             }
             evt.StopPropagation();
@@ -710,12 +876,17 @@
 
         private void OnLoadedClipsContainerDragLeave(DragLeaveEvent evt)
         {
-            if (evt.target == _loadedClipsContainer) // Mouse truly left the container
+            if (evt.target == _loadedClipsContainer)
             {
                 if (_loadedClipDropPlaceholder.parent == _loadedClipsContainer)
+                {
                     _loadedClipsContainer.Remove(_loadedClipDropPlaceholder);
+                }
+
                 if (_loadedClipDropPlaceholder != null)
+                {
                     _loadedClipDropPlaceholder.style.visibility = Visibility.Hidden;
+                }
             }
         }
 
@@ -724,75 +895,84 @@
             if (_draggedLoadedClipElement != null)
             {
                 if (
-                    pointerIdToRelease != -1
+                    pointerIdToRelease != InvalidPointerId
                     && _draggedLoadedClipElement.HasPointerCapture(pointerIdToRelease)
                 )
+                {
                     _draggedLoadedClipElement.ReleasePointer(pointerIdToRelease);
-                else if (
-                    pointerIdToRelease == -1
-                    && _draggedLoadedClipElement.HasPointerCapture(-1)
-                )
-                    _draggedLoadedClipElement.ReleasePointer(-1);
+                }
 
                 _draggedLoadedClipElement.UnregisterCallback<PointerUpEvent>(
                     OnDraggedLoadedClipItemPointerUp
                 );
-                //_draggedLoadedClipElement.UnregisterCallback<PointerLeaveEvent>(OnDraggedLoadedClipItemPointerLeave);
-                _draggedLoadedClipElement.RemoveFromClassList("frame-item-dragged"); // Or your specific class
+
+                _draggedLoadedClipElement.RemoveFromClassList("frame-item-dragged");
                 _draggedLoadedClipElement = null;
             }
             _draggedLoadedClipOriginalIndex = -1;
 
+            _isClipDragPending = false;
+            if (_clipDragPendingElement != null)
+            {
+                if (
+                    pointerIdToRelease != InvalidPointerId
+                    && _clipDragPendingElement.HasPointerCapture(pointerIdToRelease)
+                )
+                {
+                    _clipDragPendingElement.ReleasePointer(pointerIdToRelease);
+                }
+
+                _clipDragPendingElement = null;
+            }
+
             if (_loadedClipDropPlaceholder != null)
             {
                 if (_loadedClipDropPlaceholder.parent == _loadedClipsContainer)
+                {
                     _loadedClipsContainer.Remove(_loadedClipDropPlaceholder);
+                }
+
                 _loadedClipDropPlaceholder.style.visibility = Visibility.Hidden;
             }
             DragAndDrop.SetGenericData("DraggedLoadedClipIndex", null);
         }
 
-        // --- Preview Management ---
         private void RecreatePreviewImage()
         {
             if (_animationPreview != null)
             {
-                // LayeredImage uses EditorApplication.update, manually detach if needed
-                // Your LayeredImage seems to handle its own Tick detachment in Fps setter or OnDisable
                 if (_animationPreview.parent == _previewPanelHost)
                 {
                     _previewPanelHost.Remove(_animationPreview);
                 }
-                // If LayeredImage implemented IDisposable, call Dispose here.
+
                 _animationPreview = null;
             }
 
             if (_previewPanelHost == null)
-                return; // Should not happen if CreateGUI ran
+            {
+                return;
+            }
 
-            var animatedSpriteLayers = new List<AnimatedSpriteLayer>();
+            List<AnimatedSpriteLayer> animatedSpriteLayers = new();
             if (_loadedEditorLayers.Count > 0)
             {
-                foreach (var editorLayer in _loadedEditorLayers)
+                foreach (EditorLayerData editorLayer in _loadedEditorLayers)
                 {
-                    // Construct NEW AnimatedSpriteLayer using current (possibly reordered) sprites
-                    // Assuming worldSpaceOffsets and alpha are default for this tool for now.
-                    // If these need to be configurable per layer in the tool, EditorLayerData would store them.
-                    animatedSpriteLayers.Add(
-                        new AnimatedSpriteLayer(editorLayer.Sprites, null, 1f)
-                    );
+                    animatedSpriteLayers.Add(new AnimatedSpriteLayer(editorLayer.Sprites));
                 }
             }
 
-            // Create new LayeredImage instance
-            // Using Color.clear for background as LayeredImage handles its own default or passed color.
             _animationPreview = new LayeredImage(
                 animatedSpriteLayers,
                 Color.clear,
-                _currentPreviewFps
-            );
-            _animationPreview.name = "animationPreviewElement";
-            // LayeredImage sets its own size. USS on animation-preview-container can set max-width/height.
+                _currentPreviewFps,
+                updatesSelf: false
+            )
+            {
+                name = "animationPreviewElement",
+            };
+
             _previewPanelHost.Add(_animationPreview);
         }
 
@@ -806,13 +986,17 @@
                 int newVisualIndex = -1;
 
                 if (_frameDropPlaceholder.parent == _framesContainer)
+                {
                     _framesContainer.Remove(_frameDropPlaceholder);
+                }
 
                 for (int i = 0; i < _framesContainer.childCount; i++)
                 {
                     VisualElement child = _framesContainer[i];
                     if (child == _draggedFrameElement)
+                    {
                         continue;
+                    }
 
                     float childMidY = child.layout.yMin + child.layout.height / 2f;
                     if (mouseY < childMidY)
@@ -822,7 +1006,7 @@
                     }
                 }
                 if (
-                    newVisualIndex == -1
+                    newVisualIndex < 0
                     && _framesContainer.childCount > 0
                     && _draggedFrameElement
                         != _framesContainer.ElementAt(_framesContainer.childCount - 1)
@@ -831,7 +1015,7 @@
                     newVisualIndex = _framesContainer.childCount;
                 }
 
-                if (newVisualIndex != -1)
+                if (0 <= newVisualIndex)
                 {
                     _framesContainer.Insert(newVisualIndex, _frameDropPlaceholder);
                     _frameDropPlaceholder.style.visibility = Visibility.Visible;
@@ -844,7 +1028,10 @@
                 else
                 {
                     if (_frameDropPlaceholder.parent == _framesContainer)
+                    {
                         _framesContainer.Remove(_frameDropPlaceholder);
+                    }
+
                     _frameDropPlaceholder.style.visibility = Visibility.Hidden;
                 }
             }
@@ -864,25 +1051,25 @@
                 && _activeEditorLayer != null
             )
             {
-                int originalDataIndex = (int)draggedIndexData; // Index in _activeEditorLayer.Sprites
+                int originalDataIndex = (int)draggedIndexData;
 
                 if (originalDataIndex < 0 || originalDataIndex >= _activeEditorLayer.Sprites.Count)
                 {
-                    Debug.LogError(
-                        "DragPerform (Frames): Stale or invalid dragged index. Aborting drop."
+                    this.LogError(
+                        $"DragPerform (Frames): Stale or invalid dragged index. Aborting drop."
                     );
-                    CleanupFrameDragState(-1);
+                    CleanupFrameDragState(InvalidPointerId);
                     evt.StopPropagation();
                     return;
                 }
 
                 Sprite movedSprite = _activeEditorLayer.Sprites[originalDataIndex];
-                _activeEditorLayer.Sprites.RemoveAt(originalDataIndex); // Remove from old data position
+                _activeEditorLayer.Sprites.RemoveAt(originalDataIndex);
 
                 int placeholderVisualIndex = _framesContainer.IndexOf(_frameDropPlaceholder);
-                int targetDataIndex; // Target index in _activeEditorLayer.Sprites
+                int targetDataIndex;
 
-                if (placeholderVisualIndex != -1)
+                if (0 <= placeholderVisualIndex)
                 {
                     int itemsBeforePlaceholder = 0;
                     for (int i = 0; i < placeholderVisualIndex; i++)
@@ -899,22 +1086,22 @@
                 }
                 else
                 {
-                    targetDataIndex = _activeEditorLayer.Sprites.Count; // Add to end
+                    targetDataIndex = _activeEditorLayer.Sprites.Count;
                 }
                 targetDataIndex = Mathf.Clamp(targetDataIndex, 0, _activeEditorLayer.Sprites.Count);
-                _activeEditorLayer.Sprites.Insert(targetDataIndex, movedSprite); // Insert into new data position
+                _activeEditorLayer.Sprites.Insert(targetDataIndex, movedSprite);
 
                 DragAndDrop.AcceptDrag();
-                CleanupFrameDragState(-1); // Cleanup after data manipulation
+                CleanupFrameDragState(InvalidPointerId);
 
-                RebuildFramesListUI(); // Rebuild the UI list for frames
-                RecreatePreviewImage(); // Recreate the LayeredImage as sprite order in active layer changed
+                RebuildFramesListUI();
+                RecreatePreviewImage();
             }
             else
             {
                 if (DragAndDrop.GetGenericData("DraggedFrameDataIndex") != null)
                 {
-                    CleanupFrameDragState(-1);
+                    CleanupFrameDragState(InvalidPointerId);
                 }
             }
             evt.StopPropagation();
@@ -925,26 +1112,35 @@
             if (evt.target == _framesContainer)
             {
                 if (_frameDropPlaceholder.parent == _framesContainer)
+                {
                     _framesContainer.Remove(_frameDropPlaceholder);
+                }
+
                 if (_frameDropPlaceholder != null)
+                {
                     _frameDropPlaceholder.style.visibility = Visibility.Hidden;
+                }
             }
+
+            CleanupFrameDragState(InvalidPointerId);
         }
 
         private void CleanupFrameDragState(int pointerIdToRelease)
         {
+            this.Log($"Cleaning up frame drag state with pointer {pointerIdToRelease}");
             if (_draggedFrameElement != null)
             {
                 if (
-                    pointerIdToRelease != -1
+                    pointerIdToRelease != InvalidPointerId
                     && _draggedFrameElement.HasPointerCapture(pointerIdToRelease)
                 )
+                {
                     _draggedFrameElement.ReleasePointer(pointerIdToRelease);
+                }
 
                 _draggedFrameElement.UnregisterCallback<PointerUpEvent>(
                     OnDraggedFrameItemPointerUp
                 );
-                //_draggedFrameElement.UnregisterCallback<PointerLeaveEvent>(OnDraggedFrameItemPointerLeave);
                 _draggedFrameElement.RemoveFromClassList("frame-item-dragged");
                 _draggedFrameElement = null;
             }
@@ -953,10 +1149,13 @@
             if (_frameDropPlaceholder != null)
             {
                 if (_frameDropPlaceholder.parent == _framesContainer)
+                {
                     _framesContainer.Remove(_frameDropPlaceholder);
+                }
+
                 _frameDropPlaceholder.style.visibility = Visibility.Hidden;
             }
-            DragAndDrop.SetGenericData("DraggedFrameDataIndex", null); // Use the correct key
+            DragAndDrop.SetGenericData("DraggedFrameDataIndex", null);
         }
 
         private void UpdateFpsDebugLabelForActiveLayer()
@@ -966,180 +1165,133 @@
                 _fpsDebugLabel.text = "Detected FPS Info: No active clip.";
                 return;
             }
-            // Your AnimatedSpriteLayer has a const FrameRate. If clips have inherent FPS,
-            // use _activeEditorLayer.OriginalClipFps
+
             _fpsDebugLabel.text =
                 $"Active Clip FPS (Original): {FormatFps(_activeEditorLayer.OriginalClipFps)}fps. Preview uses global FPS.";
         }
 
-        private string FormatFps(float fps)
+        private static string FormatFps(float fps)
         {
             return fps.ToString("F1");
         }
 
-        // Inside AnimationViewerWindow.cs
-
-        // ... (other parts of the class) ...
-
-        // Rebuilds the list of draggable frame items based on the _activeEditorLayer.Sprites
         private void RebuildFramesListUI()
         {
-            // 1. Clear previous UI elements and UI data list
             _framesContainer.Clear();
-            _currentFramesForEditingUI.Clear(); // This list stores SpriteFrameUIData if you need to reference them
 
-            // 2. Ensure the drop placeholder is not lingering in the container from a previous operation
             if (_frameDropPlaceholder != null && _frameDropPlaceholder.parent == _framesContainer)
             {
                 _framesContainer.Remove(_frameDropPlaceholder);
             }
 
-            // 3. If there's no active layer or it has no sprites, there's nothing to build
-            if (_activeEditorLayer == null || _activeEditorLayer.Sprites == null)
+            if (_activeEditorLayer?.Sprites == null)
             {
-                // Optionally, display a message in _framesContainer if it's empty
-                // _framesContainer.Add(new Label("No frames in the active layer."));
                 return;
             }
 
-            // 4. Iterate through sprites in the active layer and create UI for each
             for (int i = 0; i < _activeEditorLayer.Sprites.Count; i++)
             {
                 Sprite sprite = _activeEditorLayer.Sprites[i];
 
-                // Create a data object for UI representation (optional if only index is needed for drag)
-                var frameUIData = new SpriteFrameUIData(sprite, i); // 'i' is its current index in _activeEditorLayer.Sprites
-                _currentFramesForEditingUI.Add(frameUIData);
+                VisualElement frameElement = new();
+                frameElement.AddToClassList("frame-item");
 
-                // 5. Create the main visual element for this frame item
-                VisualElement frameElement = new VisualElement();
-                frameElement.AddToClassList("frame-item"); // Apply USS styling
-
-                // --- Populate frameElement with content ---
-                // Image for the sprite
-                Image frameImage = new Image { sprite = sprite, scaleMode = ScaleMode.ScaleToFit };
-                frameImage.AddToClassList("frame-image"); // USS styling for the image
+                Image frameImage = new() { sprite = sprite, scaleMode = ScaleMode.ScaleToFit };
+                frameImage.AddToClassList("frame-image");
                 frameElement.Add(frameImage);
 
-                // Container for text information
-                VisualElement frameInfo = new VisualElement();
-                frameInfo.AddToClassList("frame-info"); // USS styling for info section
-                frameInfo.Add(new Label($"Frame: {i + 1}")); // Display 1-based index to user
+                VisualElement frameInfo = new();
+                frameInfo.AddToClassList("frame-info");
+                frameInfo.Add(new Label($"Frame: {i + 1}"));
                 frameInfo.Add(new Label($"Sprite: {(sprite != null ? sprite.name : "(None)")}"));
                 frameElement.Add(frameInfo);
 
-                // Read-only field for display order (optional, could be part of frameInfo)
-                IntegerField indexField = new IntegerField(null) { value = i + 1 };
-                indexField.AddToClassList("frame-index-field"); // USS styling for index field
+                IntegerField indexField = new(null) { value = i + 1 };
+                indexField.AddToClassList("frame-index-field");
                 frameElement.Add(indexField);
 
-                VisualElement orderFieldContainer = new VisualElement();
-                orderFieldContainer.style.flexDirection = FlexDirection.Row;
-                orderFieldContainer.style.alignItems = Align.Center;
-                orderFieldContainer.style.marginLeft = StyleKeyword.Auto; // This pushes the container to the right
+                VisualElement orderFieldContainer = new()
+                {
+                    style =
+                    {
+                        flexDirection = FlexDirection.Row,
+                        alignItems = Align.Center,
+                        marginLeft = StyleKeyword.Auto,
+                    },
+                };
 
-                Label orderLabel = new Label("Order:");
-                orderLabel.style.marginRight = 3; // Space between "Order:" and the number field
+                Label orderLabel = new("Order:") { style = { marginRight = 3 } };
                 orderFieldContainer.Add(orderLabel);
                 orderFieldContainer.Add(indexField);
                 frameElement.Add(orderFieldContainer);
 
-                // --- End content population ---
-
-                // 6. Register the PointerDownEvent for initiating a drag operation
-                //    'i' is the crucial 'originalDataIndex' for the sprite in _activeEditorLayer.Sprites
-                int currentDataIndex = i; // Capture 'i' for the lambda expression
+                int currentDataIndex = i;
                 frameElement.RegisterCallback<PointerDownEvent>(evt =>
                     OnFrameItemPointerDown(evt, frameElement, currentDataIndex)
                 );
 
                 indexField.userData = currentDataIndex;
 
-                indexField.RegisterCallback<FocusInEvent>(evt =>
+                indexField.RegisterCallback<FocusInEvent>(_ =>
                 {
-                    CleanupFrameDragState(-1); // Ensure drag state is cleaned if window closes mid-drag
-                    CleanupLoadedClipDragState(-1); // For loaded clips
+                    CleanupFrameDragState(InvalidPointerId);
+                    CleanupLoadedClipDragState(InvalidPointerId);
                 });
 
-                // Listen for when the user presses Enter/Return or when the field loses focus
-                indexField.RegisterCallback<FocusOutEvent>(evt =>
+                indexField.RegisterCallback<FocusOutEvent>(_ =>
                     OnFrameIndexFieldChanged(indexField)
                 );
                 indexField.RegisterCallback<KeyDownEvent>(evt =>
                 {
-                    if (evt.keyCode == KeyCode.Return || evt.keyCode == KeyCode.KeypadEnter)
+                    if (evt.keyCode is KeyCode.Return or KeyCode.KeypadEnter)
                     {
                         OnFrameIndexFieldChanged(indexField);
-                        // Optionally, blur the field to signify completion
                         indexField.Blur();
                     }
                 });
 
-                // 7. Add the fully constructed frameElement to the scrollable container
                 _framesContainer.Add(frameElement);
-
-                // Store a reference to the VisualElement in our UI data object (optional, if needed elsewhere)
-                frameUIData.VisualElement = frameElement;
             }
         }
 
         private void OnFrameIndexFieldChanged(IntegerField field)
         {
-            if (_activeEditorLayer == null || _activeEditorLayer.Sprites == null)
+            CleanupFrameDragState(InvalidPointerId);
+            CleanupLoadedClipDragState(InvalidPointerId);
+            if (_activeEditorLayer?.Sprites == null)
+            {
                 return;
+            }
 
-            CleanupFrameDragState(-1); // Ensure drag state is cleaned if window closes mid-drag
-            CleanupLoadedClipDragState(-1); // For loaded clips
-
-            int originalDataIndex = (int)field.userData; // Get the original 0-based index of the sprite
-            int newUiIndex = field.value; // Get the new 1-based index from the UI field
-
-            // Convert UI index (1-based) to data index (0-based)
+            int originalDataIndex = (int)field.userData;
+            int newUiIndex = field.value;
             int newRequestedDataIndex = newUiIndex - 1;
-
-            // Clamp the new data index to valid bounds
             int newClampedDataIndex = Mathf.Clamp(
                 newRequestedDataIndex,
                 0,
                 _activeEditorLayer.Sprites.Count - 1
             );
 
-            // If the (clamped) new data index is different from the original data index, then reorder
             if (newClampedDataIndex != originalDataIndex)
             {
-                // Get the sprite that needs to be moved
                 if (originalDataIndex < 0 || originalDataIndex >= _activeEditorLayer.Sprites.Count)
                 {
-                    Debug.LogWarning(
+                    this.LogWarn(
                         $"Original index {originalDataIndex} out of bounds. Rebuilding UI to correct."
                     );
-                    RebuildFramesListUI(); // Rebuild to fix any display inconsistencies
+                    RebuildFramesListUI();
                     return;
                 }
                 Sprite spriteToMove = _activeEditorLayer.Sprites[originalDataIndex];
-
-                // Remove from the old position
                 _activeEditorLayer.Sprites.RemoveAt(originalDataIndex);
-
-                // Insert at the new (clamped) position
-                // The target index for insertion might need adjustment if originalDataIndex < newClampedDataIndex
-                // because the list size has changed. However, newClampedDataIndex was based on Count-1 *before* removal.
-                // So, if inserting back, it should be fine.
                 _activeEditorLayer.Sprites.Insert(newClampedDataIndex, spriteToMove);
-
-                // Rebuild the entire frames list UI to reflect new order and indices
                 RebuildFramesListUI();
-                // Recreate the preview image
                 RecreatePreviewImage();
             }
-            else if (newUiIndex - 1 != newClampedDataIndex) // If user entered an out-of-bounds value that got clamped
+            else if (newUiIndex - 1 != newClampedDataIndex)
             {
-                // The logical position didn't change, but the UI field might show a
-                // number that's different from its actual new position after clamping.
-                // Rebuild to correct the UI field's displayed value.
                 RebuildFramesListUI();
             }
-            // If newClampedDataIndex == originalDataIndex and no clamping occurred, do nothing.
         }
 
         private void OnFrameItemPointerDown(
@@ -1149,42 +1301,39 @@
         )
         {
             if (evt.button != 0 || _draggedFrameElement != null)
-                return; // Already dragging or not left button
+            {
+                return;
+            }
 
-            // Ensure active layer and index are valid BEFORE accessing sprites
             if (
                 _activeEditorLayer == null
                 || originalDataIndex < 0
                 || originalDataIndex >= _activeEditorLayer.Sprites.Count
             )
             {
-                Debug.LogError(
-                    $"OnFrameItemPointerDown: Invalid originalDataIndex ({originalDataIndex}) or no active layer. Sprite count: {(_activeEditorLayer?.Sprites?.Count ?? -1)}"
+                this.LogError(
+                    $"OnFrameItemPointerDown: Invalid originalDataIndex ({originalDataIndex}) or no active layer. Sprite count: {_activeEditorLayer?.Sprites?.Count ?? -1}"
                 );
                 return;
             }
 
-            // All checks passed, proceed with drag initiation
             _draggedFrameElement = frameElement;
             _draggedFrameOriginalDataIndex = originalDataIndex;
 
-            try // Add a try-catch block for robustness during drag setup
+            try
             {
                 _draggedFrameElement.RegisterCallback<PointerUpEvent>(OnDraggedFrameItemPointerUp);
-                //_draggedFrameElement.CapturePointer(evt.pointerId);
-                _draggedFrameElement.AddToClassList("frame-item-dragged"); // Ensure this class exists and has visible styling
+                _draggedFrameElement.AddToClassList("frame-item-dragged");
 
                 DragAndDrop.PrepareStartDrag();
                 DragAndDrop.SetGenericData("DraggedFrameDataIndex", _draggedFrameOriginalDataIndex);
 
-                // Object references: Identical handling to clip dragging
                 Object dragContextObject =
-                    (_activeEditorLayer.SourceClip)
-                    ?? (Object)ScriptableObject.CreateInstance<ScriptableObject>();
-                if (dragContextObject == null) // Should not happen with ScriptableObject.CreateInstance fallback
+                    _activeEditorLayer.SourceClip ?? (Object)CreateInstance<ScriptableObject>();
+                if (dragContextObject == null)
                 {
-                    Debug.LogError("Failed to create dragContextObject for frame drag.");
-                    // Attempt to cleanup what we've done so far to prevent stuck state
+                    this.LogError($"Failed to create dragContextObject for frame drag.");
+
                     _draggedFrameElement.ReleasePointer(evt.pointerId);
                     _draggedFrameElement.UnregisterCallback<PointerUpEvent>(
                         OnDraggedFrameItemPointerUp
@@ -1193,14 +1342,13 @@
                     _draggedFrameElement = null;
                     return;
                 }
-                DragAndDrop.objectReferences = new Object[] { dragContextObject };
+                DragAndDrop.objectReferences = new[] { dragContextObject };
 
-                // Drag title: Safer handling for potentially null sprites
                 Sprite spriteBeingDragged = _activeEditorLayer.Sprites[originalDataIndex];
                 string dragTitle;
                 if (spriteBeingDragged != null)
                 {
-                    dragTitle = !string.IsNullOrEmpty(spriteBeingDragged.name)
+                    dragTitle = !string.IsNullOrWhiteSpace(spriteBeingDragged.name)
                         ? spriteBeingDragged.name
                         : $"Unnamed Sprite Frame {originalDataIndex + 1}";
                 }
@@ -1209,24 +1357,26 @@
                     dragTitle = $"Empty Frame {originalDataIndex + 1}";
                 }
 
-                // Ensure dragTitle is never null or empty for StartDrag
-                if (string.IsNullOrEmpty(dragTitle))
+                if (string.IsNullOrWhiteSpace(dragTitle))
                 {
-                    dragTitle = "Dragging Frame"; // Absolute fallback
+                    dragTitle = "Dragging Frame";
                 }
 
-                DragAndDrop.StartDrag(dragTitle); // This is the critical call
+                DragAndDrop.StartDrag(dragTitle);
             }
-            catch (System.Exception e)
+            catch (Exception e)
             {
-                Debug.LogError(
+                this.LogError(
                     $"Exception during OnFrameItemPointerDown before StartDrag: {e.Message}\n{e.StackTrace}"
                 );
-                // If an exception occurred, try to clean up to prevent a stuck state
+
                 if (_draggedFrameElement != null)
                 {
                     if (_draggedFrameElement.HasPointerCapture(evt.pointerId))
+                    {
                         _draggedFrameElement.ReleasePointer(evt.pointerId);
+                    }
+
                     _draggedFrameElement.UnregisterCallback<PointerUpEvent>(
                         OnDraggedFrameItemPointerUp
                     );
@@ -1234,17 +1384,15 @@
                     _draggedFrameElement = null;
                 }
                 _draggedFrameOriginalDataIndex = -1;
-                // Do not try to clear DragAndDrop.genericData here as StartDrag might not have been prepared fully
-                return; // Stop further processing
             }
-
-            // evt.StopPropagation();
         }
 
         private void OnDraggedFrameItemPointerUp(PointerUpEvent evt)
         {
             if (_draggedFrameElement == null || evt.currentTarget != _draggedFrameElement)
+            {
                 return;
+            }
 
             if (DragAndDrop.GetGenericData("DraggedFrameDataIndex") != null)
             {
@@ -1255,7 +1403,6 @@
                 && _draggedFrameElement.HasPointerCapture(evt.pointerId)
             )
             {
-                // Minimal cleanup if drag was handled by a drop elsewhere
                 _draggedFrameElement.ReleasePointer(evt.pointerId);
                 _draggedFrameElement.UnregisterCallback<PointerUpEvent>(
                     OnDraggedFrameItemPointerUp
@@ -1272,7 +1419,7 @@
             _fpsField.SetValueWithoutNotify(_currentPreviewFps);
             if (_animationPreview != null)
             {
-                _animationPreview.Fps = _currentPreviewFps; // Your LayeredImage has an Fps setter
+                _animationPreview.Fps = _currentPreviewFps;
             }
         }
 
@@ -1280,7 +1427,7 @@
         {
             if (_activeEditorLayer == null || _activeEditorLayer.SourceClip == null)
             {
-                Debug.LogError("No active animation clip to save.");
+                this.LogError($"No active animation clip to save.");
                 return;
             }
 
@@ -1293,30 +1440,29 @@
                 clipToSave
             );
 
-            foreach (var b in allBindings)
+            foreach (EditorCurveBinding b in allBindings)
             {
                 if (
                     b.type == typeof(SpriteRenderer)
                     && b.propertyName == "m_Sprite"
-                    && (string.IsNullOrEmpty(bindingPath) || b.path == bindingPath)
-                ) // Match path if available
+                    && (string.IsNullOrWhiteSpace(bindingPath) || b.path == bindingPath)
+                )
                 {
                     spriteBinding = b;
                     bindingFound = true;
                     break;
                 }
             }
-            // If no specific binding path matched (e.g. path was empty or object renamed),
-            // try to find *any* m_Sprite binding as a fallback.
+
             if (!bindingFound)
             {
-                foreach (var b in allBindings)
+                foreach (EditorCurveBinding b in allBindings)
                 {
                     if (b.type == typeof(SpriteRenderer) && b.propertyName == "m_Sprite")
                     {
                         spriteBinding = b;
                         bindingFound = true;
-                        Debug.LogWarning(
+                        this.LogWarn(
                             $"Saving to first available m_Sprite binding on '{clipToSave.name}' as specific path '{bindingPath}' was not found or empty."
                         );
                         break;
@@ -1326,18 +1472,17 @@
 
             if (!bindingFound)
             {
-                Debug.LogError(
+                this.LogError(
                     $"Cannot save '{clipToSave.name}': No SpriteRenderer m_Sprite binding found (Path Hint: '{bindingPath}'). Clip might be empty or not a sprite animation."
                 );
                 return;
             }
 
-            // Use current (potentially reordered) sprites from _activeEditorLayer
             List<Sprite> spritesToSave = _activeEditorLayer.Sprites;
             ObjectReferenceKeyframe[] newKeyframes = new ObjectReferenceKeyframe[
                 spritesToSave.Count
             ];
-            float timePerFrame = (_currentPreviewFps > 0) ? (1.0f / _currentPreviewFps) : 0f;
+            float timePerFrame = _currentPreviewFps > 0 ? 1.0f / _currentPreviewFps : 0f;
 
             for (int i = 0; i < spritesToSave.Count; i++)
             {
@@ -1353,32 +1498,24 @@
             clipToSave.frameRate = _currentPreviewFps;
 
             EditorUtility.SetDirty(clipToSave);
-            AssetDatabase.SaveAssets(); // Save the modified asset
-            // AssetDatabase.Refresh(); // Usually not needed after SaveAssets, but can ensure project view updates
+            AssetDatabase.SaveAssets();
 
-            Debug.Log(
+            this.Log(
                 $"Animation clip '{clipToSave.name}' saved with {spritesToSave.Count} frames at {_currentPreviewFps} FPS."
             );
-
-            // Optional: Refresh internal data for the saved layer if needed,
-            // but since _activeEditorLayer.Sprites *is* the source of truth now, it's consistent.
-            // If user reloads this clip or makes another active then this one, it will read from the file.
         }
 
-        private void OnDisable() // Or OnDestroy for EditorWindow
+        private void OnDisable()
         {
-            CleanupFrameDragState(-1); // Ensure drag state is cleaned if window closes mid-drag
-            CleanupLoadedClipDragState(-1); // For loaded clips
+            CleanupFrameDragState(InvalidPointerId);
+            CleanupLoadedClipDragState(InvalidPointerId);
 
-            // If LayeredImage uses EditorApplication.update, ensure it's unhooked.
-            // Your LayeredImage Fps setter has logic for this, but an explicit cleanup might be good.
-            // If _animationPreview has a dispose method or explicit unhook for EditorApplication.update, call it.
-            // e.g., if (_animationPreview is IDisposable disp) disp.Dispose();
             if (_animationPreview != null && _animationPreview.parent == _previewPanelHost)
             {
-                _previewPanelHost.Remove(_animationPreview); // Remove from UI
+                _previewPanelHost.Remove(_animationPreview);
             }
             _animationPreview = null;
         }
     }
+#endif
 }
