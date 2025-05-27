@@ -87,9 +87,13 @@
         private float _currentPreviewFps = AnimatedSpriteLayer.FrameRate;
 
         // --- Drag and Drop state for frames ---
-        private VisualElement _draggedElement;
-        private int _draggedElementOriginalIndex;
-        private VisualElement _dropPlaceholder;
+        private VisualElement _draggedFrameElement; // The VisualElement of the frame item being dragged
+        private int _draggedFrameOriginalDataIndex; // Index in _activeEditorLayer.Sprites
+        private VisualElement _frameDropPlaceholder; // Placeholder for frame list (was _dropPlaceholder)
+
+        private VisualElement _draggedLoadedClipElement;
+        private int _draggedLoadedClipOriginalIndex; // Index in _loadedEditorLayers
+        private VisualElement _loadedClipDropPlaceholder;
 
         // Represents a single frame in our editor UI for the *active* clip
         private class SpriteFrameUIData
@@ -149,13 +153,29 @@
             _applyFpsButton.clicked += OnApplyFpsToPreviewClicked;
             _saveClipButton.clicked += OnSaveClipClicked;
 
+            _frameDropPlaceholder = new VisualElement(); // Renamed from _dropPlaceholder
+            _frameDropPlaceholder.AddToClassList("drop-placeholder");
+            _frameDropPlaceholder.style.height = 5; // Make it smaller for frame list items
+            _frameDropPlaceholder.style.visibility = Visibility.Hidden;
+
+            // --- Register Drag & Drop Callbacks for the _framesContainer ---
             _framesContainer.RegisterCallback<DragUpdatedEvent>(OnFramesContainerDragUpdated);
             _framesContainer.RegisterCallback<DragPerformEvent>(OnFramesContainerDragPerform);
             _framesContainer.RegisterCallback<DragLeaveEvent>(OnFramesContainerDragLeave);
 
-            _dropPlaceholder = new VisualElement();
-            _dropPlaceholder.AddToClassList("drop-placeholder");
-            _dropPlaceholder.style.visibility = Visibility.Hidden;
+            _loadedClipDropPlaceholder = new VisualElement();
+            _loadedClipDropPlaceholder.AddToClassList("drop-placeholder"); // Reuse existing style or make a new one
+            _loadedClipDropPlaceholder.style.height = 5; // Make it smaller for clip list items
+            _loadedClipDropPlaceholder.style.visibility = Visibility.Hidden;
+
+            // --- Register Drag & Drop Callbacks for the _loadedClipsContainer ---
+            _loadedClipsContainer.RegisterCallback<DragUpdatedEvent>(
+                OnLoadedClipsContainerDragUpdated
+            );
+            _loadedClipsContainer.RegisterCallback<DragPerformEvent>(
+                OnLoadedClipsContainerDragPerform
+            );
+            _loadedClipsContainer.RegisterCallback<DragLeaveEvent>(OnLoadedClipsContainerDragLeave);
 
             UpdateFramesPanelTitle();
             RebuildLoadedClipsUI();
@@ -463,24 +483,273 @@
         private void RebuildLoadedClipsUI()
         {
             _loadedClipsContainer.Clear();
-            foreach (var editorLayer in _loadedEditorLayers)
+            if (_loadedClipDropPlaceholder.parent == _loadedClipsContainer)
+                _loadedClipsContainer.Remove(_loadedClipDropPlaceholder);
+
+            for (int i = 0; i < _loadedEditorLayers.Count; i++)
             {
+                EditorLayerData editorLayer = _loadedEditorLayers[i];
+
                 var itemElement = new VisualElement();
                 itemElement.AddToClassList("loaded-clip-item");
                 if (editorLayer == _activeEditorLayer)
+                {
                     itemElement.AddToClassList("loaded-clip-item--active");
+                }
+                itemElement.userData = i; // Store its current index in _loadedEditorLayers
 
-                itemElement.Add(new Label(editorLayer.ClipName));
+                var label = new Label(editorLayer.ClipName);
+                itemElement.Add(label);
+
                 var removeButton = new Button(() => RemoveEditorLayer(editorLayer)) { text = "X" };
                 itemElement.Add(removeButton);
 
+                // Click to make active (remains the same)
                 itemElement.RegisterCallback<PointerDownEvent>(evt =>
                 {
-                    if (evt.button == 0)
+                    if (evt.button == 0 && _draggedLoadedClipElement == null) // Don't activate if starting a drag
+                    {
                         SetActiveEditorLayer(editorLayer);
+                    }
                 });
+
+                // --- NEW: Register Drag Handlers for this loaded clip item ---
+                int currentIndex = i; // Capture current index for the lambda
+                itemElement.RegisterCallback<PointerDownEvent>(evt =>
+                    OnLoadedClipItemPointerDown(evt, itemElement, currentIndex)
+                );
+                // PointerUp and PointerLeave on the item itself will be handled similarly to frame dragging for robust cleanup
+
                 _loadedClipsContainer.Add(itemElement);
             }
+        }
+
+        private void OnLoadedClipItemPointerDown(
+            PointerDownEvent evt,
+            VisualElement clipElement,
+            int originalListIndex
+        )
+        {
+            if (evt.button != 0 || _draggedLoadedClipElement != null)
+                return; // Only left click, no concurrent drags
+
+            _draggedLoadedClipElement = clipElement;
+            _draggedLoadedClipOriginalIndex = originalListIndex;
+
+            // Register PointerUp on the item itself for cleanup if drag ends without a valid drop
+            _draggedLoadedClipElement.RegisterCallback<PointerUpEvent>(
+                OnDraggedLoadedClipItemPointerUp
+            );
+            //_draggedLoadedClipElement.RegisterCallback<PointerLeaveEvent>(OnDraggedLoadedClipItemPointerLeave); // Optional
+
+            _draggedLoadedClipElement.CapturePointer(evt.pointerId);
+            _draggedLoadedClipElement.AddToClassList("frame-item-dragged"); // Reuse or make a new style for dragged clip item
+
+            DragAndDrop.PrepareStartDrag();
+            DragAndDrop.SetGenericData("DraggedLoadedClipIndex", _draggedLoadedClipOriginalIndex);
+            // Use a distinct generic data key to avoid conflict with frame dragging if that could somehow overlap.
+
+            Object dragContextObject =
+                (_loadedEditorLayers[_draggedLoadedClipOriginalIndex]?.SourceClip)
+                ?? (Object)ScriptableObject.CreateInstance<ScriptableObject>();
+            DragAndDrop.objectReferences = new Object[] { dragContextObject };
+            DragAndDrop.StartDrag(
+                _loadedEditorLayers[_draggedLoadedClipOriginalIndex].ClipName ?? "Dragging Layer"
+            );
+
+            evt.StopPropagation();
+        }
+
+        private void OnDraggedLoadedClipItemPointerUp(PointerUpEvent evt)
+        {
+            if (_draggedLoadedClipElement == null || evt.currentTarget != _draggedLoadedClipElement)
+                return;
+
+            if (DragAndDrop.GetGenericData("DraggedLoadedClipIndex") != null) // A drag we initiated is active and not yet dropped
+            {
+                CleanupLoadedClipDragState(evt.pointerId);
+            }
+            else if (
+                _draggedLoadedClipElement != null
+                && _draggedLoadedClipElement.HasPointerCapture(evt.pointerId)
+            )
+            {
+                // Minimal cleanup if drag was handled by a drop elsewhere but pointerup still fires here
+                _draggedLoadedClipElement.ReleasePointer(evt.pointerId);
+                _draggedLoadedClipElement.UnregisterCallback<PointerUpEvent>(
+                    OnDraggedLoadedClipItemPointerUp
+                );
+                //_draggedLoadedClipElement.UnregisterCallback<PointerLeaveEvent>(OnDraggedLoadedClipItemPointerLeave);
+                _draggedLoadedClipElement.RemoveFromClassList("frame-item-dragged");
+                _draggedLoadedClipElement = null; // Ensure it's null if not already.
+            }
+            evt.StopPropagation();
+        }
+
+        private void OnLoadedClipsContainerDragUpdated(DragUpdatedEvent evt)
+        {
+            object draggedIndexData = DragAndDrop.GetGenericData("DraggedLoadedClipIndex");
+            if (draggedIndexData != null && _draggedLoadedClipElement != null)
+            {
+                DragAndDrop.visualMode = DragAndDropVisualMode.Move;
+                float mouseY = evt.localMousePosition.y;
+                int newVisualIndex = -1;
+
+                if (_loadedClipDropPlaceholder.parent == _loadedClipsContainer)
+                    _loadedClipsContainer.Remove(_loadedClipDropPlaceholder);
+
+                for (int i = 0; i < _loadedClipsContainer.childCount; i++)
+                {
+                    VisualElement child = _loadedClipsContainer[i];
+                    if (child == _draggedLoadedClipElement)
+                        continue;
+
+                    float childMidY = child.layout.yMin + child.layout.height / 2f;
+                    if (mouseY < childMidY)
+                    {
+                        newVisualIndex = i;
+                        break;
+                    }
+                }
+                if (
+                    newVisualIndex == -1
+                    && _loadedClipsContainer.childCount > 0
+                    && _draggedLoadedClipElement
+                        != _loadedClipsContainer.ElementAt(_loadedClipsContainer.childCount - 1)
+                )
+                {
+                    newVisualIndex = _loadedClipsContainer.childCount;
+                }
+
+                if (newVisualIndex != -1)
+                {
+                    _loadedClipsContainer.Insert(newVisualIndex, _loadedClipDropPlaceholder);
+                    _loadedClipDropPlaceholder.style.visibility = Visibility.Visible;
+                }
+                else if (_loadedClipsContainer.childCount == 0 && _draggedLoadedClipElement != null)
+                {
+                    _loadedClipsContainer.Add(_loadedClipDropPlaceholder);
+                    _loadedClipDropPlaceholder.style.visibility = Visibility.Visible;
+                }
+                else
+                {
+                    if (_loadedClipDropPlaceholder.parent == _loadedClipsContainer)
+                        _loadedClipsContainer.Remove(_loadedClipDropPlaceholder);
+                    _loadedClipDropPlaceholder.style.visibility = Visibility.Hidden;
+                }
+            }
+            else
+            {
+                DragAndDrop.visualMode = DragAndDropVisualMode.Rejected;
+            }
+            evt.StopPropagation();
+        }
+
+        private void OnLoadedClipsContainerDragPerform(DragPerformEvent evt)
+        {
+            object draggedIndexData = DragAndDrop.GetGenericData("DraggedLoadedClipIndex");
+            if (draggedIndexData != null && _draggedLoadedClipElement != null)
+            {
+                int originalListIndex = (int)draggedIndexData;
+
+                if (originalListIndex < 0 || originalListIndex >= _loadedEditorLayers.Count)
+                {
+                    Debug.LogError(
+                        "DragPerform (LoadedClips): Stale or invalid dragged index. Aborting drop."
+                    );
+                    CleanupLoadedClipDragState(-1);
+                    evt.StopPropagation();
+                    return;
+                }
+
+                EditorLayerData movedLayer = _loadedEditorLayers[originalListIndex];
+                _loadedEditorLayers.RemoveAt(originalListIndex);
+
+                int placeholderVisualIndex = _loadedClipsContainer.IndexOf(
+                    _loadedClipDropPlaceholder
+                );
+                int targetListIndex;
+
+                if (placeholderVisualIndex != -1)
+                {
+                    int itemsBeforePlaceholder = 0;
+                    for (int i = 0; i < placeholderVisualIndex; i++)
+                    {
+                        if (
+                            _loadedClipsContainer[i] != _draggedLoadedClipElement
+                            && _loadedClipsContainer[i] != _loadedClipDropPlaceholder
+                        )
+                        {
+                            itemsBeforePlaceholder++;
+                        }
+                    }
+                    targetListIndex = itemsBeforePlaceholder;
+                }
+                else
+                {
+                    targetListIndex = _loadedEditorLayers.Count; // Add to end
+                }
+                targetListIndex = Mathf.Clamp(targetListIndex, 0, _loadedEditorLayers.Count);
+                _loadedEditorLayers.Insert(targetListIndex, movedLayer);
+
+                DragAndDrop.AcceptDrag();
+                CleanupLoadedClipDragState(-1); // Important: Cleanup after data manipulation
+
+                RebuildLoadedClipsUI(); // Rebuild the UI list for loaded clips
+                RecreatePreviewImage(); // Recreate the LayeredImage with new layer order
+            }
+            else
+            {
+                if (DragAndDrop.GetGenericData("DraggedLoadedClipIndex") != null)
+                {
+                    CleanupLoadedClipDragState(-1);
+                }
+            }
+            evt.StopPropagation();
+        }
+
+        private void OnLoadedClipsContainerDragLeave(DragLeaveEvent evt)
+        {
+            if (evt.target == _loadedClipsContainer) // Mouse truly left the container
+            {
+                if (_loadedClipDropPlaceholder.parent == _loadedClipsContainer)
+                    _loadedClipsContainer.Remove(_loadedClipDropPlaceholder);
+                if (_loadedClipDropPlaceholder != null)
+                    _loadedClipDropPlaceholder.style.visibility = Visibility.Hidden;
+            }
+        }
+
+        private void CleanupLoadedClipDragState(int pointerIdToRelease)
+        {
+            if (_draggedLoadedClipElement != null)
+            {
+                if (
+                    pointerIdToRelease != -1
+                    && _draggedLoadedClipElement.HasPointerCapture(pointerIdToRelease)
+                )
+                    _draggedLoadedClipElement.ReleasePointer(pointerIdToRelease);
+                else if (
+                    pointerIdToRelease == -1
+                    && _draggedLoadedClipElement.HasPointerCapture(-1)
+                )
+                    _draggedLoadedClipElement.ReleasePointer(-1);
+
+                _draggedLoadedClipElement.UnregisterCallback<PointerUpEvent>(
+                    OnDraggedLoadedClipItemPointerUp
+                );
+                //_draggedLoadedClipElement.UnregisterCallback<PointerLeaveEvent>(OnDraggedLoadedClipItemPointerLeave);
+                _draggedLoadedClipElement.RemoveFromClassList("frame-item-dragged"); // Or your specific class
+                _draggedLoadedClipElement = null;
+            }
+            _draggedLoadedClipOriginalIndex = -1;
+
+            if (_loadedClipDropPlaceholder != null)
+            {
+                if (_loadedClipDropPlaceholder.parent == _loadedClipsContainer)
+                    _loadedClipsContainer.Remove(_loadedClipDropPlaceholder);
+                _loadedClipDropPlaceholder.style.visibility = Visibility.Hidden;
+            }
+            DragAndDrop.SetGenericData("DraggedLoadedClipIndex", null);
         }
 
         // --- Preview Management ---
@@ -527,125 +796,23 @@
             _previewPanelHost.Add(_animationPreview);
         }
 
-        // --- Drag and Drop Logic (Largely same as previous, operates on _currentFramesForEditingUI and _activeEditorLayer.Sprites) ---
-        private void OnFramePointerDown(
-            PointerDownEvent evt,
-            VisualElement frameElement,
-            int spriteListIndex
-        )
-        {
-            // Only respond to left mouse button and if no drag is already in progress
-            if (evt.button != 0 || _draggedElement != null)
-                return;
-
-            // Ensure spriteListIndex is valid
-            if (
-                _activeEditorLayer == null
-                || spriteListIndex < 0
-                || spriteListIndex >= _activeEditorLayer.Sprites.Count
-            )
-            {
-                Debug.LogError(
-                    $"OnFramePointerDown: Invalid spriteListIndex {spriteListIndex} or no active layer."
-                );
-                return;
-            }
-
-            _draggedElement = frameElement;
-            _draggedElementOriginalIndex = spriteListIndex; // This is the index in _activeEditorLayer.Sprites
-
-            // Register a PointerUpEvent on the dragged element itself for cleanup if the drag ends prematurely or is cancelled.
-            // This is crucial.
-            _draggedElement.RegisterCallback<PointerUpEvent>(OnDraggedElementPointerUp);
-            _draggedElement.RegisterCallback<PointerLeaveEvent>(OnDraggedElementPointerLeave); // For when mouse leaves item while dragging
-
-            _draggedElement.CapturePointer(evt.pointerId); // Capture the pointer to this element
-            _draggedElement.AddToClassList("frame-item-dragged"); // Visual feedback
-
-            DragAndDrop.PrepareStartDrag(); // Initialize system for a new drag
-            // Store the original index of the sprite in the data list (_activeEditorLayer.Sprites)
-            DragAndDrop.SetGenericData("DraggedSpriteListIndex", _draggedElementOriginalIndex);
-
-            // DragAndDrop.objectReferences needs to be set to something non-null for StartDrag to work properly in editor.
-            // Using the source clip is a good practice. If no clip, a dummy object.
-            Object dragContextObject =
-                (_activeEditorLayer?.SourceClip)
-                ?? (Object)ScriptableObject.CreateInstance<ScriptableObject>();
-            DragAndDrop.objectReferences = new Object[] { dragContextObject };
-
-            // Start the drag operation. The string is just a title shown by some OS drag systems.
-            Sprite spriteBeingDragged = _activeEditorLayer.Sprites[spriteListIndex];
-            string dragTitle =
-                spriteBeingDragged != null
-                    ? spriteBeingDragged.name
-                    : $"Frame {spriteListIndex + 1}";
-            DragAndDrop.StartDrag(dragTitle);
-
-            evt.StopPropagation(); // Prevent other handlers from interfering
-        }
-
-        private void OnDraggedElementPointerLeave(PointerLeaveEvent evt)
-        {
-            if (_draggedElement == null || evt.currentTarget != _draggedElement)
-                return;
-            // If DragAndDrop.GetGenericData indicates an active drag we initiated,
-            // we don't do cleanup here. Cleanup happens on PointerUp or DragPerform.
-            // This event is mostly for visual feedback if needed (e.g. change cursor if it leaves window).
-        }
-
-        private void OnDraggedElementPointerUp(PointerUpEvent evt)
-        {
-            // This event is on _draggedElement. If it's null, something is wrong or event is stale.
-            if (_draggedElement == null || evt.currentTarget != _draggedElement)
-                return;
-
-            // If DragAndDrop.GetGenericData shows a drag was actually started and not completed by a drop target.
-            // This check ensures we only cleanup if this PointerUp truly signifies the end of our specific drag op.
-            if (DragAndDrop.GetGenericData("DraggedSpriteListIndex") != null)
-            {
-                // This means the drag ended without a successful drop on _framesContainer.
-                // Perform full cleanup.
-                CleanupDragState(evt.pointerId);
-            }
-            // If a drop *did* occur, DragPerform would have already called CleanupDragState and cleared GenericData.
-            // In that case, we still want to release pointer and unregister, which CleanupDragState handles if _draggedElement is set.
-            else if (_draggedElement != null && _draggedElement.HasPointerCapture(evt.pointerId)) // Ensure it's still captured
-            {
-                // Minimal cleanup if drag was handled by a drop elsewhere but pointerup still fires here
-                _draggedElement.ReleasePointer(evt.pointerId);
-                _draggedElement.UnregisterCallback<PointerUpEvent>(OnDraggedElementPointerUp);
-                _draggedElement.UnregisterCallback<PointerLeaveEvent>(OnDraggedElementPointerLeave);
-                _draggedElement.RemoveFromClassList("frame-item-dragged"); // Could be redundant if full cleanup ran
-                if (_draggedElement.userData == null)
-                { // If DragPerform fully cleaned up, it might have nulled _draggedElement
-                    _draggedElement = null; // Ensure it's null if not already.
-                }
-            }
-            evt.StopPropagation();
-        }
-
         private void OnFramesContainerDragUpdated(DragUpdatedEvent evt)
         {
-            object draggedIndexData = DragAndDrop.GetGenericData("DraggedSpriteListIndex");
-
-            // Check if the data being dragged is what we expect (an index from our frame list)
-            if (draggedIndexData != null && _draggedElement != null)
+            object draggedIndexData = DragAndDrop.GetGenericData("DraggedFrameDataIndex");
+            if (draggedIndexData != null && _draggedFrameElement != null)
             {
-                DragAndDrop.visualMode = DragAndDropVisualMode.Move; // Indicate that a drop is possible
-
-                // --- Placeholder Logic (same as before, ensure it's robust) ---
+                DragAndDrop.visualMode = DragAndDropVisualMode.Move;
                 float mouseY = evt.localMousePosition.y;
                 int newVisualIndex = -1;
 
-                // Temporarily remove placeholder to recalculate its position
-                if (_dropPlaceholder.parent == _framesContainer)
-                    _framesContainer.Remove(_dropPlaceholder);
+                if (_frameDropPlaceholder.parent == _framesContainer)
+                    _framesContainer.Remove(_frameDropPlaceholder);
 
                 for (int i = 0; i < _framesContainer.childCount; i++)
                 {
                     VisualElement child = _framesContainer[i];
-                    if (child == _draggedElement)
-                        continue; // Skip the element being dragged
+                    if (child == _draggedFrameElement)
+                        continue;
 
                     float childMidY = child.layout.yMin + child.layout.height / 2f;
                     if (mouseY < childMidY)
@@ -654,45 +821,35 @@
                         break;
                     }
                 }
-                // If mouse is below all other items (and not the last item itself being dragged to the end)
-                if (newVisualIndex == -1 && _framesContainer.childCount > 0)
+                if (
+                    newVisualIndex == -1
+                    && _framesContainer.childCount > 0
+                    && _draggedFrameElement
+                        != _framesContainer.ElementAt(_framesContainer.childCount - 1)
+                )
                 {
-                    bool draggedIsLastVisible = false;
-                    if (
-                        _framesContainer.childCount > 0
-                        && _draggedElement
-                            == _framesContainer.ElementAt(_framesContainer.childCount - 1)
-                    )
-                    {
-                        draggedIsLastVisible = true;
-                    }
-                    if (!draggedIsLastVisible || _framesContainer.childCount > 1)
-                    { // Allow drop at very end if not dragging last item
-                        newVisualIndex = _framesContainer.childCount;
-                    }
+                    newVisualIndex = _framesContainer.childCount;
                 }
 
                 if (newVisualIndex != -1)
                 {
-                    _framesContainer.Insert(newVisualIndex, _dropPlaceholder);
-                    _dropPlaceholder.style.visibility = Visibility.Visible;
+                    _framesContainer.Insert(newVisualIndex, _frameDropPlaceholder);
+                    _frameDropPlaceholder.style.visibility = Visibility.Visible;
                 }
-                else if (_framesContainer.childCount == 0 && _draggedElement != null) // Dragging into an empty list
+                else if (_framesContainer.childCount == 0 && _draggedFrameElement != null)
                 {
-                    _framesContainer.Add(_dropPlaceholder);
-                    _dropPlaceholder.style.visibility = Visibility.Visible;
+                    _framesContainer.Add(_frameDropPlaceholder);
+                    _frameDropPlaceholder.style.visibility = Visibility.Visible;
                 }
-                else // No valid insertion point, hide placeholder
+                else
                 {
-                    if (_dropPlaceholder.parent == _framesContainer)
-                        _framesContainer.Remove(_dropPlaceholder);
-                    _dropPlaceholder.style.visibility = Visibility.Hidden;
+                    if (_frameDropPlaceholder.parent == _framesContainer)
+                        _framesContainer.Remove(_frameDropPlaceholder);
+                    _frameDropPlaceholder.style.visibility = Visibility.Hidden;
                 }
-                // --- End Placeholder Logic ---
             }
             else
             {
-                // If the drag data is not what we expect, reject the drag
                 DragAndDrop.visualMode = DragAndDropVisualMode.Rejected;
             }
             evt.StopPropagation();
@@ -700,128 +857,106 @@
 
         private void OnFramesContainerDragPerform(DragPerformEvent evt)
         {
-            object draggedIndexData = DragAndDrop.GetGenericData("DraggedSpriteListIndex");
-
-            if (draggedIndexData != null && _draggedElement != null && _activeEditorLayer != null)
+            object draggedIndexData = DragAndDrop.GetGenericData("DraggedFrameDataIndex");
+            if (
+                draggedIndexData != null
+                && _draggedFrameElement != null
+                && _activeEditorLayer != null
+            )
             {
-                int originalSpriteListIndex = (int)draggedIndexData;
+                int originalDataIndex = (int)draggedIndexData; // Index in _activeEditorLayer.Sprites
 
-                // Validate index (belt and braces)
-                if (
-                    originalSpriteListIndex < 0
-                    || originalSpriteListIndex >= _activeEditorLayer.Sprites.Count
-                )
+                if (originalDataIndex < 0 || originalDataIndex >= _activeEditorLayer.Sprites.Count)
                 {
-                    Debug.LogError("DragPerform: Stale or invalid dragged index. Aborting drop.");
-                    CleanupDragState(-1); // Clean up with a generic pointer ID
+                    Debug.LogError(
+                        "DragPerform (Frames): Stale or invalid dragged index. Aborting drop."
+                    );
+                    CleanupFrameDragState(-1);
                     evt.StopPropagation();
                     return;
                 }
 
-                Sprite movedSprite = _activeEditorLayer.Sprites[originalSpriteListIndex];
-                _activeEditorLayer.Sprites.RemoveAt(originalSpriteListIndex); // Remove from old data position
+                Sprite movedSprite = _activeEditorLayer.Sprites[originalDataIndex];
+                _activeEditorLayer.Sprites.RemoveAt(originalDataIndex); // Remove from old data position
 
-                // Determine insertion index in the data list (_activeEditorLayer.Sprites)
-                int placeholderVisualIndex = _framesContainer.IndexOf(_dropPlaceholder);
-                int targetSpriteListIndex;
+                int placeholderVisualIndex = _framesContainer.IndexOf(_frameDropPlaceholder);
+                int targetDataIndex; // Target index in _activeEditorLayer.Sprites
 
                 if (placeholderVisualIndex != -1)
                 {
-                    // Count actual non-dragged, non-placeholder items before the placeholder's visual position
                     int itemsBeforePlaceholder = 0;
                     for (int i = 0; i < placeholderVisualIndex; i++)
                     {
-                        VisualElement currentElement = _framesContainer[i];
-                        // Only count elements that are NOT the one being dragged and NOT the placeholder itself
-                        if (currentElement != _draggedElement && currentElement != _dropPlaceholder)
+                        if (
+                            _framesContainer[i] != _draggedFrameElement
+                            && _framesContainer[i] != _frameDropPlaceholder
+                        )
                         {
                             itemsBeforePlaceholder++;
                         }
                     }
-                    targetSpriteListIndex = itemsBeforePlaceholder;
+                    targetDataIndex = itemsBeforePlaceholder;
                 }
-                else // No placeholder visible (e.g., dropped at the very end or into empty list)
+                else
                 {
-                    targetSpriteListIndex = _activeEditorLayer.Sprites.Count; // Add to the end of the data list
+                    targetDataIndex = _activeEditorLayer.Sprites.Count; // Add to end
                 }
-                targetSpriteListIndex = Mathf.Clamp(
-                    targetSpriteListIndex,
-                    0,
-                    _activeEditorLayer.Sprites.Count
-                );
-                _activeEditorLayer.Sprites.Insert(targetSpriteListIndex, movedSprite); // Insert into new data position
+                targetDataIndex = Mathf.Clamp(targetDataIndex, 0, _activeEditorLayer.Sprites.Count);
+                _activeEditorLayer.Sprites.Insert(targetDataIndex, movedSprite); // Insert into new data position
 
-                DragAndDrop.AcceptDrag(); // Signal to the system that the drop was successful
+                DragAndDrop.AcceptDrag();
+                CleanupFrameDragState(-1); // Cleanup after data manipulation
 
-                // Crucially, perform full cleanup AFTER data ops but BEFORE UI rebuilds that might affect element references.
-                // We pass -1 for pointerId because DragPerform doesn't have a specific pointerId from its event args.
-                // The original pointerId from PointerDown was on _draggedElement.
-                CleanupDragState(-1);
-
-                RebuildFramesListUI(); // Rebuild the UI list of frames
-                RecreatePreviewImage(); // Recreate the LayeredImage preview
+                RebuildFramesListUI(); // Rebuild the UI list for frames
+                RecreatePreviewImage(); // Recreate the LayeredImage as sprite order in active layer changed
             }
-            else // Dragged data was not valid, or state was inconsistent
+            else
             {
-                // Even if we didn't accept, if a drag was in progress, clean it up.
-                if (DragAndDrop.GetGenericData("DraggedSpriteListIndex") != null)
+                if (DragAndDrop.GetGenericData("DraggedFrameDataIndex") != null)
                 {
-                    CleanupDragState(-1);
+                    CleanupFrameDragState(-1);
                 }
             }
             evt.StopPropagation();
         }
 
-        private void CleanupDragState(int pointerIdToRelease)
-        {
-            if (_draggedElement != null)
-            {
-                // Release pointer capture if this element still has it.
-                // Check for specific pointerId if provided and valid, otherwise try to release any.
-                if (
-                    pointerIdToRelease != -1
-                    && _draggedElement.HasPointerCapture(pointerIdToRelease)
-                )
-                {
-                    _draggedElement.ReleasePointer(pointerIdToRelease);
-                }
-                else if (pointerIdToRelease == -1 && _draggedElement.HasPointerCapture(-1)) // Check for any capture
-                {
-                    _draggedElement.ReleasePointer(-1); // Release all captures
-                }
-
-                _draggedElement.UnregisterCallback<PointerUpEvent>(OnDraggedElementPointerUp);
-                _draggedElement.UnregisterCallback<PointerLeaveEvent>(OnDraggedElementPointerLeave);
-                _draggedElement.RemoveFromClassList("frame-item-dragged");
-                _draggedElement = null; // Nullify the reference
-            }
-
-            _draggedElementOriginalIndex = -1; // Reset original index
-
-            // Remove and hide the drop placeholder
-            if (_dropPlaceholder != null && _dropPlaceholder.parent == _framesContainer)
-            {
-                _framesContainer.Remove(_dropPlaceholder);
-            }
-            if (_dropPlaceholder != null)
-                _dropPlaceholder.style.visibility = Visibility.Hidden;
-
-            // Clear the generic data associated with the drag
-            DragAndDrop.SetGenericData("DraggedSpriteListIndex", null);
-        }
-
         private void OnFramesContainerDragLeave(DragLeaveEvent evt)
         {
-            // Only hide placeholder if the mouse truly leaves the container,
-            // not just moving from the container onto one of its children (like the placeholder itself).
             if (evt.target == _framesContainer)
             {
-                if (_dropPlaceholder.parent == _framesContainer)
-                    _framesContainer.Remove(_dropPlaceholder);
-                _dropPlaceholder.style.visibility = Visibility.Hidden;
+                if (_frameDropPlaceholder.parent == _framesContainer)
+                    _framesContainer.Remove(_frameDropPlaceholder);
+                if (_frameDropPlaceholder != null)
+                    _frameDropPlaceholder.style.visibility = Visibility.Hidden;
             }
-            // Do NOT clean up _draggedElement here. The drag might still be active globally.
-            // Cleanup is handled by OnFramesContainerDragPerform or OnDraggedElementPointerUp.
+        }
+
+        private void CleanupFrameDragState(int pointerIdToRelease)
+        {
+            if (_draggedFrameElement != null)
+            {
+                if (
+                    pointerIdToRelease != -1
+                    && _draggedFrameElement.HasPointerCapture(pointerIdToRelease)
+                )
+                    _draggedFrameElement.ReleasePointer(pointerIdToRelease);
+
+                _draggedFrameElement.UnregisterCallback<PointerUpEvent>(
+                    OnDraggedFrameItemPointerUp
+                );
+                //_draggedFrameElement.UnregisterCallback<PointerLeaveEvent>(OnDraggedFrameItemPointerLeave);
+                _draggedFrameElement.RemoveFromClassList("frame-item-dragged");
+                _draggedFrameElement = null;
+            }
+            _draggedFrameOriginalDataIndex = -1;
+
+            if (_frameDropPlaceholder != null)
+            {
+                if (_frameDropPlaceholder.parent == _framesContainer)
+                    _framesContainer.Remove(_frameDropPlaceholder);
+                _frameDropPlaceholder.style.visibility = Visibility.Hidden;
+            }
+            DragAndDrop.SetGenericData("DraggedFrameDataIndex", null); // Use the correct key
         }
 
         private void UpdateFpsDebugLabelForActiveLayer()
@@ -842,54 +977,293 @@
             return fps.ToString("F1");
         }
 
-        private void RebuildFramesListUI() // For the _activeEditorLayer
+        // Inside AnimationViewerWindow.cs
+
+        // ... (other parts of the class) ...
+
+        // Rebuilds the list of draggable frame items based on the _activeEditorLayer.Sprites
+        private void RebuildFramesListUI()
         {
+            // 1. Clear previous UI elements and UI data list
             _framesContainer.Clear();
-            _currentFramesForEditingUI.Clear(); // Clear old UI data list
+            _currentFramesForEditingUI.Clear(); // This list stores SpriteFrameUIData if you need to reference them
 
-            if (_dropPlaceholder.parent == _framesContainer)
-                _framesContainer.Remove(_dropPlaceholder);
-            if (_activeEditorLayer == null)
+            // 2. Ensure the drop placeholder is not lingering in the container from a previous operation
+            if (_frameDropPlaceholder != null && _frameDropPlaceholder.parent == _framesContainer)
+            {
+                _framesContainer.Remove(_frameDropPlaceholder);
+            }
+
+            // 3. If there's no active layer or it has no sprites, there's nothing to build
+            if (_activeEditorLayer == null || _activeEditorLayer.Sprites == null)
+            {
+                // Optionally, display a message in _framesContainer if it's empty
+                // _framesContainer.Add(new Label("No frames in the active layer."));
                 return;
+            }
 
+            // 4. Iterate through sprites in the active layer and create UI for each
             for (int i = 0; i < _activeEditorLayer.Sprites.Count; i++)
             {
                 Sprite sprite = _activeEditorLayer.Sprites[i];
-                var frameUIData = new SpriteFrameUIData(sprite, i); // Store current list index as DisplayIndex
-                _currentFramesForEditingUI.Add(frameUIData); // Add to UI data list
 
+                // Create a data object for UI representation (optional if only index is needed for drag)
+                var frameUIData = new SpriteFrameUIData(sprite, i); // 'i' is its current index in _activeEditorLayer.Sprites
+                _currentFramesForEditingUI.Add(frameUIData);
+
+                // 5. Create the main visual element for this frame item
                 VisualElement frameElement = new VisualElement();
-                frameElement.AddToClassList("frame-item");
-                // frameElement.userData = frameUIData; // Store UI data if needed, but index is enough for drag
+                frameElement.AddToClassList("frame-item"); // Apply USS styling
 
+                // --- Populate frameElement with content ---
+                // Image for the sprite
                 Image frameImage = new Image { sprite = sprite, scaleMode = ScaleMode.ScaleToFit };
-                frameImage.AddToClassList("frame-image");
-
-                VisualElement frameInfo = new VisualElement();
-                frameInfo.AddToClassList("frame-info");
-                frameInfo.Add(new Label($"Frame: {i + 1}")); // UI is 1-based
-                frameInfo.Add(new Label($"Sprite: {(sprite != null ? sprite.name : "(None)")}"));
-
-                IntegerField indexField = new IntegerField($"Order:")
-                {
-                    value = i + 1,
-                    isReadOnly = true,
-                };
-                indexField.AddToClassList("frame-index-field");
-
+                frameImage.AddToClassList("frame-image"); // USS styling for the image
                 frameElement.Add(frameImage);
+
+                // Container for text information
+                VisualElement frameInfo = new VisualElement();
+                frameInfo.AddToClassList("frame-info"); // USS styling for info section
+                frameInfo.Add(new Label($"Frame: {i + 1}")); // Display 1-based index to user
+                frameInfo.Add(new Label($"Sprite: {(sprite != null ? sprite.name : "(None)")}"));
                 frameElement.Add(frameInfo);
+
+                // Read-only field for display order (optional, could be part of frameInfo)
+                IntegerField indexField = new IntegerField(null) { value = i + 1 };
+                indexField.AddToClassList("frame-index-field"); // USS styling for index field
                 frameElement.Add(indexField);
 
-                // Pass 'i' which is the current index in _activeEditorLayer.Sprites and _currentFramesForEditingUI
-                int currentIndexInList = i;
+                VisualElement orderFieldContainer = new VisualElement();
+                orderFieldContainer.style.flexDirection = FlexDirection.Row;
+                orderFieldContainer.style.alignItems = Align.Center;
+                orderFieldContainer.style.marginLeft = StyleKeyword.Auto; // This pushes the container to the right
+
+                Label orderLabel = new Label("Order:");
+                orderLabel.style.marginRight = 3; // Space between "Order:" and the number field
+                orderFieldContainer.Add(orderLabel);
+                orderFieldContainer.Add(indexField);
+                frameElement.Add(orderFieldContainer);
+
+                // --- End content population ---
+
+                // 6. Register the PointerDownEvent for initiating a drag operation
+                //    'i' is the crucial 'originalDataIndex' for the sprite in _activeEditorLayer.Sprites
+                int currentDataIndex = i; // Capture 'i' for the lambda expression
                 frameElement.RegisterCallback<PointerDownEvent>(evt =>
-                    OnFramePointerDown(evt, frameElement, currentIndexInList)
+                    OnFrameItemPointerDown(evt, frameElement, currentDataIndex)
                 );
 
+                indexField.userData = currentDataIndex;
+
+                indexField.RegisterCallback<FocusInEvent>(evt =>
+                {
+                    CleanupFrameDragState(-1); // Ensure drag state is cleaned if window closes mid-drag
+                    CleanupLoadedClipDragState(-1); // For loaded clips
+                });
+
+                // Listen for when the user presses Enter/Return or when the field loses focus
+                indexField.RegisterCallback<FocusOutEvent>(evt =>
+                    OnFrameIndexFieldChanged(indexField)
+                );
+                indexField.RegisterCallback<KeyDownEvent>(evt =>
+                {
+                    if (evt.keyCode == KeyCode.Return || evt.keyCode == KeyCode.KeypadEnter)
+                    {
+                        OnFrameIndexFieldChanged(indexField);
+                        // Optionally, blur the field to signify completion
+                        indexField.Blur();
+                    }
+                });
+
+                // 7. Add the fully constructed frameElement to the scrollable container
                 _framesContainer.Add(frameElement);
+
+                // Store a reference to the VisualElement in our UI data object (optional, if needed elsewhere)
                 frameUIData.VisualElement = frameElement;
             }
+        }
+
+        private void OnFrameIndexFieldChanged(IntegerField field)
+        {
+            if (_activeEditorLayer == null || _activeEditorLayer.Sprites == null)
+                return;
+
+            CleanupFrameDragState(-1); // Ensure drag state is cleaned if window closes mid-drag
+            CleanupLoadedClipDragState(-1); // For loaded clips
+
+            int originalDataIndex = (int)field.userData; // Get the original 0-based index of the sprite
+            int newUiIndex = field.value; // Get the new 1-based index from the UI field
+
+            // Convert UI index (1-based) to data index (0-based)
+            int newRequestedDataIndex = newUiIndex - 1;
+
+            // Clamp the new data index to valid bounds
+            int newClampedDataIndex = Mathf.Clamp(
+                newRequestedDataIndex,
+                0,
+                _activeEditorLayer.Sprites.Count - 1
+            );
+
+            // If the (clamped) new data index is different from the original data index, then reorder
+            if (newClampedDataIndex != originalDataIndex)
+            {
+                // Get the sprite that needs to be moved
+                if (originalDataIndex < 0 || originalDataIndex >= _activeEditorLayer.Sprites.Count)
+                {
+                    Debug.LogWarning(
+                        $"Original index {originalDataIndex} out of bounds. Rebuilding UI to correct."
+                    );
+                    RebuildFramesListUI(); // Rebuild to fix any display inconsistencies
+                    return;
+                }
+                Sprite spriteToMove = _activeEditorLayer.Sprites[originalDataIndex];
+
+                // Remove from the old position
+                _activeEditorLayer.Sprites.RemoveAt(originalDataIndex);
+
+                // Insert at the new (clamped) position
+                // The target index for insertion might need adjustment if originalDataIndex < newClampedDataIndex
+                // because the list size has changed. However, newClampedDataIndex was based on Count-1 *before* removal.
+                // So, if inserting back, it should be fine.
+                _activeEditorLayer.Sprites.Insert(newClampedDataIndex, spriteToMove);
+
+                // Rebuild the entire frames list UI to reflect new order and indices
+                RebuildFramesListUI();
+                // Recreate the preview image
+                RecreatePreviewImage();
+            }
+            else if (newUiIndex - 1 != newClampedDataIndex) // If user entered an out-of-bounds value that got clamped
+            {
+                // The logical position didn't change, but the UI field might show a
+                // number that's different from its actual new position after clamping.
+                // Rebuild to correct the UI field's displayed value.
+                RebuildFramesListUI();
+            }
+            // If newClampedDataIndex == originalDataIndex and no clamping occurred, do nothing.
+        }
+
+        private void OnFrameItemPointerDown(
+            PointerDownEvent evt,
+            VisualElement frameElement,
+            int originalDataIndex
+        )
+        {
+            if (evt.button != 0 || _draggedFrameElement != null)
+                return; // Already dragging or not left button
+
+            // Ensure active layer and index are valid BEFORE accessing sprites
+            if (
+                _activeEditorLayer == null
+                || originalDataIndex < 0
+                || originalDataIndex >= _activeEditorLayer.Sprites.Count
+            )
+            {
+                Debug.LogError(
+                    $"OnFrameItemPointerDown: Invalid originalDataIndex ({originalDataIndex}) or no active layer. Sprite count: {(_activeEditorLayer?.Sprites?.Count ?? -1)}"
+                );
+                return;
+            }
+
+            // All checks passed, proceed with drag initiation
+            _draggedFrameElement = frameElement;
+            _draggedFrameOriginalDataIndex = originalDataIndex;
+
+            try // Add a try-catch block for robustness during drag setup
+            {
+                _draggedFrameElement.RegisterCallback<PointerUpEvent>(OnDraggedFrameItemPointerUp);
+                //_draggedFrameElement.CapturePointer(evt.pointerId);
+                _draggedFrameElement.AddToClassList("frame-item-dragged"); // Ensure this class exists and has visible styling
+
+                DragAndDrop.PrepareStartDrag();
+                DragAndDrop.SetGenericData("DraggedFrameDataIndex", _draggedFrameOriginalDataIndex);
+
+                // Object references: Identical handling to clip dragging
+                Object dragContextObject =
+                    (_activeEditorLayer.SourceClip)
+                    ?? (Object)ScriptableObject.CreateInstance<ScriptableObject>();
+                if (dragContextObject == null) // Should not happen with ScriptableObject.CreateInstance fallback
+                {
+                    Debug.LogError("Failed to create dragContextObject for frame drag.");
+                    // Attempt to cleanup what we've done so far to prevent stuck state
+                    _draggedFrameElement.ReleasePointer(evt.pointerId);
+                    _draggedFrameElement.UnregisterCallback<PointerUpEvent>(
+                        OnDraggedFrameItemPointerUp
+                    );
+                    _draggedFrameElement.RemoveFromClassList("frame-item-dragged");
+                    _draggedFrameElement = null;
+                    return;
+                }
+                DragAndDrop.objectReferences = new Object[] { dragContextObject };
+
+                // Drag title: Safer handling for potentially null sprites
+                Sprite spriteBeingDragged = _activeEditorLayer.Sprites[originalDataIndex];
+                string dragTitle;
+                if (spriteBeingDragged != null)
+                {
+                    dragTitle = !string.IsNullOrEmpty(spriteBeingDragged.name)
+                        ? spriteBeingDragged.name
+                        : $"Unnamed Sprite Frame {originalDataIndex + 1}";
+                }
+                else
+                {
+                    dragTitle = $"Empty Frame {originalDataIndex + 1}";
+                }
+
+                // Ensure dragTitle is never null or empty for StartDrag
+                if (string.IsNullOrEmpty(dragTitle))
+                {
+                    dragTitle = "Dragging Frame"; // Absolute fallback
+                }
+
+                DragAndDrop.StartDrag(dragTitle); // This is the critical call
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError(
+                    $"Exception during OnFrameItemPointerDown before StartDrag: {e.Message}\n{e.StackTrace}"
+                );
+                // If an exception occurred, try to clean up to prevent a stuck state
+                if (_draggedFrameElement != null)
+                {
+                    if (_draggedFrameElement.HasPointerCapture(evt.pointerId))
+                        _draggedFrameElement.ReleasePointer(evt.pointerId);
+                    _draggedFrameElement.UnregisterCallback<PointerUpEvent>(
+                        OnDraggedFrameItemPointerUp
+                    );
+                    _draggedFrameElement.RemoveFromClassList("frame-item-dragged");
+                    _draggedFrameElement = null;
+                }
+                _draggedFrameOriginalDataIndex = -1;
+                // Do not try to clear DragAndDrop.genericData here as StartDrag might not have been prepared fully
+                return; // Stop further processing
+            }
+
+            // evt.StopPropagation();
+        }
+
+        private void OnDraggedFrameItemPointerUp(PointerUpEvent evt)
+        {
+            if (_draggedFrameElement == null || evt.currentTarget != _draggedFrameElement)
+                return;
+
+            if (DragAndDrop.GetGenericData("DraggedFrameDataIndex") != null)
+            {
+                CleanupFrameDragState(evt.pointerId);
+            }
+            else if (
+                _draggedFrameElement != null
+                && _draggedFrameElement.HasPointerCapture(evt.pointerId)
+            )
+            {
+                // Minimal cleanup if drag was handled by a drop elsewhere
+                _draggedFrameElement.ReleasePointer(evt.pointerId);
+                _draggedFrameElement.UnregisterCallback<PointerUpEvent>(
+                    OnDraggedFrameItemPointerUp
+                );
+                _draggedFrameElement.RemoveFromClassList("frame-item-dragged");
+                _draggedFrameElement = null;
+            }
+            evt.StopPropagation();
         }
 
         private void OnApplyFpsToPreviewClicked()
@@ -993,7 +1367,8 @@
 
         private void OnDisable() // Or OnDestroy for EditorWindow
         {
-            CleanupDragState(-1); // Ensure drag state is cleaned if window closes mid-drag
+            CleanupFrameDragState(-1); // Ensure drag state is cleaned if window closes mid-drag
+            CleanupLoadedClipDragState(-1); // For loaded clips
 
             // If LayeredImage uses EditorApplication.update, ensure it's unhooked.
             // Your LayeredImage Fps setter has logic for this, but an explicit cleanup might be good.

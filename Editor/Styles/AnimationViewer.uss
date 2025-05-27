@@ -30,11 +30,22 @@
 
 .frame-info {
     flex-direction: column;
+    flex-grow: 1;
+    margin-right: 10px;
 }
 
 .frame-index-field {
-    width: 40px;
-    margin-left: auto;
+    flex-shrink: 1;
+    flex-grow: 0;
+}
+
+.frame-index-field > .unity-text-element {
+    min-width: 0px;
+    width: auto;
+}
+
+.frame-index-field > #unity-text-input {
+    width: 30px;
 }
 
 .drop-placeholder {
