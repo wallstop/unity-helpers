@@ -415,16 +415,8 @@
 
         private void CreateNewScriptableSpriteAtlas()
         {
-            if (!Directory.Exists(NewAtlasConfigDirectory))
-            {
-                Directory.CreateDirectory(NewAtlasConfigDirectory);
-                AssetDatabase.Refresh();
-            }
-
+            DirectoryHelper.EnsureDirectoryExists(NewAtlasConfigDirectory);
             ScriptableSpriteAtlas newAtlasConfig = CreateInstance<ScriptableSpriteAtlas>();
-            newAtlasConfig.outputSpriteAtlasDirectory = "Assets/GeneratedSpriteAtlases";
-            newAtlasConfig.outputSpriteAtlasName = "NewlyCreatedAtlas";
-
             string path = AssetDatabase.GenerateUniqueAssetPath(
                 Path.Combine(NewAtlasConfigDirectory, "NewScriptableSpriteAtlas.asset")
             );
