@@ -16,8 +16,8 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
         private static readonly bool UseDensePacking;
         private static readonly int Min;
-        private static readonly string[]? DenseNames;
-        private static readonly Dictionary<int, string>? SparseNames;
+        private static readonly string[] DenseNames;
+        private static readonly Dictionary<int, string> SparseNames;
 
         static EnumNameCache()
         {
@@ -85,8 +85,8 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
         private static readonly bool UseDensePacking;
         private static readonly int Min;
-        private static readonly string[]? DenseNames;
-        private static readonly Dictionary<int, string>? SparseNames;
+        private static readonly string[] DenseNames;
+        private static readonly Dictionary<int, string> SparseNames;
 
         static EnumDisplayNameCache()
         {
