@@ -16,14 +16,19 @@
         private AutoResetEvent _waitHandle;
         private bool _disposed;
         private readonly ConcurrentQueue<Exception> _exceptions;
+        private readonly TimeSpan _noWorkWaitTime;
 
-        public SingleThreadedThreadPool(bool runInBackground = false)
+        public SingleThreadedThreadPool(
+            bool runInBackground = false,
+            TimeSpan? noWorkWaitTime = null
+        )
         {
             _active = 1;
             _working = 1;
             _work = new ConcurrentQueue<Action>();
             _exceptions = new ConcurrentQueue<Exception>();
             _waitHandle = new AutoResetEvent(false);
+            _noWorkWaitTime = noWorkWaitTime ?? TimeSpan.FromSeconds(1);
             _worker = new Thread(DoWork) { IsBackground = runInBackground };
             _worker.Start();
         }
@@ -95,7 +100,7 @@
                     {
                         try
                         {
-                            _ = _waitHandle?.WaitOne(TimeSpan.FromSeconds(1));
+                            _ = _waitHandle?.WaitOne(_noWorkWaitTime);
                         }
                         catch (ObjectDisposedException)
                         {

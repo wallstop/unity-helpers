@@ -8,7 +8,7 @@
     {
         protected override QuadTree<Vector2> CreateTree(IEnumerable<Vector2> points)
         {
-            return new QuadTree<Vector2>(points, _ => _);
+            return new QuadTree<Vector2>(points, x => x);
         }
     }
 }

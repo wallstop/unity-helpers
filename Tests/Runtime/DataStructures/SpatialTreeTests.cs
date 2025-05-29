@@ -34,7 +34,8 @@
 
             TTree quadTree = CreateTree(points);
 
-            List<Vector2> pointsInRange = quadTree.GetElementsInRange(center, radius).ToList();
+            List<Vector2> pointsInRange = new();
+            quadTree.GetElementsInRange(center, radius, pointsInRange);
             Assert.IsTrue(
                 points.SetEquals(pointsInRange),
                 "Found {0} points in range, expected {1}.",
@@ -46,7 +47,7 @@
             offset.x -= radius * 2;
             offset.y -= radius * 2;
 
-            pointsInRange = quadTree.GetElementsInRange(offset, radius).ToList();
+            quadTree.GetElementsInRange(offset, radius, pointsInRange);
             Assert.AreEqual(
                 0,
                 pointsInRange.Count,
@@ -69,11 +70,10 @@
             List<Vector2> points = new(1) { testPoint };
 
             TTree quadTree = CreateTree(points);
-            List<Vector2> pointsInRange = quadTree
-                .GetElementsInRange(point, range * 0.99f)
-                .ToList();
+            List<Vector2> pointsInRange = new();
+            quadTree.GetElementsInRange(point, range * 0.99f, pointsInRange).ToList();
             Assert.AreEqual(0, pointsInRange.Count);
-            pointsInRange = quadTree.GetElementsInRange(point, range * 1.01f).ToList();
+            quadTree.GetElementsInRange(point, range * 1.01f, pointsInRange);
             Assert.AreEqual(
                 1,
                 pointsInRange.Count,

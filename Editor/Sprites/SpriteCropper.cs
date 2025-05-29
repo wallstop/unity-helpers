@@ -180,6 +180,7 @@
                 return;
             }
 
+            HashSet<string> processedFiles = new(StringComparer.OrdinalIgnoreCase);
             List<string> needReprocessing = new();
             string lastProcessed = null;
             try
@@ -214,6 +215,10 @@
                     for (int i = 0; i < _filesToProcess.Count; ++i)
                     {
                         string file = _filesToProcess[i];
+                        if (!processedFiles.Add(file))
+                        {
+                            continue;
+                        }
                         lastProcessed = file;
                         EditorUtility.DisplayProgressBar(
                             Name,
@@ -292,8 +297,10 @@
                 return;
             }
 
-            TextureImporter importer = AssetImporter.GetAtPath(assetPath) as TextureImporter;
-            if (importer is not { textureType: TextureImporterType.Sprite })
+            if (
+                AssetImporter.GetAtPath(assetPath)
+                is not TextureImporter { textureType: TextureImporterType.Sprite } importer
+            )
             {
                 return;
             }

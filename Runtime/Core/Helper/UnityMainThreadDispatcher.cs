@@ -11,6 +11,8 @@
     {
         private readonly ConcurrentQueue<Action> _actions = new();
 
+        protected override bool Preserve => false;
+
 #if UNITY_EDITOR
         private readonly EditorApplication.CallbackFunction _update;
         private bool _attachedEditorUpdate;
@@ -31,7 +33,7 @@
         private void OnEnable()
         {
 #if UNITY_EDITOR
-            if (!_attachedEditorUpdate)
+            if (!_attachedEditorUpdate && !Application.isPlaying)
             {
                 EditorApplication.update += _update;
                 _attachedEditorUpdate = true;

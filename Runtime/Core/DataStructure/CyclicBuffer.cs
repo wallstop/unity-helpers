@@ -53,6 +53,7 @@
         public int Count { get; private set; }
 
         private readonly List<T> _buffer;
+        private readonly List<T> _cache;
         private int _position;
 
         public T this[int index]
@@ -80,9 +81,13 @@
             _position = 0;
             Count = 0;
             _buffer = new List<T>();
-            foreach (T item in initialContents ?? Enumerable.Empty<T>())
+            _cache = new List<T>();
+            if (initialContents != null)
             {
-                Add(item);
+                foreach (T item in initialContents)
+                {
+                    Add(item);
+                }
             }
         }
 
@@ -122,6 +127,64 @@
             {
                 ++Count;
             }
+        }
+
+        public bool Remove(T element, IEqualityComparer<T> comparer = null)
+        {
+            bool removed = false;
+            _cache.Clear();
+            comparer ??= EqualityComparer<T>.Default;
+            foreach (T item in this)
+            {
+                if (!removed && comparer.Equals(item, element))
+                {
+                    removed = true;
+                    continue;
+                }
+                _cache.Add(item);
+            }
+
+            if (!removed)
+            {
+                return false;
+            }
+
+            Clear();
+            foreach (T item in _cache)
+            {
+                Add(item);
+            }
+
+            return true;
+        }
+
+        public int RemoveAll(Func<T, bool> predicate)
+        {
+            int removedCount = 0;
+            foreach (T item in this)
+            {
+                if (predicate(item))
+                {
+                    removedCount++;
+                }
+                else
+                {
+                    _cache.Add(item);
+                }
+            }
+
+            if (removedCount == 0)
+            {
+                return 0;
+            }
+
+            Clear();
+            foreach (T item in _cache)
+            {
+                Add(item);
+            }
+
+            return removedCount;
         }
 
         public void Clear()

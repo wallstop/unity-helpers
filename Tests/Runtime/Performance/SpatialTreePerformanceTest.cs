@@ -24,20 +24,18 @@
 
             Vector2[] points = new Vector2[1_000_000];
             float radius = 500;
-            ParallelLoopResult result = Parallel.For(
+            Parallel.For(
                 0,
-                1_000_000,
-                index =>
+                1_000,
+                y =>
                 {
-                    // ReSharper disable once PossibleLossOfFraction
-                    points[index] = new Vector2(index % 1_000, index / 1_000);
+                    for (int x = 0; x < 1_000; ++x)
+                    {
+                        int index = y * 1_000 + x;
+                        points[index] = new Vector2(x, y);
+                    }
                 }
             );
-
-            while (!result.IsCompleted)
-            {
-                yield return null;
-            }
 
             Stopwatch timer = Stopwatch.StartNew();
             TTree tree = CreateTree(points);
@@ -49,10 +47,12 @@
             int count = 0;
             TimeSpan timeout = TimeSpan.FromSeconds(1);
             timer.Restart();
+            List<Vector2> elementsInRange = new();
             do
             {
-                int elementsInRange = tree.GetElementsInRange(center, radius).Count();
-                Assert.AreEqual(785456, elementsInRange);
+                tree.GetElementsInRange(center, radius, elementsInRange);
+                int elementCount = elementsInRange.Count;
+                Assert.AreEqual(785456, elementCount);
                 ++count;
             } while (timer.Elapsed < timeout);
 
@@ -65,8 +65,9 @@
             timer.Restart();
             do
             {
-                int elementsInRange = tree.GetElementsInRange(center, radius).Count();
-                Assert.AreEqual(196364, elementsInRange);
+                tree.GetElementsInRange(center, radius, elementsInRange);
+                int elementCount = elementsInRange.Count;
+                Assert.AreEqual(196364, elementCount);
                 ++count;
             } while (timer.Elapsed < timeout);
             UnityEngine.Debug.Log(
@@ -78,8 +79,9 @@
             timer.Restart();
             do
             {
-                int elementsInRange = tree.GetElementsInRange(center, radius).Count();
-                Assert.AreEqual(49080, elementsInRange);
+                tree.GetElementsInRange(center, radius, elementsInRange);
+                int elementCount = elementsInRange.Count;
+                Assert.AreEqual(49080, elementCount);
                 ++count;
             } while (timer.Elapsed < timeout);
             UnityEngine.Debug.Log(
@@ -91,8 +93,9 @@
             timer.Restart();
             do
             {
-                int elementsInRange = tree.GetElementsInRange(center, radius).Count();
-                Assert.AreEqual(4, elementsInRange);
+                tree.GetElementsInRange(center, radius, elementsInRange);
+                int elementCount = elementsInRange.Count;
+                Assert.AreEqual(4, elementCount);
                 ++count;
             } while (timer.Elapsed < timeout);
             UnityEngine.Debug.Log(
@@ -149,6 +152,8 @@
                 ++count;
             } while (timer.Elapsed < timeout);
             UnityEngine.Debug.Log($"| ANN - 1 | {(int)Math.Floor(count / timeout.TotalSeconds)} |");
+
+            yield break;
         }
     }
 }

@@ -34,7 +34,7 @@
             float yN = Math.Max(center.y, rectangle.y);
             float dX = xN - center.x;
             float dY = yN - center.y;
-            return dX * dX + dY * dY <= _radiusSquared;
+            return (dX * dX + dY * dY) <= _radiusSquared;
         }
 
         public bool Overlaps(Bounds bounds)
