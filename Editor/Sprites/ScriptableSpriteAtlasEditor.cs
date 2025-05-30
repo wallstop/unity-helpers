@@ -16,7 +16,6 @@
 
     public sealed class ScriptableSpriteAtlasEditor : EditorWindow
     {
-        // at the top of your EditorWindow class
         private readonly Dictionary<ScriptableSpriteAtlas, SerializedObject> _serializedConfigs =
             new();
         private List<ScriptableSpriteAtlas> _atlasConfigs = new();
