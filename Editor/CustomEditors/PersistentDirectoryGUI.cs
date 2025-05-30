@@ -620,7 +620,10 @@
                                 }
                             }
                         }
-                        catch { }
+                        catch
+                        {
+                            // Swalllow
+                        }
                     }
                     if (!Directory.Exists(initialBrowsePath))
                     {
