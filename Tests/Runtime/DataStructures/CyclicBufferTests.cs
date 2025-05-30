@@ -19,8 +19,8 @@
             Assert.Throws<ArgumentException>(() => new CyclicBuffer<int>(int.MinValue));
             for (int i = 0; i < NumTries; i++)
             {
-                Assert.Throws<ArgumentException>(
-                    () => new CyclicBuffer<int>(PRNG.Instance.Next(int.MinValue, -1))
+                Assert.Throws<ArgumentException>(() =>
+                    new CyclicBuffer<int>(PRNG.Instance.Next(int.MinValue, -1))
                 );
             }
         }

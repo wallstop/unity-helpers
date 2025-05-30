@@ -13,6 +13,9 @@
     using Object = UnityEngine.Object;
 #if UNITY_EDITOR
     using UnityEditor;
+    using UnityEditorInternal;
+#else
+    using System;
 #endif
 
     public static partial class Helpers
@@ -23,6 +26,15 @@
         private static readonly Dictionary<string, Object> ObjectsByTag = new(
             StringComparer.Ordinal
         );
+
+        public static string[] GetAllLayerNames()
+        {
+#if UNITY_EDITOR
+            return InternalEditorUtility.layers;
+#else
+            return Array.Empty<string>();
+#endif
+        }
 
         // https://gamedevelopment.tutsplus.com/tutorials/unity-solution-for-hitting-moving-targets--cms-29633
         public static Vector2 PredictCurrentTarget(

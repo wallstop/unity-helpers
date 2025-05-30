@@ -144,10 +144,11 @@
 
         public static Dictionary<K, V> Merge<K, V>(
             this IReadOnlyDictionary<K, V> lhs,
-            IReadOnlyDictionary<K, V> rhs
+            IReadOnlyDictionary<K, V> rhs,
+            Func<Dictionary<K, V>> creator = null
         )
         {
-            Dictionary<K, V> result = new();
+            Dictionary<K, V> result = creator?.Invoke() ?? new Dictionary<K, V>();
             if (0 < lhs.Count)
             {
                 foreach (KeyValuePair<K, V> kvp in lhs)
@@ -176,10 +177,11 @@
         /// <returns>All elements of rhs that either don't exist in or are different from lhs</returns>
         public static Dictionary<K, V> Difference<K, V>(
             this IReadOnlyDictionary<K, V> lhs,
-            IReadOnlyDictionary<K, V> rhs
+            IReadOnlyDictionary<K, V> rhs,
+            Func<Dictionary<K, V>> creator = null
         )
         {
-            Dictionary<K, V> result = new(rhs.Count);
+            Dictionary<K, V> result = creator?.Invoke() ?? new Dictionary<K, V>(rhs.Count);
             foreach (KeyValuePair<K, V> kvp in rhs)
             {
                 K key = kvp.Key;
@@ -194,9 +196,12 @@
             return result;
         }
 
-        public static Dictionary<V, K> Reverse<K, V>(this IReadOnlyDictionary<K, V> dictionary)
+        public static Dictionary<V, K> Reverse<K, V>(
+            this IReadOnlyDictionary<K, V> dictionary,
+            Func<Dictionary<V, K>> creator = null
+        )
         {
-            Dictionary<V, K> output = new(dictionary.Count);
+            Dictionary<V, K> output = creator?.Invoke() ?? new Dictionary<V, K>(dictionary.Count);
             foreach (KeyValuePair<K, V> entry in dictionary)
             {
                 output[entry.Value] = entry.Key;
@@ -264,10 +269,25 @@
                 return false;
             }
 
-            return dictionary.Count == other.Count
-                && dictionary.All(kvp =>
-                    other.TryGetValue(kvp.Key, out V value) && kvp.Value.Equals(value)
-                );
+            if (dictionary.Count != other.Count)
+            {
+                return false;
+            }
+
+            if (dictionary.Count == 0)
+            {
+                return true;
+            }
+
+            foreach (KeyValuePair<K, V> entry in dictionary)
+            {
+                if (!other.TryGetValue(entry.Key, out V value) || !entry.Value.Equals(value))
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         public static void Deconstruct<K, V>(this KeyValuePair<K, V> kvp, out K key, out V value)

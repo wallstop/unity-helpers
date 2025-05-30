@@ -2,6 +2,7 @@
 {
 #if UNITY_EDITOR
     using System.Reflection;
+    using Extensions;
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;

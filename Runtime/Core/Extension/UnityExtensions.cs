@@ -1603,5 +1603,73 @@
             }
         }
 #endif
+
+        public static bool IsDontDestroyOnLoad(this GameObject gameObjectToCheck)
+        {
+            if (gameObjectToCheck == null)
+            {
+                return false;
+            }
+
+            return string.Equals(
+                gameObjectToCheck.scene.name,
+                "DontDestroyOnLoad",
+                StringComparison.Ordinal
+            );
+        }
+
+        public static bool IsCircleFullyContained(
+            this Collider2D targetCollider,
+            Vector2 center,
+            float radius,
+            int sampleCount = 16
+        )
+        {
+            for (int i = 0; i < sampleCount; ++i)
+            {
+                float angle = 2 * Mathf.PI / sampleCount * i;
+                Vector2 pointOnCircle =
+                    center + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * radius;
+
+                if (!targetCollider.OverlapPoint(pointOnCircle))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        public static void Invert(this PolygonCollider2D col, Rect outerRect)
+        {
+            int originalCount = col.pathCount;
+            if (originalCount == 0)
+            {
+                return;
+            }
+
+            Vector2[][] originals = new Vector2[originalCount][];
+            for (int i = 0; i < originalCount; i++)
+            {
+                originals[i] = col.GetPath(i).ToArray();
+            }
+
+            Vector2[] outerPath =
+            {
+                new Vector2(outerRect.xMin, outerRect.yMin),
+                new Vector2(outerRect.xMin, outerRect.yMax),
+                new Vector2(outerRect.xMax, outerRect.yMax),
+                new Vector2(outerRect.xMax, outerRect.yMin),
+            };
+
+            col.pathCount = originalCount + 1;
+            col.SetPath(0, outerPath);
+
+            for (int i = 0; i < originalCount; ++i)
+            {
+                Vector2[] hole = originals[i];
+                Array.Reverse(hole);
+                col.SetPath(i + 1, hole);
+            }
+        }
     }
 }

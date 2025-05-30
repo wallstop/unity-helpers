@@ -3,7 +3,6 @@
     using System;
     using System.Collections;
     using System.Collections.Generic;
-    using System.Linq;
     using Extension;
     using Helper;
 
@@ -53,7 +52,6 @@
         public int Count { get; private set; }
 
         private readonly List<T> _buffer;
-        private readonly List<T> _cache;
         private int _position;
 
         public T this[int index]
@@ -81,7 +79,6 @@
             _position = 0;
             Count = 0;
             _buffer = new List<T>();
-            _cache = new List<T>();
             if (initialContents != null)
             {
                 foreach (T item in initialContents)
@@ -131,17 +128,26 @@
 
         public bool Remove(T element, IEqualityComparer<T> comparer = null)
         {
-            bool removed = false;
-            _cache.Clear();
-            comparer ??= EqualityComparer<T>.Default;
-            foreach (T item in this)
+            if (Count == 0)
             {
+                return false;
+            }
+
+            int write = 0;
+            bool removed = false;
+            comparer ??= EqualityComparer<T>.Default;
+            for (int i = 0; i < Count; ++i)
+            {
+                int readIdx = AdjustedIndexFor(i);
+                T item = _buffer[readIdx];
+
                 if (!removed && comparer.Equals(item, element))
                 {
                     removed = true;
                     continue;
                 }
-                _cache.Add(item);
+
+                _buffer[write++] = item;
             }
 
             if (!removed)
@@ -149,27 +155,34 @@
                 return false;
             }
 
-            Clear();
-            foreach (T item in _cache)
-            {
-                Add(item);
-            }
+            _buffer.RemoveRange(write, _buffer.Count - write);
 
+            Count--;
+            _position = Count < Capacity ? Count : 0;
             return true;
         }
 
         public int RemoveAll(Func<T, bool> predicate)
         {
-            int removedCount = 0;
-            foreach (T item in this)
+            if (Count == 0)
             {
+                return 0;
+            }
+
+            int write = 0;
+            int removedCount = 0;
+
+            for (int i = 0; i < Count; ++i)
+            {
+                int readIdx = AdjustedIndexFor(i);
+                T item = _buffer[readIdx];
                 if (predicate(item))
                 {
                     removedCount++;
                 }
                 else
                 {
-                    _cache.Add(item);
+                    _buffer[write++] = item;
                 }
             }
 
@@ -178,12 +191,9 @@
                 return 0;
             }
 
-            Clear();
-            foreach (T item in _cache)
-            {
-                Add(item);
-            }
-
+            _buffer.RemoveRange(write, _buffer.Count - write);
+            Count -= removedCount;
+            _position = Count < Capacity ? Count : 0;
             return removedCount;
         }
 

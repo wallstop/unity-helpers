@@ -33,13 +33,13 @@
             FuncBasedComparer<T> comparerObject =
                 (FuncBasedComparer<T>)
                     ComparerCache.GetOrAdd(comparer, () => new FuncBasedComparer<T>(comparer));
-            return enumeration.OrderBy(_ => _, comparerObject);
+            return enumeration.OrderBy(x => x, comparerObject);
         }
 
         public static IEnumerable<T> Ordered<T>(this IEnumerable<T> enumerable)
             where T : IComparable
         {
-            return enumerable.OrderBy(_ => _);
+            return enumerable.OrderBy(x => x);
         }
 
         public static IEnumerable<T> Shuffled<T>(
@@ -47,7 +47,7 @@
             IRandom random = null
         )
         {
-            random = random ?? ThreadLocalRandom<PcgRandom>.Instance;
+            random ??= ThreadLocalRandom<PcgRandom>.Instance;
             return enumerable.OrderBy(_ => random.Next());
         }
 
@@ -81,6 +81,13 @@
             using IEnumerator<T> enumerator = items.GetEnumerator();
             bool hasNext = enumerator.MoveNext();
 
+            while (hasNext)
+            {
+                yield return NextPartitionOf().ToList();
+            }
+
+            yield break;
+
             IEnumerable<T> NextPartitionOf()
             {
                 int remainingCountForPartition = size;
@@ -89,11 +96,6 @@
                     yield return enumerator.Current;
                     hasNext = enumerator.MoveNext();
                 }
-            }
-
-            while (hasNext)
-            {
-                yield return NextPartitionOf().ToList();
             }
         }
 
@@ -113,9 +115,9 @@
                 _comparer = comparer ?? throw new ArgumentNullException(nameof(comparer));
             }
 
-            public int Compare(T lhs, T rhs)
+            public int Compare(T x, T y)
             {
-                return _comparer(lhs, rhs);
+                return _comparer(x, y);
             }
         }
     }
