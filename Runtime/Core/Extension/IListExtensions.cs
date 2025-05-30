@@ -110,14 +110,20 @@
             switch (inputList)
             {
                 case T[] array:
+                {
                     Array.Sort(array, UnityObjectNameComparer<T>.Instance);
                     return;
+                }
                 case List<T> list:
+                {
                     list.Sort(UnityObjectNameComparer<T>.Instance);
                     return;
+                }
                 default:
+                {
                     inputList.InsertionSort(UnityObjectNameComparer<T>.Instance);
                     break;
+                }
             }
         }
 
