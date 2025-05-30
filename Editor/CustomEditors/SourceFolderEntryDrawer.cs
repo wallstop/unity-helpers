@@ -38,9 +38,6 @@
                 SerializedProperty folderPathProp = property.FindPropertyRelative(
                     nameof(SourceFolderEntry.folderPath)
                 );
-                SerializedProperty regexesProp = property.FindPropertyRelative(
-                    nameof(SourceFolderEntry.regexes)
-                );
 
                 Rect folderPathLabelRect = new(
                     startX,
@@ -153,48 +150,63 @@
 
                 if (RegexesFoldoutState[regexesFoldoutKey])
                 {
-                    int listElementIndentLvl = EditorGUI.indentLevel;
-                    EditorGUI.indentLevel++;
-                    float regexStartX = startX + 15f;
-                    float regexAvailableWidth = availableWidth - 15f;
-                    Rect sizeFieldRect = new(
-                        regexStartX,
-                        currentY,
-                        regexAvailableWidth,
-                        EditorGUIUtility.singleLineHeight
+                    SerializedProperty regexesProp = property.FindPropertyRelative(
+                        nameof(SourceFolderEntry.regexes)
                     );
-
-                    EditorGUI.BeginChangeCheck();
-                    int newSize = EditorGUI.IntField(sizeFieldRect, "Size", regexesProp.arraySize);
-                    if (EditorGUI.EndChangeCheck())
-                    {
-                        newSize = Mathf.Max(0, newSize);
-                        regexesProp.arraySize = newSize;
-                    }
-                    currentY += sizeFieldRect.height + EditorGUIUtility.standardVerticalSpacing;
+                    float regexStartX = startX + 15f;
+                    float regexWidth = availableWidth - 15f;
 
                     for (int i = 0; i < regexesProp.arraySize; i++)
                     {
-                        SerializedProperty elementProp = regexesProp.GetArrayElementAtIndex(i);
-                        Rect elementRect = new(
+                        SerializedProperty elemProp = regexesProp.GetArrayElementAtIndex(i);
+                        Rect fieldRect = new(
                             regexStartX,
                             currentY,
-                            regexAvailableWidth,
+                            regexWidth - 25f,
                             EditorGUIUtility.singleLineHeight
                         );
                         EditorGUI.BeginChangeCheck();
-                        string newStringValue = EditorGUI.TextField(
-                            elementRect,
-                            $"Element {i}",
-                            elementProp.stringValue
+                        string newVal = EditorGUI.TextField(
+                            fieldRect,
+                            $"Regex {i}:",
+                            elemProp.stringValue
                         );
                         if (EditorGUI.EndChangeCheck())
                         {
-                            elementProp.stringValue = newStringValue;
+                            elemProp.stringValue = newVal;
                         }
-                        currentY += elementRect.height + EditorGUIUtility.standardVerticalSpacing;
+
+                        Rect remRect = new(
+                            fieldRect.xMax + 4f,
+                            currentY,
+                            25f,
+                            EditorGUIUtility.singleLineHeight
+                        );
+                        if (GUI.Button(remRect, "–"))
+                        {
+                            regexesProp.DeleteArrayElementAtIndex(i);
+                            property.serializedObject.ApplyModifiedProperties();
+                        }
+
+                        currentY +=
+                            EditorGUIUtility.singleLineHeight
+                            + EditorGUIUtility.standardVerticalSpacing;
                     }
-                    EditorGUI.indentLevel = listElementIndentLvl;
+
+                    Rect addRect = new(
+                        regexStartX,
+                        currentY,
+                        regexWidth,
+                        EditorGUIUtility.singleLineHeight
+                    );
+
+                    if (GUI.Button(addRect, "+ Add Regex"))
+                    {
+                        int idx = regexesProp.arraySize;
+                        regexesProp.InsertArrayElementAtIndex(idx);
+                        regexesProp.GetArrayElementAtIndex(idx).stringValue = string.Empty;
+                        property.serializedObject.ApplyModifiedProperties();
+                    }
                 }
                 EditorGUI.indentLevel = originalIndent;
             }
