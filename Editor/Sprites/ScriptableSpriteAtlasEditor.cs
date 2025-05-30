@@ -16,6 +16,9 @@
 
     public sealed class ScriptableSpriteAtlasEditor : EditorWindow
     {
+        // at the top of your EditorWindow class
+        private readonly Dictionary<ScriptableSpriteAtlas, SerializedObject> _serializedConfigs =
+            new();
         private List<ScriptableSpriteAtlas> _atlasConfigs = new();
         private Vector2 _scrollPosition;
 
@@ -58,6 +61,7 @@
             Dictionary<ScriptableSpriteAtlas, ScanResult> existingScanCache = new(
                 _scanResultsCache
             );
+            _serializedConfigs.Clear();
             _scanResultsCache.Clear();
 
             string[] guids = AssetDatabase.FindAssets("t:ScriptableSpriteAtlas");
@@ -78,6 +82,7 @@
                     {
                         _scanResultsCache[config] = new ScanResult();
                     }
+                    _serializedConfigs.TryAdd(config, newConfig => new SerializedObject(newConfig));
                     _foldoutStates.TryAdd(config, true);
                 }
             }
@@ -155,7 +160,10 @@
                 if (_foldoutStates[config])
                 {
                     using EditorGUI.IndentLevelScope indentScope = new();
-                    SerializedObject serializedConfig = new(config);
+                    SerializedObject serializedConfig = _serializedConfigs.GetOrAdd(
+                        config,
+                        newConfig => new SerializedObject(newConfig)
+                    );
                     serializedConfig.Update();
                     EditorGUI.BeginChangeCheck();
 
@@ -169,6 +177,7 @@
                     );
                     if (EditorGUI.EndChangeCheck())
                     {
+                        serializedConfig.ApplyModifiedProperties();
                         if (
                             !string.IsNullOrWhiteSpace(newAssetName)
                             && newAssetName != currentAssetName
