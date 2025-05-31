@@ -131,83 +131,165 @@
                 );
 
                 currentY += EditorGUIUtility.standardVerticalSpacing;
-                Rect regexFoldoutLabelRect = new(
+
+                SerializedProperty modeProp = property.FindPropertyRelative(
+                    nameof(SourceFolderEntry.selectionMode)
+                );
+                SpriteSelectionMode modeValue = (SpriteSelectionMode)modeProp.intValue;
+                Rect selectionMode = new(
                     startX,
                     currentY,
                     availableWidth,
                     EditorGUIUtility.singleLineHeight
                 );
-
-                string regexesFoldoutKey = GetRegexFoldoutKey(property);
-                RegexesFoldoutState.TryAdd(regexesFoldoutKey, true);
-                RegexesFoldoutState[regexesFoldoutKey] = EditorGUI.Foldout(
-                    regexFoldoutLabelRect,
-                    RegexesFoldoutState[regexesFoldoutKey],
-                    "Regexes (AND logic)",
-                    true
-                );
-                currentY += regexFoldoutLabelRect.height + EditorGUIUtility.standardVerticalSpacing;
-
-                if (RegexesFoldoutState[regexesFoldoutKey])
-                {
-                    SerializedProperty regexesProp = property.FindPropertyRelative(
-                        nameof(SourceFolderEntry.regexes)
+                modeValue = (SpriteSelectionMode)
+                    EditorGUI.EnumFlagsField(
+                        selectionMode,
+                        new GUIContent("Selection Mode"),
+                        modeValue
                     );
-                    float regexStartX = startX + 15f;
-                    float regexWidth = availableWidth - 15f;
+                modeProp.intValue = (int)modeValue;
+                currentY +=
+                    EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
 
-                    for (int i = 0; i < regexesProp.arraySize; i++)
-                    {
-                        SerializedProperty elemProp = regexesProp.GetArrayElementAtIndex(i);
-                        Rect fieldRect = new(
-                            regexStartX,
-                            currentY,
-                            regexWidth - 25f,
-                            EditorGUIUtility.singleLineHeight
-                        );
-                        EditorGUI.BeginChangeCheck();
-                        string newVal = EditorGUI.TextField(
-                            fieldRect,
-                            $"Regex {i}:",
-                            elemProp.stringValue
-                        );
-                        if (EditorGUI.EndChangeCheck())
-                        {
-                            elemProp.stringValue = newVal;
-                        }
+                bool useRegex = (modeValue & SpriteSelectionMode.Regex) != 0;
+                bool useLabels = (modeValue & SpriteSelectionMode.Labels) != 0;
 
-                        Rect remRect = new(
-                            fieldRect.xMax + 4f,
-                            currentY,
-                            25f,
-                            EditorGUIUtility.singleLineHeight
-                        );
-                        if (GUI.Button(remRect, "–"))
-                        {
-                            regexesProp.DeleteArrayElementAtIndex(i);
-                            property.serializedObject.ApplyModifiedProperties();
-                        }
-
-                        currentY +=
-                            EditorGUIUtility.singleLineHeight
-                            + EditorGUIUtility.standardVerticalSpacing;
-                    }
-
-                    Rect addRect = new(
-                        regexStartX,
+                if (useRegex)
+                {
+                    Rect regexFoldoutLabelRect = new(
+                        startX,
                         currentY,
-                        regexWidth,
+                        availableWidth,
                         EditorGUIUtility.singleLineHeight
                     );
 
-                    if (GUI.Button(addRect, "+ Add Regex"))
+                    string regexesFoldoutKey = GetRegexFoldoutKey(property);
+                    RegexesFoldoutState.TryAdd(regexesFoldoutKey, true);
+                    RegexesFoldoutState[regexesFoldoutKey] = EditorGUI.Foldout(
+                        regexFoldoutLabelRect,
+                        RegexesFoldoutState[regexesFoldoutKey],
+                        "Regexes (AND logic)",
+                        true
+                    );
+                    currentY +=
+                        regexFoldoutLabelRect.height + EditorGUIUtility.standardVerticalSpacing;
+
+                    if (RegexesFoldoutState[regexesFoldoutKey])
                     {
-                        int idx = regexesProp.arraySize;
-                        regexesProp.InsertArrayElementAtIndex(idx);
-                        regexesProp.GetArrayElementAtIndex(idx).stringValue = string.Empty;
-                        property.serializedObject.ApplyModifiedProperties();
+                        SerializedProperty regexesProp = property.FindPropertyRelative(
+                            nameof(SourceFolderEntry.regexes)
+                        );
+                        float regexStartX = startX + 15f;
+                        float regexWidth = availableWidth - 15f;
+
+                        for (int i = 0; i < regexesProp.arraySize; i++)
+                        {
+                            SerializedProperty elemProp = regexesProp.GetArrayElementAtIndex(i);
+                            Rect fieldRect = new(
+                                regexStartX,
+                                currentY,
+                                regexWidth - 25f,
+                                EditorGUIUtility.singleLineHeight
+                            );
+                            EditorGUI.BeginChangeCheck();
+                            string newVal = EditorGUI.TextField(
+                                fieldRect,
+                                $"Regex {i}:",
+                                elemProp.stringValue
+                            );
+                            if (EditorGUI.EndChangeCheck())
+                            {
+                                elemProp.stringValue = newVal;
+                            }
+
+                            Rect remRect = new(
+                                fieldRect.xMax + 4f,
+                                currentY,
+                                25f,
+                                EditorGUIUtility.singleLineHeight
+                            );
+                            if (GUI.Button(remRect, "–"))
+                            {
+                                regexesProp.DeleteArrayElementAtIndex(i);
+                                property.serializedObject.ApplyModifiedProperties();
+                            }
+
+                            currentY +=
+                                EditorGUIUtility.singleLineHeight
+                                + EditorGUIUtility.standardVerticalSpacing;
+                        }
+
+                        Rect addRect = new(
+                            regexStartX,
+                            currentY,
+                            regexWidth,
+                            EditorGUIUtility.singleLineHeight
+                        );
+
+                        if (GUI.Button(addRect, "+ Add Regex"))
+                        {
+                            int idx = regexesProp.arraySize;
+                            regexesProp.InsertArrayElementAtIndex(idx);
+                            regexesProp.GetArrayElementAtIndex(idx).stringValue = string.Empty;
+                            property.serializedObject.ApplyModifiedProperties();
+                        }
                     }
                 }
+
+                if (useRegex && useLabels)
+                {
+                    SerializedProperty booleanProp = property.FindPropertyRelative(
+                        nameof(SourceFolderEntry.regexAndTagLogic)
+                    );
+                    currentY +=
+                        EditorGUIUtility.singleLineHeight
+                        + EditorGUIUtility.standardVerticalSpacing;
+                    EditorGUI.PropertyField(
+                        new Rect(
+                            startX,
+                            currentY,
+                            availableWidth,
+                            EditorGUIUtility.singleLineHeight
+                        ),
+                        booleanProp,
+                        new GUIContent("Regex & Tags Logic")
+                    );
+                    currentY +=
+                        EditorGUIUtility.singleLineHeight
+                        + EditorGUIUtility.standardVerticalSpacing;
+                }
+
+                if (useLabels)
+                {
+                    SerializedProperty labelModeProp = property.FindPropertyRelative(
+                        "labelSelectionMode"
+                    );
+                    Rect rectLabelMode = new(
+                        startX,
+                        currentY,
+                        availableWidth,
+                        EditorGUIUtility.singleLineHeight
+                    );
+                    EditorGUI.PropertyField(
+                        rectLabelMode,
+                        labelModeProp,
+                        new GUIContent("Label Selection Mode")
+                    );
+                    currentY +=
+                        EditorGUIUtility.singleLineHeight
+                        + EditorGUIUtility.standardVerticalSpacing;
+
+                    SerializedProperty labelsProp = property.FindPropertyRelative(
+                        nameof(SourceFolderEntry.labels)
+                    );
+                    float labelsHeight = EditorGUI.GetPropertyHeight(labelsProp, true);
+
+                    Rect rectLabels = new(startX, currentY, availableWidth, labelsHeight);
+                    EditorGUI.PropertyField(rectLabels, labelsProp, new GUIContent("Labels"), true);
+                    currentY += labelsHeight + EditorGUIUtility.standardVerticalSpacing;
+                }
+
                 EditorGUI.indentLevel = originalIndent;
             }
             EditorGUI.EndProperty();
@@ -237,19 +319,62 @@
 
             height += EditorGUIUtility.standardVerticalSpacing;
             height += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
-            string regexesFoldoutKey = GetRegexFoldoutKey(property);
-            bool isRegexesExpanded = RegexesFoldoutState.GetValueOrDefault(regexesFoldoutKey, true);
-            if (isRegexesExpanded)
+
+            SerializedProperty modeProp = property.FindPropertyRelative(
+                nameof(SourceFolderEntry.selectionMode)
+            );
+            SpriteSelectionMode modeValue = (SpriteSelectionMode)modeProp.intValue;
+            bool useRegex = (modeValue & SpriteSelectionMode.Regex) != 0;
+            bool useLabels = (modeValue & SpriteSelectionMode.Labels) != 0;
+
+            if (useRegex)
             {
-                SerializedProperty regexesProp = property.FindPropertyRelative(
-                    nameof(SourceFolderEntry.regexes)
+                string regexesFoldoutKey = GetRegexFoldoutKey(property);
+                bool isRegexesExpanded = RegexesFoldoutState.GetValueOrDefault(
+                    regexesFoldoutKey,
+                    true
                 );
-                height +=
-                    (1 + regexesProp.arraySize)
-                    * (
-                        EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing
+                if (isRegexesExpanded)
+                {
+                    SerializedProperty regexesProp = property.FindPropertyRelative(
+                        nameof(SourceFolderEntry.regexes)
                     );
+                    height +=
+                        (1 + regexesProp.arraySize)
+                        * (
+                            EditorGUIUtility.singleLineHeight
+                            + EditorGUIUtility.standardVerticalSpacing
+                        );
+                }
+
+                height +=
+                    EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
             }
+
+            if (useRegex && useLabels)
+            {
+                height +=
+                    EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
+            }
+
+            if (useLabels)
+            {
+                // 1) Draw the “Label Selection Mode” line (dropdown)
+                height += EditorGUIUtility.singleLineHeight;
+                height += EditorGUIUtility.standardVerticalSpacing;
+
+                // 2) Now figure out how tall “labels” really is. Let Unity handle foldout‐vs‐expanded.
+                SerializedProperty labelsProp = property.FindPropertyRelative(
+                    nameof(SourceFolderEntry.labels)
+                );
+
+                //    Passing `true` tells Unity: “Include children if expanded, or just header if collapsed.”
+                float labelsFullHeight = EditorGUI.GetPropertyHeight(labelsProp, true);
+
+                height += labelsFullHeight;
+                height += EditorGUIUtility.standardVerticalSpacing;
+            }
+
             height += EditorGUIUtility.standardVerticalSpacing;
             return height;
         }

@@ -1,22 +1,92 @@
 ﻿namespace WallstopStudios.UnityHelpers.Editor.Sprites
 {
 #if UNITY_EDITOR
+    using System;
     using UnityEngine;
     using System.Collections.Generic;
     using Core.Attributes;
     using Core.Helper;
     using UnityEditor;
 
-    [System.Serializable]
+    [Flags]
+    public enum SpriteSelectionMode
+    {
+        [Obsolete("Please select a valid value")]
+        None = 0,
+        Regex = 1 << 0,
+        Labels = 1 << 1,
+    }
+
+    public enum LabelSelectionMode
+    {
+        [Obsolete("Please select a valid value")]
+        None = 0,
+        All = 1 << 0,
+        AnyOf = 1 << 1,
+    }
+
+    public enum SpriteSelectionBooleanLogic
+    {
+        [Obsolete("Please select a valid value")]
+        None = 0,
+        And = 1 << 0,
+        Or = 1 << 1,
+    }
+
+    [Serializable]
     public sealed class SourceFolderEntry
     {
         [Tooltip("Folder to scan for sprites. Path relative to Assets/.")]
         public string folderPath = "Assets/Sprites/";
 
+        public SpriteSelectionMode selectionMode = SpriteSelectionMode.Regex;
+
+        [WShowIf(
+            nameof(selectionMode),
+            expectedValues = new object[]
+            {
+                SpriteSelectionMode.Regex,
+                SpriteSelectionMode.Regex | SpriteSelectionMode.Labels,
+            }
+        )]
         [Tooltip(
             "Regex patterns to match sprite file names within this specific folder. All regexes must match (AND logic). e.g., \"^icon_.*\\.png$\""
         )]
         public List<string> regexes = new();
+
+        [WShowIf(
+            nameof(selectionMode),
+            expectedValues = new object[]
+            {
+                SpriteSelectionMode.Regex | SpriteSelectionMode.Labels,
+                (SpriteSelectionMode)(-1),
+            }
+        )]
+        public SpriteSelectionBooleanLogic regexAndTagLogic = SpriteSelectionBooleanLogic.And;
+
+        [WShowIf(
+            nameof(selectionMode),
+            expectedValues = new object[]
+            {
+                SpriteSelectionMode.Labels,
+                SpriteSelectionMode.Regex | SpriteSelectionMode.Labels,
+                (SpriteSelectionMode)(-1),
+            }
+        )]
+        public LabelSelectionMode labelSelectionMode = LabelSelectionMode.All;
+
+        [WShowIf(
+            nameof(selectionMode),
+            expectedValues = new object[]
+            {
+                SpriteSelectionMode.Labels,
+                SpriteSelectionMode.Regex | SpriteSelectionMode.Labels,
+                (SpriteSelectionMode)(-1),
+            }
+        )]
+        [Tooltip("Asset labels to include in the folders.")]
+        [StringInList(typeof(Helpers), nameof(Helpers.GetAllSpriteLabelNames))]
+        public List<string> labels = new();
 
         public SourceFolderEntry() { }
 

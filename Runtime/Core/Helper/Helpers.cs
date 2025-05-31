@@ -14,10 +14,7 @@
 #if UNITY_EDITOR
     using UnityEditor;
     using UnityEditorInternal;
-#else
-    using System;
 #endif
-
     public static partial class Helpers
     {
         private static readonly WaitForEndOfFrame WaitForEndOfFrame = new();
@@ -26,6 +23,37 @@
         private static readonly Dictionary<string, Object> ObjectsByTag = new(
             StringComparer.Ordinal
         );
+
+        internal static string[] AllSpriteLabels;
+
+        public static string[] GetAllSpriteLabelNames()
+        {
+#if UNITY_EDITOR
+            if (AllSpriteLabels != null)
+            {
+                return AllSpriteLabels;
+            }
+
+            SortedSet<string> allLabels = new(StringComparer.Ordinal);
+            string[] guids = AssetDatabase.FindAssets("t:Sprite");
+            foreach (string guid in guids)
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                Object asset = AssetDatabase.LoadMainAssetAtPath(path);
+                if (asset == null)
+                {
+                    continue;
+                }
+
+                allLabels.UnionWith(AssetDatabase.GetLabels(asset));
+            }
+
+            AllSpriteLabels = allLabels.ToArray();
+            return AllSpriteLabels;
+#else
+            return Array.Empty<string>();
+#endif
+        }
 
         public static string[] GetAllLayerNames()
         {

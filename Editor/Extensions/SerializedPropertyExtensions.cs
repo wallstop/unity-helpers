@@ -27,6 +27,17 @@
             Type type = obj.GetType();
             string[] pathParts = property.propertyPath.Split('.');
 
+            if (
+                string.Equals(property.name, "data", StringComparison.Ordinal)
+                && pathParts.Length > 1
+                && pathParts[^1].Contains('[')
+                && pathParts[^1].Contains(']')
+                && string.Equals(pathParts[^2], "Array", StringComparison.Ordinal)
+            )
+            {
+                Array.Resize(ref pathParts, pathParts.Length - 2);
+            }
+
             // Traverse the path but stop at the second-to-last field
             for (int i = 0; i < pathParts.Length - 1; ++i)
             {

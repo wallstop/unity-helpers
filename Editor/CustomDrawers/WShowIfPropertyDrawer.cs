@@ -1,12 +1,12 @@
 ﻿namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 {
 #if UNITY_EDITOR
+    using System;
     using System.Reflection;
     using Extensions;
     using UnityEditor;
     using UnityEngine;
-    using WallstopStudios.UnityHelpers.Core.Attributes;
-    using WallstopStudios.UnityHelpers.Core.Extension;
+    using Core.Attributes;
 
     [CustomPropertyDrawer(typeof(WShowIfAttribute))]
     public sealed class WShowIfPropertyDrawer : PropertyDrawer
@@ -49,11 +49,19 @@
                         showIf.conditionField,
                         BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
                     );
-                if (conditionField?.GetValue(enclosingObject) is bool maybeCondition)
+                object fieldValue = conditionField?.GetValue(enclosingObject);
+                if (fieldValue is bool maybeCondition)
                 {
                     return showIf.inverse ? !maybeCondition : maybeCondition;
                 }
-                return true;
+
+                int index = Array.IndexOf(showIf.expectedValues, fieldValue);
+                if (showIf.inverse)
+                {
+                    return index < 0;
+                }
+
+                return 0 <= index;
             }
 
             bool condition = conditionProperty.boolValue;

@@ -1,4 +1,5 @@
-﻿namespace WallstopStudios.UnityHelpers.Editor.Sprites
+﻿// ReSharper disable HeapView.CanAvoidClosure
+namespace WallstopStudios.UnityHelpers.Editor.Sprites
 {
 #if UNITY_EDITOR
     using System;
@@ -13,7 +14,6 @@
     using UnityEditor.UIElements;
     using UnityEngine;
     using UnityEngine.UIElements;
-    using Debug = UnityEngine.Debug;
     using Object = UnityEngine.Object;
 
     public sealed class SpriteSheetAnimationCreator : EditorWindow
@@ -43,6 +43,14 @@
         private Button _nextFrameButton;
         private Slider _previewScrubber;
 
+        private bool _isDraggingToSelectSprites;
+        private int _spriteSelectionDragStartIndex = -1;
+        private int _spriteSelectionDragCurrentIndex = -1;
+        private StyleColor _selectedThumbnailBackgroundColor = new(
+            new Color(0.2f, 0.5f, 0.8f, 0.4f)
+        );
+        private readonly StyleColor _defaultThumbnailBackgroundColor = new(StyleKeyword.Null);
+
         private bool _isPreviewing;
         private int _currentPreviewAnimDefIndex = -1;
         private int _currentPreviewSpriteIndex;
@@ -65,6 +73,8 @@
         public sealed class AnimationDefinition
         {
             public string Name = "New Animation";
+            public bool loop;
+            public float cycleOffset;
             public int StartSpriteIndex;
             public int EndSpriteIndex;
             public float DefaultFrameRate = 12f;
@@ -79,6 +89,8 @@
             public Label spriteCountLabel;
             public Button previewButton;
             public Button removeButton;
+            public Toggle loopingField;
+            public FloatField cycleOffsetField;
         }
 
         public SpriteSheetAnimationCreator()
@@ -161,7 +173,9 @@
             topSection.Add(_refreshSpritesButton);
             root.Add(topSection);
 
-            Label thumbnailsLabel = new("Available Sprites:")
+            Label thumbnailsLabel = new(
+                "Available Sprites (Drag to select range for new animation):"
+            )
             {
                 style =
                 {
@@ -175,8 +189,8 @@
             {
                 style =
                 {
-                    height = ThumbnailSize + 20,
-                    minHeight = ThumbnailSize + 20,
+                    height = ThumbnailSize + 20 + 10,
+                    minHeight = ThumbnailSize + 20 + 10,
                     borderTopWidth = 1,
                     borderBottomWidth = 1,
                     borderLeftWidth = 1,
@@ -196,6 +210,72 @@
             {
                 style = { flexDirection = FlexDirection.Row },
             };
+
+            _spriteThumbnailsContainer.RegisterCallback<PointerMoveEvent>(evt =>
+            {
+                if (
+                    _isDraggingToSelectSprites
+                    && _spriteThumbnailsContainer.HasPointerCapture(evt.pointerId)
+                )
+                {
+                    VisualElement currentElementOver = evt.target as VisualElement;
+
+                    VisualElement thumbChild = currentElementOver;
+                    while (thumbChild != null && thumbChild.parent != _spriteThumbnailsContainer)
+                    {
+                        thumbChild = thumbChild.parent;
+                    }
+
+                    if (
+                        thumbChild is { userData: int hoveredIndex }
+                        && _spriteSelectionDragCurrentIndex != hoveredIndex
+                    )
+                    {
+                        _spriteSelectionDragCurrentIndex = hoveredIndex;
+                        UpdateSpriteSelectionHighlight();
+                    }
+                }
+            });
+
+            _spriteThumbnailsContainer.RegisterCallback<PointerUpEvent>(
+                evt =>
+                {
+                    if (
+                        evt.button == 0
+                        && _isDraggingToSelectSprites
+                        && _spriteThumbnailsContainer.HasPointerCapture(evt.pointerId)
+                    )
+                    {
+                        _spriteThumbnailsContainer.ReleasePointer(evt.pointerId);
+                        _isDraggingToSelectSprites = false;
+
+                        if (
+                            _spriteSelectionDragStartIndex != -1
+                            && _spriteSelectionDragCurrentIndex != -1
+                        )
+                        {
+                            int start = Mathf.Min(
+                                _spriteSelectionDragStartIndex,
+                                _spriteSelectionDragCurrentIndex
+                            );
+                            int end = Mathf.Max(
+                                _spriteSelectionDragStartIndex,
+                                _spriteSelectionDragCurrentIndex
+                            );
+
+                            if (start <= end)
+                            {
+                                CreateAnimationDefinitionFromSelection(start, end);
+                            }
+                        }
+                        ClearSpriteSelectionHighlight();
+                        _spriteSelectionDragStartIndex = -1;
+                        _spriteSelectionDragCurrentIndex = -1;
+                    }
+                },
+                TrickleDown.TrickleDown
+            );
+
             _spriteThumbnailsScrollView.Add(_spriteThumbnailsContainer);
             root.Add(_spriteThumbnailsScrollView);
 
@@ -424,6 +504,115 @@
             SetPreviewFrame(nextFrame);
         }
 
+        private void UpdateSpriteSelectionHighlight()
+        {
+            if (
+                !_isDraggingToSelectSprites
+                || _spriteSelectionDragStartIndex == -1
+                || _spriteSelectionDragCurrentIndex == -1
+            )
+            {
+                ClearSpriteSelectionHighlight();
+                return;
+            }
+
+            int minIdx = Mathf.Min(
+                _spriteSelectionDragStartIndex,
+                _spriteSelectionDragCurrentIndex
+            );
+            int maxIdx = Mathf.Max(
+                _spriteSelectionDragStartIndex,
+                _spriteSelectionDragCurrentIndex
+            );
+
+            for (int i = 0; i < _spriteThumbnailsContainer.childCount; i++)
+            {
+                VisualElement thumb = _spriteThumbnailsContainer.ElementAt(i);
+                if (thumb.userData is int thumbIndex)
+                {
+                    if (thumbIndex >= minIdx && thumbIndex <= maxIdx)
+                    {
+                        thumb.style.backgroundColor = _selectedThumbnailBackgroundColor;
+                        thumb.style.borderBottomColor =
+                            _selectedThumbnailBackgroundColor.value * 1.5f;
+                        thumb.style.borderTopColor = _selectedThumbnailBackgroundColor.value * 1.5f;
+                        thumb.style.borderLeftColor =
+                            _selectedThumbnailBackgroundColor.value * 1.5f;
+                        thumb.style.borderRightColor =
+                            _selectedThumbnailBackgroundColor.value * 1.5f;
+                    }
+                    else
+                    {
+                        thumb.style.backgroundColor = _defaultThumbnailBackgroundColor;
+                        thumb.style.borderBottomColor = Color.clear;
+                        thumb.style.borderTopColor = Color.clear;
+                        thumb.style.borderLeftColor = Color.clear;
+                        thumb.style.borderRightColor = Color.clear;
+                    }
+                }
+            }
+        }
+
+        private void ClearSpriteSelectionHighlight()
+        {
+            for (int i = 0; i < _spriteThumbnailsContainer.childCount; i++)
+            {
+                VisualElement thumb = _spriteThumbnailsContainer.ElementAt(i);
+                thumb.style.backgroundColor = _defaultThumbnailBackgroundColor;
+                thumb.style.borderBottomColor = Color.clear;
+                thumb.style.borderTopColor = Color.clear;
+                thumb.style.borderLeftColor = Color.clear;
+                thumb.style.borderRightColor = Color.clear;
+            }
+        }
+
+        private void CreateAnimationDefinitionFromSelection(
+            int startSpriteIndex,
+            int endSpriteIndex
+        )
+        {
+            if (
+                startSpriteIndex < 0
+                || endSpriteIndex < 0
+                || startSpriteIndex >= _availableSprites.Count
+                || endSpriteIndex >= _availableSprites.Count
+            )
+            {
+                this.LogWarn(
+                    $"Invalid sprite indices for new animation definition from selection."
+                );
+                return;
+            }
+
+            AnimationDefinition newDefinition = new()
+            {
+                Name =
+                    _selectedSpriteSheet != null
+                        ? $"{_selectedSpriteSheet.name}_Anim_{_animationDefinitions.Count}"
+                        : $"New_Animation_{_animationDefinitions.Count}",
+                StartSpriteIndex = startSpriteIndex,
+                EndSpriteIndex = endSpriteIndex,
+                DefaultFrameRate = 12f,
+            };
+
+            newDefinition.FrameRateCurve = AnimationCurve.Constant(
+                0,
+                1,
+                newDefinition.DefaultFrameRate
+            );
+
+            _animationDefinitions.Add(newDefinition);
+            UpdateSpritesForDefinition(newDefinition);
+            _currentPreviewAnimDefIndex = _animationDefinitions.Count - 1;
+            StartOrUpdateCurrentPreview(newDefinition);
+            _animationDefinitionsListView.Rebuild();
+
+            if (_animationDefinitionsListView.itemsSource.Count > 0)
+            {
+                _animationDefinitionsListView.ScrollToItem(_animationDefinitions.Count - 1);
+            }
+        }
+
         private void OnSpriteSheetSelected(ChangeEvent<Object> evt)
         {
             _selectedSpriteSheet = evt.newValue as Texture2D;
@@ -540,7 +729,20 @@
                 Sprite sprite = _availableSprites[i];
                 VisualElement thumbContainer = new()
                 {
-                    style = { alignItems = Align.Center, marginRight = 5 },
+                    style =
+                    {
+                        alignItems = Align.Center,
+                        marginRight = 5,
+                        paddingBottom = 2,
+                        borderBottomWidth = 1,
+                        borderLeftWidth = 1,
+                        borderRightWidth = 1,
+                        borderTopWidth = 1,
+                        borderBottomColor = Color.clear,
+                        borderTopColor = Color.clear,
+                        borderLeftColor = Color.clear,
+                        borderRightColor = Color.clear,
+                    },
                 };
                 Image img = new()
                 {
@@ -550,6 +752,36 @@
                 };
                 thumbContainer.Add(img);
                 thumbContainer.Add(new Label($"{i}") { style = { fontSize = 9 } });
+
+                int currentIndex = i;
+                thumbContainer.userData = currentIndex;
+
+                thumbContainer.RegisterCallback<PointerDownEvent>(evt =>
+                {
+                    if (evt.button == 0)
+                    {
+                        _isDraggingToSelectSprites = true;
+                        _spriteSelectionDragStartIndex = currentIndex;
+                        _spriteSelectionDragCurrentIndex = currentIndex;
+                        UpdateSpriteSelectionHighlight();
+
+                        _spriteThumbnailsContainer.CapturePointer(evt.pointerId);
+                        evt.StopPropagation();
+                    }
+                });
+
+                thumbContainer.RegisterCallback<PointerEnterEvent>(_ =>
+                {
+                    if (
+                        _isDraggingToSelectSprites
+                        && _spriteThumbnailsContainer.HasPointerCapture(PointerId.mousePointerId)
+                        && _spriteSelectionDragCurrentIndex != currentIndex
+                    )
+                    {
+                        _spriteSelectionDragCurrentIndex = currentIndex;
+                        UpdateSpriteSelectionHighlight();
+                    }
+                });
                 _spriteThumbnailsContainer.Add(thumbContainer);
             }
         }
@@ -562,7 +794,7 @@
             }
         }
 
-        private VisualElement MakeAnimationDefinitionItem()
+        private static VisualElement MakeAnimationDefinitionItem()
         {
             VisualElement container = new()
             {
@@ -594,6 +826,10 @@
                 },
             };
             VisualElement thirdRow = new()
+            {
+                style = { flexDirection = FlexDirection.Row, alignItems = Align.Center },
+            };
+            VisualElement fourthRow = new()
             {
                 style = { flexDirection = FlexDirection.Row, alignItems = Align.Center },
             };
@@ -657,9 +893,33 @@
             thirdRow.Add(fpsField);
             thirdRow.Add(curveField);
 
+            Toggle looping = new("Looping:")
+            {
+                style =
+                {
+                    flexGrow = 1,
+                    flexShrink = 1,
+                    marginRight = 5,
+                },
+            };
+
+            FloatField cycleOffset = new("Cycle Offset:")
+            {
+                style =
+                {
+                    flexGrow = 1,
+                    flexShrink = 1,
+                    marginRight = 5,
+                },
+            };
+
+            fourthRow.Add(looping);
+            fourthRow.Add(cycleOffset);
+
             container.Add(firstRow);
             container.Add(secondRow);
             container.Add(thirdRow);
+            container.Add(fourthRow);
 
             container.userData = new AnimationDefUITags
             {
@@ -671,6 +931,8 @@
                 spriteCountLabel = spriteCountLabel,
                 previewButton = previewButton,
                 removeButton = removeButton,
+                looping = looping,
+                cycleOffset = cycleOffset,
             };
             return container;
         }
@@ -685,11 +947,13 @@
             public Label spriteCountLabel;
             public Button previewButton;
             public Button removeButton;
+            public Toggle looping;
+            public FloatField cycleOffset;
         }
 
         private void BindAnimationDefinitionItem(VisualElement element, int index)
         {
-            AnimationDefinition def = _animationDefinitions[index];
+            AnimationDefinition definition = _animationDefinitions[index];
             if (element.userData is not AnimationDefUITags tags)
             {
                 this.LogError(
@@ -698,143 +962,178 @@
                 return;
             }
 
-            def.nameField?.UnregisterValueChangedCallback(
-                def.nameField.userData as EventCallback<ChangeEvent<string>>
+            definition.nameField?.UnregisterValueChangedCallback(
+                definition.nameField.userData as EventCallback<ChangeEvent<string>>
             );
 
-            def.startIndexField?.UnregisterValueChangedCallback(
-                def.startIndexField.userData as EventCallback<ChangeEvent<int>>
+            definition.startIndexField?.UnregisterValueChangedCallback(
+                definition.startIndexField.userData as EventCallback<ChangeEvent<int>>
             );
 
-            def.endIndexField?.UnregisterValueChangedCallback(
-                def.endIndexField.userData as EventCallback<ChangeEvent<int>>
+            definition.endIndexField?.UnregisterValueChangedCallback(
+                definition.endIndexField.userData as EventCallback<ChangeEvent<int>>
             );
 
-            def.defaultFrameRateField?.UnregisterValueChangedCallback(
-                def.defaultFrameRateField.userData as EventCallback<ChangeEvent<float>>
+            definition.defaultFrameRateField?.UnregisterValueChangedCallback(
+                definition.defaultFrameRateField.userData as EventCallback<ChangeEvent<float>>
             );
 
-            def.frameRateCurveField?.UnregisterValueChangedCallback(
-                def.frameRateCurveField.userData as EventCallback<ChangeEvent<AnimationCurve>>
+            definition.frameRateCurveField?.UnregisterValueChangedCallback(
+                definition.frameRateCurveField.userData
+                    as EventCallback<ChangeEvent<AnimationCurve>>
             );
 
-            if (def.removeButton != null)
+            if (definition.removeButton != null)
             {
-                def.removeButton.clicked -= (Action)def.removeButton.userData;
+                definition.removeButton.clicked -= (Action)definition.removeButton.userData;
             }
 
-            if (def.previewButton != null)
+            if (definition.previewButton != null)
             {
-                def.previewButton.clicked -= (Action)def.previewButton.userData;
+                definition.previewButton.clicked -= (Action)definition.previewButton.userData;
             }
 
-            def.nameField = tags.nameField;
-            def.startIndexField = tags.startIndexField;
-            def.endIndexField = tags.endIndexField;
-            def.defaultFrameRateField = tags.defaultFrameRateField;
-            def.frameRateCurveField = tags.frameRateCurveField;
-            def.spriteCountLabel = tags.spriteCountLabel;
-            def.removeButton = tags.removeButton;
-            def.previewButton = tags.previewButton;
+            definition.loopingField?.UnregisterValueChangedCallback(
+                (EventCallback<ChangeEvent<bool>>)definition.loopingField.userData
+            );
+            definition.cycleOffsetField?.UnregisterValueChangedCallback(
+                (EventCallback<ChangeEvent<float>>)definition.cycleOffsetField.userData
+            );
 
-            def.nameField.SetValueWithoutNotify(def.Name);
+            definition.nameField = tags.nameField;
+            definition.startIndexField = tags.startIndexField;
+            definition.endIndexField = tags.endIndexField;
+            definition.defaultFrameRateField = tags.defaultFrameRateField;
+            definition.frameRateCurveField = tags.frameRateCurveField;
+            definition.spriteCountLabel = tags.spriteCountLabel;
+            definition.removeButton = tags.removeButton;
+            definition.previewButton = tags.previewButton;
+            definition.loopingField = tags.looping;
+            definition.cycleOffsetField = tags.cycleOffset;
+
+            definition.nameField.SetValueWithoutNotify(definition.Name);
             EventCallback<ChangeEvent<string>> nameChangeCallback = evt =>
             {
-                def.Name = evt.newValue;
+                definition.Name = evt.newValue;
             };
-            def.nameField.RegisterValueChangedCallback(nameChangeCallback);
-            def.nameField.userData = nameChangeCallback;
+            definition.nameField.RegisterValueChangedCallback(nameChangeCallback);
+            definition.nameField.userData = nameChangeCallback;
 
-            def.startIndexField.SetValueWithoutNotify(def.StartSpriteIndex);
+            definition.startIndexField.SetValueWithoutNotify(definition.StartSpriteIndex);
             EventCallback<ChangeEvent<int>> startChangeCallback = evt =>
             {
-                def.StartSpriteIndex = Mathf.Clamp(
+                definition.StartSpriteIndex = Mathf.Clamp(
                     evt.newValue,
                     0,
                     _availableSprites.Count > 0 ? _availableSprites.Count - 1 : 0
                 );
-                if (def.StartSpriteIndex > def.EndSpriteIndex && 0 < _availableSprites.Count)
+                if (
+                    definition.StartSpriteIndex > definition.EndSpriteIndex
+                    && 0 < _availableSprites.Count
+                )
                 {
-                    def.EndSpriteIndex = def.StartSpriteIndex;
+                    definition.EndSpriteIndex = definition.StartSpriteIndex;
                 }
 
-                def.startIndexField.SetValueWithoutNotify(def.StartSpriteIndex);
-                UpdateSpritesForDefinition(def);
+                definition.startIndexField.SetValueWithoutNotify(definition.StartSpriteIndex);
+                UpdateSpritesForDefinition(definition);
                 if (_currentPreviewAnimDefIndex == index)
                 {
-                    StartOrUpdateCurrentPreview(def);
+                    StartOrUpdateCurrentPreview(definition);
                 }
             };
-            def.startIndexField.RegisterValueChangedCallback(startChangeCallback);
-            def.startIndexField.userData = startChangeCallback;
+            definition.startIndexField.RegisterValueChangedCallback(startChangeCallback);
+            definition.startIndexField.userData = startChangeCallback;
 
-            def.endIndexField.SetValueWithoutNotify(def.EndSpriteIndex);
+            definition.endIndexField.SetValueWithoutNotify(definition.EndSpriteIndex);
             EventCallback<ChangeEvent<int>> endChangeCallback = evt =>
             {
-                def.EndSpriteIndex = Mathf.Clamp(
+                definition.EndSpriteIndex = Mathf.Clamp(
                     evt.newValue,
                     0,
                     _availableSprites.Count > 0 ? _availableSprites.Count - 1 : 0
                 );
-                if (def.EndSpriteIndex < def.StartSpriteIndex && 0 < _availableSprites.Count)
+                if (
+                    definition.EndSpriteIndex < definition.StartSpriteIndex
+                    && 0 < _availableSprites.Count
+                )
                 {
-                    def.StartSpriteIndex = def.EndSpriteIndex;
+                    definition.StartSpriteIndex = definition.EndSpriteIndex;
                 }
 
-                def.endIndexField.SetValueWithoutNotify(def.EndSpriteIndex);
-                UpdateSpritesForDefinition(def);
+                definition.endIndexField.SetValueWithoutNotify(definition.EndSpriteIndex);
+                UpdateSpritesForDefinition(definition);
                 if (_currentPreviewAnimDefIndex == index)
                 {
-                    StartOrUpdateCurrentPreview(def);
+                    StartOrUpdateCurrentPreview(definition);
                 }
             };
-            def.endIndexField.RegisterValueChangedCallback(endChangeCallback);
-            def.endIndexField.userData = endChangeCallback;
+            definition.endIndexField.RegisterValueChangedCallback(endChangeCallback);
+            definition.endIndexField.userData = endChangeCallback;
 
-            def.defaultFrameRateField.SetValueWithoutNotify(def.DefaultFrameRate);
+            definition.defaultFrameRateField.SetValueWithoutNotify(definition.DefaultFrameRate);
             EventCallback<ChangeEvent<float>> fpsChangeCallback = evt =>
             {
-                def.DefaultFrameRate = Mathf.Max(0.1f, evt.newValue);
-                def.defaultFrameRateField.SetValueWithoutNotify(def.DefaultFrameRate);
+                definition.DefaultFrameRate = Mathf.Max(0.1f, evt.newValue);
+                definition.defaultFrameRateField.SetValueWithoutNotify(definition.DefaultFrameRate);
 
-                if (IsCurveConstant(def.FrameRateCurve))
+                if (IsCurveConstant(definition.FrameRateCurve))
                 {
-                    def.FrameRateCurve = AnimationCurve.Constant(0, 1, def.DefaultFrameRate);
-                    def.frameRateCurveField.SetValueWithoutNotify(def.FrameRateCurve);
+                    definition.FrameRateCurve = AnimationCurve.Constant(
+                        0,
+                        1,
+                        definition.DefaultFrameRate
+                    );
+                    definition.frameRateCurveField.SetValueWithoutNotify(definition.FrameRateCurve);
                 }
                 if (_currentPreviewAnimDefIndex == index)
                 {
-                    StartOrUpdateCurrentPreview(def);
+                    StartOrUpdateCurrentPreview(definition);
                 }
             };
-            def.defaultFrameRateField.RegisterValueChangedCallback(fpsChangeCallback);
-            def.defaultFrameRateField.userData = fpsChangeCallback;
+            definition.defaultFrameRateField.RegisterValueChangedCallback(fpsChangeCallback);
+            definition.defaultFrameRateField.userData = fpsChangeCallback;
 
-            def.frameRateCurveField.SetValueWithoutNotify(def.FrameRateCurve);
+            definition.frameRateCurveField.SetValueWithoutNotify(definition.FrameRateCurve);
             EventCallback<ChangeEvent<AnimationCurve>> curveChangeCallback = evt =>
             {
-                def.FrameRateCurve = evt.newValue;
+                definition.FrameRateCurve = evt.newValue;
                 if (_currentPreviewAnimDefIndex == index)
                 {
-                    StartOrUpdateCurrentPreview(def);
+                    StartOrUpdateCurrentPreview(definition);
                 }
             };
-            def.frameRateCurveField.RegisterValueChangedCallback(curveChangeCallback);
-            def.frameRateCurveField.userData = curveChangeCallback;
+            definition.frameRateCurveField.RegisterValueChangedCallback(curveChangeCallback);
+            definition.frameRateCurveField.userData = curveChangeCallback;
 
             Action removeAction = () => RemoveAnimationDefinition(index);
-            def.removeButton.clicked += removeAction;
-            def.removeButton.userData = removeAction;
+            definition.removeButton.clicked += removeAction;
+            definition.removeButton.userData = removeAction;
 
             Action previewAction = () =>
             {
                 _currentPreviewAnimDefIndex = index;
-                StartOrUpdateCurrentPreview(def);
+                StartOrUpdateCurrentPreview(definition);
             };
-            def.previewButton.clicked += previewAction;
-            def.previewButton.userData = previewAction;
+            definition.previewButton.clicked += previewAction;
+            definition.previewButton.userData = previewAction;
 
-            UpdateSpritesForDefinition(def);
+            EventCallback<ChangeEvent<bool>> loopingChangeCallback = evt =>
+            {
+                definition.loop = evt.newValue;
+            };
+
+            definition.loopingField.RegisterValueChangedCallback(loopingChangeCallback);
+            definition.loopingField.userData = loopingChangeCallback;
+
+            EventCallback<ChangeEvent<float>> cycleOffsetChangeCallback = evt =>
+            {
+                definition.cycleOffset = evt.newValue;
+            };
+            definition.cycleOffsetField.RegisterValueChangedCallback(cycleOffsetChangeCallback);
+            definition.cycleOffsetField.userData = cycleOffsetChangeCallback;
+
+            UpdateSpritesForDefinition(definition);
         }
 
         private static bool IsCurveConstant(AnimationCurve curve)
@@ -887,6 +1186,16 @@
             }
             if (0 < _availableSprites.Count)
             {
+                if (0 < _animationDefinitions.Count)
+                {
+                    int nextStartIndex = _animationDefinitions[^1].EndSpriteIndex + 1;
+                    if (_availableSprites.Count - 1 <= nextStartIndex)
+                    {
+                        nextStartIndex = 0;
+                    }
+                    newDef.StartSpriteIndex = nextStartIndex;
+                }
+
                 newDef.EndSpriteIndex = _availableSprites.Count - 1;
             }
             newDef.FrameRateCurve = AnimationCurve.Constant(0, 1, newDef.DefaultFrameRate);
@@ -1068,12 +1377,17 @@
                 Directory.CreateDirectory(animationsFolder);
             }
 
-            int createdCount = 0;
-            foreach (AnimationDefinition def in _animationDefinitions)
+            if (!animationsFolder.StartsWith("Assets", StringComparison.OrdinalIgnoreCase))
             {
-                if (def.SpritesToAnimate.Count == 0)
+                animationsFolder = DirectoryHelper.AbsoluteToUnityRelativePath(animationsFolder);
+            }
+
+            int createdCount = 0;
+            foreach (AnimationDefinition definition in _animationDefinitions)
+            {
+                if (definition.SpritesToAnimate.Count == 0)
                 {
-                    Debug.LogWarning($"Skipping animation '{def.Name}' as it has no sprites.");
+                    this.LogWarn($"Skipping animation '{definition.Name}' as it has no sprites.");
                     continue;
                 }
 
@@ -1087,21 +1401,21 @@
                 };
 
                 ObjectReferenceKeyframe[] keyframes = new ObjectReferenceKeyframe[
-                    def.SpritesToAnimate.Count
+                    definition.SpritesToAnimate.Count
                 ];
                 float currentTime = 0f;
-                AnimationCurve curve = def.FrameRateCurve;
+                AnimationCurve curve = definition.FrameRateCurve;
                 if (curve == null || curve.keys.Length == 0)
                 {
-                    Debug.LogWarning(
-                        $"Animation '{def.Name}' has an invalid FrameRateCurve. Falling back to DefaultFrameRate."
+                    this.LogWarn(
+                        $"Animation '{definition.Name}' has an invalid FrameRateCurve. Falling back to DefaultFrameRate."
                     );
-                    curve = AnimationCurve.Constant(0, 1, def.DefaultFrameRate);
+                    curve = AnimationCurve.Constant(0, 1, definition.DefaultFrameRate);
                 }
 
                 if (curve.keys.Length == 0)
                 {
-                    curve.AddKey(0, def.DefaultFrameRate);
+                    curve.AddKey(0, definition.DefaultFrameRate);
                 }
 
                 float curveDuration = curve.keys.LastOrDefault().time;
@@ -1110,26 +1424,26 @@
                     curveDuration = 1f;
                 }
 
-                for (int i = 0; i < def.SpritesToAnimate.Count; ++i)
+                for (int i = 0; i < definition.SpritesToAnimate.Count; ++i)
                 {
                     keyframes[i] = new ObjectReferenceKeyframe
                     {
                         time = currentTime,
-                        value = def.SpritesToAnimate[i],
+                        value = definition.SpritesToAnimate[i],
                     };
 
-                    if (i < def.SpritesToAnimate.Count - 1)
+                    if (i < definition.SpritesToAnimate.Count - 1)
                     {
                         float normalizedTimeForCurve =
-                            def.SpritesToAnimate.Count > 1
-                                ? (float)i / (def.SpritesToAnimate.Count - 1)
+                            definition.SpritesToAnimate.Count > 1
+                                ? (float)i / (definition.SpritesToAnimate.Count - 1)
                                 : 0;
                         float timeForCurveEval = normalizedTimeForCurve * curveDuration;
 
                         float fps = curve.Evaluate(timeForCurveEval);
                         if (fps <= 0)
                         {
-                            fps = def.DefaultFrameRate;
+                            fps = definition.DefaultFrameRate;
                         }
 
                         if (fps <= 0)
@@ -1144,15 +1458,16 @@
                 AnimationUtility.SetObjectReferenceCurve(clip, spriteBinding, keyframes);
 
                 AnimationClipSettings settings = AnimationUtility.GetAnimationClipSettings(clip);
-                settings.loopTime = true;
+                settings.loopTime = definition.loop;
+                settings.cycleOffset = definition.cycleOffset;
                 AnimationUtility.SetAnimationClipSettings(clip, settings);
 
-                string animName = string.IsNullOrEmpty(def.Name) ? "UnnamedAnim" : def.Name;
+                string animName = string.IsNullOrEmpty(definition.Name)
+                    ? "UnnamedAnim"
+                    : definition.Name;
 
-                foreach (char character in Path.GetInvalidFileNameChars())
-                {
-                    animName = animName.Replace(character, '_');
-                }
+                animName = Path.GetInvalidFileNameChars()
+                    .Aggregate(animName, (current, character) => current.Replace(character, '_'));
                 string assetPath = Path.Combine(animationsFolder, $"{animName}.anim");
                 assetPath = AssetDatabase.GenerateUniqueAssetPath(assetPath);
 
@@ -1168,9 +1483,6 @@
                     "Success",
                     $"{createdCount} animation(s) created in:\n{animationsFolder}",
                     "OK"
-                );
-                EditorGUIUtility.PingObject(
-                    AssetDatabase.LoadAssetAtPath<Object>(animationsFolder)
                 );
             }
             else

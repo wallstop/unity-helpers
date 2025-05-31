@@ -3,6 +3,7 @@
 #if UNITY_EDITOR
     using System;
     using System.Collections.Generic;
+    using System.ComponentModel;
     using System.IO;
     using System.Linq;
     using System.Text.RegularExpressions;
@@ -376,22 +377,18 @@
                         GUILayout.Button(
                             $"Force Uncompressed for {validSpriteCount} Source Sprites in '{config.name}'"
                         )
+                        && EditorUtility.DisplayDialog(
+                            "Force Uncompressed Source Sprites",
+                            $"This will modify the import settings of {validSpriteCount} source sprites currently in the '{config.name}' list.\n\n"
+                                + "- Crunch compression will be disabled.\n"
+                                + "- Texture format for the 'Default' platform will be set to uncompressed (RGBA32 or RGB24).\n\n"
+                                + "This action modifies source asset import settings and may require re-packing atlases. Are you sure?",
+                            "Yes, Modify Source Sprites",
+                            "Cancel"
+                        )
                     )
                     {
-                        if (
-                            EditorUtility.DisplayDialog(
-                                "Force Uncompressed Source Sprites",
-                                $"This will modify the import settings of {validSpriteCount} source sprites currently in the '{config.name}' list.\n\n"
-                                    + "- Crunch compression will be disabled.\n"
-                                    + "- Texture format for the 'Default' platform will be set to uncompressed (RGBA32 or RGB24).\n\n"
-                                    + "This action modifies source asset import settings and may require re-packing atlases. Are you sure?",
-                                "Yes, Modify Source Sprites",
-                                "Cancel"
-                            )
-                        )
-                        {
-                            ForceUncompressedSourceSprites(config);
-                        }
+                        ForceUncompressedSourceSprites(config);
                     }
                     EditorGUI.EndDisabledGroup();
 
@@ -400,19 +397,15 @@
                         GUILayout.Button(
                             $"Generate/Update '{config.outputSpriteAtlasName}.spriteatlas' ONLY"
                         )
+                        && EditorUtility.DisplayDialog(
+                            $"Generate Atlas: {config.name}",
+                            $"This will create or update '{config.outputSpriteAtlasName}.spriteatlas'. Continue?",
+                            "Yes",
+                            "No"
+                        )
                     )
                     {
-                        if (
-                            EditorUtility.DisplayDialog(
-                                $"Generate Atlas: {config.name}",
-                                $"This will create or update '{config.outputSpriteAtlasName}.spriteatlas'. Continue?",
-                                "Yes",
-                                "No"
-                            )
-                        )
-                        {
-                            GenerateSingleAtlas(config);
-                        }
+                        GenerateSingleAtlas(config);
                     }
                 }
                 EditorGUILayout.EndVertical();
@@ -478,18 +471,16 @@
                     string assetPath = AssetDatabase.GUIDToAssetPath(guid);
                     string fileName = Path.GetFileName(assetPath);
 
-                    bool matchesAllRegexesInEntry;
+                    bool matchesAllRegexesInEntry = true;
                     List<string> activeRegexPatterns = entry
                         .regexes.Where(r => !string.IsNullOrWhiteSpace(r))
                         .ToList();
 
-                    if (activeRegexPatterns.Count == 0)
+                    if (
+                        entry.selectionMode.HasFlagNoAlloc(SpriteSelectionMode.Regex)
+                        && activeRegexPatterns is { Count: > 0 }
+                    )
                     {
-                        matchesAllRegexesInEntry = true;
-                    }
-                    else
-                    {
-                        matchesAllRegexesInEntry = true;
                         foreach (string regexPattern in activeRegexPatterns)
                         {
                             try
@@ -511,7 +502,68 @@
                         }
                     }
 
-                    if (matchesAllRegexesInEntry)
+                    bool matchesAllTagsInEntry = true;
+                    if (
+                        entry.selectionMode.HasFlagNoAlloc(SpriteSelectionMode.Labels)
+                        && entry.labels is { Count: > 0 }
+                    )
+                    {
+                        Object mainAsset = AssetDatabase.LoadMainAssetAtPath(assetPath);
+                        if (mainAsset != null)
+                        {
+                            string[] labels = AssetDatabase.GetLabels(mainAsset);
+                            switch (entry.labelSelectionMode)
+                            {
+                                case LabelSelectionMode.All:
+                                {
+                                    matchesAllTagsInEntry = labels.All(label =>
+                                        entry.labels.Contains(label)
+                                    );
+                                    break;
+                                }
+                                case LabelSelectionMode.AnyOf:
+                                {
+                                    matchesAllTagsInEntry = labels.Any(label =>
+                                        entry.labels.Contains(label)
+                                    );
+                                    break;
+                                }
+                                default:
+                                {
+                                    throw new InvalidEnumArgumentException(
+                                        nameof(entry.labelSelectionMode),
+                                        (int)entry.labelSelectionMode,
+                                        typeof(LabelSelectionMode)
+                                    );
+                                }
+                            }
+                        }
+                    }
+
+                    bool allMatch;
+                    switch (entry.regexAndTagLogic)
+                    {
+                        case SpriteSelectionBooleanLogic.And:
+                        {
+                            allMatch = matchesAllRegexesInEntry && matchesAllTagsInEntry;
+                            break;
+                        }
+                        case SpriteSelectionBooleanLogic.Or:
+                        {
+                            allMatch = matchesAllRegexesInEntry || matchesAllTagsInEntry;
+                            break;
+                        }
+                        default:
+                        {
+                            throw new InvalidEnumArgumentException(
+                                nameof(entry.regexAndTagLogic),
+                                (int)entry.regexAndTagLogic,
+                                typeof(SpriteSelectionBooleanLogic)
+                            );
+                        }
+                    }
+
+                    if (allMatch)
                     {
                         Object[] assets = AssetDatabase.LoadAllAssetsAtPath(assetPath);
                         foreach (Object asset in assets)
