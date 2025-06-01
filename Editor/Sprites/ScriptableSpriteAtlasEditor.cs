@@ -564,8 +564,11 @@
 
                     if (allMatch)
                     {
-                        Object[] assets = AssetDatabase.LoadAllAssetsAtPath(assetPath);
-                        foreach (Object asset in assets)
+                        foreach (
+                            Object asset in AssetDatabase
+                                .LoadAllAssetsAtPath(assetPath)
+                                .Concat(AssetDatabase.LoadAllAssetRepresentationsAtPath(assetPath))
+                        )
                         {
                             if (asset is Sprite spriteAsset && spriteAsset != null)
                             {

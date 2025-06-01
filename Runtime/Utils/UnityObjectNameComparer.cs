@@ -58,42 +58,32 @@
 
         private static int CompareNatural(string nameA, string nameB)
         {
-            Match mA = TrailingNumberRegex.Match(nameA);
-            Match mB = TrailingNumberRegex.Match(nameB);
-
-            bool hasNumberA = mA.Success;
-            bool hasNumberB = mB.Success;
+            Match matchA = TrailingNumberRegex.Match(nameA);
+            Match matchB = TrailingNumberRegex.Match(nameB);
 
             // If both have trailing numbers, compare prefix then numeric
-            if (hasNumberA && hasNumberB)
+            if (matchA.Success && matchB.Success)
             {
-                string prefixA = mA.Groups[1].Value;
-                string prefixB = mB.Groups[1].Value;
+                string prefixA = matchA.Groups[1].Value;
+                string prefixB = matchB.Groups[1].Value;
 
-                int prefixCompare = StringComparer.OrdinalIgnoreCase.Compare(prefixA, prefixB);
+                int prefixCompare = string.Compare(
+                    prefixA,
+                    prefixB,
+                    StringComparison.OrdinalIgnoreCase
+                );
                 if (prefixCompare != 0)
                 {
                     return prefixCompare;
                 }
 
                 // same prefix → compare parsed integers
-                int numA = int.Parse(mA.Groups[2].Value);
-                int numB = int.Parse(mB.Groups[2].Value);
+                int numA = int.Parse(matchA.Groups[2].Value);
+                int numB = int.Parse(matchB.Groups[2].Value);
                 return numA.CompareTo(numB);
             }
-            // If only one has a trailing number, treat the one without number as coming first
 
-            if (hasNumberA)
-            {
-                return 1; // B (no number) comes before A
-            }
-
-            if (hasNumberB)
-            {
-                return -1; // A (no number) comes before B
-            }
-            // Neither has a trailing number → pure string compare
-            return StringComparer.OrdinalIgnoreCase.Compare(nameA, nameB);
+            return string.Compare(nameA, nameB, StringComparison.OrdinalIgnoreCase);
         }
     }
 }
