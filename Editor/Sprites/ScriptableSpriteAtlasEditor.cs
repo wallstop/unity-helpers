@@ -45,11 +45,6 @@
             LoadAtlasConfigs();
         }
 
-        private void OnFocus()
-        {
-            LoadAtlasConfigs();
-        }
-
         private void OnProjectChange()
         {
             LoadAtlasConfigs();
@@ -68,6 +63,10 @@
             foreach (string guid in guids)
             {
                 string path = AssetDatabase.GUIDToAssetPath(guid);
+                if (string.IsNullOrWhiteSpace(path))
+                {
+                    continue;
+                }
                 ScriptableSpriteAtlas config = AssetDatabase.LoadAssetAtPath<ScriptableSpriteAtlas>(
                     path
                 );
@@ -78,9 +77,9 @@
                     {
                         _scanResultsCache[config] = cachedResult;
                     }
-                    else if (!_scanResultsCache.ContainsKey(config))
+                    else
                     {
-                        _scanResultsCache[config] = new ScanResult();
+                        _scanResultsCache.TryAdd(config, _ => new ScanResult());
                     }
                     _serializedConfigs.TryAdd(config, newConfig => new SerializedObject(newConfig));
                     _foldoutStates.TryAdd(config, true);

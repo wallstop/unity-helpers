@@ -1179,28 +1179,35 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
         private void AddAnimationDefinition()
         {
-            AnimationDefinition newDef = new();
+            AnimationDefinition newDefinition = new();
             if (_selectedSpriteSheet != null)
             {
-                newDef.Name = $"{_selectedSpriteSheet.name}_Anim_{_animationDefinitions.Count}";
+                newDefinition.Name =
+                    $"{_selectedSpriteSheet.name}_Anim_{_animationDefinitions.Count}";
             }
             if (0 < _availableSprites.Count)
             {
                 if (0 < _animationDefinitions.Count)
                 {
                     int nextStartIndex = _animationDefinitions[^1].EndSpriteIndex + 1;
-                    if (_availableSprites.Count - 1 <= nextStartIndex)
+                    if (_availableSprites.Count - 1 < nextStartIndex)
                     {
                         nextStartIndex = 0;
                     }
-                    newDef.StartSpriteIndex = nextStartIndex;
+                    newDefinition.StartSpriteIndex = nextStartIndex;
                 }
 
-                newDef.EndSpriteIndex = _availableSprites.Count - 1;
+                newDefinition.EndSpriteIndex = _availableSprites.Count - 1;
             }
-            newDef.FrameRateCurve = AnimationCurve.Constant(0, 1, newDef.DefaultFrameRate);
-            _animationDefinitions.Add(newDef);
-            UpdateSpritesForDefinition(newDef);
+            newDefinition.FrameRateCurve = AnimationCurve.Constant(
+                0,
+                1,
+                newDefinition.DefaultFrameRate
+            );
+            _animationDefinitions.Add(newDefinition);
+            _currentPreviewAnimDefIndex = _animationDefinitions.Count - 1;
+            StartOrUpdateCurrentPreview(newDefinition);
+            UpdateSpritesForDefinition(newDefinition);
             _animationDefinitionsListView.Rebuild();
         }
 
