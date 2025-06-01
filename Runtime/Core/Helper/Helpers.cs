@@ -24,6 +24,10 @@
             StringComparer.Ordinal
         );
 
+        internal static readonly Dictionary<string, string[]> CachedLabels = new(
+            StringComparer.OrdinalIgnoreCase
+        );
+
         internal static string[] AllSpriteLabels;
 
         public static string[] GetAllSpriteLabelNames()
@@ -45,7 +49,9 @@
                     continue;
                 }
 
-                allLabels.UnionWith(AssetDatabase.GetLabels(asset));
+                string[] labels = AssetDatabase.GetLabels(asset);
+                CachedLabels[path] = labels;
+                allLabels.UnionWith(labels);
             }
 
             AllSpriteLabels = allLabels.ToArray();

@@ -501,6 +501,7 @@
                         }
                     }
 
+                    bool allMatch = matchesAllRegexesInEntry;
                     bool matchesAllTagsInEntry = true;
                     if (
                         entry.selectionMode.HasFlagNoAlloc(SpriteSelectionMode.Labels)
@@ -537,28 +538,27 @@
                                 }
                             }
                         }
-                    }
 
-                    bool allMatch;
-                    switch (entry.regexAndTagLogic)
-                    {
-                        case SpriteSelectionBooleanLogic.And:
+                        switch (entry.regexAndTagLogic)
                         {
-                            allMatch = matchesAllRegexesInEntry && matchesAllTagsInEntry;
-                            break;
-                        }
-                        case SpriteSelectionBooleanLogic.Or:
-                        {
-                            allMatch = matchesAllRegexesInEntry || matchesAllTagsInEntry;
-                            break;
-                        }
-                        default:
-                        {
-                            throw new InvalidEnumArgumentException(
-                                nameof(entry.regexAndTagLogic),
-                                (int)entry.regexAndTagLogic,
-                                typeof(SpriteSelectionBooleanLogic)
-                            );
+                            case SpriteSelectionBooleanLogic.And:
+                            {
+                                allMatch = matchesAllRegexesInEntry && matchesAllTagsInEntry;
+                                break;
+                            }
+                            case SpriteSelectionBooleanLogic.Or:
+                            {
+                                allMatch = matchesAllRegexesInEntry || matchesAllTagsInEntry;
+                                break;
+                            }
+                            default:
+                            {
+                                throw new InvalidEnumArgumentException(
+                                    nameof(entry.regexAndTagLogic),
+                                    (int)entry.regexAndTagLogic,
+                                    typeof(SpriteSelectionBooleanLogic)
+                                );
+                            }
                         }
                     }
 
@@ -635,6 +635,8 @@
             if (addedCount > 0)
             {
                 so.ApplyModifiedProperties();
+                config.spritesToPack.SortByName();
+                EditorUtility.SetDirty(config);
                 this.Log($"'{config.name}': Added {addedCount} sprites.");
             }
             else

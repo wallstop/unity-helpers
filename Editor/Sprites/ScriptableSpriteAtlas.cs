@@ -87,14 +87,6 @@
         [Tooltip("Asset labels to include in the folders.")]
         [StringInList(typeof(Helpers), nameof(Helpers.GetAllSpriteLabelNames))]
         public List<string> labels = new();
-
-        public SourceFolderEntry() { }
-
-        public SourceFolderEntry(string path)
-        {
-            folderPath = path;
-            regexes = new List<string>();
-        }
     }
 
     [CreateAssetMenu(

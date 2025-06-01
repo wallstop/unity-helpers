@@ -46,11 +46,11 @@
                 if (string.Equals(fieldName, "Array", StringComparison.Ordinal))
                 {
                     // Move to "data[i]", no need to length-check, we're guarded above
-
                     ++i;
+                    fieldName = pathParts[i];
                     if (
                         !int.TryParse(
-                            pathParts[i]
+                            fieldName
                                 .Replace("data[", string.Empty, StringComparison.Ordinal)
                                 .Replace("]", string.Empty, StringComparison.Ordinal),
                             out int index
@@ -61,15 +61,20 @@
                         fieldInfo = null;
                         return null;
                     }
+
                     obj = GetElementAtIndex(obj, index);
                     type = obj?.GetType();
+                    UpdateField(fieldName, ref fieldInfo);
+
+                    if (i == pathParts.Length - 2)
+                    {
+                        fieldName = pathParts[i + 1];
+                        UpdateField(fieldName, ref fieldInfo);
+                    }
                     continue;
                 }
 
-                fieldInfo = type?.GetField(
-                    fieldName,
-                    BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance
-                );
+                UpdateField(fieldName, ref fieldInfo);
                 if (fieldInfo == null)
                 {
                     return null;
@@ -83,7 +88,24 @@
                 }
             }
 
+            if (fieldInfo == null)
+            {
+                UpdateField(property.name, ref fieldInfo);
+            }
+
             return obj;
+
+            void UpdateField(string fieldName, ref FieldInfo field)
+            {
+                FieldInfo newField = type?.GetField(
+                    fieldName,
+                    BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance
+                );
+                if (newField != null)
+                {
+                    field = newField;
+                }
+            }
         }
 
         /// <summary>

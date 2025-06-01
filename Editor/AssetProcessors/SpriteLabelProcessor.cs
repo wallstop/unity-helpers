@@ -12,10 +12,6 @@
 
     public sealed class SpriteLabelProcessor : AssetPostprocessor
     {
-        private static readonly Dictionary<string, string[]> CachedLabels = new(
-            StringComparer.OrdinalIgnoreCase
-        );
-
         private static void OnPostprocessAllAssets(
             string[] importedAssets,
             string[] deletedAssets,
@@ -23,7 +19,7 @@
             string[] movedFromAssetPaths
         )
         {
-            bool anyChanged = !CachedLabels.Any();
+            bool anyChanged = !Helpers.CachedLabels.Any();
             InitializeCacheIfNeeded();
 
             foreach (string path in importedAssets)
@@ -51,7 +47,7 @@
 
                 string[] newLabels = AssetDatabase.GetLabels(mainObj);
                 if (
-                    !CachedLabels.TryGetValue(path, out string[] oldLabels)
+                    !Helpers.CachedLabels.TryGetValue(path, out string[] oldLabels)
                     || !AreEqual(oldLabels, newLabels)
                 )
                 {
@@ -62,14 +58,14 @@
                     string[] updated = new string[newLabels.Length];
                     Array.Copy(newLabels, updated, newLabels.Length);
                     anyChanged = true;
-                    CachedLabels[path] = updated;
+                    Helpers.CachedLabels[path] = updated;
                 }
             }
 
             if (anyChanged)
             {
-                Helpers.AllSpriteLabels = CachedLabels
-                    .Values.SelectMany(x => x)
+                Helpers.AllSpriteLabels = Helpers
+                    .CachedLabels.Values.SelectMany(x => x)
                     .Distinct()
                     .Ordered()
                     .ToArray();
@@ -78,23 +74,7 @@
 
         private static void InitializeCacheIfNeeded()
         {
-            if (CachedLabels.Count > 0)
-            {
-                return;
-            }
-
-            string[] guids = AssetDatabase.FindAssets("t:Sprite");
-            foreach (string guid in guids)
-            {
-                string path = AssetDatabase.GUIDToAssetPath(guid);
-                Object asset = AssetDatabase.LoadMainAssetAtPath(path);
-                if (asset == null)
-                {
-                    continue;
-                }
-
-                CachedLabels[path] = AssetDatabase.GetLabels(asset);
-            }
+            _ = Helpers.GetAllSpriteLabelNames();
         }
 
         private static bool AreEqual(string[] a, string[] b)

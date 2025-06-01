@@ -6,6 +6,7 @@
     using UnityEngine;
     using UnityEditor;
     using System.Collections.Generic;
+    using Core.Extension;
     using Core.Helper;
 
     [CustomPropertyDrawer(typeof(SourceFolderEntry))]
@@ -324,8 +325,8 @@
                 nameof(SourceFolderEntry.selectionMode)
             );
             SpriteSelectionMode modeValue = (SpriteSelectionMode)modeProp.intValue;
-            bool useRegex = (modeValue & SpriteSelectionMode.Regex) != 0;
-            bool useLabels = (modeValue & SpriteSelectionMode.Labels) != 0;
+            bool useRegex = modeValue.HasFlagNoAlloc(SpriteSelectionMode.Regex);
+            bool useLabels = modeValue.HasFlagNoAlloc(SpriteSelectionMode.Labels);
 
             if (useRegex)
             {
