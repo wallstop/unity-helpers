@@ -47,6 +47,7 @@
             {
                 SpriteSelectionMode.Regex,
                 SpriteSelectionMode.Regex | SpriteSelectionMode.Labels,
+                (SpriteSelectionMode)(-1),
             }
         )]
         [Tooltip(
