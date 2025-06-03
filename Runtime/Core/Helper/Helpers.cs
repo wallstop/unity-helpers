@@ -38,7 +38,7 @@
                 return AllSpriteLabels;
             }
 
-            SortedSet<string> allLabels = new(StringComparer.Ordinal);
+            HashSet<string> allLabels = new(StringComparer.Ordinal);
             string[] guids = AssetDatabase.FindAssets("t:Sprite");
             foreach (string guid in guids)
             {
@@ -50,11 +50,15 @@
                 }
 
                 string[] labels = AssetDatabase.GetLabels(asset);
-                CachedLabels[path] = labels;
-                allLabels.UnionWith(labels);
+                if (labels.Length != 0)
+                {
+                    CachedLabels[path] = labels;
+                    allLabels.UnionWith(labels);
+                }
             }
 
             AllSpriteLabels = allLabels.ToArray();
+            Array.Sort(AllSpriteLabels);
             return AllSpriteLabels;
 #else
             return Array.Empty<string>();

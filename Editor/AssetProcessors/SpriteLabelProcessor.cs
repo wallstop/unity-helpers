@@ -2,12 +2,11 @@
 {
 #if UNITY_EDITOR
     using System;
-    using System.Collections.Generic;
+    using System.Collections.Immutable;
     using System.Linq;
     using Core.Extension;
     using Core.Helper;
     using UnityEditor;
-    using UnityEngine;
     using Object = UnityEngine.Object;
 
     public sealed class SpriteLabelProcessor : AssetPostprocessor
@@ -19,7 +18,7 @@
             string[] movedFromAssetPaths
         )
         {
-            bool anyChanged = !Helpers.CachedLabels.Any();
+            bool anyChanged = Helpers.CachedLabels.Count == 0;
             InitializeCacheIfNeeded();
 
             foreach (string path in importedAssets)
@@ -46,19 +45,29 @@
                 }
 
                 string[] newLabels = AssetDatabase.GetLabels(mainObj);
-                if (
-                    !Helpers.CachedLabels.TryGetValue(path, out string[] oldLabels)
-                    || !AreEqual(oldLabels, newLabels)
-                )
+                if (newLabels.Length != 0)
                 {
-                    Debug.Log(
-                        $"[SpriteLabelProcessor] Labels changed on '{path}': {FormatLabels(oldLabels)} → {FormatLabels(newLabels)}"
-                    );
+                    if (
+                        !Helpers.CachedLabels.TryGetValue(path, out string[] oldLabels)
+                        || !AreEqual(oldLabels, newLabels)
+                    )
+                    {
+                        anyChanged = true;
+                        if (newLabels.Length == 0)
+                        {
+                            Helpers.CachedLabels.Remove(path);
+                            continue;
+                        }
 
-                    string[] updated = new string[newLabels.Length];
-                    Array.Copy(newLabels, updated, newLabels.Length);
+                        string[] updated = new string[newLabels.Length];
+                        Array.Copy(newLabels, updated, newLabels.Length);
+                        Helpers.CachedLabels[path] = updated;
+                    }
+                }
+                else if (Helpers.CachedLabels.ContainsKey(path))
+                {
                     anyChanged = true;
-                    Helpers.CachedLabels[path] = updated;
+                    Helpers.CachedLabels.Remove(path);
                 }
             }
 
@@ -94,19 +103,7 @@
                 return false;
             }
 
-            HashSet<string> setA = new(a, StringComparer.OrdinalIgnoreCase);
-            HashSet<string> setB = new(b, StringComparer.OrdinalIgnoreCase);
-            return setA.SetEquals(setB);
-        }
-
-        private static string FormatLabels(string[] arr)
-        {
-            if (arr == null || arr.Length == 0)
-            {
-                return "(none)";
-            }
-
-            return string.Join(", ", arr);
+            return a.ToImmutableHashSet(StringComparer.Ordinal).SetEquals(b);
         }
     }
 #endif
