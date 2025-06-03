@@ -59,9 +59,7 @@
                             continue;
                         }
 
-                        string[] updated = new string[newLabels.Length];
-                        Array.Copy(newLabels, updated, newLabels.Length);
-                        Helpers.CachedLabels[path] = updated;
+                        Helpers.CachedLabels[path] = newLabels;
                     }
                 }
                 else if (Helpers.CachedLabels.ContainsKey(path))
