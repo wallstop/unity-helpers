@@ -24,8 +24,8 @@
             _cosmetics = new Lazy<CosmeticEffectComponent[]>(
                 GetComponents<CosmeticEffectComponent>
             );
-            _cosmeticTypes = new Lazy<HashSet<Type>>(
-                () => _cosmetics.Value.Select(cosmetic => cosmetic.GetType()).ToHashSet()
+            _cosmeticTypes = new Lazy<HashSet<Type>>(() =>
+                _cosmetics.Value.Select(cosmetic => cosmetic.GetType()).ToHashSet()
             );
         }
 

@@ -80,7 +80,8 @@
             foreach (string guid in guids)
             {
                 string path = AssetDatabase.GUIDToAssetPath(guid);
-                if (!path.StartsWith("Assets", StringComparison.OrdinalIgnoreCase)) {
+                if (!path.StartsWith("Assets", StringComparison.OrdinalIgnoreCase))
+                {
                     continue;
                 }
                 Object asset = AssetDatabase.LoadMainAssetAtPath(path);

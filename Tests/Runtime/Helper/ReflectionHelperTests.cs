@@ -60,11 +60,10 @@
         [Test]
         public void GetStaticFieldGetterThrowsOnNonStaticField()
         {
-            Assert.Throws<ArgumentException>(
-                () =>
-                    ReflectionHelpers.GetStaticFieldGetter(
-                        typeof(TestClass).GetField(nameof(TestClass.intValue))
-                    )
+            Assert.Throws<ArgumentException>(() =>
+                ReflectionHelpers.GetStaticFieldGetter(
+                    typeof(TestClass).GetField(nameof(TestClass.intValue))
+                )
             );
         }
 
@@ -171,11 +170,10 @@
         [Test]
         public void GetStaticFieldSetterThrowsOnNonStaticField()
         {
-            Assert.Throws<ArgumentException>(
-                () =>
-                    ReflectionHelpers.GetStaticFieldSetter(
-                        typeof(TestClass).GetField(nameof(TestClass.intValue))
-                    )
+            Assert.Throws<ArgumentException>(() =>
+                ReflectionHelpers.GetStaticFieldSetter(
+                    typeof(TestClass).GetField(nameof(TestClass.intValue))
+                )
             );
         }
 
@@ -288,11 +286,10 @@
         [Test]
         public void GetStaticFieldSetterGenericThrowsOnNonStaticField()
         {
-            Assert.Throws<ArgumentException>(
-                () =>
-                    ReflectionHelpers.GetStaticFieldSetter<int>(
-                        typeof(TestClass).GetField(nameof(TestClass.intValue))
-                    )
+            Assert.Throws<ArgumentException>(() =>
+                ReflectionHelpers.GetStaticFieldSetter<int>(
+                    typeof(TestClass).GetField(nameof(TestClass.intValue))
+                )
             );
         }
 
@@ -401,11 +398,10 @@
         [Test]
         public void GetStaticFieldGetterGenericThrowsOnNonStaticField()
         {
-            Assert.Throws<ArgumentException>(
-                () =>
-                    ReflectionHelpers.GetStaticFieldGetter<int>(
-                        typeof(TestClass).GetField(nameof(TestClass.intValue))
-                    )
+            Assert.Throws<ArgumentException>(() =>
+                ReflectionHelpers.GetStaticFieldGetter<int>(
+                    typeof(TestClass).GetField(nameof(TestClass.intValue))
+                )
             );
         }
 

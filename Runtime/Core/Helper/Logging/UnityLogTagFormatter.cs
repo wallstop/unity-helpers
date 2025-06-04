@@ -360,7 +360,6 @@
         ///     If false, decorations with the same tag (compared OrdinalIgnoreCase) will cause the registration to fail.
         /// </param>
         /// <returns>True if the decoration was added, false if the decoration was not added.</returns>
-
         public bool AddDecoration(
             Func<string, bool> predicate,
             Func<string, object, string> format,

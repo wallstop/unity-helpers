@@ -27,7 +27,7 @@
 
             foreach (string path in importedAssets)
             {
-                if (!path.StartsWith("Assets", StringComparison.OrdinalIgnoreCase)) 
+                if (!path.StartsWith("Assets", StringComparison.OrdinalIgnoreCase))
                 {
                     continue;
                 }
