@@ -18,7 +18,7 @@
             string[] movedFromAssetPaths
         )
         {
-            if (Helpers.IsRunningOnGitHubActions)
+            if (Helpers.IsRunningInBatchMode || Helpers.IsRunningInContinuousIntegration)
             {
                 return;
             }

@@ -28,16 +28,35 @@
             StringComparer.OrdinalIgnoreCase
         );
 
-        public static bool IsRunningOnGitHubActions
+        public static bool IsRunningInBatchMode => Application.isBatchMode;
+
+        public static bool IsRunningInContinuousIntegration
         {
             get
             {
-                string ghActions = Environment.GetEnvironmentVariable("GITHUB_ACTIONS");
-                return string.Equals(
-                    ghActions?.Trim(),
-                    bool.TrueString,
-                    StringComparison.OrdinalIgnoreCase
-                );
+                if (
+                    !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("GITHUB_ACTIONS"))
+                )
+                {
+                    return true;
+                }
+
+                if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("CI")))
+                {
+                    return true;
+                }
+
+                if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("JENKINS_URL")))
+                {
+                    return true;
+                }
+
+                if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("GITLAB_CI")))
+                {
+                    return true;
+                }
+
+                return false;
             }
         }
 
@@ -45,7 +64,7 @@
 
         public static string[] GetAllSpriteLabelNames()
         {
-            if (IsRunningOnGitHubActions)
+            if (IsRunningInContinuousIntegration || IsRunningInBatchMode)
             {
                 return Array.Empty<string>();
             }
