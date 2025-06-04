@@ -24,10 +24,13 @@
             }
 
             bool anyChanged = Helpers.CachedLabels.Count == 0;
-            InitializeCacheIfNeeded();
 
             foreach (string path in importedAssets)
             {
+                if (!path.StartsWith("Assets", StringComparison.OrdinalIgnoreCase)) 
+                {
+                    continue;
+                }
                 if (
                     !path.EndsWith(".png", StringComparison.OrdinalIgnoreCase)
                     && !path.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase)
@@ -82,11 +85,6 @@
                     .Ordered()
                     .ToArray();
             }
-        }
-
-        private static void InitializeCacheIfNeeded()
-        {
-            _ = Helpers.GetAllSpriteLabelNames();
         }
 
         private static bool AreEqual(string[] a, string[] b)
