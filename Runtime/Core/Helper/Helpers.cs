@@ -28,10 +28,28 @@
             StringComparer.OrdinalIgnoreCase
         );
 
+        public static bool IsRunningOnGitHubActions
+        {
+            get
+            {
+                string ghActions = Environment.GetEnvironmentVariable("GITHUB_ACTIONS");
+                return string.Equals(
+                    ghActions?.Trim(),
+                    bool.TrueString,
+                    StringComparison.OrdinalIgnoreCase
+                );
+            }
+        }
+
         internal static string[] AllSpriteLabels;
 
         public static string[] GetAllSpriteLabelNames()
         {
+            if (IsRunningOnGitHubActions)
+            {
+                return Array.Empty<string>();
+            }
+
 #if UNITY_EDITOR
             if (AllSpriteLabels != null)
             {

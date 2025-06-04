@@ -18,6 +18,11 @@
             string[] movedFromAssetPaths
         )
         {
+            if (Helpers.IsRunningOnGitHubActions)
+            {
+                return;
+            }
+
             bool anyChanged = Helpers.CachedLabels.Count == 0;
             InitializeCacheIfNeeded();
 
