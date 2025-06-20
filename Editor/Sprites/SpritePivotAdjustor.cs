@@ -64,6 +64,12 @@
                 nameof(SpriteCropper)
             );
 
+            using (new GUILayout.HorizontalScope())
+            {
+                EditorGUILayout.LabelField("Sprite Name Regex", EditorStyles.boldLabel);
+                _spriteNameRegex = EditorGUILayout.TextField(_spriteNameRegex);
+            }
+
             _serializedObject.ApplyModifiedProperties();
             if (GUILayout.Button("Find Sprites To Process"))
             {
