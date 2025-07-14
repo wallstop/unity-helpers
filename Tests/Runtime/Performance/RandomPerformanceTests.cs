@@ -31,6 +31,7 @@
             RunTest(new RomuDuo(), timeout);
             RunTest(new XoroShiroRandom(), timeout);
             RunTest(new UnityRandom(), timeout);
+            RunTest(new LinearCongruentialGenerator(), timeout);
             RunTest(new GroundZeroRandom(), timeout);
         }
 
