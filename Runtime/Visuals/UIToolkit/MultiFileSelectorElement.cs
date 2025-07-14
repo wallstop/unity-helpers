@@ -1,13 +1,13 @@
-﻿namespace WallstopStudios.UnityHelpers.UI
+﻿namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
 {
     using System;
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;
-    using Core.Extension;
-    using Core.Helper;
     using UnityEngine;
     using UnityEngine.UIElements;
+    using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Core.Helper;
 
     public sealed class MultiFileSelectorElement : VisualElement
     {
