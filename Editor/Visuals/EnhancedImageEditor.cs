@@ -85,12 +85,11 @@
                 )
             );
 
+            serializedObject.ApplyModifiedProperties();
             EditorGUILayout.Space();
 
-            serializedObject.ApplyModifiedProperties();
-
             serializedObject.Update();
-            DrawPropertiesExcluding(serializedObject, nameof(Image.material));
+            DrawDefaultInspector();
             serializedObject.ApplyModifiedProperties();
         }
     }
