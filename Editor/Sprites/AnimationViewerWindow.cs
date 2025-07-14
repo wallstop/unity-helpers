@@ -12,7 +12,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     using UnityEditor.UIElements;
     using UnityEngine;
     using UnityEngine.UIElements;
-    using UI;
+    using WallstopStudios.UnityHelpers.Visuals;
+    using WallstopStudios.UnityHelpers.Visuals.UIToolkit;
     using Object = UnityEngine.Object;
 
     public sealed class AnimationViewerWindow : EditorWindow
