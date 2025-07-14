@@ -16,11 +16,25 @@
 namespace WallstopStudios.UnityHelpers.Core.Random
 {
     using System;
+    using System.Runtime.Serialization;
+    using System.Text.Json.Serialization;
 
+    [Serializable]
+    [DataContract]
     public sealed class GroundZeroRandom : AbstractRandom
     {
-        public override RandomState InternalState =>
-            new(((ulong)_a << 32) | _b, ((ulong)_c << 32) | _d, Convert.ToDouble(_e));
+        public override RandomState InternalState
+        {
+            get
+            {
+                ulong stateA = ((ulong)_a << 32) | _b;
+                ulong stateB = ((ulong)_c << 32) | _d;
+                byte[] eBytes = BitConverter.GetBytes(_e);
+                Array.Resize(ref eBytes, sizeof(double));
+                Array.Fill<byte>(eBytes, 0, sizeof(uint), sizeof(double) - sizeof(uint));
+                return new RandomState(stateA, stateB, BitConverter.ToDouble(eBytes, 0));
+            }
+        }
 
         private uint _a;
         private uint _b;
@@ -31,16 +45,17 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         public GroundZeroRandom()
             : this(Guid.NewGuid()) { }
 
-        public GroundZeroRandom(Guid guid)
+        public GroundZeroRandom(Guid guid, uint? extraSeed = null)
         {
             byte[] guidArray = guid.ToByteArray();
             _a = BitConverter.ToUInt32(guidArray, 0);
             _b = BitConverter.ToUInt32(guidArray, sizeof(uint));
             _c = BitConverter.ToUInt32(guidArray, sizeof(uint) * 2);
             _d = BitConverter.ToUInt32(guidArray, sizeof(uint) * 3);
-            _e = unchecked((uint)guid.GetHashCode());
+            _e = extraSeed ?? unchecked((uint)guid.GetHashCode());
         }
 
+        [JsonConstructor]
         public GroundZeroRandom(RandomState internalState)
         {
             unchecked
@@ -50,7 +65,18 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                 _c = (uint)(internalState.State2 >> 32);
                 _d = (uint)internalState.State2;
                 double? gaussian = internalState.Gaussian;
-                _e = gaussian != null ? Convert.ToUInt32(gaussian.Value) : 0U;
+                if (gaussian != null)
+                {
+                    byte[] eBytes = BitConverter.GetBytes(gaussian.Value);
+                    Array.Resize(ref eBytes, sizeof(uint));
+                    _e = BitConverter.ToUInt32(eBytes, 0);
+                }
+                else
+                {
+                    throw new InvalidOperationException(
+                        "GroundZeroRandom requires a Gaussian state."
+                    );
+                }
             }
         }
 
