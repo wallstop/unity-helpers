@@ -100,5 +100,24 @@
                 Assert.That(input.OrderBy(x => x), Is.EqualTo(insertionSorted));
             }
         }
+
+        [Test]
+        public void ShellSort()
+        {
+            for (int i = 0; i < NumTries; ++i)
+            {
+                int[] input = Enumerable
+                    .Range(0, 100)
+                    .Select(_ => PRNG.Instance.Next(int.MinValue, int.MaxValue))
+                    .ToArray();
+                int[] conventionalSorted = input.ToArray();
+                Array.Sort(conventionalSorted);
+
+                int[] insertionSorted = input.ToArray();
+                insertionSorted.ShellSort(new IntComparer());
+                Assert.That(conventionalSorted, Is.EqualTo(insertionSorted));
+                Assert.That(input.OrderBy(x => x), Is.EqualTo(insertionSorted));
+            }
+        }
     }
 }

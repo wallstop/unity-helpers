@@ -2,6 +2,7 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics.Contracts;
     using Helper;
     using Random;
     using Utils;
@@ -104,6 +105,62 @@
             }
         }
 
+        /*
+            Implementation copyright Will Stafford Parsons,
+            https://github.com/wstaffordp/bsearch-enhanced/blob/master/examples/benchmark.c#L31-L78
+            
+            Used here without permission. Please contact the original author if you would like an explanation of
+            constants.
+         */
+        public static void ShellSort<T, TComparer>(this IList<T> array, TComparer comparer)
+            where TComparer : IComparer<T>
+        {
+            int length = array.Count;
+            int gap = array.Count;
+
+            int i;
+            int j;
+            while (gap > 15)
+            {
+                gap = (gap >> 5) + (gap >> 3);
+                i = gap;
+
+                while (i < length)
+                {
+                    T element = array[i];
+                    j = i;
+                    while (j >= gap && 0 < comparer.Compare(array[j - gap], element))
+                    {
+                        array[j] = array[j - gap];
+                        j -= gap;
+                    }
+
+                    array[j] = element;
+                    i++;
+                }
+            }
+
+            i = 1;
+            gap = 0;
+
+            while (i < length)
+            {
+                T element = array[i];
+                j = i;
+
+                while (j > 0 && 0 < comparer.Compare(array[gap], element))
+                {
+                    array[j] = array[gap];
+                    j = gap;
+                    gap--;
+                }
+
+                array[j] = element;
+                gap = i;
+                i++;
+            }
+        }
+
         public static void SortByName<T>(this IList<T> inputList)
             where T : UnityEngine.Object
         {
@@ -127,6 +184,7 @@
             }
         }
 
+        [Pure]
         public static bool IsSorted<T>(this IList<T> list, IComparer<T> comparer = null)
         {
             if (list.Count <= 1)

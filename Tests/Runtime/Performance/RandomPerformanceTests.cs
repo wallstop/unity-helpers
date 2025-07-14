@@ -7,7 +7,7 @@
 
     public sealed class RandomPerformanceTests
     {
-        private const int NumInvocationsPerIteration = 10_000;
+        private const int NumInvocationsPerIteration = 100_000;
 
         [Test]
         public void Benchmark()
@@ -29,9 +29,9 @@
             RunTest(new WyRandom(), timeout);
             RunTest(new SplitMix64(), timeout);
             RunTest(new RomuDuo(), timeout);
-            RunTest(new XorShiroRandom(), timeout);
+            RunTest(new XoroShiroRandom(), timeout);
             RunTest(new UnityRandom(), timeout);
-            RunTest(new LinearCongruentialGenerator(), timeout);
+            RunTest(new GroundZeroRandom(), timeout);
         }
 
         private static void RunTest<T>(T random, TimeSpan timeout)
