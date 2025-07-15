@@ -1,16 +1,11 @@
 ﻿/*
-    GroundZeroRandom is a truly novel random implementation discovered by Will Stafford Parsons.
-    In particular, this is a port of their XoroShiro enhancement which uses <= 193 bits of state.
-    Perhaps there could be something even better if the remaining state bits were used. Perhaps not.
-    
+    XoroShiroEnhanced is a significant enhancement upon the classic XoroShiroRandom discovered by Will Stafford Parsons.
+        
     Reference: https://github.com/wstaffordp/bsearch-enhanced/blob/master/examples/benchmark.c#L4-L29
     
-    Regardless, all credit to the legend: https://github.com/wstaffordp
+    Original author: https://github.com/wstaffordp
     
-    I do not own this. Please contact the above-mentioned person for usage information.
-    
-    I made the name up.
-    @wallstop
+    Please contact the above-mentioned person for usage information.
  */
 
 namespace WallstopStudios.UnityHelpers.Core.Random
