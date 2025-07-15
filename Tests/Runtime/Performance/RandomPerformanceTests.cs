@@ -21,17 +21,17 @@
                 "| ------ | -------- | ---- | -------- | --------- | ---------- | ---------------- | --------------- |"
             );
 
-            RunTest(new PcgRandom(), timeout);
-            RunTest(new SystemRandom(), timeout);
-            RunTest(new SquirrelRandom(), timeout);
-            RunTest(new XorShiftRandom(), timeout);
             RunTest(new DotNetRandom(), timeout);
-            RunTest(new WyRandom(), timeout);
-            RunTest(new SplitMix64(), timeout);
-            RunTest(new RomuDuo(), timeout);
-            RunTest(new XoroShiroRandom(), timeout);
-            RunTest(new UnityRandom(), timeout);
             RunTest(new LinearCongruentialGenerator(), timeout);
+            RunTest(new PcgRandom(), timeout);
+            RunTest(new RomuDuo(), timeout);
+            RunTest(new SplitMix64(), timeout);
+            RunTest(new SquirrelRandom(), timeout);
+            RunTest(new SystemRandom(), timeout);
+            RunTest(new UnityRandom(), timeout);
+            RunTest(new WyRandom(), timeout);
+            RunTest(new XorShiftRandom(), timeout);
+            RunTest(new XoroShiroRandom(), timeout);
             RunTest(new XoroShiroEnhancedRandom(), timeout);
         }
 
