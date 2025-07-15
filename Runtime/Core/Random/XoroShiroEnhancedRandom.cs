@@ -3,9 +3,7 @@
         
     Reference: https://github.com/wstaffordp/bsearch-enhanced/blob/master/examples/benchmark.c#L4-L29
     
-    Original author: https://github.com/wstaffordp
-    
-    Please contact the above-mentioned person for usage information.
+    Copyright original author: https://github.com/wstaffordp
  */
 
 namespace WallstopStudios.UnityHelpers.Core.Random
@@ -18,12 +16,14 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     [DataContract]
     public sealed class XoroShiroEnhancedRandom : AbstractRandom
     {
+        private const int UintByteCount = sizeof(uint) * 8;
+
         public override RandomState InternalState
         {
             get
             {
-                ulong stateA = ((ulong)_a << 32) | _b;
-                ulong stateB = ((ulong)_c << 32) | _d;
+                ulong stateA = ((ulong)_a << UintByteCount) | _b;
+                ulong stateB = ((ulong)_c << UintByteCount) | _d;
                 byte[] eBytes = BitConverter.GetBytes(_e);
                 Array.Resize(ref eBytes, sizeof(double));
                 Array.Fill<byte>(eBytes, 0, sizeof(uint), sizeof(double) - sizeof(uint));
@@ -55,9 +55,9 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         {
             unchecked
             {
-                _a = (uint)(internalState.State1 >> 32);
+                _a = (uint)(internalState.State1 >> UintByteCount);
                 _b = (uint)internalState.State1;
-                _c = (uint)(internalState.State2 >> 32);
+                _c = (uint)(internalState.State2 >> UintByteCount);
                 _d = (uint)internalState.State2;
                 double? gaussian = internalState.Gaussian;
                 if (gaussian != null)
@@ -69,7 +69,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                 else
                 {
                     throw new InvalidOperationException(
-                        "GroundZeroRandom requires a Gaussian state."
+                        $"{nameof(XoroShiroEnhancedRandom)} requires a Gaussian state."
                     );
                 }
             }
