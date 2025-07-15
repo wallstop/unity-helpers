@@ -173,6 +173,15 @@ Assert.AreEqual(myCoolGameObject, nearestNeighbors[0]);
 ## Note
 All spatial trees expect the positional data to be *immutable*. It is very important that the positions do not change. If they do, you will need to reconstruct the tree.
 
+## Shaders
+
+| Name | Description |
+| ---- | ----------- |
+| BackgroundMask | Used to simulate a `blur` effect for arbitrary shapes. You will need a reference image, as well as a blurred copy using either a photo editing application or the provided `Image Blur` tool. |
+| DebugDisplayValue | Displays numerical values on top of a texture. Useful to visually track texture instances. |
+
 ## Contributing
 
 This project uses [CSharpier](https://csharpier.com/) with the default configuration to enable an enforced, consistent style. If you would like to contribute, recommendation is to ensure that changed files are ran through CSharpier prior to merge. This can be done automatically through editor plugins, or, minimally, by installing a [pre-commit hook](https://pre-commit.com/#3-install-the-git-hook-scripts).
+
+If you think there is something useful that you would like to see, please open an issue or contact me directly.

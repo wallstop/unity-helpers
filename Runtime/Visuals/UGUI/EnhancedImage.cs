@@ -1,4 +1,8 @@
-﻿using System.Runtime.CompilerServices;
+﻿/*
+    Original implementation provided by JWoe
+ */
+
+using System.Runtime.CompilerServices;
 
 [assembly: InternalsVisibleTo("WallstopStudios.UnityHelpers.Editor", AllInternalsVisible = true)]
 
@@ -22,14 +26,17 @@ namespace WallstopStudios.UnityHelpers.Visuals.UGUI
                 {
                     return;
                 }
+
                 _hdrColor = value;
                 UpdateMaterialInstance();
             }
         }
 
-        // ShapeMask: This functionality mimics Unity's UI mask components, but works with custom materials
-        // To function, your image material must use a shader with a Texture2D property of this name, its
-        // alpha mapped to the sprite shader's alpha
+        /*
+            ShapeMask: This functionality mimics Unity's UI mask components, but works with custom materials.
+            To function, your image material must use a shader with a Texture2D property of this name, its
+            alpha mapped to the sprite shader's alpha.
+         */
         [FormerlySerializedAs("shapeMask")]
         [SerializeField]
         internal Texture2D _shapeMask;

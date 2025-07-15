@@ -1,10 +1,14 @@
-﻿namespace WallstopStudios.UnityHelpers.Editor.Visuals
+﻿/*
+    Original implementation provided by JWoe
+ */
+namespace WallstopStudios.UnityHelpers.Editor.Visuals
 {
 #if UNITY_EDITOR
     using System;
     using UnityEditor;
+    using UnityEditor.SceneManagement;
     using UnityEngine;
-    using UnityEngine.UI;
+    using UnityEngine.SceneManagement;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Visuals.UGUI;
     using Object = UnityEngine.Object;
@@ -15,7 +19,7 @@
      */
     [CustomEditor(typeof(EnhancedImage))]
     [CanEditMultipleObjects]
-    public sealed class ImageExtendedEditor : UnityEditor.UI.ImageEditor
+    public sealed class ExtendedImageEditor : UnityEditor.UI.ImageEditor
     {
         private SerializedProperty _hdrColorProperty;
         private SerializedProperty _shapeMaskProperty;
@@ -94,28 +98,54 @@
         }
     }
 
-    // Set the icon for ImageExtended to match the icon of the Image component
+    // Set the icon for ExtendedImages to match the icon of the Image component
     [InitializeOnLoad]
-    public static class ImageExtendedIcon
+    public static class ExtendedImageIcon
     {
+        private const string SingletonName = "_ICON_OBJECT_SINGLETON_";
+
         private static EnhancedImage IconReference;
 
-        static ImageExtendedIcon()
+        static ExtendedImageIcon()
         {
-            IconReference = new GameObject("Icon Object")
+            RegenerateIconSingleton();
+            EnsureSingletonLifecycle();
+        }
+
+        private static void EnsureSingletonLifecycle()
+        {
+            AssemblyReloadEvents.beforeAssemblyReload += SingletonIconCleanup;
+            EditorApplication.quitting += SingletonIconCleanup;
+
+            EditorSceneManager.sceneOpened += (_, _) => RegenerateIconSingleton();
+            EditorSceneManager.newSceneCreated += (_, _, _) => RegenerateIconSingleton();
+            SceneManager.sceneLoaded += (_, _) => RegenerateIconSingleton();
+            SceneManager.activeSceneChanged += (_, _) => RegenerateIconSingleton();
+        }
+
+        private static void RegenerateIconSingleton()
+        {
+            GameObject existingSingleton = GameObject.Find(SingletonName);
+            if (existingSingleton == null)
             {
-                hideFlags = HideFlags.HideAndDontSave,
-            }.AddComponent<EnhancedImage>();
+                IconReference = new GameObject(SingletonName)
+                {
+                    hideFlags = HideFlags.HideAndDontSave,
+                }.AddComponent<EnhancedImage>();
+            }
+            else
+            {
+                IconReference = existingSingleton.GetOrAddComponent<EnhancedImage>();
+                IconReference.hideFlags = HideFlags.HideAndDontSave;
+            }
 
             EditorGUIUtility.SetIconForObject(
                 MonoScript.FromMonoBehaviour(IconReference),
                 EditorGUIUtility.IconContent("Image Icon").image as Texture2D
             );
-
-            AssemblyReloadEvents.beforeAssemblyReload += OnBeforeAssemblyReload;
         }
 
-        private static void OnBeforeAssemblyReload()
+        private static void SingletonIconCleanup()
         {
             if (IconReference == null)
             {
