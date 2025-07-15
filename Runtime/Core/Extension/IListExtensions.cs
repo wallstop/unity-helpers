@@ -2,10 +2,17 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.ComponentModel;
     using System.Diagnostics.Contracts;
     using Helper;
     using Random;
     using Utils;
+
+    public enum SortAlgorithm
+    {
+        ShellEnhanced = 0,
+        Insertion = 1,
+    }
 
     public static class IListExtensions
     {
@@ -88,6 +95,36 @@
             list.RemoveAt(lastIndex);
         }
 
+        public static void Sort<T, TComparer>(
+            this IList<T> array,
+            TComparer comparer,
+            SortAlgorithm sortAlgorithm = SortAlgorithm.ShellEnhanced
+        )
+            where TComparer : IComparer<T>
+        {
+            switch (sortAlgorithm)
+            {
+                case SortAlgorithm.ShellEnhanced:
+                {
+                    ShellSortEnhanced(array, comparer);
+                    return;
+                }
+                case SortAlgorithm.Insertion:
+                {
+                    InsertionSort(array, comparer);
+                    return;
+                }
+                default:
+                {
+                    throw new InvalidEnumArgumentException(
+                        nameof(sortAlgorithm),
+                        (int)sortAlgorithm,
+                        typeof(SortAlgorithm)
+                    );
+                }
+            }
+        }
+
         public static void InsertionSort<T, TComparer>(this IList<T> array, TComparer comparer)
             where TComparer : IComparer<T>
         {
@@ -109,10 +146,9 @@
             Implementation copyright Will Stafford Parsons,
             https://github.com/wstaffordp/bsearch-enhanced/blob/master/examples/benchmark.c#L31-L78
             
-            Used here without permission. Please contact the original author if you would like an explanation of
-            constants.
+            Please contact the original author if you would like an explanation of constants.
          */
-        public static void ShellSort<T, TComparer>(this IList<T> array, TComparer comparer)
+        public static void ShellSortEnhanced<T, TComparer>(this IList<T> array, TComparer comparer)
             where TComparer : IComparer<T>
         {
             int length = array.Count;
@@ -178,7 +214,7 @@
                 }
                 default:
                 {
-                    inputList.InsertionSort(UnityObjectNameComparer<T>.Instance);
+                    inputList.Sort(UnityObjectNameComparer<T>.Instance);
                     break;
                 }
             }

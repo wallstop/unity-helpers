@@ -32,7 +32,7 @@
             RunTest(new XoroShiroRandom(), timeout);
             RunTest(new UnityRandom(), timeout);
             RunTest(new LinearCongruentialGenerator(), timeout);
-            RunTest(new GroundZeroRandom(), timeout);
+            RunTest(new XoroShiroEnhancedRandom(), timeout);
         }
 
         private static void RunTest<T>(T random, TimeSpan timeout)

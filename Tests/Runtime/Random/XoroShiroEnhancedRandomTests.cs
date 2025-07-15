@@ -2,11 +2,11 @@
 {
     using WallstopStudios.UnityHelpers.Core.Random;
 
-    public sealed class GroundZeroRandomTests : RandomTestBase
+    public sealed class XoroShiroEnhancedRandomTests : RandomTestBase
     {
         protected override IRandom NewRandom()
         {
-            return new GroundZeroRandom();
+            return new XoroShiroEnhancedRandom();
         }
     }
 }

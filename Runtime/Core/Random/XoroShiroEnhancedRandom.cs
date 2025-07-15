@@ -21,7 +21,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
     [Serializable]
     [DataContract]
-    public sealed class GroundZeroRandom : AbstractRandom
+    public sealed class XoroShiroEnhancedRandom : AbstractRandom
     {
         public override RandomState InternalState
         {
@@ -42,10 +42,10 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         private uint _d;
         private uint _e;
 
-        public GroundZeroRandom()
+        public XoroShiroEnhancedRandom()
             : this(Guid.NewGuid()) { }
 
-        public GroundZeroRandom(Guid guid, uint? extraSeed = null)
+        public XoroShiroEnhancedRandom(Guid guid, uint? extraSeed = null)
         {
             byte[] guidArray = guid.ToByteArray();
             _a = BitConverter.ToUInt32(guidArray, 0);
@@ -56,7 +56,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         }
 
         [JsonConstructor]
-        public GroundZeroRandom(RandomState internalState)
+        public XoroShiroEnhancedRandom(RandomState internalState)
         {
             unchecked
             {
@@ -104,7 +104,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         public override IRandom Copy()
         {
-            return new GroundZeroRandom(InternalState);
+            return new XoroShiroEnhancedRandom(InternalState);
         }
     }
 }
