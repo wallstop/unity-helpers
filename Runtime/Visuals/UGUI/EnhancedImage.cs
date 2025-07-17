@@ -53,11 +53,13 @@ namespace WallstopStudios.UnityHelpers.Visuals.UGUI
             UpdateMaterialInstance();
         }
 
+#if UNITY_EDITOR
         protected override void OnValidate()
         {
             base.OnValidate();
             UpdateMaterialInstance();
         }
+#endif
 
         private void UpdateMaterialInstance()
         {
