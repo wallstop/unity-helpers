@@ -398,5 +398,35 @@
 
             yield break;
         }
+
+        [Test]
+        public void GetGameObject()
+        {
+            GameObject go = new("Test", typeof(SpriteRenderer));
+            SpriteRenderer spriteRenderer = go.GetComponent<SpriteRenderer>();
+
+            GameObject result = go.GetGameObject();
+            Assert.AreEqual(result, go);
+            result = spriteRenderer.GetGameObject();
+            Assert.AreEqual(result, go);
+
+            Object.DestroyImmediate(spriteRenderer);
+            result = spriteRenderer.GetGameObject();
+            Assert.IsTrue(result == null);
+            result = go.GetGameObject();
+            Assert.AreEqual(result, go);
+
+            Object.DestroyImmediate(go);
+            result = spriteRenderer.GetGameObject();
+            Assert.IsTrue(result == null);
+            result = go.GetGameObject();
+            Assert.IsTrue(result == null);
+
+            result = ((GameObject)null).GetGameObject();
+            Assert.IsTrue(result == null);
+
+            result = ((SpriteRenderer)null).GetGameObject();
+            Assert.IsTrue(result == null);
+        }
     }
 }

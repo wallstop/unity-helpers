@@ -182,8 +182,8 @@
         {
             return target switch
             {
-                GameObject go => go.GetComponent<T>(),
-                Component c => c.GetComponent<T>(),
+                GameObject go => go != null ? go.GetComponent<T>() : default,
+                Component c => c != null ? c.GetComponent<T>() : default,
                 _ => default,
             };
         }
@@ -192,8 +192,8 @@
         {
             return target switch
             {
-                GameObject go => go.GetComponents<T>(),
-                Component c => c.GetComponents<T>(),
+                GameObject go => go != null ? go.GetComponents<T>() : Array.Empty<T>(),
+                Component c => c != null ? c.GetComponents<T>() : Array.Empty<T>(),
                 _ => default,
             };
         }
@@ -203,7 +203,7 @@
             return target switch
             {
                 GameObject go => go,
-                Component c => c.gameObject,
+                Component c => c != null ? c.gameObject : null,
                 _ => null,
             };
         }
@@ -213,8 +213,8 @@
             component = default;
             return target switch
             {
-                GameObject go => go.TryGetComponent(out component),
-                Component c => c.TryGetComponent(out component),
+                GameObject go => go != null && go.TryGetComponent(out component),
+                Component c => c != null && c.TryGetComponent(out component),
                 _ => false,
             };
         }
