@@ -100,5 +100,70 @@
                 Assert.That(input.OrderBy(x => x), Is.EqualTo(insertionSorted));
             }
         }
+
+        [Test]
+        public void ShellSortEnhanced()
+        {
+            for (int i = 0; i < NumTries; ++i)
+            {
+                int[] input = Enumerable
+                    .Range(0, 100)
+                    .Select(_ => PRNG.Instance.Next(int.MinValue, int.MaxValue))
+                    .ToArray();
+                int[] conventionalSorted = input.ToArray();
+                Array.Sort(conventionalSorted);
+
+                int[] insertionSorted = input.ToArray();
+                insertionSorted.ShellSortEnhanced(new IntComparer());
+                Assert.That(conventionalSorted, Is.EqualTo(insertionSorted));
+                Assert.That(input.OrderBy(x => x), Is.EqualTo(insertionSorted));
+            }
+        }
+
+        [Test]
+        public void SortDefaultAlgorithm()
+        {
+            for (int i = 0; i < NumTries; ++i)
+            {
+                int[] input = Enumerable
+                    .Range(0, 100)
+                    .Select(_ => PRNG.Instance.Next(int.MinValue, int.MaxValue))
+                    .ToArray();
+                int[] conventionalSorted = input.ToArray();
+                Array.Sort(conventionalSorted);
+
+                int[] insertionSorted = input.ToArray();
+                insertionSorted.Sort(new IntComparer());
+                Assert.That(conventionalSorted, Is.EqualTo(insertionSorted));
+                Assert.That(input.OrderBy(x => x), Is.EqualTo(insertionSorted));
+            }
+        }
+
+        [Test]
+        public void SortAllAlgorithms()
+        {
+            SortAlgorithm[] sortAlgorithms = Enum.GetValues(typeof(SortAlgorithm))
+                .OfType<SortAlgorithm>()
+                .ToArray();
+            Assert.That(sortAlgorithms.Length, Is.GreaterThan(0));
+
+            foreach (SortAlgorithm sortAlgorithm in sortAlgorithms)
+            {
+                for (int i = 0; i < NumTries; ++i)
+                {
+                    int[] input = Enumerable
+                        .Range(0, 100)
+                        .Select(_ => PRNG.Instance.Next(int.MinValue, int.MaxValue))
+                        .ToArray();
+                    int[] conventionalSorted = input.ToArray();
+                    Array.Sort(conventionalSorted);
+
+                    int[] insertionSorted = input.ToArray();
+                    insertionSorted.Sort(new IntComparer(), sortAlgorithm);
+                    Assert.That(conventionalSorted, Is.EqualTo(insertionSorted));
+                    Assert.That(input.OrderBy(x => x), Is.EqualTo(insertionSorted));
+                }
+            }
+        }
     }
 }

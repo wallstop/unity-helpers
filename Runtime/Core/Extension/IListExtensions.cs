@@ -2,9 +2,17 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.ComponentModel;
+    using System.Diagnostics.Contracts;
     using Helper;
     using Random;
     using Utils;
+
+    public enum SortAlgorithm
+    {
+        ShellEnhanced = 0,
+        Insertion = 1,
+    }
 
     public static class IListExtensions
     {
@@ -87,6 +95,36 @@
             list.RemoveAt(lastIndex);
         }
 
+        public static void Sort<T, TComparer>(
+            this IList<T> array,
+            TComparer comparer,
+            SortAlgorithm sortAlgorithm = SortAlgorithm.ShellEnhanced
+        )
+            where TComparer : IComparer<T>
+        {
+            switch (sortAlgorithm)
+            {
+                case SortAlgorithm.ShellEnhanced:
+                {
+                    ShellSortEnhanced(array, comparer);
+                    return;
+                }
+                case SortAlgorithm.Insertion:
+                {
+                    InsertionSort(array, comparer);
+                    return;
+                }
+                default:
+                {
+                    throw new InvalidEnumArgumentException(
+                        nameof(sortAlgorithm),
+                        (int)sortAlgorithm,
+                        typeof(SortAlgorithm)
+                    );
+                }
+            }
+        }
+
         public static void InsertionSort<T, TComparer>(this IList<T> array, TComparer comparer)
             where TComparer : IComparer<T>
         {
@@ -101,6 +139,61 @@
                     j--;
                 }
                 array[j + 1] = key;
+            }
+        }
+
+        /*
+            Implementation copyright Will Stafford Parsons,
+            https://github.com/wstaffordp/bsearch-enhanced/blob/master/examples/benchmark.c#L31-L78
+            
+            Please contact the original author if you would like an explanation of constants.
+         */
+        public static void ShellSortEnhanced<T, TComparer>(this IList<T> array, TComparer comparer)
+            where TComparer : IComparer<T>
+        {
+            int length = array.Count;
+            int gap = array.Count;
+
+            int i;
+            int j;
+            while (gap > 15)
+            {
+                gap = (gap >> 5) + (gap >> 3);
+                i = gap;
+
+                while (i < length)
+                {
+                    T element = array[i];
+                    j = i;
+                    while (j >= gap && 0 < comparer.Compare(array[j - gap], element))
+                    {
+                        array[j] = array[j - gap];
+                        j -= gap;
+                    }
+
+                    array[j] = element;
+                    i++;
+                }
+            }
+
+            i = 1;
+            gap = 0;
+
+            while (i < length)
+            {
+                T element = array[i];
+                j = i;
+
+                while (j > 0 && 0 < comparer.Compare(array[gap], element))
+                {
+                    array[j] = array[gap];
+                    j = gap;
+                    gap--;
+                }
+
+                array[j] = element;
+                gap = i;
+                i++;
             }
         }
 
@@ -121,12 +214,13 @@
                 }
                 default:
                 {
-                    inputList.InsertionSort(UnityObjectNameComparer<T>.Instance);
+                    inputList.Sort(UnityObjectNameComparer<T>.Instance);
                     break;
                 }
             }
         }
 
+        [Pure]
         public static bool IsSorted<T>(this IList<T> list, IComparer<T> comparer = null)
         {
             if (list.Count <= 1)
