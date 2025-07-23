@@ -2,6 +2,6 @@
 {
     public static class PRNG
     {
-        public static IRandom Instance => PcgRandom.Instance;
+        public static IRandom Instance => XoroShiroEnhancedRandom.Instance;
     }
 }

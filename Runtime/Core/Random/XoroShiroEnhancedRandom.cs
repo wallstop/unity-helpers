@@ -18,6 +18,9 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     {
         private const int UintByteCount = sizeof(uint) * 8;
 
+        public static XoroShiroEnhancedRandom Instance =>
+            ThreadLocalRandom<XoroShiroEnhancedRandom>.Instance;
+
         public override RandomState InternalState
         {
             get
