@@ -21,6 +21,7 @@
     public sealed class MatchTransform : MonoBehaviour
     {
         public Transform toMatch;
+        public Vector3 localOffset;
 
         public MatchTransformMode mode = MatchTransformMode.Update;
 
@@ -75,7 +76,7 @@
                 return;
             }
 
-            _transform.position = toMatch.position;
+            _transform.position = toMatch.position + localOffset;
         }
     }
 }
