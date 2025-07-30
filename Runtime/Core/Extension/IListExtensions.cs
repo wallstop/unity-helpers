@@ -10,7 +10,7 @@
 
     public enum SortAlgorithm
     {
-        ShellEnhanced = 0,
+        Ghost = 0,
         Insertion = 1,
     }
 
@@ -98,15 +98,15 @@
         public static void Sort<T, TComparer>(
             this IList<T> array,
             TComparer comparer,
-            SortAlgorithm sortAlgorithm = SortAlgorithm.ShellEnhanced
+            SortAlgorithm sortAlgorithm = SortAlgorithm.Ghost
         )
             where TComparer : IComparer<T>
         {
             switch (sortAlgorithm)
             {
-                case SortAlgorithm.ShellEnhanced:
+                case SortAlgorithm.Ghost:
                 {
-                    ShellSortEnhanced(array, comparer);
+                    GhostSort(array, comparer);
                     return;
                 }
                 case SortAlgorithm.Insertion:
@@ -144,11 +144,13 @@
 
         /*
             Implementation copyright Will Stafford Parsons,
-            https://github.com/wstaffordp/bsearch-enhanced/blob/master/examples/benchmark.c#L31-L78
+            https://github.com/wstaffordp/ghostsort/blob/master/src/ghostsort.c
+            
+            Note: Ghost Sort is currently not stable.
             
             Please contact the original author if you would like an explanation of constants.
          */
-        public static void ShellSortEnhanced<T, TComparer>(this IList<T> array, TComparer comparer)
+        public static void GhostSort<T, TComparer>(this IList<T> array, TComparer comparer)
             where TComparer : IComparer<T>
         {
             int length = array.Count;

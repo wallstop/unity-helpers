@@ -1,7 +1,7 @@
 ﻿/*
-    XoroShiroEnhanced is a significant enhancement upon the classic XoroShiroRandom discovered by Will Stafford Parsons.
+    IllusionFlow is a significant enhancement upon the classic XoroShiroRandom discovered by Will Stafford Parsons.
         
-    Reference: https://github.com/wstaffordp/bsearch-enhanced/blob/master/examples/benchmark.c#L4-L29
+    Reference: https://github.com/wstaffordp/illusionflow
     
     Copyright original author: https://github.com/wstaffordp
  */
@@ -14,12 +14,11 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
     [Serializable]
     [DataContract]
-    public sealed class XoroShiroEnhancedRandom : AbstractRandom
+    public sealed class IllusionFlow : AbstractRandom
     {
         private const int UintByteCount = sizeof(uint) * 8;
 
-        public static XoroShiroEnhancedRandom Instance =>
-            ThreadLocalRandom<XoroShiroEnhancedRandom>.Instance;
+        public static IllusionFlow Instance => ThreadLocalRandom<IllusionFlow>.Instance;
 
         public override RandomState InternalState
         {
@@ -40,10 +39,10 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         private uint _d;
         private uint _e;
 
-        public XoroShiroEnhancedRandom()
+        public IllusionFlow()
             : this(Guid.NewGuid()) { }
 
-        public XoroShiroEnhancedRandom(Guid guid, uint? extraSeed = null)
+        public IllusionFlow(Guid guid, uint? extraSeed = null)
         {
             byte[] guidArray = guid.ToByteArray();
             _a = BitConverter.ToUInt32(guidArray, 0);
@@ -54,7 +53,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         }
 
         [JsonConstructor]
-        public XoroShiroEnhancedRandom(RandomState internalState)
+        public IllusionFlow(RandomState internalState)
         {
             unchecked
             {
@@ -72,7 +71,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                 else
                 {
                     throw new InvalidOperationException(
-                        $"{nameof(XoroShiroEnhancedRandom)} requires a Gaussian state."
+                        $"{nameof(IllusionFlow)} requires a Gaussian state."
                     );
                 }
             }
@@ -102,7 +101,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         public override IRandom Copy()
         {
-            return new XoroShiroEnhancedRandom(InternalState);
+            return new IllusionFlow(InternalState);
         }
     }
 }

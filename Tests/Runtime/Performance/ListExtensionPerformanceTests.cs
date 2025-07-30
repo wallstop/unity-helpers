@@ -39,11 +39,7 @@
                 input => input.InsertionSort(IntComparer.Instance),
                 timeout
             );
-            int shellSort = RunTest(
-                list,
-                input => input.ShellSortEnhanced(IntComparer.Instance),
-                timeout
-            );
+            int shellSort = RunTest(list, input => input.GhostSort(IntComparer.Instance), timeout);
 
             UnityEngine.Debug.Log("| Operation | Operations / Second |");
             UnityEngine.Debug.Log($"| Reference | {reference / timeout.TotalSeconds:N0} |");

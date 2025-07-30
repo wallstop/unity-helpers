@@ -23,6 +23,7 @@
 
             RunTest(new DotNetRandom(), timeout);
             RunTest(new LinearCongruentialGenerator(), timeout);
+            RunTest(new IllusionFlow(), timeout);
             RunTest(new PcgRandom(), timeout);
             RunTest(new RomuDuo(), timeout);
             RunTest(new SplitMix64(), timeout);
@@ -32,7 +33,6 @@
             RunTest(new WyRandom(), timeout);
             RunTest(new XorShiftRandom(), timeout);
             RunTest(new XoroShiroRandom(), timeout);
-            RunTest(new XoroShiroEnhancedRandom(), timeout);
         }
 
         private static void RunTest<T>(T random, TimeSpan timeout)

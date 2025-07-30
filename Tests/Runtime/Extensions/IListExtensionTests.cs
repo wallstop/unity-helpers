@@ -114,7 +114,7 @@
                 Array.Sort(conventionalSorted);
 
                 int[] insertionSorted = input.ToArray();
-                insertionSorted.ShellSortEnhanced(new IntComparer());
+                insertionSorted.GhostSort(new IntComparer());
                 Assert.That(conventionalSorted, Is.EqualTo(insertionSorted));
                 Assert.That(input.OrderBy(x => x), Is.EqualTo(insertionSorted));
             }

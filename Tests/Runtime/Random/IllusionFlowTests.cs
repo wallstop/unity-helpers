@@ -2,11 +2,11 @@
 {
     using WallstopStudios.UnityHelpers.Core.Random;
 
-    public sealed class XoroShiroEnhancedRandomTests : RandomTestBase
+    public sealed class IllusionFlowTests : RandomTestBase
     {
         protected override IRandom NewRandom()
         {
-            return new XoroShiroEnhancedRandom();
+            return new IllusionFlow();
         }
     }
 }
