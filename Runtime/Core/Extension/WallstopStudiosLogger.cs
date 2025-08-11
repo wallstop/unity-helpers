@@ -15,7 +15,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
     using Utils;
     using Object = UnityEngine.Object;
 
-    public static class LoggingExtensions
+    public static class WallstopStudiosLogger
     {
         public static readonly UnityLogTagFormatter LogInstance = new(
             createDefaultDecorators: true
@@ -33,7 +33,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
         private static readonly Dictionary<string, object> GenericObject = new();
 
-        static LoggingExtensions()
+        static WallstopStudiosLogger()
         {
 #if ENABLE_UBERLOGGING
             /*
