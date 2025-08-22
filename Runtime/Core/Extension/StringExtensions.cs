@@ -8,7 +8,8 @@
 
     public static class StringExtensions
     {
-        private static ThreadLocal<StringBuilder> StringBuilderCache = new(() => new StringBuilder()
+        private static ThreadLocal<StringBuilder> StringBuilderCache = new(() =>
+            new StringBuilder()
         );
 
         private static readonly HashSet<char> PascalCaseSeparators = new()
