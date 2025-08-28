@@ -1,0 +1,115 @@
+﻿namespace WallstopStudios.UnityHelpers.Utils
+{
+    using System;
+    using System.Collections.Generic;
+    using System.Text;
+    using System.Threading;
+
+    public static class Ascii85
+    {
+        private static readonly ThreadLocal<StringBuilder> StringBuilderCache = new(() =>
+            new StringBuilder()
+        );
+
+        private static readonly ThreadLocal<byte[]> ChunkCache = new(() => new byte[4]);
+        private static readonly ThreadLocal<char[]> EncodedCache = new(() => new char[5]);
+        private static readonly ThreadLocal<List<byte>> ByteListCache = new(() => new List<byte>());
+
+        private static readonly uint[] Pow85 = { 85 * 85 * 85 * 85, 85 * 85 * 85, 85 * 85, 85, 1 };
+
+        public static string Encode(byte[] data)
+        {
+            if (data == null)
+            {
+                return null;
+            }
+
+            StringBuilder stringBuilder = StringBuilderCache.Value;
+            stringBuilder.Clear();
+            int index = 0;
+
+            byte[] chunk = ChunkCache.Value;
+            char[] encoded = EncodedCache.Value;
+            while (index < data.Length)
+            {
+                Array.Clear(chunk, 0, chunk.Length);
+                int chunkLength = 0;
+
+                for (int i = 0; i < 4 && index < data.Length; ++i)
+                {
+                    chunk[i] = data[index++];
+                    chunkLength++;
+                }
+
+                uint val =
+                    ((uint)chunk[0] << 24)
+                    | ((uint)chunk[1] << 16)
+                    | ((uint)chunk[2] << 8)
+                    | chunk[3];
+
+                if (val == 0 && chunkLength == 4)
+                {
+                    stringBuilder.Append('z');
+                    continue;
+                }
+
+                Array.Clear(encoded, 0, encoded.Length);
+                for (int i = 0; i < encoded.Length; ++i)
+                {
+                    encoded[i] = (char)(val / Pow85[i] + '!');
+                    val %= Pow85[i];
+                }
+
+                for (int i = 0; i < chunkLength + 1; ++i)
+                {
+                    stringBuilder.Append(encoded[i]);
+                }
+            }
+            return stringBuilder.ToString();
+        }
+
+        public static byte[] Decode(string encoded)
+        {
+            if (string.IsNullOrEmpty(encoded))
+            {
+                return Array.Empty<byte>();
+            }
+
+            encoded = encoded.Replace("z", "!!!!!");
+
+            List<byte> result = ByteListCache.Value;
+            result.Clear();
+            int index = 0;
+            char[] chunk = EncodedCache.Value;
+            byte[] decodedBytes = ChunkCache.Value;
+            while (index < encoded.Length)
+            {
+                Array.Fill(chunk, (char)117);
+                int chunkLen = 0;
+
+                for (int i = 0; i < 5 && index < encoded.Length; ++i)
+                {
+                    chunk[i] = encoded[index++];
+                    chunkLen++;
+                }
+
+                uint val = 0;
+                for (int i = 0; i < 5; ++i)
+                {
+                    val += (uint)(chunk[i] - '!') * Pow85[i];
+                }
+
+                decodedBytes[0] = (byte)(val >> 24);
+                decodedBytes[1] = (byte)(val >> 16);
+                decodedBytes[2] = (byte)(val >> 8);
+                decodedBytes[3] = (byte)val;
+
+                for (int i = 0; i < chunkLen - 1; ++i)
+                {
+                    result.Add(decodedBytes[i]);
+                }
+            }
+            return result.ToArray();
+        }
+    }
+}
