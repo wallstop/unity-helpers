@@ -1,6 +1,7 @@
 ﻿namespace WallstopStudios.UnityHelpers.Utils
 {
     using System.Collections.Generic;
+    using System.Text;
     using UnityEngine;
 
     public static class Buffers
@@ -20,10 +21,13 @@
         public static readonly System.Random Random = new();
         public static readonly WaitForFixedUpdate WaitForFixedUpdate = new();
         public static readonly WaitForEndOfFrame WaitForEndOfFrame = new();
+
+        public static readonly StringBuilder StringBuilder = new();
     }
 
     public static class Buffers<T>
     {
+        public static readonly T[] Array = new T[Buffers.BufferSize];
         public static readonly List<T> List = new();
         public static readonly HashSet<T> HashSet = new();
         public static readonly Queue<T> Queue = new();

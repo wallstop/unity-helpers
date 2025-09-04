@@ -1,5 +1,7 @@
 ﻿namespace WallstopStudios.UnityHelpers.Utils
 {
+    using System;
+    using System.Collections.Generic;
     using Core.Attributes;
     using Core.Extension;
     using Core.Helper;
@@ -33,6 +35,8 @@
         private Vector3 _offset;
 
         private Coroutine _update;
+
+        private readonly Dictionary<int, Vector3[]> _cachedSegments = new();
 
         private void Awake()
         {
@@ -114,7 +118,13 @@
                 float angle = 360f / numSegments;
                 float offsetRadians = PRNG.Instance.NextFloat(angle);
                 float currentOffset = offsetRadians;
-                Vector3[] positions = new Vector3[numSegments];
+                if (!_cachedSegments.TryGetValue(numSegments, out Vector3[] positions))
+                {
+                    positions = new Vector3[numSegments];
+                    _cachedSegments[numSegments] = positions;
+                }
+
+                Array.Clear(positions, 0, numSegments);
                 for (int i = 0; i < numSegments; ++i)
                 {
                     positions[i] =

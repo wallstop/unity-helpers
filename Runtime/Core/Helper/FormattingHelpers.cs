@@ -1,6 +1,8 @@
 ﻿namespace WallstopStudios.UnityHelpers.Core.Helper
 {
     using System;
+    using System.Text;
+    using WallstopStudios.UnityHelpers.Utils;
 
     public static class FormattingHelpers
     {
@@ -26,7 +28,11 @@
                 }
             }
 
-            return $"{len:0.##} {ByteSizes[order]}";
+            StringBuilder stringBuilder = Buffers.StringBuilder;
+            stringBuilder.Clear();
+            stringBuilder.AppendFormat("{0:0.##} ", len);
+            stringBuilder.Append(ByteSizes[order]);
+            return stringBuilder.ToString();
         }
     }
 }
