@@ -1,4 +1,4 @@
-﻿namespace WallstopStudios.UnityHelpers.Core.Helper.Logging
+namespace WallstopStudios.UnityHelpers.Core.Helper.Logging
 {
     using System;
     using System.Collections.Generic;

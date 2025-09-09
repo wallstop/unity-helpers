@@ -1,4 +1,4 @@
-﻿namespace WallstopStudios.UnityHelpers.Editor.Sprites
+namespace WallstopStudios.UnityHelpers.Editor.Sprites
 {
 #if UNITY_EDITOR
     using System;

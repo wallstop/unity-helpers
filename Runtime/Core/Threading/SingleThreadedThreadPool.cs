@@ -1,4 +1,4 @@
-﻿namespace WallstopStudios.UnityHelpers.Core.Threading
+namespace WallstopStudios.UnityHelpers.Core.Threading
 {
     using System;
     using System.Collections.Concurrent;

@@ -1,4 +1,4 @@
-﻿.regular-progress-bar {
+.regular-progress-bar {
     --rpb-track-color: rgb(60, 60, 60);
     --rpb-progress-color: rgb(76, 175, 80);
     --rpb-border-radius: 3px;

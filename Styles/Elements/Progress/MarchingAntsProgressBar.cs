@@ -1,4 +1,4 @@
-﻿namespace WallstopStudios.UnityHelpers.Styles.Elements.Progress
+namespace WallstopStudios.UnityHelpers.Styles.Elements.Progress
 {
     using System.Collections.Generic;
     using System.ComponentModel;

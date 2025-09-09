@@ -1,4 +1,4 @@
-﻿/*
+/*
     Original implementation provided by JWoe
  */
 

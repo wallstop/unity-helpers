@@ -1,4 +1,4 @@
-﻿#if !((UNITY_WEBGL && !UNITY_EDITOR) || ENABLE_IL2CPP)
+#if !((UNITY_WEBGL && !UNITY_EDITOR) || ENABLE_IL2CPP)
 #define EMIT_DYNAMIC_IL
 #endif
 

@@ -1,4 +1,4 @@
-﻿namespace WallstopStudios.UnityHelpers.Core.Extension
+namespace WallstopStudios.UnityHelpers.Core.Extension
 {
     using UnityEngine;
 

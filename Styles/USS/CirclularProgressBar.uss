@@ -1,4 +1,4 @@
-﻿.circular-progress-bar {
+.circular-progress-bar {
     --track-color: rgb(70, 70, 70);
     --progress-color: #4CAF50;
     --thickness: 12px;

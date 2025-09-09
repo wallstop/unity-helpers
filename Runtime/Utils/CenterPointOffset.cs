@@ -1,4 +1,4 @@
-﻿namespace WallstopStudios.UnityHelpers.Utils
+namespace WallstopStudios.UnityHelpers.Utils
 {
     using Core.Attributes;
     using UnityEngine;

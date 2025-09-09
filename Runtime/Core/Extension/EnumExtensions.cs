@@ -1,4 +1,4 @@
-﻿// ReSharper disable StaticMemberInGenericType
+// ReSharper disable StaticMemberInGenericType
 namespace WallstopStudios.UnityHelpers.Core.Extension
 {
     using System;

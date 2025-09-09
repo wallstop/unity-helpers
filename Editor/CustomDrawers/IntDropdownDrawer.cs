@@ -1,4 +1,4 @@
-﻿namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
+namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 {
     using Core.Attributes;
     using UnityEditor;

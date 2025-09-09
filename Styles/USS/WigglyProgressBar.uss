@@ -1,4 +1,4 @@
-﻿.wiggly-progress-bar {
+.wiggly-progress-bar {
     --wiggly-track-color: rgb(70, 70, 70);
     --wiggly-progress-color: rgb(51, 153, 255);
     --wiggly-thickness: 5px;

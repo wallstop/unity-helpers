@@ -1,4 +1,4 @@
-﻿/*
+/*
     IllusionFlow is a significant enhancement upon the classic XoroShiroRandom discovered by Will Stafford Parsons.
         
     Reference: https://github.com/wstaffordp/illusionflow

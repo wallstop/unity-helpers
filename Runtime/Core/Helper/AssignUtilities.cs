@@ -1,4 +1,4 @@
-﻿namespace WallstopStudios.UnityHelpers.Core.Helper
+namespace WallstopStudios.UnityHelpers.Core.Helper
 {
     public static class AssignUtilities
     {

@@ -1,4 +1,4 @@
-﻿namespace WallstopStudios.UnityHelpers.Editor
+namespace WallstopStudios.UnityHelpers.Editor
 {
 #if UNITY_EDITOR
     using System;

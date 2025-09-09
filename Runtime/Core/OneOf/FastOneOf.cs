@@ -1,4 +1,4 @@
-﻿namespace WallstopStudios.UnityHelpers.Core.OneOf
+namespace WallstopStudios.UnityHelpers.Core.OneOf
 {
     using System;
     using System.Collections.Generic;

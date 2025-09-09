@@ -1,4 +1,4 @@
-﻿namespace WallstopStudios.UnityHelpers.Tests.DataStructures
+namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 {
     using System.Collections.Generic;
     using System.Linq;

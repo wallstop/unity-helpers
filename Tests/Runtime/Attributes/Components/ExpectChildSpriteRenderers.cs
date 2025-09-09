@@ -1,4 +1,4 @@
-﻿namespace WallstopStudios.UnityHelpers.Tests.Attributes.Components
+namespace WallstopStudios.UnityHelpers.Tests.Attributes.Components
 {
     using System.Collections.Generic;
     using UnityEngine;

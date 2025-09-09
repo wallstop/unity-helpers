@@ -1,4 +1,4 @@
-﻿namespace WallstopStudios.UnityHelpers.Core.DataStructure
+namespace WallstopStudios.UnityHelpers.Core.DataStructure
 {
     using System.Collections.Generic;
     using UnityEngine;

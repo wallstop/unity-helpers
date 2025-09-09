@@ -1,4 +1,4 @@
-﻿namespace WallstopStudios.UnityHelpers.Tests.Utils
+namespace WallstopStudios.UnityHelpers.Tests.Utils
 {
     using System.Collections;
     using System.Collections.Generic;

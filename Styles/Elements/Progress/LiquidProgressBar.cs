@@ -1,4 +1,4 @@
-﻿namespace WallstopStudios.UnityHelpers.Styles.Elements.Progress
+namespace WallstopStudios.UnityHelpers.Styles.Elements.Progress
 {
     using UnityEngine;
     using UnityEngine.UIElements;

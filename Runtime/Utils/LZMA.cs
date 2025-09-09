@@ -1,4 +1,4 @@
-﻿namespace WallstopStudios.UnityHelpers.Utils
+namespace WallstopStudios.UnityHelpers.Utils
 {
     // LzmaHelper.cs - A wrapper for the LZMA SDK
     using System;

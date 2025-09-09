@@ -1,4 +1,4 @@
-﻿namespace WallstopStudios.UnityHelpers.Tags
+namespace WallstopStudios.UnityHelpers.Tags
 {
     public enum ModificationAction
     {

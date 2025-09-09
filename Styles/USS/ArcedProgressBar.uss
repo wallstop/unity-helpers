@@ -1,4 +1,4 @@
-﻿.arced-progress-bar {
+.arced-progress-bar {
     --arc-track-color: rgb(80, 80, 80);
     --arc-progress-color: #FF9800;
     --arc-thickness: 12px;

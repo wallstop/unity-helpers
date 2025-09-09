@@ -1,4 +1,4 @@
-﻿namespace WallstopStudios.UnityHelpers.Utils
+namespace WallstopStudios.UnityHelpers.Utils
 {
     public sealed class CoroutineHandler : RuntimeSingleton<CoroutineHandler> { }
 }

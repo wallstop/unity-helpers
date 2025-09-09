@@ -1,4 +1,4 @@
-﻿namespace WallstopStudios.UnityHelpers.Tests.Performance
+namespace WallstopStudios.UnityHelpers.Tests.Performance
 {
     using System;
     using System.Collections;

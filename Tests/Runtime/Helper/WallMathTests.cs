@@ -1,4 +1,4 @@
-﻿namespace WallstopStudios.UnityHelpers.Tests.Helper
+namespace WallstopStudios.UnityHelpers.Tests.Helper
 {
     using Core.Extension;
     using NUnit.Framework;

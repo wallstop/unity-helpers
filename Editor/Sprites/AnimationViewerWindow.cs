@@ -1,4 +1,4 @@
-﻿// ReSharper disable HeapView.CanAvoidClosure
+// ReSharper disable HeapView.CanAvoidClosure
 namespace WallstopStudios.UnityHelpers.Editor.Sprites
 {
 #if UNITY_EDITOR

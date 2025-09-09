@@ -1,4 +1,4 @@
-﻿namespace WallstopStudios.UnityHelpers.Core.Random
+namespace WallstopStudios.UnityHelpers.Core.Random
 {
     public static class PRNG
     {
