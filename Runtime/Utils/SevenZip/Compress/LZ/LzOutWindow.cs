@@ -47,15 +47,23 @@ namespace SevenZip.Compression.LZ
             {
                 uint curSize = _windowSize - _pos;
                 if (size < curSize)
+                {
                     curSize = size;
+                }
+
                 int numReadBytes = stream.Read(_buffer, (int)_pos, (int)curSize);
                 if (numReadBytes == 0)
+                {
                     return false;
+                }
+
                 size -= (uint)numReadBytes;
                 _pos += (uint)numReadBytes;
                 _streamPos += (uint)numReadBytes;
                 if (_pos == _windowSize)
+                {
                     _streamPos = _pos = 0;
+                }
             }
             return true;
         }
@@ -70,10 +78,16 @@ namespace SevenZip.Compression.LZ
         {
             uint size = _pos - _streamPos;
             if (size == 0)
+            {
                 return;
+            }
+
             _stream.Write(_buffer, (int)_streamPos, (int)size);
             if (_pos >= _windowSize)
+            {
                 _pos = 0;
+            }
+
             _streamPos = _pos;
         }
 
@@ -81,14 +95,22 @@ namespace SevenZip.Compression.LZ
         {
             uint pos = _pos - distance - 1;
             if (pos >= _windowSize)
+            {
                 pos += _windowSize;
+            }
+
             for (; len > 0; len--)
             {
                 if (pos >= _windowSize)
+                {
                     pos = 0;
+                }
+
                 _buffer[_pos++] = _buffer[pos++];
                 if (_pos >= _windowSize)
+                {
                     Flush();
+                }
             }
         }
 
@@ -96,14 +118,19 @@ namespace SevenZip.Compression.LZ
         {
             _buffer[_pos++] = b;
             if (_pos >= _windowSize)
+            {
                 Flush();
+            }
         }
 
         public byte GetByte(uint distance)
         {
             uint pos = _pos - distance - 1;
             if (pos >= _windowSize)
+            {
                 pos += _windowSize;
+            }
+
             return _buffer[pos];
         }
     }

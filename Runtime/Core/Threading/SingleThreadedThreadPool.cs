@@ -3,115 +3,223 @@ namespace WallstopStudios.UnityHelpers.Core.Threading
     using System;
     using System.Collections.Concurrent;
     using System.Threading;
+    using System.Threading.Tasks;
 
     public sealed class SingleThreadedThreadPool : IDisposable
     {
         public ConcurrentQueue<Exception> Exceptions => _exceptions;
-        public int Count => _work.Count + Interlocked.CompareExchange(ref _working, 0, 0);
+        public int Count => _work.Count + (_isWorking ? 1 : 0);
 
-        private int _active;
-        private int _working;
-        private Thread _worker;
-        private readonly ConcurrentQueue<Action> _work;
-        private AutoResetEvent _waitHandle;
-        private bool _disposed;
+        private volatile bool _active = true;
+        private volatile bool _isWorking;
+        private volatile bool _disposed;
+
+        private readonly Task _workerTask;
+        private readonly ConcurrentQueue<WorkItem> _work;
+        private readonly SemaphoreSlim _workAvailable;
         private readonly ConcurrentQueue<Exception> _exceptions;
         private readonly TimeSpan _noWorkWaitTime;
+        private readonly CancellationTokenSource _cancellationTokenSource;
 
         public SingleThreadedThreadPool(
-            bool runInBackground = false,
+            bool runInBackground = true,
             TimeSpan? noWorkWaitTime = null
         )
         {
-            _active = 1;
-            _working = 1;
-            _work = new ConcurrentQueue<Action>();
+            _work = new ConcurrentQueue<WorkItem>();
             _exceptions = new ConcurrentQueue<Exception>();
-            _waitHandle = new AutoResetEvent(false);
+            _workAvailable = new SemaphoreSlim(0);
             _noWorkWaitTime = noWorkWaitTime ?? TimeSpan.FromSeconds(1);
-            _worker = new Thread(DoWork) { IsBackground = runInBackground };
-            _worker.Start();
-        }
+            _cancellationTokenSource = new CancellationTokenSource();
 
-        ~SingleThreadedThreadPool()
-        {
-            Dispose(false);
+            _workerTask = runInBackground
+                ? Task.Run(DoWorkAsync)
+                : Task.Factory.StartNew(DoWorkAsync, TaskCreationOptions.LongRunning).Unwrap();
         }
 
         public void Enqueue(Action work)
         {
-            _work.Enqueue(work);
-            _ = _waitHandle.Set();
+            if (_disposed || !_active)
+            {
+                return;
+            }
+
+            _work.Enqueue(WorkItem.FromAction(work));
+            Signal();
         }
 
-        public void Dispose()
+        public void Enqueue(Func<Task> work)
         {
-            Dispose(true);
-            GC.SuppressFinalize(this);
+            if (_disposed || !_active)
+            {
+                return;
+            }
+
+            _work.Enqueue(WorkItem.FromTask(work));
+            Signal();
         }
 
-        public void Dispose(bool disposing)
+        public void Enqueue(Func<ValueTask> work)
+        {
+            if (_disposed || !_active)
+            {
+                return;
+            }
+
+            _work.Enqueue(WorkItem.FromValueTask(work));
+            Signal();
+        }
+
+        private void Signal()
+        {
+            try
+            {
+                _workAvailable.Release();
+            }
+            catch
+            {
+                // Swallow
+            }
+        }
+
+        public async ValueTask DisposeAsync()
         {
             if (_disposed)
             {
                 return;
             }
 
-            Interlocked.Exchange(ref _active, 0);
+            _active = false;
+            _disposed = true;
 
-            if (disposing)
+            _cancellationTokenSource.Cancel();
+            Signal();
+            try
             {
-                try
-                {
-                    _worker?.Join(TimeSpan.FromSeconds(30));
-                    _waitHandle?.Dispose();
-                }
-                catch
-                {
-                    // Swallow
-                }
-
-                _waitHandle = null;
-                _worker = null;
+                await _workerTask.ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected during shutdown
+            }
+            catch
+            {
+                // Swallow other exceptions during disposal
             }
 
-            _disposed = true;
+            _cancellationTokenSource?.Dispose();
+            _workAvailable?.Dispose();
+
+            GC.SuppressFinalize(this);
         }
 
-        private void DoWork()
+        public void Dispose()
         {
-            while (Interlocked.CompareExchange(ref _active, 0, 0) != 0)
+            DisposeAsync().AsTask().GetAwaiter().GetResult();
+        }
+
+        private async Task DoWorkAsync()
+        {
+            CancellationToken cancellationToken = _cancellationTokenSource.Token;
+
+            while (_active && !cancellationToken.IsCancellationRequested)
             {
                 try
                 {
-                    if (_work.TryDequeue(out Action workItem))
+                    if (_work.TryDequeue(out WorkItem workItem))
                     {
-                        _ = Interlocked.Exchange(ref _working, 1);
+                        _isWorking = true;
                         try
                         {
-                            workItem();
+                            await workItem.ExecuteAsync().ConfigureAwait(false);
                         }
                         catch (Exception e)
                         {
                             _exceptions.Enqueue(e);
+                        }
+                        finally
+                        {
+                            _isWorking = false;
                         }
                     }
                     else
                     {
                         try
                         {
-                            _ = _waitHandle?.WaitOne(_noWorkWaitTime);
+                            await _workAvailable
+                                .WaitAsync(_noWorkWaitTime, cancellationToken)
+                                .ConfigureAwait(false);
                         }
-                        catch (ObjectDisposedException)
+                        catch (OperationCanceledException)
                         {
-                            return;
+                            break;
                         }
                     }
                 }
-                finally
+                catch (ObjectDisposedException)
                 {
-                    _ = Interlocked.Exchange(ref _working, 0);
+                    break;
                 }
+            }
+        }
+
+        private enum WorkItemType
+        {
+            Unknown = 0,
+            Action = 1,
+            Task = 2,
+            ValueTask = 3,
+        }
+
+        private readonly struct WorkItem
+        {
+            private readonly WorkItemType _type;
+            private readonly Action _action;
+            private readonly Func<Task> _taskFunc;
+            private readonly Func<ValueTask> _valueTaskFunc;
+
+            private WorkItem(
+                WorkItemType type,
+                Action action = null,
+                Func<Task> taskFunc = null,
+                Func<ValueTask> valueTaskFunc = null
+            )
+            {
+                _type = type;
+                _action = action;
+                _taskFunc = taskFunc;
+                _valueTaskFunc = valueTaskFunc;
+            }
+
+            public static WorkItem FromAction(Action action) =>
+                new(WorkItemType.Action, action: action);
+
+            public static WorkItem FromTask(Func<Task> taskFunc) =>
+                new(WorkItemType.Task, taskFunc: taskFunc);
+
+            public static WorkItem FromValueTask(Func<ValueTask> valueTaskFunc) =>
+                new(WorkItemType.ValueTask, valueTaskFunc: valueTaskFunc);
+
+            public ValueTask ExecuteAsync()
+            {
+                return _type switch
+                {
+                    WorkItemType.Action => ExecuteAction(),
+                    WorkItemType.Task => ExecuteTask(),
+                    WorkItemType.ValueTask => _valueTaskFunc(),
+                    _ => default,
+                };
+            }
+
+            private ValueTask ExecuteAction()
+            {
+                _action();
+                return default;
+            }
+
+            private async ValueTask ExecuteTask()
+            {
+                await _taskFunc().ConfigureAwait(false);
             }
         }
     }

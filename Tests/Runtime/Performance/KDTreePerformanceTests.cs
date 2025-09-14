@@ -1,8 +1,8 @@
 namespace WallstopStudios.UnityHelpers.Tests.Performance
 {
     using System.Collections.Generic;
-    using Core.DataStructure;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.DataStructure;
 
     public sealed class KDTreePerformanceTests : SpatialTreePerformanceTest<KDTree<Vector2>>
     {

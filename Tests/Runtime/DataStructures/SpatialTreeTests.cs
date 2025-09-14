@@ -2,8 +2,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 {
     using System.Collections.Generic;
     using System.Linq;
-    using Core.DataStructure;
     using NUnit.Framework;
+    using WallstopStudios.UnityHelpers.Core.DataStructure;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Core.Random;
     using Vector2 = UnityEngine.Vector2;

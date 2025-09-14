@@ -1,9 +1,9 @@
 namespace WallstopStudios.UnityHelpers.Tests.Extensions
 {
     using System.Collections.Generic;
-    using Core.Extension;
     using NUnit.Framework;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Random;
 
     public sealed class RandomExtensionTests

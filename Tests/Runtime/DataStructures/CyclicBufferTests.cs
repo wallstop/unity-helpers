@@ -3,8 +3,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using System;
     using System.Collections.Generic;
     using System.Linq;
-    using Core.DataStructure;
     using NUnit.Framework;
+    using WallstopStudios.UnityHelpers.Core.DataStructure;
     using WallstopStudios.UnityHelpers.Core.Random;
 
     public sealed class CyclicBufferTests

@@ -8,7 +8,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
     public static class StringExtensions
     {
-        private static ThreadLocal<StringBuilder> StringBuilderCache = new(() =>
+        private static readonly ThreadLocal<StringBuilder> StringBuilderCache = new(() =>
             new StringBuilder()
         );
 

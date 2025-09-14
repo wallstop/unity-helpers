@@ -4,8 +4,8 @@ namespace SevenZip.Compression.RangeCoder
 {
     struct BitTreeEncoder
     {
-        BitEncoder[] Models;
-        int NumBitLevels;
+        readonly BitEncoder[] Models;
+        readonly int NumBitLevels;
 
         public BitTreeEncoder(int numBitLevels)
         {
@@ -16,7 +16,9 @@ namespace SevenZip.Compression.RangeCoder
         public void Init()
         {
             for (uint i = 1; i < (1 << NumBitLevels); i++)
+            {
                 Models[i].Init();
+            }
         }
 
         public void Encode(Encoder rangeEncoder, UInt32 symbol)
@@ -111,8 +113,8 @@ namespace SevenZip.Compression.RangeCoder
 
     struct BitTreeDecoder
     {
-        BitDecoder[] Models;
-        int NumBitLevels;
+        readonly BitDecoder[] Models;
+        readonly int NumBitLevels;
 
         public BitTreeDecoder(int numBitLevels)
         {
@@ -123,14 +125,19 @@ namespace SevenZip.Compression.RangeCoder
         public void Init()
         {
             for (uint i = 1; i < (1 << NumBitLevels); i++)
+            {
                 Models[i].Init();
+            }
         }
 
         public uint Decode(RangeCoder.Decoder rangeDecoder)
         {
             uint m = 1;
             for (int bitIndex = NumBitLevels; bitIndex > 0; bitIndex--)
+            {
                 m = (m << 1) + Models[m].Decode(rangeDecoder);
+            }
+
             return m - ((uint)1 << NumBitLevels);
         }
 

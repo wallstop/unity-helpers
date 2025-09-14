@@ -4,9 +4,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Random
     using System.Collections.Generic;
     using System.Linq;
     using System.Runtime.CompilerServices;
-    using Core.DataStructure.Adapters;
-    using Core.Extension;
     using NUnit.Framework;
+    using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
+    using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Random;
     using WallstopStudios.UnityHelpers.Core.Serialization;
 

@@ -3,9 +3,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using System;
     using System.Collections.Generic;
     using System.Linq;
-    using Core.Extension;
     using NUnit.Framework;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Core.Helper.Logging;
 

@@ -38,7 +38,9 @@ namespace SevenZip.Compression.RangeCoder
         public void FlushData()
         {
             for (int i = 0; i < 5; i++)
+            {
                 ShiftLow();
+            }
         }
 
         public void FlushStream()
@@ -84,7 +86,10 @@ namespace SevenZip.Compression.RangeCoder
             {
                 Range >>= 1;
                 if (((v >> i) & 1) == 1)
+                {
                     Low += Range;
+                }
+
                 if (Range < kTopValue)
                 {
                     Range <<= 8;
@@ -97,7 +102,9 @@ namespace SevenZip.Compression.RangeCoder
         {
             uint newBound = (Range >> numTotalBits) * size0;
             if (symbol == 0)
+            {
                 Range = newBound;
+            }
             else
             {
                 Low += newBound;
@@ -134,7 +141,9 @@ namespace SevenZip.Compression.RangeCoder
             Code = 0;
             Range = 0xFFFFFFFF;
             for (int i = 0; i < 5; i++)
+            {
                 Code = (Code << 8) | (byte)Stream.ReadByte();
+            }
         }
 
         public void ReleaseStream()

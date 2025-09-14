@@ -1,8 +1,8 @@
 namespace WallstopStudios.UnityHelpers.Tests.Helper
 {
-    using Core.Extension;
     using NUnit.Framework;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Core.Random;
 

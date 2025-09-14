@@ -1,4 +1,4 @@
-﻿namespace WallstopStudios.UnityHelpers.Tests.Utils
+namespace WallstopStudios.UnityHelpers.Tests.Utils
 {
     using System.Collections.Generic;
     using NUnit.Framework;
@@ -11,8 +11,8 @@
         public void GenericPoolListTests()
         {
             {
-                using PooledResource<List<int>> firstList = GenericPool<List<int>>.Get();
-                using PooledResource<List<int>> secondList = GenericPool<List<int>>.Get();
+                using PooledResource<List<int>> firstList = WallstopGenericPool<List<int>>.Get();
+                using PooledResource<List<int>> secondList = WallstopGenericPool<List<int>>.Get();
                 Assert.AreNotEqual(firstList, secondList);
                 firstList.resource.Add(1);
                 Assert.AreEqual(1, firstList.resource.Count);
@@ -23,7 +23,7 @@
             }
             {
                 // Ensure cleared
-                using PooledResource<List<int>> firstList = GenericPool<List<int>>.Get();
+                using PooledResource<List<int>> firstList = WallstopGenericPool<List<int>>.Get();
                 Assert.AreEqual(0, firstList.resource.Count);
             }
         }
@@ -33,7 +33,7 @@
         {
             for (int i = 0; i < 100; ++i)
             {
-                using PooledResource<int[]> resource = ArrayPool<int>.Get(i);
+                using PooledResource<int[]> resource = WallstopArrayPool<int>.Get(i);
                 Assert.AreEqual(i, resource.resource.Length);
                 for (int j = 0; j < i; ++j)
                 {
@@ -43,7 +43,7 @@
 
             for (int i = 0; i < 100; ++i)
             {
-                using PooledResource<int[]> resource = ArrayPool<int>.Get(i);
+                using PooledResource<int[]> resource = WallstopArrayPool<int>.Get(i);
                 Assert.AreEqual(i, resource.resource.Length);
                 for (int j = 0; j < i; ++j)
                 {

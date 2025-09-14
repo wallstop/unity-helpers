@@ -6,21 +6,15 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
     public sealed class StringInList : PropertyAttribute
     {
-        public delegate string[] GetStringList();
-
-        private bool _shouldRefresh;
-        private string[] _list;
-        private Func<string[]> _getStringList;
+        private readonly Func<string[]> _getStringList;
 
         public StringInList(params string[] list)
         {
-            _shouldRefresh = false;
-            _list = list;
+            _getStringList = () => list;
         }
 
         public StringInList(Type type, string methodName)
         {
-            _shouldRefresh = true;
             MethodInfo method = type.GetMethod(
                 methodName,
                 BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic
@@ -36,18 +30,6 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
         }
 
-        public string[] List
-        {
-            get
-            {
-                if (_shouldRefresh)
-                {
-                    return _getStringList();
-                }
-
-                return _list;
-            }
-            private set { _list = value; }
-        }
+        public string[] List => _getStringList();
     }
 }

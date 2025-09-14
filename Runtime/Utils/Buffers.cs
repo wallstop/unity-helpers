@@ -35,7 +35,7 @@ namespace WallstopStudios.UnityHelpers.Utils
         public static readonly Stack<T> Stack = new();
     }
 
-    public static class GenericPool<T>
+    public static class WallstopGenericPool<T>
         where T : new()
     {
         private static readonly List<T> _pool = new();
@@ -81,7 +81,7 @@ namespace WallstopStudios.UnityHelpers.Utils
         }
     }
 
-    public static class ArrayPool<T>
+    public static class WallstopArrayPool<T>
     {
         private static readonly Dictionary<int, List<T[]>> _pool = new();
         private static readonly Action<T[]> _onDispose = Release;

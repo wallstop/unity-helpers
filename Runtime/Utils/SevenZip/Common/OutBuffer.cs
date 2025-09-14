@@ -4,9 +4,9 @@ namespace SevenZip.Buffer
 {
     public class OutBuffer
     {
-        byte[] m_Buffer;
+        readonly byte[] m_Buffer;
         uint m_Pos;
-        uint m_BufferSize;
+        readonly uint m_BufferSize;
         System.IO.Stream m_Stream;
         ulong m_ProcessedSize;
 
@@ -46,13 +46,18 @@ namespace SevenZip.Buffer
         {
             m_Buffer[m_Pos++] = b;
             if (m_Pos >= m_BufferSize)
+            {
                 FlushData();
+            }
         }
 
         public void FlushData()
         {
             if (m_Pos == 0)
+            {
                 return;
+            }
+
             m_Stream.Write(m_Buffer, 0, (int)m_Pos);
             m_Pos = 0;
         }

@@ -20,9 +20,13 @@ namespace SevenZip.Compression.RangeCoder
         public void UpdateModel(uint symbol)
         {
             if (symbol == 0)
+            {
                 Prob += (kBitModelTotal - Prob) >> kNumMoveBits;
+            }
             else
+            {
                 Prob -= (Prob) >> kNumMoveBits;
+            }
         }
 
         public void Encode(Encoder encoder, uint symbol)
@@ -48,7 +52,9 @@ namespace SevenZip.Compression.RangeCoder
             }
         }
 
-        private static UInt32[] ProbPrices = new UInt32[kBitModelTotal >> kNumMoveReducingBits];
+        private static readonly UInt32[] ProbPrices = new UInt32[
+            kBitModelTotal >> kNumMoveReducingBits
+        ];
 
         static BitEncoder()
         {
@@ -58,9 +64,11 @@ namespace SevenZip.Compression.RangeCoder
                 UInt32 start = (UInt32)1 << (kNumBits - i - 1);
                 UInt32 end = (UInt32)1 << (kNumBits - i);
                 for (UInt32 j = start; j < end; j++)
+                {
                     ProbPrices[j] =
                         ((UInt32)i << kNumBitPriceShiftBits)
                         + (((end - j) << kNumBitPriceShiftBits) >> (kNumBits - i - 1));
+                }
             }
         }
 
@@ -94,9 +102,13 @@ namespace SevenZip.Compression.RangeCoder
         public void UpdateModel(int numMoveBits, uint symbol)
         {
             if (symbol == 0)
+            {
                 Prob += (kBitModelTotal - Prob) >> numMoveBits;
+            }
             else
+            {
                 Prob -= (Prob) >> numMoveBits;
+            }
         }
 
         public void Init()
