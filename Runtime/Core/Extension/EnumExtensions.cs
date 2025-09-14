@@ -117,7 +117,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             else
             {
                 UseDensePacking = false;
-                SparseNames = new Dictionary<int, string>();
+                SparseNames = new Dictionary<int, string>(fields.Length);
                 for (int i = 0; i < fields.Length; i++)
                 {
                     int key = Unsafe.As<T, int>(ref values[i]);
