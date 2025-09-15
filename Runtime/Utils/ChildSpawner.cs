@@ -1,9 +1,19 @@
 namespace WallstopStudios.UnityHelpers.Utils
 {
+    using System;
     using System.Collections.Generic;
     using System.Linq;
     using Core.Extension;
     using UnityEngine;
+
+    [Flags]
+    public enum ChildSpawnMethod
+    {
+        None = 0,
+        Awake = 1 << 0,
+        OnEnabled = 1 << 1,
+        Start = 1 << 2,
+    }
 
     [DisallowMultipleComponent]
     public sealed class ChildSpawner : MonoBehaviour
@@ -11,15 +21,42 @@ namespace WallstopStudios.UnityHelpers.Utils
         private static readonly HashSet<GameObject> SpawnedPrefabs = new();
 
         [SerializeField]
-        private GameObject[] _prefabs;
+        private ChildSpawnMethod _spawnMethod = ChildSpawnMethod.Start;
 
         [SerializeField]
-        private GameObject[] _editorOnlyPrefabs;
+        private GameObject[] _prefabs = Array.Empty<GameObject>();
 
         [SerializeField]
-        private GameObject[] _developmentOnlyPrefabs;
+        private GameObject[] _editorOnlyPrefabs = Array.Empty<GameObject>();
+
+        [SerializeField]
+        private GameObject[] _developmentOnlyPrefabs = Array.Empty<GameObject>();
+
+        private void Awake()
+        {
+            if (_spawnMethod.HasFlagNoAlloc(ChildSpawnMethod.Awake))
+            {
+                Spawn();
+            }
+        }
+
+        private void OnEnable()
+        {
+            if (_spawnMethod.HasFlagNoAlloc(ChildSpawnMethod.OnEnabled))
+            {
+                Spawn();
+            }
+        }
 
         private void Start()
+        {
+            if (_spawnMethod.HasFlagNoAlloc(ChildSpawnMethod.Start))
+            {
+                Spawn();
+            }
+        }
+
+        private void Spawn()
         {
             if (
                 _prefabs

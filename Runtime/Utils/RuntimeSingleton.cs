@@ -41,13 +41,9 @@ namespace WallstopStudios.UnityHelpers.Utils
 
                 Type type = typeof(T);
                 GameObject instance = new($"{type.Name}-Singleton", type);
-                if (
-                    instance.TryGetComponent(out _instance)
-                    && _instance.Preserve
-                    && Application.isPlaying
-                )
+                if (_instance == null)
                 {
-                    DontDestroyOnLoad(instance);
+                    _ = instance.TryGetComponent(out _instance);
                 }
 
                 return _instance;
@@ -60,6 +56,11 @@ namespace WallstopStudios.UnityHelpers.Utils
             if (_instance == null)
             {
                 _instance = this as T;
+            }
+
+            if (Preserve && Application.isPlaying)
+            {
+                DontDestroyOnLoad(gameObject);
             }
         }
 

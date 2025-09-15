@@ -83,7 +83,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             bool foundAny = false;
             foreach (Direction singleDirection in Directions)
             {
-                if (direction.HasFlag(singleDirection))
+                if (direction.HasFlagNoAlloc(singleDirection))
                 {
                     foundAny = true;
                     yield return singleDirection;
