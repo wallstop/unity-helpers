@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Utils
     using System.Reflection;
     using System.Text;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Helper;
 
     public static class Buffers
     {
@@ -38,9 +39,15 @@ namespace WallstopStudios.UnityHelpers.Utils
     public static class WallstopGenericPool<T>
         where T : new()
     {
+        public static Action<T> clearAction;
+
         private static readonly List<T> _pool = new();
-        private static readonly Action<T> _clearAction = GetClearAction();
         private static readonly Action<T> _onDispose = Release;
+
+        static WallstopGenericPool()
+        {
+            clearAction = GetClearAction();
+        }
 
         public static PooledResource<T> Get()
         {
@@ -57,26 +64,34 @@ namespace WallstopStudios.UnityHelpers.Utils
 
         private static Action<T> GetClearAction()
         {
-            Type type = typeof(T);
-            foreach (
-                MethodInfo method in type.GetMethods(BindingFlags.Instance | BindingFlags.Public)
-            )
+            try
             {
-                if (
-                    string.Equals(method.Name, "Clear", StringComparison.Ordinal)
-                    && method.GetParameters().Length == 0
+                Type type = typeof(T);
+                foreach (
+                    MethodInfo method in type.GetMethods(
+                        BindingFlags.Instance | BindingFlags.Public
+                    )
                 )
                 {
-                    return (Action<T>)Delegate.CreateDelegate(typeof(Action<T>), method);
+                    if (
+                        string.Equals(method.Name, "Clear", StringComparison.Ordinal)
+                        && method.GetParameters().Length == 0
+                    )
+                    {
+                        return (Action<T>)Delegate.CreateDelegate(typeof(Action<T>), method);
+                    }
                 }
             }
-
-            return _ => { };
+            catch
+            {
+                // Swallow
+            }
+            return null;
         }
 
         private static void Release(T resource)
         {
-            _clearAction.Invoke(resource);
+            clearAction?.Invoke(resource);
             _pool.Add(resource);
         }
     }

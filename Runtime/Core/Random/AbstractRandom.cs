@@ -407,9 +407,79 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             {
                 return NextOf(list);
             }
-
             int index = Next(collection.Count);
-            return collection.ElementAt(index);
+
+            switch (collection)
+            {
+                case HashSet<T> hashSet:
+                {
+                    int i = 0;
+                    foreach (T element in hashSet)
+                    {
+                        if (index == i++)
+                        {
+                            return element;
+                        }
+                    }
+                    throw new ArgumentException(nameof(collection));
+                }
+                case SortedSet<T> sortedSet:
+                {
+                    int i = 0;
+                    foreach (T element in sortedSet)
+                    {
+                        if (index == i++)
+                        {
+                            return element;
+                        }
+                    }
+
+                    throw new ArgumentException(nameof(collection));
+                }
+                case LinkedList<T> linkedList:
+                {
+                    int i = 0;
+                    foreach (T element in linkedList)
+                    {
+                        if (index == i++)
+                        {
+                            return element;
+                        }
+                    }
+
+                    throw new ArgumentException(nameof(collection));
+                }
+                case Queue<T> queue:
+                {
+                    int i = 0;
+                    foreach (T element in queue)
+                    {
+                        if (index == i++)
+                        {
+                            return element;
+                        }
+                    }
+
+                    throw new ArgumentException(nameof(collection));
+                }
+                case Stack<T> stack:
+                {
+                    int i = 0;
+                    foreach (T element in stack)
+                    {
+                        if (index == i++)
+                        {
+                            return element;
+                        }
+                    }
+
+                    throw new ArgumentException(nameof(collection));
+                }
+                default:
+                {
+                    return collection.ElementAt(index);
+                }
+            }
         }
 
         public T NextOf<T>(IReadOnlyList<T> list)
