@@ -17,6 +17,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         Labels = 1 << 1,
     }
 
+    [Flags]
     public enum LabelSelectionMode
     {
         [Obsolete("Please select a valid value")]
@@ -25,6 +26,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         AnyOf = 1 << 1,
     }
 
+    [Flags]
     public enum SpriteSelectionBooleanLogic
     {
         [Obsolete("Please select a valid value")]
@@ -141,6 +143,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         [Tooltip("Padding in pixels between sprites in the atlas.")]
         [IntDropdown(0, 2, 4, 8, 16, 32)]
         public int padding = 4;
+
+        public bool enableTightPacking = true;
+
+        public bool enableAlphaDilation = false;
 
         [Tooltip(
             "Enable Read/Write on the generated atlas texture. Needed for some runtime operations, but increases memory."

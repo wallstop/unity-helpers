@@ -782,6 +782,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             SpriteAtlasPackingSettings packingSettings = atlas.GetPackingSettings();
             packingSettings.enableRotation = config.enableRotation;
             packingSettings.padding = config.padding;
+            packingSettings.enableTightPacking = config.enableTightPacking;
+            packingSettings.enableAlphaDilation = config.enableAlphaDilation;
             atlas.SetPackingSettings(packingSettings);
 
             SpriteAtlasTextureSettings textureSettings = atlas.GetTextureSettings();
