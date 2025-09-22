@@ -21,6 +21,9 @@ namespace WallstopStudios.UnityHelpers.Utils
         private static readonly HashSet<GameObject> SpawnedPrefabs = new();
 
         [SerializeField]
+        public bool dontDestroyOnLoad = true;
+
+        [SerializeField]
         private ChildSpawnMethod _spawnMethod = ChildSpawnMethod.Start;
 
         [SerializeField]
@@ -58,6 +61,7 @@ namespace WallstopStudios.UnityHelpers.Utils
 
         private void Spawn()
         {
+            TrySetDontDestroyOnLoad();
             if (
                 _prefabs
                     .Concat(_editorOnlyPrefabs)
@@ -132,6 +136,14 @@ namespace WallstopStudios.UnityHelpers.Utils
                 SpawnedPrefabs.Add(prefab);
             }
             return child;
+        }
+
+        private void TrySetDontDestroyOnLoad()
+        {
+            if (dontDestroyOnLoad && Application.isPlaying && !gameObject.IsDontDestroyOnLoad())
+            {
+                DontDestroyOnLoad(gameObject);
+            }
         }
     }
 }
