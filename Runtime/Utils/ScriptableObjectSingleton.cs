@@ -2,6 +2,8 @@ namespace WallstopStudios.UnityHelpers.Utils
 {
     using System;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Core.Helper;
 #if ODIN_INSPECTOR
     using Sirenix.OdinInspector;
 #endif
@@ -14,9 +16,46 @@ namespace WallstopStudios.UnityHelpers.Utils
 #endif
         where T : ScriptableObjectSingleton<T>
     {
+        private static string GetResourcesPath()
+        {
+            Type type = typeof(T);
+            ScriptableSingletonPathAttribute attribute =
+                ReflectionHelpers.GetAttributeSafe<ScriptableSingletonPathAttribute>(type);
+            if (attribute != null && !string.IsNullOrWhiteSpace(attribute.resourcesPath))
+            {
+                return attribute.resourcesPath;
+            }
+
+            return type.Name;
+        }
+
         protected static readonly Lazy<T> LazyInstance = new(() =>
         {
-            T[] instances = Resources.LoadAll<T>(string.Empty);
+            string path = GetResourcesPath();
+            T[] instances = Resources.LoadAll<T>(path);
+
+            if (instances == null || instances.Length == 0)
+            {
+                T named = Resources.Load<T>(typeof(T).Name);
+                if (named != null)
+                {
+                    instances = new[] { named };
+                }
+            }
+
+            if (instances == null || instances.Length == 0)
+            {
+                instances = Resources.LoadAll<T>(string.Empty);
+            }
+
+            if (instances == null)
+            {
+                Debug.LogError(
+                    $"Failed to find ScriptableSingleton of {typeof(T).Name} - null instances."
+                );
+                return default;
+            }
+
             switch (instances.Length)
             {
                 case 1:
@@ -25,7 +64,9 @@ namespace WallstopStudios.UnityHelpers.Utils
                 }
                 case 0:
                 {
-                    Debug.LogError($"Failed to find ScriptableSingleton of type {typeof(T).Name}.");
+                    Debug.LogError(
+                        $"Failed to find ScriptableSingleton of type {typeof(T).Name} - empty instances."
+                    );
                     return null;
                 }
             }
