@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Utils
     using System.Linq;
     using Core.Extension;
     using UnityEngine;
+    using UnityEngine.Serialization;
 
     [Flags]
     public enum ChildSpawnMethod
@@ -20,8 +21,9 @@ namespace WallstopStudios.UnityHelpers.Utils
     {
         private static readonly HashSet<GameObject> SpawnedPrefabs = new();
 
+        [FormerlySerializedAs("dontDestroyOnLoad")]
         [SerializeField]
-        public bool dontDestroyOnLoad = true;
+        private bool _dontDestroyOnLoad = true;
 
         [SerializeField]
         private ChildSpawnMethod _spawnMethod = ChildSpawnMethod.Start;
@@ -140,7 +142,7 @@ namespace WallstopStudios.UnityHelpers.Utils
 
         private void TrySetDontDestroyOnLoad()
         {
-            if (dontDestroyOnLoad && Application.isPlaying && !gameObject.IsDontDestroyOnLoad())
+            if (_dontDestroyOnLoad && Application.isPlaying && !gameObject.IsDontDestroyOnLoad())
             {
                 DontDestroyOnLoad(gameObject);
             }
