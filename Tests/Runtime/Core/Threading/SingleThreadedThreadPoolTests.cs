@@ -1,5 +1,6 @@
 namespace WallstopStudios.UnityHelpers.Tests.Core.Threading
 {
+#if !SINGLE_THREADED
     using System.Collections;
     using System.Collections.Generic;
     using NUnit.Framework;
@@ -51,4 +52,5 @@ namespace WallstopStudios.UnityHelpers.Tests.Core.Threading
             }
         }
     }
+#endif
 }

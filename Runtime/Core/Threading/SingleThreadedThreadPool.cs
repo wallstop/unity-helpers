@@ -1,5 +1,6 @@
 namespace WallstopStudios.UnityHelpers.Core.Threading
 {
+#if !SINGLE_THREADED
     using System;
     using System.Collections.Concurrent;
     using System.Threading;
@@ -223,4 +224,5 @@ namespace WallstopStudios.UnityHelpers.Core.Threading
             }
         }
     }
+#endif
 }

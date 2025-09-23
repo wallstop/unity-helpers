@@ -1,9 +1,11 @@
 namespace WallstopStudios.UnityHelpers.Utils
 {
     using System;
+    using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Reflection;
     using System.Text;
+    using System.Threading;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
 
@@ -148,6 +150,200 @@ namespace WallstopStudios.UnityHelpers.Utils
             pool.Add(resource);
         }
     }
+
+#if SINGLE_THREADED
+    public static class WallstopFastArrayPool<T>
+    {
+        private static readonly List<List<T[]>> _pool = new();
+        private static readonly Action<T[]> _onDispose = Release;
+
+        public static PooledResource<T[]> Get(int size)
+        {
+            switch (size)
+            {
+                case < 0:
+                {
+                    throw new ArgumentOutOfRangeException(
+                        nameof(size),
+                        size,
+                        "Must be non-negative."
+                    );
+                }
+                case 0:
+                {
+                    return new PooledResource<T[]>(Array.Empty<T>(), _ => { });
+                }
+            }
+
+            while (_pool.Count <= size)
+            {
+                _pool.Add(null);
+            }
+
+            List<T[]> pool = _pool[size];
+            if (pool == null)
+            {
+                pool = new List<T[]>();
+                _pool[size] = pool;
+            }
+
+            if (pool.Count == 0)
+            {
+                return new PooledResource<T[]>(new T[size], _onDispose);
+            }
+
+            int lastIndex = pool.Count - 1;
+            T[] instance = pool[lastIndex];
+            pool.RemoveAt(lastIndex);
+            return new PooledResource<T[]>(instance, _onDispose);
+        }
+
+        private static void Release(T[] resource)
+        {
+            _pool[resource.Length].Add(resource);
+        }
+    }
+#else
+
+    public static class WallstopFastArrayPool<T>
+    {
+        private static readonly ReaderWriterLockSlim _lock = new();
+        private static readonly List<ConcurrentStack<T[]>> _pool = new();
+        private static readonly Action<T[]> _onDispose = Release;
+
+        public static PooledResource<T[]> Get(int size)
+        {
+            switch (size)
+            {
+                case < 0:
+                {
+                    throw new ArgumentOutOfRangeException(
+                        nameof(size),
+                        size,
+                        "Must be non-negative."
+                    );
+                }
+                case 0:
+                {
+                    return new PooledResource<T[]>(Array.Empty<T>(), _ => { });
+                }
+            }
+
+            bool withinRange;
+            ConcurrentStack<T[]> pool = null;
+            _lock.EnterReadLock();
+            try
+            {
+                withinRange = size < _pool.Count;
+                if (withinRange)
+                {
+                    pool = _pool[size];
+                }
+            }
+            finally
+            {
+                _lock.ExitReadLock();
+            }
+
+            if (withinRange)
+            {
+                if (pool == null)
+                {
+                    _lock.EnterUpgradeableReadLock();
+                    try
+                    {
+                        pool = _pool[size];
+                        if (pool == null)
+                        {
+                            _lock.EnterWriteLock();
+                            try
+                            {
+                                pool = _pool[size];
+                                if (pool == null)
+                                {
+                                    pool = new ConcurrentStack<T[]>();
+                                    _pool[size] = pool;
+                                }
+                            }
+                            finally
+                            {
+                                _lock.ExitWriteLock();
+                            }
+                        }
+                    }
+                    finally
+                    {
+                        _lock.ExitUpgradeableReadLock();
+                    }
+                }
+            }
+            else
+            {
+                _lock.EnterUpgradeableReadLock();
+                try
+                {
+                    if (size < _pool.Count)
+                    {
+                        pool = _pool[size];
+                        if (pool == null)
+                        {
+                            _lock.EnterWriteLock();
+                            try
+                            {
+                                pool = _pool[size];
+                                if (pool == null)
+                                {
+                                    pool = new ConcurrentStack<T[]>();
+                                    _pool[size] = pool;
+                                }
+                            }
+                            finally
+                            {
+                                _lock.ExitWriteLock();
+                            }
+                        }
+                    }
+                    else
+                    {
+                        _lock.EnterWriteLock();
+                        try
+                        {
+                            while (_pool.Count <= size)
+                            {
+                                _pool.Add(null);
+                            }
+                            pool = _pool[size];
+                            if (pool == null)
+                            {
+                                pool = new ConcurrentStack<T[]>();
+                                _pool[size] = pool;
+                            }
+                        }
+                        finally
+                        {
+                            _lock.ExitWriteLock();
+                        }
+                    }
+                }
+                finally
+                {
+                    _lock.ExitUpgradeableReadLock();
+                }
+            }
+
+            if (pool.TryPop(out T[] instance))
+            {
+                return new PooledResource<T[]>(instance, _onDispose);
+            }
+            return new PooledResource<T[]>(new T[size], _onDispose);
+        }
+
+        private static void Release(T[] resource)
+        {
+            _pool[resource.Length].Push(resource);
+        }
+    }
+#endif
 
     public readonly struct PooledResource<T> : IDisposable
     {
