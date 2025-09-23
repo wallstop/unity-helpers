@@ -2,6 +2,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
 {
     using NUnit.Framework;
     using UnityEngine.TestTools.Constraints;
+    using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using Is = NUnit.Framework.Is;
 
@@ -26,8 +27,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         private enum SmallTestEnum : short
         {
             None = 0,
+
+            [EnumDisplayName("TestFirst")]
             First = 1 << 0,
+
+            [EnumDisplayName("TestSecond")]
             Second = 1 << 1,
+
+            [EnumDisplayName("TestThird")]
             Third = 1 << 2,
         }
 
@@ -37,6 +44,24 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             First = 1 << 0,
             Second = 1 << 1,
             Third = 1 << 2,
+        }
+
+        [Test]
+        public void DisplayName()
+        {
+            Assert.AreEqual("None", SmallTestEnum.None.ToDisplayName());
+            Assert.AreEqual("TestFirst", SmallTestEnum.First.ToDisplayName());
+            Assert.AreEqual("TestSecond", SmallTestEnum.Second.ToDisplayName());
+            Assert.AreEqual("TestThird", SmallTestEnum.Third.ToDisplayName());
+        }
+
+        [Test]
+        public void CachedName()
+        {
+            Assert.AreEqual("None", SmallTestEnum.None.ToCachedName());
+            Assert.AreEqual("First", SmallTestEnum.First.ToCachedName());
+            Assert.AreEqual("Second", SmallTestEnum.Second.ToCachedName());
+            Assert.AreEqual("Third", SmallTestEnum.Third.ToCachedName());
         }
 
         [Test]
