@@ -56,7 +56,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         {
             if (ObjectsByTag.TryGetValue(tag, out Object value))
             {
-                if (value != null && value is T typed)
+                if (value is T typed && typed != null)
                 {
                     return typed;
                 }
@@ -166,7 +166,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             for (int i = 0; i < transform.childCount; ++i)
             {
                 Transform child = transform.GetChild(i);
-                EnableRecursively<T>(child, enabled, exclude);
+                EnableRecursively(child, enabled, exclude);
             }
         }
 
@@ -188,10 +188,14 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 behavior.enabled = enabled;
             }
 
-            Transform transform = component as Transform ?? component.transform;
+            Transform transform = component as Transform;
             if (transform == null)
             {
-                return;
+                transform = component.transform;
+                if (transform == null)
+                {
+                    return;
+                }
             }
 
             for (int i = 0; i < transform.childCount; ++i)
@@ -280,7 +284,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         }
 
         public static void DestroyAllChildrenGameObjectsImmediately(this GameObject gameObject) =>
-            InternalDestroyAllChildrenGameObjects(gameObject, Object.DestroyImmediate);
+            InternalDestroyAllChildrenGameObjects(gameObject, go => Object.DestroyImmediate(go));
 
         public static void PlayDestroyAllChildrenGameObjects(this GameObject gameObject) =>
             InternalDestroyAllChildrenGameObjects(gameObject, go => go.Destroy());
@@ -301,9 +305,17 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
         public static bool IsPrefab(this GameObject gameObject)
         {
+            if (gameObject == null)
+            {
+                return false;
+            }
+
             Scene scene = gameObject.scene;
 #if UNITY_EDITOR
-            if (scene.rootCount == 1 && string.Equals(scene.name, gameObject.name))
+            if (
+                scene.rootCount == 1
+                && string.Equals(scene.name, gameObject.name, StringComparison.Ordinal)
+            )
             {
                 return true;
             }
@@ -321,6 +333,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
         public static bool IsPrefab(this Component component)
         {
+            if (component == null)
+            {
+                return false;
+            }
+
             return IsPrefab(component.gameObject);
         }
 
