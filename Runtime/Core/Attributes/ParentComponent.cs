@@ -37,9 +37,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                         BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
                     );
                     return fields
-                        .Where(field =>
-                            Attribute.IsDefined(field, typeof(ParentComponentAttribute))
-                        )
+                        .Where(field => field.IsAttributeDefined<ParentComponentAttribute>(out _))
                         .Select(field => (field, ReflectionHelpers.GetFieldSetter(field)))
                         .ToArray();
                 }
@@ -47,14 +45,16 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
             foreach ((FieldInfo field, Action<object, object> setter) in fields)
             {
+                if (!field.IsAttributeDefined(out ParentComponentAttribute customAttribute))
+                {
+                    continue;
+                }
+
                 Type fieldType = field.FieldType;
                 bool isArray = fieldType.IsArray;
                 Type parentComponentType = isArray ? fieldType.GetElementType() : fieldType;
-
                 bool foundParent;
-                ParentComponentAttribute customAttribute =
-                    field.GetCustomAttribute<ParentComponentAttribute>();
-                if (field.GetCustomAttribute<ParentComponentAttribute>().onlyAncestors)
+                if (customAttribute.onlyAncestors)
                 {
                     Transform parent = component.transform.parent;
                     if (parent == null)
@@ -138,7 +138,6 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     )
                     {
                         parentComponentType = fieldType.GenericTypeArguments[0];
-
                         Component[] parents = component.GetComponentsInParent(
                             parentComponentType,
                             customAttribute.includeInactive
@@ -171,11 +170,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     }
                 }
 
-                if (
-                    !foundParent
-                    && field.GetCustomAttributes(typeof(ParentComponentAttribute), false)[0]
-                        is ParentComponentAttribute { optional: false }
-                )
+                if (!foundParent && !customAttribute.optional)
                 {
                     component.LogError($"Unable to find parent component of type {fieldType}");
                 }

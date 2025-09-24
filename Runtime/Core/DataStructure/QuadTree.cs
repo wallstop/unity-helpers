@@ -181,11 +181,15 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return elementsInRange;
             }
 
-            Stack<QuadTreeNode> nodesToVisit = Buffers<QuadTreeNode>.Stack;
+            using PooledResource<Stack<QuadTreeNode>> nodesToVisitResource =
+                Buffers<QuadTreeNode>.Stack.Get();
+            Stack<QuadTreeNode> nodesToVisit = nodesToVisitResource.resource;
             nodesToVisit.Clear();
             nodesToVisit.Push(_head);
 
-            List<QuadTreeNode> resultBuffer = Buffers<QuadTreeNode>.List;
+            using PooledResource<List<QuadTreeNode>> resultResource =
+                Buffers<QuadTreeNode>.List.Get();
+            List<QuadTreeNode> resultBuffer = resultResource.resource;
             resultBuffer.Clear();
 
             while (nodesToVisit.TryPop(out QuadTreeNode currentNode))
@@ -249,7 +253,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
         public List<T> GetElementsInBounds(Bounds bounds, List<T> elementsInBounds)
         {
-            return GetElementsInBounds(bounds, elementsInBounds, Buffers<QuadTreeNode>.Stack);
+            using PooledResource<Stack<QuadTreeNode>> stackResource =
+                Buffers<QuadTreeNode>.Stack.Get();
+            return GetElementsInBounds(bounds, elementsInBounds, stackResource.resource);
         }
 
         public List<T> GetElementsInBounds(
@@ -318,10 +324,18 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             List<T> nearestNeighbors
         )
         {
-            Stack<QuadTreeNode> nodeBuffer = Buffers<QuadTreeNode>.Stack;
-            List<QuadTreeNode> childrenBuffer = Buffers<QuadTreeNode>.List;
-            HashSet<T> nearestNeighborBuffer = Buffers<T>.HashSet;
-            List<Entry> nearestNeighborsCache = Buffers<Entry>.List;
+            using PooledResource<Stack<QuadTreeNode>> nodeBufferResource =
+                Buffers<QuadTreeNode>.Stack.Get();
+            Stack<QuadTreeNode> nodeBuffer = nodeBufferResource.resource;
+            using PooledResource<List<QuadTreeNode>> childrenBufferResource =
+                Buffers<QuadTreeNode>.List.Get();
+            List<QuadTreeNode> childrenBuffer = childrenBufferResource.resource;
+            using PooledResource<HashSet<T>> nearestNeighborBufferResource =
+                Buffers<T>.HashSet.Get();
+            HashSet<T> nearestNeighborBuffer = nearestNeighborBufferResource.resource;
+            using PooledResource<List<Entry>> nearestNeighborsCacheResource =
+                Buffers<Entry>.List.Get();
+            List<Entry> nearestNeighborsCache = nearestNeighborsCacheResource.resource;
             GetApproximateNearestNeighbors(
                 position,
                 count,

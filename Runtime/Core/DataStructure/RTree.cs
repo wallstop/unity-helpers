@@ -191,8 +191,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
         public IEnumerable<T> GetElementsInBounds(Bounds bounds)
         {
-            Stack<RTreeNode<T>> nodeBuffer = Buffers<RTreeNode<T>>.Stack;
-            return GetElementsInBounds(bounds, nodeBuffer);
+            using PooledResource<Stack<RTreeNode<T>>> nodeBufferResource = Buffers<
+                RTreeNode<T>
+            >.Stack.Get();
+            return GetElementsInBounds(bounds, nodeBufferResource.resource);
         }
 
         public IEnumerable<T> GetElementsInBounds(Bounds bounds, Stack<RTreeNode<T>> nodeBuffer)
@@ -254,9 +256,17 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             List<T> nearestNeighbors
         )
         {
-            Stack<RTreeNode<T>> nodeBuffer = Buffers<RTreeNode<T>>.Stack;
-            List<RTreeNode<T>> childrenBuffer = Buffers<RTreeNode<T>>.List;
-            HashSet<T> nearestNeighborBuffer = Buffers<T>.HashSet;
+            using PooledResource<Stack<RTreeNode<T>>> nodeBufferResource = Buffers<
+                RTreeNode<T>
+            >.Stack.Get();
+            Stack<RTreeNode<T>> nodeBuffer = nodeBufferResource.resource;
+            using PooledResource<List<RTreeNode<T>>> childrenBufferResource = Buffers<
+                RTreeNode<T>
+            >.List.Get();
+            List<RTreeNode<T>> childrenBuffer = childrenBufferResource.resource;
+            using PooledResource<HashSet<T>> nearestNeighborBufferResource =
+                Buffers<T>.HashSet.Get();
+            HashSet<T> nearestNeighborBuffer = nearestNeighborBufferResource.resource;
             GetApproximateNearestNeighbors(
                 position,
                 count,

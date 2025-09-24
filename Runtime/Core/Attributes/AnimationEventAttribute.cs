@@ -5,6 +5,8 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     using System.Linq;
     using System.Reflection;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Utils;
 
     [AttributeUsage(AttributeTargets.Method)]
     public sealed class AnimationEventAttribute : Attribute
@@ -48,11 +50,9 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                             }
 
                             if (
-                                definedMethod.GetCustomAttributes(
-                                    typeof(AnimationEventAttribute),
-                                    false
-                                )[0]
-                                is AnimationEventAttribute { ignoreDerived: true }
+                                definedMethod.IsAttributeDefined(
+                                    out AnimationEventAttribute attribute
+                                ) && attribute.ignoreDerived
                             )
                             {
                                 ignoreDerived.Add((type, definedMethod.Name));
@@ -63,7 +63,14 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     }
                 );
 
-            foreach (KeyValuePair<Type, List<MethodInfo>> entry in typesToMethods.ToList())
+            using PooledResource<List<KeyValuePair<Type, List<MethodInfo>>>> methodBufferResource =
+                Buffers<KeyValuePair<Type, List<MethodInfo>>>.List.Get();
+            List<KeyValuePair<Type, List<MethodInfo>>> methodBuffer = methodBufferResource.resource;
+            foreach (KeyValuePair<Type, List<MethodInfo>> entry in typesToMethods)
+            {
+                methodBuffer.Add(entry);
+            }
+            foreach (KeyValuePair<Type, List<MethodInfo>> entry in methodBuffer)
             {
                 if (entry.Value.Count <= 0)
                 {

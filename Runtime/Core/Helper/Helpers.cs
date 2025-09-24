@@ -227,33 +227,6 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 .FirstOrDefault(child => child.CompareTag(tag));
         }
 
-        public static bool HasLineOfSight(
-            Vector2 initialLocation,
-            Vector2 direction,
-            Transform transform,
-            float totalDistance,
-            float delta
-        )
-        {
-            int hits = Physics2D.RaycastNonAlloc(initialLocation, direction, Buffers.RaycastHits);
-            for (int i = 0; i < hits; ++i)
-            {
-                RaycastHit2D hit = Buffers.RaycastHits[i];
-                if (hit.transform != transform)
-                {
-                    continue;
-                }
-
-                float distanceToEdge = totalDistance - hit.distance;
-                if (delta <= distanceToEdge)
-                {
-                    return false;
-                }
-            }
-
-            return true;
-        }
-
         public static Coroutine StartFunctionAsCoroutine(
             this MonoBehaviour monoBehaviour,
             Action action,

@@ -4,38 +4,73 @@ namespace WallstopStudios.UnityHelpers.Utils
     using System.Collections.Generic;
     using System.Text;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Extension;
 #if !SINGLE_THREADED
     using System.Threading;
     using System.Collections.Concurrent;
 #endif
-
     public static class Buffers
     {
-        public const int BufferSize = 10_000;
+        private static readonly Dictionary<float, WaitForSeconds> WaitForSeconds = new();
+        private static readonly Dictionary<float, WaitForSecondsRealtime> WaitForSecondsRealtime =
+            new();
 
-        public static readonly Collider2D[] Colliders = new Collider2D[BufferSize];
-        public static readonly RaycastHit2D[] RaycastHits = new RaycastHit2D[BufferSize];
+        public static readonly WaitForFixedUpdate WaitForFixedUpdate = new();
+        public static readonly WaitForEndOfFrame WaitForEndOfFrame = new();
+
+        public static readonly WallstopGenericPool<StringBuilder> StringBuilder = new(
+            () => new StringBuilder(),
+            onRelease: builder => builder.Clear()
+        );
 
         /*
             Note: Only use with CONSTANT time values, otherwise this is a memory leak.
             DO NOT USE with random values.
          */
-        public static readonly Dictionary<float, WaitForSeconds> WaitForSeconds = new();
-        public static readonly Dictionary<float, WaitForSecondsRealtime> WaitForSecondsRealtime =
-            new();
-        public static readonly System.Random Random = new();
-        public static readonly WaitForFixedUpdate WaitForFixedUpdate = new();
-        public static readonly WaitForEndOfFrame WaitForEndOfFrame = new();
+        public static WaitForSeconds GetWaitForSeconds(float seconds)
+        {
+            return WaitForSeconds.GetOrAdd(seconds, value => new WaitForSeconds(value));
+        }
 
-        public static readonly StringBuilder StringBuilder = new();
+        /*
+            Note: Only use with CONSTANT time values, otherwise this is a memory leak.
+            DO NOT USE with random values.
+         */
+        public static WaitForSecondsRealtime GetWaitForSecondsRealTime(float seconds)
+        {
+            return WaitForSecondsRealtime.GetOrAdd(
+                seconds,
+                value => new WaitForSecondsRealtime(value)
+            );
+        }
     }
 
     public static class Buffers<T>
     {
-        public static readonly List<T> List = new();
-        public static readonly HashSet<T> HashSet = new();
-        public static readonly Queue<T> Queue = new();
-        public static readonly Stack<T> Stack = new();
+        public static readonly WallstopGenericPool<List<T>> List = new(
+            () => new List<T>(),
+            onRelease: list => list.Clear()
+        );
+
+        public static readonly WallstopGenericPool<HashSet<T>> HashSet = new(
+            () => new HashSet<T>(),
+            onRelease: set => set.Clear()
+        );
+
+        public static readonly WallstopGenericPool<Queue<T>> Queue = new(
+            () => new Queue<T>(),
+            onRelease: queue => queue.Clear()
+        );
+
+        public static readonly WallstopGenericPool<Stack<T>> Stack = new(
+            () => new Stack<T>(),
+            onRelease: stack => stack.Clear()
+        );
+
+        public static readonly WallstopGenericPool<SortedSet<T>> SortedSet = new(
+            () => new SortedSet<T>(),
+            onRelease: set => set.Clear()
+        );
     }
 
 #if SINGLE_THREADED
@@ -429,15 +464,22 @@ namespace WallstopStudios.UnityHelpers.Utils
     {
         public readonly T resource;
         private readonly Action<T> _onDispose;
+        private readonly bool _initialized;
 
         internal PooledResource(T resource, Action<T> onDispose)
         {
+            _initialized = true;
             this.resource = resource;
-            _onDispose = onDispose ?? throw new ArgumentNullException(nameof(onDispose));
+            _onDispose = onDispose;
         }
 
         public void Dispose()
         {
+            if (!_initialized)
+            {
+                return;
+            }
+
             _onDispose(resource);
         }
     }

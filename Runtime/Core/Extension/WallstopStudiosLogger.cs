@@ -21,7 +21,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             createDefaultDecorators: true
         );
 
-        private static readonly Thread UnityMainThread;
+        private static Thread UnityMainThread;
         private const int LogsPerCacheClean = 5;
 
         private static bool LoggingEnabled = true;
@@ -33,18 +33,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
         private static readonly Dictionary<string, object> GenericObject = new();
 
-        static WallstopStudiosLogger()
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void InitializeMainThread()
         {
-#if ENABLE_UBERLOGGING
-            /*
-                Unity throws exceptions if you try to log on something that isn't the main thread.
-                Sometimes, it's nice to log in async Tasks. Assume that the first initialization of
-                this class will be done by the Unity main thread and then check every time we log.
-                If the logging thread is not the unity main thread, then do nothing
-                (instead of throwing...)
-             */
             UnityMainThread = Thread.CurrentThread;
-#endif
         }
 
         public static void GlobalEnableLogging(this Object component)
@@ -129,7 +121,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             bool pretty = true
         )
         {
-#if ENABLE_UBERLOGGING
+#if ENABLE_UBERLOGGING || DEBUG_LOGGING
             LogDebug(component, message, e, pretty);
 #endif
         }
@@ -142,10 +134,23 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             bool pretty = true
         )
         {
-#if ENABLE_UBERLOGGING
+#if ENABLE_UBERLOGGING || DEBUG_LOGGING
             if (LoggingAllowed(component))
             {
-                LogInstance.Log(message, component, e, pretty);
+                if (Equals(Thread.CurrentThread, UnityMainThread))
+                {
+                    LogInstance.Log(message, component, e, pretty);
+                }
+                else
+                {
+                    FormattableString localMessage = message;
+                    Object localComponent = component;
+                    Exception localE = e;
+                    bool localPretty = pretty;
+                    UnityMainThreadDispatcher.Instance.RunOnMainThread(() =>
+                        LogInstance.Log(localMessage, localComponent, localE, localPretty)
+                    );
+                }
             }
 #endif
         }
@@ -158,10 +163,23 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             bool pretty = true
         )
         {
-#if ENABLE_UBERLOGGING
+#if ENABLE_UBERLOGGING || WARN_LOGGING
             if (LoggingAllowed(component))
             {
-                LogInstance.LogWarn(message, component, e, pretty);
+                if (Equals(Thread.CurrentThread, UnityMainThread))
+                {
+                    LogInstance.LogWarn(message, component, e, pretty);
+                }
+                else
+                {
+                    FormattableString localMessage = message;
+                    Object localComponent = component;
+                    Exception localE = e;
+                    bool localPretty = pretty;
+                    UnityMainThreadDispatcher.Instance.RunOnMainThread(() =>
+                        LogInstance.LogWarn(localMessage, localComponent, localE, localPretty)
+                    );
+                }
             }
 #endif
         }
@@ -174,10 +192,23 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             bool pretty = true
         )
         {
-#if ENABLE_UBERLOGGING
+#if ENABLE_UBERLOGGING || ERROR_LOGGING
             if (LoggingAllowed(component))
             {
-                LogInstance.LogError(message, component, e, pretty);
+                if (Equals(Thread.CurrentThread, UnityMainThread))
+                {
+                    LogInstance.LogError(message, component, e, pretty);
+                }
+                else
+                {
+                    FormattableString localMessage = message;
+                    Object localComponent = component;
+                    Exception localE = e;
+                    bool localPretty = pretty;
+                    UnityMainThreadDispatcher.Instance.RunOnMainThread(() =>
+                        LogInstance.LogError(localMessage, localComponent, localE, localPretty)
+                    );
+                }
             }
 #endif
         }
@@ -187,8 +218,8 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         {
             if (Interlocked.Increment(ref _cacheAccessCount) % LogsPerCacheClean == 0)
             {
-                List<Object> buffer = Buffers<Object>.List;
-                buffer.Clear();
+                using PooledResource<List<Object>> bufferResource = Buffers<Object>.List.Get();
+                List<Object> buffer = bufferResource.resource;
                 foreach (Object disabled in Disabled)
                 {
                     buffer.Add(disabled);
@@ -203,9 +234,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 }
             }
 
-            return LoggingEnabled
-                && Equals(Thread.CurrentThread, UnityMainThread)
-                && !Disabled.Contains(component);
+            return LoggingEnabled && !Disabled.Contains(component);
         }
     }
 }

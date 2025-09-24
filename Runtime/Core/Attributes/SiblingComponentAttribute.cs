@@ -9,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     using Helper;
     using JetBrains.Annotations;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Utils;
 
     [AttributeUsage(AttributeTargets.Field)]
     [MeansImplicitUse]
@@ -35,9 +36,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                         BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
                     );
                     return fields
-                        .Where(field =>
-                            Attribute.IsDefined(field, typeof(SiblingComponentAttribute))
-                        )
+                        .Where(field => field.IsAttributeDefined<SiblingComponentAttribute>(out _))
                         .Select(field => (field, ReflectionHelpers.GetFieldSetter(field)))
                         .ToArray();
                 }
@@ -52,14 +51,22 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 bool foundSibling;
                 if (isArray)
                 {
-                    Component[] siblingComponents = component.GetComponents(siblingComponentType);
-                    foundSibling = 0 < siblingComponents.Length;
+                    using PooledResource<List<Component>> componentBufferResource =
+                        Buffers<Component>.List.Get();
+                    List<Component> siblingComponents = componentBufferResource.resource;
+                    component.GetComponents(siblingComponentType, siblingComponents);
+                    foundSibling = 0 < siblingComponents.Count;
 
                     Array correctTypedArray = ReflectionHelpers.CreateArray(
                         siblingComponentType,
-                        siblingComponents.Length
+                        siblingComponents.Count
                     );
-                    Array.Copy(siblingComponents, correctTypedArray, siblingComponents.Length);
+                    for (int i = 0; i < siblingComponents.Count; i++)
+                    {
+                        Component siblingComponent = siblingComponents[i];
+                        correctTypedArray.SetValue(siblingComponent, i);
+                    }
+
                     setter(component, correctTypedArray);
                 }
                 else if (
@@ -69,15 +76,18 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 {
                     siblingComponentType = fieldType.GenericTypeArguments[0];
 
-                    Component[] siblings = component.GetComponents(siblingComponentType);
+                    using PooledResource<List<Component>> componentBufferResource =
+                        Buffers<Component>.List.Get();
+                    List<Component> siblingComponents = componentBufferResource.resource;
+                    component.GetComponents(siblingComponentType, siblingComponents);
 
                     IList instance = ReflectionHelpers.CreateList(
                         siblingComponentType,
-                        siblings.Length
+                        siblingComponents.Count
                     );
 
                     foundSibling = false;
-                    foreach (Component siblingComponent in siblings)
+                    foreach (Component siblingComponent in siblingComponents)
                     {
                         instance.Add(siblingComponent);
                         foundSibling = true;
@@ -105,8 +115,8 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
                 if (
                     !foundSibling
-                    && field.GetCustomAttributes(typeof(SiblingComponentAttribute), false)[0]
-                        is SiblingComponentAttribute { optional: false }
+                    && field.IsAttributeDefined(out SiblingComponentAttribute customAttribute)
+                    && !customAttribute.optional
                 )
                 {
                     component.LogError($"Unable to find sibling component of type {fieldType}");

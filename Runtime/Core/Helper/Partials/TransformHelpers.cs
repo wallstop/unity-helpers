@@ -18,7 +18,8 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return buffer;
             }
 
-            List<T> internalBuffer = Buffers<T>.List;
+            using PooledResource<List<T>> bufferResource = Buffers<T>.List.Get();
+            List<T> internalBuffer = bufferResource.resource;
             if (includeSelf)
             {
                 component.GetComponents(internalBuffer);
@@ -75,7 +76,8 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return buffer;
             }
 
-            List<T> internalBuffer = Buffers<T>.List;
+            using PooledResource<List<T>> internalBufferResource = Buffers<T>.List.Get();
+            List<T> internalBuffer = internalBufferResource.resource;
             if (includeSelf)
             {
                 component.GetComponents(internalBuffer);
@@ -344,8 +346,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 buffer.Add(transform);
             }
 
-            Queue<Transform> iteration = Buffers<Transform>.Queue;
-            iteration.Clear();
+            using PooledResource<Queue<Transform>> iterationResource =
+                Buffers<Transform>.Queue.Get();
+            Queue<Transform> iteration = iterationResource.resource;
             iteration.Enqueue(transform);
             while (iteration.TryDequeue(out Transform current))
             {

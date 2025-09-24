@@ -200,12 +200,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return elementsInRange;
             }
 
-            Stack<KDTreeNode> nodesToVisit = Buffers<KDTreeNode>.Stack;
-            nodesToVisit.Clear();
+            using PooledResource<Stack<KDTreeNode>> stackResource = Buffers<KDTreeNode>.Stack.Get();
+            Stack<KDTreeNode> nodesToVisit = stackResource.resource;
             nodesToVisit.Push(_head);
 
-            List<KDTreeNode> resultBuffer = Buffers<KDTreeNode>.List;
-            resultBuffer.Clear();
+            using PooledResource<List<KDTreeNode>> resultResource = Buffers<KDTreeNode>.List.Get();
+            List<KDTreeNode> resultBuffer = resultResource.resource;
 
             while (nodesToVisit.TryPop(out KDTreeNode currentNode))
             {
@@ -266,8 +266,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
         public List<T> GetElementsInBounds(Bounds bounds, List<T> elementsInBounds)
         {
-            Stack<KDTreeNode> buffer = Buffers<KDTreeNode>.Stack;
-            return GetElementsInBounds(bounds, elementsInBounds, buffer);
+            using PooledResource<Stack<KDTreeNode>> stackResource = Buffers<KDTreeNode>.Stack.Get();
+            return GetElementsInBounds(bounds, elementsInBounds, stackResource.resource);
         }
 
         public List<T> GetElementsInBounds(
@@ -333,9 +333,15 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             List<T> nearestNeighbors
         )
         {
-            Stack<KDTreeNode> nodeBuffer = Buffers<KDTreeNode>.Stack;
-            HashSet<T> nearestNeighborBuffer = Buffers<T>.HashSet;
-            List<Entry> nearestNeighborsCache = Buffers<Entry>.List;
+            using PooledResource<Stack<KDTreeNode>> nodeBufferResource =
+                Buffers<KDTreeNode>.Stack.Get();
+            Stack<KDTreeNode> nodeBuffer = nodeBufferResource.resource;
+            using PooledResource<HashSet<T>> nearestNeighborBufferResource =
+                Buffers<T>.HashSet.Get();
+            HashSet<T> nearestNeighborBuffer = nearestNeighborBufferResource.resource;
+            using PooledResource<List<Entry>> nearestNeighborsCacheResource =
+                Buffers<Entry>.List.Get();
+            List<Entry> nearestNeighborsCache = nearestNeighborsCacheResource.resource;
             GetApproximateNearestNeighbors(
                 position,
                 count,

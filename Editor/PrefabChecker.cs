@@ -401,7 +401,9 @@ namespace WallstopStudios.UnityHelpers.Editor
                     issuesForThisPrefab++;
                 }
 
-                List<MonoBehaviour> componentBuffer = Buffers<MonoBehaviour>.List;
+                using PooledResource<List<MonoBehaviour>> componentBufferResource =
+                    Buffers<MonoBehaviour>.List.Get();
+                List<MonoBehaviour> componentBuffer = componentBufferResource.resource;
                 prefab.GetComponentsInChildren(true, componentBuffer);
 
                 foreach (MonoBehaviour script in componentBuffer)

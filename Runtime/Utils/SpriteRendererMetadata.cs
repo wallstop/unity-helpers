@@ -238,11 +238,9 @@ namespace WallstopStudios.UnityHelpers.Utils
                 _colorStack.Add(_colorStackCache[0]);
             }
 
-            List<(Component component, Color color)> colorBuffer = Buffers<(
-                Component component,
-                Color color
-            )>.List;
-            colorBuffer.Clear();
+            using PooledResource<List<(Component component, Color color)>> colorBufferResource =
+                Buffers<(Component component, Color color)>.List.Get();
+            List<(Component component, Color color)> colorBuffer = colorBufferResource.resource;
             foreach ((Component component, Color color) entry in _colorStackCache)
             {
                 colorBuffer.Add(entry);
@@ -259,11 +257,11 @@ namespace WallstopStudios.UnityHelpers.Utils
                 _materialStack.Add(_materialStackCache[0]);
             }
 
-            List<(Component component, Material material)> materialBuffer = Buffers<(
-                Component component,
-                Material material
-            )>.List;
-            materialBuffer.Clear();
+            using PooledResource<
+                List<(Component component, Material material)>
+            > materialBufferResource = Buffers<(Component component, Material material)>.List.Get();
+            List<(Component component, Material material)> materialBuffer =
+                materialBufferResource.resource;
             foreach ((Component component, Material material) entry in _materialStackCache)
             {
                 materialBuffer.Add(entry);
@@ -277,11 +275,9 @@ namespace WallstopStudios.UnityHelpers.Utils
 
         private void OnDisable()
         {
-            List<(Component component, Color color)> colorBuffer = Buffers<(
-                Component component,
-                Color color
-            )>.List;
-            colorBuffer.Clear();
+            using PooledResource<List<(Component component, Color color)>> colorBufferResource =
+                Buffers<(Component component, Color color)>.List.Get();
+            List<(Component component, Color color)> colorBuffer = colorBufferResource.resource;
             foreach ((Component component, Color color) entry in _colorStack)
             {
                 colorBuffer.Add(entry);
@@ -297,11 +293,11 @@ namespace WallstopStudios.UnityHelpers.Utils
                 _colorStackCache.Add(entry);
             }
 
-            List<(Component component, Material material)> materialBuffer = Buffers<(
-                Component component,
-                Material material
-            )>.List;
-            materialBuffer.Clear();
+            using PooledResource<
+                List<(Component component, Material material)>
+            > materialBufferResource = Buffers<(Component component, Material material)>.List.Get();
+            List<(Component component, Material material)> materialBuffer =
+                materialBufferResource.resource;
             foreach ((Component component, Material material) entry in _materialStack)
             {
                 materialBuffer.Add(entry);

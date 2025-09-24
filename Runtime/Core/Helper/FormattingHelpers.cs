@@ -28,8 +28,8 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 }
             }
 
-            StringBuilder stringBuilder = Buffers.StringBuilder;
-            stringBuilder.Clear();
+            using PooledResource<StringBuilder> stringBuilderResource = Buffers.StringBuilder.Get();
+            StringBuilder stringBuilder = stringBuilderResource.resource;
             stringBuilder.AppendFormat("{0:0.##} ", len);
             stringBuilder.Append(ByteSizes[order]);
             return stringBuilder.ToString();

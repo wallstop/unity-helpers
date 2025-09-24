@@ -36,15 +36,21 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
         public static Rect GetWorldRect(this RectTransform transform)
         {
-            Vector3[] fourCorners = new Vector3[4];
+            using PooledResource<Vector3[]> fourCornersResource =
+                WallstopFastArrayPool<Vector3>.Get(4);
+            Vector3[] fourCorners = fourCornersResource.resource;
             transform.GetWorldCorners(fourCorners);
-
-            float[] xValues = fourCorners.Select(vector => vector.x).ToArray();
-            float[] yValues = fourCorners.Select(vector => vector.y).ToArray();
-            float minX = Mathf.Min(xValues);
-            float maxX = Mathf.Max(xValues);
-            float minY = Mathf.Min(yValues);
-            float maxY = Mathf.Max(yValues);
+            float minX = float.MaxValue;
+            float maxX = float.MinValue;
+            float minY = float.MaxValue;
+            float maxY = float.MinValue;
+            foreach (Vector3 corner in fourCorners)
+            {
+                minX = Mathf.Min(minX, corner.x);
+                maxX = Mathf.Max(maxX, corner.x);
+                minY = Mathf.Min(minY, corner.y);
+                maxY = Mathf.Max(maxY, corner.y);
+            }
 
             return new Rect(minX, minY, maxX - minX, maxY - minY);
         }
@@ -385,7 +391,9 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             List<FastVector3Int> convexHull = new() { startPoint };
             _ = points.Remove(startPoint);
             FastVector3Int currentPoint = convexHull[0];
-            List<FastVector3Int> colinearPoints = new();
+            using PooledResource<List<FastVector3Int>> colinearPointsResource =
+                Buffers<FastVector3Int>.List.Get();
+            List<FastVector3Int> colinearPoints = colinearPointsResource.resource;
             int counter = 0;
             while (true)
             {
@@ -623,7 +631,9 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         )
         {
             List<FastVector3Int> convexHull = gridPositions.BuildConvexHull(grid, random);
-            List<HullEdge> concaveHullEdges = new();
+            using PooledResource<List<HullEdge>> concaveHullEdgesResource =
+                Buffers<HullEdge>.List.Get();
+            List<HullEdge> concaveHullEdges = concaveHullEdgesResource.resource;
 
             SortedSet<HullEdge> data = new(ConcaveHullComparer.Instance);
             for (int i = 0; i < convexHull.Count; ++i)
@@ -649,7 +659,9 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 new(gridPositions, CellToWorld, maybeBounds.Value, bucketSize: bucketSize);
 
             QuadTree<FastVector3Int> quadTree = NewQuadTree();
-            List<FastVector3Int> neighbors = Buffers<FastVector3Int>.List;
+            using PooledResource<List<FastVector3Int>> neighborsBuffer =
+                Buffers<FastVector3Int>.List.Get();
+            List<FastVector3Int> neighbors = neighborsBuffer.resource;
             while (0 < data.Count)
             {
                 HullEdge edge = data.Max;
@@ -870,7 +882,9 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return rhsAngle.CompareTo(lhsAngle);
             }
 
-            List<FastVector3Int> clockwisePoints = Buffers<FastVector3Int>.List;
+            using PooledResource<List<FastVector3Int>> clockwisePointsResource =
+                Buffers<FastVector3Int>.List.Get();
+            List<FastVector3Int> clockwisePoints = clockwisePointsResource.resource;
             void FindNearestNeighborsAndPutInClockwisePoints()
             {
                 clockwisePoints.Clear();
