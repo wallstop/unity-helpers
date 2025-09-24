@@ -22,6 +22,22 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         );
 
         [Test]
+        public void PreWarmCount()
+        {
+            int retrieved = 0;
+            int released = 0;
+            using WallstopGenericPool<int> pool = new(
+                () => 0,
+                preWarmCount: 10,
+                onGet: _ => ++retrieved,
+                onRelease: _ => ++released
+            );
+            Assert.AreEqual(10, retrieved);
+            Assert.AreEqual(10, released);
+            Assert.AreEqual(10, pool.Count);
+        }
+
+        [Test]
         public void GenericPoolListTests()
         {
             {

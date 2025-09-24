@@ -1,3 +1,7 @@
+using System.Runtime.CompilerServices;
+
+[assembly: InternalsVisibleTo("WallstopStudios.UnityHelpers.Tests.Runtime")]
+
 namespace WallstopStudios.UnityHelpers.Utils
 {
     using System;
@@ -85,6 +89,7 @@ namespace WallstopStudios.UnityHelpers.Utils
 
         public WallstopGenericPool(
             Func<T> producer,
+            int preWarmCount = 0,
             Action<T> onGet = null,
             Action<T> onRelease = null,
             Action<T> onDisposal = null
@@ -95,6 +100,12 @@ namespace WallstopStudios.UnityHelpers.Utils
             _onRelease = onRelease ?? (_ => { });
             _onRelease += _pool.Push;
             _onDispose = onDisposal;
+            for (int i = 0; i < preWarmCount; ++i)
+            {
+                T value = _producer();
+                _onGet?.Invoke(value);
+                _onRelease(value);
+            }
         }
 
         public PooledResource<T> Get()
@@ -125,6 +136,8 @@ namespace WallstopStudios.UnityHelpers.Utils
 #else
     public sealed class WallstopGenericPool<T> : IDisposable
     {
+        internal int Count => _pool.Count;
+
         private readonly Func<T> _producer;
         private readonly Action<T> _onGet;
         private readonly Action<T> _onRelease;
@@ -134,6 +147,7 @@ namespace WallstopStudios.UnityHelpers.Utils
 
         public WallstopGenericPool(
             Func<T> producer,
+            int preWarmCount = 0,
             Action<T> onGet = null,
             Action<T> onRelease = null,
             Action<T> onDisposal = null
@@ -144,6 +158,12 @@ namespace WallstopStudios.UnityHelpers.Utils
             _onRelease = onRelease ?? (_ => { });
             _onRelease += _pool.Push;
             _onDispose = onDisposal;
+            for (int i = 0; i < preWarmCount; ++i)
+            {
+                T value = _producer();
+                _onGet?.Invoke(value);
+                _onRelease(value);
+            }
         }
 
         public PooledResource<T> Get()

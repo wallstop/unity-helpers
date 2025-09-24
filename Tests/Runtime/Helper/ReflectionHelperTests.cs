@@ -836,7 +836,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void InvokeStaticMethodWithParameters()
         {
-            var directResult = TestMethodClass.StaticMethodWithParam(10);
+            int directResult = TestMethodClass.StaticMethodWithParam(10);
             Assert.AreEqual(20, directResult);
 
             TestMethodClass testObj = new();
@@ -852,11 +852,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 nameof(TestMethodClass.StaticMethodMultipleParams)
             );
 
-            var result1 = ReflectionHelpers.InvokeStaticMethod(paramMethod, 10);
+            object result1 = ReflectionHelpers.InvokeStaticMethod(paramMethod, 10);
             Assert.AreEqual(20, result1);
             ReflectionHelpers.InvokeStaticMethod(voidParamMethod, 99);
             Assert.AreEqual(99, TestMethodClass.StaticMethodCallCount);
-            var result3 = ReflectionHelpers.InvokeStaticMethod(multiParamMethod, 5, "abc", true);
+            object result3 = ReflectionHelpers.InvokeStaticMethod(multiParamMethod, 5, "abc", true);
             Assert.AreEqual(9, result3);
         }
 
