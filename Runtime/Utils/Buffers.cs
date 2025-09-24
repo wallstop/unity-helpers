@@ -1,11 +1,13 @@
 namespace WallstopStudios.UnityHelpers.Utils
 {
     using System;
-    using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Text;
-    using System.Threading;
     using UnityEngine;
+#if !SINGLE_THREADED
+    using System.Threading;
+    using System.Collections.Concurrent;
+#endif
 
     public static class Buffers
     {
@@ -69,33 +71,6 @@ namespace WallstopStudios.UnityHelpers.Utils
 
             _onGet?.Invoke(value);
             return new PooledResource<T>(value, _onRelease);
-        }
-
-        public static Action<T> GetClearAction()
-        {
-            try
-            {
-                Type type = typeof(T);
-                foreach (
-                    MethodInfo method in type.GetMethods(
-                        BindingFlags.Instance | BindingFlags.Public
-                    )
-                )
-                {
-                    if (
-                        string.Equals(method.Name, "Clear", StringComparison.Ordinal)
-                        && method.GetParameters().Length == 0
-                    )
-                    {
-                        return (Action<T>)Delegate.CreateDelegate(typeof(Action<T>), method);
-                    }
-                }
-            }
-            catch
-            {
-                // Swallow
-            }
-            return null;
         }
 
         public void Dispose()
@@ -309,7 +284,6 @@ namespace WallstopStudios.UnityHelpers.Utils
         }
     }
 #else
-
     public static class WallstopFastArrayPool<T>
     {
         private static readonly ReaderWriterLockSlim _lock = new();
