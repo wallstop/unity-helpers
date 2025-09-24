@@ -16,12 +16,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
     public sealed class BuffersTests
     {
+        private readonly WallstopGenericPool<List<int>> _intPool = new(
+            () => new List<int>(),
+            onRelease: list => list.Clear()
+        );
+
         [Test]
         public void GenericPoolListTests()
         {
             {
-                using PooledResource<List<int>> firstList = WallstopGenericPool<List<int>>.Get();
-                using PooledResource<List<int>> secondList = WallstopGenericPool<List<int>>.Get();
+                using PooledResource<List<int>> firstList = _intPool.Get();
+                using PooledResource<List<int>> secondList = _intPool.Get();
                 Assert.AreNotEqual(firstList, secondList);
                 firstList.resource.Add(1);
                 Assert.AreEqual(1, firstList.resource.Count);
@@ -32,7 +37,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             }
             {
                 // Ensure cleared
-                using PooledResource<List<int>> firstList = WallstopGenericPool<List<int>>.Get();
+                using PooledResource<List<int>> firstList = _intPool.Get();
                 Assert.AreEqual(0, firstList.resource.Count);
             }
         }
@@ -654,7 +659,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [Test]
         public void WallstopGenericPoolGetReturnsValidPooledResource()
         {
-            using PooledResource<List<int>> pooled = WallstopGenericPool<List<int>>.Get();
+            using PooledResource<List<int>> pooled = _intPool.Get();
 
             Assert.NotNull(pooled.resource);
             Assert.AreEqual(0, pooled.resource.Count);
@@ -665,14 +670,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         {
             List<int> firstList;
 
-            using (PooledResource<List<int>> pooled = WallstopGenericPool<List<int>>.Get())
+            using (PooledResource<List<int>> pooled = _intPool.Get())
             {
                 firstList = pooled.resource;
                 firstList.Add(42);
                 firstList.Add(100);
             }
 
-            using PooledResource<List<int>> pooledReused = WallstopGenericPool<List<int>>.Get();
+            using PooledResource<List<int>> pooledReused = _intPool.Get();
             Assert.AreSame(firstList, pooledReused.resource);
             Assert.AreEqual(0, pooledReused.resource.Count);
         }
@@ -680,9 +685,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [Test]
         public void WallstopGenericPoolClearActionWorksWithCustomType()
         {
-            using PooledResource<HashSet<string>> pooled = WallstopGenericPool<
-                HashSet<string>
-            >.Get();
+            using WallstopGenericPool<HashSet<string>> pool = new(() => new HashSet<string>());
+            using PooledResource<HashSet<string>> pooled = pool.Get();
 
             pooled.resource.Add("test1");
             pooled.resource.Add("test2");
@@ -692,29 +696,30 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [Test]
         public void PooledResourceDisposeCallsOnDisposeAction()
         {
+            bool clearCalled = false;
             bool disposeCalled = false;
-            WallstopGenericPool<List<int>>.clearAction ??= list => list.Clear();
-            WallstopGenericPool<List<int>>.clearAction += Callback;
-            try
             {
-                using (PooledResource<List<int>> pooled = WallstopGenericPool<List<int>>.Get())
+                using WallstopGenericPool<List<int>> pool = new(
+                    () => new List<int>(),
+                    onRelease: list =>
+                    {
+                        list.Clear();
+                        clearCalled = true;
+                    },
+                    onDisposal: _ => disposeCalled = true
+                );
+
+                using (PooledResource<List<int>> pooled = pool.Get())
                 {
                     Assert.NotNull(pooled.resource);
+                    Assert.IsFalse(clearCalled);
                     Assert.IsFalse(disposeCalled);
                 }
 
-                Assert.IsTrue(disposeCalled);
-            }
-            finally
-            {
-                WallstopGenericPool<List<int>>.clearAction -= Callback;
+                Assert.IsTrue(clearCalled);
             }
 
-            return;
-            void Callback(List<int> list)
-            {
-                disposeCalled = true;
-            }
+            Assert.IsTrue(disposeCalled);
         }
     }
 }

@@ -1013,6 +1013,33 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
         }
 
+        public static Action<T> BuildParameterlessInstanceMethodIfExists<T>(string methodName)
+        {
+            try
+            {
+                Type type = typeof(T);
+                foreach (
+                    MethodInfo method in type.GetMethods(
+                        BindingFlags.Instance | BindingFlags.Public
+                    )
+                )
+                {
+                    if (
+                        string.Equals(method.Name, methodName, StringComparison.Ordinal)
+                        && method.GetParameters().Length == 0
+                    )
+                    {
+                        return (Action<T>)Delegate.CreateDelegate(typeof(Action<T>), method);
+                    }
+                }
+            }
+            catch
+            {
+                // Swallow
+            }
+            return null;
+        }
+
         public static bool HasAttributeSafe(
             ICustomAttributeProvider provider,
             Type attributeType,

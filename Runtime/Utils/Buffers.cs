@@ -3,11 +3,9 @@ namespace WallstopStudios.UnityHelpers.Utils
     using System;
     using System.Collections.Concurrent;
     using System.Collections.Generic;
-    using System.Reflection;
     using System.Text;
     using System.Threading;
     using UnityEngine;
-    using WallstopStudios.UnityHelpers.Core.Helper;
 
     public static class Buffers
     {
@@ -38,33 +36,42 @@ namespace WallstopStudios.UnityHelpers.Utils
         public static readonly Stack<T> Stack = new();
     }
 
-    public static class WallstopGenericPool<T>
-        where T : new()
+#if SINGLE_THREADED
+    public sealed class WallstopGenericPool<T> : IDisposable
     {
-        public static Action<T> clearAction;
+        private readonly Func<T> _producer;
+        private readonly Action<T> _onGet;
+        private readonly Action<T> _onRelease;
+        private readonly Action<T> _onDispose;
 
-        private static readonly List<T> _pool = new();
-        private static readonly Action<T> _onDispose = Release;
+        private readonly Stack<T> _pool = new();
 
-        static WallstopGenericPool()
+        public WallstopGenericPool(
+            Func<T> producer,
+            Action<T> onGet = null,
+            Action<T> onRelease = null,
+            Action<T> onDisposal = null
+        )
         {
-            clearAction = GetClearAction();
+            _producer = producer ?? throw new ArgumentNullException(nameof(producer));
+            _onGet = onGet;
+            _onRelease = onRelease ?? (_ => { });
+            _onRelease += _pool.Push;
+            _onDispose = onDisposal;
         }
 
-        public static PooledResource<T> Get()
+        public PooledResource<T> Get()
         {
-            if (_pool.Count == 0)
+            if (!_pool.TryPop(out T value))
             {
-                return new PooledResource<T>(new T(), _onDispose);
+                value = _producer();
             }
 
-            int lastIndex = _pool.Count - 1;
-            T instance = _pool[lastIndex];
-            _pool.RemoveAt(lastIndex);
-            return new PooledResource<T>(instance, _onDispose);
+            _onGet?.Invoke(value);
+            return new PooledResource<T>(value, _onRelease);
         }
 
-        private static Action<T> GetClearAction()
+        public static Action<T> GetClearAction()
         {
             try
             {
@@ -91,13 +98,72 @@ namespace WallstopStudios.UnityHelpers.Utils
             return null;
         }
 
-        private static void Release(T resource)
+        public void Dispose()
         {
-            clearAction?.Invoke(resource);
-            _pool.Add(resource);
+            if (_onDispose == null)
+            {
+                _pool.Clear();
+                return;
+            }
+
+            while (_pool.TryPop(out T value))
+            {
+                _onDispose(value);
+            }
         }
     }
+#else
+    public sealed class WallstopGenericPool<T> : IDisposable
+    {
+        private readonly Func<T> _producer;
+        private readonly Action<T> _onGet;
+        private readonly Action<T> _onRelease;
+        private readonly Action<T> _onDispose;
 
+        private readonly ConcurrentStack<T> _pool = new();
+
+        public WallstopGenericPool(
+            Func<T> producer,
+            Action<T> onGet = null,
+            Action<T> onRelease = null,
+            Action<T> onDisposal = null
+        )
+        {
+            _producer = producer ?? throw new ArgumentNullException(nameof(producer));
+            _onGet = onGet;
+            _onRelease = onRelease ?? (_ => { });
+            _onRelease += _pool.Push;
+            _onDispose = onDisposal;
+        }
+
+        public PooledResource<T> Get()
+        {
+            if (!_pool.TryPop(out T value))
+            {
+                value = _producer();
+            }
+
+            _onGet?.Invoke(value);
+            return new PooledResource<T>(value, _onRelease);
+        }
+
+        public void Dispose()
+        {
+            if (_onDispose == null)
+            {
+                _pool.Clear();
+                return;
+            }
+
+            while (_pool.TryPop(out T value))
+            {
+                _onDispose(value);
+            }
+        }
+    }
+#endif
+
+#if SINGLE_THREADED
     public static class WallstopArrayPool<T>
     {
         private static readonly Dictionary<int, List<T[]>> _pool = new();
@@ -150,12 +216,54 @@ namespace WallstopStudios.UnityHelpers.Utils
             pool.Add(resource);
         }
     }
+#else
+    public static class WallstopArrayPool<T>
+    {
+        private static readonly ConcurrentDictionary<int, ConcurrentStack<T[]>> _pool = new();
+        private static readonly Action<T[]> _onRelease = Release;
+
+        public static PooledResource<T[]> Get(int size)
+        {
+            switch (size)
+            {
+                case < 0:
+                {
+                    throw new ArgumentOutOfRangeException(
+                        nameof(size),
+                        size,
+                        "Must be non-negative."
+                    );
+                }
+                case 0:
+                {
+                    return new PooledResource<T[]>(Array.Empty<T>(), _ => { });
+                }
+            }
+
+            ConcurrentStack<T[]> result = _pool.GetOrAdd(size, _ => new ConcurrentStack<T[]>());
+            if (!result.TryPop(out T[] array))
+            {
+                array = new T[size];
+            }
+
+            return new PooledResource<T[]>(array, _onRelease);
+        }
+
+        private static void Release(T[] resource)
+        {
+            int length = resource.Length;
+            Array.Clear(resource, 0, length);
+            ConcurrentStack<T[]> result = _pool.GetOrAdd(length, _ => new ConcurrentStack<T[]>());
+            result.Push(resource);
+        }
+    }
+#endif
 
 #if SINGLE_THREADED
     public static class WallstopFastArrayPool<T>
     {
-        private static readonly List<List<T[]>> _pool = new();
-        private static readonly Action<T[]> _onDispose = Release;
+        private static readonly List<Stack<T[]>> _pool = new();
+        private static readonly Action<T[]> _onRelease = Release;
 
         public static PooledResource<T[]> Get(int size)
         {
@@ -180,27 +288,24 @@ namespace WallstopStudios.UnityHelpers.Utils
                 _pool.Add(null);
             }
 
-            List<T[]> pool = _pool[size];
+            Stack<T[]> pool = _pool[size];
             if (pool == null)
             {
-                pool = new List<T[]>();
+                pool = new Stack<T[]>();
                 _pool[size] = pool;
             }
 
-            if (pool.Count == 0)
+            if (!pool.TryPop(out T[] instance))
             {
-                return new PooledResource<T[]>(new T[size], _onDispose);
+                instance = new T[size];
             }
 
-            int lastIndex = pool.Count - 1;
-            T[] instance = pool[lastIndex];
-            pool.RemoveAt(lastIndex);
-            return new PooledResource<T[]>(instance, _onDispose);
+            return new PooledResource<T[]>(instance, _onRelease);
         }
 
         private static void Release(T[] resource)
         {
-            _pool[resource.Length].Add(resource);
+            _pool[resource.Length].Push(resource);
         }
     }
 #else
@@ -209,7 +314,7 @@ namespace WallstopStudios.UnityHelpers.Utils
     {
         private static readonly ReaderWriterLockSlim _lock = new();
         private static readonly List<ConcurrentStack<T[]>> _pool = new();
-        private static readonly Action<T[]> _onDispose = Release;
+        private static readonly Action<T[]> _onRelease = Release;
 
         public static PooledResource<T[]> Get(int size)
         {
@@ -331,11 +436,12 @@ namespace WallstopStudios.UnityHelpers.Utils
                 }
             }
 
-            if (pool.TryPop(out T[] instance))
+            if (!pool.TryPop(out T[] instance))
             {
-                return new PooledResource<T[]>(instance, _onDispose);
+                instance = new T[size];
             }
-            return new PooledResource<T[]>(new T[size], _onDispose);
+
+            return new PooledResource<T[]>(instance, _onRelease);
         }
 
         private static void Release(T[] resource)
