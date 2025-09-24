@@ -160,7 +160,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
         public static bool Approximately(this float lhs, float rhs, float tolerance = 0.045f)
         {
-            return Mathf.Abs(lhs - rhs) <= tolerance;
+            return Mathf.Abs(lhs - rhs) <= Mathf.Abs(tolerance);
         }
     }
 }
