@@ -21,6 +21,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             createDefaultDecorators: true
         );
 
+        private static bool ShouldLogOnMainThread =>
+            Equals(Thread.CurrentThread, UnityMainThread)
+            || (UnityMainThread == null && !Application.isPlaying);
+
         private static Thread UnityMainThread;
         private const int LogsPerCacheClean = 5;
 
@@ -138,7 +142,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 #if ENABLE_UBERLOGGING || DEBUG_LOGGING
             if (LoggingAllowed(component))
             {
-                if (Equals(Thread.CurrentThread, UnityMainThread))
+                if (ShouldLogOnMainThread)
                 {
                     LogInstance.Log(message, component, e, pretty);
                 }
@@ -167,7 +171,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 #if ENABLE_UBERLOGGING || WARN_LOGGING
             if (LoggingAllowed(component))
             {
-                if (Equals(Thread.CurrentThread, UnityMainThread))
+                if (ShouldLogOnMainThread)
                 {
                     LogInstance.LogWarn(message, component, e, pretty);
                 }
@@ -196,7 +200,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 #if ENABLE_UBERLOGGING || ERROR_LOGGING
             if (LoggingAllowed(component))
             {
-                if (Equals(Thread.CurrentThread, UnityMainThread))
+                if (ShouldLogOnMainThread)
                 {
                     LogInstance.LogError(message, component, e, pretty);
                 }
