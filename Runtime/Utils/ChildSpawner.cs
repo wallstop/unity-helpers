@@ -37,6 +37,12 @@ namespace WallstopStudios.UnityHelpers.Utils
         [SerializeField]
         private GameObject[] _developmentOnlyPrefabs = Array.Empty<GameObject>();
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void ClearSpawnedPrefabs()
+        {
+            SpawnedPrefabs.Clear();
+        }
+
         private void Awake()
         {
             if (_spawnMethod.HasFlagNoAlloc(ChildSpawnMethod.Awake))

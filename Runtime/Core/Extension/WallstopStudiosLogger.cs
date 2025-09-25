@@ -37,6 +37,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         private static void InitializeMainThread()
         {
             UnityMainThread = Thread.CurrentThread;
+            Disabled.Clear();
         }
 
         public static void GlobalEnableLogging(this Object component)
