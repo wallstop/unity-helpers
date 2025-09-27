@@ -2,6 +2,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 {
     using System;
     using System.Collections;
+    using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Linq;
     using System.Reflection;
@@ -18,7 +19,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
     public static partial class Helpers
     {
         private static readonly WaitForEndOfFrame WaitForEndOfFrame = new();
+#if SINGLE_THREADED
         private static readonly Dictionary<Type, MethodInfo> AwakeMethodsByType = new();
+#else
+        private static readonly ConcurrentDictionary<Type, MethodInfo> AwakeMethodsByType = new();
+#endif
         private static readonly Object LogObject = new();
         private static readonly Dictionary<string, Object> ObjectsByTag = new(
             StringComparer.Ordinal
@@ -221,10 +226,23 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
         public static GameObject FindChildGameObjectWithTag(this GameObject gameObject, string tag)
         {
-            return gameObject
-                .transform.IterateOverAllChildrenRecursively(includeSelf: true)
-                .Select(t => t.gameObject)
-                .FirstOrDefault(child => child.CompareTag(tag));
+            using PooledResource<List<Transform>> bufferResource = Buffers<Transform>.List.Get();
+            foreach (
+                Transform t in gameObject.transform.IterateOverAllChildrenRecursively(
+                    bufferResource.resource,
+                    includeSelf: true
+                )
+            )
+            {
+                GameObject go = t.gameObject;
+
+                if (go.CompareTag(tag))
+                {
+                    return go;
+                }
+            }
+
+            return null;
         }
 
         public static Coroutine StartFunctionAsCoroutine(
@@ -548,10 +566,22 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             string tag
         )
         {
-            return gameObject
-                .transform.IterateOverAllChildrenRecursively(includeSelf: true)
-                .Select(t => t.gameObject)
-                .FirstOrDefault(go => go.CompareTag(tag));
+            using PooledResource<List<Transform>> bufferResource = Buffers<Transform>.List.Get();
+            foreach (
+                Transform t in gameObject.transform.IterateOverAllChildrenRecursively(
+                    bufferResource.resource,
+                    includeSelf: true
+                )
+            )
+            {
+                GameObject go = t.gameObject;
+                if (go.CompareTag(tag))
+                {
+                    return go;
+                }
+            }
+
+            return null;
         }
 
         //https://answers.unity.com/questions/722748/refreshing-the-polygon-collider-2d-upon-sprite-cha.html
@@ -559,7 +589,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         {
             if (
                 !component.TryGetComponent(out SpriteRenderer spriteRenderer)
-                || component.TryGetComponent(out PolygonCollider2D collider)
+                || !component.TryGetComponent(out PolygonCollider2D collider)
             )
             {
                 return;
@@ -577,7 +607,8 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
             int pathCount = collider.pathCount = sprite.GetPhysicsShapeCount();
 
-            List<Vector2> path = new();
+            using PooledResource<List<Vector2>> pathResource = Buffers<Vector2>.List.Get();
+            List<Vector2> path = pathResource.resource;
             for (int i = 0; i < pathCount; ++i)
             {
                 path.Clear();
@@ -712,15 +743,32 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
         public static void AwakeObject(this GameObject gameObject)
         {
-            foreach (MonoBehaviour script in gameObject.GetComponentsInChildren<MonoBehaviour>())
+            using PooledResource<List<MonoBehaviour>> componentResource =
+                Buffers<MonoBehaviour>.List.Get();
+            List<MonoBehaviour> components = componentResource.resource;
+            gameObject.GetComponentsInChildren(false, components);
+            foreach (MonoBehaviour script in components)
             {
                 MethodInfo awakeInfo = AwakeMethodsByType.GetOrAdd(
                     script.GetType(),
                     type =>
-                        type.GetMethod(
-                            "Awake",
+                    {
+                        MethodInfo[] methods = type.GetMethods(
                             BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
-                        )
+                        );
+                        foreach (MethodInfo method in methods)
+                        {
+                            if (
+                                string.Equals(method.Name, "Awake", StringComparison.Ordinal)
+                                && method.GetParameters().Length == 0
+                            )
+                            {
+                                return method;
+                            }
+                        }
+
+                        return null;
+                    }
                 );
                 if (awakeInfo != null)
                 {

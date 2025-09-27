@@ -1116,7 +1116,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         }
 
         public static TAttribute[] GetAllAttributesSafe<TAttribute>(
-            ICustomAttributeProvider provider,
+            this ICustomAttributeProvider provider,
             bool inherit = true
         )
             where TAttribute : Attribute
@@ -1144,7 +1144,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         }
 
         public static Attribute[] GetAllAttributesSafe(
-            ICustomAttributeProvider provider,
+            this ICustomAttributeProvider provider,
             bool inherit = true
         )
         {
@@ -1164,7 +1164,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         }
 
         public static Attribute[] GetAllAttributesSafe(
-            ICustomAttributeProvider provider,
+            this ICustomAttributeProvider provider,
             Type attributeType,
             bool inherit = true
         )
@@ -1192,7 +1192,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         }
 
         public static Dictionary<string, object> GetAllAttributeValuesSafe(
-            ICustomAttributeProvider provider,
+            this ICustomAttributeProvider provider,
             bool inherit = true
         )
         {
@@ -1222,7 +1222,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         }
 
         public static MethodInfo[] GetMethodsWithAttributeSafe<TAttribute>(
-            Type type,
+            this Type type,
             bool inherit = true
         )
             where TAttribute : Attribute
@@ -1251,7 +1251,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         }
 
         public static PropertyInfo[] GetPropertiesWithAttributeSafe<TAttribute>(
-            Type type,
+            this Type type,
             bool inherit = true
         )
             where TAttribute : Attribute
@@ -1280,7 +1280,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         }
 
         public static FieldInfo[] GetFieldsWithAttributeSafe<TAttribute>(
-            Type type,
+            this Type type,
             bool inherit = true
         )
             where TAttribute : Attribute

@@ -24,7 +24,7 @@ namespace WallstopStudios.UnityHelpers.Editor
         private static readonly Dictionary<Type, List<FieldInfo>> ListFieldsByType = new();
         private static readonly Dictionary<Type, List<FieldInfo>> StringFieldsByType = new();
         private static readonly Dictionary<Type, List<FieldInfo>> ObjectFieldsByType = new();
-        private static readonly Dictionary<Type, List<RequireComponent>> RequiredComponentsByType =
+        private static readonly Dictionary<Type, RequireComponent[]> RequiredComponentsByType =
             new();
 
         private readonly List<string> _assetPaths = new();
@@ -486,33 +486,59 @@ namespace WallstopStudios.UnityHelpers.Editor
             List<MonoBehaviour> buffer
         )
         {
-            Transform[] allTransforms = prefabRoot.GetComponentsInChildren<Transform>(true);
-            foreach (Transform transform in allTransforms)
+            using PooledResource<List<Transform>> transformBufferResource =
+                Buffers<Transform>.List.Get();
+            List<Transform> transforms = transformBufferResource.resource;
+            prefabRoot.GetComponentsInChildren(true, transforms);
+            foreach (Transform transform in transforms)
             {
-                MonoBehaviour[] components = transform.GetComponents<MonoBehaviour>();
-                if (
-                    components.Length
-                    == buffer.Count(c => c != null && c.gameObject == transform.gameObject)
-                )
+                using PooledResource<List<MonoBehaviour>> componentBuffer =
+                    Buffers<MonoBehaviour>.List.Get();
+                List<MonoBehaviour> components = componentBuffer.resource;
+                transform.GetComponents(components);
+                int bufferCount = 0;
+                foreach (MonoBehaviour c in components)
+                {
+                    if (c != null && c.gameObject == transform.gameObject)
+                    {
+                        ++bufferCount;
+                    }
+                }
+                if (components.Count == bufferCount)
                 {
                     continue;
                 }
 
-                bool foundInNonNullBuffer = components.Any(buffer.Contains);
+                bool foundInNonNullBuffer = false;
+                foreach (MonoBehaviour c in components)
+                {
+                    if (buffer.Contains(c))
+                    {
+                        foundInNonNullBuffer = true;
+                        break;
+                    }
+                }
+
                 if (foundInNonNullBuffer)
                 {
                     return transform.gameObject;
                 }
 
-                if (components.Length != 0 || !buffer.Exists(c => c == null))
+                if (components.Count != 0 || !buffer.Exists(c => c == null))
                 {
                     continue;
                 }
 
-                HashSet<GameObject> gameObjectsWithComponentsInBuffer = buffer
-                    .Where(c => c != null)
-                    .Select(c => c.gameObject)
-                    .ToHashSet();
+                using PooledResource<HashSet<GameObject>> setResource =
+                    Buffers<GameObject>.HashSet.Get();
+                HashSet<GameObject> gameObjectsWithComponentsInBuffer = setResource.resource;
+                foreach (MonoBehaviour c in buffer)
+                {
+                    if (c != null)
+                    {
+                        gameObjectsWithComponentsInBuffer.Add(c.gameObject);
+                    }
+                }
                 if (!gameObjectsWithComponentsInBuffer.Contains(transform.gameObject))
                 {
                     return transform.gameObject;
@@ -535,7 +561,7 @@ namespace WallstopStudios.UnityHelpers.Editor
                         )
                         .Where(field =>
                             field.IsPublic
-                            || field.GetCustomAttributes(typeof(SerializeField), true).Any()
+                            || field.IsAttributeDefined<SerializeField>(out _, inherit: true)
                         )
                         .ToList()
             );
@@ -597,15 +623,12 @@ namespace WallstopStudios.UnityHelpers.Editor
             int issueCount = 0;
             Type componentType = component.GetType();
 
-            List<RequireComponent> required = RequiredComponentsByType.GetOrAdd(
+            RequireComponent[] required = RequiredComponentsByType.GetOrAdd(
                 componentType,
-                type =>
-                    type.GetCustomAttributes(typeof(RequireComponent), true)
-                        .Cast<RequireComponent>()
-                        .ToList()
+                type => type.GetAllAttributesSafe<RequireComponent>(inherit: true)
             );
 
-            if (required.Count <= 0)
+            if (required.Length <= 0)
             {
                 return issueCount;
             }
@@ -688,9 +711,10 @@ namespace WallstopStudios.UnityHelpers.Editor
                 )
             )
             {
-                bool hasValidateAttribute = field
-                    .GetCustomAttributes(typeof(ValidateAssignmentAttribute), true)
-                    .Any();
+                bool hasValidateAttribute = field.IsAttributeDefined<ValidateAssignmentAttribute>(
+                    out _,
+                    inherit: true
+                );
 
                 if (_onlyCheckNullObjectsWithAttribute && !hasValidateAttribute)
                 {

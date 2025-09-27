@@ -53,8 +53,16 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 yield break;
             }
 
-            List<T> buffer = new();
-            foreach (Transform parent in IterateOverAllParents(component, includeSelf))
+            using PooledResource<List<T>> bufferResource = Buffers<T>.List.Get();
+            List<T> buffer = bufferResource.resource;
+            using PooledResource<List<Transform>> transformResource = Buffers<Transform>.List.Get();
+            foreach (
+                Transform parent in IterateOverAllParents(
+                    component,
+                    transformResource.resource,
+                    includeSelf
+                )
+            )
             {
                 parent.GetComponents(buffer);
                 foreach (T c in buffer)
@@ -111,7 +119,8 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 yield break;
             }
 
-            List<T> buffer = new();
+            using PooledResource<List<T>> bufferResource = Buffers<T>.List.Get();
+            List<T> buffer = bufferResource.resource;
             if (includeSelf)
             {
                 component.GetComponents(buffer);
@@ -249,11 +258,13 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 yield return transform;
             }
 
+            using PooledResource<List<Transform>> transformResource = Buffers<Transform>.List.Get();
             for (int i = 0; i < transform.childCount; ++i)
             {
                 foreach (
                     Transform child in IterateOverAllChildrenRecursively(
                         transform.GetChild(i),
+                        transformResource.resource,
                         includeSelf: true
                     )
                 )
@@ -315,7 +326,8 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 yield return transform;
             }
 
-            Queue<Transform> iteration = new();
+            using PooledResource<Queue<Transform>> queueResource = Buffers<Transform>.Queue.Get();
+            Queue<Transform> iteration = queueResource.resource;
             iteration.Enqueue(transform);
             while (iteration.TryDequeue(out Transform current))
             {

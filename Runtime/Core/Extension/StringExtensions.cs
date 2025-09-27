@@ -1,5 +1,6 @@
 namespace WallstopStudios.UnityHelpers.Core.Extension
 {
+    using System;
     using System.Collections.Generic;
     using System.Text;
     using System.Threading;
@@ -36,6 +37,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
         public static byte[] GetBytes(this string input)
         {
+            if (string.IsNullOrEmpty(input))
+            {
+                return Array.Empty<byte>();
+            }
             return Encoding.Default.GetBytes(input);
         }
 
@@ -99,6 +104,11 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
         public static string ToPascalCase(this string value, string separator = "")
         {
+            if (string.IsNullOrEmpty(value))
+            {
+                return string.Empty;
+            }
+
             int startIndex = 0;
             StringBuilder stringBuilder = StringBuilderCache.Value;
             stringBuilder.Clear();
