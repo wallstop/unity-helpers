@@ -22,16 +22,19 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
     public static class ChildComponentExtensions
     {
-        private static readonly List<Component> ChildCache = new();
         private static readonly Dictionary<
             Type,
-            (FieldInfo field, Action<object, object> setter)[]
+            (FieldInfo field, ChildComponentAttribute attribute, Action<object, object> setter)[]
         > FieldsByType = new();
 
         public static void AssignChildComponents(this Component component)
         {
             Type componentType = component.GetType();
-            (FieldInfo field, Action<object, object> setter)[] fields = FieldsByType.GetOrAdd(
+            (
+                FieldInfo field,
+                ChildComponentAttribute attribute,
+                Action<object, object> setter
+            )[] fields = FieldsByType.GetOrAdd(
                 componentType,
                 type =>
                 {
@@ -39,51 +42,58 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                         BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
                     );
                     return fields
-                        .Where(field => field.IsAttributeDefined<ChildComponentAttribute>(out _))
-                        .Select(field => (field, ReflectionHelpers.GetFieldSetter(field)))
+                        .Select(field =>
+                            field.IsAttributeDefined(out ChildComponentAttribute attribute)
+                                ? (field, attribute, ReflectionHelpers.GetFieldSetter(field))
+                                : (null, null, null)
+                        )
+                        .Where(tuple => tuple.attribute != null)
                         .ToArray();
                 }
             );
 
-            foreach ((FieldInfo field, Action<object, object> setter) in fields)
+            foreach (
+                (
+                    FieldInfo field,
+                    ChildComponentAttribute attribute,
+                    Action<object, object> setter
+                ) in fields
+            )
             {
-                if (!field.IsAttributeDefined(out ChildComponentAttribute customAttribute))
-                {
-                    continue;
-                }
-
                 Type fieldType = field.FieldType;
                 bool isArray = fieldType.IsArray;
                 Type childComponentType = isArray ? fieldType.GetElementType() : fieldType;
                 bool foundChild;
-                if (customAttribute.onlyDescendents)
+                if (attribute.onlyDescendents)
                 {
+                    using PooledResource<List<Transform>> childBufferResource =
+                        Buffers<Transform>.List.Get();
+                    List<Transform> childBuffer = childBufferResource.resource;
                     if (isArray)
                     {
-                        ChildCache.Clear();
-                        using PooledResource<List<Transform>> childBufferResource =
-                            Buffers<Transform>.List.Get();
-                        List<Transform> childBuffer = childBufferResource.resource;
+                        using PooledResource<List<Component>> componentResource =
+                            Buffers<Component>.List.Get();
+                        List<Component> cache = componentResource.resource;
                         foreach (Transform child in component.IterateOverAllChildren(childBuffer))
                         {
                             foreach (
                                 Component childComponent in child.GetComponentsInChildren(
                                     childComponentType,
-                                    customAttribute.includeInactive
+                                    attribute.includeInactive
                                 )
                             )
                             {
-                                ChildCache.Add(childComponent);
+                                cache.Add(childComponent);
                             }
                         }
 
-                        foundChild = 0 < ChildCache.Count;
+                        foundChild = 0 < cache.Count;
 
                         Array correctTypedArray = ReflectionHelpers.CreateArray(
                             childComponentType,
-                            ChildCache.Count
+                            cache.Count
                         );
-                        Array.Copy(ChildCache.ToArray(), correctTypedArray, ChildCache.Count);
+                        Array.Copy(cache.ToArray(), correctTypedArray, cache.Count);
                         setter(component, correctTypedArray);
                     }
                     else if (
@@ -95,15 +105,12 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
                         IList instance = ReflectionHelpers.CreateList(childComponentType);
                         foundChild = false;
-                        using PooledResource<List<Transform>> childBufferResource =
-                            Buffers<Transform>.List.Get();
-                        List<Transform> childBuffer = childBufferResource.resource;
                         foreach (Transform child in component.IterateOverAllChildren(childBuffer))
                         {
                             foreach (
                                 Component childComponent in child.GetComponentsInChildren(
                                     childComponentType,
-                                    customAttribute.includeInactive
+                                    attribute.includeInactive
                                 )
                             )
                             {
@@ -118,9 +125,6 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     {
                         foundChild = false;
                         Component childComponent = null;
-                        using PooledResource<List<Transform>> childBufferResource =
-                            Buffers<Transform>.List.Get();
-                        List<Transform> childBuffer = childBufferResource.resource;
                         foreach (
                             Transform child in component.IterateOverAllChildrenRecursivelyBreadthFirst(
                                 childBuffer
@@ -131,7 +135,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                             if (
                                 childComponent == null
                                 || (
-                                    !customAttribute.includeInactive
+                                    !attribute.includeInactive
                                     && (
                                         !childComponent.gameObject.activeInHierarchy
                                         || childComponent is Behaviour { enabled: false }
@@ -157,7 +161,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     {
                         Component[] childComponents = component.GetComponentsInChildren(
                             childComponentType,
-                            customAttribute.includeInactive
+                            attribute.includeInactive
                         );
                         foundChild = 0 < childComponents.Length;
 
@@ -188,7 +192,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                         foreach (
                             Component childComponent in component.GetComponentsInChildren(
                                 childComponentType,
-                                customAttribute.includeInactive
+                                attribute.includeInactive
                             )
                         )
                         {
@@ -202,7 +206,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     {
                         Component childComponent = component.GetComponentInChildren(
                             childComponentType,
-                            customAttribute.includeInactive
+                            attribute.includeInactive
                         );
                         foundChild = childComponent != null;
                         if (foundChild)
@@ -212,7 +216,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     }
                 }
 
-                if (!foundChild && !customAttribute.optional)
+                if (!foundChild && !attribute.optional)
                 {
                     component.LogError($"Unable to find child component of type {fieldType}");
                 }

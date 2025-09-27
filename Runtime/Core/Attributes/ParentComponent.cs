@@ -23,13 +23,17 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     {
         private static readonly Dictionary<
             Type,
-            (FieldInfo field, Action<object, object> setter)[]
+            (FieldInfo field, ParentComponentAttribute attribute, Action<object, object> setter)[]
         > FieldsByType = new();
 
         public static void AssignParentComponents(this Component component)
         {
             Type componentType = component.GetType();
-            (FieldInfo field, Action<object, object> setter)[] fields = FieldsByType.GetOrAdd(
+            (
+                FieldInfo field,
+                ParentComponentAttribute attribute,
+                Action<object, object> setter
+            )[] fields = FieldsByType.GetOrAdd(
                 componentType,
                 type =>
                 {
@@ -37,24 +41,29 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                         BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
                     );
                     return fields
-                        .Where(field => field.IsAttributeDefined<ParentComponentAttribute>(out _))
-                        .Select(field => (field, ReflectionHelpers.GetFieldSetter(field)))
+                        .Select(field =>
+                            field.IsAttributeDefined(out ParentComponentAttribute attribute)
+                                ? (field, attribute, ReflectionHelpers.GetFieldSetter(field))
+                                : (null, null, null)
+                        )
+                        .Where(tuple => tuple.attribute != null)
                         .ToArray();
                 }
             );
 
-            foreach ((FieldInfo field, Action<object, object> setter) in fields)
+            foreach (
+                (
+                    FieldInfo field,
+                    ParentComponentAttribute attribute,
+                    Action<object, object> setter
+                ) in fields
+            )
             {
-                if (!field.IsAttributeDefined(out ParentComponentAttribute customAttribute))
-                {
-                    continue;
-                }
-
                 Type fieldType = field.FieldType;
                 bool isArray = fieldType.IsArray;
                 Type parentComponentType = isArray ? fieldType.GetElementType() : fieldType;
                 bool foundParent;
-                if (customAttribute.onlyAncestors)
+                if (attribute.onlyAncestors)
                 {
                     Transform parent = component.transform.parent;
                     if (parent == null)
@@ -65,7 +74,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     {
                         Component[] parentComponents = parent.GetComponentsInParent(
                             parentComponentType,
-                            customAttribute.includeInactive
+                            attribute.includeInactive
                         );
                         foundParent = 0 < parentComponents.Length;
 
@@ -85,7 +94,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
                         Component[] parents = parent.GetComponentsInParent(
                             parentComponentType,
-                            customAttribute.includeInactive
+                            attribute.includeInactive
                         );
 
                         IList instance = ReflectionHelpers.CreateList(
@@ -106,7 +115,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     {
                         Component childComponent = parent.GetComponentInParent(
                             parentComponentType,
-                            customAttribute.includeInactive
+                            attribute.includeInactive
                         );
                         foundParent = childComponent != null;
                         if (foundParent)
@@ -121,7 +130,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     {
                         Component[] parentComponents = component.GetComponentsInParent(
                             parentComponentType,
-                            customAttribute.includeInactive
+                            attribute.includeInactive
                         );
                         foundParent = 0 < parentComponents.Length;
 
@@ -140,7 +149,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                         parentComponentType = fieldType.GenericTypeArguments[0];
                         Component[] parents = component.GetComponentsInParent(
                             parentComponentType,
-                            customAttribute.includeInactive
+                            attribute.includeInactive
                         );
 
                         IList instance = ReflectionHelpers.CreateList(
@@ -160,7 +169,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     {
                         Component childComponent = component.GetComponentInParent(
                             parentComponentType,
-                            customAttribute.includeInactive
+                            attribute.includeInactive
                         );
                         foundParent = childComponent != null;
                         if (foundParent)
@@ -170,7 +179,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     }
                 }
 
-                if (!foundParent && !customAttribute.optional)
+                if (!foundParent && !attribute.optional)
                 {
                     component.LogError($"Unable to find parent component of type {fieldType}");
                 }

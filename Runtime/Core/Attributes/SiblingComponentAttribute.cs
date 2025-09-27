@@ -22,13 +22,17 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     {
         private static readonly Dictionary<
             Type,
-            (FieldInfo field, Action<object, object> setter)[]
+            (FieldInfo field, SiblingComponentAttribute attribute, Action<object, object> setter)[]
         > FieldsByType = new();
 
         public static void AssignSiblingComponents(this Component component)
         {
             Type componentType = component.GetType();
-            (FieldInfo field, Action<object, object> setter)[] fields = FieldsByType.GetOrAdd(
+            (
+                FieldInfo field,
+                SiblingComponentAttribute attribute,
+                Action<object, object> setter
+            )[] fields = FieldsByType.GetOrAdd(
                 componentType,
                 type =>
                 {
@@ -36,13 +40,23 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                         BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
                     );
                     return fields
-                        .Where(field => field.IsAttributeDefined<SiblingComponentAttribute>(out _))
-                        .Select(field => (field, ReflectionHelpers.GetFieldSetter(field)))
+                        .Select(field =>
+                            field.IsAttributeDefined(out SiblingComponentAttribute attribute)
+                                ? (field, attribute, ReflectionHelpers.GetFieldSetter(field))
+                                : (null, null, null)
+                        )
+                        .Where(tuple => tuple.attribute != null)
                         .ToArray();
                 }
             );
 
-            foreach ((FieldInfo field, Action<object, object> setter) in fields)
+            foreach (
+                (
+                    FieldInfo field,
+                    SiblingComponentAttribute attribute,
+                    Action<object, object> setter
+                ) in fields
+            )
             {
                 Type fieldType = field.FieldType;
                 bool isArray = fieldType.IsArray;
@@ -113,11 +127,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     }
                 }
 
-                if (
-                    !foundSibling
-                    && field.IsAttributeDefined(out SiblingComponentAttribute customAttribute)
-                    && !customAttribute.optional
-                )
+                if (!foundSibling && !attribute.optional)
                 {
                     component.LogError($"Unable to find sibling component of type {fieldType}");
                 }

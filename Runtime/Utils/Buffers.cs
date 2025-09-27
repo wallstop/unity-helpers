@@ -8,16 +8,25 @@ namespace WallstopStudios.UnityHelpers.Utils
     using System.Collections.Generic;
     using System.Text;
     using UnityEngine;
-    using WallstopStudios.UnityHelpers.Core.Extension;
 #if !SINGLE_THREADED
     using System.Threading;
     using System.Collections.Concurrent;
+#else
+    using WallstopStudios.UnityHelpers.Core.Extension;
 #endif
     public static class Buffers
     {
+#if SINGLE_THREADED
         private static readonly Dictionary<float, WaitForSeconds> WaitForSeconds = new();
         private static readonly Dictionary<float, WaitForSecondsRealtime> WaitForSecondsRealtime =
             new();
+#else
+        private static readonly ConcurrentDictionary<float, WaitForSeconds> WaitForSeconds = new();
+        private static readonly ConcurrentDictionary<
+            float,
+            WaitForSecondsRealtime
+        > WaitForSecondsRealtime = new();
+#endif
 
         public static readonly WaitForFixedUpdate WaitForFixedUpdate = new();
         public static readonly WaitForEndOfFrame WaitForEndOfFrame = new();
@@ -110,7 +119,12 @@ namespace WallstopStudios.UnityHelpers.Utils
 
         public PooledResource<T> Get()
         {
-            if (!_pool.TryPop(out T value))
+            return Get(out _);
+        }
+
+        public PooledResource<T> Get(out T value)
+        {
+            if (!_pool.TryPop(out value))
             {
                 value = _producer();
             }
@@ -168,7 +182,12 @@ namespace WallstopStudios.UnityHelpers.Utils
 
         public PooledResource<T> Get()
         {
-            if (!_pool.TryPop(out T value))
+            return Get(out _);
+        }
+
+        public PooledResource<T> Get(out T value)
+        {
+            if (!_pool.TryPop(out value))
             {
                 value = _producer();
             }
@@ -201,6 +220,11 @@ namespace WallstopStudios.UnityHelpers.Utils
 
         public static PooledResource<T[]> Get(int size)
         {
+            return Get(size, out _);
+        }
+
+        public static PooledResource<T[]> Get(int size, out T[] value)
+        {
             switch (size)
             {
                 case < 0:
@@ -213,7 +237,8 @@ namespace WallstopStudios.UnityHelpers.Utils
                 }
                 case 0:
                 {
-                    return new PooledResource<T[]>(Array.Empty<T>(), _ => { });
+                    value = Array.Empty<T>();
+                    return new PooledResource<T[]>(value, _ => { });
                 }
             }
 
@@ -225,13 +250,14 @@ namespace WallstopStudios.UnityHelpers.Utils
 
             if (pool.Count == 0)
             {
-                return new PooledResource<T[]>(new T[size], _onDispose);
+                value = new T[size];
+                return new PooledResource<T[]>(value, _onDispose);
             }
 
             int lastIndex = pool.Count - 1;
-            T[] instance = pool[lastIndex];
+            value = pool[lastIndex];
             pool.RemoveAt(lastIndex);
-            return new PooledResource<T[]>(instance, _onDispose);
+            return new PooledResource<T[]>(value, _onDispose);
         }
 
         private static void Release(T[] resource)
@@ -254,6 +280,11 @@ namespace WallstopStudios.UnityHelpers.Utils
 
         public static PooledResource<T[]> Get(int size)
         {
+            return Get(size, out _);
+        }
+
+        public static PooledResource<T[]> Get(int size, out T[] value)
+        {
             switch (size)
             {
                 case < 0:
@@ -266,17 +297,18 @@ namespace WallstopStudios.UnityHelpers.Utils
                 }
                 case 0:
                 {
-                    return new PooledResource<T[]>(Array.Empty<T>(), _ => { });
+                    value = Array.Empty<T>();
+                    return new PooledResource<T[]>(value, _ => { });
                 }
             }
 
             ConcurrentStack<T[]> result = _pool.GetOrAdd(size, _ => new ConcurrentStack<T[]>());
-            if (!result.TryPop(out T[] array))
+            if (!result.TryPop(out value))
             {
-                array = new T[size];
+                value = new T[size];
             }
 
-            return new PooledResource<T[]>(array, _onRelease);
+            return new PooledResource<T[]>(value, _onRelease);
         }
 
         private static void Release(T[] resource)
@@ -297,6 +329,11 @@ namespace WallstopStudios.UnityHelpers.Utils
 
         public static PooledResource<T[]> Get(int size)
         {
+            return Get(size, out _);
+        }
+
+        public static PooledResource<T[]> Get(int size, out T[] value)
+        {
             switch (size)
             {
                 case < 0:
@@ -309,7 +346,8 @@ namespace WallstopStudios.UnityHelpers.Utils
                 }
                 case 0:
                 {
-                    return new PooledResource<T[]>(Array.Empty<T>(), _ => { });
+                    value = Array.Empty<T>();
+                    return new PooledResource<T[]>(value, _ => { });
                 }
             }
 
@@ -325,12 +363,12 @@ namespace WallstopStudios.UnityHelpers.Utils
                 _pool[size] = pool;
             }
 
-            if (!pool.TryPop(out T[] instance))
+            if (!pool.TryPop(out value))
             {
-                instance = new T[size];
+                value = new T[size];
             }
 
-            return new PooledResource<T[]>(instance, _onRelease);
+            return new PooledResource<T[]>(value, _onRelease);
         }
 
         private static void Release(T[] resource)
@@ -347,6 +385,11 @@ namespace WallstopStudios.UnityHelpers.Utils
 
         public static PooledResource<T[]> Get(int size)
         {
+            return Get(size, out _);
+        }
+
+        public static PooledResource<T[]> Get(int size, out T[] value)
+        {
             switch (size)
             {
                 case < 0:
@@ -359,7 +402,8 @@ namespace WallstopStudios.UnityHelpers.Utils
                 }
                 case 0:
                 {
-                    return new PooledResource<T[]>(Array.Empty<T>(), _ => { });
+                    value = Array.Empty<T>();
+                    return new PooledResource<T[]>(value, _ => { });
                 }
             }
 
@@ -465,12 +509,12 @@ namespace WallstopStudios.UnityHelpers.Utils
                 }
             }
 
-            if (!pool.TryPop(out T[] instance))
+            if (!pool.TryPop(out value))
             {
-                instance = new T[size];
+                value = new T[size];
             }
 
-            return new PooledResource<T[]>(instance, _onRelease);
+            return new PooledResource<T[]>(value, _onRelease);
         }
 
         private static void Release(T[] resource)
