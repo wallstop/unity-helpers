@@ -13,6 +13,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     using UnityEditor.U2D;
     using UnityEngine;
     using UnityEngine.U2D;
+    using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
     public sealed class ScriptableSpriteAtlasEditor : EditorWindow
@@ -805,6 +806,29 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             platformSettings.format = TextureImporterFormat.Automatic;
             platformSettings.textureCompression = config.compression;
             atlas.SetPlatformSettings(platformSettings);
+
+            int spriteCount = atlas.spriteCount;
+            using PooledResource<Sprite[]> spriteResource = WallstopArrayPool<Sprite>.Get(
+                spriteCount
+            );
+            Sprite[] sprites = spriteResource.resource;
+            int loaded = atlas.GetSprites(sprites);
+            using PooledResource<List<Sprite>> removeResource = Buffers<Sprite>.List.Get();
+            List<Sprite> toRemove = removeResource.resource;
+
+            for (int i = 0; i < loaded; ++i)
+            {
+                Sprite sprite = sprites[i];
+                if (sprite == null)
+                {
+                    toRemove.Add(sprite);
+                }
+            }
+
+            if (toRemove.Count > 0)
+            {
+                atlas.Remove(toRemove.ToArray<Object>());
+            }
 
             Object[] spritesToAdd = config.spritesToPack.Where(s => s != null).ToArray<Object>();
             if (spritesToAdd.Length > 0)
