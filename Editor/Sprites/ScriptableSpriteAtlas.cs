@@ -161,6 +161,18 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         public int crunchCompressionLevel = 50;
 
         public TextureImporterCompression compression = TextureImporterCompression.Compressed;
+
+        private void OnValidate()
+        {
+            if (!Application.isPlaying)
+            {
+                int removed = spritesToPack.RemoveAll(sprite => sprite == null);
+                if (removed > 0)
+                {
+                    EditorUtility.SetDirty(this);
+                }
+            }
+        }
     }
 #endif
 }

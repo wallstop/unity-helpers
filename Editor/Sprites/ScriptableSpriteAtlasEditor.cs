@@ -830,9 +830,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 atlas.Remove(toRemove.ToArray<Object>());
             }
 
-            Object[] spritesToAdd = config.spritesToPack.Where(s => s != null).ToArray<Object>();
-            if (spritesToAdd.Length > 0)
+            int removed = config.spritesToPack.RemoveAll(sprite => sprite == null);
+            if (removed > 0)
             {
+                EditorUtility.SetDirty(config);
+            }
+
+            if (config.spritesToPack.Count > 0)
+            {
+                Object[] spritesToAdd = config.spritesToPack.ToArray<Object>();
                 atlas.Add(spritesToAdd);
             }
             else
@@ -857,7 +863,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 AssetDatabase.Refresh();
             }
             this.Log(
-                $"'{config.name}': Successfully generated/updated at {outputPath}. Sprites included: {spritesToAdd.Length}."
+                $"'{config.name}': Successfully generated/updated at {outputPath}. Sprites included: {config.spritesToPack.Count}."
             );
         }
 
