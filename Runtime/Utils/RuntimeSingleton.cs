@@ -60,6 +60,7 @@ namespace WallstopStudios.UnityHelpers.Utils
 
             if (Preserve && Application.isPlaying)
             {
+                transform.SetParent(null, worldPositionStays: false);
                 DontDestroyOnLoad(gameObject);
             }
         }
