@@ -16,6 +16,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
         protected abstract TTree CreateTree(IEnumerable<Vector2> points);
 
         [UnityTest]
+        [Timeout(0)]
         public IEnumerator Performance()
         {
             UnityEngine.Debug.Log("| Operation | Operations / Second |");

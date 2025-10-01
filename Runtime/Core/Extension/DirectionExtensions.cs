@@ -2,17 +2,22 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 {
     using System;
     using System.Collections.Generic;
-    using System.Linq;
-    using Helper;
     using Model;
     using UnityEngine;
 
     public static class DirectionExtensions
     {
-        private static readonly Direction[] Directions = Enum.GetValues(typeof(Direction))
-            .OfType<Direction>()
-            .Except(Enumerables.Of(Direction.None))
-            .ToArray();
+        private static readonly Direction[] Directions =
+        {
+            Direction.North,
+            Direction.NorthEast,
+            Direction.East,
+            Direction.SouthEast,
+            Direction.South,
+            Direction.SouthWest,
+            Direction.West,
+            Direction.NorthWest,
+        };
 
         public static Direction Opposite(this Direction direction)
         {

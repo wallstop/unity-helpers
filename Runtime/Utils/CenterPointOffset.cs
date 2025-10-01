@@ -1,6 +1,5 @@
 namespace WallstopStudios.UnityHelpers.Utils
 {
-    using Core.Attributes;
     using UnityEngine;
 
     [DisallowMultipleComponent]
@@ -10,20 +9,13 @@ namespace WallstopStudios.UnityHelpers.Utils
 
         public bool spriteUsesOffset = true;
 
-        [SiblingComponent]
-        private Transform _transform;
-
-        private void Awake()
-        {
-            this.AssignSiblingComponents();
-        }
-
         public Vector2 CenterPoint
         {
             get
             {
-                Vector2 scaledOffset = offset * _transform.localScale;
-                return (Vector2)_transform.position + scaledOffset;
+                Transform localTransform = transform;
+                Vector2 scaledOffset = offset * localTransform.localScale;
+                return (Vector2)localTransform.position + scaledOffset;
             }
         }
     }

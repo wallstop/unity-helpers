@@ -9,7 +9,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
     {
         private const int NumInvocationsPerIteration = 100_000;
 
-        [Test]
+        [Test, Timeout(0)]
         public void Benchmark()
         {
             TimeSpan timeout = TimeSpan.FromSeconds(1);

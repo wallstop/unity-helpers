@@ -137,32 +137,23 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
         }
 
-        public static IEnumerable<T[]> Partition<T>(this IEnumerable<T> items, int size)
+        public static IEnumerable<List<T>> Partition<T>(this IEnumerable<T> items, int size)
         {
             using IEnumerator<T> enumerator = items.GetEnumerator();
-            using PooledResource<T[]> arrayBuffer = WallstopArrayPool<T>.Get(size);
-            T[] partition = arrayBuffer.resource;
+            using PooledResource<List<T>> listBuffer = Buffers<T>.List.Get();
+            List<T> partition = listBuffer.resource;
+
             while (enumerator.MoveNext())
             {
                 int count = 0;
                 do
                 {
-                    partition[count++] = enumerator.Current;
-                } while (count < size && enumerator.MoveNext());
+                    partition.Add(enumerator.Current);
+                } while (++count < size && enumerator.MoveNext());
 
                 yield return partition;
-                Array.Clear(partition, 0, size);
+                partition.Clear();
             }
-        }
-
-        public static List<T> ToList<T>(this IEnumerable<T> enumerable, int count)
-        {
-            List<T> list = new(count);
-            foreach (T item in enumerable)
-            {
-                list.Add(item);
-            }
-            return list;
         }
     }
 }

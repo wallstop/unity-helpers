@@ -33,6 +33,14 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             StringComparer.OrdinalIgnoreCase
         );
 
+        private static string[] CachedLayerNames;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void CLearLayerNames()
+        {
+            CachedLayerNames = null;
+        }
+
         public static bool IsRunningInBatchMode => Application.isBatchMode;
 
         public static bool IsRunningInContinuousIntegration
@@ -114,10 +122,38 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         public static string[] GetAllLayerNames()
         {
 #if UNITY_EDITOR
-            return InternalEditorUtility.layers;
-#else
-            return Array.Empty<string>();
+            try
+            {
+                // Prefer the editor API when available
+                string[] editorLayers = InternalEditorUtility.layers;
+                if (editorLayers is { Length: > 0 })
+                {
+                    return editorLayers;
+                }
+            }
+            catch
+            {
+                // Fall through to runtime-safe fallback below
+            }
 #endif
+            if (!Application.isEditor && Application.isPlaying && CachedLayerNames != null)
+            {
+                return CachedLayerNames;
+            }
+
+            using PooledResource<List<string>> layerBuffer = Buffers<string>.List.Get();
+            List<string> layers = layerBuffer.resource;
+            for (int i = 0; i < 32; ++i)
+            {
+                string name = LayerMask.LayerToName(i);
+                if (!string.IsNullOrEmpty(name))
+                {
+                    layers.Add(name);
+                }
+            }
+
+            CachedLayerNames = layers.ToArray();
+            return CachedLayerNames;
         }
 
         // https://gamedevelopment.tutsplus.com/tutorials/unity-solution-for-hitting-moving-targets--cms-29633
@@ -476,63 +512,6 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             return new Vector3Int(vector.x, vector.y);
         }
 
-        public static T CopyTo<T>(this T original, GameObject destination)
-            where T : Component
-        {
-            Type type = original.GetType();
-            T copied = destination.GetComponent(type) as T;
-            if (copied == null)
-            {
-                copied = destination.AddComponent(type) as T;
-            }
-
-            foreach (FieldInfo field in type.GetFields(BindingFlags.Instance | BindingFlags.Public))
-            {
-                try
-                {
-                    field.SetValue(copied, field.GetValue(original));
-                }
-                catch
-                {
-                    original.LogWarn($"Failed to copy public field {field.Name}.");
-                }
-            }
-
-            foreach (
-                FieldInfo field in type.GetFields(BindingFlags.Instance | BindingFlags.NonPublic)
-                    .Where(field => Attribute.IsDefined(field, typeof(SerializeField)))
-            )
-            {
-                try
-                {
-                    field.SetValue(copied, field.GetValue(original));
-                }
-                catch
-                {
-                    original.LogWarn($"Failed to copy non-public field {field.Name}.");
-                }
-            }
-
-            foreach (PropertyInfo property in type.GetProperties())
-            {
-                if (!property.CanWrite || property.Name == nameof(Object.name))
-                {
-                    continue;
-                }
-
-                try
-                {
-                    property.SetValue(copied, property.GetValue(original));
-                }
-                catch
-                {
-                    original.LogWarn($"Failed to copy property {property.Name}.");
-                }
-            }
-
-            return copied;
-        }
-
         public static Rect AsRect(this BoundsInt bounds)
         {
             return new Rect(bounds.x, bounds.y, bounds.size.x, bounds.size.y);
@@ -694,27 +673,27 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return false;
             }
 
-            if (string.Equals(lhs.name, rhs.name))
+            if (string.Equals(lhs.name, rhs.name, StringComparison.Ordinal))
             {
                 return true;
             }
 
             const string clone = "(Clone)";
             string lhsName = lhs.name;
-            while (lhsName.EndsWith(clone))
+            while (lhsName.EndsWith(clone, StringComparison.Ordinal))
             {
-                lhsName = lhsName.Substring(lhsName.Length - clone.Length - 1);
+                lhsName = lhsName.Substring(0, lhsName.Length - clone.Length);
                 lhsName = lhsName.Trim();
             }
 
             string rhsName = rhs.name;
-            while (rhsName.EndsWith(clone))
+            while (rhsName.EndsWith(clone, StringComparison.Ordinal))
             {
-                rhsName = rhsName.Substring(rhsName.Length - clone.Length - 1);
+                rhsName = rhsName.Substring(0, rhsName.Length - clone.Length);
                 rhsName = rhsName.Trim();
             }
 
-            return string.Equals(lhsName, rhsName);
+            return string.Equals(lhsName, rhsName, StringComparison.Ordinal);
         }
 
         public static Color ChangeColorBrightness(this Color color, float correctionFactor)

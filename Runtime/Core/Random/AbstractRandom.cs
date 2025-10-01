@@ -211,7 +211,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             return NextUint() < HalfwayUint;
         }
 
-        public void NextBytes(byte[] buffer)
+        public virtual void NextBytes(byte[] buffer)
         {
             if (buffer == null)
             {
@@ -505,17 +505,14 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             return RandomOf(list);
         }
 
-        public T NextOfParams<T>(T element1, params T[] elements)
+        public T NextOfParams<T>(params T[] elements)
         {
-            using PooledResource<List<T>> bufferResource = Buffers<T>.List.Get();
-            List<T> list = bufferResource.resource;
-            list.Add(element1);
-            foreach (T element in elements)
+            if (elements.Length == 0)
             {
-                list.Add(element);
+                throw new ArgumentException(nameof(elements));
             }
 
-            return RandomOf(list);
+            return RandomOf(elements);
         }
 
         public T NextEnum<T>()
@@ -529,8 +526,8 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         public T NextEnumExcept<T>(T exception1)
             where T : struct, Enum
         {
-            using var bufferResource = WallstopFastArrayPool<T>.Get(1);
-            var array = bufferResource.resource;
+            using PooledResource<T[]> bufferResource = WallstopFastArrayPool<T>.Get(1);
+            T[] array = bufferResource.resource;
             array[0] = exception1;
             T random;
             do
@@ -543,8 +540,8 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         public T NextEnumExcept<T>(T exception1, T exception2)
             where T : struct, Enum
         {
-            using var bufferResource = WallstopFastArrayPool<T>.Get(2);
-            var array = bufferResource.resource;
+            using PooledResource<T[]> bufferResource = WallstopFastArrayPool<T>.Get(2);
+            T[] array = bufferResource.resource;
             array[0] = exception1;
             array[1] = exception2;
             T random;
@@ -558,11 +555,29 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         public T NextEnumExcept<T>(T exception1, T exception2, T exception3)
             where T : struct, Enum
         {
-            using var bufferResource = WallstopFastArrayPool<T>.Get(3);
-            var array = bufferResource.resource;
+            using PooledResource<T[]> bufferResource = WallstopFastArrayPool<T>.Get(3);
+            T[] array = bufferResource.resource;
             array[0] = exception1;
             array[1] = exception2;
             array[2] = exception3;
+            T random;
+            do
+            {
+                random = NextEnum<T>();
+            } while (0 <= Array.IndexOf(array, random));
+
+            return random;
+        }
+
+        public T NextEnumExcept<T>(T exception1, T exception2, T exception3, T exception4)
+            where T : struct, Enum
+        {
+            using PooledResource<T[]> bufferResource = WallstopFastArrayPool<T>.Get(4);
+            T[] array = bufferResource.resource;
+            array[0] = exception1;
+            array[1] = exception2;
+            array[2] = exception3;
+            array[3] = exception4;
             T random;
             do
             {
@@ -586,6 +601,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             set.Add(exception1);
             set.Add(exception2);
             set.Add(exception3);
+            set.Add(exception4);
             foreach (T exception in exceptions)
             {
                 set.Add(exception);

@@ -104,7 +104,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return new BoundsInt(xMin, yMin, zMin, xMax - xMin, yMax - yMin, zMax - zMin);
         }
 
-        public static BoundsInt? GetBounds(this IEnumerable<Vector3Int> positions)
+        public static BoundsInt? GetBounds(
+            this IEnumerable<Vector3Int> positions,
+            bool inclusive = false
+        )
         {
             bool any = false;
             int xMin = int.MaxValue;
@@ -132,9 +135,9 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 xMin,
                 yMin,
                 zMin,
-                xMax - xMin + 1,
-                yMax - yMin + 1,
-                zMax - zMin + 1
+                xMax - xMin + (inclusive ? 0 : 1),
+                yMax - yMin + (inclusive ? 0 : 1),
+                zMax - zMin + (inclusive ? 0 : 1)
             );
         }
 

@@ -145,7 +145,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         T NextOf<T>(IReadOnlyCollection<T> collection);
         T NextOf<T>(IReadOnlyList<T> list);
 
-        T NextOfParams<T>(T element1, params T[] elements);
+        T NextOfParams<T>(params T[] elements);
 
         T NextEnum<T>()
             where T : struct, Enum;
@@ -157,6 +157,9 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             where T : struct, Enum;
 
         T NextEnumExcept<T>(T exception1, T exception2, T exception3)
+            where T : struct, Enum;
+
+        T NextEnumExcept<T>(T exception1, T exception2, T exception3, T exception4)
             where T : struct, Enum;
 
         T NextEnumExcept<T>(

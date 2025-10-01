@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Random;
+    using WallstopStudios.UnityHelpers.Tests.Random;
 
     public sealed class RandomExtensionTests
     {
@@ -22,6 +23,47 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             }
 
             Assert.LessOrEqual(3, seenAngles.Count);
+        }
+
+        [Test]
+        public void NextOfParamsCoversAllInputs()
+        {
+            HashSet<int> seen = new();
+            for (int i = 0; i < 100; ++i)
+            {
+                int value = PRNG.Instance.NextOfParams(1, 2, 3);
+                Assert.That(new[] { 1, 2, 3 }, Does.Contain(value));
+                seen.Add(value);
+            }
+
+            Assert.AreEqual(3, seen.Count);
+        }
+
+        [Test]
+        public void NextEnumExceptSkipsAllProvidedExceptions()
+        {
+            HashSet<TestValues> seen = new();
+            for (int i = 0; i < 200; ++i)
+            {
+                TestValues value = PRNG.Instance.NextEnumExcept(
+                    TestValues.Value0,
+                    TestValues.Value1,
+                    TestValues.Value2,
+                    TestValues.Value3,
+                    TestValues.Value4
+                );
+                Assert.IsFalse(
+                    value
+                        is TestValues.Value0
+                            or TestValues.Value1
+                            or TestValues.Value2
+                            or TestValues.Value3
+                            or TestValues.Value4
+                );
+                seen.Add(value);
+            }
+
+            Assert.GreaterOrEqual(seen.Count, 1);
         }
     }
 }
