@@ -168,6 +168,16 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return result;
         }
 
+        public static bool TryRemove<K, V>(this IDictionary<K, V> dictionary, K key, out V value)
+        {
+            if (dictionary is ConcurrentDictionary<K, V> concurrentDictionary)
+            {
+                return concurrentDictionary.TryRemove(key, out value);
+            }
+
+            return dictionary.Remove(key, out value);
+        }
+
         /// <summary>
         ///  </summary>
         /// <typeparam name="K">Key type.</typeparam>

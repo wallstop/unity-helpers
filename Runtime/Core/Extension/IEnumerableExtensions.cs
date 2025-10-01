@@ -1,14 +1,22 @@
 namespace WallstopStudios.UnityHelpers.Core.Extension
 {
     using System;
-    using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Linq;
     using Random;
+    using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Utils;
+#if !SINGLE_THREADED
+    using System.Collections.Concurrent;
+#endif
 
     public static class IEnumerableExtensions
     {
+#if SINGLE_THREADED
+        private static readonly Dictionary<object, object> ComparerCache = new();
+#else
         private static readonly ConcurrentDictionary<object, object> ComparerCache = new();
+#endif
 
         public static LinkedList<T> ToLinkedList<T>(this IEnumerable<T> source)
         {
@@ -30,10 +38,14 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             Func<T, T, int> comparer
         )
         {
-            FuncBasedComparer<T> comparerObject =
-                (FuncBasedComparer<T>)
-                    ComparerCache.GetOrAdd(comparer, () => new FuncBasedComparer<T>(comparer));
-            return enumeration.OrderBy(x => x, comparerObject);
+            if (ComparerCache.TryGetValue(comparer, out object cachedComparer))
+            {
+                return enumeration.OrderBy(x => x, (FuncBasedComparer<T>)cachedComparer);
+            }
+
+            FuncBasedComparer<T> typedComparer = new(comparer);
+            _ = ComparerCache.TryAdd(comparer, typedComparer);
+            return enumeration.OrderBy(x => x, typedComparer);
         }
 
         public static IEnumerable<T> Ordered<T>(this IEnumerable<T> enumerable)
@@ -47,18 +59,75 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             IRandom random = null
         )
         {
-            random ??= ThreadLocalRandom<PcgRandom>.Instance;
-            return enumerable.OrderBy(_ => random.Next());
+            random ??= PRNG.Instance;
+            return enumerable.OrderBy(x => x, new RandomComparer<T>(random));
         }
 
         public static IEnumerable<T> Infinite<T>(this IEnumerable<T> enumerable)
         {
-            ICollection<T> collection = enumerable as ICollection<T> ?? enumerable.ToList();
+            ICollection<T> collection = enumerable as ICollection<T> ?? enumerable.ToArray();
             if (collection.Count == 0)
             {
                 yield break;
             }
 
+            // Use index-based iteration for arrays and lists to avoid enumerator allocation
+            if (collection is IReadOnlyList<T> readonlyList)
+            {
+                while (true)
+                {
+                    for (int i = 0; i < readonlyList.Count; ++i)
+                    {
+                        yield return readonlyList[i];
+                    }
+                }
+            }
+
+            if (collection is IList<T> list)
+            {
+                while (true)
+                {
+                    for (int i = 0; i < list.Count; ++i)
+                    {
+                        yield return list[i];
+                    }
+                }
+            }
+
+            if (collection is HashSet<T> hashSet)
+            {
+                while (true)
+                {
+                    foreach (T element in hashSet)
+                    {
+                        yield return element;
+                    }
+                }
+            }
+
+            if (collection is SortedSet<T> sortedSet)
+            {
+                while (true)
+                {
+                    foreach (T element in sortedSet)
+                    {
+                        yield return element;
+                    }
+                }
+            }
+
+            if (collection is LinkedList<T> linkedList)
+            {
+                while (true)
+                {
+                    foreach (T element in linkedList)
+                    {
+                        yield return element;
+                    }
+                }
+            }
+
+            // Fallback for other collection types
             while (true)
             {
                 foreach (T element in collection)
@@ -68,57 +137,32 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
         }
 
-        public static void ForEach<T>(this IEnumerable<T> enumerable, Action<T> action)
-        {
-            foreach (T item in enumerable)
-            {
-                action(item);
-            }
-        }
-
-        public static IEnumerable<IEnumerable<T>> Partition<T>(this IEnumerable<T> items, int size)
+        public static IEnumerable<T[]> Partition<T>(this IEnumerable<T> items, int size)
         {
             using IEnumerator<T> enumerator = items.GetEnumerator();
-            bool hasNext = enumerator.MoveNext();
-
-            while (hasNext)
+            using PooledResource<T[]> arrayBuffer = WallstopArrayPool<T>.Get(size);
+            T[] partition = arrayBuffer.resource;
+            while (enumerator.MoveNext())
             {
-                yield return NextPartitionOf().ToList();
-            }
-
-            yield break;
-
-            IEnumerable<T> NextPartitionOf()
-            {
-                int remainingCountForPartition = size;
-                while (remainingCountForPartition-- > 0 && hasNext)
+                int count = 0;
+                do
                 {
-                    yield return enumerator.Current;
-                    hasNext = enumerator.MoveNext();
-                }
+                    partition[count++] = enumerator.Current;
+                } while (count < size && enumerator.MoveNext());
+
+                yield return partition;
+                Array.Clear(partition, 0, size);
             }
         }
 
         public static List<T> ToList<T>(this IEnumerable<T> enumerable, int count)
         {
             List<T> list = new(count);
-            list.AddRange(enumerable);
+            foreach (T item in enumerable)
+            {
+                list.Add(item);
+            }
             return list;
-        }
-
-        private class FuncBasedComparer<T> : IComparer<T>
-        {
-            private readonly Func<T, T, int> _comparer;
-
-            public FuncBasedComparer(Func<T, T, int> comparer)
-            {
-                _comparer = comparer ?? throw new ArgumentNullException(nameof(comparer));
-            }
-
-            public int Compare(T x, T y)
-            {
-                return _comparer(x, y);
-            }
         }
     }
 }

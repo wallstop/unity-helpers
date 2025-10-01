@@ -1,18 +1,27 @@
 namespace WallstopStudios.UnityHelpers.Core.Random
 {
     using System;
-    using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Linq;
     using System.Runtime.Serialization;
     using DataStructure.Adapters;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Utils;
+#if !SINGLE_THREADED
+    using System.Collections.Concurrent;
+#else
+    using WallstopStudios.UnityHelpers.Core.Extension;
+#endif
 
     [Serializable]
     [DataContract]
     public abstract class AbstractRandom : IRandom
     {
+#if SINGLE_THREADED
+        private static readonly Dictionary<Type, Array> EnumTypeCache = new();
+#else
         private static readonly ConcurrentDictionary<Type, Array> EnumTypeCache = new();
+#endif
 
         protected const uint HalfwayUint = uint.MaxValue / 2;
         protected const float MagicFloat = 5.960465E-008F;
@@ -392,7 +401,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                 IReadOnlyList<T> list => NextOf(list),
                 IReadOnlyCollection<T> collection => NextOf(collection),
                 null => throw new ArgumentNullException(nameof(enumerable)),
-                _ => NextOf(enumerable.ToArray()),
+                _ => NextOf<T>(enumerable.ToArray()),
             };
         }
 
@@ -493,12 +502,20 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                 For small lists, it's much more efficient to simply return one of their elements
                 instead of trying to generate a random number within bounds (which is implemented as a while(true) loop)
              */
-            return list.Count switch
+            return RandomOf(list);
+        }
+
+        public T NextOfParams<T>(T element1, params T[] elements)
+        {
+            using PooledResource<List<T>> bufferResource = Buffers<T>.List.Get();
+            List<T> list = bufferResource.resource;
+            list.Add(element1);
+            foreach (T element in elements)
             {
-                1 => list[0],
-                2 => NextBool() ? list[0] : list[1],
-                _ => list[Next(list.Count)],
-            };
+                list.Add(element);
+            }
+
+            return RandomOf(list);
         }
 
         public T NextEnum<T>()
@@ -506,8 +523,81 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         {
             Type enumType = typeof(T);
             T[] enumValues = (T[])EnumTypeCache.GetOrAdd(enumType, type => Enum.GetValues(type));
-
             return RandomOf(enumValues);
+        }
+
+        public T NextEnumExcept<T>(T exception1)
+            where T : struct, Enum
+        {
+            using var bufferResource = WallstopFastArrayPool<T>.Get(1);
+            var array = bufferResource.resource;
+            array[0] = exception1;
+            T random;
+            do
+            {
+                random = NextEnum<T>();
+            } while (0 <= Array.IndexOf(array, random));
+            return random;
+        }
+
+        public T NextEnumExcept<T>(T exception1, T exception2)
+            where T : struct, Enum
+        {
+            using var bufferResource = WallstopFastArrayPool<T>.Get(2);
+            var array = bufferResource.resource;
+            array[0] = exception1;
+            array[1] = exception2;
+            T random;
+            do
+            {
+                random = NextEnum<T>();
+            } while (0 <= Array.IndexOf(array, random));
+            return random;
+        }
+
+        public T NextEnumExcept<T>(T exception1, T exception2, T exception3)
+            where T : struct, Enum
+        {
+            using var bufferResource = WallstopFastArrayPool<T>.Get(3);
+            var array = bufferResource.resource;
+            array[0] = exception1;
+            array[1] = exception2;
+            array[2] = exception3;
+            T random;
+            do
+            {
+                random = NextEnum<T>();
+            } while (0 <= Array.IndexOf(array, random));
+
+            return random;
+        }
+
+        public T NextEnumExcept<T>(
+            T exception1,
+            T exception2,
+            T exception3,
+            T exception4,
+            params T[] exceptions
+        )
+            where T : struct, Enum
+        {
+            using PooledResource<HashSet<T>> bufferResource = Buffers<T>.HashSet.Get();
+            HashSet<T> set = bufferResource.resource;
+            set.Add(exception1);
+            set.Add(exception2);
+            set.Add(exception3);
+            foreach (T exception in exceptions)
+            {
+                set.Add(exception);
+            }
+
+            T random;
+            do
+            {
+                random = NextEnum<T>();
+            } while (set.Contains(random));
+
+            return random;
         }
 
         public Guid NextGuid()
@@ -577,10 +667,40 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                 throw new ArgumentException(nameof(octaves));
             }
 
-            noise ??= PerlinNoise.Instance;
             float[,] noiseMap = new float[width, height];
+            return NextNoiseMap(noiseMap, noise, scale, octaves);
+        }
 
-            Vector2[] octaveOffsets = new Vector2[octaves];
+        public float[,] NextNoiseMap(
+            float[,] noiseMap,
+            PerlinNoise noise = null,
+            float scale = 2.5f,
+            int octaves = 8
+        )
+        {
+            if (noiseMap is null)
+            {
+                throw new ArgumentNullException(nameof(noiseMap));
+            }
+
+            if (scale <= 0)
+            {
+                throw new ArgumentException(nameof(scale));
+            }
+
+            if (octaves < 1)
+            {
+                throw new ArgumentException(nameof(octaves));
+            }
+
+            noise ??= PerlinNoise.Instance;
+
+            int width = noiseMap.GetLength(0);
+            int height = noiseMap.GetLength(1);
+            using PooledResource<Vector2[]> octaveOffsetBuffer = WallstopFastArrayPool<Vector2>.Get(
+                octaves
+            );
+            Vector2[] octaveOffsets = octaveOffsetBuffer.resource;
             for (int i = 0; i < octaves; i++)
             {
                 float offsetX = Next(-100000, 100000);
@@ -639,14 +759,15 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             return noiseMap;
         }
 
-        protected T RandomOf<T>(T[] values)
+        protected T RandomOf<T>(IReadOnlyList<T> values)
         {
-            return values.Length switch
+            int count = values.Count;
+            return count switch
             {
                 0 => default,
                 1 => values[0],
                 2 => NextBool() ? values[0] : values[1],
-                _ => values[Next(values.Length)],
+                _ => values[Next(count)],
             };
         }
 

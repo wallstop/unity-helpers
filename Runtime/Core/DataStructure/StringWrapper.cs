@@ -1,16 +1,28 @@
 namespace WallstopStudios.UnityHelpers.Core.DataStructure
 {
     using System;
+#if !SINGLE_THREADED
     using System.Collections.Concurrent;
+#else
+    using WallstopStudios.UnityHelpers.Core.Extension;
+    using System.Collections.Generic;
+#endif
 
     /*
         Used to cache strings, meant to be used in place of strings as keys for when a Dictionary
         has a known set of values
      */
     [Serializable]
-    public sealed class StringWrapper : IEquatable<StringWrapper>, IComparable<StringWrapper>
+    public sealed class StringWrapper
+        : IEquatable<StringWrapper>,
+            IComparable<StringWrapper>,
+            IDisposable
     {
+#if SINGLE_THREADED
+        private static readonly Dictionary<string, StringWrapper> Cache = new();
+#else
         private static readonly ConcurrentDictionary<string, StringWrapper> Cache = new();
+#endif
 
         public readonly string value;
 
@@ -86,6 +98,11 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         public override string ToString()
         {
             return value;
+        }
+
+        public void Dispose()
+        {
+            Remove(value);
         }
     }
 }

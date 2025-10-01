@@ -145,12 +145,39 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         T NextOf<T>(IReadOnlyCollection<T> collection);
         T NextOf<T>(IReadOnlyList<T> list);
 
+        T NextOfParams<T>(T element1, params T[] elements);
+
         T NextEnum<T>()
+            where T : struct, Enum;
+
+        T NextEnumExcept<T>(T exception1)
+            where T : struct, Enum;
+
+        T NextEnumExcept<T>(T exception1, T exception2)
+            where T : struct, Enum;
+
+        T NextEnumExcept<T>(T exception1, T exception2, T exception3)
+            where T : struct, Enum;
+
+        T NextEnumExcept<T>(
+            T exception1,
+            T exception2,
+            T exception3,
+            T exception4,
+            params T[] exceptions
+        )
             where T : struct, Enum;
 
         float[,] NextNoiseMap(
             int width,
             int height,
+            PerlinNoise noise = null,
+            float scale = 2.5f,
+            int octaves = 8
+        );
+
+        float[,] NextNoiseMap(
+            float[,] noiseMap,
             PerlinNoise noise = null,
             float scale = 2.5f,
             int octaves = 8
