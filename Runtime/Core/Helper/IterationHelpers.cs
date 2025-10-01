@@ -15,6 +15,21 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
         }
 
+        public static List<(int, int)> IndexOver<T>(this T[,] array, List<(int, int)> buffer)
+        {
+            buffer.Clear();
+            for (int i = 0; i < array.GetLength(0); i++)
+            {
+                for (int j = 0; j < array.GetLength(1); j++)
+                {
+                    var tuple = (i, j);
+                    buffer.Add(tuple);
+                }
+            }
+
+            return buffer;
+        }
+
         public static IEnumerable<(int, int, int)> IndexOver<T>(this T[,,] array)
         {
             for (int i = 0; i < array.GetLength(0); i++)
@@ -27,6 +42,27 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     }
                 }
             }
+        }
+
+        public static List<(int, int, int)> IndexOver<T>(
+            this T[,,] array,
+            List<(int, int, int)> buffer
+        )
+        {
+            buffer.Clear();
+            for (int i = 0; i < array.GetLength(0); i++)
+            {
+                for (int j = 0; j < array.GetLength(1); j++)
+                {
+                    for (int k = 0; k < array.GetLength(2); k++)
+                    {
+                        var tuple = (i, j, k);
+                        buffer.Add(tuple);
+                    }
+                }
+            }
+
+            return buffer;
         }
     }
 }
