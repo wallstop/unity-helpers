@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     using System.Collections.Generic;
     using Extension;
     using Helper;
+    using WallstopStudios.UnityHelpers.Utils;
 
     [Serializable]
     public sealed class CyclicBuffer<T> : IReadOnlyList<T>
@@ -133,21 +134,26 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return false;
             }
 
-            int write = 0;
-            bool removed = false;
             comparer ??= EqualityComparer<T>.Default;
+
+            using PooledResource<List<T>> listResource = Buffers<T>.List.Get();
+            // Linearize the buffer first
+            List<T> temp = listResource.resource;
             for (int i = 0; i < Count; ++i)
             {
-                int readIdx = AdjustedIndexFor(i);
-                T item = _buffer[readIdx];
+                temp.Add(_buffer[AdjustedIndexFor(i)]);
+            }
 
-                if (!removed && comparer.Equals(item, element))
+            // Find and remove the element
+            bool removed = false;
+            for (int i = 0; i < temp.Count; ++i)
+            {
+                if (comparer.Equals(temp[i], element))
                 {
+                    temp.RemoveAt(i);
                     removed = true;
-                    continue;
+                    break;
                 }
-
-                _buffer[write++] = item;
             }
 
             if (!removed)
@@ -155,9 +161,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return false;
             }
 
-            _buffer.RemoveRange(write, _buffer.Count - write);
-
-            Count--;
+            // Rebuild the buffer with linearized data
+            _buffer.Clear();
+            _buffer.AddRange(temp);
+            Count = temp.Count;
             _position = Count < Capacity ? Count : 0;
             return true;
         }
@@ -169,31 +176,27 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return 0;
             }
 
-            int write = 0;
-            int removedCount = 0;
-
+            // Linearize the buffer first
+            List<T> temp = new List<T>(Count);
             for (int i = 0; i < Count; ++i)
             {
-                int readIdx = AdjustedIndexFor(i);
-                T item = _buffer[readIdx];
-                if (predicate(item))
-                {
-                    removedCount++;
-                }
-                else
-                {
-                    _buffer[write++] = item;
-                }
+                temp.Add(_buffer[AdjustedIndexFor(i)]);
             }
+
+            // Remove all matching elements
+            int removedCount = temp.RemoveAll(x => predicate(x));
 
             if (removedCount == 0)
             {
                 return 0;
             }
 
-            _buffer.RemoveRange(write, _buffer.Count - write);
-            Count -= removedCount;
+            // Rebuild the buffer with linearized data
+            _buffer.Clear();
+            _buffer.AddRange(temp);
+            Count = temp.Count;
             _position = Count < Capacity ? Count : 0;
+
             return removedCount;
         }
 

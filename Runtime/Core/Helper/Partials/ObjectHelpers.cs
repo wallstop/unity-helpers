@@ -1,10 +1,12 @@
 namespace WallstopStudios.UnityHelpers.Core.Helper
 {
     using System;
+    using System.Collections.Generic;
     using Extension;
     using UnityEditor;
     using UnityEngine;
     using UnityEngine.SceneManagement;
+    using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 #if UNITY_EDITOR
     using UnityEditor.SceneManagement;
@@ -149,7 +151,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return;
             }
 
-            foreach (T behaviour in component.GetComponents<T>())
+            using PooledResource<List<T>> componentBuffer = Buffers<T>.List.Get();
+            List<T> components = componentBuffer.resource;
+            component.GetComponents(components);
+            foreach (T behaviour in components)
             {
                 if (behaviour != null && !(exclude?.Invoke(behaviour) ?? false))
                 {
@@ -201,7 +206,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             for (int i = 0; i < transform.childCount; ++i)
             {
                 Transform child = transform.GetChild(i);
-                EnableRendererRecursively<T>(child, enabled, exclude);
+                EnableRendererRecursively(child, enabled, exclude);
             }
         }
 
@@ -220,7 +225,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         public static void DestroyAllComponentsOfType<T>(this GameObject gameObject)
             where T : Component
         {
-            foreach (T component in gameObject.GetComponents<T>())
+            using PooledResource<List<T>> componentBuffer = Buffers<T>.List.Get();
+            List<T> components = componentBuffer.resource;
+            gameObject.GetComponents(components);
+            foreach (T component in components)
             {
                 SmartDestroy(component);
             }
@@ -228,6 +236,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
         public static void SmartDestroy(this Object obj, float? afterTime = null)
         {
+            if (obj == null)
+            {
+                return;
+            }
+
             if (Application.isEditor && !Application.isPlaying)
             {
                 Object.DestroyImmediate(obj);

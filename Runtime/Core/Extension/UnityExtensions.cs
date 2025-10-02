@@ -1465,6 +1465,12 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
         public static bool FastIntersects2D(this BoundsInt bounds, BoundsInt other)
         {
+            // Zero-size bounds cannot intersect
+            if (bounds.size.x <= 0 || bounds.size.y <= 0 || other.size.x <= 0 || other.size.y <= 0)
+            {
+                return false;
+            }
+
             if (other.xMax < bounds.xMin || other.yMax < bounds.yMin)
             {
                 return false;
@@ -1501,15 +1507,15 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         public static bool Overlaps2D(this Bounds bounds, Bounds other)
         {
             Vector3 boundsMin = bounds.min;
-            Vector3 otherMin = other.min;
-            if (otherMin.x < boundsMin.x || otherMin.y < boundsMin.y)
+            Vector3 otherMax = other.max;
+            if (otherMax.x < boundsMin.x || otherMax.y < boundsMin.y)
             {
                 return false;
             }
 
             Vector3 boundsMax = bounds.max;
-            Vector3 otherMax = other.max;
-            return otherMax.x <= boundsMax.x && otherMax.y <= boundsMax.y;
+            Vector3 otherMin = other.min;
+            return boundsMax.x >= otherMin.x && boundsMax.y >= otherMin.y;
         }
 
         public static BoundsInt WithPadding(this BoundsInt bounds, int xPadding, int yPadding)

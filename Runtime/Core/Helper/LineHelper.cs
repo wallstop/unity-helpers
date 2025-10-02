@@ -148,11 +148,23 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
         }
 
-        public static List<Vector2> Simplify(List<Vector2> points, float epsilon)
+        public static List<Vector2> Simplify(
+            List<Vector2> points,
+            float epsilon,
+            List<Vector2> buffer = null
+        )
         {
-            if (points == null || points.Count < 3 || epsilon <= 0)
+            buffer ??= new List<Vector2>();
+            buffer.Clear();
+            if (points == null)
             {
-                return new List<Vector2>(points ?? Enumerable.Empty<Vector2>());
+                return buffer;
+            }
+
+            if (points.Count < 3 || epsilon <= 0)
+            {
+                buffer.AddRange(points);
+                return buffer;
             }
 
             float maxDistance = 0;
@@ -169,8 +181,6 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 }
             }
 
-            List<Vector2> result = new();
-
             if (maxDistance > epsilon)
             {
                 List<Vector2> recResults1 = Simplify(points.GetRange(0, index + 1), epsilon);
@@ -179,16 +189,16 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     epsilon
                 );
 
-                result.AddRange(recResults1.Take(recResults1.Count - 1));
-                result.AddRange(recResults2);
+                buffer.AddRange(recResults1.Take(recResults1.Count - 1));
+                buffer.AddRange(recResults2);
             }
             else
             {
-                result.Add(points[0]);
-                result.Add(points[end]);
+                buffer.Add(points[0]);
+                buffer.Add(points[end]);
             }
 
-            return result;
+            return buffer;
         }
     }
 }

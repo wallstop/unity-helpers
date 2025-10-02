@@ -174,6 +174,16 @@
             StringWrapper wrapper1 = StringWrapper.Get("test");
             StringWrapper wrapper2 = StringWrapper.Get("test");
             Assert.AreEqual(0, wrapper1.CompareTo(wrapper2));
+            Assert.AreEqual(0, wrapper2.CompareTo(wrapper1));
+        }
+
+        [Test]
+        public void CompareToReturnsDifferentForDifferentValue()
+        {
+            StringWrapper wrapper1 = StringWrapper.Get("test");
+            StringWrapper wrapper2 = StringWrapper.Get("test2");
+            Assert.AreNotEqual(0, wrapper1.CompareTo(wrapper2));
+            Assert.AreNotEqual(0, wrapper2.CompareTo(wrapper1));
         }
 
         [Test]
