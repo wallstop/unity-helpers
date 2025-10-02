@@ -713,7 +713,7 @@ namespace WallstopStudios.UnityHelpers.Editor
             {
                 bool hasValidateAttribute = field.IsAttributeDefined<ValidateAssignmentAttribute>(
                     out _,
-                    inherit: true
+                    inherit: false
                 );
 
                 if (_onlyCheckNullObjectsWithAttribute && !hasValidateAttribute)

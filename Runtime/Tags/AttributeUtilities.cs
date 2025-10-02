@@ -6,6 +6,7 @@ namespace WallstopStudios.UnityHelpers.Tags
     using System.Reflection;
     using Core.Extension;
     using Core.Helper;
+    using UnityEngine;
     using Object = UnityEngine.Object;
 
     public static class AttributeUtilities
@@ -32,6 +33,13 @@ namespace WallstopStudios.UnityHelpers.Tags
                 .Distinct()
                 .Ordered()
                 .ToArray();
+        }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void ClearCache()
+        {
+            AllAttributeNames = null;
+            AttributeFields.Clear();
         }
 
         public static bool HasTag(this Object target, string effectTag)

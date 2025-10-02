@@ -116,7 +116,7 @@ namespace SevenZip.Compression.RangeCoder
             Prob = kBitModelTotal >> 1;
         }
 
-        public uint Decode(RangeCoder.Decoder rangeDecoder)
+        public uint Decode(Decoder rangeDecoder)
         {
             uint newBound = (uint)(rangeDecoder.Range >> kNumBitModelTotalBits) * (uint)Prob;
             if (rangeDecoder.Code < newBound)

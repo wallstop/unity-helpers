@@ -22,7 +22,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             {
                 for (int j = 0; j < array.GetLength(1); j++)
                 {
-                    var tuple = (i, j);
+                    (int i, int j) tuple = (i, j);
                     buffer.Add(tuple);
                 }
             }
@@ -56,7 +56,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 {
                     for (int k = 0; k < array.GetLength(2); k++)
                     {
-                        var tuple = (i, j, k);
+                        (int i, int j, int k) tuple = (i, j, k);
                         buffer.Add(tuple);
                     }
                 }

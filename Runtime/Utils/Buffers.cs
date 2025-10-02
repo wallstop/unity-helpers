@@ -6,7 +6,10 @@ namespace WallstopStudios.UnityHelpers.Utils
 {
     using System;
     using System.Collections.Generic;
+    using System.IO;
+    using System.Runtime.Serialization.Formatters.Binary;
     using System.Text;
+    using System.Text.Json;
     using UnityEngine;
 #if !SINGLE_THREADED
     using System.Threading;

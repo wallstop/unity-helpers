@@ -30,6 +30,15 @@ namespace WallstopStudios.UnityHelpers.Tags
         protected virtual void Awake()
         {
             this.AssignSiblingComponents();
+            _effectHandler.Register(this);
+        }
+
+        protected virtual void OnDestroy()
+        {
+            if (_effectHandler != null)
+            {
+                _effectHandler.Remove(this);
+            }
         }
 
         public void ApplyAttributeModifications(
@@ -86,7 +95,7 @@ namespace WallstopStudios.UnityHelpers.Tags
                     continue;
                 }
 
-                isNewEffect = isNewEffect || _effectHandles.Add(handle);
+                isNewEffect |= _effectHandles.Add(handle);
                 if (isNewEffect)
                 {
                     float oldValue = attribute;

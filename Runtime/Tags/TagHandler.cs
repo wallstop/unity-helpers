@@ -33,13 +33,110 @@ namespace WallstopStudios.UnityHelpers.Tags
 
         public bool HasTag(string effectTag)
         {
+            if (string.IsNullOrEmpty(effectTag))
+            {
+                return false;
+            }
+
             return _tagCount.ContainsKey(effectTag);
         }
 
         public bool HasAnyTag(IEnumerable<string> effectTags)
         {
+            switch (effectTags)
+            {
+                case IReadOnlyList<string> list:
+                {
+                    return HasAnyTag(list);
+                }
+                case HashSet<string> hashSet:
+                {
+                    foreach (string effectTag in hashSet)
+                    {
+                        if (string.IsNullOrEmpty(effectTag))
+                        {
+                            continue;
+                        }
+                        if (_tagCount.ContainsKey(effectTag))
+                        {
+                            return true;
+                        }
+                    }
+
+                    return false;
+                }
+                case SortedSet<string> sortedSet:
+                {
+                    foreach (string effectTag in sortedSet)
+                    {
+                        if (string.IsNullOrEmpty(effectTag))
+                        {
+                            continue;
+                        }
+                        if (_tagCount.ContainsKey(effectTag))
+                        {
+                            return true;
+                        }
+                    }
+
+                    return false;
+                }
+                case Queue<string> queue:
+                {
+                    foreach (string effectTag in queue)
+                    {
+                        if (string.IsNullOrEmpty(effectTag))
+                        {
+                            continue;
+                        }
+                        if (_tagCount.ContainsKey(effectTag))
+                        {
+                            return true;
+                        }
+                    }
+
+                    return false;
+                }
+                case Stack<string> stack:
+                {
+                    foreach (string effectTag in stack)
+                    {
+                        if (string.IsNullOrEmpty(effectTag))
+                        {
+                            continue;
+                        }
+                        if (_tagCount.ContainsKey(effectTag))
+                        {
+                            return true;
+                        }
+                    }
+
+                    return false;
+                }
+                case LinkedList<string> linkedList:
+                {
+                    foreach (string effectTag in linkedList)
+                    {
+                        if (string.IsNullOrEmpty(effectTag))
+                        {
+                            continue;
+                        }
+                        if (_tagCount.ContainsKey(effectTag))
+                        {
+                            return true;
+                        }
+                    }
+
+                    return false;
+                }
+            }
+
             foreach (string effectTag in effectTags)
             {
+                if (string.IsNullOrEmpty(effectTag))
+                {
+                    continue;
+                }
                 if (_tagCount.ContainsKey(effectTag))
                 {
                     return true;
@@ -54,6 +151,11 @@ namespace WallstopStudios.UnityHelpers.Tags
             for (int i = 0; i < effectTags.Count; ++i)
             {
                 string effectTag = effectTags[i];
+                if (string.IsNullOrEmpty(effectTag))
+                {
+                    continue;
+                }
+
                 if (_tagCount.ContainsKey(effectTag))
                 {
                     return true;

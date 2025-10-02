@@ -21,9 +21,8 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         static AnimationEventHelpers()
         {
             List<(Type, string)> ignoreDerived = new();
-            Dictionary<Type, List<MethodInfo>> typesToMethods = AppDomain
-                .CurrentDomain.GetAssemblies()
-                .SelectMany(assembly => assembly.GetTypes())
+            Dictionary<Type, List<MethodInfo>> typesToMethods = ReflectionHelpers
+                .GetAllLoadedTypes()
                 .Where(type => type.IsClass)
                 .Where(type => typeof(MonoBehaviour).IsAssignableFrom(type))
                 .ToDictionary(
@@ -32,17 +31,73 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     {
                         List<MethodInfo> definedMethods = GetPossibleAnimatorEventsForType(type)
                             .Where(method =>
-                                Attribute.IsDefined(method, typeof(AnimationEventAttribute), true)
-                            )
+                            {
+                                // Only include methods where the attribute is directly defined
+                                if (
+                                    !method.IsAttributeDefined<AnimationEventAttribute>(
+                                        out _,
+                                        inherit: false
+                                    )
+                                )
+                                {
+                                    return false;
+                                }
+
+                                // Only include methods that are declared on this type
+                                return method.DeclaringType == type;
+                            })
                             .ToList();
+
+                        // Only include inherited methods if this type has its own handlers
+                        if (definedMethods.Count > 0)
+                        {
+                            // Also include inherited methods that explicitly allow derived types
+                            List<MethodInfo> inheritedMethods = GetPossibleAnimatorEventsForType(
+                                    type
+                                )
+                                .Where(method =>
+                                {
+                                    // Skip if not attributed
+                                    if (
+                                        !method.IsAttributeDefined<AnimationEventAttribute>(
+                                            out _,
+                                            inherit: false
+                                        )
+                                    )
+                                    {
+                                        return false;
+                                    }
+
+                                    // Skip if declared on this type (already handled)
+                                    if (method.DeclaringType == type)
+                                    {
+                                        return false;
+                                    }
+
+                                    // Include inherited methods that allow derived
+                                    if (
+                                        method.IsAttributeDefined(
+                                            out AnimationEventAttribute attribute,
+                                            inherit: false
+                                        )
+                                    )
+                                    {
+                                        return !attribute.ignoreDerived;
+                                    }
+
+                                    return false;
+                                })
+                                .ToList();
+
+                            definedMethods.AddRange(inheritedMethods);
+                        }
                         foreach (MethodInfo definedMethod in definedMethods)
                         {
                             // Only consider attributes on our specific method
                             if (
-                                !Attribute.IsDefined(
-                                    definedMethod,
-                                    typeof(AnimationEventAttribute),
-                                    false
+                                !definedMethod.IsAttributeDefined<AnimationEventAttribute>(
+                                    out _,
+                                    inherit: false
                                 )
                             )
                             {
@@ -51,7 +106,8 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
                             if (
                                 definedMethod.IsAttributeDefined(
-                                    out AnimationEventAttribute attribute
+                                    out AnimationEventAttribute attribute,
+                                    inherit: false
                                 ) && attribute.ignoreDerived
                             )
                             {

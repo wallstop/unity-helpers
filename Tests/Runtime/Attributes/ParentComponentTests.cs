@@ -1,28 +1,49 @@
 namespace WallstopStudios.UnityHelpers.Tests.Attributes
 {
     using System.Collections;
+    using System.Collections.Generic;
     using System.Linq;
     using Components;
+    using NUnit.Framework;
     using UnityEngine;
-    using UnityEngine.Assertions;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Attributes;
 
     public sealed class ParentComponentTests
     {
+        private readonly List<Object> _spawned = new();
+
+        [UnityTearDown]
+        public IEnumerator Cleanup()
+        {
+            foreach (Object spawned in _spawned)
+            {
+                if (spawned != null)
+                {
+                    Object.Destroy(spawned);
+                    yield return null;
+                }
+            }
+            _spawned.Clear();
+        }
+
         [UnityTest]
         public IEnumerator Nominal()
         {
             GameObject root = new("PartComponentTest - Root", typeof(SpriteRenderer));
+            _spawned.Add(root);
             GameObject parentLevel1 = new("ParentLevel1", typeof(SpriteRenderer));
+            _spawned.Add(parentLevel1);
             parentLevel1.transform.SetParent(root.transform);
             GameObject parentLevel2 = new("ParentLevel2", typeof(SpriteRenderer));
+            _spawned.Add(parentLevel2);
             parentLevel2.transform.SetParent(parentLevel1.transform);
             GameObject parentLevel3 = new(
                 "ParentLevel3",
                 typeof(SpriteRenderer),
                 typeof(ExpectParentSpriteRenderers)
             );
+            _spawned.Add(parentLevel3);
             parentLevel3.transform.SetParent(parentLevel2.transform);
 
             ExpectParentSpriteRenderers expect =
@@ -64,5 +85,77 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
             yield break;
         }
+
+        [UnityTest]
+        public IEnumerator IncludeInactiveControlsAncestorSelection()
+        {
+            GameObject activeRoot = new("ParentActiveRoot", typeof(SpriteRenderer));
+            _spawned.Add(activeRoot);
+            SpriteRenderer rootRenderer = activeRoot.GetComponent<SpriteRenderer>();
+
+            GameObject inactiveParent = new("ParentInactive", typeof(SpriteRenderer));
+            _spawned.Add(inactiveParent);
+            inactiveParent.transform.SetParent(activeRoot.transform);
+            inactiveParent.SetActive(false);
+            SpriteRenderer inactiveRenderer = inactiveParent.GetComponent<SpriteRenderer>();
+
+            GameObject child = new(
+                "ParentChild",
+                typeof(SpriteRenderer),
+                typeof(ParentAssignmentTester)
+            );
+            _spawned.Add(child);
+            child.transform.SetParent(inactiveParent.transform);
+            ParentAssignmentTester tester = child.GetComponent<ParentAssignmentTester>();
+            SpriteRenderer childRenderer = child.GetComponent<SpriteRenderer>();
+
+            tester.AssignParentComponents();
+
+            Assert.AreSame(rootRenderer, tester.ancestorsActiveOnly);
+            Assert.AreSame(inactiveRenderer, tester.ancestorsIncludeInactive);
+            CollectionAssert.AreEquivalent(
+                new[] { childRenderer, inactiveRenderer, rootRenderer },
+                tester.allParents
+            );
+
+            yield break;
+        }
+
+        [UnityTest]
+        public IEnumerator MissingRequiredParentLogsError()
+        {
+            GameObject orphan = new("ParentOrphan", typeof(ParentMissingTester));
+            _spawned.Add(orphan);
+            ParentMissingTester tester = orphan.GetComponent<ParentMissingTester>();
+
+            LogAssert.Expect(
+                LogType.Error,
+                new System.Text.RegularExpressions.Regex(
+                    @"^\d+(\.\d+)?\|ParentOrphan\[ParentMissingTester\]\|Unable to find parent component of type UnityEngine\.SpriteRenderer$"
+                )
+            );
+
+            tester.AssignParentComponents();
+            Assert.IsNull(tester.requiredRenderer);
+            yield break;
+        }
+    }
+
+    internal sealed class ParentAssignmentTester : MonoBehaviour
+    {
+        [ParentComponent(onlyAncestors = true, includeInactive = false)]
+        public SpriteRenderer ancestorsActiveOnly;
+
+        [ParentComponent(onlyAncestors = true, includeInactive = true)]
+        public SpriteRenderer ancestorsIncludeInactive;
+
+        [ParentComponent(includeInactive = true)]
+        public List<SpriteRenderer> allParents;
+    }
+
+    internal sealed class ParentMissingTester : MonoBehaviour
+    {
+        [ParentComponent(onlyAncestors = true)]
+        public SpriteRenderer requiredRenderer;
     }
 }

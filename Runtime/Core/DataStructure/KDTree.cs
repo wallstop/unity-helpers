@@ -51,7 +51,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 }
 
                 boundary = bounds;
-                this.entries = 0 < elements.Count ? elements.ToArray() : Array.Empty<Entry>();
+                entries = 0 < elements.Count ? elements.ToArray() : Array.Empty<Entry>();
                 isTerminal = elements.Count <= bucketSize;
                 if (isTerminal)
                 {
@@ -62,26 +62,20 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 {
                     if (isXAxis)
                     {
-                        Array.Sort(
-                            this.entries,
-                            (lhs, rhs) => lhs.position.x.CompareTo(rhs.position.x)
-                        );
+                        Array.Sort(entries, (lhs, rhs) => lhs.position.x.CompareTo(rhs.position.x));
                     }
                     else
                     {
-                        Array.Sort(
-                            this.entries,
-                            (lhs, rhs) => lhs.position.y.CompareTo(rhs.position.y)
-                        );
+                        Array.Sort(entries, (lhs, rhs) => lhs.position.y.CompareTo(rhs.position.y));
                     }
 
                     int cutoff = elements.Count / 2;
 
                     List<Entry> leftList = new();
                     List<Entry> rightList = new();
-                    for (int i = 0; i < this.entries.Length; ++i)
+                    for (int i = 0; i < entries.Length; ++i)
                     {
-                        Entry element = this.entries[i];
+                        Entry element = entries[i];
                         if (i < cutoff)
                         {
                             leftList.Add(element);
@@ -102,7 +96,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     {
                         List<Entry> leftList = new();
                         List<Entry> rightList = new();
-                        foreach (Entry element in this.entries)
+                        foreach (Entry element in entries)
                         {
                             if (element.position.x <= cutoff.x)
                             {
@@ -120,7 +114,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     {
                         List<Entry> leftList = new();
                         List<Entry> rightList = new();
-                        foreach (Entry element in this.entries)
+                        foreach (Entry element in entries)
                         {
                             if (element.position.y <= cutoff.y)
                             {

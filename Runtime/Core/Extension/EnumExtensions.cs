@@ -52,7 +52,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             for (int i = 0; i < fields.Length; i++)
             {
                 FieldInfo field = fields[i];
-                string name = field.IsAttributeDefined(out EnumDisplayNameAttribute displayName)
+                string name = field.IsAttributeDefined(
+                    out EnumDisplayNameAttribute displayName,
+                    inherit: false
+                )
                     ? displayName.DisplayName
                     : field.Name;
                 T value = (T)field.GetValue(null);

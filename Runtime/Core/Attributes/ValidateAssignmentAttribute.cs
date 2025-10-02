@@ -23,16 +23,14 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             return FieldsByType.GetOrAdd(
                 objectType,
                 type =>
-                    Enumerable
-                        .Where<FieldInfo>(
-                            type.GetFields(
-                                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
-                            ),
-                            prop =>
-                                Attribute.IsDefined(
-                                    (MemberInfo)prop,
-                                    typeof(ValidateAssignmentAttribute)
-                                )
+                    type.GetFields(
+                            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+                        )
+                        .Where(prop =>
+                            prop.IsAttributeDefined<ValidateAssignmentAttribute>(
+                                out _,
+                                inherit: false
+                            )
                         )
                         .ToArray()
             );
@@ -74,17 +72,24 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
         private static bool IsInvalid(IEnumerable enumerable)
         {
-            IEnumerator enumerator = enumerable.GetEnumerator();
             try
             {
-                return !enumerator.MoveNext();
-            }
-            finally
-            {
-                if (enumerator is IDisposable disposable)
+                IEnumerator enumerator = enumerable.GetEnumerator();
+                try
                 {
-                    disposable.Dispose();
+                    return !enumerator.MoveNext();
                 }
+                finally
+                {
+                    if (enumerator is IDisposable disposable)
+                    {
+                        disposable.Dispose();
+                    }
+                }
+            }
+            catch
+            {
+                return true;
             }
         }
 
@@ -94,7 +99,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
             return fieldValue switch
             {
-                Object unityObject => !unityObject,
+                Object unityObject => unityObject == null,
                 string stringValue => string.IsNullOrWhiteSpace(stringValue),
                 IList list => list.Count <= 0,
                 ICollection collection => collection.Count <= 0,

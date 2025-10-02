@@ -42,7 +42,10 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     );
                     return fields
                         .Select(field =>
-                            field.IsAttributeDefined(out ParentComponentAttribute attribute)
+                            field.IsAttributeDefined(
+                                out ParentComponentAttribute attribute,
+                                inherit: false
+                            )
                                 ? (field, attribute, ReflectionHelpers.GetFieldSetter(field))
                                 : (null, null, null)
                         )
@@ -63,72 +66,21 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 bool isArray = fieldType.IsArray;
                 Type parentComponentType = isArray ? fieldType.GetElementType() : fieldType;
                 bool foundParent;
+                Transform root = component.transform;
                 if (attribute.onlyAncestors)
                 {
-                    Transform parent = component.transform.parent;
-                    if (parent == null)
-                    {
-                        foundParent = false;
-                    }
-                    else if (isArray)
-                    {
-                        Component[] parentComponents = parent.GetComponentsInParent(
-                            parentComponentType,
-                            attribute.includeInactive
-                        );
-                        foundParent = 0 < parentComponents.Length;
+                    root = root.parent;
+                }
 
-                        Array correctTypedArray = ReflectionHelpers.CreateArray(
-                            parentComponentType,
-                            parentComponents.Length
-                        );
-                        Array.Copy(parentComponents, correctTypedArray, parentComponents.Length);
-                        setter(component, correctTypedArray);
-                    }
-                    else if (
-                        fieldType.IsGenericType
-                        && fieldType.GetGenericTypeDefinition() == typeof(List<>)
-                    )
-                    {
-                        parentComponentType = fieldType.GenericTypeArguments[0];
-
-                        Component[] parents = parent.GetComponentsInParent(
-                            parentComponentType,
-                            attribute.includeInactive
-                        );
-
-                        IList instance = ReflectionHelpers.CreateList(
-                            parentComponentType,
-                            parents.Length
-                        );
-
-                        foundParent = false;
-                        foreach (Component parentComponent in parents)
-                        {
-                            instance.Add(parentComponent);
-                            foundParent = true;
-                        }
-
-                        setter(component, instance);
-                    }
-                    else
-                    {
-                        Component childComponent = parent.GetComponentInParent(
-                            parentComponentType,
-                            attribute.includeInactive
-                        );
-                        foundParent = childComponent != null;
-                        if (foundParent)
-                        {
-                            setter(component, childComponent);
-                        }
-                    }
+                if (root == null)
+                {
+                    foundParent = false;
                 }
                 else
                 {
                     if (isArray)
                     {
-                        Component[] parentComponents = component.GetComponentsInParent(
+                        Component[] parentComponents = root.GetComponentsInParent(
                             parentComponentType,
                             attribute.includeInactive
                         );
@@ -147,7 +99,8 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     )
                     {
                         parentComponentType = fieldType.GenericTypeArguments[0];
-                        Component[] parents = component.GetComponentsInParent(
+
+                        Component[] parents = root.GetComponentsInParent(
                             parentComponentType,
                             attribute.includeInactive
                         );
@@ -157,17 +110,17 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                             parents.Length
                         );
 
-                        foundParent = false;
+                        foundParent = 0 < parents.Length;
                         foreach (Component parentComponent in parents)
                         {
                             instance.Add(parentComponent);
-                            foundParent = true;
                         }
+
                         setter(component, instance);
                     }
                     else
                     {
-                        Component childComponent = component.GetComponentInParent(
+                        Component childComponent = root.GetComponentInParent(
                             parentComponentType,
                             attribute.includeInactive
                         );

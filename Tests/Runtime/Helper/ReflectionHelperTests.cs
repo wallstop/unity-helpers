@@ -1332,27 +1332,27 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 nameof(TestAttributeClass.InstancePropertyWithAttribute)
             );
 
-            ReflectionTestAttribute[] typeAttrs = ReflectionHelpers
-                .GetAllAttributesSafe<ReflectionTestAttribute>(testType)
+            ReflectionTestAttribute[] typeAttrs = testType
+                .GetAllAttributesSafe<ReflectionTestAttribute>()
                 .ToArray();
             Assert.IsNotNull(typeAttrs);
             Assert.AreEqual(1, typeAttrs.Length);
             Assert.AreEqual("ClassLevel", typeAttrs[0].Name);
 
-            ReflectionTestAttribute[] propAttrs = ReflectionHelpers
-                .GetAllAttributesSafe<ReflectionTestAttribute>(instanceProperty)
+            ReflectionTestAttribute[] propAttrs = instanceProperty
+                .GetAllAttributesSafe<ReflectionTestAttribute>()
                 .ToArray();
             Assert.IsNotNull(propAttrs);
             Assert.AreEqual(1, propAttrs.Length);
             Assert.AreEqual("InstanceProperty", propAttrs[0].Name);
 
             // Test non-generic version
-            Attribute[] allTypeAttrs = ReflectionHelpers.GetAllAttributesSafe(testType).ToArray();
+            Attribute[] allTypeAttrs = testType.GetAllAttributesSafe().ToArray();
             Assert.IsNotNull(allTypeAttrs);
             Assert.Greater(allTypeAttrs.Length, 0);
 
-            Attribute[] allPropAttrs = ReflectionHelpers
-                .GetAllAttributesSafe(instanceProperty, typeof(ReflectionTestAttribute))
+            Attribute[] allPropAttrs = instanceProperty
+                .GetAllAttributesSafe(typeof(ReflectionTestAttribute))
                 .ToArray();
             Assert.IsNotNull(allPropAttrs);
             Assert.AreEqual(1, allPropAttrs.Length);
@@ -1369,9 +1369,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public void GetAllAttributeValuesSafe()
         {
             Type testType = typeof(TestAttributeClass);
-            Dictionary<string, object> attrValues = ReflectionHelpers.GetAllAttributeValuesSafe(
-                testType
-            );
+            Dictionary<string, object> attrValues = testType.GetAllAttributeValuesSafe();
 
             Assert.IsNotNull(attrValues);
             Assert.IsTrue(attrValues.ContainsKey("ReflectionTest"));
@@ -1390,8 +1388,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             Type testType = typeof(TestAttributeClass);
 
-            MethodInfo[] methods = ReflectionHelpers
-                .GetMethodsWithAttributeSafe<ReflectionTestAttribute>(testType)
+            MethodInfo[] methods = testType
+                .GetMethodsWithAttributeSafe<ReflectionTestAttribute>()
                 .ToArray();
             Assert.IsNotNull(methods);
             Assert.Greater(methods.Length, 0);
@@ -1402,8 +1400,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 methods.Any(m => m.Name == nameof(TestAttributeClass.InstanceMethodWithAttribute))
             );
 
-            PropertyInfo[] properties = ReflectionHelpers
-                .GetPropertiesWithAttributeSafe<ReflectionTestAttribute>(testType)
+            PropertyInfo[] properties = testType
+                .GetPropertiesWithAttributeSafe<ReflectionTestAttribute>()
                 .ToArray();
             Assert.IsNotNull(properties);
             Assert.Greater(properties.Length, 0);
@@ -1413,8 +1411,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 )
             );
 
-            FieldInfo[] fields = ReflectionHelpers
-                .GetFieldsWithAttributeSafe<ReflectionTestAttribute>(testType)
+            FieldInfo[] fields = testType
+                .GetFieldsWithAttributeSafe<ReflectionTestAttribute>()
                 .ToArray();
             Assert.IsNotNull(fields);
             Assert.Greater(fields.Length, 0);

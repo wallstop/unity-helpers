@@ -43,9 +43,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void CombineAggregatesDirections()
         {
-            Direction combined = DirectionExtensions.Combine(
-                new[] { Direction.North, Direction.East, Direction.West }
-            );
+            Direction combined = new[]
+            {
+                Direction.North,
+                Direction.East,
+                Direction.West,
+            }.Combine();
 
             Assert.IsTrue(combined.HasFlag(Direction.North));
             Assert.IsTrue(combined.HasFlag(Direction.East));

@@ -41,7 +41,10 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     );
                     return fields
                         .Select(field =>
-                            field.IsAttributeDefined(out SiblingComponentAttribute attribute)
+                            field.IsAttributeDefined(
+                                out SiblingComponentAttribute attribute,
+                                inherit: false
+                            )
                                 ? (field, attribute, ReflectionHelpers.GetFieldSetter(field))
                                 : (null, null, null)
                         )
