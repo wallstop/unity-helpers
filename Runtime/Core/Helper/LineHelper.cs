@@ -36,7 +36,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
         // c# implementation of the Ramer-Douglas-Peucker-Algorithm by Craig Selbert slightly adapted for Unity Vector Types
         //http://www.codeproject.com/Articles/18936/A-Csharp-Implementation-of-Douglas-Peucker-Line-Ap
-        public static List<Vector2> SimplifyPrecise(List<Vector2> points, double tolerance)
+        public static List<Vector2> SimplifyPrecise(
+            List<Vector2> points,
+            double tolerance,
+            List<Vector2> buffer = null
+        )
         {
             if (points == null || points.Count < 3)
             {
@@ -50,9 +54,18 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             List<int> pointIndexsToKeep = new() { firstPoint, lastPoint };
 
             //The first and the last point cannot be the same
-            while (points[firstPoint] == points[lastPoint])
+            while (lastPoint > firstPoint && points[firstPoint] == points[lastPoint])
             {
                 lastPoint--;
+            }
+
+            // If all points are the same, return just the first point
+            if (lastPoint <= firstPoint)
+            {
+                buffer ??= new List<Vector2>(1);
+                buffer.Clear();
+                buffer.Add(points[firstPoint]);
+                return buffer;
             }
 
             DouglasPeuckerReductionRecursive(
@@ -63,14 +76,15 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 ref pointIndexsToKeep
             );
 
-            List<Vector2> returnPoints = new();
+            buffer ??= new List<Vector2>(pointIndexsToKeep.Count);
+            buffer.Clear();
             pointIndexsToKeep.Sort();
             foreach (int index in pointIndexsToKeep)
             {
-                returnPoints.Add(points[index]);
+                buffer.Add(points[index]);
             }
 
-            return returnPoints;
+            return buffer;
         }
 
         private static void DouglasPeuckerReductionRecursive(
@@ -167,38 +181,51 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return buffer;
             }
 
-            float maxDistance = 0;
-            int index = 0;
-            int end = points.Count - 1;
+            SimplifyRecursive(points, 0, points.Count - 1, epsilon, buffer);
+            buffer.Add(points[points.Count - 1]);
+            return buffer;
+        }
 
-            for (int i = 1; i < end; ++i)
+        private static void SimplifyRecursive(
+            List<Vector2> points,
+            int startIndex,
+            int endIndex,
+            float epsilon,
+            List<Vector2> buffer
+        )
+        {
+            if (endIndex <= startIndex + 1)
             {
-                float distance = PerpendicularDistance(points[i], points[0], points[end]);
+                buffer.Add(points[startIndex]);
+                return;
+            }
+
+            float maxDistance = 0;
+            int maxIndex = startIndex;
+
+            for (int i = startIndex + 1; i < endIndex; ++i)
+            {
+                float distance = PerpendicularDistance(
+                    points[i],
+                    points[startIndex],
+                    points[endIndex]
+                );
                 if (distance > maxDistance)
                 {
-                    index = i;
+                    maxIndex = i;
                     maxDistance = distance;
                 }
             }
 
             if (maxDistance > epsilon)
             {
-                List<Vector2> recResults1 = Simplify(points.GetRange(0, index + 1), epsilon);
-                List<Vector2> recResults2 = Simplify(
-                    points.GetRange(index, points.Count - index),
-                    epsilon
-                );
-
-                buffer.AddRange(recResults1.Take(recResults1.Count - 1));
-                buffer.AddRange(recResults2);
+                SimplifyRecursive(points, startIndex, maxIndex, epsilon, buffer);
+                SimplifyRecursive(points, maxIndex, endIndex, epsilon, buffer);
             }
             else
             {
-                buffer.Add(points[0]);
-                buffer.Add(points[end]);
+                buffer.Add(points[startIndex]);
             }
-
-            return buffer;
         }
     }
 }
