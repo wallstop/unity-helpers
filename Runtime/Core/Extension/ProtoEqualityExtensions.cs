@@ -111,8 +111,8 @@
 
         private static readonly WallstopGenericPool<PooledBufferStream> StreamPool = new(
             producer: () => new PooledBufferStream(),
-            preWarmCount: 2,
-            onRelease: s => s.ResetForReuse()
+            onRelease: s => s.ResetForReuse(),
+            onDisposal: stream => stream.Dispose()
         );
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -141,20 +141,13 @@
             ArraySegment<byte> segA = a.GetWrittenSegment();
             ArraySegment<byte> segB = b.GetWrittenSegment();
 
-            int count = segA.Count;
-            if (count != segB.Count)
+            if (segA.Count != segB.Count)
             {
                 return false;
             }
 
-            for (int i = 0; i < count; i++)
-            {
-                if (segA[i] != segB[i])
-                {
-                    return false;
-                }
-            }
-            return true;
+            // Use Span<T>.SequenceEqual for efficient memory comparison
+            return segA.AsSpan().SequenceEqual(segB.AsSpan());
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

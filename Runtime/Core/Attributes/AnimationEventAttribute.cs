@@ -87,6 +87,21 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
                                     return false;
                                 })
+                                .Select(method =>
+                                    // Get the method from its declaring type to ensure consistent MethodInfo references
+                                    method.DeclaringType.GetMethod(
+                                        method.Name,
+                                        BindingFlags.Instance
+                                            | BindingFlags.Public
+                                            | BindingFlags.NonPublic,
+                                        null,
+                                        method
+                                            .GetParameters()
+                                            .Select(p => p.ParameterType)
+                                            .ToArray(),
+                                        null
+                                    )
+                                )
                                 .ToList();
 
                             definedMethods.AddRange(inheritedMethods);

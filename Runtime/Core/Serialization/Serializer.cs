@@ -2,10 +2,8 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
 {
     using System;
     using System.Buffers;
-    using System.Collections.Generic;
     using System.ComponentModel;
     using System.IO;
-    using System.Runtime.CompilerServices;
     using System.Runtime.Serialization.Formatters.Binary;
     using System.Text;
     using System.Text.Json;
@@ -69,9 +67,10 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
 
     public enum SerializationType
     {
-        SystemBinary,
-        Protobuf,
-        Json,
+        None = 0,
+        SystemBinary = 1,
+        Protobuf = 2,
+        Json = 3,
     }
 
     public static class Serializer
@@ -84,20 +83,9 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             onRelease: writer =>
             {
                 writer.Reset(Stream.Null);
-            }
+            },
+            onDisposal: stream => stream.Dispose()
         );
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static List<byte> CopySegmentToList(List<byte> buffer, ArraySegment<byte> segment)
-        {
-            buffer.Clear();
-            foreach (byte element in segment)
-            {
-                buffer.Add(element);
-            }
-
-            return buffer;
-        }
 
         public static T Deserialize<T>(byte[] serialized, SerializationType serializationType)
         {
@@ -154,31 +142,25 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             }
         }
 
-        // New overload to serialize into a provided List<byte> buffer to avoid array allocations
-        public static List<byte> Serialize<T>(
+        public static int Serialize<T>(
             T instance,
             SerializationType serializationType,
-            List<byte> buffer
+            ref byte[] buffer
         )
         {
-            if (buffer == null)
-            {
-                throw new ArgumentNullException(nameof(buffer));
-            }
-
             switch (serializationType)
             {
                 case SerializationType.SystemBinary:
                 {
-                    return BinarySerialize(instance, buffer);
+                    return BinarySerialize(instance, ref buffer);
                 }
                 case SerializationType.Protobuf:
                 {
-                    return ProtoSerialize(instance, buffer);
+                    return ProtoSerialize(instance, ref buffer);
                 }
                 case SerializationType.Json:
                 {
-                    return JsonSerialize(instance, buffer);
+                    return JsonSerialize(instance, ref buffer);
                 }
                 default:
                 {
@@ -211,17 +193,13 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                 out BinaryFormatter binaryFormatter
             );
             binaryFormatter.Serialize(stream, input);
-            return stream.ToArrayExact();
+            byte[] buffer = null;
+            stream.ToArrayExact(ref buffer);
+            return buffer;
         }
 
-        // Buffer-based variant to avoid allocating a new byte[] result
-        public static List<byte> BinarySerialize<T>(T input, List<byte> buffer)
+        public static int BinarySerialize<T>(T input, ref byte[] buffer)
         {
-            if (buffer == null)
-            {
-                throw new ArgumentNullException(nameof(buffer));
-            }
-
             using Utils.PooledResource<PooledBufferStream> lease = PooledBufferStream.Rent(
                 out PooledBufferStream stream
             );
@@ -229,14 +207,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                 out BinaryFormatter binaryFormatter
             );
             binaryFormatter.Serialize(stream, input);
-            if (stream.TryGetWrittenSegment(out ArraySegment<byte> seg))
-            {
-                return CopySegmentToList(buffer, seg);
-            }
-
-            // Fallback (should not happen): copy from exact array without AddRange allocation
-            byte[] arr = stream.ToArrayExact();
-            return CopySegmentToList(buffer, new ArraySegment<byte>(arr, 0, arr.Length));
+            return stream.ToArrayExact(ref buffer);
         }
 
         public static T ProtoDeserialize<T>(byte[] data)
@@ -304,29 +275,18 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                 out PooledBufferStream stream
             );
             ProtoBuf.Serializer.Serialize(stream, input);
-            return stream.ToArrayExact();
+            byte[] buffer = null;
+            stream.ToArrayExact(ref buffer);
+            return buffer;
         }
 
-        // Buffer-based variant to avoid allocating a new byte[] result
-        public static List<byte> ProtoSerialize<T>(T input, List<byte> buffer)
+        public static int ProtoSerialize<T>(T input, ref byte[] buffer)
         {
-            if (buffer == null)
-            {
-                throw new ArgumentNullException(nameof(buffer));
-            }
-
             using Utils.PooledResource<PooledBufferStream> lease = PooledBufferStream.Rent(
                 out PooledBufferStream stream
             );
             ProtoBuf.Serializer.Serialize(stream, input);
-            if (stream.TryGetWrittenSegment(out ArraySegment<byte> seg))
-            {
-                return CopySegmentToList(buffer, seg);
-            }
-
-            // Fallback (should not happen): copy from exact array without AddRange allocation
-            byte[] arr = stream.ToArrayExact();
-            return CopySegmentToList(buffer, new ArraySegment<byte>(arr, 0, arr.Length));
+            return stream.ToArrayExact(ref buffer);
         }
 
         public static T JsonDeserialize<T>(
@@ -349,31 +309,20 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                 out PooledBufferStream stream
             );
             WriteJsonToStream(input, SerializerEncoding.NormalJsonOptions, stream);
-            return stream.ToArrayExact();
+            byte[] buffer = null;
+            stream.ToArrayExact(ref buffer);
+            return buffer;
         }
 
-        // Buffer-based variant to avoid allocating a new byte[] result
-        public static List<byte> JsonSerialize<T>(T input, List<byte> buffer)
+        public static int JsonSerialize<T>(T input, ref byte[] buffer)
         {
-            if (buffer == null)
-            {
-                throw new ArgumentNullException(nameof(buffer));
-            }
-
             using Utils.PooledResource<PooledBufferStream> lease = PooledBufferStream.Rent(
                 out PooledBufferStream stream
             );
             WriteJsonToStream(input, SerializerEncoding.NormalJsonOptions, stream);
-            if (stream.TryGetWrittenSegment(out ArraySegment<byte> seg))
-            {
-                return CopySegmentToList(buffer, seg);
-            }
-
-            byte[] arr = stream.ToArrayExact();
-            return CopySegmentToList(buffer, new ArraySegment<byte>(arr, 0, arr.Length));
+            return stream.ToArrayExact(ref buffer);
         }
 
-        // Internal helper to write JSON directly to a stream without creating intermediate strings/byte[]
         private static void WriteJsonToStream<T>(
             T input,
             JsonSerializerOptions options,
@@ -508,7 +457,8 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
 
         private static readonly Utils.WallstopGenericPool<PooledBufferStream> Pool = new(
             producer: () => new PooledBufferStream(),
-            onRelease: stream => stream.ResetForReuse()
+            onRelease: stream => stream.ResetForReuse(),
+            onDisposal: stream => stream.Dispose()
         );
 
         public static Utils.PooledResource<PooledBufferStream> Rent(
@@ -538,16 +488,6 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             _position = 0;
             _disposed = false;
         }
-
-        // Try-pattern to get the written segment
-        internal bool TryGetWrittenSegment(out ArraySegment<byte> segment)
-        {
-            segment = new ArraySegment<byte>(_buffer, 0, _length);
-            return true;
-        }
-
-        // The number of valid bytes written to the stream
-        internal int WrittenLength => _length;
 
         public override bool CanRead => false;
         public override bool CanSeek => true;
@@ -593,10 +533,6 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             }
             int newLen = (int)value;
             EnsureCapacity(newLen);
-            if (newLen > _length)
-            {
-                Array.Clear(_buffer, _length, newLen - _length);
-            }
             _length = newLen;
             if (_position > _length)
             {
@@ -606,18 +542,9 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
 
         public override void Write(byte[] buffer, int offset, int count)
         {
-            if (buffer == null)
-            {
-                throw new ArgumentNullException(nameof(buffer));
-            }
-
-            if ((uint)offset > buffer.Length || (uint)count > buffer.Length - offset)
-            {
-                throw new ArgumentOutOfRangeException();
-            }
             int endPos = _position + count;
             EnsureCapacity(endPos);
-            Buffer.BlockCopy(buffer, offset, _buffer, _position, count);
+            Array.Copy(buffer, offset, _buffer, _position, count);
             _position = endPos;
             if (endPos > _length)
             {
@@ -672,7 +599,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             byte[] newBuf = ArrayPool<byte>.Shared.Rent(newSize);
             if (_length > 0)
             {
-                Buffer.BlockCopy(_buffer, 0, newBuf, 0, _length);
+                Array.Copy(_buffer, newBuf, _length);
             }
             ArrayPool<byte>.Shared.Return(_buffer);
             _buffer = newBuf;
@@ -694,14 +621,19 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             base.Dispose(disposing);
         }
 
-        public byte[] ToArrayExact()
+        public int ToArrayExact(ref byte[] buffer)
         {
-            byte[] result = new byte[_length];
+            if (buffer == null || buffer.Length < _length)
+            {
+                buffer = new byte[_length];
+            }
+
             if (_length > 0)
             {
-                Buffer.BlockCopy(_buffer, 0, result, 0, _length);
+                Array.Copy(_buffer, buffer, _length);
             }
-            return result;
+
+            return _length;
         }
     }
 
@@ -711,11 +643,9 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
         private byte[] _buffer = Array.Empty<byte>();
         private int _position;
         private int _length;
-        private bool _disposed;
 
         private static readonly Utils.WallstopGenericPool<PooledReadOnlyMemoryStream> Pool = new(
             producer: () => new PooledReadOnlyMemoryStream(),
-            preWarmCount: 2,
             onRelease: s =>
             {
                 s.ResetForReuse();
@@ -731,10 +661,9 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             _buffer = buffer ?? Array.Empty<byte>();
             _position = 0;
             _length = _buffer.Length;
-            _disposed = false;
         }
 
-        internal void ResetForReuse()
+        private void ResetForReuse()
         {
             SetBuffer(Array.Empty<byte>());
         }
@@ -780,7 +709,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                 count = remaining;
             }
 
-            Buffer.BlockCopy(_buffer, _position, buffer, offset, count);
+            Array.Copy(_buffer, _position, buffer, offset, count);
             _position += count;
             return count;
         }
@@ -826,12 +755,6 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
         public override void WriteByte(byte value)
         {
             throw new NotSupportedException();
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            _disposed = true;
-            base.Dispose(disposing);
         }
     }
 }

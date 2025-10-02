@@ -1,6 +1,7 @@
 ﻿namespace WallstopStudios.UnityHelpers.Tests.Performance
 {
     using System;
+    using System.Collections.Generic;
     using System.Diagnostics;
     using System.Text.Json;
     using NUnit.Framework;
@@ -149,25 +150,26 @@
             T sample = factory();
 
             // Warmup
-            _ = SerializerAlias.JsonSerialize(sample);
+            byte[] buffer = null;
+            _ = SerializerAlias.JsonSerialize(sample, ref buffer);
             _ = JsonSerializer.SerializeToUtf8Bytes(sample);
 
+            T value = factory();
             // Measure pooled (using our implementation)
             Stopwatch sw = Stopwatch.StartNew();
-            byte[] last = null;
             for (int i = 0; i < Iterations; ++i)
             {
-                last = SerializerAlias.JsonSerialize(factory());
+                _ = SerializerAlias.JsonSerialize(value, ref buffer);
             }
             sw.Stop();
             long pooledMs = sw.ElapsedMilliseconds;
-            payloadSize = last?.Length ?? 0;
+            payloadSize = buffer?.Length ?? 0;
 
             // Measure classic (using System.Text.Json directly)
             sw.Restart();
             for (int i = 0; i < Iterations; ++i)
             {
-                _ = JsonSerializer.SerializeToUtf8Bytes(factory());
+                _ = JsonSerializer.SerializeToUtf8Bytes(value);
             }
             sw.Stop();
             long classicMs = sw.ElapsedMilliseconds;
@@ -215,7 +217,8 @@
         {
             // Warmup
             _ = SerializerAlias.JsonStringify(payload);
-            _ = SerializerAlias.JsonSerialize(payload);
+            byte[] buffer = null;
+            _ = SerializerAlias.JsonSerialize(payload, ref buffer);
 
             // Measure JsonStringify (returns string)
             Stopwatch sw = Stopwatch.StartNew();
@@ -226,11 +229,10 @@
             sw.Stop();
             long stringifyMs = sw.ElapsedMilliseconds;
 
-            // Measure JsonSerialize (returns byte[])
             sw.Restart();
             for (int i = 0; i < Iterations; ++i)
             {
-                _ = SerializerAlias.JsonSerialize(payload);
+                _ = SerializerAlias.JsonSerialize(payload, ref buffer);
             }
             sw.Stop();
             long serializeMs = sw.ElapsedMilliseconds;

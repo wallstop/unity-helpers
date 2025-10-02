@@ -87,14 +87,14 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     matrix[index] = innerResource.resource;
                 }
 
-                for (int i = 0; i <= source1Length; matrix[i][0] = ++i)
+                for (int i = 0; i <= source1Length; ++i)
                 {
-                    // Spin to force array population
+                    matrix[i][0] = i;
                 }
 
-                for (int j = 0; j <= source2Length; matrix[0][j] = ++j)
+                for (int j = 0; j <= source2Length; ++j)
                 {
-                    // Spin to force array population
+                    matrix[0][j] = j;
                 }
 
                 for (int i = 1; i <= source1Length; ++i)

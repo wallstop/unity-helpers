@@ -2,6 +2,7 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.Linq;
     using System.Text.Json;
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Serialization;
@@ -388,7 +389,7 @@
         [Test]
         public void BufferReuseMultipleOperationsNoDataCorruption()
         {
-            List<byte> buffer = new();
+            byte[] buffer = null;
 
             SimpleMessage msg1 = new()
             {
@@ -397,9 +398,8 @@
                 Values = new List<int> { 1, 2, 3 },
             };
 
-            Serializer.JsonSerialize(msg1, buffer);
-            byte[] data1 = buffer.ToArray();
-            buffer.Clear();
+            int bytes = Serializer.JsonSerialize(msg1, ref buffer);
+            byte[] data1 = buffer.Take(bytes).ToArray();
 
             SimpleMessage msg2 = new()
             {
@@ -408,8 +408,8 @@
                 Values = new List<int> { 4, 5, 6 },
             };
 
-            Serializer.JsonSerialize(msg2, buffer);
-            byte[] data2 = buffer.ToArray();
+            bytes = Serializer.JsonSerialize(msg2, ref buffer);
+            byte[] data2 = buffer.Take(bytes).ToArray();
 
             string json1 = System.Text.Encoding.UTF8.GetString(data1);
             string json2 = System.Text.Encoding.UTF8.GetString(data2);

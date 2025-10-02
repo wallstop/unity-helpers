@@ -1,6 +1,7 @@
 ﻿namespace WallstopStudios.UnityHelpers.Tests.Performance
 {
     using System;
+    using System.Collections.Generic;
     using System.Diagnostics;
     using System.IO;
     using NUnit.Framework;
@@ -108,9 +109,10 @@
         )
         {
             T sample = factory();
+            byte[] buffer = null;
 
             // Warmup
-            _ = SerializerAlias.ProtoSerialize(sample);
+            _ = SerializerAlias.ProtoSerialize(sample, ref buffer);
             using (MemoryStream warm = new())
             {
                 ProtoBuf.Serializer.Serialize(warm, sample);
@@ -118,21 +120,20 @@
 
             // Measure pooled
             Stopwatch sw = Stopwatch.StartNew();
-            byte[] last = null;
             for (int i = 0; i < Iterations; ++i)
             {
-                last = SerializerAlias.ProtoSerialize(factory());
+                _ = SerializerAlias.ProtoSerialize(sample, ref buffer);
             }
             sw.Stop();
             long pooledMs = sw.ElapsedMilliseconds;
-            payloadSize = last?.Length ?? 0;
+            payloadSize = buffer?.Length ?? 0;
 
             // Measure classic
             sw.Restart();
             for (int i = 0; i < Iterations; ++i)
             {
                 using MemoryStream ms = new();
-                ProtoBuf.Serializer.Serialize(ms, factory());
+                ProtoBuf.Serializer.Serialize(ms, sample);
                 _ = ms.ToArray();
             }
             sw.Stop();

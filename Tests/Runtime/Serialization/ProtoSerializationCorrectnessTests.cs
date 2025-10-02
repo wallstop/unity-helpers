@@ -2,6 +2,7 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.Linq;
     using NUnit.Framework;
     using ProtoBuf;
     using Serializer = WallstopStudios.UnityHelpers.Core.Serialization.Serializer;
@@ -344,7 +345,7 @@
         public void BufferReuseMultipleOperationsNoDataCorruption()
         {
             // This tests that the buffer pooling mechanism correctly resets and doesn't leak data
-            List<byte> buffer = new();
+            byte[] buffer = null;
 
             // First serialization with specific data
             EdgeCaseMessage msg1 = new()
@@ -355,9 +356,8 @@
                 Data = MakeBytes(1024),
             };
 
-            Serializer.ProtoSerialize(msg1, buffer);
-            byte[] data1 = buffer.ToArray();
-            buffer.Clear();
+            int bytes = Serializer.ProtoSerialize(msg1, ref buffer);
+            byte[] data1 = buffer.Take(bytes).ToArray();
 
             // Second serialization with different data
             EdgeCaseMessage msg2 = new()
@@ -368,8 +368,8 @@
                 Data = MakeBytes(512),
             };
 
-            Serializer.ProtoSerialize(msg2, buffer);
-            byte[] data2 = buffer.ToArray();
+            bytes = Serializer.ProtoSerialize(msg2, ref buffer);
+            byte[] data2 = buffer.Take(bytes).ToArray();
 
             // Deserialize and verify both are correct
             EdgeCaseMessage clone1 = Serializer.ProtoDeserialize<EdgeCaseMessage>(data1);
