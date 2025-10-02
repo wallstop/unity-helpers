@@ -78,42 +78,9 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 if (attribute.skipIfAssigned)
                 {
                     object currentValue = getter(component);
-                    if (currentValue != null)
+                    if (ValueHelpers.IsAssigned(currentValue))
                     {
-                        switch (currentValue)
-                        {
-                            case Array array:
-                            {
-                                if (array.Length > 0)
-                                {
-                                    continue;
-                                }
-
-                                break;
-                            }
-                            case IList list:
-                            {
-                                if (list.Count > 0)
-                                {
-                                    continue;
-                                }
-
-                                break;
-                            }
-                            case Object unityObject:
-                            {
-                                if (unityObject != null)
-                                {
-                                    continue;
-                                }
-
-                                break;
-                            }
-                            default:
-                            {
-                                continue;
-                            }
-                        }
+                        continue;
                     }
                 }
 
@@ -150,7 +117,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                         {
                             if (
                                 !attribute.includeInactive
-                                && childComponent is Behaviour { enabled: false }
+                                && !ReflectionHelpers.IsComponentEnabled(childComponent)
                             )
                             {
                                 continue;
@@ -162,11 +129,16 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
                     foundChild = 0 < cache.Count;
 
+                    using PooledResource<Component[]> arrayResource =
+                        WallstopFastArrayPool<Component>.Get(cache.Count);
+                    Component[] array = arrayResource.resource;
+                    cache.CopyTo(array);
+
                     Array correctTypedArray = ReflectionHelpers.CreateArray(
                         childComponentType,
                         cache.Count
                     );
-                    Array.Copy(cache.ToArray(), correctTypedArray, cache.Count);
+                    Array.Copy(array, correctTypedArray, cache.Count);
                     setter(component, correctTypedArray);
                 }
                 else if (
@@ -196,7 +168,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                         {
                             if (
                                 !attribute.includeInactive
-                                && childComponent is Behaviour { enabled: false }
+                                && !ReflectionHelpers.IsComponentEnabled(childComponent)
                             )
                             {
                                 continue;
@@ -213,6 +185,9 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 {
                     foundChild = false;
                     Component childComponent = null;
+                    using PooledResource<List<Component>> childComponentBuffer =
+                        Buffers<Component>.List.Get();
+                    List<Component> childComponents = childComponentBuffer.resource;
                     foreach (
                         Transform child in component.IterateOverAllChildrenRecursivelyBreadthFirst(
                             childBuffer,
@@ -224,21 +199,25 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                         {
                             continue;
                         }
-
-                        childComponent = child.GetComponent(childComponentType);
-                        if (
-                            childComponent == null
-                            || (
-                                !attribute.includeInactive
-                                && childComponent is Behaviour { enabled: false }
-                            )
-                        )
+                        child.GetComponents(childComponentType, childComponents);
+                        foreach (Component entry in childComponents)
                         {
-                            continue;
+                            if (
+                                !attribute.includeInactive
+                                && !ReflectionHelpers.IsComponentEnabled(entry)
+                            )
+                            {
+                                continue;
+                            }
+                            childComponent = entry;
+                            foundChild = true;
+                            break;
                         }
 
-                        foundChild = true;
-                        break;
+                        if (foundChild)
+                        {
+                            break;
+                        }
                     }
                     if (foundChild)
                     {

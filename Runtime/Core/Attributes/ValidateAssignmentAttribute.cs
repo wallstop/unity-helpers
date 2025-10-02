@@ -105,5 +105,18 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 _ => fieldValue == null,
             };
         }
+
+        internal static bool IsValueInvalid(object value)
+        {
+            return value switch
+            {
+                Object unityObject => unityObject == null,
+                string stringValue => string.IsNullOrWhiteSpace(stringValue),
+                IList list => list.Count <= 0,
+                ICollection collection => collection.Count <= 0,
+                IEnumerable enumerable => IsInvalid(enumerable),
+                _ => value == null,
+            };
+        }
     }
 }

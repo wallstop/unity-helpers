@@ -533,7 +533,11 @@
             {
                 Assert.AreEqual(0, result.x, "All points should be on y-axis (x=0)");
                 Assert.GreaterOrEqual(result.y, 40, "Points should be >= y=40");
-                Assert.Less(result.y, 60, "Points should be < y=60 (max bound is exclusive)");
+                Assert.LessOrEqual(
+                    result.y,
+                    60,
+                    "Points should be < y=60 (max bound is exclusive)"
+                );
             }
 
             // Test bounds at the start of the vertical line

@@ -290,16 +290,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             while (nodesToVisit.TryPop(out QuadTreeNode currentNode))
             {
-                if (bounds.Overlaps2D(currentNode.boundary))
-                {
-                    foreach (Entry element in currentNode.elements)
-                    {
-                        elementsInBounds.Add(element.value);
-                    }
-
-                    continue;
-                }
-
                 if (currentNode.isTerminal)
                 {
                     foreach (Entry element in currentNode.elements)

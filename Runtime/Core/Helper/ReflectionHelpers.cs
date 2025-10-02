@@ -200,6 +200,90 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #endif
         }
 
+        public static Func<TInstance, TValue> GetPropertyGetter<TInstance, TValue>(
+            PropertyInfo property
+        )
+        {
+#if !EMIT_DYNAMIC_IL
+            return Getter;
+            TValue Getter(TInstance instance)
+            {
+                return (TValue)property.GetValue(instance);
+            }
+#else
+            MethodInfo getMethod = property.GetGetMethod(true);
+            if (getMethod == null)
+            {
+                throw new ArgumentException(
+                    $"Property {property.Name} has no getter",
+                    nameof(property)
+                );
+            }
+
+            DynamicMethod dynamicMethod = new(
+                $"GetGeneric{property.DeclaringType.Name}_{property.Name}",
+                typeof(TValue),
+                new[] { typeof(TInstance) },
+                property.DeclaringType,
+                true
+            );
+
+            ILGenerator il = dynamicMethod.GetILGenerator();
+
+            if (getMethod.IsStatic)
+            {
+                il.Emit(OpCodes.Call, getMethod);
+            }
+            else
+            {
+                if (typeof(TInstance).IsValueType)
+                {
+                    il.Emit(OpCodes.Ldarga_S, 0);
+                }
+                else
+                {
+                    il.Emit(OpCodes.Ldarg_0);
+                }
+
+                if (property.DeclaringType != typeof(TInstance))
+                {
+                    il.Emit(
+                        property.DeclaringType.IsValueType ? OpCodes.Unbox : OpCodes.Castclass,
+                        property.DeclaringType
+                    );
+                }
+
+                il.Emit(
+                    property.DeclaringType.IsValueType ? OpCodes.Call : OpCodes.Callvirt,
+                    getMethod
+                );
+            }
+
+            if (property.PropertyType.IsValueType)
+            {
+                if (!typeof(TValue).IsValueType)
+                {
+                    il.Emit(OpCodes.Box, property.PropertyType);
+                }
+            }
+            else
+            {
+                if (typeof(TValue).IsValueType)
+                {
+                    il.Emit(OpCodes.Unbox_Any, typeof(TValue));
+                }
+                else if (typeof(TValue) != property.PropertyType)
+                {
+                    il.Emit(OpCodes.Castclass, typeof(TValue));
+                }
+            }
+
+            il.Emit(OpCodes.Ret);
+            return (Func<TInstance, TValue>)
+                dynamicMethod.CreateDelegate(typeof(Func<TInstance, TValue>));
+#endif
+        }
+
         public static Func<object> GetStaticFieldGetter(FieldInfo field)
         {
             if (!field.IsStatic)
@@ -1038,6 +1122,161 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 // Swallow
             }
             return null;
+        }
+
+        private static readonly ConcurrentDictionary<
+            Type,
+            Func<object, bool>
+        > EnabledPropertyGetters = new();
+
+        private static Func<object, bool> BuildEnabledPropertyGetter(Type type)
+        {
+            try
+            {
+                PropertyInfo property = type.GetProperty(
+                    "enabled",
+                    BindingFlags.Instance | BindingFlags.Public
+                );
+
+                if (property == null || property.PropertyType != typeof(bool))
+                {
+                    return null;
+                }
+
+                MethodInfo getMethod = property.GetGetMethod();
+                if (getMethod == null)
+                {
+                    return null;
+                }
+
+#if !EMIT_DYNAMIC_IL
+                return CreateCompiledEnabledPropertyGetter(property, type);
+#else
+                DynamicMethod dynamicMethod = new(
+                    $"GetEnabled_{type.Name}",
+                    typeof(bool),
+                    new[] { typeof(object) },
+                    type,
+                    true
+                );
+
+                ILGenerator il = dynamicMethod.GetILGenerator();
+
+                // Load and cast the instance argument
+                il.Emit(OpCodes.Ldarg_0);
+                il.Emit(type.IsValueType ? OpCodes.Unbox : OpCodes.Castclass, type);
+
+                // Call the getter
+                il.Emit(type.IsValueType ? OpCodes.Call : OpCodes.Callvirt, getMethod);
+
+                il.Emit(OpCodes.Ret);
+
+                return (Func<object, bool>)dynamicMethod.CreateDelegate(typeof(Func<object, bool>));
+#endif
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static Func<object, bool> CreateCompiledEnabledPropertyGetter(
+            PropertyInfo property,
+            Type type
+        )
+        {
+            if (!CanCompileExpressions)
+            {
+                return CreateDelegateEnabledPropertyGetter(property, type)
+                    ?? (instance => (bool)property.GetValue(instance));
+            }
+
+            try
+            {
+                MethodInfo getMethod = property.GetGetMethod();
+                if (getMethod == null)
+                {
+                    return instance => (bool)property.GetValue(instance);
+                }
+
+                ParameterExpression instanceParam = Expression.Parameter(
+                    typeof(object),
+                    "instance"
+                );
+
+                Expression instanceExpression = type.IsValueType
+                    ? Expression.Unbox(instanceParam, type)
+                    : Expression.Convert(instanceParam, type);
+
+                Expression propertyExpression = Expression.Property(instanceExpression, property);
+
+                return Expression
+                    .Lambda<Func<object, bool>>(propertyExpression, instanceParam)
+                    .Compile();
+            }
+            catch
+            {
+                return instance => (bool)property.GetValue(instance);
+            }
+        }
+
+        private static Func<object, bool> CreateDelegateEnabledPropertyGetter(
+            PropertyInfo property,
+            Type type
+        )
+        {
+            try
+            {
+                MethodInfo getMethod = property.GetGetMethod();
+                if (getMethod == null)
+                {
+                    return null;
+                }
+
+                // Try to create a delegate directly
+                Type delegateType = typeof(Func<,>).MakeGenericType(type, typeof(bool));
+                Delegate del = Delegate.CreateDelegate(delegateType, null, getMethod, false);
+                if (del == null)
+                {
+                    return null;
+                }
+
+                return instance => (bool)del.DynamicInvoke(instance);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool IsComponentEnabled<T>(T component)
+            where T : UnityEngine.Object
+        {
+            if (component == null)
+            {
+                return false;
+            }
+
+            Type componentType = component.GetType();
+            Func<object, bool> enabledGetter = EnabledPropertyGetters.GetOrAdd(
+                componentType,
+                inputType => BuildEnabledPropertyGetter(inputType)
+            );
+
+            if (enabledGetter == null)
+            {
+                return true;
+            }
+
+            try
+            {
+                return enabledGetter(component);
+            }
+            catch
+            {
+                return true;
+            }
         }
 
         public static bool HasAttributeSafe(

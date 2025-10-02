@@ -123,10 +123,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void FastContains2DBoundsPointAtMaxReturnsFalse()
         {
-            // max is exclusive in FastContains2D
+            // max is inclusive in FastContains2D
             Bounds bounds = new(new Vector3(5f, 5f, 0f), new Vector3(10f, 10f, 10f));
             Vector2 point = new(10f, 10f);
-            Assert.IsFalse(bounds.FastContains2D(point));
+            Assert.IsTrue(bounds.FastContains2D(point));
         }
 
         [Test]

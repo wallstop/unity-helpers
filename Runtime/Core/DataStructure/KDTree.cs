@@ -310,16 +310,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             while (nodesToVisit.TryPop(out KDTreeNode currentNode))
             {
-                if (bounds.Overlaps2D(currentNode.boundary))
-                {
-                    foreach (Entry element in currentNode.entries)
-                    {
-                        elementsInBounds.Add(element.value);
-                    }
-
-                    continue;
-                }
-
                 if (currentNode.isTerminal)
                 {
                     foreach (Entry element in currentNode.entries)

@@ -261,15 +261,15 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     continue;
                 }
 
-                if (bounds.Overlaps2D(currentNode.boundary))
-                {
-                    foreach (T element in currentNode.elements)
-                    {
-                        yield return element;
-                    }
-
-                    continue;
-                }
+                // if (bounds.Overlaps2D(currentNode.boundary))
+                // {
+                //     foreach (T element in currentNode.elements)
+                //     {
+                //         yield return element;
+                //     }
+                //
+                //     continue;
+                // }
 
                 foreach (RTreeNode<T> child in currentNode.children)
                 {

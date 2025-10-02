@@ -423,7 +423,7 @@
             {
                 Assert.AreEqual(0, result.x, "All points should be on y-axis (x=0)");
                 Assert.GreaterOrEqual(result.y, 40f, "Points should be >= y=40");
-                Assert.Less(result.y, 60f, "Points should be < y=60");
+                Assert.LessOrEqual(result.y, 60f, "Points should be <= y=60");
             }
         }
 

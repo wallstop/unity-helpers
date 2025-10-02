@@ -76,42 +76,9 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 if (attribute.skipIfAssigned)
                 {
                     object currentValue = getter(component);
-                    if (currentValue != null)
+                    if (ValueHelpers.IsAssigned(currentValue))
                     {
-                        switch (currentValue)
-                        {
-                            case Array array:
-                            {
-                                if (array.Length > 0)
-                                {
-                                    continue;
-                                }
-
-                                break;
-                            }
-                            case IList list:
-                            {
-                                if (list.Count > 0)
-                                {
-                                    continue;
-                                }
-
-                                break;
-                            }
-                            case Object unityObject:
-                            {
-                                if (unityObject != null)
-                                {
-                                    continue;
-                                }
-
-                                break;
-                            }
-                            default:
-                            {
-                                continue;
-                            }
-                        }
+                        continue;
                     }
                 }
 
@@ -126,15 +93,25 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                         Buffers<Component>.List.Get();
                     List<Component> siblingComponents = componentBufferResource.resource;
                     component.GetComponents(siblingComponentType, siblingComponents);
-                    foundSibling = 0 < siblingComponents.Count;
+
+                    using PooledResource<List<Component>> filteredResource =
+                        Buffers<Component>.List.Get();
+                    List<Component> filtered = filteredResource.resource;
+
+                    foreach (Component siblingComponent in siblingComponents)
+                    {
+                        filtered.Add(siblingComponent);
+                    }
+
+                    foundSibling = 0 < filtered.Count;
 
                     Array correctTypedArray = ReflectionHelpers.CreateArray(
                         siblingComponentType,
-                        siblingComponents.Count
+                        filtered.Count
                     );
-                    for (int i = 0; i < siblingComponents.Count; i++)
+                    for (int i = 0; i < filtered.Count; i++)
                     {
-                        Component siblingComponent = siblingComponents[i];
+                        Component siblingComponent = filtered[i];
                         correctTypedArray.SetValue(siblingComponent, i);
                     }
 

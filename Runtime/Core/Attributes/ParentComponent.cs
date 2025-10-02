@@ -77,42 +77,9 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 if (attribute.skipIfAssigned)
                 {
                     object currentValue = getter(component);
-                    if (currentValue != null)
+                    if (ValueHelpers.IsAssigned(currentValue))
                     {
-                        switch (currentValue)
-                        {
-                            case Array array:
-                            {
-                                if (array.Length > 0)
-                                {
-                                    continue;
-                                }
-
-                                break;
-                            }
-                            case IList list:
-                            {
-                                if (list.Count > 0)
-                                {
-                                    continue;
-                                }
-
-                                break;
-                            }
-                            case Object unityObject:
-                            {
-                                if (unityObject != null)
-                                {
-                                    continue;
-                                }
-
-                                break;
-                            }
-                            default:
-                            {
-                                continue;
-                            }
-                        }
+                        continue;
                     }
                 }
 
@@ -128,6 +95,24 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
                 if (root == null)
                 {
+                    if (isArray)
+                    {
+                        Array correctTypedArray = ReflectionHelpers.CreateArray(
+                            parentComponentType,
+                            0
+                        );
+                        setter(component, correctTypedArray);
+                    }
+                    else if (
+                        fieldType.IsGenericType
+                        && fieldType.GetGenericTypeDefinition() == typeof(List<>)
+                    )
+                    {
+                        parentComponentType = fieldType.GenericTypeArguments[0];
+                        IList instance = ReflectionHelpers.CreateList(parentComponentType, 0);
+                        setter(component, instance);
+                    }
+
                     foundParent = false;
                 }
                 else
@@ -138,7 +123,6 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                             parentComponentType,
                             attribute.includeInactive
                         );
-                        foundParent = 0 < parentComponents.Length;
 
                         Array correctTypedArray = ReflectionHelpers.CreateArray(
                             parentComponentType,
@@ -146,6 +130,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                         );
                         Array.Copy(parentComponents, correctTypedArray, parentComponents.Length);
                         setter(component, correctTypedArray);
+                        foundParent = 0 < parentComponents.Length;
                     }
                     else if (
                         fieldType.IsGenericType
@@ -164,24 +149,29 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                             parents.Length
                         );
 
-                        foundParent = 0 < parents.Length;
                         foreach (Component parentComponent in parents)
                         {
                             instance.Add(parentComponent);
                         }
 
                         setter(component, instance);
+                        foundParent = instance.Count > 0;
                     }
                     else
                     {
-                        Component childComponent = root.GetComponentInParent(
+                        Component parentComponent = root.GetComponentInParent(
                             parentComponentType,
                             attribute.includeInactive
                         );
-                        foundParent = childComponent != null;
-                        if (foundParent)
+
+                        if (parentComponent != null)
                         {
-                            setter(component, childComponent);
+                            setter(component, parentComponent);
+                            foundParent = true;
+                        }
+                        else
+                        {
+                            foundParent = false;
                         }
                     }
                 }

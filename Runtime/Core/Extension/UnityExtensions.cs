@@ -1487,7 +1487,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return false;
             }
             Vector3 max = bounds.max;
-            return position.x < max.x && position.y < max.y;
+            return position.x <= max.x && position.y <= max.y;
         }
 
         public static bool FastIntersects2D(this Bounds bounds, Bounds other)
