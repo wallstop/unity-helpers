@@ -170,6 +170,40 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
             yield break;
         }
+
+        [UnityTest]
+        public IEnumerator SkipIfAssignedPreservesExistingValues()
+        {
+            GameObject root = new("ChildSkipIfAssigned", typeof(ChildSkipIfAssignedTester));
+            _spawned.Add(root);
+            ChildSkipIfAssignedTester tester = root.GetComponent<ChildSkipIfAssignedTester>();
+            SpriteRenderer rootRenderer = root.AddComponent<SpriteRenderer>();
+
+            GameObject child = new("Child", typeof(SpriteRenderer));
+            _spawned.Add(child);
+            child.transform.SetParent(root.transform);
+            SpriteRenderer childRenderer = child.GetComponent<SpriteRenderer>();
+
+            // Pre-assign values that should NOT be overwritten
+            tester.preAssignedChild = rootRenderer;
+            tester.preAssignedChildArray = new SpriteRenderer[] { rootRenderer };
+            tester.preAssignedChildList = new List<SpriteRenderer> { rootRenderer };
+
+            // Call assignment
+            tester.AssignChildComponents();
+
+            // Verify pre-assigned values were preserved (skipIfAssigned = true)
+            Assert.AreSame(rootRenderer, tester.preAssignedChild);
+            Assert.AreEqual(1, tester.preAssignedChildArray.Length);
+            Assert.AreSame(rootRenderer, tester.preAssignedChildArray[0]);
+            Assert.AreEqual(1, tester.preAssignedChildList.Count);
+            Assert.AreSame(rootRenderer, tester.preAssignedChildList[0]);
+
+            // Verify normal assignments (without skipIfAssigned) were assigned
+            Assert.AreSame(rootRenderer, tester.normalChild);
+
+            yield break;
+        }
     }
 
     internal sealed class ChildAssignmentTester : MonoBehaviour
@@ -197,5 +231,20 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
     {
         [ChildComponent(onlyDescendents = true)]
         public SpriteRenderer requiredRenderer;
+    }
+
+    internal sealed class ChildSkipIfAssignedTester : MonoBehaviour
+    {
+        [ChildComponent(skipIfAssigned = true)]
+        public SpriteRenderer preAssignedChild;
+
+        [ChildComponent(skipIfAssigned = true)]
+        public SpriteRenderer[] preAssignedChildArray;
+
+        [ChildComponent(skipIfAssigned = true)]
+        public List<SpriteRenderer> preAssignedChildList;
+
+        [ChildComponent]
+        public SpriteRenderer normalChild;
     }
 }

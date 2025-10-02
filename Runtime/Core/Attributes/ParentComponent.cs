@@ -7,23 +7,28 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     using System.Reflection;
     using Extension;
     using Helper;
-    using JetBrains.Annotations;
     using UnityEngine;
+    using Object = UnityEngine.Object;
 
     [AttributeUsage(AttributeTargets.Field)]
-    [MeansImplicitUse]
     public sealed class ParentComponentAttribute : Attribute
     {
         public bool optional = false;
         public bool includeInactive = true;
         public bool onlyAncestors = false;
+        public bool skipIfAssigned = false;
     }
 
     public static class ParentComponentExtensions
     {
         private static readonly Dictionary<
             Type,
-            (FieldInfo field, ParentComponentAttribute attribute, Action<object, object> setter)[]
+            (
+                FieldInfo field,
+                ParentComponentAttribute attribute,
+                Action<object, object> setter,
+                Func<object, object> getter
+            )[]
         > FieldsByType = new();
 
         public static void AssignParentComponents(this Component component)
@@ -32,7 +37,8 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             (
                 FieldInfo field,
                 ParentComponentAttribute attribute,
-                Action<object, object> setter
+                Action<object, object> setter,
+                Func<object, object> getter
             )[] fields = FieldsByType.GetOrAdd(
                 componentType,
                 type =>
@@ -46,8 +52,13 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                                 out ParentComponentAttribute attribute,
                                 inherit: false
                             )
-                                ? (field, attribute, ReflectionHelpers.GetFieldSetter(field))
-                                : (null, null, null)
+                                ? (
+                                    field,
+                                    attribute,
+                                    ReflectionHelpers.GetFieldSetter(field),
+                                    ReflectionHelpers.GetFieldGetter(field)
+                                )
+                                : (null, null, null, null)
                         )
                         .Where(tuple => tuple.attribute != null)
                         .ToArray();
@@ -58,10 +69,53 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 (
                     FieldInfo field,
                     ParentComponentAttribute attribute,
-                    Action<object, object> setter
+                    Action<object, object> setter,
+                    Func<object, object> getter
                 ) in fields
             )
             {
+                if (attribute.skipIfAssigned)
+                {
+                    object currentValue = getter(component);
+                    if (currentValue != null)
+                    {
+                        switch (currentValue)
+                        {
+                            case Array array:
+                            {
+                                if (array.Length > 0)
+                                {
+                                    continue;
+                                }
+
+                                break;
+                            }
+                            case IList list:
+                            {
+                                if (list.Count > 0)
+                                {
+                                    continue;
+                                }
+
+                                break;
+                            }
+                            case Object unityObject:
+                            {
+                                if (unityObject != null)
+                                {
+                                    continue;
+                                }
+
+                                break;
+                            }
+                            default:
+                            {
+                                continue;
+                            }
+                        }
+                    }
+                }
+
                 Type fieldType = field.FieldType;
                 bool isArray = fieldType.IsArray;
                 Type parentComponentType = isArray ? fieldType.GetElementType() : fieldType;

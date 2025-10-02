@@ -7,11 +7,9 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     using System.Reflection;
     using Extension;
     using Helper;
-    using JetBrains.Annotations;
     using Object = UnityEngine.Object;
 
     [AttributeUsage(AttributeTargets.Field)]
-    [MeansImplicitUse]
     public sealed class ValidateAssignmentAttribute : Attribute { }
 
     public static class ValidateAssignmentExtensions

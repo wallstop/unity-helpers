@@ -139,6 +139,44 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             Assert.IsNull(tester.requiredRenderer);
             yield break;
         }
+
+        [UnityTest]
+        public IEnumerator SkipIfAssignedPreservesExistingValues()
+        {
+            GameObject root = new("SkipIfAssignedRoot", typeof(SpriteRenderer));
+            _spawned.Add(root);
+            GameObject child = new(
+                "SkipIfAssignedChild",
+                typeof(SpriteRenderer),
+                typeof(ParentSkipIfAssignedTester)
+            );
+            _spawned.Add(child);
+            child.transform.SetParent(root.transform);
+
+            ParentSkipIfAssignedTester tester = child.GetComponent<ParentSkipIfAssignedTester>();
+            SpriteRenderer childRenderer = child.GetComponent<SpriteRenderer>();
+            SpriteRenderer rootRenderer = root.GetComponent<SpriteRenderer>();
+
+            // Pre-assign values that should NOT be overwritten
+            tester.preAssignedParent = childRenderer;
+            tester.preAssignedParentArray = new SpriteRenderer[] { childRenderer };
+            tester.preAssignedParentList = new List<SpriteRenderer> { childRenderer };
+
+            // Call assignment
+            tester.AssignParentComponents();
+
+            // Verify pre-assigned values were preserved (skipIfAssigned = true)
+            Assert.AreSame(childRenderer, tester.preAssignedParent);
+            Assert.AreEqual(1, tester.preAssignedParentArray.Length);
+            Assert.AreSame(childRenderer, tester.preAssignedParentArray[0]);
+            Assert.AreEqual(1, tester.preAssignedParentList.Count);
+            Assert.AreSame(childRenderer, tester.preAssignedParentList[0]);
+
+            // Verify normal assignments (without skipIfAssigned) were assigned
+            Assert.AreSame(rootRenderer, tester.normalParent);
+
+            yield break;
+        }
     }
 
     internal sealed class ParentAssignmentTester : MonoBehaviour
@@ -157,5 +195,20 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
     {
         [ParentComponent(onlyAncestors = true)]
         public SpriteRenderer requiredRenderer;
+    }
+
+    internal sealed class ParentSkipIfAssignedTester : MonoBehaviour
+    {
+        [ParentComponent(skipIfAssigned = true)]
+        public SpriteRenderer preAssignedParent;
+
+        [ParentComponent(skipIfAssigned = true)]
+        public SpriteRenderer[] preAssignedParentArray;
+
+        [ParentComponent(skipIfAssigned = true)]
+        public List<SpriteRenderer> preAssignedParentList;
+
+        [ParentComponent]
+        public SpriteRenderer normalParent;
     }
 }
