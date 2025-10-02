@@ -764,7 +764,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             buffer.Add(2);
             buffer.Add(3);
 
-            using var enumerator = buffer.GetEnumerator();
+            using CyclicBuffer<int>.CyclicBufferEnumerator enumerator = buffer.GetEnumerator();
 
             // First enumeration
             List<int> firstPass = new();
@@ -1050,14 +1050,12 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             buffer.Add(7);
 
             // Buffer should now contain: [3, 4, 5, 6, 7]
-            System.Console.WriteLine(
-                $"[DEBUG_LOG] After wraparound: [{string.Join(", ", buffer)}]"
-            );
+            Console.WriteLine($"[DEBUG_LOG] After wraparound: [{string.Join(", ", buffer)}]");
             Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 3, 4, 5, 6, 7 }));
 
             // Remove element from middle
             bool removed = buffer.Remove(5);
-            System.Console.WriteLine(
+            Console.WriteLine(
                 $"[DEBUG_LOG] After remove(5): removed={removed}, count={buffer.Count}, buffer=[{string.Join(", ", buffer)}]"
             );
 
@@ -1067,7 +1065,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             // Add new element after remove
             buffer.Add(8);
-            System.Console.WriteLine(
+            Console.WriteLine(
                 $"[DEBUG_LOG] After add(8): count={buffer.Count}, buffer=[{string.Join(", ", buffer)}]"
             );
             Assert.AreEqual(5, buffer.Count);

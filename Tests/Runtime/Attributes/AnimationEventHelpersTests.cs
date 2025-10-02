@@ -47,12 +47,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             );
             if (hasDerivedIgnore)
             {
-                System.Console.WriteLine(
+                Console.WriteLine(
                     $"[DEBUG_LOG] AnimationEventDerivedIgnore has {ignoreMethods.Count} methods:"
                 );
                 foreach (MethodInfo method in ignoreMethods)
                 {
-                    System.Console.WriteLine(
+                    Console.WriteLine(
                         $"[DEBUG_LOG]   - {method.Name} (DeclaringType: {method.DeclaringType.Name})"
                     );
                 }

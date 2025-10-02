@@ -34,7 +34,7 @@
 
             component.ApplyAttributeModifications(new[] { modification }, null);
             Assert.AreEqual(110f, component.health.CurrentValue);
-            Assert.AreEqual(1, component.Notifications.Count);
+            Assert.AreEqual(1, component.notifications.Count);
             yield return null;
         }
 
@@ -65,11 +65,11 @@
 
             component.ForceApplyAttributeModifications(handle);
             Assert.AreEqual(105f, component.health.CurrentValue);
-            Assert.AreEqual(1, component.Notifications.Count);
+            Assert.AreEqual(1, component.notifications.Count);
 
-            component.Notifications.Clear();
+            component.notifications.Clear();
             component.ForceApplyAttributeModifications(handle);
-            Assert.IsEmpty(component.Notifications);
+            Assert.IsEmpty(component.notifications);
             yield return null;
         }
 
@@ -99,14 +99,14 @@
             EffectHandle handle = EffectHandle.CreateInstance(effect);
 
             component.ForceApplyAttributeModifications(handle);
-            component.Notifications.Clear();
+            component.notifications.Clear();
             component.ForceRemoveAttributeModifications(handle);
 
             Assert.AreEqual(100f, component.health.CurrentValue);
-            Assert.AreEqual(1, component.Notifications.Count);
+            Assert.AreEqual(1, component.notifications.Count);
             Assert.AreEqual(
                 nameof(TestAttributesComponent.health),
-                component.Notifications[0].attribute
+                component.notifications[0].attribute
             );
             yield return null;
         }
@@ -167,7 +167,7 @@
             EffectHandle handle = EffectHandle.CreateInstance(effect);
 
             component.ForceApplyAttributeModifications(handle);
-            Assert.IsEmpty(component.Notifications);
+            Assert.IsEmpty(component.notifications);
             yield return null;
         }
     }

@@ -12,8 +12,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
     {
         public bool requiresInstance;
         public bool cleansSelf;
-        public readonly List<GameObject> AppliedTargets = new();
-        public readonly List<GameObject> RemovedTargets = new();
+        public readonly List<GameObject> appliedTargets = new();
+        public readonly List<GameObject> removedTargets = new();
 
         public override bool RequiresInstance => requiresInstance;
         public override bool CleansUpSelf => cleansSelf;
@@ -21,13 +21,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
         public override void OnApplyEffect(GameObject target)
         {
             base.OnApplyEffect(target);
-            AppliedTargets.Add(target);
+            appliedTargets.Add(target);
         }
 
         public override void OnRemoveEffect(GameObject target)
         {
             base.OnRemoveEffect(target);
-            RemovedTargets.Add(target);
+            removedTargets.Add(target);
         }
     }
 

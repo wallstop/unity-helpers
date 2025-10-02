@@ -172,7 +172,10 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 {
                     producerCalls++;
                     if (producerCalls == 1)
+                    {
                         throw new InvalidOperationException("First call fails");
+                    }
+
                     return 42;
                 },
                 10f

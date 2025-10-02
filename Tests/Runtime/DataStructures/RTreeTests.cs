@@ -618,7 +618,7 @@
         }
 
         [Test]
-        public void STRPackingAlgorithmCreatesBalancedStructure()
+        public void StrPackingAlgorithmCreatesBalancedStructure()
         {
             // RTree uses STR (Sort-Tile-Recursive) packing
             List<Bounds> bounds = new();

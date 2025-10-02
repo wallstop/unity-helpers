@@ -8,7 +8,7 @@
     using WallstopStudios.UnityHelpers.Core.DataStructure;
     using WallstopStudios.UnityHelpers.Core.Random;
 
-    public sealed class BalancedKDTreeTests : SpatialTreeTests<KDTree<Vector2>>
+    public sealed class BalancedKdTreeTests : SpatialTreeTests<KDTree<Vector2>>
     {
         private IRandom Random => PRNG.Instance;
 
@@ -538,9 +538,13 @@
             for (int i = 0; i < 100; i++)
             {
                 if (i % 2 == 0)
+                {
                     points.Add(new Vector2(i, 0));
+                }
                 else
+                {
                     points.Add(new Vector2(0, i));
+                }
             }
 
             KDTree<Vector2> tree = CreateTree(points);

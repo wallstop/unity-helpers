@@ -49,7 +49,7 @@
         [Test]
         public void HasTagReturnsFalseForNullTargets()
         {
-            UnityEngine.Object target = null;
+            Object target = null;
             Assert.IsFalse(target.HasTag("Buff"));
         }
 
@@ -107,7 +107,7 @@
             Assert.IsTrue(handle.HasValue);
             Assert.AreEqual(115f, attributes.health.CurrentValue);
             Assert.IsTrue(tagHandler.HasTag("Buff"));
-            Assert.AreEqual(1, attributes.Notifications.Count);
+            Assert.AreEqual(1, attributes.notifications.Count);
         }
 
         [UnityTest]
@@ -134,10 +134,10 @@
             );
 
             EffectHandle first = entity.ApplyEffect(effect).Value;
-            attributes.Notifications.Clear();
+            attributes.notifications.Clear();
             EffectHandle second = entity.ApplyEffect(effect).Value;
             Assert.AreEqual(first, second);
-            Assert.IsEmpty(attributes.Notifications);
+            Assert.IsEmpty(attributes.notifications);
         }
 
         [UnityTest]
@@ -372,7 +372,7 @@
         [UnityTest]
         public IEnumerator ApplyEffectsNoAllocSkipsNullTarget()
         {
-            UnityEngine.Object target = null;
+            Object target = null;
             List<AttributeEffect> effects = new() { CreateEffect("Buff") };
             List<EffectHandle> handles = new();
 
@@ -384,7 +384,7 @@
         [UnityTest]
         public IEnumerator ApplyEffectReturnsNullWhenTargetNull()
         {
-            UnityEngine.Object target = null;
+            Object target = null;
             AttributeEffect effect = CreateEffect("Buff");
 
             EffectHandle? handle = target.ApplyEffect(effect);

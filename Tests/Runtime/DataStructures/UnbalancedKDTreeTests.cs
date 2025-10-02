@@ -8,7 +8,7 @@
     using WallstopStudios.UnityHelpers.Core.DataStructure;
     using WallstopStudios.UnityHelpers.Core.Random;
 
-    public sealed class UnbalancedKDTreeTests : SpatialTreeTests<KDTree<Vector2>>
+    public sealed class UnbalancedKdTreeTests : SpatialTreeTests<KDTree<Vector2>>
     {
         private IRandom Random => PRNG.Instance;
 

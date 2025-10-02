@@ -13,7 +13,7 @@
             NotNullHolder holder = new();
             Assert.Throws<ArgumentNullException>(() => holder.CheckForNulls());
 
-            holder.Reference = new object();
+            holder.reference = new object();
             Assert.DoesNotThrow(() => holder.CheckForNulls());
         }
     }
@@ -21,6 +21,6 @@
     internal sealed class NotNullHolder
     {
         [NotNull]
-        public object Reference;
+        public object reference;
     }
 }

@@ -53,10 +53,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             Type type = typeof(SerializableTarget);
             Assert.IsNotNull(Attribute.GetCustomAttribute(type, typeof(KSerializableAttribute)));
 
-            FieldInfo field = type.GetField(nameof(SerializableTarget.Included));
+            FieldInfo field = type.GetField(nameof(SerializableTarget.included));
             Assert.IsNotNull(Attribute.GetCustomAttribute(field, typeof(KSerializableAttribute)));
 
-            FieldInfo ignored = type.GetField(nameof(SerializableTarget.Ignored));
+            FieldInfo ignored = type.GetField(nameof(SerializableTarget.ignored));
             Assert.IsNotNull(
                 Attribute.GetCustomAttribute(ignored, typeof(KNonSerializableAttribute))
             );
@@ -67,9 +67,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
     internal sealed class SerializableTarget
     {
         [KSerializable]
-        public int Included;
+        public int included;
 
         [KNonSerializable]
-        public int Ignored;
+        public int ignored;
     }
 }

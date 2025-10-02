@@ -7,7 +7,7 @@
     {
         public Attribute health = new(100f);
         public Attribute armor = new(50f);
-        public readonly List<(string attribute, float previous, float current)> Notifications =
+        public readonly List<(string attribute, float previous, float current)> notifications =
             new();
 
         protected override void Awake()
@@ -15,7 +15,7 @@
             base.Awake();
             OnAttributeModified += (attribute, previous, current) =>
             {
-                Notifications.Add((attribute, previous, current));
+                notifications.Add((attribute, previous, current));
             };
         }
 

@@ -9,16 +9,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     {
         private sealed class Alpha { }
 
-        private sealed class beta { }
+        private sealed class Beta { }
 
         [Test]
         public void CompareOrdersByTypeNameIgnoringCase()
         {
-            List<Type> types = new() { typeof(beta), typeof(Alpha) };
+            List<Type> types = new() { typeof(Beta), typeof(Alpha) };
 
             types.Sort(TypeNameSorter.Instance);
 
-            Assert.That(types, Is.EqualTo(new[] { typeof(Alpha), typeof(beta) }));
+            Assert.That(types, Is.EqualTo(new[] { typeof(Alpha), typeof(Beta) }));
         }
 
         [Test]

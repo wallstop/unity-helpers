@@ -534,7 +534,7 @@
             };
             Trie<int> trie = new(dict);
 
-            foreach (var kvp in dict)
+            foreach (KeyValuePair<string, int> kvp in dict)
             {
                 Assert.IsTrue(trie.TryGetValue(kvp.Key, out int value));
                 Assert.AreEqual(kvp.Value, value);
@@ -602,7 +602,7 @@
                 .ToDictionary(i => $"key{i}", i => i);
             Trie<int> trie = new(dict);
 
-            foreach (var kvp in dict)
+            foreach (KeyValuePair<string, int> kvp in dict)
             {
                 Assert.IsTrue(trie.TryGetValue(kvp.Key, out int value));
                 Assert.AreEqual(kvp.Value, value);

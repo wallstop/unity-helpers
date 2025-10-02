@@ -82,7 +82,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         }
 
         [Test]
-        public void GetAllSpriteLabelNamesReturnsEmptyWhenBatchOrCI()
+        public void GetAllSpriteLabelNamesReturnsEmptyWhenBatchOrCi()
         {
             string originalCi = Environment.GetEnvironmentVariable("CI");
             FieldInfo cacheField = typeof(Helpers).GetField(
@@ -320,8 +320,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
             float delay = 0.05f;
             Coroutine coroutine = host.ExecuteFunctionAfterDelay(host.SetFlagTrue, delay);
-
-            yield return null;
             Assert.IsFalse(host.Flag);
 
             yield return new WaitForSeconds(delay + 0.02f);

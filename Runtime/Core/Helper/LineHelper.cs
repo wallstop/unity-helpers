@@ -1,7 +1,6 @@
 namespace WallstopStudios.UnityHelpers.Core.Helper
 {
     using System.Collections.Generic;
-    using System.Linq;
     using UnityEngine;
 
     public static class LineHelper
@@ -95,7 +94,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             ref List<int> pointIndexesToKeep
         )
         {
-            while (true)
+            do
             {
                 double maxDistance = 0;
                 int indexFarthest = 0;
@@ -132,7 +131,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 }
 
                 break;
-            }
+            } while (true);
 
             return;
 

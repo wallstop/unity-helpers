@@ -86,7 +86,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void SimpleANN()
+        public void SimpleAnn()
         {
             List<Vector2> points = new();
             for (int x = 0; x < 100; ++x)

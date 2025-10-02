@@ -28,20 +28,20 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
     public struct TestStruct
     {
-        public static int staticIntValue;
+        public static int StaticIntValue;
         public int intValue;
     }
 
     public sealed class TestClass
     {
-        public static int staticIntValue;
+        public static int StaticIntValue;
         public int intValue;
     }
 
     public class TestMethodClass
     {
         public static int StaticMethodCallCount = 0;
-        public int InstanceMethodCallCount = 0;
+        public int instanceMethodCallCount = 0;
 
         // Void methods
         public static void StaticVoidMethod()
@@ -51,7 +51,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
         public void InstanceVoidMethod()
         {
-            InstanceMethodCallCount++;
+            instanceMethodCallCount++;
         }
 
         // Return value methods
@@ -75,13 +75,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
         public int InstanceIntMethod()
         {
-            InstanceMethodCallCount++;
+            instanceMethodCallCount++;
             return 100;
         }
 
         public string InstanceStringMethod()
         {
-            InstanceMethodCallCount++;
+            instanceMethodCallCount++;
             return "instance";
         }
 
@@ -94,7 +94,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
         public int InstanceMethodWithParam(string param)
         {
-            InstanceMethodCallCount++;
+            instanceMethodCallCount++;
             return param?.Length ?? 0;
         }
 
@@ -113,7 +113,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public void Reset()
         {
             StaticMethodCallCount = 0;
-            InstanceMethodCallCount = 0;
+            instanceMethodCallCount = 0;
         }
     }
 
@@ -164,13 +164,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
     public sealed class TestPropertyClass
     {
-        private static int _staticValue = 50;
+        private static int _StaticValue = 50;
         private int _instanceValue = 25;
 
         public static int StaticProperty
         {
-            get => _staticValue;
-            set => _staticValue = value;
+            get => _StaticValue;
+            set => _StaticValue = value;
         }
 
         public int InstanceProperty
@@ -198,7 +198,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
         [Category("TestCategory")]
         [ReflectionTestAttribute("InstanceField", 5)]
-        public int InstanceFieldWithAttribute = 2;
+        public int instanceFieldWithAttribute = 2;
 
         [Description("Static property for testing")]
         [ReflectionTestAttribute("StaticProperty", 20)]
@@ -259,15 +259,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             TestClass testClass = new();
             Func<object, object> classGetter = ReflectionHelpers.GetFieldGetter(
                 typeof(TestClass).GetField(
-                    nameof(TestClass.staticIntValue),
+                    nameof(TestClass.StaticIntValue),
                     BindingFlags.Static | BindingFlags.Public
                 )
             );
-            Assert.AreEqual(TestClass.staticIntValue, classGetter(testClass));
+            Assert.AreEqual(TestClass.StaticIntValue, classGetter(testClass));
             for (int i = 0; i < NumTries; ++i)
             {
-                TestClass.staticIntValue = PRNG.Instance.Next(int.MinValue, int.MaxValue);
-                Assert.AreEqual(TestClass.staticIntValue, classGetter(testClass));
+                TestClass.StaticIntValue = PRNG.Instance.Next(int.MinValue, int.MaxValue);
+                Assert.AreEqual(TestClass.StaticIntValue, classGetter(testClass));
             }
         }
 
@@ -286,15 +286,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             Func<object> classGetter = ReflectionHelpers.GetStaticFieldGetter(
                 typeof(TestClass).GetField(
-                    nameof(TestClass.staticIntValue),
+                    nameof(TestClass.StaticIntValue),
                     BindingFlags.Static | BindingFlags.Public
                 )
             );
-            Assert.AreEqual(TestClass.staticIntValue, classGetter());
+            Assert.AreEqual(TestClass.StaticIntValue, classGetter());
             for (int i = 0; i < NumTries; ++i)
             {
-                TestClass.staticIntValue = PRNG.Instance.Next(int.MinValue, int.MaxValue);
-                Assert.AreEqual(TestClass.staticIntValue, classGetter());
+                TestClass.StaticIntValue = PRNG.Instance.Next(int.MinValue, int.MaxValue);
+                Assert.AreEqual(TestClass.StaticIntValue, classGetter());
             }
         }
 
@@ -319,15 +319,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             TestStruct testStruct = new();
             Func<object, object> structGetter = ReflectionHelpers.GetFieldGetter(
                 typeof(TestStruct).GetField(
-                    nameof(TestStruct.staticIntValue),
+                    nameof(TestStruct.StaticIntValue),
                     BindingFlags.Static | BindingFlags.Public
                 )
             );
-            Assert.AreEqual(TestStruct.staticIntValue, structGetter(testStruct));
+            Assert.AreEqual(TestStruct.StaticIntValue, structGetter(testStruct));
             for (int i = 0; i < NumTries; ++i)
             {
-                TestStruct.staticIntValue = PRNG.Instance.Next(int.MinValue, int.MaxValue);
-                Assert.AreEqual(TestStruct.staticIntValue, structGetter(testStruct));
+                TestStruct.StaticIntValue = PRNG.Instance.Next(int.MinValue, int.MaxValue);
+                Assert.AreEqual(TestStruct.StaticIntValue, structGetter(testStruct));
             }
         }
 
@@ -336,15 +336,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             Func<object> structGetter = ReflectionHelpers.GetStaticFieldGetter(
                 typeof(TestStruct).GetField(
-                    nameof(TestStruct.staticIntValue),
+                    nameof(TestStruct.StaticIntValue),
                     BindingFlags.Static | BindingFlags.Public
                 )
             );
-            Assert.AreEqual(TestStruct.staticIntValue, structGetter());
+            Assert.AreEqual(TestStruct.StaticIntValue, structGetter());
             for (int i = 0; i < NumTries; ++i)
             {
-                TestStruct.staticIntValue = PRNG.Instance.Next(int.MinValue, int.MaxValue);
-                Assert.AreEqual(TestStruct.staticIntValue, structGetter());
+                TestStruct.StaticIntValue = PRNG.Instance.Next(int.MinValue, int.MaxValue);
+                Assert.AreEqual(TestStruct.StaticIntValue, structGetter());
             }
         }
 
@@ -369,7 +369,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             TestClass testClass = new();
             Action<object, object> structSetter = ReflectionHelpers.GetFieldSetter(
                 typeof(TestClass).GetField(
-                    nameof(TestClass.staticIntValue),
+                    nameof(TestClass.StaticIntValue),
                     BindingFlags.Static | BindingFlags.Public
                 )
             );
@@ -377,7 +377,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             {
                 int expected = PRNG.Instance.Next(int.MinValue, int.MaxValue);
                 structSetter(testClass, expected);
-                Assert.AreEqual(expected, TestClass.staticIntValue);
+                Assert.AreEqual(expected, TestClass.StaticIntValue);
             }
         }
 
@@ -396,7 +396,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             Action<object> structSetter = ReflectionHelpers.GetStaticFieldSetter(
                 typeof(TestClass).GetField(
-                    nameof(TestClass.staticIntValue),
+                    nameof(TestClass.StaticIntValue),
                     BindingFlags.Static | BindingFlags.Public
                 )
             );
@@ -404,7 +404,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             {
                 int expected = PRNG.Instance.Next(int.MinValue, int.MaxValue);
                 structSetter(expected);
-                Assert.AreEqual(expected, TestClass.staticIntValue);
+                Assert.AreEqual(expected, TestClass.StaticIntValue);
             }
         }
 
@@ -431,7 +431,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             object testStruct = new TestStruct();
             Action<object, object> structSetter = ReflectionHelpers.GetFieldSetter(
                 typeof(TestStruct).GetField(
-                    nameof(TestStruct.staticIntValue),
+                    nameof(TestStruct.StaticIntValue),
                     BindingFlags.Static | BindingFlags.Public
                 )
             );
@@ -439,7 +439,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             {
                 int expected = PRNG.Instance.Next(int.MinValue, int.MaxValue);
                 structSetter(testStruct, expected);
-                Assert.AreEqual(expected, TestStruct.staticIntValue);
+                Assert.AreEqual(expected, TestStruct.StaticIntValue);
             }
         }
 
@@ -448,7 +448,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             Action<object> structSetter = ReflectionHelpers.GetStaticFieldSetter(
                 typeof(TestStruct).GetField(
-                    nameof(TestStruct.staticIntValue),
+                    nameof(TestStruct.StaticIntValue),
                     BindingFlags.Static | BindingFlags.Public
                 )
             );
@@ -456,7 +456,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             {
                 int expected = PRNG.Instance.Next(int.MinValue, int.MaxValue);
                 structSetter(expected);
-                Assert.AreEqual(expected, TestStruct.staticIntValue);
+                Assert.AreEqual(expected, TestStruct.StaticIntValue);
             }
         }
 
@@ -485,7 +485,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 int
             >(
                 typeof(TestClass).GetField(
-                    nameof(TestClass.staticIntValue),
+                    nameof(TestClass.StaticIntValue),
                     BindingFlags.Static | BindingFlags.Public
                 )
             );
@@ -493,7 +493,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             {
                 int expected = PRNG.Instance.Next(int.MinValue, int.MaxValue);
                 classSetter(ref testClass, expected);
-                Assert.AreEqual(expected, TestClass.staticIntValue);
+                Assert.AreEqual(expected, TestClass.StaticIntValue);
             }
         }
 
@@ -512,7 +512,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             Action<int> classSetter = ReflectionHelpers.GetStaticFieldSetter<int>(
                 typeof(TestClass).GetField(
-                    nameof(TestClass.staticIntValue),
+                    nameof(TestClass.StaticIntValue),
                     BindingFlags.Static | BindingFlags.Public
                 )
             );
@@ -520,7 +520,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             {
                 int expected = PRNG.Instance.Next(int.MinValue, int.MaxValue);
                 classSetter(expected);
-                Assert.AreEqual(expected, TestClass.staticIntValue);
+                Assert.AreEqual(expected, TestClass.StaticIntValue);
             }
         }
 
@@ -549,7 +549,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 int
             >(
                 typeof(TestStruct).GetField(
-                    nameof(TestStruct.staticIntValue),
+                    nameof(TestStruct.StaticIntValue),
                     BindingFlags.Static | BindingFlags.Public
                 )
             );
@@ -557,7 +557,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             {
                 int expected = PRNG.Instance.Next(int.MinValue, int.MaxValue);
                 structSetter(ref testStruct, expected);
-                Assert.AreEqual(expected, TestStruct.staticIntValue);
+                Assert.AreEqual(expected, TestStruct.StaticIntValue);
             }
         }
 
@@ -566,7 +566,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             Action<int> structSetter = ReflectionHelpers.GetStaticFieldSetter<int>(
                 typeof(TestStruct).GetField(
-                    nameof(TestStruct.staticIntValue),
+                    nameof(TestStruct.StaticIntValue),
                     BindingFlags.Static | BindingFlags.Public
                 )
             );
@@ -574,7 +574,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             {
                 int expected = PRNG.Instance.Next(int.MinValue, int.MaxValue);
                 structSetter(expected);
-                Assert.AreEqual(expected, TestStruct.staticIntValue);
+                Assert.AreEqual(expected, TestStruct.StaticIntValue);
             }
         }
 
@@ -598,14 +598,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             TestClass testClass = new();
             Func<TestClass, int> classGetter = ReflectionHelpers.GetFieldGetter<TestClass, int>(
                 typeof(TestClass).GetField(
-                    nameof(TestClass.staticIntValue),
+                    nameof(TestClass.StaticIntValue),
                     BindingFlags.Static | BindingFlags.Public
                 )
             );
             for (int i = 0; i < NumTries; ++i)
             {
-                TestClass.staticIntValue = PRNG.Instance.Next(int.MinValue, int.MaxValue);
-                Assert.AreEqual(TestClass.staticIntValue, classGetter(testClass));
+                TestClass.StaticIntValue = PRNG.Instance.Next(int.MinValue, int.MaxValue);
+                Assert.AreEqual(TestClass.StaticIntValue, classGetter(testClass));
             }
         }
 
@@ -624,14 +624,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             Func<int> classGetter = ReflectionHelpers.GetStaticFieldGetter<int>(
                 typeof(TestClass).GetField(
-                    nameof(TestClass.staticIntValue),
+                    nameof(TestClass.StaticIntValue),
                     BindingFlags.Static | BindingFlags.Public
                 )
             );
             for (int i = 0; i < NumTries; ++i)
             {
-                TestClass.staticIntValue = PRNG.Instance.Next(int.MinValue, int.MaxValue);
-                Assert.AreEqual(TestClass.staticIntValue, classGetter());
+                TestClass.StaticIntValue = PRNG.Instance.Next(int.MinValue, int.MaxValue);
+                Assert.AreEqual(TestClass.StaticIntValue, classGetter());
             }
         }
 
@@ -655,14 +655,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             TestStruct testStruct = new();
             Func<TestStruct, int> structSetter = ReflectionHelpers.GetFieldGetter<TestStruct, int>(
                 typeof(TestStruct).GetField(
-                    nameof(TestStruct.staticIntValue),
+                    nameof(TestStruct.StaticIntValue),
                     BindingFlags.Static | BindingFlags.Public
                 )
             );
             for (int i = 0; i < NumTries; ++i)
             {
-                TestStruct.staticIntValue = PRNG.Instance.Next(int.MinValue, int.MaxValue);
-                Assert.AreEqual(TestStruct.staticIntValue, structSetter(testStruct));
+                TestStruct.StaticIntValue = PRNG.Instance.Next(int.MinValue, int.MaxValue);
+                Assert.AreEqual(TestStruct.StaticIntValue, structSetter(testStruct));
             }
         }
 
@@ -671,14 +671,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             Func<int> structSetter = ReflectionHelpers.GetStaticFieldGetter<int>(
                 typeof(TestStruct).GetField(
-                    nameof(TestStruct.staticIntValue),
+                    nameof(TestStruct.StaticIntValue),
                     BindingFlags.Static | BindingFlags.Public
                 )
             );
             for (int i = 0; i < NumTries; ++i)
             {
-                TestStruct.staticIntValue = PRNG.Instance.Next(int.MinValue, int.MaxValue);
-                Assert.AreEqual(TestStruct.staticIntValue, structSetter());
+                TestStruct.StaticIntValue = PRNG.Instance.Next(int.MinValue, int.MaxValue);
+                Assert.AreEqual(TestStruct.StaticIntValue, structSetter());
             }
         }
 
@@ -880,12 +880,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             );
 
             Assert.IsNull(ReflectionHelpers.InvokeMethod(voidMethod, testObj));
-            Assert.AreEqual(1, testObj.InstanceMethodCallCount);
+            Assert.AreEqual(1, testObj.instanceMethodCallCount);
 
             Assert.AreEqual(100, ReflectionHelpers.InvokeMethod(intMethod, testObj));
             Assert.AreEqual("instance", ReflectionHelpers.InvokeMethod(stringMethod, testObj));
             Assert.AreEqual(5, ReflectionHelpers.InvokeMethod(paramMethod, testObj, "hello"));
-            Assert.AreEqual(4, testObj.InstanceMethodCallCount);
+            Assert.AreEqual(4, testObj.instanceMethodCallCount);
         }
 
         [Test]
@@ -915,13 +915,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             );
 
             Assert.IsNull(voidInvoker(testObj, Array.Empty<object>()));
-            Assert.AreEqual(1, testObj.InstanceMethodCallCount);
+            Assert.AreEqual(1, testObj.instanceMethodCallCount);
 
             Assert.AreEqual(100, intInvoker(testObj, Array.Empty<object>()));
-            Assert.AreEqual(2, testObj.InstanceMethodCallCount);
+            Assert.AreEqual(2, testObj.instanceMethodCallCount);
 
             Assert.AreEqual(5, paramInvoker(testObj, new object[] { "hello" }));
-            Assert.AreEqual(3, testObj.InstanceMethodCallCount);
+            Assert.AreEqual(3, testObj.instanceMethodCallCount);
         }
 
         [Test]
@@ -1294,7 +1294,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             Type testType = typeof(TestAttributeClass);
             FieldInfo instanceField = testType.GetField(
-                nameof(TestAttributeClass.InstanceFieldWithAttribute)
+                nameof(TestAttributeClass.instanceFieldWithAttribute)
             );
 
             ReflectionTestAttribute classAttr =
@@ -1468,7 +1468,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             Type testType = typeof(TestAttributeClass);
             FieldInfo testField = testType.GetField(
-                nameof(TestAttributeClass.InstanceFieldWithAttribute)
+                nameof(TestAttributeClass.instanceFieldWithAttribute)
             );
 
             // Test the extension method version

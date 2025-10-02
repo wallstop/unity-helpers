@@ -4,7 +4,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure;
 
-    public sealed class KDTreePerformanceTests : SpatialTreePerformanceTest<KDTree<Vector2>>
+    public sealed class KdTreePerformanceTests : SpatialTreePerformanceTest<KDTree<Vector2>>
     {
         protected override KDTree<Vector2> CreateTree(IEnumerable<Vector2> points)
         {
