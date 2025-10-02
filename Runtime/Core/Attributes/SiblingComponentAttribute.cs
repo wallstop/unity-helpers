@@ -9,7 +9,6 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     using Helper;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Utils;
-    using Object = UnityEngine.Object;
 
     [AttributeUsage(AttributeTargets.Field)]
     public sealed class SiblingComponentAttribute : Attribute
@@ -23,9 +22,9 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     {
         private enum FieldKind : byte
         {
-            Single,
-            Array,
-            List,
+            Single = 0,
+            Array = 1,
+            List = 2,
         }
 
         private static readonly Dictionary<

@@ -8,7 +8,6 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     using Extension;
     using Helper;
     using UnityEngine;
-    using Object = UnityEngine.Object;
 
     [AttributeUsage(AttributeTargets.Field)]
     public sealed class ParentComponentAttribute : Attribute
@@ -23,9 +22,9 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     {
         private enum FieldKind : byte
         {
-            Single,
-            Array,
-            List,
+            Single = 0,
+            Array = 1,
+            List = 2,
         }
 
         private static readonly Dictionary<
@@ -150,13 +149,18 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
                 if (root == null)
                 {
-                    if (kind == FieldKind.Array)
+                    switch (kind)
                     {
-                        setter(component, arrayCreator(0));
-                    }
-                    else if (kind == FieldKind.List)
-                    {
-                        setter(component, listCreator(0));
+                        case FieldKind.Array:
+                        {
+                            setter(component, arrayCreator(0));
+                            break;
+                        }
+                        case FieldKind.List:
+                        {
+                            setter(component, listCreator(0));
+                            break;
+                        }
                     }
 
                     foundParent = false;
