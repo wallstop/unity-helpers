@@ -1250,7 +1250,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsComponentEnabled<T>(T component)
+        public static bool IsComponentEnabled<T>(this T component)
             where T : UnityEngine.Object
         {
             if (component == null)

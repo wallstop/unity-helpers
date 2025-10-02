@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     using System.Collections.Generic;
     using System.Linq;
     using System.Reflection;
+    using System.Runtime.CompilerServices;
     using Extension;
     using Helper;
     using Object = UnityEngine.Object;
@@ -94,18 +95,10 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         private static bool IsFieldInvalid(FieldInfo field, Object o)
         {
             object fieldValue = field.GetValue(o);
-
-            return fieldValue switch
-            {
-                Object unityObject => unityObject == null,
-                string stringValue => string.IsNullOrWhiteSpace(stringValue),
-                IList list => list.Count <= 0,
-                ICollection collection => collection.Count <= 0,
-                IEnumerable enumerable => IsInvalid(enumerable),
-                _ => fieldValue == null,
-            };
+            return IsValueInvalid(fieldValue);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static bool IsValueInvalid(object value)
         {
             return value switch

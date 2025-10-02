@@ -128,6 +128,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                             parentComponentType,
                             parentComponents.Length
                         );
+
                         Array.Copy(parentComponents, correctTypedArray, parentComponents.Length);
                         setter(component, correctTypedArray);
                         foundParent = 0 < parentComponents.Length;

@@ -15,6 +15,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     public sealed class SiblingComponentAttribute : Attribute
     {
         public bool optional = false;
+        public bool includeInactive = true;
         public bool skipIfAssigned = false;
     }
 
@@ -98,9 +99,20 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                         Buffers<Component>.List.Get();
                     List<Component> filtered = filteredResource.resource;
 
-                    foreach (Component siblingComponent in siblingComponents)
+                    if (attribute.includeInactive)
                     {
-                        filtered.Add(siblingComponent);
+                        filtered = siblingComponents;
+                    }
+                    else if (component.gameObject.activeInHierarchy)
+                    {
+                        foreach (Component siblingComponent in siblingComponents)
+                        {
+                            if (!siblingComponent.IsComponentEnabled())
+                            {
+                                continue;
+                            }
+                            filtered.Add(siblingComponent);
+                        }
                     }
 
                     foundSibling = 0 < filtered.Count;
@@ -134,23 +146,55 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                         siblingComponents.Count
                     );
 
-                    foundSibling = false;
-                    foreach (Component siblingComponent in siblingComponents)
+                    if (attribute.includeInactive)
                     {
-                        instance.Add(siblingComponent);
-                        foundSibling = true;
+                        foreach (Component siblingComponent in siblingComponents)
+                        {
+                            instance.Add(siblingComponent);
+                        }
+                    }
+                    else if (component.gameObject.activeInHierarchy)
+                    {
+                        foreach (Component siblingComponent in siblingComponents)
+                        {
+                            if (!siblingComponent.IsComponentEnabled())
+                            {
+                                continue;
+                            }
+
+                            instance.Add(siblingComponent);
+                        }
                     }
 
                     setter(component, instance);
+                    foundSibling = instance.Count > 0;
                 }
                 else
                 {
-                    if (
-                        component.TryGetComponent(
-                            siblingComponentType,
-                            out Component siblingComponent
-                        )
-                    )
+                    Component siblingComponent = null;
+                    if (attribute.includeInactive)
+                    {
+                        siblingComponent = component.GetComponent(siblingComponentType);
+                    }
+                    else if (component.gameObject.activeInHierarchy)
+                    {
+                        using PooledResource<List<Component>> componentBufferResource =
+                            Buffers<Component>.List.Get();
+                        List<Component> siblingComponents = componentBufferResource.resource;
+                        component.GetComponents(siblingComponentType, siblingComponents);
+                        foreach (Component candidate in siblingComponents)
+                        {
+                            if (!candidate.IsComponentEnabled())
+                            {
+                                continue;
+                            }
+
+                            siblingComponent = candidate;
+                            break;
+                        }
+                    }
+
+                    if (siblingComponent != null)
                     {
                         foundSibling = true;
                         setter(component, siblingComponent);

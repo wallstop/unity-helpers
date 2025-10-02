@@ -380,6 +380,190 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
             yield break;
         }
+
+        [UnityTest]
+        public IEnumerator IncludeInactiveFindsAllComponentsOnActiveGameObject()
+        {
+            GameObject root = new("SiblingIncludeInactive");
+            _spawned.Add(root);
+            BoxCollider first = root.AddComponent<BoxCollider>();
+            BoxCollider second = root.AddComponent<BoxCollider>();
+            second.enabled = false;
+            SiblingIncludeInactiveTester tester = root.AddComponent<SiblingIncludeInactiveTester>();
+
+            tester.AssignSiblingComponents();
+
+            // includeInactive=true should find both enabled and disabled components
+            Assert.IsNotNull(tester.includeInactiveSingle);
+            Assert.AreEqual(2, tester.includeInactiveArray.Length);
+            CollectionAssert.Contains(tester.includeInactiveArray, first);
+            CollectionAssert.Contains(tester.includeInactiveArray, second);
+            Assert.AreEqual(2, tester.includeInactiveList.Count);
+            CollectionAssert.Contains(tester.includeInactiveList, first);
+            CollectionAssert.Contains(tester.includeInactiveList, second);
+
+            yield break;
+        }
+
+        [UnityTest]
+        public IEnumerator ExcludeInactiveFiltersDisabledComponents()
+        {
+            GameObject root = new("SiblingExcludeInactive");
+            _spawned.Add(root);
+            BoxCollider first = root.AddComponent<BoxCollider>();
+            BoxCollider second = root.AddComponent<BoxCollider>();
+            second.enabled = false;
+            SiblingExcludeInactiveTester tester = root.AddComponent<SiblingExcludeInactiveTester>();
+
+            tester.AssignSiblingComponents();
+
+            // includeInactive=false should filter out disabled components
+            Assert.AreSame(first, tester.activeOnlySingle);
+            Assert.AreEqual(1, tester.activeOnlyArray.Length);
+            Assert.AreSame(first, tester.activeOnlyArray[0]);
+            Assert.AreEqual(1, tester.activeOnlyList.Count);
+            Assert.AreSame(first, tester.activeOnlyList[0]);
+
+            yield break;
+        }
+
+        [UnityTest]
+        public IEnumerator ExcludeInactiveOnInactiveGameObjectFindsNothing()
+        {
+            GameObject root = new("SiblingInactiveGameObject");
+            _spawned.Add(root);
+            root.SetActive(false);
+            BoxCollider collider = root.AddComponent<BoxCollider>();
+            SiblingExcludeInactiveTester tester = root.AddComponent<SiblingExcludeInactiveTester>();
+
+            LogAssert.Expect(
+                LogType.Error,
+                new System.Text.RegularExpressions.Regex(
+                    @"^\d+(\.\d+)?\|SiblingInactiveGameObject\[SiblingExcludeInactiveTester\]\|Unable to find sibling component of type UnityEngine\.BoxCollider$"
+                )
+            );
+            LogAssert.Expect(
+                LogType.Error,
+                new System.Text.RegularExpressions.Regex(
+                    @"^\d+(\.\d+)?\|SiblingInactiveGameObject\[SiblingExcludeInactiveTester\]\|Unable to find sibling component of type UnityEngine\.BoxCollider\[\]$"
+                )
+            );
+            LogAssert.Expect(
+                LogType.Error,
+                new System.Text.RegularExpressions.Regex(
+                    @"^\d+(\.\d+)?\|SiblingInactiveGameObject\[SiblingExcludeInactiveTester\]\|Unable to find sibling component of type System\.Collections\.Generic\.List`1\[UnityEngine\.BoxCollider\]$"
+                )
+            );
+
+            tester.AssignSiblingComponents();
+
+            // includeInactive=false on inactive GameObject should find nothing
+            Assert.IsNull(tester.activeOnlySingle);
+            Assert.AreEqual(0, tester.activeOnlyArray.Length);
+            Assert.AreEqual(0, tester.activeOnlyList.Count);
+
+            yield break;
+        }
+
+        [UnityTest]
+        public IEnumerator IncludeInactiveOnInactiveGameObjectFindsComponents()
+        {
+            GameObject root = new("SiblingInactiveGameObjectInclude");
+            _spawned.Add(root);
+            root.SetActive(false);
+            BoxCollider first = root.AddComponent<BoxCollider>();
+            BoxCollider second = root.AddComponent<BoxCollider>();
+            SiblingIncludeInactiveTester tester = root.AddComponent<SiblingIncludeInactiveTester>();
+
+            tester.AssignSiblingComponents();
+
+            // includeInactive=true on inactive GameObject should still find components
+            Assert.IsNotNull(tester.includeInactiveSingle);
+            Assert.AreEqual(2, tester.includeInactiveArray.Length);
+            Assert.AreEqual(2, tester.includeInactiveList.Count);
+
+            yield break;
+        }
+
+        [UnityTest]
+        public IEnumerator MixedActiveInactiveComponentsFilteredCorrectly()
+        {
+            GameObject root = new("SiblingMixedActive");
+            _spawned.Add(root);
+            BoxCollider first = root.AddComponent<BoxCollider>();
+            first.enabled = true;
+            BoxCollider second = root.AddComponent<BoxCollider>();
+            second.enabled = false;
+            BoxCollider third = root.AddComponent<BoxCollider>();
+            third.enabled = true;
+            BoxCollider fourth = root.AddComponent<BoxCollider>();
+            fourth.enabled = false;
+
+            SiblingMixedActiveTester tester = root.AddComponent<SiblingMixedActiveTester>();
+
+            tester.AssignSiblingComponents();
+
+            // includeInactive=false should only find enabled components
+            Assert.AreEqual(2, tester.activeOnly.Length);
+            CollectionAssert.Contains(tester.activeOnly, first);
+            CollectionAssert.Contains(tester.activeOnly, third);
+            CollectionAssert.DoesNotContain(tester.activeOnly, second);
+            CollectionAssert.DoesNotContain(tester.activeOnly, fourth);
+
+            // includeInactive=true should find all components
+            Assert.AreEqual(4, tester.includeInactive.Length);
+            CollectionAssert.Contains(tester.includeInactive, first);
+            CollectionAssert.Contains(tester.includeInactive, second);
+            CollectionAssert.Contains(tester.includeInactive, third);
+            CollectionAssert.Contains(tester.includeInactive, fourth);
+
+            yield break;
+        }
+
+        [UnityTest]
+        public IEnumerator IncludeInactiveFindsBehavioursRegardlessOfEnabledState()
+        {
+            GameObject root = new("SiblingBehaviours");
+            _spawned.Add(root);
+            SiblingTestBehaviour first = root.AddComponent<SiblingTestBehaviour>();
+            first.enabled = true;
+            SiblingTestBehaviour second = root.AddComponent<SiblingTestBehaviour>();
+            second.enabled = false;
+            SiblingBehaviourTester tester = root.AddComponent<SiblingBehaviourTester>();
+
+            tester.AssignSiblingComponents();
+
+            // includeInactive=true should find both enabled and disabled behaviours
+            Assert.AreEqual(2, tester.allBehaviours.Length);
+            CollectionAssert.Contains(tester.allBehaviours, first);
+            CollectionAssert.Contains(tester.allBehaviours, second);
+
+            yield break;
+        }
+
+        [UnityTest]
+        public IEnumerator ExcludeInactiveFiltersBehavioursByEnabledState()
+        {
+            GameObject root = new("SiblingBehavioursFiltered");
+            _spawned.Add(root);
+            SiblingTestBehaviour first = root.AddComponent<SiblingTestBehaviour>();
+            first.enabled = true;
+            SiblingTestBehaviour second = root.AddComponent<SiblingTestBehaviour>();
+            second.enabled = false;
+            SiblingTestBehaviour third = root.AddComponent<SiblingTestBehaviour>();
+            third.enabled = true;
+            SiblingBehaviourFilterTester tester = root.AddComponent<SiblingBehaviourFilterTester>();
+
+            tester.AssignSiblingComponents();
+
+            // includeInactive=false should only find enabled behaviours
+            Assert.AreEqual(2, tester.activeBehaviours.Length);
+            CollectionAssert.Contains(tester.activeBehaviours, first);
+            CollectionAssert.Contains(tester.activeBehaviours, third);
+            CollectionAssert.DoesNotContain(tester.activeBehaviours, second);
+
+            yield break;
+        }
     }
 
     internal sealed class SiblingAssignmentComponent : MonoBehaviour
@@ -512,5 +696,52 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
     {
         [SiblingComponent]
         public List<BoxCollider> colliders;
+    }
+
+    internal sealed class SiblingIncludeInactiveTester : MonoBehaviour
+    {
+        [SiblingComponent(includeInactive = true)]
+        public BoxCollider includeInactiveSingle;
+
+        [SiblingComponent(includeInactive = true)]
+        public BoxCollider[] includeInactiveArray;
+
+        [SiblingComponent(includeInactive = true)]
+        public List<BoxCollider> includeInactiveList;
+    }
+
+    internal sealed class SiblingExcludeInactiveTester : MonoBehaviour
+    {
+        [SiblingComponent(includeInactive = false)]
+        public BoxCollider activeOnlySingle;
+
+        [SiblingComponent(includeInactive = false)]
+        public BoxCollider[] activeOnlyArray;
+
+        [SiblingComponent(includeInactive = false)]
+        public List<BoxCollider> activeOnlyList;
+    }
+
+    internal sealed class SiblingMixedActiveTester : MonoBehaviour
+    {
+        [SiblingComponent(includeInactive = false)]
+        public BoxCollider[] activeOnly;
+
+        [SiblingComponent(includeInactive = true)]
+        public BoxCollider[] includeInactive;
+    }
+
+    internal sealed class SiblingTestBehaviour : MonoBehaviour { }
+
+    internal sealed class SiblingBehaviourTester : MonoBehaviour
+    {
+        [SiblingComponent(includeInactive = true)]
+        public SiblingTestBehaviour[] allBehaviours;
+    }
+
+    internal sealed class SiblingBehaviourFilterTester : MonoBehaviour
+    {
+        [SiblingComponent(includeInactive = false)]
+        public SiblingTestBehaviour[] activeBehaviours;
     }
 }

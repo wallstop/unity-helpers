@@ -101,45 +101,58 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     using PooledResource<List<Component>> childComponentBuffer =
                         Buffers<Component>.List.Get();
                     List<Component> childComponents = childComponentBuffer.resource;
-                    foreach (
-                        Transform child in component.IterateOverAllChildrenRecursivelyBreadthFirst(
-                            childBuffer,
-                            includeSelf: !attribute.onlyDescendents
-                        )
-                    )
+                    if (attribute.includeInactive)
                     {
-                        if (!attribute.includeInactive && !child.gameObject.activeInHierarchy)
-                        {
-                            continue;
-                        }
-                        child.GetComponents(childComponentType, childComponents);
-                        foreach (Component childComponent in childComponents)
-                        {
-                            if (
-                                !attribute.includeInactive
-                                && !ReflectionHelpers.IsComponentEnabled(childComponent)
+                        foreach (
+                            Transform child in component.IterateOverAllChildrenRecursivelyBreadthFirst(
+                                childBuffer,
+                                includeSelf: !attribute.onlyDescendents
                             )
+                        )
+                        {
+                            child.GetComponents(childComponentType, childComponents);
+                            cache.AddRange(childComponents);
+                        }
+                    }
+                    else
+                    {
+                        foreach (
+                            Transform child in component.IterateOverAllChildrenRecursivelyBreadthFirst(
+                                childBuffer,
+                                includeSelf: !attribute.onlyDescendents
+                            )
+                        )
+                        {
+                            if (!child.gameObject.activeInHierarchy)
                             {
                                 continue;
                             }
+                            child.GetComponents(childComponentType, childComponents);
+                            foreach (Component childComponent in childComponents)
+                            {
+                                if (!childComponent.IsComponentEnabled())
+                                {
+                                    continue;
+                                }
 
-                            cache.Add(childComponent);
+                                cache.Add(childComponent);
+                            }
                         }
                     }
-
-                    foundChild = 0 < cache.Count;
-
-                    using PooledResource<Component[]> arrayResource =
-                        WallstopFastArrayPool<Component>.Get(cache.Count);
-                    Component[] array = arrayResource.resource;
-                    cache.CopyTo(array);
 
                     Array correctTypedArray = ReflectionHelpers.CreateArray(
                         childComponentType,
                         cache.Count
                     );
-                    Array.Copy(array, correctTypedArray, cache.Count);
+
+                    for (int i = 0; i < cache.Count; i++)
+                    {
+                        Component childComponent = cache[i];
+                        correctTypedArray.SetValue(childComponent, i);
+                    }
+
                     setter(component, correctTypedArray);
+                    foundChild = 0 < cache.Count;
                 }
                 else if (
                     fieldType.IsGenericType
@@ -151,30 +164,46 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     using PooledResource<List<Component>> childComponentBuffer =
                         Buffers<Component>.List.Get();
                     List<Component> childComponents = childComponentBuffer.resource;
-                    foreach (
-                        Transform child in component.IterateOverAllChildrenRecursivelyBreadthFirst(
-                            childBuffer,
-                            includeSelf: !attribute.onlyDescendents
-                        )
-                    )
+                    if (attribute.includeInactive)
                     {
-                        if (!attribute.includeInactive && !child.gameObject.activeInHierarchy)
-                        {
-                            continue;
-                        }
-
-                        child.GetComponents(childComponentType, childComponents);
-                        foreach (Component childComponent in childComponents)
-                        {
-                            if (
-                                !attribute.includeInactive
-                                && !ReflectionHelpers.IsComponentEnabled(childComponent)
+                        foreach (
+                            Transform child in component.IterateOverAllChildrenRecursivelyBreadthFirst(
+                                childBuffer,
+                                includeSelf: !attribute.onlyDescendents
                             )
+                        )
+                        {
+                            child.GetComponents(childComponentType, childComponents);
+                            foreach (Component childComponent in childComponents)
+                            {
+                                instance.Add(childComponent);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        foreach (
+                            Transform child in component.IterateOverAllChildrenRecursivelyBreadthFirst(
+                                childBuffer,
+                                includeSelf: !attribute.onlyDescendents
+                            )
+                        )
+                        {
+                            if (!child.gameObject.activeInHierarchy)
                             {
                                 continue;
                             }
 
-                            instance.Add(childComponent);
+                            child.GetComponents(childComponentType, childComponents);
+                            foreach (Component childComponent in childComponents)
+                            {
+                                if (!childComponent.IsComponentEnabled())
+                                {
+                                    continue;
+                                }
+
+                                instance.Add(childComponent);
+                            }
                         }
                     }
 
@@ -188,37 +217,63 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     using PooledResource<List<Component>> childComponentBuffer =
                         Buffers<Component>.List.Get();
                     List<Component> childComponents = childComponentBuffer.resource;
-                    foreach (
-                        Transform child in component.IterateOverAllChildrenRecursivelyBreadthFirst(
-                            childBuffer,
-                            includeSelf: !attribute.onlyDescendents
-                        )
-                    )
+                    if (attribute.includeInactive)
                     {
-                        if (!attribute.includeInactive && !child.gameObject.activeInHierarchy)
-                        {
-                            continue;
-                        }
-                        child.GetComponents(childComponentType, childComponents);
-                        foreach (Component entry in childComponents)
-                        {
-                            if (
-                                !attribute.includeInactive
-                                && !ReflectionHelpers.IsComponentEnabled(entry)
+                        foreach (
+                            Transform child in component.IterateOverAllChildrenRecursivelyBreadthFirst(
+                                childBuffer,
+                                includeSelf: !attribute.onlyDescendents
                             )
+                        )
+                        {
+                            child.GetComponents(childComponentType, childComponents);
+                            foreach (Component entry in childComponents)
+                            {
+                                childComponent = entry;
+                                foundChild = true;
+                                break;
+                            }
+
+                            if (foundChild)
+                            {
+                                break;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        foreach (
+                            Transform child in component.IterateOverAllChildrenRecursivelyBreadthFirst(
+                                childBuffer,
+                                includeSelf: !attribute.onlyDescendents
+                            )
+                        )
+                        {
+                            if (!child.gameObject.activeInHierarchy)
                             {
                                 continue;
                             }
-                            childComponent = entry;
-                            foundChild = true;
-                            break;
-                        }
 
-                        if (foundChild)
-                        {
-                            break;
+                            child.GetComponents(childComponentType, childComponents);
+                            foreach (Component entry in childComponents)
+                            {
+                                if (!entry.IsComponentEnabled())
+                                {
+                                    continue;
+                                }
+
+                                childComponent = entry;
+                                foundChild = true;
+                                break;
+                            }
+
+                            if (foundChild)
+                            {
+                                break;
+                            }
                         }
                     }
+
                     if (foundChild)
                     {
                         setter(component, childComponent);
