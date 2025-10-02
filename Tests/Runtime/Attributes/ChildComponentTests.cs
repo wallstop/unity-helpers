@@ -1,5 +1,6 @@
 namespace WallstopStudios.UnityHelpers.Tests.Attributes
 {
+    using System;
     using System.Collections;
     using System.Collections.Generic;
     using System.Linq;
@@ -8,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Attributes;
+    using Object = UnityEngine.Object;
 
     [TestFixture]
     public sealed class ChildComponentTests
@@ -218,7 +220,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             child.transform.SetParent(root.transform);
 
             // Pre-assign EMPTY collections (should be overwritten)
-            tester.preAssignedChildArray = new SpriteRenderer[0];
+            tester.preAssignedChildArray = Array.Empty<SpriteRenderer>();
             tester.preAssignedChildList = new List<SpriteRenderer>();
 
             tester.AssignChildComponents();

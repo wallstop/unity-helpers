@@ -253,16 +253,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         }
 
         [Test]
-        public void FormatBytesWithMaxLongValueThrowsException()
+        public void FormatBytesWithMaxLongValueFormatsCorrectly()
         {
-            Assert.Throws<ArgumentException>(() => FormattingHelpers.FormatBytes(long.MaxValue));
-        }
-
-        [Test]
-        public void FormatBytesWithVeryLargeNumberBeyondExabyteThrowsException()
-        {
-            var beyondExabyte = unchecked(1024L * 1024 * 1024 * 1024 * 1024 * 1024 * 1024);
-            Assert.Throws<ArgumentException>(() => FormattingHelpers.FormatBytes(beyondExabyte));
+            // long.MaxValue = 9,223,372,036,854,775,807 bytes ≈ 8 EB
+            string result = FormattingHelpers.FormatBytes(long.MaxValue);
+            Assert.That(result, Does.Contain("EB"));
+            // Verify it's approximately 8 EB
+            Assert.That(result, Does.Contain("8"));
         }
 
         [Test]

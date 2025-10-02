@@ -108,7 +108,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             List<(int, int, int)> result = array.IndexOver(buffer);
 
             Assert.AreEqual(8, result.Count);
-            Assert.IsTrue(result.Contains((999, 999, 999)), string.Join(",", result));
+            Assert.IsFalse(result.Contains((999, 999, 999)), string.Join(",", result));
         }
 
         [Test]

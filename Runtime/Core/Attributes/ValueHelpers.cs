@@ -4,7 +4,7 @@
     {
         public static bool IsAssigned(object value)
         {
-            return ValidateAssignmentExtensions.IsValueInvalid(value);
+            return !ValidateAssignmentExtensions.IsValueInvalid(value);
         }
     }
 }

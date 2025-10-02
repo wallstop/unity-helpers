@@ -87,8 +87,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void FindRootPathWithAlwaysTrueConditionReturnsStartDirectory()
         {
-            string startPath = Application.dataPath;
-            string result = DirectoryHelper.FindRootPath(startPath, _ => true);
+            string startPath = Application.dataPath.SanitizePath();
+            string result = DirectoryHelper.FindRootPath(startPath, _ => true).SanitizePath();
             Assert.That(result, Does.StartWith(startPath).IgnoreCase);
         }
 
