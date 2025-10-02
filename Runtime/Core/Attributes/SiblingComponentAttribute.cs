@@ -21,13 +21,24 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
     public static class SiblingComponentExtensions
     {
+        private enum FieldKind : byte
+        {
+            Single,
+            Array,
+            List,
+        }
+
         private static readonly Dictionary<
             Type,
             (
                 FieldInfo field,
                 SiblingComponentAttribute attribute,
                 Action<object, object> setter,
-                Func<object, object> getter
+                Func<object, object> getter,
+                FieldKind kind,
+                Type elementType,
+                Func<int, Array> arrayCreator,
+                Func<int, IList> listCreator
             )[]
         > FieldsByType = new();
 
@@ -38,7 +49,11 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 FieldInfo field,
                 SiblingComponentAttribute attribute,
                 Action<object, object> setter,
-                Func<object, object> getter
+                Func<object, object> getter,
+                FieldKind kind,
+                Type elementType,
+                Func<int, Array> arrayCreator,
+                Func<int, IList> listCreator
             )[] fields = FieldsByType.GetOrAdd(
                 componentType,
                 type =>
@@ -48,18 +63,57 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     );
                     return fields
                         .Select(field =>
-                            field.IsAttributeDefined(
-                                out SiblingComponentAttribute attribute,
-                                inherit: false
-                            )
-                                ? (
-                                    field,
-                                    attribute,
-                                    ReflectionHelpers.GetFieldSetter(field),
-                                    ReflectionHelpers.GetFieldGetter(field)
+                        {
+                            if (
+                                !field.IsAttributeDefined(
+                                    out SiblingComponentAttribute attribute,
+                                    inherit: false
                                 )
-                                : (null, null, null, null)
-                        )
+                            )
+                            {
+                                return (null, null, null, null, default, null, null, null);
+                            }
+
+                            Type fieldType = field.FieldType;
+                            FieldKind kind;
+                            Type elementType;
+                            Func<int, Array> arrayCreator = null;
+                            Func<int, IList> listCreator = null;
+
+                            if (fieldType.IsArray)
+                            {
+                                kind = FieldKind.Array;
+                                elementType = fieldType.GetElementType();
+                                arrayCreator = ReflectionHelpers.GetArrayCreator(elementType);
+                            }
+                            else if (
+                                fieldType.IsGenericType
+                                && fieldType.GetGenericTypeDefinition() == typeof(List<>)
+                            )
+                            {
+                                kind = FieldKind.List;
+                                elementType = fieldType.GenericTypeArguments[0];
+                                listCreator = ReflectionHelpers.GetListWithCapacityCreator(
+                                    elementType
+                                );
+                            }
+                            else
+                            {
+                                kind = FieldKind.Single;
+                                elementType = fieldType;
+                            }
+
+                            return (
+                                field,
+                                attribute,
+                                ReflectionHelpers.GetFieldSetter(field),
+                                ReflectionHelpers.GetFieldGetter(field),
+                                kind,
+                                elementType,
+                                arrayCreator,
+                                listCreator
+                            );
+                        })
                         .Where(tuple => tuple.attribute != null)
                         .ToArray();
                 }
@@ -70,7 +124,11 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     FieldInfo field,
                     SiblingComponentAttribute attribute,
                     Action<object, object> setter,
-                    Func<object, object> getter
+                    Func<object, object> getter,
+                    FieldKind kind,
+                    Type elementType,
+                    Func<int, Array> arrayCreator,
+                    Func<int, IList> listCreator
                 ) in fields
             )
             {
@@ -83,131 +141,140 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     }
                 }
 
-                Type fieldType = field.FieldType;
-                bool isArray = fieldType.IsArray;
-                Type siblingComponentType = isArray ? fieldType.GetElementType() : fieldType;
-
                 bool foundSibling;
-                if (isArray)
+                switch (kind)
                 {
-                    using PooledResource<List<Component>> componentBufferResource =
-                        Buffers<Component>.List.Get();
-                    List<Component> siblingComponents = componentBufferResource.resource;
-                    component.GetComponents(siblingComponentType, siblingComponents);
-
-                    using PooledResource<List<Component>> filteredResource =
-                        Buffers<Component>.List.Get();
-                    List<Component> filtered = filteredResource.resource;
-
-                    if (attribute.includeInactive)
-                    {
-                        filtered = siblingComponents;
-                    }
-                    else if (component.gameObject.activeInHierarchy)
-                    {
-                        foreach (Component siblingComponent in siblingComponents)
-                        {
-                            if (!siblingComponent.IsComponentEnabled())
-                            {
-                                continue;
-                            }
-                            filtered.Add(siblingComponent);
-                        }
-                    }
-
-                    foundSibling = 0 < filtered.Count;
-
-                    Array correctTypedArray = ReflectionHelpers.CreateArray(
-                        siblingComponentType,
-                        filtered.Count
-                    );
-                    for (int i = 0; i < filtered.Count; i++)
-                    {
-                        Component siblingComponent = filtered[i];
-                        correctTypedArray.SetValue(siblingComponent, i);
-                    }
-
-                    setter(component, correctTypedArray);
-                }
-                else if (
-                    fieldType.IsGenericType
-                    && fieldType.GetGenericTypeDefinition() == typeof(List<>)
-                )
-                {
-                    siblingComponentType = fieldType.GenericTypeArguments[0];
-
-                    using PooledResource<List<Component>> componentBufferResource =
-                        Buffers<Component>.List.Get();
-                    List<Component> siblingComponents = componentBufferResource.resource;
-                    component.GetComponents(siblingComponentType, siblingComponents);
-
-                    IList instance = ReflectionHelpers.CreateList(
-                        siblingComponentType,
-                        siblingComponents.Count
-                    );
-
-                    if (attribute.includeInactive)
-                    {
-                        foreach (Component siblingComponent in siblingComponents)
-                        {
-                            instance.Add(siblingComponent);
-                        }
-                    }
-                    else if (component.gameObject.activeInHierarchy)
-                    {
-                        foreach (Component siblingComponent in siblingComponents)
-                        {
-                            if (!siblingComponent.IsComponentEnabled())
-                            {
-                                continue;
-                            }
-
-                            instance.Add(siblingComponent);
-                        }
-                    }
-
-                    setter(component, instance);
-                    foundSibling = instance.Count > 0;
-                }
-                else
-                {
-                    Component siblingComponent = null;
-                    if (attribute.includeInactive)
-                    {
-                        siblingComponent = component.GetComponent(siblingComponentType);
-                    }
-                    else if (component.gameObject.activeInHierarchy)
+                    case FieldKind.Array:
                     {
                         using PooledResource<List<Component>> componentBufferResource =
                             Buffers<Component>.List.Get();
                         List<Component> siblingComponents = componentBufferResource.resource;
-                        component.GetComponents(siblingComponentType, siblingComponents);
-                        foreach (Component candidate in siblingComponents)
+                        component.GetComponents(elementType, siblingComponents);
+
+                        using PooledResource<List<Component>> filteredResource =
+                            Buffers<Component>.List.Get();
+                        List<Component> filtered = filteredResource.resource;
+
+                        if (attribute.includeInactive)
                         {
-                            if (!candidate.IsComponentEnabled())
-                            {
-                                continue;
-                            }
-
-                            siblingComponent = candidate;
-                            break;
+                            filtered = siblingComponents;
                         }
-                    }
+                        else if (component.gameObject.activeInHierarchy)
+                        {
+                            for (int i = 0; i < siblingComponents.Count; ++i)
+                            {
+                                Component siblingComponent = siblingComponents[i];
+                                if (!siblingComponent.IsComponentEnabled())
+                                {
+                                    continue;
+                                }
+                                filtered.Add(siblingComponent);
+                            }
+                        }
 
-                    if (siblingComponent != null)
-                    {
-                        foundSibling = true;
-                        setter(component, siblingComponent);
+                        foundSibling = filtered.Count > 0;
+
+                        Array correctTypedArray = arrayCreator(filtered.Count);
+                        for (int i = 0; i < filtered.Count; ++i)
+                        {
+                            correctTypedArray.SetValue(filtered[i], i);
+                        }
+
+                        setter(component, correctTypedArray);
+                        break;
                     }
-                    else
+                    case FieldKind.List:
                     {
-                        foundSibling = false;
+                        using PooledResource<List<Component>> componentBufferResource =
+                            Buffers<Component>.List.Get();
+                        List<Component> siblingComponents = componentBufferResource.resource;
+                        component.GetComponents(elementType, siblingComponents);
+
+                        int count = siblingComponents.Count;
+                        if (!attribute.includeInactive && component.gameObject.activeInHierarchy)
+                        {
+                            count = 0;
+                            for (int i = 0; i < siblingComponents.Count; ++i)
+                            {
+                                if (siblingComponents[i].IsComponentEnabled())
+                                {
+                                    ++count;
+                                }
+                            }
+                        }
+
+                        IList instance = listCreator(count);
+
+                        if (attribute.includeInactive)
+                        {
+                            for (int i = 0; i < siblingComponents.Count; ++i)
+                            {
+                                instance.Add(siblingComponents[i]);
+                            }
+                        }
+                        else if (component.gameObject.activeInHierarchy)
+                        {
+                            for (int i = 0; i < siblingComponents.Count; ++i)
+                            {
+                                Component siblingComponent = siblingComponents[i];
+                                if (!siblingComponent.IsComponentEnabled())
+                                {
+                                    continue;
+                                }
+
+                                instance.Add(siblingComponent);
+                            }
+                        }
+
+                        setter(component, instance);
+                        foundSibling = instance.Count > 0;
+                        break;
+                    }
+                    default:
+                    {
+                        Component siblingComponent = null;
+                        if (attribute.includeInactive)
+                        {
+                            siblingComponent = component.GetComponent(elementType);
+                        }
+                        else if (component.gameObject.activeInHierarchy)
+                        {
+                            using PooledResource<List<Component>> componentBufferResource =
+                                Buffers<Component>.List.Get();
+                            List<Component> siblingComponents = componentBufferResource.resource;
+                            component.GetComponents(elementType, siblingComponents);
+                            for (int i = 0; i < siblingComponents.Count; ++i)
+                            {
+                                Component candidate = siblingComponents[i];
+                                if (!candidate.IsComponentEnabled())
+                                {
+                                    continue;
+                                }
+
+                                siblingComponent = candidate;
+                                break;
+                            }
+                        }
+
+                        if (siblingComponent != null)
+                        {
+                            foundSibling = true;
+                            setter(component, siblingComponent);
+                        }
+                        else
+                        {
+                            foundSibling = false;
+                        }
+
+                        break;
                     }
                 }
 
                 if (!foundSibling && !attribute.optional)
                 {
-                    component.LogError($"Unable to find sibling component of type {fieldType}");
+                    component.LogError(
+                        $"Unable to find sibling component of type {field.FieldType}"
+                    );
                 }
             }
         }

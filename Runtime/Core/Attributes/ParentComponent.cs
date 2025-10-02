@@ -21,13 +21,24 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
     public static class ParentComponentExtensions
     {
+        private enum FieldKind : byte
+        {
+            Single,
+            Array,
+            List,
+        }
+
         private static readonly Dictionary<
             Type,
             (
                 FieldInfo field,
                 ParentComponentAttribute attribute,
                 Action<object, object> setter,
-                Func<object, object> getter
+                Func<object, object> getter,
+                FieldKind kind,
+                Type elementType,
+                Func<int, Array> arrayCreator,
+                Func<int, IList> listCreator
             )[]
         > FieldsByType = new();
 
@@ -38,7 +49,11 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 FieldInfo field,
                 ParentComponentAttribute attribute,
                 Action<object, object> setter,
-                Func<object, object> getter
+                Func<object, object> getter,
+                FieldKind kind,
+                Type elementType,
+                Func<int, Array> arrayCreator,
+                Func<int, IList> listCreator
             )[] fields = FieldsByType.GetOrAdd(
                 componentType,
                 type =>
@@ -48,18 +63,57 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     );
                     return fields
                         .Select(field =>
-                            field.IsAttributeDefined(
-                                out ParentComponentAttribute attribute,
-                                inherit: false
-                            )
-                                ? (
-                                    field,
-                                    attribute,
-                                    ReflectionHelpers.GetFieldSetter(field),
-                                    ReflectionHelpers.GetFieldGetter(field)
+                        {
+                            if (
+                                !field.IsAttributeDefined(
+                                    out ParentComponentAttribute attribute,
+                                    inherit: false
                                 )
-                                : (null, null, null, null)
-                        )
+                            )
+                            {
+                                return (null, null, null, null, default, null, null, null);
+                            }
+
+                            Type fieldType = field.FieldType;
+                            FieldKind kind;
+                            Type elementType;
+                            Func<int, Array> arrayCreator = null;
+                            Func<int, IList> listCreator = null;
+
+                            if (fieldType.IsArray)
+                            {
+                                kind = FieldKind.Array;
+                                elementType = fieldType.GetElementType();
+                                arrayCreator = ReflectionHelpers.GetArrayCreator(elementType);
+                            }
+                            else if (
+                                fieldType.IsGenericType
+                                && fieldType.GetGenericTypeDefinition() == typeof(List<>)
+                            )
+                            {
+                                kind = FieldKind.List;
+                                elementType = fieldType.GenericTypeArguments[0];
+                                listCreator = ReflectionHelpers.GetListWithCapacityCreator(
+                                    elementType
+                                );
+                            }
+                            else
+                            {
+                                kind = FieldKind.Single;
+                                elementType = fieldType;
+                            }
+
+                            return (
+                                field,
+                                attribute,
+                                ReflectionHelpers.GetFieldSetter(field),
+                                ReflectionHelpers.GetFieldGetter(field),
+                                kind,
+                                elementType,
+                                arrayCreator,
+                                listCreator
+                            );
+                        })
                         .Where(tuple => tuple.attribute != null)
                         .ToArray();
                 }
@@ -70,7 +124,11 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     FieldInfo field,
                     ParentComponentAttribute attribute,
                     Action<object, object> setter,
-                    Func<object, object> getter
+                    Func<object, object> getter,
+                    FieldKind kind,
+                    Type elementType,
+                    Func<int, Array> arrayCreator,
+                    Func<int, IList> listCreator
                 ) in fields
             )
             {
@@ -83,9 +141,6 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     }
                 }
 
-                Type fieldType = field.FieldType;
-                bool isArray = fieldType.IsArray;
-                Type parentComponentType = isArray ? fieldType.GetElementType() : fieldType;
                 bool foundParent;
                 Transform root = component.transform;
                 if (attribute.onlyAncestors)
@@ -95,91 +150,82 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
                 if (root == null)
                 {
-                    if (isArray)
+                    if (kind == FieldKind.Array)
                     {
-                        Array correctTypedArray = ReflectionHelpers.CreateArray(
-                            parentComponentType,
-                            0
-                        );
-                        setter(component, correctTypedArray);
+                        setter(component, arrayCreator(0));
                     }
-                    else if (
-                        fieldType.IsGenericType
-                        && fieldType.GetGenericTypeDefinition() == typeof(List<>)
-                    )
+                    else if (kind == FieldKind.List)
                     {
-                        parentComponentType = fieldType.GenericTypeArguments[0];
-                        IList instance = ReflectionHelpers.CreateList(parentComponentType, 0);
-                        setter(component, instance);
+                        setter(component, listCreator(0));
                     }
 
                     foundParent = false;
                 }
                 else
                 {
-                    if (isArray)
+                    switch (kind)
                     {
-                        Component[] parentComponents = root.GetComponentsInParent(
-                            parentComponentType,
-                            attribute.includeInactive
-                        );
-
-                        Array correctTypedArray = ReflectionHelpers.CreateArray(
-                            parentComponentType,
-                            parentComponents.Length
-                        );
-
-                        Array.Copy(parentComponents, correctTypedArray, parentComponents.Length);
-                        setter(component, correctTypedArray);
-                        foundParent = 0 < parentComponents.Length;
-                    }
-                    else if (
-                        fieldType.IsGenericType
-                        && fieldType.GetGenericTypeDefinition() == typeof(List<>)
-                    )
-                    {
-                        parentComponentType = fieldType.GenericTypeArguments[0];
-
-                        Component[] parents = root.GetComponentsInParent(
-                            parentComponentType,
-                            attribute.includeInactive
-                        );
-
-                        IList instance = ReflectionHelpers.CreateList(
-                            parentComponentType,
-                            parents.Length
-                        );
-
-                        foreach (Component parentComponent in parents)
+                        case FieldKind.Array:
                         {
-                            instance.Add(parentComponent);
+                            Component[] parentComponents = root.GetComponentsInParent(
+                                elementType,
+                                attribute.includeInactive
+                            );
+
+                            Array correctTypedArray = arrayCreator(parentComponents.Length);
+                            Array.Copy(
+                                parentComponents,
+                                correctTypedArray,
+                                parentComponents.Length
+                            );
+                            setter(component, correctTypedArray);
+                            foundParent = parentComponents.Length > 0;
+                            break;
                         }
-
-                        setter(component, instance);
-                        foundParent = instance.Count > 0;
-                    }
-                    else
-                    {
-                        Component parentComponent = root.GetComponentInParent(
-                            parentComponentType,
-                            attribute.includeInactive
-                        );
-
-                        if (parentComponent != null)
+                        case FieldKind.List:
                         {
-                            setter(component, parentComponent);
-                            foundParent = true;
+                            Component[] parents = root.GetComponentsInParent(
+                                elementType,
+                                attribute.includeInactive
+                            );
+
+                            IList instance = listCreator(parents.Length);
+                            for (int i = 0; i < parents.Length; ++i)
+                            {
+                                instance.Add(parents[i]);
+                            }
+
+                            setter(component, instance);
+                            foundParent = parents.Length > 0;
+                            break;
                         }
-                        else
+                        default:
                         {
-                            foundParent = false;
+                            Component parentComponent = root.GetComponentInParent(
+                                elementType,
+                                attribute.includeInactive
+                            );
+
+                            if (parentComponent != null)
+                            {
+                                setter(component, parentComponent);
+                                foundParent = true;
+                            }
+                            else
+                            {
+                                foundParent = false;
+                            }
+
+                            break;
                         }
                     }
                 }
 
                 if (!foundParent && !attribute.optional)
                 {
-                    component.LogError($"Unable to find parent component of type {fieldType}");
+                    component.LogError(
+                        $"Unable to find parent component of type {field.FieldType}"
+                    );
                 }
             }
         }
