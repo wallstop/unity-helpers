@@ -197,7 +197,10 @@ namespace WallstopStudios.UnityHelpers.Editor
             List<AnimationClip> animationClips =
                 _sourceAnimator.runtimeAnimatorController.animationClips.ToList();
             int selectedIndex;
-            if (string.IsNullOrEmpty(_animationSearchString) || _animationSearchString == "*")
+            if (
+                string.IsNullOrEmpty(_animationSearchString)
+                || string.Equals(_animationSearchString, "*", StringComparison.Ordinal)
+            )
             {
                 selectedIndex = EditorGUILayout.Popup(
                     "Animation",
@@ -210,7 +213,10 @@ namespace WallstopStudios.UnityHelpers.Editor
                 List<string> searchTerms = _animationSearchString
                     .Split(" ")
                     .Select(searchPart => searchPart.ToLowerInvariant().Trim())
-                    .Where(trimmed => !string.IsNullOrEmpty(trimmed) && trimmed != "*")
+                    .Where(trimmed =>
+                        !string.IsNullOrEmpty(trimmed)
+                        && !string.Equals(trimmed, "*", StringComparison.Ordinal)
+                    )
                     .ToList();
 
                 if (0 < searchTerms.Count)
@@ -623,7 +629,10 @@ namespace WallstopStudios.UnityHelpers.Editor
                     List<string> searchTerms = item
                         .search.Split(" ")
                         .Select(searchTerm => searchTerm.Trim().ToLowerInvariant())
-                        .Where(trimmed => !string.IsNullOrEmpty(trimmed) && trimmed != "*")
+                        .Where(trimmed =>
+                            !string.IsNullOrEmpty(trimmed)
+                            && !string.Equals(trimmed, "*", StringComparison.Ordinal)
+                        )
                         .ToList();
 
                     if (0 < searchTerms.Count)

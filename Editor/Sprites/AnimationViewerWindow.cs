@@ -48,7 +48,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     {
                         if (
                             binding.type == typeof(SpriteRenderer)
-                            && binding.propertyName == "m_Sprite"
+                            && string.Equals(
+                                binding.propertyName,
+                                "m_Sprite",
+                                StringComparison.Ordinal
+                            )
                         )
                         {
                             BindingPath = binding.path;
@@ -1445,8 +1449,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 if (
                     b.type == typeof(SpriteRenderer)
-                    && b.propertyName == "m_Sprite"
-                    && (string.IsNullOrWhiteSpace(bindingPath) || b.path == bindingPath)
+                    && string.Equals(b.propertyName, "m_Sprite", StringComparison.Ordinal)
+                    && (
+                        string.IsNullOrWhiteSpace(bindingPath)
+                        || string.Equals(b.path, bindingPath, StringComparison.Ordinal)
+                    )
                 )
                 {
                     spriteBinding = b;
@@ -1459,7 +1466,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 foreach (EditorCurveBinding b in allBindings)
                 {
-                    if (b.type == typeof(SpriteRenderer) && b.propertyName == "m_Sprite")
+                    if (
+                        b.type == typeof(SpriteRenderer)
+                        && string.Equals(b.propertyName, "m_Sprite", StringComparison.Ordinal)
+                    )
                     {
                         spriteBinding = b;
                         bindingFound = true;
