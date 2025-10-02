@@ -1,6 +1,5 @@
 ﻿namespace WallstopStudios.UnityHelpers.Tests.Helper
 {
-    using System;
     using System.Collections.Generic;
     using NUnit.Framework;
     using UnityEngine;
@@ -8,8 +7,6 @@
 
     public sealed class LineHelperTests
     {
-        #region Simplify Tests
-
         [Test]
         public void SimplifyWithNullPointsReturnsEmptyBuffer()
         {
@@ -153,7 +150,7 @@
 
             Assert.That(result.Count, Is.LessThan(points.Count));
             Assert.That(result[0], Is.EqualTo(points[0]));
-            Assert.That(result[result.Count - 1], Is.EqualTo(points[points.Count - 1]));
+            Assert.That(result[^1], Is.EqualTo(points[^1]));
         }
 
         [Test]
@@ -231,10 +228,6 @@
             Assert.That(result[0], Is.EqualTo(points[0]));
             Assert.That(result[1], Is.EqualTo(points[2]));
         }
-
-        #endregion
-
-        #region SimplifyPrecise Tests
 
         [Test]
         public void SimplifyPreciseWithNullPointsReturnsNull()
@@ -343,7 +336,7 @@
 
             Assert.That(result.Count, Is.LessThan(points.Count));
             Assert.That(result[0], Is.EqualTo(points[0]));
-            Assert.That(result[result.Count - 1], Is.EqualTo(points[points.Count - 1]));
+            Assert.That(result[^1], Is.EqualTo(points[^1]));
         }
 
         [Test]
@@ -512,7 +505,7 @@
 
             Assert.That(result.Count, Is.GreaterThanOrEqualTo(2));
             Assert.That(result[0], Is.EqualTo(points[0]));
-            Assert.That(result[result.Count - 1], Is.EqualTo(points[points.Count - 1]));
+            Assert.That(result[^1], Is.EqualTo(points[^1]));
         }
 
         [Test]
@@ -543,12 +536,8 @@
 
             Assert.That(result.Count, Is.LessThan(points.Count));
             Assert.That(result[0], Is.EqualTo(points[0]));
-            Assert.That(result[result.Count - 1], Is.EqualTo(points[points.Count - 1]));
+            Assert.That(result[^1], Is.EqualTo(points[^1]));
         }
-
-        #endregion
-
-        #region Edge Case Tests
 
         [Test]
         public void SimplifyHandlesVerySmallEpsilon()
@@ -669,7 +658,5 @@
 
             Assert.That(result.Count, Is.GreaterThanOrEqualTo(2));
         }
-
-        #endregion
     }
 }
