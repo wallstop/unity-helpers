@@ -15,6 +15,11 @@ namespace WallstopStudios.UnityHelpers.Tags
         private static readonly Dictionary<Type, Dictionary<string, FieldInfo>> AttributeFields =
             new();
 
+        private static readonly Dictionary<
+            Type,
+            Dictionary<string, Func<object, Attribute>>
+        > OptimizedAttributeFields = new();
+
         // TODO: Use TypeCache + serialize
         public static string[] GetAllAttributeNames()
         {
@@ -40,6 +45,7 @@ namespace WallstopStudios.UnityHelpers.Tags
         {
             AllAttributeNames = null;
             AttributeFields.Clear();
+            OptimizedAttributeFields.Clear();
         }
 
         public static bool HasTag(this Object target, string effectTag)
@@ -210,6 +216,28 @@ namespace WallstopStudios.UnityHelpers.Tags
                         )
                         .Where(field => field.FieldType == typeof(Attribute))
                         .ToDictionary(field => field.Name, StringComparer.Ordinal);
+                }
+            );
+        }
+
+        public static Dictionary<string, Func<object, Attribute>> GetOptimizedAttributeFields(
+            Type type
+        )
+        {
+            return OptimizedAttributeFields.GetOrAdd(
+                type,
+                inputType =>
+                {
+                    return inputType
+                        .GetFields(
+                            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+                        )
+                        .Where(field => field.FieldType == typeof(Attribute))
+                        .ToDictionary(
+                            field => field.Name,
+                            field => ReflectionHelpers.GetFieldGetter<object, Attribute>(field),
+                            StringComparer.Ordinal
+                        );
                 }
             );
         }

@@ -21,7 +21,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             );
             if (method != null)
             {
-                _getStringList = () => method.Invoke(null, null) as string[];
+                _getStringList = () => ReflectionHelpers.InvokeStaticMethod(method) as string[];
             }
             else
             {

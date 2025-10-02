@@ -41,13 +41,32 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     maxY = Math.Max(maxY, max.y);
                 }
 
-                boundary =
+                Bounds bounds =
                     elements.Count <= 0
                         ? new Bounds()
                         : new Bounds(
                             new Vector3(minX + (maxX - minX) / 2, minY + (maxY - minY) / 2),
                             new Vector3(maxX - minX, maxY - minY)
                         );
+
+                // Ensure bounds have minimum size to handle colinear points
+                // FastContains2D uses strict < for max bounds, so zero-size dimensions won't contain any points
+                if (elements.Count > 0)
+                {
+                    Vector3 size = bounds.size;
+                    const float minSize = 0.001f;
+                    if (size.x < minSize)
+                    {
+                        size.x = minSize;
+                    }
+                    if (size.y < minSize)
+                    {
+                        size.y = minSize;
+                    }
+                    bounds.size = size;
+                }
+
+                boundary = bounds;
                 this.elements = elements.ToArray();
                 isTerminal = elements.Count <= bucketSize;
                 if (isTerminal)
@@ -135,7 +154,26 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 elementTransformer ?? throw new ArgumentNullException(nameof(elementTransformer));
             elements =
                 points?.ToImmutableArray() ?? throw new ArgumentNullException(nameof(points));
-            _bounds = elements.Select(elementTransformer).GetBounds() ?? new Bounds();
+            Bounds bounds = elements.Select(elementTransformer).GetBounds() ?? new Bounds();
+
+            // Ensure bounds have minimum size to handle colinear points
+            // FastContains2D uses strict < for max bounds, so zero-size dimensions won't contain any points
+            if (elements.Length > 0)
+            {
+                Vector3 size = bounds.size;
+                const float minSize = 0.001f;
+                if (size.x < minSize)
+                {
+                    size.x = minSize;
+                }
+                if (size.y < minSize)
+                {
+                    size.y = minSize;
+                }
+                bounds.size = size;
+            }
+
+            _bounds = bounds;
             _head = new RTreeNode<T>(
                 elements.ToList(),
                 elementTransformer,

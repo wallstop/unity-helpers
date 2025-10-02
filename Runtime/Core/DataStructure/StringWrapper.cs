@@ -44,6 +44,13 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             return Cache.TryRemove(value, out _);
         }
 
+        public static int Clear()
+        {
+            int count = Cache.Count;
+            Cache.Clear();
+            return count;
+        }
+
         public bool Equals(StringWrapper other)
         {
             if (ReferenceEquals(this, other))

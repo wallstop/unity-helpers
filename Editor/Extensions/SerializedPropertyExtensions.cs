@@ -3,6 +3,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Extensions
 #if UNITY_EDITOR
     using System;
     using System.Reflection;
+    using Core.Helper;
     using UnityEditor;
 
     public static class SerializedPropertyExtensions
@@ -83,7 +84,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Extensions
                 // Move deeper but stop before the last property in the path
                 if (i < pathParts.Length - 2)
                 {
-                    obj = fieldInfo.GetValue(obj);
+                    obj = ReflectionHelpers.GetFieldGetter(fieldInfo)(obj);
                     type = fieldInfo.FieldType;
                 }
             }
@@ -170,7 +171,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Extensions
                 }
 
                 // Move deeper into the object tree
-                obj = fieldInfo.GetValue(obj);
+                obj = ReflectionHelpers.GetFieldGetter(fieldInfo)(obj);
                 type = fieldInfo.FieldType;
             }
 

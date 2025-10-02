@@ -50,6 +50,20 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     initializedBoundary = true;
                 }
 
+                // Ensure bounds have minimum size to handle colinear points
+                // FastContains2D uses strict < for max bounds, so zero-size dimensions won't contain any points
+                Vector3 size = bounds.size;
+                const float minSize = 0.001f;
+                if (size.x < minSize)
+                {
+                    size.x = minSize;
+                }
+                if (size.y < minSize)
+                {
+                    size.y = minSize;
+                }
+                bounds.size = size;
+
                 boundary = bounds;
                 entries = 0 < elements.Count ? elements.ToArray() : Array.Empty<Entry>();
                 isTerminal = elements.Count <= bucketSize;
@@ -170,6 +184,20 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 boundsInitialized = true;
                 entries.Add(new Entry(element, elementPosition));
             }
+            // Ensure bounds have minimum size to handle colinear points
+            // FastContains2D uses strict < for max bounds, so zero-size dimensions won't contain any points
+            Vector3 size = bounds.size;
+            const float minSize = 0.001f;
+            if (size.x < minSize)
+            {
+                size.x = minSize;
+            }
+            if (size.y < minSize)
+            {
+                size.y = minSize;
+            }
+            bounds.size = size;
+
             _bounds = bounds;
             _head = new KDTreeNode(
                 entries,

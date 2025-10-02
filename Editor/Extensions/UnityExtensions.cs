@@ -16,7 +16,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Extensions
                 "GetPreviewTextures",
                 BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public
             );
-            object obj = method?.Invoke(null, new object[] { spriteAtlas });
+            object obj =
+                method != null ? ReflectionHelpers.InvokeStaticMethod(method, spriteAtlas) : null;
             return obj is not Texture2D[] { Length: > 0 } textures
                 ? null
                 : textures.Where(Objects.NotNull).FirstOrDefault();

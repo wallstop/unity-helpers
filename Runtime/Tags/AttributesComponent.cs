@@ -2,7 +2,6 @@ namespace WallstopStudios.UnityHelpers.Tags
 {
     using System;
     using System.Collections.Generic;
-    using System.Reflection;
     using Core.Attributes;
     using UnityEngine;
 
@@ -12,7 +11,7 @@ namespace WallstopStudios.UnityHelpers.Tags
     {
         public event Action<string, float, float> OnAttributeModified;
 
-        private readonly Dictionary<string, FieldInfo> _attributeFields;
+        private readonly Dictionary<string, Func<object, Attribute>> _attributeFieldGetters;
         private readonly HashSet<EffectHandle> _effectHandles;
 
         [SiblingComponent]
@@ -23,7 +22,7 @@ namespace WallstopStudios.UnityHelpers.Tags
 
         protected AttributesComponent()
         {
-            _attributeFields = AttributeUtilities.GetAttributeFields(GetType());
+            _attributeFieldGetters = AttributeUtilities.GetOptimizedAttributeFields(GetType());
             _effectHandles = new HashSet<EffectHandle>();
         }
 
@@ -152,21 +151,19 @@ namespace WallstopStudios.UnityHelpers.Tags
 
         private bool TryGetAttribute(string attributeName, out Attribute attribute)
         {
-            if (!_attributeFields.TryGetValue(attributeName, out FieldInfo fieldInfo))
+            if (
+                !_attributeFieldGetters.TryGetValue(
+                    attributeName,
+                    out Func<object, Attribute> getter
+                )
+            )
             {
                 attribute = default;
                 return false;
             }
 
-            object fieldValue = fieldInfo.GetValue(this);
-            if (fieldValue is Attribute fieldAttribute)
-            {
-                attribute = fieldAttribute;
-                return true;
-            }
-
-            attribute = default;
-            return false;
+            attribute = getter(this);
+            return true;
         }
     }
 }

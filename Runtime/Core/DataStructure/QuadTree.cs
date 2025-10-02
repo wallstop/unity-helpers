@@ -162,6 +162,20 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 anyPoints = true;
             }
 
+            // Ensure bounds have minimum size to handle colinear points
+            // FastContains2D uses strict < for max bounds, so zero-size dimensions won't contain any points
+            Vector3 size = bounds.size;
+            const float minSize = 0.001f;
+            if (size.x < minSize)
+            {
+                size.x = minSize;
+            }
+            if (size.y < minSize)
+            {
+                size.y = minSize;
+            }
+            bounds.size = size;
+
             _bounds = bounds;
             _head = new QuadTreeNode(entries, _bounds, bucketSize);
         }

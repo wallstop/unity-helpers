@@ -14,7 +14,8 @@
         "nunit.framework.dll",
         "System.Text.Json.dll",
         "protobuf-net.dll",
-        "protobuf-net.Core.dll"
+        "protobuf-net.Core.dll",
+        "System.Collections.Immutable.dll"
     ],
     "autoReferenced": false,
     "defineConstraints": [
