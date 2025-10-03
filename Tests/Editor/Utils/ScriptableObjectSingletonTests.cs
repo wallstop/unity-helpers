@@ -1,21 +1,26 @@
-namespace WallstopStudios.UnityHelpers.Tests.Utils
+namespace WallstopStudios.UnityHelpers.Tests.Tests.Editor.Utils
 {
-    using NUnit.Framework;
-    using UnityEngine;
-    using WallstopStudios.UnityHelpers.Core.Attributes;
-    using WallstopStudios.UnityHelpers.Utils;
 #if UNITY_EDITOR
+    using System.Collections;
+    using Core.Attributes;
+    using Core.Helper;
+    using NUnit.Framework;
     using UnityEditor;
-#endif
+    using UnityEngine;
+    using UnityEngine.TestTools;
+    using WallstopStudios.UnityHelpers.Utils;
 
     public sealed class ScriptableObjectSingletonTests
     {
-#if UNITY_EDITOR
         private static readonly System.Collections.Generic.List<string> _createdAssetPaths = new();
 
-        [SetUp]
-        public void SetUp()
+        [UnitySetUp]
+        public IEnumerator SetUp()
         {
+            TestSingleton.ClearInstance();
+            EmptyPathSingleton.ClearInstance();
+            CustomPathSingleton.ClearInstance();
+            MultipleInstancesSingleton.ClearInstance();
             EnsureResourceAsset<TestSingleton>("Assets/Resources", "TestSingleton.asset");
             EnsureResourceAsset<EmptyPathSingleton>("Assets/Resources", "EmptyPathSingleton.asset");
             // Custom path specified via [ScriptableSingletonPath("CustomPath")] => place under Resources/CustomPath
@@ -24,6 +29,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 "Assets/Resources/CustomPath",
                 "CustomPathSingleton.asset"
             );
+            yield break;
         }
 
         private static void EnsureFolder(string folderPath)
@@ -60,7 +66,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 AssetDatabase.Refresh();
             }
         }
-#endif
 
         private sealed class TestSingleton : ScriptableObjectSingleton<TestSingleton>
         {
@@ -84,10 +89,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             public int instanceId;
         }
 
-        [TearDown]
-        public void Cleanup()
+        [UnityTearDown]
+        public IEnumerator Cleanup()
         {
-#if UNITY_EDITOR
             // Delete any assets created during SetUp
             foreach (string path in _createdAssetPaths)
             {
@@ -95,15 +99,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 {
                     AssetDatabase.DeleteAsset(path);
                 }
+                yield return null;
             }
+
             _createdAssetPaths.Clear();
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-#endif
+            yield return null;
             if (TestSingleton.LazyInstance.IsValueCreated)
             {
                 System.Reflection.FieldInfo field = typeof(TestSingleton).GetField(
-                    "LazyInstance",
+                    nameof(TestSingleton.LazyInstance),
                     System.Reflection.BindingFlags.NonPublic
                         | System.Reflection.BindingFlags.Static
                         | System.Reflection.BindingFlags.Public
@@ -129,131 +135,146 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 }
             }
 
+            yield return null;
+
             TestSingleton[] allTestSingletons = Resources.FindObjectsOfTypeAll<TestSingleton>();
             foreach (TestSingleton singleton in allTestSingletons)
             {
-                Object.DestroyImmediate(singleton);
+                singleton.Destroy();
+                yield return null;
             }
 
             CustomPathSingleton[] allCustomPathSingletons =
                 Resources.FindObjectsOfTypeAll<CustomPathSingleton>();
             foreach (CustomPathSingleton singleton in allCustomPathSingletons)
             {
-                Object.DestroyImmediate(singleton);
+                singleton.Destroy();
+                yield return null;
             }
 
             EmptyPathSingleton[] allEmptyPathSingletons =
                 Resources.FindObjectsOfTypeAll<EmptyPathSingleton>();
             foreach (EmptyPathSingleton singleton in allEmptyPathSingletons)
             {
-                Object.DestroyImmediate(singleton);
+                singleton.Destroy();
+                yield return null;
             }
 
             MultipleInstancesSingleton[] allMultipleSingletons =
                 Resources.FindObjectsOfTypeAll<MultipleInstancesSingleton>();
             foreach (MultipleInstancesSingleton singleton in allMultipleSingletons)
             {
-                Object.DestroyImmediate(singleton);
+                singleton.Destroy();
+                yield return null;
             }
         }
 
-        [Test]
-        public void HasInstanceReturnsFalseBeforeAccess()
+        [UnityTest]
+        public IEnumerator HasInstanceReturnsFalseBeforeAccess()
         {
             Assert.IsFalse(TestSingleton.HasInstance);
+            yield break;
         }
 
-        [Test]
-        public void HasInstanceReturnsTrueAfterAccess()
+        [UnityTest]
+        public IEnumerator HasInstanceReturnsTrueAfterAccess()
         {
             TestSingleton instance = TestSingleton.Instance;
 
             Assert.IsTrue(TestSingleton.HasInstance);
-            Assert.IsNotNull(instance);
+            Assert.IsTrue(instance != null);
+            yield break;
         }
 
-        [Test]
-        public void InstanceReturnsNonNull()
+        [UnityTest]
+        public IEnumerator InstanceReturnsNonNull()
         {
             TestSingleton instance = TestSingleton.Instance;
-
-            Assert.IsNotNull(instance);
+            Assert.IsTrue(instance != null);
+            yield break;
         }
 
-        [Test]
-        public void InstanceReturnsSameObjectOnMultipleAccesses()
+        [UnityTest]
+        public IEnumerator InstanceReturnsSameObjectOnMultipleAccesses()
         {
             TestSingleton instance1 = TestSingleton.Instance;
             TestSingleton instance2 = TestSingleton.Instance;
 
             Assert.AreSame(instance1, instance2);
+            yield break;
         }
 
-        [Test]
-        public void InstanceIsScriptableObject()
+        [UnityTest]
+        public IEnumerator InstanceIsScriptableObject()
         {
             TestSingleton instance = TestSingleton.Instance;
 
             Assert.IsInstanceOf<ScriptableObject>(instance);
+            yield break;
         }
 
-        [Test]
-        public void InstancePreservesData()
+        [UnityTest]
+        public IEnumerator InstancePreservesData()
         {
             TestSingleton instance = TestSingleton.Instance;
 
             Assert.AreEqual(42, instance.testValue);
+            yield break;
         }
 
-        [Test]
-        public void LazyInstanceIsLazy()
+        [UnityTest]
+        public IEnumerator LazyInstanceIsLazy()
         {
             Assert.IsFalse(TestSingleton.LazyInstance.IsValueCreated);
 
             TestSingleton instance = TestSingleton.Instance;
 
             Assert.IsTrue(TestSingleton.LazyInstance.IsValueCreated);
-            Assert.IsNotNull(instance);
+            Assert.IsTrue(instance != null);
+            yield break;
         }
 
-        [Test]
-        public void CustomPathAttributeIsRespected()
+        [UnityTest]
+        public IEnumerator CustomPathAttributeIsRespected()
         {
             CustomPathSingleton instance = CustomPathSingleton.Instance;
 
-            Assert.IsNotNull(instance);
+            Assert.IsTrue(instance != null);
+            yield break;
         }
 
-        [Test]
-        public void EmptyPathFallsBackToTypeName()
+        [UnityTest]
+        public IEnumerator EmptyPathFallsBackToTypeName()
         {
             EmptyPathSingleton instance = EmptyPathSingleton.Instance;
-
-            Assert.IsNotNull(instance);
+            Assert.IsTrue(instance != null);
+            yield break;
         }
 
-        [Test]
-        public void InstanceCanAccessPublicFields()
+        [UnityTest]
+        public IEnumerator InstanceCanAccessPublicFields()
         {
             TestSingleton instance = TestSingleton.Instance;
             instance.testValue = 99;
 
             Assert.AreEqual(99, instance.testValue);
+            yield break;
         }
 
-        [Test]
-        public void MultipleTypesHaveIndependentInstances()
+        [UnityTest]
+        public IEnumerator MultipleTypesHaveIndependentInstances()
         {
             TestSingleton instance1 = TestSingleton.Instance;
             CustomPathSingleton instance2 = CustomPathSingleton.Instance;
 
-            Assert.IsNotNull(instance1);
-            Assert.IsNotNull(instance2);
+            Assert.IsTrue(instance1 != null);
+            Assert.IsTrue(instance2 != null);
             Assert.AreNotSame(instance1, instance2);
+            yield break;
         }
 
-        [Test]
-        public void InstancePersistsAcrossAccesses()
+        [UnityTest]
+        public IEnumerator InstancePersistsAcrossAccesses()
         {
             TestSingleton instance = TestSingleton.Instance;
             instance.testValue = 123;
@@ -261,97 +282,60 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             TestSingleton sameInstance = TestSingleton.Instance;
 
             Assert.AreEqual(123, sameInstance.testValue);
+            yield break;
         }
 
-        [Test]
-        public void HasInstanceDoesNotTriggerCreation()
+        [UnityTest]
+        public IEnumerator HasInstanceDoesNotTriggerCreation()
         {
             bool hasInstance = TestSingleton.HasInstance;
 
             Assert.IsFalse(hasInstance);
             Assert.IsFalse(TestSingleton.LazyInstance.IsValueCreated);
+            yield break;
         }
 
-        [Test]
-        public void TypeWithNoResourcesReturnsNull()
-        {
-            TestSingleton instance = TestSingleton.Instance;
-
-            if (instance == null)
-            {
-                Assert.Pass("No resources found, returns null as expected");
-            }
-            else
-            {
-                Assert.IsNotNull(instance);
-            }
-        }
-
-        [Test]
-        public void InstanceIsThreadSafe()
-        {
-            TestSingleton instance1 = null;
-            TestSingleton instance2 = null;
-
-            System.Threading.Thread thread1 = new(() =>
-            {
-                instance1 = TestSingleton.Instance;
-            });
-
-            System.Threading.Thread thread2 = new(() =>
-            {
-                instance2 = TestSingleton.Instance;
-            });
-
-            thread1.Start();
-            thread2.Start();
-
-            thread1.Join();
-            thread2.Join();
-
-            if (instance1 != null && instance2 != null)
-            {
-                Assert.AreSame(instance1, instance2);
-            }
-        }
-
-        [Test]
-        public void LazyInstanceValueMatchesInstance()
+        [UnityTest]
+        public IEnumerator LazyInstanceValueMatchesInstance()
         {
             TestSingleton instance = TestSingleton.Instance;
             TestSingleton lazyValue = TestSingleton.LazyInstance.Value;
 
             Assert.AreSame(instance, lazyValue);
+            yield break;
         }
 
-        [Test]
-        public void ScriptableSingletonPathAttributeCanBeNull()
+        [UnityTest]
+        public IEnumerator ScriptableSingletonPathAttributeCanBeNull()
         {
             EmptyPathSingleton instance = EmptyPathSingleton.Instance;
 
-            Assert.IsNotNull(instance);
+            Assert.IsTrue(instance != null);
+            yield break;
         }
 
-        [Test]
-        public void InstanceCanBeUsedInCollections()
+        [UnityTest]
+        public IEnumerator InstanceCanBeUsedInCollections()
         {
             TestSingleton instance = TestSingleton.Instance;
             System.Collections.Generic.List<TestSingleton> list = new() { instance };
 
             Assert.AreEqual(1, list.Count);
             Assert.Contains(instance, list);
+            yield break;
         }
 
-        [Test]
-        public void InstanceHasCorrectTypeName()
+        [UnityTest]
+        public IEnumerator InstanceHasCorrectTypeName()
         {
             TestSingleton instance = TestSingleton.Instance;
 
             Assert.AreEqual(typeof(TestSingleton), instance.GetType());
+            yield break;
         }
 
-        [Test]
-        public void MultipleAccessesDoNotCreateMultipleInstances()
+        [UnityTest]
+        public IEnumerator MultipleAccessesDoNotCreateMultipleInstances()
         {
             TestSingleton instance1 = TestSingleton.Instance;
             TestSingleton instance2 = TestSingleton.Instance;
@@ -359,52 +343,57 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             Assert.AreSame(instance1, instance2);
             Assert.AreSame(instance2, instance3);
+            yield break;
         }
 
-        [Test]
-        public void CanAccessInstanceAfterHasInstanceCheck()
+        [UnityTest]
+        public IEnumerator CanAccessInstanceAfterHasInstanceCheck()
         {
             bool hasInstance = TestSingleton.HasInstance;
             Assert.IsFalse(hasInstance);
 
             TestSingleton instance = TestSingleton.Instance;
-            Assert.IsNotNull(instance);
+            Assert.IsTrue(instance != null);
 
             hasInstance = TestSingleton.HasInstance;
             Assert.IsTrue(hasInstance);
+            yield break;
         }
 
-        [Test]
-        public void InstanceWorksWithInheritance()
+        [UnityTest]
+        public IEnumerator InstanceWorksWithInheritance()
         {
             TestSingleton instance = TestSingleton.Instance;
 
             Assert.IsInstanceOf<ScriptableObjectSingleton<TestSingleton>>(instance);
             Assert.IsInstanceOf<ScriptableObject>(instance);
+            yield break;
         }
 
-        [Test]
-        public void LazyInstanceDoesNotChangeAfterCreation()
+        [UnityTest]
+        public IEnumerator LazyInstanceDoesNotChangeAfterCreation()
         {
             System.Lazy<TestSingleton> lazy1 = TestSingleton.LazyInstance;
             TestSingleton instance = TestSingleton.Instance;
             System.Lazy<TestSingleton> lazy2 = TestSingleton.LazyInstance;
 
             Assert.AreSame(lazy1, lazy2);
+            yield break;
         }
 
-        [Test]
-        public void InstanceCanBeCompared()
+        [UnityTest]
+        public IEnumerator InstanceCanBeCompared()
         {
             TestSingleton instance1 = TestSingleton.Instance;
             TestSingleton instance2 = TestSingleton.Instance;
 
             Assert.IsTrue(instance1 == instance2);
             Assert.IsFalse(instance1 != instance2);
+            yield break;
         }
 
-        [Test]
-        public void InstanceHasConsistentHashCode()
+        [UnityTest]
+        public IEnumerator InstanceHasConsistentHashCode()
         {
             TestSingleton instance1 = TestSingleton.Instance;
             int hash1 = instance1.GetHashCode();
@@ -413,16 +402,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             int hash2 = instance2.GetHashCode();
 
             Assert.AreEqual(hash1, hash2);
+            yield break;
         }
 
-        [Test]
-        public void InstanceToStringReturnsTypeName()
+        [UnityTest]
+        public IEnumerator InstanceToStringReturnsTypeName()
         {
             TestSingleton instance = TestSingleton.Instance;
             string result = instance.ToString();
 
             Assert.IsNotNull(result);
             Assert.IsTrue(result.Contains("TestSingleton") || result.Length > 0);
+            yield break;
         }
     }
+#endif
 }

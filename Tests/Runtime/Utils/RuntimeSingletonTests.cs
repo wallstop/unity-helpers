@@ -150,15 +150,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             TestRuntimeSingleton instance = TestRuntimeSingleton.Instance;
 
             Assert.IsTrue(TestRuntimeSingleton.HasInstance);
-            Assert.IsNotNull(instance);
+            Assert.IsTrue(instance != null);
         }
 
         [Test]
         public void InstanceReturnsNonNull()
         {
             TestRuntimeSingleton instance = TestRuntimeSingleton.Instance;
-
-            Assert.IsNotNull(instance);
+            Assert.IsTrue(instance != null);
         }
 
         [Test]
@@ -191,7 +190,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         {
             TestRuntimeSingleton instance = TestRuntimeSingleton.Instance;
 
-            Assert.IsNotNull(instance.gameObject);
+            Assert.IsTrue(instance != null);
             Assert.AreEqual("TestRuntimeSingleton-Singleton", instance.gameObject.name);
         }
 
@@ -226,9 +225,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             yield return null;
 
-            Assert.IsNotNull(instance);
+            Assert.IsTrue(instance != null);
             Assert.IsTrue(instance.awakeWasCalled);
-            Assert.IsNull(instance.transform.parent);
+            Assert.IsTrue(instance.transform.parent == null);
         }
 
         [UnityTest]
@@ -237,8 +236,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             NonPreservableSingleton instance = NonPreservableSingleton.Instance;
 
             yield return null;
-
-            Assert.IsNotNull(instance);
+            Assert.IsTrue(instance != null);
         }
 
         [UnityTest]
@@ -270,9 +268,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             yield return null;
             yield return null;
 
-            Assert.IsNotNull(first);
-            Assert.IsNotNull(first.gameObject);
-            Assert.IsNull(second);
+            Assert.IsTrue(first != null);
+            Assert.IsTrue(second == null);
         }
 
         [UnityTest]
@@ -302,7 +299,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             TestRuntimeSingleton instance2 = TestRuntimeSingleton.Instance;
 
-            Assert.IsNotNull(instance2);
+            Assert.IsTrue(instance2 != null);
             Assert.AreNotEqual(instanceId1, instance2.GetInstanceID());
         }
 
@@ -312,8 +309,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             TestRuntimeSingleton instance1 = TestRuntimeSingleton.Instance;
             PreservableSingleton instance2 = PreservableSingleton.Instance;
 
-            Assert.IsNotNull(instance1);
-            Assert.IsNotNull(instance2);
+            Assert.IsTrue(instance1 != null);
+            Assert.IsTrue(instance2 != null);
             Assert.AreNotSame(instance1, instance2);
         }
 
@@ -378,7 +375,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             TestRuntimeSingleton instance = TestRuntimeSingleton.Instance;
             string result = instance.ToString();
 
-            Assert.IsNotNull(result);
+            Assert.IsTrue(result != null);
             Assert.IsTrue(result.Contains("TestRuntimeSingleton") || result.Length > 0);
         }
 
@@ -414,7 +411,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             Assert.IsFalse(hasInstance);
 
             TestRuntimeSingleton instance = TestRuntimeSingleton.Instance;
-            Assert.IsNotNull(instance);
+            Assert.IsTrue(instance != null);
 
             hasInstance = TestRuntimeSingleton.HasInstance;
             Assert.IsTrue(hasInstance);
@@ -559,7 +556,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         {
             TestRuntimeSingleton instance = TestRuntimeSingleton.Instance;
 
-            Assert.IsNotNull(TestRuntimeSingleton._instance);
+            Assert.IsTrue(TestRuntimeSingleton._instance != null);
             Assert.AreSame(instance, TestRuntimeSingleton._instance);
         }
 
@@ -611,7 +608,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             yield return null;
             yield return null;
 
-            Assert.IsNotNull(real);
+            Assert.IsTrue(real != null);
             Assert.IsTrue(TestRuntimeSingleton.HasInstance);
             Assert.AreSame(real, TestRuntimeSingleton.Instance);
         }
@@ -664,7 +661,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             yield return null;
 
-            Assert.IsNull(instance.transform.parent);
+            Assert.IsTrue(instance.transform.parent == null);
         }
 
         [Test]
@@ -733,7 +730,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             yield return null;
 
-            Assert.IsNotNull(instance.transform);
+            Assert.IsTrue(instance != null);
             Assert.AreSame(instance.gameObject.transform, instance.transform);
         }
 
@@ -764,7 +761,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             yield return null;
 
-            Assert.IsNotNull(rb);
+            Assert.IsTrue(rb != null);
             Assert.IsTrue(instance.gameObject.TryGetComponent(out Rigidbody foundRb));
             Assert.AreSame(rb, foundRb);
 

@@ -30,7 +30,7 @@ namespace WallstopStudios.UnityHelpers.Utils
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
-        private static void ClearInstance()
+        internal static void ClearInstance()
         {
             if (!LazyInstance.IsValueCreated)
             {

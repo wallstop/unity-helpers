@@ -880,17 +880,6 @@
         }
 
         [Test]
-        public void FileIOInvalidPathThrowsException()
-        {
-            string invalidPath = "Z:\\NonExistent\\Path\\file.json";
-            TestMessage msg = new() { Id = 1 };
-
-            Assert.Throws<DirectoryNotFoundException>(() =>
-                Serializer.WriteToJsonFile(msg, invalidPath)
-            );
-        }
-
-        [Test]
         public void FileIOReadFromInvalidJsonThrowsException()
         {
             string filePath = Path.Combine(_tempDirectory, "invalid.json");

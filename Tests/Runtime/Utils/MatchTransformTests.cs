@@ -231,9 +231,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             matcher.SendMessage("Awake");
             matcher.SendMessage("Update");
-            yield return null;
 
+            // Do not yield a frame here; yielding would allow FixedUpdate to run and update the position.
             Assert.AreNotEqual(target.transform.position, follower.transform.position);
+            yield break;
         }
 
         [UnityTest]
