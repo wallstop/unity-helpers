@@ -3,6 +3,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     using System;
     using System.Collections.Generic;
     using System.Collections.Immutable;
+    using System.Runtime.CompilerServices;
     using Extension;
     using UnityEngine;
     using Utils;
@@ -97,6 +98,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             int elementCount = elements.Length;
             _elementData = new ElementData[elementCount];
+            ElementData[] elementData = _elementData;
             bucketSize = Math.Max(1, bucketSize);
             branchFactor = Math.Max(2, branchFactor);
             float minX = float.MaxValue;
@@ -114,7 +116,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 data.Value = element;
                 data.Bounds = elementBounds;
                 data.Center = elementBounds.center;
-                _elementData[i] = data;
+                elementData[i] = data;
                 Vector3 min = elementBounds.min;
                 Vector3 max = elementBounds.max;
 
@@ -176,30 +178,39 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             float inverseRangeX = rangeX > float.Epsilon ? 1f / rangeX : 0f;
             float inverseRangeY = rangeY > float.Epsilon ? 1f / rangeY : 0f;
 
-            for (int i = 0; i < elementCount; ++i)
+            if (elementCount > 1)
             {
-                ref ElementData data = ref _elementData[i];
-                Vector2 center = data.Center;
-                float normalizedX = (center.x - minX) * inverseRangeX;
-                float normalizedY = (center.y - minY) * inverseRangeY;
-                data.MortonKey = EncodeMorton(normalizedX, normalizedY);
+                using PooledResource<ulong[]> sortKeysResource = WallstopFastArrayPool<ulong>.Get(
+                    elementCount,
+                    out ulong[] sortKeys
+                );
+                for (int i = 0; i < elementCount; ++i)
+                {
+                    ref ElementData data = ref elementData[i];
+                    Vector2 center = data.Center;
+                    float normalizedX = (center.x - minX) * inverseRangeX;
+                    float normalizedY = (center.y - minY) * inverseRangeY;
+                    ushort quantizedX = QuantizeNormalized(normalizedX);
+                    ushort quantizedY = QuantizeNormalized(normalizedY);
+                    data.MortonKey = EncodeMorton(quantizedX, quantizedY);
+                    sortKeys[i] = ComposeSortKey(data.MortonKey, quantizedX, quantizedY);
+                }
+                Array.Sort(sortKeys, elementData, 0, elementCount);
             }
 
-            Array.Sort(_elementData, 0, elementCount, MortonComparer.Instance);
-
-            List<RTreeNode> currentLevel = new(
-                Math.Max(1, (int)Math.Ceiling(elementCount / (double)bucketSize))
+            using PooledResource<List<RTreeNode>> nodeBufferResource = Buffers<RTreeNode>.List.Get(
+                out List<RTreeNode> currentLevel
             );
             for (int startIndex = 0; startIndex < elementCount; startIndex += bucketSize)
             {
                 int count = Math.Min(bucketSize, elementCount - startIndex);
-                currentLevel.Add(RTreeNode.CreateLeaf(_elementData, startIndex, count));
+                currentLevel.Add(RTreeNode.CreateLeaf(elementData, startIndex, count));
             }
 
             while (currentLevel.Count > 1)
             {
-                int parentCount = (currentLevel.Count + branchFactor - 1) / branchFactor;
-                List<RTreeNode> nextLevel = new(parentCount);
+                using PooledResource<List<RTreeNode>> nextLevelResource =
+                    Buffers<RTreeNode>.List.Get(out List<RTreeNode> nextLevel);
                 for (int i = 0; i < currentLevel.Count; i += branchFactor)
                 {
                     int childCount = Math.Min(branchFactor, currentLevel.Count - i);
@@ -208,7 +219,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     nextLevel.Add(RTreeNode.CreateInternal(children));
                 }
 
-                currentLevel = nextLevel;
+                currentLevel.Clear();
+                currentLevel.AddRange(nextLevel);
             }
 
             _head = currentLevel[0];
@@ -512,17 +524,37 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             return bounds;
         }
 
-        private static uint EncodeMorton(float normalizedX, float normalizedY)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static uint EncodeMorton(ushort quantizedX, ushort quantizedY)
         {
-            float clampedX = Mathf.Clamp01(normalizedX);
-            float clampedY = Mathf.Clamp01(normalizedY);
-            uint x = (uint)Mathf.Clamp(Mathf.RoundToInt(clampedX * 65535f), 0, 65535);
-            uint y = (uint)Mathf.Clamp(Mathf.RoundToInt(clampedY * 65535f), 0, 65535);
-            uint mortonX = Part1By1(x);
-            uint mortonY = Part1By1(y);
+            uint mortonX = Part1By1(quantizedX);
+            uint mortonY = Part1By1(quantizedY);
             return mortonX | (mortonY << 1);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static ushort QuantizeNormalized(float normalized)
+        {
+            if (normalized <= 0f)
+            {
+                return 0;
+            }
+
+            if (normalized >= 1f)
+            {
+                return 65535;
+            }
+
+            return (ushort)(normalized * 65535f + 0.5f);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static ulong ComposeSortKey(uint mortonKey, ushort quantizedX, ushort quantizedY)
+        {
+            return ((ulong)mortonKey << 32) | ((ulong)quantizedX << 16) | quantizedY;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static uint Part1By1(uint value)
         {
             value &= 0x0000ffff;
@@ -531,28 +563,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             value = (value | (value << 2)) & 0x33333333;
             value = (value | (value << 1)) & 0x55555555;
             return value;
-        }
-
-        private sealed class MortonComparer : IComparer<ElementData>
-        {
-            internal static readonly MortonComparer Instance = new();
-
-            public int Compare(ElementData lhs, ElementData rhs)
-            {
-                int comparison = lhs.MortonKey.CompareTo(rhs.MortonKey);
-                if (comparison != 0)
-                {
-                    return comparison;
-                }
-
-                comparison = lhs.Center.x.CompareTo(rhs.Center.x);
-                if (comparison != 0)
-                {
-                    return comparison;
-                }
-
-                return lhs.Center.y.CompareTo(rhs.Center.y);
-            }
         }
     }
 }

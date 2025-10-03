@@ -8,7 +8,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using WallstopStudios.UnityHelpers.Core.DataStructure;
     using WallstopStudios.UnityHelpers.Core.Random;
 
-    public sealed class BalancedKdTree2DTests : SpatialTree2DTests<KDTree2D<Vector2>>
+    public sealed class BalancedKDTree2DTests : SpatialTree2DTests<KDTree2D<Vector2>>
     {
         private IRandom Random => PRNG.Instance;
 

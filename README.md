@@ -149,45 +149,51 @@ random.NextNoiseMap(width, height); // A configurable noise map generated using 
 <!-- RANDOM_BENCHMARKS_END -->
 
 # Spatial Trees
-There are three implemented 2D immutable spatial trees that can store generic objects, as long as there is some resolution function that can convert them into Vector2 spatial positions.
+There are spatial tree implementations for both 2D and 3D immutable spatial trees that can store generic objects, as long as there is some resolution function that can convert them into spatial positions.
 
+## 2D Spatial Trees
 - QuadTree2D (easiest to use)
 - KDTree2D
 - RTree2D
 
+## 3D Spatial Trees
+- OctTree3D (easiest to use)
+- KDTree3D
+- RTree3D
+
 Spatial trees, after construction, allow for O(log(n)) spatial query time instead of O(n). They are extremely useful if you need repeated spatial queries, or if you have relatively static spatial data.
 
-## Performance Benchmarks
+## 2D Performance Benchmarks
 
 <!-- SPATIAL_TREE_BENCHMARKS_START -->
 #### Construction
 | Construction | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | --- | --- | --- | --- | --- |
-| 1 million points | 2 (0.442s) | 2 (0.349s) | 2 (0.380s) | 0 (1.262s) |
+| 1 million points | 2 (0.441s) | 2 (0.364s) | 2 (0.379s) | 1 (0.811s) |
 
 #### Elements In Range
 | Elements In Range | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | --- | --- | --- | --- | --- |
 | Full (r=500) | 23 | 23 | 23 | 3 |
-| Half (r=250) | 92 | 92 | 83 | 11 |
-| Quarter (r=125) | 364 | 364 | 307 | 45 |
-| Tiny (r=1) | 33,173 | 34,123 | 43,636 | 26,933 |
+| Half (r=250) | 91 | 91 | 83 | 11 |
+| Quarter (r=125) | 364 | 364 | 308 | 45 |
+| Tiny (r=1) | 33,176 | 34,115 | 43,707 | 27,233 |
 
 #### Get Elements In Bounds
 | Get Elements In Bounds | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | --- | --- | --- | --- | --- |
-| Full (size≈dataset) | 133 | 132 | 123 | 5 |
-| Half (size≈dataset/2) | 561 | 559 | 354 | 21 |
-| Quarter (size≈dataset/4) | 2,199 | 2,199 | 1,053 | 86 |
-| Unit (size=1) | 41,835 | 42,166 | 52,100 | 27,723 |
+| Full (size≈dataset) | 132 | 130 | 120 | 6 |
+| Half (size≈dataset/2) | 561 | 560 | 349 | 21 |
+| Quarter (size≈dataset/4) | 2,195 | 2,196 | 1,052 | 86 |
+| Unit (size=1) | 41,702 | 42,012 | 51,940 | 27,967 |
 
 #### Approximate Nearest Neighbors
 | Approximate Nearest Neighbors | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | --- | --- | --- | --- | --- |
-| 500 neighbors | 1,125 | 2,171 | 1,610 | 22,410 |
-| 100 neighbors | 12,485 | 11,754 | 11,776 | 58,314 |
-| 10 neighbors | 152,401 | 124,662 | 81,793 | 104,515 |
-| 1 neighbor | 230,782 | 247,239 | 105,658 | 112,005 |
+| 500 neighbors | 1,125 | 2,169 | 1,609 | 23,241 |
+| 100 neighbors | 12,472 | 11,723 | 11,759 | 63,340 |
+| 10 neighbors | 151,593 | 124,292 | 71,890 | 104,602 |
+| 1 neighbor | 229,073 | 246,366 | 96,348 | 112,280 |
 <!-- SPATIAL_TREE_BENCHMARKS_END -->
 
 ## Usage
@@ -206,6 +212,11 @@ quadTree.GetApproximateNearestNeighbors(myCoolGameObject.transform.position, 1, 
 Assert.AreEqual(1, nearestNeighbors.Count);
 Assert.AreEqual(myCoolGameObject, nearestNeighbors[0]);
 ```
+
+## 3D Performance Benchmarks
+
+<!-- SPATIAL_TREE_3D_BENCHMARKS_START -->
+<!-- SPATIAL_TREE_3D_BENCHMARKS_END -->
 
 ## Note
 All spatial trees expect the positional data to be *immutable*. It is very important that the positions do not change. If they do, you will need to reconstruct the tree.
