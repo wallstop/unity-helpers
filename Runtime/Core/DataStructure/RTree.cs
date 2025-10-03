@@ -13,18 +13,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         internal const float MinimumNodeSize = 0.001f;
 
         [Serializable]
-        internal readonly struct ElementData
+        internal struct ElementData
         {
-            internal ElementData(T value, Bounds bounds)
-            {
-                Value = value;
-                Bounds = bounds;
-                Center = bounds.center;
-            }
-
-            internal T Value { get; }
-            internal Bounds Bounds { get; }
-            internal Vector2 Center { get; }
+            internal T Value;
+            internal Bounds Bounds;
+            internal Vector2 Center;
+            internal uint MortonKey;
         }
 
         [Serializable]
@@ -36,113 +30,45 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             internal readonly int count;
             public readonly bool isTerminal;
 
-            internal RTreeNode(
-                ElementData[] elements,
-                int startIndex,
-                int count,
-                int bucketSize,
-                int branchFactor
-            )
+            private RTreeNode(int startIndex, int count, Bounds boundary, RTreeNode[] children)
             {
                 this.startIndex = startIndex;
                 this.count = count;
-
-                if (count <= 0)
-                {
-                    boundary = new Bounds();
-                    children = Array.Empty<RTreeNode>();
-                    isTerminal = true;
-                    return;
-                }
-
-                float minX = float.MaxValue;
-                float minY = float.MaxValue;
-                float maxX = float.MinValue;
-                float maxY = float.MinValue;
-                int endIndex = startIndex + count;
-                for (int i = startIndex; i < endIndex; ++i)
-                {
-                    Bounds rectangle = elements[i].Bounds;
-                    Vector3 min = rectangle.min;
-                    Vector3 max = rectangle.max;
-                    minX = Math.Min(minX, min.x);
-                    maxX = Math.Max(maxX, max.x);
-                    minY = Math.Min(minY, min.y);
-                    maxY = Math.Max(maxY, max.y);
-                }
-
-                Bounds bounds = new Bounds(
-                    new Vector3(minX + (maxX - minX) / 2, minY + (maxY - minY) / 2),
-                    new Vector3(maxX - minX, maxY - minY)
-                );
-
-                Vector3 size = bounds.size;
-                if (size.x < MinimumNodeSize)
-                {
-                    size.x = MinimumNodeSize;
-                }
-                if (size.y < MinimumNodeSize)
-                {
-                    size.y = MinimumNodeSize;
-                }
-                bounds.size = size;
-
-                boundary = bounds;
-                isTerminal = count <= bucketSize;
-                if (isTerminal)
-                {
-                    children = Array.Empty<RTreeNode>();
-                    return;
-                }
-
-                double targetSize = count / (double)branchFactor;
-                int intTargetSize = Math.Max(1, (int)Math.Ceiling(targetSize));
-
-                List<RTreeNode> tempChildren = new(branchFactor);
-
-                double slicesPerAxis = Math.Sqrt(branchFactor);
-                int rectanglesPerPagePerAxis = Math.Max(1, (int)(slicesPerAxis * targetSize));
-
-                Array.Sort(elements, startIndex, count, XAxisComparer.Instance);
-
-                int xSliceSize = Math.Max(1, rectanglesPerPagePerAxis);
-                int ySliceSize = Math.Max(1, intTargetSize);
-
-                for (int xStart = startIndex; xStart < endIndex; xStart += xSliceSize)
-                {
-                    int xCount = Math.Min(xSliceSize, endIndex - xStart);
-                    Array.Sort(elements, xStart, xCount, YAxisComparer.Instance);
-
-                    int xSliceEnd = xStart + xCount;
-                    for (int yStart = xStart; yStart < xSliceEnd; yStart += ySliceSize)
-                    {
-                        int yCount = Math.Min(ySliceSize, xSliceEnd - yStart);
-                        RTreeNode node = new(elements, yStart, yCount, bucketSize, branchFactor);
-                        tempChildren.Add(node);
-                    }
-                }
-
-                children = tempChildren.ToArray();
+                this.boundary = boundary;
+                this.children = children ?? Array.Empty<RTreeNode>();
+                isTerminal = this.children.Length == 0;
             }
 
-            private sealed class XAxisComparer : IComparer<ElementData>
+            internal static RTreeNode CreateEmpty()
             {
-                internal static readonly XAxisComparer Instance = new();
-
-                public int Compare(ElementData lhs, ElementData rhs)
-                {
-                    return lhs.Center.x.CompareTo(rhs.Center.x);
-                }
+                return new RTreeNode(0, 0, new Bounds(), Array.Empty<RTreeNode>());
             }
 
-            private sealed class YAxisComparer : IComparer<ElementData>
+            internal static RTreeNode CreateLeaf(ElementData[] elements, int startIndex, int count)
             {
-                internal static readonly YAxisComparer Instance = new();
+                Bounds nodeBounds = CalculateBounds(elements, startIndex, count);
+                return new RTreeNode(startIndex, count, nodeBounds, Array.Empty<RTreeNode>());
+            }
 
-                public int Compare(ElementData lhs, ElementData rhs)
+            internal static RTreeNode CreateInternal(RTreeNode[] children)
+            {
+                if (children.Length == 0)
                 {
-                    return lhs.Center.y.CompareTo(rhs.Center.y);
+                    return CreateEmpty();
                 }
+
+                int startIndex = children[0].startIndex;
+                int lastChildIndex = children.Length - 1;
+                RTreeNode lastChild = children[lastChildIndex];
+                int endIndex = lastChild.startIndex + lastChild.count;
+                Bounds nodeBounds = children[0].boundary;
+                for (int i = 1; i < children.Length; ++i)
+                {
+                    nodeBounds.Encapsulate(children[i].boundary);
+                }
+
+                nodeBounds = EnsureMinimumBounds(nodeBounds);
+                return new RTreeNode(startIndex, endIndex - startIndex, nodeBounds, children);
             }
         }
 
@@ -153,7 +79,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         public Bounds Boundary => _bounds;
 
         private readonly Bounds _bounds;
-        private readonly Func<T, Bounds> _elementTransformer;
         private readonly ElementData[] _elementData;
         private readonly RTreeNode _head;
 
@@ -164,13 +89,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             int branchFactor = DefaultBranchFactor
         )
         {
-            _elementTransformer =
-                elementTransformer ?? throw new ArgumentNullException(nameof(elementTransformer));
             elements =
                 points?.ToImmutableArray() ?? throw new ArgumentNullException(nameof(points));
 
+            Func<T, Bounds> transformer =
+                elementTransformer ?? throw new ArgumentNullException(nameof(elementTransformer));
+
             int elementCount = elements.Length;
             _elementData = new ElementData[elementCount];
+            bucketSize = Math.Max(1, bucketSize);
+            branchFactor = Math.Max(2, branchFactor);
             float minX = float.MaxValue;
             float minY = float.MaxValue;
             float maxX = float.MinValue;
@@ -181,8 +109,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             {
                 T element = elements[i];
 
-                Bounds elementBounds = elementTransformer(element);
-                _elementData[i] = new ElementData(element, elementBounds);
+                Bounds elementBounds = transformer(element);
+                ElementData data = default;
+                data.Value = element;
+                data.Bounds = elementBounds;
+                data.Center = elementBounds.center;
+                _elementData[i] = data;
                 Vector3 min = elementBounds.min;
                 Vector3 max = elementBounds.max;
 
@@ -211,8 +143,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             Bounds bounds = hasElements
                 ? new Bounds(
-                    new Vector3(minX + (maxX - minX) / 2, minY + (maxY - minY) / 2),
-                    new Vector3(maxX - minX, maxY - minY)
+                    new Vector3(minX + (maxX - minX) / 2, minY + (maxY - minY) / 2, 0f),
+                    new Vector3(maxX - minX, maxY - minY, 0f)
                 )
                 : new Bounds();
 
@@ -233,75 +165,62 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
 
             _bounds = bounds;
-            _head = new RTreeNode(_elementData, 0, elementCount, bucketSize, branchFactor);
-        }
-
-        public List<T> GetElementsInRange(
-            Vector2 position,
-            float range,
-            List<T> elementsInRange,
-            float minimumRange = 0f
-        )
-        {
-            elementsInRange.Clear();
-            if (range <= 0f)
+            if (!hasElements)
             {
-                return elementsInRange;
+                _head = RTreeNode.CreateEmpty();
+                return;
             }
 
-            Bounds queryBounds = new(
-                new Vector3(position.x, position.y, 0f),
-                new Vector3(range * 2f, range * 2f, 1f)
+            float rangeX = maxX - minX;
+            float rangeY = maxY - minY;
+            float inverseRangeX = rangeX > float.Epsilon ? 1f / rangeX : 0f;
+            float inverseRangeY = rangeY > float.Epsilon ? 1f / rangeY : 0f;
+
+            for (int i = 0; i < elementCount; ++i)
+            {
+                ref ElementData data = ref _elementData[i];
+                Vector2 center = data.Center;
+                float normalizedX = (center.x - minX) * inverseRangeX;
+                float normalizedY = (center.y - minY) * inverseRangeY;
+                data.MortonKey = EncodeMorton(normalizedX, normalizedY);
+            }
+
+            Array.Sort(_elementData, 0, elementCount, MortonComparer.Instance);
+
+            List<RTreeNode> currentLevel = new(
+                Math.Max(1, (int)Math.Ceiling(elementCount / (double)bucketSize))
             );
-
-            if (!queryBounds.FastIntersects2D(_bounds))
+            for (int startIndex = 0; startIndex < elementCount; startIndex += bucketSize)
             {
-                return elementsInRange;
+                int count = Math.Min(bucketSize, elementCount - startIndex);
+                currentLevel.Add(RTreeNode.CreateLeaf(_elementData, startIndex, count));
             }
 
-            using PooledResource<List<T>> candidatesResource = Buffers<T>.List.Get();
-            List<T> candidates = candidatesResource.resource;
-            GetElementsInBounds(queryBounds, candidates);
-
-            if (candidates.Count == 0)
+            while (currentLevel.Count > 1)
             {
-                return elementsInRange;
-            }
-
-            Circle area = new(position, range);
-            bool hasMinimumRange = 0f < minimumRange;
-            Circle minimumArea = default;
-            if (hasMinimumRange)
-            {
-                minimumArea = new Circle(position, minimumRange);
-            }
-
-            for (int i = 0; i < candidates.Count; ++i)
-            {
-                T element = candidates[i];
-                Bounds elementBoundary = _elementTransformer(element);
-                if (!area.Intersects(elementBoundary))
+                int parentCount = (currentLevel.Count + branchFactor - 1) / branchFactor;
+                List<RTreeNode> nextLevel = new(parentCount);
+                for (int i = 0; i < currentLevel.Count; i += branchFactor)
                 {
-                    continue;
+                    int childCount = Math.Min(branchFactor, currentLevel.Count - i);
+                    RTreeNode[] children = new RTreeNode[childCount];
+                    currentLevel.CopyTo(i, children, 0, childCount);
+                    nextLevel.Add(RTreeNode.CreateInternal(children));
                 }
 
-                if (hasMinimumRange && minimumArea.Intersects(elementBoundary))
-                {
-                    continue;
-                }
-
-                elementsInRange.Add(element);
+                currentLevel = nextLevel;
             }
 
-            return elementsInRange;
+            _head = currentLevel[0];
+            _bounds = _head.boundary;
         }
 
-        public List<T> GetElementsInBounds(Bounds bounds, List<T> elementsInBounds)
+        private void CollectElementIndicesInBounds(Bounds bounds, List<int> indices)
         {
-            elementsInBounds.Clear();
+            indices.Clear();
             if (!bounds.FastIntersects2D(_bounds))
             {
-                return elementsInBounds;
+                return;
             }
 
             using PooledResource<Stack<RTreeNode>> nodeBufferResource =
@@ -311,6 +230,11 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             while (nodesToVisit.TryPop(out RTreeNode currentNode))
             {
+                if (!bounds.FastIntersects2D(currentNode.boundary))
+                {
+                    continue;
+                }
+
                 if (currentNode.isTerminal)
                 {
                     int start = currentNode.startIndex;
@@ -320,7 +244,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                         ElementData elementData = _elementData[i];
                         if (bounds.FastIntersects2D(elementData.Bounds))
                         {
-                            elementsInBounds.Add(elementData.Value);
+                            indices.Add(i);
                         }
                     }
 
@@ -346,6 +270,84 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
 
             nodesToVisit.Clear();
+        }
+
+        public List<T> GetElementsInRange(
+            Vector2 position,
+            float range,
+            List<T> elementsInRange,
+            float minimumRange = 0f
+        )
+        {
+            elementsInRange.Clear();
+            if (range <= 0f)
+            {
+                return elementsInRange;
+            }
+
+            Bounds queryBounds = new(
+                new Vector3(position.x, position.y, 0f),
+                new Vector3(range * 2f, range * 2f, 1f)
+            );
+
+            if (!queryBounds.FastIntersects2D(_bounds))
+            {
+                return elementsInRange;
+            }
+
+            using PooledResource<List<int>> candidateIndicesResource = Buffers<int>.List.Get();
+            List<int> candidateIndices = candidateIndicesResource.resource;
+            CollectElementIndicesInBounds(queryBounds, candidateIndices);
+
+            if (candidateIndices.Count == 0)
+            {
+                return elementsInRange;
+            }
+
+            Circle area = new(position, range);
+            bool hasMinimumRange = 0f < minimumRange;
+            Circle minimumArea = default;
+            if (hasMinimumRange)
+            {
+                minimumArea = new Circle(position, minimumRange);
+            }
+
+            for (int i = 0; i < candidateIndices.Count; ++i)
+            {
+                ElementData elementData = _elementData[candidateIndices[i]];
+                Bounds elementBoundary = elementData.Bounds;
+                if (!area.Intersects(elementBoundary))
+                {
+                    continue;
+                }
+
+                if (hasMinimumRange && minimumArea.Intersects(elementBoundary))
+                {
+                    continue;
+                }
+
+                elementsInRange.Add(elementData.Value);
+            }
+
+            return elementsInRange;
+        }
+
+        public List<T> GetElementsInBounds(Bounds bounds, List<T> elementsInBounds)
+        {
+            elementsInBounds.Clear();
+            if (!bounds.FastIntersects2D(_bounds))
+            {
+                return elementsInBounds;
+            }
+
+            using PooledResource<List<int>> indicesResource = Buffers<int>.List.Get();
+            List<int> indices = indicesResource.resource;
+            CollectElementIndicesInBounds(bounds, indices);
+            foreach (int index in indices)
+            {
+                elementsInBounds.Add(_elementData[index].Value);
+            }
+
             return elementsInBounds;
         }
 
@@ -371,10 +373,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 Buffers<T>.HashSet.Get();
             using PooledResource<Stack<RTreeNode>> nodeBufferResource =
                 Buffers<RTreeNode>.Stack.Get();
+            using PooledResource<List<int>> nearestIndexBufferResource = Buffers<int>.List.Get();
             Stack<RTreeNode> stack = nodeBufferResource.resource;
             stack.Push(_head);
             List<RTreeNode> childrenCopy = childrenBufferResource.resource;
             HashSet<T> nearestNeighborsSet = nearestNeighborBufferResource.resource;
+            List<int> nearestIndices = nearestIndexBufferResource.resource;
 
             Comparison<RTreeNode> comparison = Comparison;
             while (!current.isTerminal)
@@ -406,36 +410,58 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             while (nearestNeighborsSet.Count < count && stack.TryPop(out RTreeNode selected))
             {
-                int start = selected.startIndex;
-                int end = start + selected.count;
-                for (int i = start; i < end; ++i)
+                int startIndex = selected.startIndex;
+                int endIndex = startIndex + selected.count;
+                for (int i = startIndex; i < endIndex; ++i)
                 {
-                    nearestNeighborsSet.Add(_elementData[i].Value);
+                    ElementData elementData = _elementData[i];
+                    if (!nearestNeighborsSet.Add(elementData.Value))
+                    {
+                        continue;
+                    }
+
+                    nearestIndices.Add(i);
+                    if (nearestNeighborsSet.Count >= count)
+                    {
+                        break;
+                    }
                 }
             }
 
-            foreach (T element in nearestNeighborsSet)
+            if (nearestIndices.Count == 0)
             {
-                nearestNeighbors.Add(element);
+                stack.Clear();
+                childrenCopy.Clear();
+                nearestNeighborsSet.Clear();
+                nearestIndices.Clear();
+                return nearestNeighbors;
             }
 
-            if (count < nearestNeighbors.Count)
+            if (count < nearestIndices.Count)
             {
                 Vector2 localPosition = position;
-                nearestNeighbors.Sort(NearestComparison);
-                nearestNeighbors.RemoveRange(count, nearestNeighbors.Count - count);
+                nearestIndices.Sort(IndexComparison);
+                nearestIndices.RemoveRange(count, nearestIndices.Count - count);
 
-                int NearestComparison(T lhs, T rhs) =>
-                    (
-                        (Vector2)_elementTransformer(lhs).center - localPosition
-                    ).sqrMagnitude.CompareTo(
-                        ((Vector2)_elementTransformer(rhs).center - localPosition).sqrMagnitude
+                int IndexComparison(int lhsIndex, int rhsIndex)
+                {
+                    Vector2 lhsCenter = _elementData[lhsIndex].Center;
+                    Vector2 rhsCenter = _elementData[rhsIndex].Center;
+                    return (lhsCenter - localPosition).sqrMagnitude.CompareTo(
+                        (rhsCenter - localPosition).sqrMagnitude
                     );
+                }
+            }
+
+            for (int i = 0; i < nearestIndices.Count; ++i)
+            {
+                nearestNeighbors.Add(_elementData[nearestIndices[i]].Value);
             }
 
             stack.Clear();
             childrenCopy.Clear();
             nearestNeighborsSet.Clear();
+            nearestIndices.Clear();
 
             return nearestNeighbors;
 
@@ -443,6 +469,91 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 ((Vector2)lhs.boundary.center - position).sqrMagnitude.CompareTo(
                     ((Vector2)rhs.boundary.center - position).sqrMagnitude
                 );
+        }
+
+        private static Bounds CalculateBounds(ElementData[] elements, int startIndex, int count)
+        {
+            float minX = float.MaxValue;
+            float minY = float.MaxValue;
+            float maxX = float.MinValue;
+            float maxY = float.MinValue;
+            int endIndex = startIndex + count;
+            for (int i = startIndex; i < endIndex; ++i)
+            {
+                Bounds bounds = elements[i].Bounds;
+                Vector3 min = bounds.min;
+                Vector3 max = bounds.max;
+                minX = Math.Min(minX, min.x);
+                maxX = Math.Max(maxX, max.x);
+                minY = Math.Min(minY, min.y);
+                maxY = Math.Max(maxY, max.y);
+            }
+
+            Bounds nodeBounds = new Bounds(
+                new Vector3(minX + (maxX - minX) / 2f, minY + (maxY - minY) / 2f, 0f),
+                new Vector3(maxX - minX, maxY - minY, 0f)
+            );
+
+            return EnsureMinimumBounds(nodeBounds);
+        }
+
+        private static Bounds EnsureMinimumBounds(Bounds bounds)
+        {
+            Vector3 size = bounds.size;
+            if (size.x < MinimumNodeSize)
+            {
+                size.x = MinimumNodeSize;
+            }
+            if (size.y < MinimumNodeSize)
+            {
+                size.y = MinimumNodeSize;
+            }
+
+            bounds.size = size;
+            return bounds;
+        }
+
+        private static uint EncodeMorton(float normalizedX, float normalizedY)
+        {
+            float clampedX = Mathf.Clamp01(normalizedX);
+            float clampedY = Mathf.Clamp01(normalizedY);
+            uint x = (uint)Mathf.Clamp(Mathf.RoundToInt(clampedX * 65535f), 0, 65535);
+            uint y = (uint)Mathf.Clamp(Mathf.RoundToInt(clampedY * 65535f), 0, 65535);
+            uint mortonX = Part1By1(x);
+            uint mortonY = Part1By1(y);
+            return mortonX | (mortonY << 1);
+        }
+
+        private static uint Part1By1(uint value)
+        {
+            value &= 0x0000ffff;
+            value = (value | (value << 8)) & 0x00FF00FF;
+            value = (value | (value << 4)) & 0x0F0F0F0F;
+            value = (value | (value << 2)) & 0x33333333;
+            value = (value | (value << 1)) & 0x55555555;
+            return value;
+        }
+
+        private sealed class MortonComparer : IComparer<ElementData>
+        {
+            internal static readonly MortonComparer Instance = new();
+
+            public int Compare(ElementData lhs, ElementData rhs)
+            {
+                int comparison = lhs.MortonKey.CompareTo(rhs.MortonKey);
+                if (comparison != 0)
+                {
+                    return comparison;
+                }
+
+                comparison = lhs.Center.x.CompareTo(rhs.Center.x);
+                if (comparison != 0)
+                {
+                    return comparison;
+                }
+
+                return lhs.Center.y.CompareTo(rhs.Center.y);
+            }
         }
     }
 }
