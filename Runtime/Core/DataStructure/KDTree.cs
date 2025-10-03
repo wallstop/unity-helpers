@@ -226,14 +226,35 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             Stack<KDTreeNode> nodesToVisit = stackResource.resource;
             nodesToVisit.Push(_head);
 
-            using PooledResource<List<KDTreeNode>> resultResource = Buffers<KDTreeNode>.List.Get();
-            List<KDTreeNode> resultBuffer = resultResource.resource;
+            float rangeSquared = range * range;
+            bool hasMinimumRange = 0f < minimumRange;
+            float minimumRangeSquared = minimumRange * minimumRange;
 
             while (nodesToVisit.TryPop(out KDTreeNode currentNode))
             {
-                if (currentNode.isTerminal || bounds.Overlaps2D(currentNode.boundary))
+                if (!bounds.FastIntersects2D(currentNode.boundary))
                 {
-                    resultBuffer.Add(currentNode);
+                    continue;
+                }
+
+                if (currentNode.isTerminal || bounds.FastContains2D(currentNode.boundary))
+                {
+                    foreach (Entry element in currentNode.entries)
+                    {
+                        float squareDistance = (element.position - position).sqrMagnitude;
+                        if (squareDistance > rangeSquared)
+                        {
+                            continue;
+                        }
+
+                        if (hasMinimumRange && squareDistance <= minimumRangeSquared)
+                        {
+                            continue;
+                        }
+
+                        elementsInRange.Add(element.value);
+                    }
+
                     continue;
                 }
 
@@ -247,39 +268,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 if (0 < rightNode.entries.Length && bounds.FastIntersects2D(rightNode.boundary))
                 {
                     nodesToVisit.Push(rightNode);
-                }
-            }
-
-            if (0 < minimumRange)
-            {
-                float minimumRangeSquared = minimumRange * minimumRange;
-                float rangeSquared = range * range;
-                foreach (KDTreeNode node in resultBuffer)
-                {
-                    foreach (Entry element in node.entries)
-                    {
-                        float squareDistance = (element.position - position).sqrMagnitude;
-                        if (squareDistance <= minimumRangeSquared || rangeSquared < squareDistance)
-                        {
-                            continue;
-                        }
-
-                        elementsInRange.Add(element.value);
-                    }
-                }
-            }
-            else
-            {
-                float rangeSquared = range * range;
-                foreach (KDTreeNode node in resultBuffer)
-                {
-                    foreach (Entry element in node.entries)
-                    {
-                        if ((element.position - position).sqrMagnitude <= rangeSquared)
-                        {
-                            elementsInRange.Add(element.value);
-                        }
-                    }
                 }
             }
 
@@ -339,51 +327,27 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             return elementsInBounds;
         }
 
-        public void GetApproximateNearestNeighbors(
+        // Heavily adapted http://homepage.divms.uiowa.edu/%7Ekvaradar/sp2012/daa/ann.pdf
+        public List<T> GetApproximateNearestNeighbors(
             Vector2 position,
             int count,
             List<T> nearestNeighbors
         )
         {
+            nearestNeighbors.Clear();
+
+            KDTreeNode current = _head;
+
             using PooledResource<Stack<KDTreeNode>> nodeBufferResource =
                 Buffers<KDTreeNode>.Stack.Get();
             Stack<KDTreeNode> nodeBuffer = nodeBufferResource.resource;
+            nodeBuffer.Push(_head);
             using PooledResource<HashSet<T>> nearestNeighborBufferResource =
                 Buffers<T>.HashSet.Get();
             HashSet<T> nearestNeighborBuffer = nearestNeighborBufferResource.resource;
             using PooledResource<List<Entry>> nearestNeighborsCacheResource =
                 Buffers<Entry>.List.Get();
             List<Entry> nearestNeighborsCache = nearestNeighborsCacheResource.resource;
-            GetApproximateNearestNeighbors(
-                position,
-                count,
-                nearestNeighbors,
-                nodeBuffer,
-                nearestNeighborBuffer,
-                nearestNeighborsCache
-            );
-        }
-
-        // Heavily adapted http://homepage.divms.uiowa.edu/%7Ekvaradar/sp2012/daa/ann.pdf
-        public void GetApproximateNearestNeighbors(
-            Vector2 position,
-            int count,
-            List<T> nearestNeighbors,
-            Stack<KDTreeNode> nodeBuffer,
-            HashSet<T> nearestNeighborBuffer,
-            List<Entry> nearestNeighborsCache
-        )
-        {
-            nearestNeighbors.Clear();
-
-            KDTreeNode current = _head;
-            nodeBuffer ??= new Stack<KDTreeNode>();
-            nodeBuffer.Clear();
-            nodeBuffer.Push(_head);
-            nearestNeighborBuffer ??= new HashSet<T>(count);
-            nearestNeighborBuffer.Clear();
-            nearestNeighborsCache ??= new List<Entry>(count);
-            nearestNeighborsCache.Clear();
 
             while (!current.isTerminal)
             {
@@ -441,6 +405,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             {
                 nearestNeighbors.Add(nearestNeighborsCache[i].value);
             }
+
+            return nearestNeighbors;
         }
     }
 }

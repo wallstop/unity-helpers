@@ -198,19 +198,37 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             using PooledResource<Stack<QuadTreeNode>> nodesToVisitResource =
                 Buffers<QuadTreeNode>.Stack.Get();
             Stack<QuadTreeNode> nodesToVisit = nodesToVisitResource.resource;
-            nodesToVisit.Clear();
             nodesToVisit.Push(_head);
 
-            using PooledResource<List<QuadTreeNode>> resultResource =
-                Buffers<QuadTreeNode>.List.Get();
-            List<QuadTreeNode> resultBuffer = resultResource.resource;
-            resultBuffer.Clear();
+            float rangeSquared = range * range;
+            bool hasMinimumRange = 0f < minimumRange;
+            float minimumRangeSquared = minimumRange * minimumRange;
 
             while (nodesToVisit.TryPop(out QuadTreeNode currentNode))
             {
-                if (currentNode.isTerminal || bounds.Overlaps2D(currentNode.boundary))
+                if (!bounds.FastIntersects2D(currentNode.boundary))
                 {
-                    resultBuffer.Add(currentNode);
+                    continue;
+                }
+
+                if (currentNode.isTerminal || bounds.FastContains2D(currentNode.boundary))
+                {
+                    foreach (Entry element in currentNode.elements)
+                    {
+                        float squareDistance = (element.position - position).sqrMagnitude;
+                        if (squareDistance > rangeSquared)
+                        {
+                            continue;
+                        }
+
+                        if (hasMinimumRange && squareDistance <= minimumRangeSquared)
+                        {
+                            continue;
+                        }
+
+                        elementsInRange.Add(element.value);
+                    }
+
                     continue;
                 }
 
@@ -227,38 +245,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     }
 
                     nodesToVisit.Push(child);
-                }
-            }
-
-            float rangeSquared = range * range;
-            if (0 < minimumRange)
-            {
-                float minimumRangeSquared = minimumRange * minimumRange;
-                foreach (QuadTreeNode node in resultBuffer)
-                {
-                    foreach (Entry element in node.elements)
-                    {
-                        float squareDistance = (element.position - position).sqrMagnitude;
-                        if (squareDistance <= minimumRangeSquared || rangeSquared < squareDistance)
-                        {
-                            continue;
-                        }
-
-                        elementsInRange.Add(element.value);
-                    }
-                }
-            }
-            else
-            {
-                foreach (QuadTreeNode node in resultBuffer)
-                {
-                    foreach (Entry element in node.elements)
-                    {
-                        if ((element.position - position).sqrMagnitude <= rangeSquared)
-                        {
-                            elementsInRange.Add(element.value);
-                        }
-                    }
                 }
             }
 
@@ -322,56 +308,25 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             return elementsInBounds;
         }
 
-        public void GetApproximateNearestNeighbors(
+        // Heavily adapted http://homepage.divms.uiowa.edu/%7Ekvaradar/sp2012/daa/ann.pdf
+        public List<T> GetApproximateNearestNeighbors(
             Vector2 position,
             int count,
             List<T> nearestNeighbors
         )
         {
-            using PooledResource<Stack<QuadTreeNode>> nodeBufferResource =
+            QuadTreeNode current = _head;
+            PooledResource<Stack<QuadTreeNode>> nodeBufferResource =
                 Buffers<QuadTreeNode>.Stack.Get();
             Stack<QuadTreeNode> nodeBuffer = nodeBufferResource.resource;
-            using PooledResource<List<QuadTreeNode>> childrenBufferResource =
+            nodeBuffer.Push(_head);
+            PooledResource<List<QuadTreeNode>> childrenBufferResource =
                 Buffers<QuadTreeNode>.List.Get();
             List<QuadTreeNode> childrenBuffer = childrenBufferResource.resource;
-            using PooledResource<HashSet<T>> nearestNeighborBufferResource =
-                Buffers<T>.HashSet.Get();
+            PooledResource<HashSet<T>> nearestNeighborBufferResource = Buffers<T>.HashSet.Get();
             HashSet<T> nearestNeighborBuffer = nearestNeighborBufferResource.resource;
-            using PooledResource<List<Entry>> nearestNeighborsCacheResource =
-                Buffers<Entry>.List.Get();
+            PooledResource<List<Entry>> nearestNeighborsCacheResource = Buffers<Entry>.List.Get();
             List<Entry> nearestNeighborsCache = nearestNeighborsCacheResource.resource;
-            GetApproximateNearestNeighbors(
-                position,
-                count,
-                nearestNeighbors,
-                nodeBuffer,
-                childrenBuffer,
-                nearestNeighborBuffer,
-                nearestNeighborsCache
-            );
-        }
-
-        // Heavily adapted http://homepage.divms.uiowa.edu/%7Ekvaradar/sp2012/daa/ann.pdf
-        public void GetApproximateNearestNeighbors(
-            Vector2 position,
-            int count,
-            List<T> nearestNeighbors,
-            Stack<QuadTreeNode> nodeBuffer,
-            List<QuadTreeNode> childrenBuffer,
-            HashSet<T> nearestNeighborBuffer,
-            List<Entry> nearestNeighborsCache
-        )
-        {
-            QuadTreeNode current = _head;
-            nodeBuffer ??= new Stack<QuadTreeNode>();
-            nodeBuffer.Clear();
-            nodeBuffer.Push(_head);
-            childrenBuffer ??= new List<QuadTreeNode>(NumChildren);
-            childrenBuffer.Clear();
-            nearestNeighborBuffer ??= new HashSet<T>(count);
-            nearestNeighborBuffer.Clear();
-            nearestNeighborsCache ??= new List<Entry>(count);
-            nearestNeighborsCache.Clear();
 
             Comparison<QuadTreeNode> comparison = Comparison;
             while (!current.isTerminal)
@@ -424,7 +379,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 nearestNeighbors.Add(nearestNeighborsCache[i].value);
             }
 
-            return;
+            return nearestNeighbors;
 
             int Comparison(QuadTreeNode lhs, QuadTreeNode rhs) =>
                 ((Vector2)lhs.boundary.center - position).sqrMagnitude.CompareTo(

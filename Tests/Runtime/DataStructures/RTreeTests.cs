@@ -2,7 +2,6 @@
 {
     using System;
     using System.Collections.Generic;
-    using System.Linq;
     using NUnit.Framework;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure;
@@ -15,6 +14,25 @@
         private RTree<Bounds> CreateTree(IEnumerable<Bounds> bounds)
         {
             return new RTree<Bounds>(bounds, b => b);
+        }
+
+        private static List<Bounds> QueryBounds(RTree<Bounds> tree, Bounds bounds)
+        {
+            List<Bounds> results = new();
+            tree.GetElementsInBounds(bounds, results);
+            return results;
+        }
+
+        private static List<Bounds> QueryRange(
+            RTree<Bounds> tree,
+            Vector2 position,
+            float range,
+            float minimumRange = 0f
+        )
+        {
+            List<Bounds> results = new();
+            tree.GetElementsInRange(position, range, results, minimumRange);
+            return results;
         }
 
         [Test]
@@ -43,10 +61,7 @@
             RTree<Bounds> tree = CreateTree(bounds);
             Assert.IsNotNull(tree);
 
-            List<Bounds> results = tree.GetElementsInBounds(
-                    new Bounds(Vector3.zero, Vector3.one * 1000)
-                )
-                .ToList();
+            List<Bounds> results = QueryBounds(tree, new Bounds(Vector3.zero, Vector3.one * 1000));
             Assert.AreEqual(0, results.Count);
         }
 
@@ -62,10 +77,7 @@
 
             Assert.IsNotNull(tree);
 
-            List<Bounds> results = tree.GetElementsInBounds(
-                    new Bounds(Vector3.zero, Vector3.one * 1000)
-                )
-                .ToList();
+            List<Bounds> results = QueryBounds(tree, new Bounds(Vector3.zero, Vector3.one * 1000));
             Assert.AreEqual(1, results.Count);
             Assert.AreEqual(bound, results[0]);
         }
@@ -77,10 +89,7 @@
             List<Bounds> bounds = new() { bound, bound, bound };
             RTree<Bounds> tree = CreateTree(bounds);
 
-            List<Bounds> results = tree.GetElementsInBounds(
-                    new Bounds(Vector3.zero, Vector3.one * 1000)
-                )
-                .ToList();
+            List<Bounds> results = QueryBounds(tree, new Bounds(Vector3.zero, Vector3.one * 1000));
             Assert.AreEqual(3, results.Count);
         }
 
@@ -90,10 +99,7 @@
             List<Bounds> bounds = new();
             RTree<Bounds> tree = CreateTree(bounds);
 
-            List<Bounds> results = tree.GetElementsInBounds(
-                    new Bounds(Vector3.zero, Vector3.one * 100)
-                )
-                .ToList();
+            List<Bounds> results = QueryBounds(tree, new Bounds(Vector3.zero, Vector3.one * 100));
             Assert.AreEqual(0, results.Count);
         }
 
@@ -111,7 +117,7 @@
             RTree<Bounds> tree = CreateTree(bounds);
 
             Bounds searchBounds = new(new Vector3(50, 50, 0), Vector3.one * 30);
-            List<Bounds> results = tree.GetElementsInBounds(searchBounds).ToList();
+            List<Bounds> results = QueryBounds(tree, searchBounds);
 
             Assert.Greater(results.Count, 0);
             foreach (Bounds result in results)
@@ -132,7 +138,7 @@
             RTree<Bounds> tree = CreateTree(bounds);
 
             Bounds searchBounds = new(new Vector3(1000, 1000, 0), Vector3.one * 10);
-            List<Bounds> results = tree.GetElementsInBounds(searchBounds).ToList();
+            List<Bounds> results = QueryBounds(tree, searchBounds);
             Assert.AreEqual(0, results.Count);
         }
 
@@ -149,7 +155,7 @@
             RTree<Bounds> tree = CreateTree(bounds);
 
             Bounds searchBounds = new(new Vector3(5, 5, 0), Vector3.one * 1);
-            List<Bounds> results = tree.GetElementsInBounds(searchBounds).ToList();
+            List<Bounds> results = QueryBounds(tree, searchBounds);
             Assert.AreEqual(1, results.Count);
             Assert.AreEqual(target, results[0]);
         }
@@ -160,7 +166,7 @@
             List<Bounds> bounds = new();
             RTree<Bounds> tree = CreateTree(bounds);
 
-            List<Bounds> results = tree.GetElementsInRange(Vector2.zero, 100f).ToList();
+            List<Bounds> results = QueryRange(tree, Vector2.zero, 100f);
             Assert.AreEqual(0, results.Count);
         }
 
@@ -179,7 +185,7 @@
 
             Vector2 center = new(50, 50);
             float range = 30f;
-            List<Bounds> results = tree.GetElementsInRange(center, range).ToList();
+            List<Bounds> results = QueryRange(tree, center, range);
 
             Assert.Greater(results.Count, 0);
             // Verify results are reasonably close to the center
@@ -207,7 +213,7 @@
             RTree<Bounds> tree = CreateTree(bounds);
 
             // Get elements between distance 5 and 15
-            List<Bounds> results = tree.GetElementsInRange(center, 15f, minimumRange: 5f).ToList();
+            List<Bounds> results = QueryRange(tree, center, 15f, minimumRange: 5f);
             Assert.AreEqual(1, results.Count);
         }
 
@@ -353,13 +359,13 @@
             }
             RTree<Bounds> tree = CreateTree(bounds);
 
-            List<Bounds> allResults = tree.GetElementsInBounds(
-                    new Bounds(Vector3.zero, Vector3.one * 100000)
-                )
-                .ToList();
+            List<Bounds> allResults = QueryBounds(
+                tree,
+                new Bounds(Vector3.zero, Vector3.one * 100000)
+            );
             Assert.AreEqual(10000, allResults.Count);
 
-            List<Bounds> results = tree.GetElementsInRange(Vector2.zero, 50f).ToList();
+            List<Bounds> results = QueryRange(tree, Vector2.zero, 50f);
             Assert.GreaterOrEqual(results.Count, 0);
         }
 
@@ -375,12 +381,14 @@
             RTree<Bounds> treeSmallBucket = new(bounds, b => b, bucketSize: 1);
             RTree<Bounds> treeLargeBucket = new(bounds, b => b, bucketSize: 100);
 
-            List<Bounds> resultsSmall = treeSmallBucket
-                .GetElementsInBounds(new Bounds(Vector3.zero, Vector3.one * 100000))
-                .ToList();
-            List<Bounds> resultsLarge = treeLargeBucket
-                .GetElementsInBounds(new Bounds(Vector3.zero, Vector3.one * 100000))
-                .ToList();
+            List<Bounds> resultsSmall = QueryBounds(
+                treeSmallBucket,
+                new Bounds(Vector3.zero, Vector3.one * 100000)
+            );
+            List<Bounds> resultsLarge = QueryBounds(
+                treeLargeBucket,
+                new Bounds(Vector3.zero, Vector3.one * 100000)
+            );
 
             Assert.AreEqual(100, resultsSmall.Count);
             Assert.AreEqual(100, resultsLarge.Count);
@@ -398,12 +406,14 @@
             RTree<Bounds> treeSmallBranch = new(bounds, b => b, branchFactor: 2);
             RTree<Bounds> treeLargeBranch = new(bounds, b => b, branchFactor: 16);
 
-            List<Bounds> resultsSmall = treeSmallBranch
-                .GetElementsInBounds(new Bounds(Vector3.zero, Vector3.one * 100000))
-                .ToList();
-            List<Bounds> resultsLarge = treeLargeBranch
-                .GetElementsInBounds(new Bounds(Vector3.zero, Vector3.one * 100000))
-                .ToList();
+            List<Bounds> resultsSmall = QueryBounds(
+                treeSmallBranch,
+                new Bounds(Vector3.zero, Vector3.one * 100000)
+            );
+            List<Bounds> resultsLarge = QueryBounds(
+                treeLargeBranch,
+                new Bounds(Vector3.zero, Vector3.one * 100000)
+            );
 
             Assert.AreEqual(100, resultsSmall.Count);
             Assert.AreEqual(100, resultsLarge.Count);
@@ -421,7 +431,7 @@
             RTree<Bounds> tree = CreateTree(bounds);
 
             Bounds searchBounds = new(new Vector3(7, 7, 0), Vector3.one * 2);
-            List<Bounds> results = tree.GetElementsInBounds(searchBounds).ToList();
+            List<Bounds> results = QueryBounds(tree, searchBounds);
 
             // All three bounds should overlap with search bounds
             Assert.AreEqual(3, results.Count);
@@ -439,7 +449,7 @@
             RTree<Bounds> tree = CreateTree(bounds);
 
             Bounds searchBounds = new(new Vector3(10, 0, 0), Vector3.one * 10);
-            List<Bounds> results = tree.GetElementsInBounds(searchBounds).ToList();
+            List<Bounds> results = QueryBounds(tree, searchBounds);
 
             Assert.GreaterOrEqual(results.Count, 1);
         }
@@ -455,10 +465,7 @@
             };
             RTree<Bounds> tree = CreateTree(bounds);
 
-            List<Bounds> results = tree.GetElementsInBounds(
-                    new Bounds(Vector3.zero, Vector3.one * 0.1f)
-                )
-                .ToList();
+            List<Bounds> results = QueryBounds(tree, new Bounds(Vector3.zero, Vector3.one * 0.1f));
             Assert.AreEqual(3, results.Count);
         }
 
@@ -473,10 +480,10 @@
             };
             RTree<Bounds> tree = CreateTree(bounds);
 
-            List<Bounds> results = tree.GetElementsInBounds(
-                    new Bounds(new Vector3(50, 50, 0), Vector3.one * 20)
-                )
-                .ToList();
+            List<Bounds> results = QueryBounds(
+                tree,
+                new Bounds(new Vector3(50, 50, 0), Vector3.one * 20)
+            );
             // At least some of the bounds should be found (the large ones should intersect)
             Assert.Greater(results.Count, 0);
         }
@@ -498,8 +505,8 @@
 
             Bounds queryBounds = new(Vector3.zero, Vector3.one * 30);
 
-            List<Bounds> results1 = tree.GetElementsInBounds(queryBounds).ToList();
-            List<Bounds> results2 = tree.GetElementsInBounds(queryBounds).ToList();
+            List<Bounds> results1 = QueryBounds(tree, queryBounds);
+            List<Bounds> results2 = QueryBounds(tree, queryBounds);
 
             Assert.AreEqual(results1.Count, results2.Count);
             CollectionAssert.AreEquivalent(results1, results2);
@@ -515,16 +522,16 @@
             }
             RTree<Bounds> tree = CreateTree(bounds);
 
-            List<Bounds> allResults = tree.GetElementsInBounds(
-                    new Bounds(Vector3.zero, new Vector3(100000, 100, 1))
-                )
-                .ToList();
+            List<Bounds> allResults = QueryBounds(
+                tree,
+                new Bounds(Vector3.zero, new Vector3(100000, 100, 1))
+            );
             Assert.AreEqual(100, allResults.Count);
 
-            List<Bounds> results = tree.GetElementsInBounds(
-                    new Bounds(new Vector3(500, 0, 0), Vector3.one * 50)
-                )
-                .ToList();
+            List<Bounds> results = QueryBounds(
+                tree,
+                new Bounds(new Vector3(500, 0, 0), Vector3.one * 50)
+            );
             Assert.Greater(results.Count, 0);
         }
 
@@ -542,13 +549,13 @@
             RTree<Bounds> tree = CreateTree(bounds);
 
             Bounds searchBounds = new(new Vector3(50, 50, 0), Vector3.one * 20);
-            List<Bounds> results = tree.GetElementsInBounds(searchBounds).ToList();
+            List<Bounds> results = QueryBounds(tree, searchBounds);
 
             Assert.Greater(results.Count, 0);
         }
 
         [Test]
-        public void IEnumerableIsLazyEvaluated()
+        public void GetElementsInBoundsReusesProvidedList()
         {
             List<Bounds> bounds = new();
             for (int i = 0; i < 1000; i++)
@@ -557,15 +564,14 @@
             }
             RTree<Bounds> tree = CreateTree(bounds);
 
-            // Getting the enumerable shouldn't iterate
-            IEnumerable<Bounds> results = tree.GetElementsInBounds(
-                new Bounds(Vector3.zero, Vector3.one * 100000)
+            List<Bounds> buffer = new();
+            List<Bounds> results = tree.GetElementsInBounds(
+                new Bounds(Vector3.zero, Vector3.one * 100000),
+                buffer
             );
-            Assert.IsNotNull(results);
 
-            // Only when we enumerate should we get results
-            int count = results.Take(10).Count();
-            Assert.AreEqual(10, count);
+            Assert.AreSame(buffer, results);
+            Assert.Greater(results.Count, 0);
         }
 
         [Test]
@@ -579,10 +585,10 @@
             };
             RTree<Bounds> tree = CreateTree(bounds);
 
-            List<Bounds> results = tree.GetElementsInBounds(
-                    new Bounds(new Vector3(10, 10, 0), Vector3.one * 5)
-                )
-                .ToList();
+            List<Bounds> results = QueryBounds(
+                tree,
+                new Bounds(new Vector3(10, 10, 0), Vector3.one * 5)
+            );
             Assert.Greater(results.Count, 0);
         }
 
@@ -613,7 +619,7 @@
             };
             RTree<Bounds> tree = CreateTree(bounds);
 
-            List<Bounds> results = tree.GetElementsInRange(Vector2.zero, 200f).ToList();
+            List<Bounds> results = QueryRange(tree, Vector2.zero, 200f);
             Assert.AreEqual(4, results.Count);
         }
 
@@ -630,14 +636,14 @@
             RTree<Bounds> tree = CreateTree(bounds);
 
             // Tree should be able to efficiently query anywhere
-            List<Bounds> corner1 = tree.GetElementsInBounds(
-                    new Bounds(new Vector3(10, 10, 0), Vector3.one * 10)
-                )
-                .ToList();
-            List<Bounds> corner2 = tree.GetElementsInBounds(
-                    new Bounds(new Vector3(80, 80, 0), Vector3.one * 10)
-                )
-                .ToList();
+            List<Bounds> corner1 = QueryBounds(
+                tree,
+                new Bounds(new Vector3(10, 10, 0), Vector3.one * 10)
+            );
+            List<Bounds> corner2 = QueryBounds(
+                tree,
+                new Bounds(new Vector3(80, 80, 0), Vector3.one * 10)
+            );
 
             Assert.Greater(corner1.Count, 0);
             Assert.Greater(corner2.Count, 0);
@@ -661,7 +667,7 @@
             Assert.AreEqual(100, tree.elements.Length);
 
             // Verify tree handles colinear data and can query them
-            List<Bounds> results = tree.GetElementsInRange(new Vector2(50, 0), 10f).ToList();
+            List<Bounds> results = QueryRange(tree, new Vector2(50, 0), 10f);
             Assert.Greater(results.Count, 0, "Should find bounds within range of (50, 0)");
 
             // Verify the correct bounds are returned
@@ -677,21 +683,18 @@
             }
 
             // Test edge cases - query at boundaries
-            results = tree.GetElementsInRange(new Vector2(0, 0), 5f).ToList();
+            results = QueryRange(tree, new Vector2(0, 0), 5f);
             Assert.Greater(results.Count, 0, "Should find bounds at start of line");
 
-            results = tree.GetElementsInRange(new Vector2(99, 0), 5f).ToList();
+            results = QueryRange(tree, new Vector2(99, 0), 5f);
             Assert.Greater(results.Count, 0, "Should find bounds at end of line");
 
             // Test query away from the line should return nothing
-            results = tree.GetElementsInRange(new Vector2(50, 100), 5f).ToList();
+            results = QueryRange(tree, new Vector2(50, 100), 5f);
             Assert.AreEqual(0, results.Count, "Should find no bounds far from the line");
 
             // Test GetElementsInBounds with various bounds
-            results = tree.GetElementsInBounds(
-                    new Bounds(new Vector3(50, 0, 0), new Vector3(20, 5, 1))
-                )
-                .ToList();
+            results = QueryBounds(tree, new Bounds(new Vector3(50, 0, 0), new Vector3(20, 5, 1)));
             Assert.Greater(
                 results.Count,
                 0,
@@ -721,7 +724,7 @@
             Assert.AreEqual(100, tree.elements.Length);
 
             // Verify tree handles vertical line data and can query them
-            List<Bounds> results = tree.GetElementsInRange(new Vector2(0, 50), 10f).ToList();
+            List<Bounds> results = QueryRange(tree, new Vector2(0, 50), 10f);
             Assert.Greater(results.Count, 0, "Should find bounds within range of (0, 50)");
 
             // Verify the correct bounds are returned
@@ -737,21 +740,18 @@
             }
 
             // Test edge cases - query at boundaries
-            results = tree.GetElementsInRange(new Vector2(0, 0), 5f).ToList();
+            results = QueryRange(tree, new Vector2(0, 0), 5f);
             Assert.Greater(results.Count, 0, "Should find bounds at start of line");
 
-            results = tree.GetElementsInRange(new Vector2(0, 99), 5f).ToList();
+            results = QueryRange(tree, new Vector2(0, 99), 5f);
             Assert.Greater(results.Count, 0, "Should find bounds at end of line");
 
             // Test query away from the line should return nothing
-            results = tree.GetElementsInRange(new Vector2(100, 50), 5f).ToList();
+            results = QueryRange(tree, new Vector2(100, 50), 5f);
             Assert.AreEqual(0, results.Count, "Should find no bounds far from the line");
 
             // Test GetElementsInBounds with various bounds
-            results = tree.GetElementsInBounds(
-                    new Bounds(new Vector3(0, 50, 0), new Vector3(5, 20, 1))
-                )
-                .ToList();
+            results = QueryBounds(tree, new Bounds(new Vector3(0, 50, 0), new Vector3(5, 20, 1)));
             Assert.Greater(
                 results.Count,
                 0,

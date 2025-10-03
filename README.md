@@ -162,7 +162,8 @@ GameObject [] spatialStorage = { myCoolGameObject };
 QuadTree<GameObject> quadTree = new(spatialStorage, go => go.transform.position);
 
 // Might return your object, might not
-GameObject [] inBounds = quadTree.GetElementsInBounds(new Bounds(0, 0, 100, 100));
+List<GameObject> inBounds = new();
+quadTree.GetElementsInBounds(new Bounds(0, 0, 100, 100), inBounds);
 
 // Uses a "good-enough" nearest-neighbor approximately for cheap neighbors
 List<GameObject> nearestNeighbors = new();

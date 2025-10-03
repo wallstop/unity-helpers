@@ -1490,6 +1490,20 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return position.x <= max.x && position.y <= max.y;
         }
 
+        public static bool FastContains2D(this Bounds bounds, Bounds other)
+        {
+            Vector3 boundsMin = bounds.min;
+            Vector3 otherMin = other.min;
+            if (otherMin.x < boundsMin.x || otherMin.y < boundsMin.y)
+            {
+                return false;
+            }
+
+            Vector3 boundsMax = bounds.max;
+            Vector3 otherMax = other.max;
+            return otherMax.x <= boundsMax.x && otherMax.y <= boundsMax.y;
+        }
+
         public static bool FastIntersects2D(this Bounds bounds, Bounds other)
         {
             Vector3 boundsMin = bounds.min;

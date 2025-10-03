@@ -314,6 +314,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             Assert.IsFalse(collisionEnterInvoked);
             Assert.IsFalse(collisionStayInvoked);
             Assert.IsFalse(collisionExitInvoked);
+            Assert.IsFalse(triggerEnterInvoked);
+            Assert.IsFalse(triggerStayInvoked);
+            Assert.IsFalse(triggerExitInvoked);
         }
 
         [UnityTest]

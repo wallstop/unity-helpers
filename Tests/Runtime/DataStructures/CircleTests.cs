@@ -10,6 +10,83 @@
         private const int NumTries = 100;
         private const float Epsilon = 0.0001f;
 
+        private static Rect MakeRect(float xMin, float yMin, float xMax, float yMax)
+        {
+            return Rect.MinMaxRect(xMin, yMin, xMax, yMax);
+        }
+
+        [Test]
+        public void IntersectsWhenCenterInsideRectReturnsTrue()
+        {
+            Rect rect = MakeRect(0f, 0f, 2f, 2f);
+            Circle circle = new(new Vector2(1f, 1f), 0.1f);
+            Assert.IsTrue(circle.Intersects(rect));
+        }
+
+        [Test]
+        public void IntersectsWhenCompletelyOutsideOnBothAxesReturnsFalse()
+        {
+            Rect rect = MakeRect(0f, 0f, 2f, 2f);
+            Circle circle = new(new Vector2(10f, 10f), 1f);
+            Assert.IsFalse(circle.Intersects(rect));
+        }
+
+        [Test]
+        public void IntersectsWhenTouchingEdgeExactlyReturnsTrue()
+        {
+            // Rectangle spans x:[0,2], y:[0,2]; circle center at (3,1) with r=1 touches the right edge at (2,1)
+            Rect rect = MakeRect(0f, 0f, 2f, 2f);
+            Circle circle = new(new Vector2(3f, 1f), 1f);
+            Assert.IsTrue(circle.Intersects(rect));
+        }
+
+        [Test]
+        public void IntersectsWhenJustShyOfEdgeReturnsFalse()
+        {
+            Rect rect = MakeRect(0f, 0f, 2f, 2f);
+            Circle circle = new(new Vector2(3f, 1f), 0.99f);
+            Assert.IsFalse(circle.Intersects(rect));
+        }
+
+        [Test]
+        public void IntersectsWhenTouchingCornerExactlyReturnsTrue()
+        {
+            // Corner at (2,2); center at (3,3) with r = sqrt(2) should just touch
+            Rect rect = MakeRect(0f, 0f, 2f, 2f);
+            Circle circle = new(new Vector2(3f, 3f), Mathf.Sqrt(2f));
+            Assert.IsTrue(circle.Intersects(rect));
+        }
+
+        [Test]
+        public void IntersectsWhenOutsideOnlyInYBoundaryCases()
+        {
+            Rect rect = MakeRect(0f, 0f, 2f, 2f);
+            // Closest point is (1,2). Distance = 1 from center (1,3)
+            Circle justUnder = new(new Vector2(1f, 3f), 0.99f);
+            Circle exactlyAt = new(new Vector2(1f, 3f), 1f);
+            Assert.IsFalse(justUnder.Intersects(rect));
+            Assert.IsTrue(exactlyAt.Intersects(rect));
+        }
+
+        [Test]
+        public void IntersectsBoundsOverloadMirrorsRectLogic()
+        {
+            Bounds bounds = new Bounds(new Vector3(1f, 1f), new Vector3(2f, 2f, 1f)); // same as Rect [0,2]x[0,2]
+            Circle circleOutside = new(new Vector2(10f, 10f), 1f);
+            Circle circleTouching = new(new Vector2(3f, 1f), 1f);
+            Assert.IsFalse(circleOutside.Intersects(bounds));
+            Assert.IsTrue(circleTouching.Intersects(bounds));
+        }
+
+        [Test]
+        public void IntersectsRegressionPreviouslyOvercountedWhenCenterPastRectMax()
+        {
+            // Regression guard: if clamping only to min bounds (bug), centers to the right/top of the rect would always appear intersecting
+            Rect rect = MakeRect(0f, 0f, 2f, 2f);
+            Circle circle = new(new Vector2(100f, 100f), 0.5f);
+            Assert.IsFalse(circle.Intersects(rect));
+        }
+
         [Test]
         public void ConstructorInitializesFieldsCorrectly()
         {

@@ -16,6 +16,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
         List<T> GetElementsInBounds(Bounds bounds, List<T> elementsInBounds);
 
-        void GetApproximateNearestNeighbors(Vector2 position, int count, List<T> nearestNeighbors);
+        List<T> GetApproximateNearestNeighbors(
+            Vector2 position,
+            int count,
+            List<T> nearestNeighbors
+        );
     }
 }
