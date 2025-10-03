@@ -1,7 +1,3 @@
-using System.Runtime.CompilerServices;
-
-[assembly: InternalsVisibleTo("WallstopStudios.UnityHelpers.Tests.Runtime")]
-
 namespace WallstopStudios.UnityHelpers.Utils
 {
     using System;

@@ -2,10 +2,6 @@
     Original implementation provided by JWoe
  */
 
-using System.Runtime.CompilerServices;
-
-[assembly: InternalsVisibleTo("WallstopStudios.UnityHelpers.Editor", AllInternalsVisible = true)]
-
 namespace WallstopStudios.UnityHelpers.Visuals.UGUI
 {
     using UnityEngine;
