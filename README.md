@@ -163,31 +163,31 @@ Spatial trees, after construction, allow for O(log(n)) spatial query time instea
 #### Construction
 | Construction | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | --- | --- | --- | --- | --- |
-| 1 million points | 2 (0.385s) | 3 (0.330s) | 2 (0.383s) | 0 (1.263s) |
+| 1 million points | 2 (0.471s) | 3 (0.333s) | 2 (0.382s) | 0 (1.257s) |
 
 #### Elements In Range
 | Elements In Range | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | --- | --- | --- | --- | --- |
 | Full (r=500) | 23 | 23 | 23 | 3 |
-| Half (r=250) | 92 | 92 | 82 | 11 |
+| Half (r=250) | 91 | 92 | 83 | 11 |
 | Quarter (r=125) | 363 | 364 | 307 | 45 |
-| Tiny (r=1) | 33,118 | 34,041 | 43,673 | 27,229 |
+| Tiny (r=1) | 33,169 | 34,074 | 43,656 | 27,263 |
 
 #### Get Elements In Bounds
 | Get Elements In Bounds | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | --- | --- | --- | --- | --- |
-| Full (size≈dataset) | 128 | 131 | 121 | 5 |
-| Half (size≈dataset/2) | 560 | 560 | 353 | 21 |
-| Quarter (size≈dataset/4) | 2,194 | 2,191 | 1,052 | 86 |
-| Unit (size=1) | 41,744 | 42,016 | 51,974 | 27,981 |
+| Full (size≈dataset) | 125 | 132 | 122 | 5 |
+| Half (size≈dataset/2) | 559 | 559 | 354 | 21 |
+| Quarter (size≈dataset/4) | 2,197 | 2,192 | 1,052 | 85 |
+| Unit (size=1) | 41,790 | 42,020 | 52,015 | 27,953 |
 
 #### Approximate Nearest Neighbors
 | Approximate Nearest Neighbors | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | --- | --- | --- | --- | --- |
-| 500 neighbors | 1,123 | 2,167 | 1,610 | 22,501 |
-| 100 neighbors | 12,447 | 11,714 | 11,683 | 62,249 |
-| 10 neighbors | 142,155 | 122,226 | 83,178 | 104,394 |
-| 1 neighbor | 192,116 | 249,394 | 105,872 | 112,233 |
+| 500 neighbors | 1,103 | 2,167 | 1,612 | 22,131 |
+| 100 neighbors | 13,141 | 11,731 | 11,780 | 63,021 |
+| 10 neighbors | 160,194 | 124,542 | 71,826 | 104,906 |
+| 1 neighbor | 227,367 | 247,498 | 98,374 | 112,560 |
 <!-- SPATIAL_TREE_BENCHMARKS_END -->
 
 ## Usage
