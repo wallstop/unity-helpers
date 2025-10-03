@@ -1,0 +1,623 @@
+namespace WallstopStudios.UnityHelpers.Core.DataStructure
+{
+    using System;
+    using System.Collections.Generic;
+    using System.Collections.Immutable;
+    using System.Runtime.CompilerServices;
+    using UnityEngine;
+    using Utils;
+
+    [Serializable]
+    public sealed class RTree3D<T> : ISpatialTree3D<T>
+    {
+        internal const float MinimumNodeSize = 0.001f;
+
+        [Serializable]
+        internal struct ElementData
+        {
+            internal T Value;
+            internal Bounds Bounds;
+            internal Vector3 Center;
+            internal uint MortonKey;
+        }
+
+        [Serializable]
+        public sealed class RTreeNode
+        {
+            public readonly Bounds boundary;
+            internal readonly RTreeNode[] children;
+            internal readonly int startIndex;
+            internal readonly int count;
+            public readonly bool isTerminal;
+
+            private RTreeNode(int startIndex, int count, Bounds boundary, RTreeNode[] children)
+            {
+                this.startIndex = startIndex;
+                this.count = count;
+                this.boundary = boundary;
+                this.children = children ?? Array.Empty<RTreeNode>();
+                isTerminal = this.children.Length == 0;
+            }
+
+            internal static RTreeNode CreateEmpty()
+            {
+                return new RTreeNode(0, 0, new Bounds(), Array.Empty<RTreeNode>());
+            }
+
+            internal static RTreeNode CreateLeaf(ElementData[] elements, int startIndex, int count)
+            {
+                Bounds nodeBounds = CalculateBounds(elements, startIndex, count);
+                return new RTreeNode(startIndex, count, nodeBounds, Array.Empty<RTreeNode>());
+            }
+
+            internal static RTreeNode CreateInternal(RTreeNode[] children)
+            {
+                if (children.Length == 0)
+                {
+                    return CreateEmpty();
+                }
+
+                int startIndex = children[0].startIndex;
+                int lastChildIndex = children.Length - 1;
+                RTreeNode lastChild = children[lastChildIndex];
+                int endIndex = lastChild.startIndex + lastChild.count;
+                Bounds nodeBounds = children[0].boundary;
+                for (int i = 1; i < children.Length; ++i)
+                {
+                    nodeBounds.Encapsulate(children[i].boundary);
+                }
+
+                nodeBounds = EnsureMinimumBounds(nodeBounds);
+                return new RTreeNode(startIndex, endIndex - startIndex, nodeBounds, children);
+            }
+        }
+
+        public const int DefaultBucketSize = 10;
+        public const int DefaultBranchFactor = 4;
+
+        public readonly ImmutableArray<T> elements;
+        public Bounds Boundary => _bounds;
+
+        private readonly Bounds _bounds;
+        private readonly ElementData[] _elementData;
+        private readonly RTreeNode _head;
+
+        public RTree3D(
+            IEnumerable<T> points,
+            Func<T, Bounds> elementTransformer,
+            int bucketSize = DefaultBucketSize,
+            int branchFactor = DefaultBranchFactor
+        )
+        {
+            elements =
+                points?.ToImmutableArray() ?? throw new ArgumentNullException(nameof(points));
+
+            Func<T, Bounds> transformer =
+                elementTransformer ?? throw new ArgumentNullException(nameof(elementTransformer));
+
+            int elementCount = elements.Length;
+            _elementData = new ElementData[elementCount];
+            ElementData[] elementData = _elementData;
+            bucketSize = Math.Max(1, bucketSize);
+            branchFactor = Math.Max(2, branchFactor);
+            float minX = float.MaxValue;
+            float minY = float.MaxValue;
+            float minZ = float.MaxValue;
+            float maxX = float.MinValue;
+            float maxY = float.MinValue;
+            float maxZ = float.MinValue;
+            bool hasElements = false;
+
+            for (int i = 0; i < elementCount; ++i)
+            {
+                T element = elements[i];
+
+                Bounds elementBounds = transformer(element);
+                ElementData data = default;
+                data.Value = element;
+                data.Bounds = elementBounds;
+                data.Center = elementBounds.center;
+                elementData[i] = data;
+                Vector3 min = elementBounds.min;
+                Vector3 max = elementBounds.max;
+
+                if (!hasElements)
+                {
+                    hasElements = true;
+                }
+
+                if (min.x < minX)
+                {
+                    minX = min.x;
+                }
+                if (min.y < minY)
+                {
+                    minY = min.y;
+                }
+                if (min.z < minZ)
+                {
+                    minZ = min.z;
+                }
+                if (max.x > maxX)
+                {
+                    maxX = max.x;
+                }
+                if (max.y > maxY)
+                {
+                    maxY = max.y;
+                }
+                if (max.z > maxZ)
+                {
+                    maxZ = max.z;
+                }
+            }
+
+            Bounds bounds = hasElements
+                ? new Bounds(
+                    new Vector3(
+                        minX + (maxX - minX) / 2,
+                        minY + (maxY - minY) / 2,
+                        minZ + (maxZ - minZ) / 2
+                    ),
+                    new Vector3(maxX - minX, maxY - minY, maxZ - minZ)
+                )
+                : new Bounds();
+
+            // Ensure bounds have minimum size to handle colinear points
+            if (hasElements)
+            {
+                Vector3 size = bounds.size;
+                if (size.x < MinimumNodeSize)
+                {
+                    size.x = MinimumNodeSize;
+                }
+                if (size.y < MinimumNodeSize)
+                {
+                    size.y = MinimumNodeSize;
+                }
+                if (size.z < MinimumNodeSize)
+                {
+                    size.z = MinimumNodeSize;
+                }
+                bounds.size = size;
+            }
+
+            _bounds = bounds;
+            if (!hasElements)
+            {
+                _head = RTreeNode.CreateEmpty();
+                return;
+            }
+
+            float rangeX = maxX - minX;
+            float rangeY = maxY - minY;
+            float rangeZ = maxZ - minZ;
+            float inverseRangeX = rangeX > float.Epsilon ? 1f / rangeX : 0f;
+            float inverseRangeY = rangeY > float.Epsilon ? 1f / rangeY : 0f;
+            float inverseRangeZ = rangeZ > float.Epsilon ? 1f / rangeZ : 0f;
+
+            PooledResource<ulong[]> sortKeysResource = default;
+            ulong[] sortKeys = null;
+            if (elementCount > 1)
+            {
+                sortKeysResource = WallstopFastArrayPool<ulong>.Get(elementCount, out sortKeys);
+            }
+
+            for (int i = 0; i < elementCount; ++i)
+            {
+                ref ElementData data = ref elementData[i];
+                Vector3 center = data.Center;
+                float normalizedX = (center.x - minX) * inverseRangeX;
+                float normalizedY = (center.y - minY) * inverseRangeY;
+                float normalizedZ = (center.z - minZ) * inverseRangeZ;
+                ushort quantizedX = QuantizeNormalized(normalizedX);
+                ushort quantizedY = QuantizeNormalized(normalizedY);
+                ushort quantizedZ = QuantizeNormalized(normalizedZ);
+                data.MortonKey = EncodeMorton(quantizedX, quantizedY, quantizedZ);
+                if (sortKeys is not null)
+                {
+                    sortKeys[i] = ComposeSortKey(
+                        data.MortonKey,
+                        quantizedX,
+                        quantizedY,
+                        quantizedZ
+                    );
+                }
+            }
+
+            if (sortKeys is not null)
+            {
+                Array.Sort(sortKeys, elementData, 0, elementCount);
+                sortKeysResource.Dispose();
+            }
+
+            List<RTreeNode> currentLevel = new(
+                Math.Max(1, (int)Math.Ceiling(elementCount / (double)bucketSize))
+            );
+            for (int startIndex = 0; startIndex < elementCount; startIndex += bucketSize)
+            {
+                int count = Math.Min(bucketSize, elementCount - startIndex);
+                currentLevel.Add(RTreeNode.CreateLeaf(elementData, startIndex, count));
+            }
+
+            while (currentLevel.Count > 1)
+            {
+                int parentCount = (currentLevel.Count + branchFactor - 1) / branchFactor;
+                List<RTreeNode> nextLevel = new(parentCount);
+                for (int i = 0; i < currentLevel.Count; i += branchFactor)
+                {
+                    int childCount = Math.Min(branchFactor, currentLevel.Count - i);
+                    RTreeNode[] children = new RTreeNode[childCount];
+                    currentLevel.CopyTo(i, children, 0, childCount);
+                    nextLevel.Add(RTreeNode.CreateInternal(children));
+                }
+
+                currentLevel = nextLevel;
+            }
+
+            _head = currentLevel[0];
+            _bounds = _head.boundary;
+        }
+
+        private void CollectElementIndicesInBounds(Bounds bounds, List<int> indices)
+        {
+            indices.Clear();
+            if (!bounds.Intersects(_bounds))
+            {
+                return;
+            }
+
+            using PooledResource<Stack<RTreeNode>> nodeBufferResource =
+                Buffers<RTreeNode>.Stack.Get();
+            Stack<RTreeNode> nodesToVisit = nodeBufferResource.resource;
+            nodesToVisit.Push(_head);
+
+            while (nodesToVisit.TryPop(out RTreeNode currentNode))
+            {
+                if (!bounds.Intersects(currentNode.boundary))
+                {
+                    continue;
+                }
+
+                if (currentNode.isTerminal)
+                {
+                    int start = currentNode.startIndex;
+                    int end = start + currentNode.count;
+                    for (int i = start; i < end; ++i)
+                    {
+                        ElementData elementData = _elementData[i];
+                        if (bounds.Intersects(elementData.Bounds))
+                        {
+                            indices.Add(i);
+                        }
+                    }
+
+                    continue;
+                }
+
+                RTreeNode[] childNodes = currentNode.children;
+                foreach (RTreeNode child in childNodes)
+                {
+                    if (child.count <= 0)
+                    {
+                        continue;
+                    }
+
+                    if (!bounds.Intersects(child.boundary))
+                    {
+                        continue;
+                    }
+
+                    nodesToVisit.Push(child);
+                }
+            }
+
+            nodesToVisit.Clear();
+        }
+
+        public List<T> GetElementsInRange(
+            Vector3 position,
+            float range,
+            List<T> elementsInRange,
+            float minimumRange = 0f
+        )
+        {
+            elementsInRange.Clear();
+            if (range <= 0f)
+            {
+                return elementsInRange;
+            }
+
+            Bounds queryBounds = new(position, new Vector3(range * 2f, range * 2f, range * 2f));
+
+            if (!queryBounds.Intersects(_bounds))
+            {
+                return elementsInRange;
+            }
+
+            using PooledResource<List<int>> candidateIndicesResource = Buffers<int>.List.Get();
+            List<int> candidateIndices = candidateIndicesResource.resource;
+            CollectElementIndicesInBounds(queryBounds, candidateIndices);
+
+            if (candidateIndices.Count == 0)
+            {
+                return elementsInRange;
+            }
+
+            Sphere area = new(position, range);
+            bool hasMinimumRange = 0f < minimumRange;
+            Sphere minimumArea = default;
+            if (hasMinimumRange)
+            {
+                minimumArea = new Sphere(position, minimumRange);
+            }
+
+            foreach (int index in candidateIndices)
+            {
+                ElementData elementData = _elementData[index];
+                Bounds elementBoundary = elementData.Bounds;
+                if (!area.Intersects(elementBoundary))
+                {
+                    continue;
+                }
+
+                if (hasMinimumRange && minimumArea.Intersects(elementBoundary))
+                {
+                    continue;
+                }
+
+                elementsInRange.Add(elementData.Value);
+            }
+
+            return elementsInRange;
+        }
+
+        public List<T> GetElementsInBounds(Bounds bounds, List<T> elementsInBounds)
+        {
+            elementsInBounds.Clear();
+            if (!bounds.Intersects(_bounds))
+            {
+                return elementsInBounds;
+            }
+
+            using PooledResource<List<int>> indicesResource = Buffers<int>.List.Get();
+            List<int> indices = indicesResource.resource;
+            CollectElementIndicesInBounds(bounds, indices);
+            foreach (int index in indices)
+            {
+                elementsInBounds.Add(_elementData[index].Value);
+            }
+
+            return elementsInBounds;
+        }
+
+        public List<T> GetApproximateNearestNeighbors(
+            Vector3 position,
+            int count,
+            List<T> nearestNeighbors
+        )
+        {
+            nearestNeighbors.Clear();
+
+            if (count <= 0 || _head.count == 0)
+            {
+                return nearestNeighbors;
+            }
+
+            RTreeNode current = _head;
+
+            using PooledResource<List<RTreeNode>> childrenBufferResource =
+                Buffers<RTreeNode>.List.Get();
+            using PooledResource<HashSet<T>> nearestNeighborBufferResource =
+                Buffers<T>.HashSet.Get();
+            using PooledResource<Stack<RTreeNode>> nodeBufferResource =
+                Buffers<RTreeNode>.Stack.Get();
+            using PooledResource<List<int>> nearestIndexBufferResource = Buffers<int>.List.Get();
+            Stack<RTreeNode> stack = nodeBufferResource.resource;
+            stack.Push(_head);
+            List<RTreeNode> childrenCopy = childrenBufferResource.resource;
+            childrenCopy.Clear();
+            HashSet<T> nearestNeighborsSet = nearestNeighborBufferResource.resource;
+            nearestNeighborsSet.Clear();
+            List<int> nearestIndices = nearestIndexBufferResource.resource;
+            nearestIndices.Clear();
+
+            Comparison<RTreeNode> comparison = Comparison;
+            while (!current.isTerminal)
+            {
+                childrenCopy.Clear();
+                RTreeNode[] childNodes = current.children;
+                for (int i = 0; i < childNodes.Length; ++i)
+                {
+                    childrenCopy.Add(childNodes[i]);
+                }
+
+                if (childrenCopy.Count == 0)
+                {
+                    break;
+                }
+
+                childrenCopy.Sort(comparison);
+                for (int i = childrenCopy.Count - 1; i >= 0; --i)
+                {
+                    stack.Push(childrenCopy[i]);
+                }
+
+                current = childrenCopy[0];
+                if (current.count <= count)
+                {
+                    break;
+                }
+            }
+
+            while (nearestNeighborsSet.Count < count && stack.TryPop(out RTreeNode selected))
+            {
+                int startIndex = selected.startIndex;
+                int endIndex = startIndex + selected.count;
+                for (int i = startIndex; i < endIndex; ++i)
+                {
+                    ElementData elementData = _elementData[i];
+                    if (!nearestNeighborsSet.Add(elementData.Value))
+                    {
+                        continue;
+                    }
+
+                    nearestIndices.Add(i);
+                    if (nearestNeighborsSet.Count >= count)
+                    {
+                        break;
+                    }
+                }
+            }
+
+            if (nearestIndices.Count == 0)
+            {
+                stack.Clear();
+                childrenCopy.Clear();
+                nearestNeighborsSet.Clear();
+                nearestIndices.Clear();
+                return nearestNeighbors;
+            }
+
+            // Always sort by proximity and then trim to requested count
+            {
+                Vector3 localPosition = position;
+                nearestIndices.Sort(IndexComparison);
+                if (nearestIndices.Count > count)
+                {
+                    nearestIndices.RemoveRange(count, nearestIndices.Count - count);
+                }
+
+                int IndexComparison(int lhsIndex, int rhsIndex)
+                {
+                    Vector3 lhsCenter = _elementData[lhsIndex].Center;
+                    Vector3 rhsCenter = _elementData[rhsIndex].Center;
+                    return (lhsCenter - localPosition).sqrMagnitude.CompareTo(
+                        (rhsCenter - localPosition).sqrMagnitude
+                    );
+                }
+            }
+
+            foreach (int index in nearestIndices)
+            {
+                nearestNeighbors.Add(_elementData[index].Value);
+            }
+
+            stack.Clear();
+            childrenCopy.Clear();
+            nearestNeighborsSet.Clear();
+            nearestIndices.Clear();
+
+            return nearestNeighbors;
+
+            int Comparison(RTreeNode lhs, RTreeNode rhs) =>
+                (lhs.boundary.center - position).sqrMagnitude.CompareTo(
+                    (rhs.boundary.center - position).sqrMagnitude
+                );
+        }
+
+        private static Bounds CalculateBounds(ElementData[] elements, int startIndex, int count)
+        {
+            float minX = float.MaxValue;
+            float minY = float.MaxValue;
+            float minZ = float.MaxValue;
+            float maxX = float.MinValue;
+            float maxY = float.MinValue;
+            float maxZ = float.MinValue;
+            int endIndex = startIndex + count;
+            for (int i = startIndex; i < endIndex; ++i)
+            {
+                Bounds bounds = elements[i].Bounds;
+                Vector3 min = bounds.min;
+                Vector3 max = bounds.max;
+                minX = Math.Min(minX, min.x);
+                maxX = Math.Max(maxX, max.x);
+                minY = Math.Min(minY, min.y);
+                maxY = Math.Max(maxY, max.y);
+                minZ = Math.Min(minZ, min.z);
+                maxZ = Math.Max(maxZ, max.z);
+            }
+
+            Bounds nodeBounds = new Bounds(
+                new Vector3(
+                    minX + (maxX - minX) / 2f,
+                    minY + (maxY - minY) / 2f,
+                    minZ + (maxZ - minZ) / 2f
+                ),
+                new Vector3(maxX - minX, maxY - minY, maxZ - minZ)
+            );
+
+            return EnsureMinimumBounds(nodeBounds);
+        }
+
+        private static Bounds EnsureMinimumBounds(Bounds bounds)
+        {
+            Vector3 size = bounds.size;
+            if (size.x < MinimumNodeSize)
+            {
+                size.x = MinimumNodeSize;
+            }
+            if (size.y < MinimumNodeSize)
+            {
+                size.y = MinimumNodeSize;
+            }
+            if (size.z < MinimumNodeSize)
+            {
+                size.z = MinimumNodeSize;
+            }
+
+            bounds.size = size;
+            return bounds;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static uint EncodeMorton(ushort quantizedX, ushort quantizedY, ushort quantizedZ)
+        {
+            uint mortonX = Part1By2(quantizedX);
+            uint mortonY = Part1By2(quantizedY);
+            uint mortonZ = Part1By2(quantizedZ);
+            return mortonX | (mortonY << 1) | (mortonZ << 2);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static ushort QuantizeNormalized(float normalized)
+        {
+            if (normalized <= 0f)
+            {
+                return 0;
+            }
+
+            if (normalized >= 1f)
+            {
+                return 1023;
+            }
+
+            return (ushort)(normalized * 1023f + 0.5f);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static ulong ComposeSortKey(
+            uint mortonKey,
+            ushort quantizedX,
+            ushort quantizedY,
+            ushort quantizedZ
+        )
+        {
+            return ((ulong)mortonKey << 32)
+                | ((ulong)quantizedX << 20)
+                | ((ulong)quantizedY << 10)
+                | quantizedZ;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static uint Part1By2(uint value)
+        {
+            value &= 0x000003ff;
+            value = (value | (value << 16)) & 0xFF0000FF;
+            value = (value | (value << 8)) & 0x0F00F00F;
+            value = (value | (value << 4)) & 0xC30C30C3;
+            value = (value | (value << 2)) & 0x49249249;
+            return value;
+        }
+    }
+}

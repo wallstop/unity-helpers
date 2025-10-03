@@ -1,4 +1,4 @@
-﻿namespace WallstopStudios.UnityHelpers.Tests.DataStructures
+namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 {
     using NUnit.Framework;
     using UnityEngine;
@@ -9,28 +9,28 @@
     {
         // Contains(point) tests
         [Test]
-        public void Contains_PointInside_ReturnsTrue()
+        public void ContainsPointInside_ReturnsTrue()
         {
             var s = new Sphere(Vector3.zero, 2f);
             Assert.IsTrue(s.Contains(new Vector3(1f, 0.5f, 0.5f)));
         }
 
         [Test]
-        public void Contains_PointOnSurface_ReturnsTrue()
+        public void ContainsPointOnSurface_ReturnsTrue()
         {
             var s = new Sphere(Vector3.zero, 1f);
             Assert.IsTrue(s.Contains(new Vector3(1f, 0f, 0f)));
         }
 
         [Test]
-        public void Contains_PointOutside_ReturnsFalse()
+        public void ContainsPointOutside_ReturnsFalse()
         {
             var s = new Sphere(Vector3.zero, 1f);
             Assert.IsFalse(s.Contains(new Vector3(1.0001f, 0f, 0f)));
         }
 
         [Test]
-        public void Contains_ZeroRadius_OnlyCenterIsTrue()
+        public void ContainsZeroRadius_OnlyCenterIsTrue()
         {
             var center = new Vector3(3.2f, -5f, 7.7f);
             var s = new Sphere(center, 0f);
@@ -39,7 +39,7 @@
         }
 
         [Test]
-        public void Contains_NegativeRadius_BehavesLikePositiveDueToSquaring()
+        public void ContainsNegativeRadius_BehavesLikePositiveDueToSquaring()
         {
             var center = new Vector3(0.1f, 0.2f, 0.3f);
             var sNeg = new Sphere(center, -2f);
@@ -56,7 +56,7 @@
 
         // Intersects(Bounds) tests
         [Test]
-        public void Intersects_BoundsFarOutside_ReturnsFalse()
+        public void IntersectsBoundsFarOutside_ReturnsFalse()
         {
             var s = new Sphere(Vector3.zero, 1f);
             var b = new Bounds(new Vector3(5f, 5f, 5f), new Vector3(2f, 2f, 2f));
@@ -64,7 +64,7 @@
         }
 
         [Test]
-        public void Intersects_BoundsTouchingFace_ReturnsTrue()
+        public void IntersectsBoundsTouchingFace_ReturnsTrue()
         {
             // Sphere at origin radius 1. Bounds begins at x=1, spans across y,z = [-1,1]
             var s = new Sphere(Vector3.zero, 1f);
@@ -73,7 +73,7 @@
         }
 
         [Test]
-        public void Intersects_BoundsTouchingEdge_ReturnsTrue()
+        public void IntersectsBoundsTouchingEdge_ReturnsTrue()
         {
             // Use a thin slab that aligns so closest point is exactly (1,1,0) on a radius sqrt(2) sphere
             // For unit sphere, we instead create bounds such that closest point is (1,0,0) along an "edge" (zero thickness in z)
@@ -83,7 +83,7 @@
         }
 
         [Test]
-        public void Intersects_BoundsTouchingCorner_ReturnsTrue()
+        public void IntersectsBoundsTouchingCorner_ReturnsTrue()
         {
             var s = new Sphere(Vector3.zero, 1f);
             // A point-like bounds whose center is on the sphere surface
@@ -92,7 +92,7 @@
         }
 
         [Test]
-        public void Intersects_BoundsFullyInsideSphere_ReturnsTrue()
+        public void IntersectsBoundsFullyInsideSphere_ReturnsTrue()
         {
             var s = new Sphere(Vector3.zero, 5f);
             var b = new Bounds(
@@ -103,7 +103,7 @@
         }
 
         [Test]
-        public void Intersects_SphereFullyInsideBounds_ReturnsTrue()
+        public void IntersectsSphereFullyInsideBounds_ReturnsTrue()
         {
             var s = new Sphere(Vector3.zero, 1f);
             var b = new Bounds(center: Vector3.zero, size: new Vector3(10f, 10f, 10f));
@@ -111,7 +111,7 @@
         }
 
         [Test]
-        public void Intersects_TouchingDueToTolerance_IsTrue()
+        public void IntersectsTouchingDueToTolerance_IsTrue()
         {
             // Place bounds so its face is at distance 1 + 1e-7 (just inside tolerance 1e-6)
             var radius = 1f;
@@ -125,7 +125,7 @@
         }
 
         [Test]
-        public void Intersects_OutsideBeyondTolerance_IsFalse()
+        public void IntersectsOutsideBeyondTolerance_IsFalse()
         {
             var radius = 1f;
             var s = new Sphere(Vector3.zero, radius);
@@ -139,7 +139,7 @@
 
         // Overlaps(Bounds) tests: in implementation this means bounds are fully contained in the sphere
         [Test]
-        public void Overlaps_BoundsFullyInsideSphere_ReturnsTrue()
+        public void OverlapsBoundsFullyInsideSphere_ReturnsTrue()
         {
             var s = new Sphere(Vector3.zero, 3f);
             var b = new Bounds(
@@ -150,7 +150,7 @@
         }
 
         [Test]
-        public void Overlaps_BoundsPartiallyInside_ReturnsFalse()
+        public void OverlapsBoundsPartiallyInside_ReturnsFalse()
         {
             var s = new Sphere(Vector3.zero, 1f);
             var b = new Bounds(center: new Vector3(0.8f, 0f, 0f), size: new Vector3(1f, 1f, 1f));
@@ -158,7 +158,7 @@
         }
 
         [Test]
-        public void Overlaps_BoundsCompletelyOutside_ReturnsFalse()
+        public void OverlapsBoundsCompletelyOutside_ReturnsFalse()
         {
             var s = new Sphere(Vector3.zero, 1f);
             var b = new Bounds(center: new Vector3(5f, 0f, 0f), size: new Vector3(1f, 1f, 1f));
@@ -166,7 +166,7 @@
         }
 
         [Test]
-        public void Overlaps_ZeroSizeBoundsAtCenter_ReturnsTrue()
+        public void OverlapsZeroSizeBoundsAtCenter_ReturnsTrue()
         {
             var center = new Vector3(2f, -1f, 3f);
             var s = new Sphere(center, 0f);

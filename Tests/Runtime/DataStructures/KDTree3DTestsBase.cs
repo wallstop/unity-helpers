@@ -1,0 +1,233 @@
+namespace WallstopStudios.UnityHelpers.Tests.DataStructures
+{
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+    using NUnit.Framework;
+    using WallstopStudios.UnityHelpers.Core.DataStructure;
+    using WallstopStudios.UnityHelpers.Core.Random;
+    using Vector3 = UnityEngine.Vector3;
+
+    public abstract class KDTree3DTestsBase : SpatialTree3DTests<KDTree3D<Vector3>>
+    {
+        private IRandom Random => PRNG.Instance;
+
+        protected abstract bool IsBalanced { get; }
+
+        protected override KDTree3D<Vector3> CreateTree(IEnumerable<Vector3> points)
+        {
+            return new KDTree3D<Vector3>(points, point => point, balanced: IsBalanced);
+        }
+
+        [Test]
+        public void ConstructorWithNullPointsThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                new KDTree3D<Vector3>(null, point => point, balanced: IsBalanced);
+            });
+        }
+
+        [Test]
+        public void ConstructorWithNullTransformerThrowsArgumentNullException()
+        {
+            List<Vector3> points = new() { Vector3.zero };
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                new KDTree3D<Vector3>(points, null, balanced: IsBalanced);
+            });
+        }
+
+        [Test]
+        public void ConstructorWithEmptyCollectionSucceeds()
+        {
+            List<Vector3> points = new();
+            KDTree3D<Vector3> tree = CreateTree(points);
+            Assert.IsNotNull(tree);
+
+            List<Vector3> results = new();
+            tree.GetElementsInRange(Vector3.zero, 100f, results);
+            Assert.AreEqual(0, results.Count);
+        }
+
+        [Test]
+        public void ConstructorWithSingleElementSucceeds()
+        {
+            Vector3 point = new(
+                Random.NextFloat(-100, 100),
+                Random.NextFloat(-100, 100),
+                Random.NextFloat(-100, 100)
+            );
+            List<Vector3> points = new() { point };
+            KDTree3D<Vector3> tree = CreateTree(points);
+
+            List<Vector3> results = new();
+            tree.GetElementsInRange(point, 1f, results);
+            Assert.AreEqual(1, results.Count);
+            Assert.AreEqual(point, results[0]);
+        }
+
+        [Test]
+        public void ConstructorWithDuplicateElementsPreservesAll()
+        {
+            Vector3 point = new(5f, -3f, 2f);
+            List<Vector3> points = new() { point, point, point };
+            KDTree3D<Vector3> tree = CreateTree(points);
+
+            List<Vector3> results = new();
+            tree.GetElementsInRange(point, 0.1f, results);
+            Assert.AreEqual(3, results.Count);
+            Assert.IsTrue(results.All(candidate => candidate == point));
+        }
+
+        [Test]
+        public void GetElementsInRangeWithEmptyTreeReturnsEmpty()
+        {
+            KDTree3D<Vector3> tree = CreateTree(new List<Vector3>());
+            List<Vector3> results = new();
+
+            tree.GetElementsInRange(Vector3.zero, 10f, results);
+            Assert.AreEqual(0, results.Count);
+        }
+
+        [Test]
+        public void GetElementsInRangeWithZeroRangeReturnsOnlyExactMatches()
+        {
+            Vector3 target = new(10f, -4f, 2f);
+            List<Vector3> points = new()
+            {
+                target,
+                target,
+                target,
+                target + new Vector3(0.01f, 0f, 0f),
+                target + new Vector3(0f, 0.01f, 0f),
+            };
+
+            KDTree3D<Vector3> tree = CreateTree(points);
+
+            List<Vector3> results = new() { new Vector3(999f, 999f, 999f) };
+            tree.GetElementsInRange(target, 0f, results);
+
+            Assert.AreEqual(3, results.Count);
+            Assert.IsTrue(results.All(candidate => candidate == target));
+        }
+
+        [Test]
+        public void GetElementsInRangeWithMinimumRangeExcludesNearElements()
+        {
+            List<Vector3> points = new()
+            {
+                new Vector3(0f, 0f, 1f),
+                new Vector3(0f, 0f, 3f),
+                new Vector3(0f, 0f, 5f),
+                new Vector3(0f, 0f, 7f),
+            };
+
+            KDTree3D<Vector3> tree = CreateTree(points);
+            List<Vector3> results = new();
+            tree.GetElementsInRange(Vector3.zero, 5.5f, results, minimumRange: 2f);
+
+            Vector3[] expected = { points[1], points[2] };
+            CollectionAssert.AreEquivalent(expected, results);
+        }
+
+        [Test]
+        public void MultipleQueriesOnSameTreeReturnConsistentResults()
+        {
+            List<Vector3> points = new();
+            for (int i = 0; i < 64; ++i)
+            {
+                points.Add(
+                    new Vector3(
+                        Random.NextFloat(-25, 25),
+                        Random.NextFloat(-25, 25),
+                        Random.NextFloat(-25, 25)
+                    )
+                );
+            }
+
+            KDTree3D<Vector3> tree = CreateTree(points);
+
+            List<Vector3> first = new();
+            List<Vector3> second = new();
+            Vector3 query = Vector3.zero;
+            float range = 15f;
+
+            tree.GetElementsInRange(query, range, first);
+            tree.GetElementsInRange(query, range, second);
+
+            Assert.AreEqual(first.Count, second.Count);
+            CollectionAssert.AreEquivalent(first, second);
+        }
+
+        [Test]
+        public void WorstCaseSortedInputHandledCorrectly()
+        {
+            List<Vector3> points = new();
+            for (int i = 0; i < 1_000; ++i)
+            {
+                points.Add(new Vector3(i, 0f, 0f));
+            }
+
+            KDTree3D<Vector3> tree = CreateTree(points);
+            List<Vector3> results = new();
+
+            tree.GetElementsInRange(new Vector3(500f, 0f, 0f), 25f, results);
+            Assert.Greater(results.Count, 0);
+        }
+
+        [Test]
+        public void AlternatingPatternHandledCorrectly()
+        {
+            List<Vector3> points = new();
+            for (int i = 0; i < 100; ++i)
+            {
+                if (i % 2 == 0)
+                {
+                    points.Add(new Vector3(i, 0f, 0f));
+                }
+                else
+                {
+                    points.Add(new Vector3(0f, i, 0f));
+                }
+            }
+
+            KDTree3D<Vector3> tree = CreateTree(points);
+            List<Vector3> results = new();
+
+            tree.GetElementsInRange(Vector3.zero, 30f, results);
+            Assert.Greater(results.Count, 0);
+        }
+
+        [Test]
+        public void BalancedVsUnbalancedBothFindSameElements()
+        {
+            List<Vector3> points = new();
+            for (int i = 0; i < 128; ++i)
+            {
+                points.Add(
+                    new Vector3(
+                        Random.NextFloat(-50, 50),
+                        Random.NextFloat(-50, 50),
+                        Random.NextFloat(-50, 50)
+                    )
+                );
+            }
+
+            KDTree3D<Vector3> balancedTree = new(points, point => point, balanced: true);
+            KDTree3D<Vector3> unbalancedTree = new(points, point => point, balanced: false);
+
+            Vector3 query = Vector3.zero;
+            float range = 40f;
+
+            List<Vector3> balancedResults = new();
+            List<Vector3> unbalancedResults = new();
+
+            balancedTree.GetElementsInRange(query, range, balancedResults);
+            unbalancedTree.GetElementsInRange(query, range, unbalancedResults);
+
+            Assert.AreEqual(balancedResults.Count, unbalancedResults.Count);
+            CollectionAssert.AreEquivalent(balancedResults, unbalancedResults);
+        }
+    }
+}
