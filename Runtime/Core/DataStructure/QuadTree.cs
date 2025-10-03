@@ -1,6 +1,7 @@
 namespace WallstopStudios.UnityHelpers.Core.DataStructure
 {
     using System;
+    using System.Buffers;
     using System.Collections.Generic;
     using System.Collections.Immutable;
     using Extension;
@@ -28,96 +29,46 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         [Serializable]
         public sealed class QuadTreeNode
         {
-            private static readonly List<Entry>[] Buffers = new List<Entry>[NumChildren];
-
-            static QuadTreeNode()
-            {
-                for (int i = 0; i < Buffers.Length; ++i)
-                {
-                    Buffers[i] = new List<Entry>();
-                }
-            }
-
             public readonly Bounds boundary;
             internal readonly QuadTreeNode[] children;
-            public readonly Entry[] elements;
+            internal readonly int startIndex;
+            internal readonly int count;
             public readonly bool isTerminal;
 
-            public QuadTreeNode(Entry[] elements, Bounds boundary, int bucketSize)
+            private QuadTreeNode(
+                Bounds boundary,
+                int startIndex,
+                int count,
+                bool isTerminal,
+                QuadTreeNode[] children
+            )
             {
                 this.boundary = boundary;
-                this.elements = elements;
-                isTerminal = elements.Length <= bucketSize;
-                if (isTerminal)
-                {
-                    children = Array.Empty<QuadTreeNode>();
-                    return;
-                }
+                this.startIndex = startIndex;
+                this.count = count;
+                this.isTerminal = isTerminal;
+                this.children = children ?? Array.Empty<QuadTreeNode>();
+            }
 
-                children = new QuadTreeNode[NumChildren];
-
-                Vector3 quadrantSize = boundary.size / 2f;
-                quadrantSize.z = 1;
-                Vector3 halfQuadrantSize = quadrantSize / 2f;
-
-                Vector3 boundaryCenter = boundary.center;
-                Span<Bounds> quadrants = stackalloc Bounds[4];
-                quadrants[0] = new Bounds(
-                    new Vector3(
-                        boundaryCenter.x - halfQuadrantSize.x,
-                        boundaryCenter.y + halfQuadrantSize.y
-                    ),
-                    quadrantSize
+            internal static QuadTreeNode CreateLeaf(Bounds boundary, int startIndex, int count)
+            {
+                return new QuadTreeNode(
+                    boundary,
+                    startIndex,
+                    count,
+                    true,
+                    Array.Empty<QuadTreeNode>()
                 );
-                quadrants[1] = new Bounds(
-                    new Vector3(
-                        boundaryCenter.x + halfQuadrantSize.x,
-                        boundaryCenter.y + halfQuadrantSize.y
-                    ),
-                    quadrantSize
-                );
-                quadrants[2] = new Bounds(
-                    new Vector3(
-                        boundaryCenter.x + halfQuadrantSize.x,
-                        boundaryCenter.y - halfQuadrantSize.y
-                    ),
-                    quadrantSize
-                );
-                quadrants[3] = new Bounds(
-                    new Vector3(
-                        boundaryCenter.x - halfQuadrantSize.x,
-                        boundaryCenter.y - halfQuadrantSize.y
-                    ),
-                    quadrantSize
-                );
+            }
 
-                foreach (List<Entry> buffer in Buffers)
-                {
-                    buffer.Clear();
-                }
-                foreach (Entry element in elements)
-                {
-                    Vector2 position = element.position;
-                    for (int i = 0; i < quadrants.Length; i++)
-                    {
-                        Bounds quadrant = quadrants[i];
-                        if (quadrant.FastContains2D(position))
-                        {
-                            Buffers[i].Add(element);
-                            break;
-                        }
-                    }
-                }
-
-                Entry[] entriesOne = Buffers[0].ToArray();
-                Entry[] entriesTwo = Buffers[1].ToArray();
-                Entry[] entriesThree = Buffers[2].ToArray();
-                Entry[] entriesFour = Buffers[3].ToArray();
-
-                children[0] = new QuadTreeNode(entriesOne, quadrants[0], bucketSize);
-                children[1] = new QuadTreeNode(entriesTwo, quadrants[1], bucketSize);
-                children[2] = new QuadTreeNode(entriesThree, quadrants[2], bucketSize);
-                children[3] = new QuadTreeNode(entriesFour, quadrants[3], bucketSize);
+            internal static QuadTreeNode CreateInternal(
+                Bounds boundary,
+                QuadTreeNode[] children,
+                int startIndex,
+                int count
+            )
+            {
+                return new QuadTreeNode(boundary, startIndex, count, false, children);
             }
         }
 
@@ -127,6 +78,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         public Bounds Boundary => _bounds;
 
         private readonly Bounds _bounds;
+        private readonly Entry[] _entries;
+        private readonly int[] _indices;
         private readonly QuadTreeNode _head;
 
         public QuadTree(
@@ -140,44 +93,178 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             {
                 throw new ArgumentNullException(nameof(elementTransformer));
             }
+
             elements =
                 points?.ToImmutableArray() ?? throw new ArgumentNullException(nameof(points));
-            bool anyPoints = false;
-            Bounds bounds = new();
-            Entry[] entries = new Entry[elements.Length];
-            for (int i = 0; i < elements.Length; i++)
+
+            int elementCount = elements.Length;
+            _entries = elementCount == 0 ? Array.Empty<Entry>() : new Entry[elementCount];
+            _indices = elementCount == 0 ? Array.Empty<int>() : new int[elementCount];
+
+            Bounds bounds = boundary ?? default;
+            bool anyPoints = boundary.HasValue;
+
+            for (int i = 0; i < elementCount; ++i)
             {
                 T element = elements[i];
                 Vector2 position = elementTransformer(element);
-                entries[i] = new Entry(element, position);
-                if (!anyPoints)
-                {
-                    bounds = new Bounds(position, new Vector3(0, 0, 1f));
-                }
-                else
+                _entries[i] = new Entry(element, position);
+                if (anyPoints)
                 {
                     bounds.Encapsulate(position);
                 }
+                else
+                {
+                    bounds = new Bounds(position, new Vector3(0f, 0f, 1f));
+                    anyPoints = true;
+                }
 
-                anyPoints = true;
+                _indices[i] = i;
             }
 
-            // Ensure bounds have minimum size to handle colinear points
-            // FastContains2D uses strict < for max bounds, so zero-size dimensions won't contain any points
-            Vector3 size = bounds.size;
-            const float minSize = 0.001f;
-            if (size.x < minSize)
+            if (anyPoints)
             {
-                size.x = minSize;
+                Vector3 size = bounds.size;
+                const float minSize = 0.001f;
+                if (size.x < minSize)
+                {
+                    size.x = minSize;
+                }
+                if (size.y < minSize)
+                {
+                    size.y = minSize;
+                }
+                size.z = 1f;
+                bounds.size = size;
             }
-            if (size.y < minSize)
-            {
-                size.y = minSize;
-            }
-            bounds.size = size;
 
             _bounds = bounds;
-            _head = new QuadTreeNode(entries, _bounds, bucketSize);
+
+            if (elementCount == 0)
+            {
+                _head = QuadTreeNode.CreateLeaf(_bounds, 0, 0);
+                return;
+            }
+
+            bucketSize = Math.Max(1, bucketSize);
+            int[] scratch = ArrayPool<int>.Shared.Rent(elementCount);
+            try
+            {
+                _head = BuildNode(_bounds, 0, elementCount, bucketSize, scratch);
+            }
+            finally
+            {
+                ArrayPool<int>.Shared.Return(scratch, clearArray: true);
+            }
+        }
+
+        private QuadTreeNode BuildNode(
+            Bounds boundary,
+            int startIndex,
+            int count,
+            int bucketSize,
+            int[] scratch
+        )
+        {
+            if (count <= 0)
+            {
+                return QuadTreeNode.CreateLeaf(boundary, startIndex, 0);
+            }
+
+            if (count <= bucketSize)
+            {
+                return QuadTreeNode.CreateLeaf(boundary, startIndex, count);
+            }
+
+            Span<int> counts = stackalloc int[NumChildren];
+            counts.Clear();
+            Span<int> starts = stackalloc int[NumChildren];
+            Span<int> next = stackalloc int[NumChildren];
+
+            Span<int> source = _indices.AsSpan(startIndex, count);
+            Span<int> temp = scratch.AsSpan(0, count);
+
+            Vector3 quadrantSize = boundary.size / 2f;
+            quadrantSize.z = 1f;
+            Vector3 halfQuadrantSize = quadrantSize / 2f;
+            Vector3 boundaryCenter = boundary.center;
+            float centerX = boundaryCenter.x;
+            float centerY = boundaryCenter.y;
+
+            Entry[] entries = _entries;
+            for (int i = 0; i < count; ++i)
+            {
+                int entryIndex = source[i];
+                Vector2 position = entries[entryIndex].position;
+                bool east = position.x > centerX;
+                bool north = position.y >= centerY;
+                int quadrant = east ? (north ? 1 : 2) : (north ? 0 : 3);
+                counts[quadrant]++;
+            }
+
+            int maxChildCount = 0;
+            int running = 0;
+            for (int q = 0; q < NumChildren; ++q)
+            {
+                starts[q] = running;
+                next[q] = running;
+                running += counts[q];
+                if (counts[q] > maxChildCount)
+                {
+                    maxChildCount = counts[q];
+                }
+            }
+
+            if (maxChildCount == count)
+            {
+                return QuadTreeNode.CreateLeaf(boundary, startIndex, count);
+            }
+
+            for (int i = 0; i < count; ++i)
+            {
+                int entryIndex = source[i];
+                Vector2 position = entries[entryIndex].position;
+                bool east = position.x > centerX;
+                bool north = position.y >= centerY;
+                int quadrant = east ? (north ? 1 : 2) : (north ? 0 : 3);
+                int destination = next[quadrant]++;
+                temp[destination] = entryIndex;
+            }
+
+            temp.CopyTo(source);
+
+            Span<Bounds> quadrants = stackalloc Bounds[NumChildren];
+            quadrants[0] = new Bounds(
+                new Vector3(centerX - halfQuadrantSize.x, centerY + halfQuadrantSize.y),
+                quadrantSize
+            );
+            quadrants[1] = new Bounds(
+                new Vector3(centerX + halfQuadrantSize.x, centerY + halfQuadrantSize.y),
+                quadrantSize
+            );
+            quadrants[2] = new Bounds(
+                new Vector3(centerX + halfQuadrantSize.x, centerY - halfQuadrantSize.y),
+                quadrantSize
+            );
+            quadrants[3] = new Bounds(
+                new Vector3(centerX - halfQuadrantSize.x, centerY - halfQuadrantSize.y),
+                quadrantSize
+            );
+
+            QuadTreeNode[] children = new QuadTreeNode[NumChildren];
+            for (int q = 0; q < NumChildren; ++q)
+            {
+                int childCount = counts[q];
+                if (childCount <= 0)
+                {
+                    continue;
+                }
+
+                int childStart = startIndex + starts[q];
+                children[q] = BuildNode(quadrants[q], childStart, childCount, bucketSize, scratch);
+            }
+
+            return QuadTreeNode.CreateInternal(boundary, children, startIndex, count);
         }
 
         public List<T> GetElementsInRange(
@@ -188,7 +275,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         )
         {
             elementsInRange.Clear();
-            Bounds bounds = new(position, new Vector3(range * 2, range * 2, 1f));
+            if (range < 0f || _head.count <= 0)
+            {
+                return elementsInRange;
+            }
+
+            Bounds bounds = new(position, new Vector3(range * 2f, range * 2f, 1f));
 
             if (!bounds.FastIntersects2D(_bounds))
             {
@@ -200,12 +292,19 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             Stack<QuadTreeNode> nodesToVisit = nodesToVisitResource.resource;
             nodesToVisit.Push(_head);
 
+            Entry[] entries = _entries;
+            int[] indices = _indices;
             float rangeSquared = range * range;
             bool hasMinimumRange = 0f < minimumRange;
             float minimumRangeSquared = minimumRange * minimumRange;
 
             while (nodesToVisit.TryPop(out QuadTreeNode currentNode))
             {
+                if (currentNode is null || currentNode.count <= 0)
+                {
+                    continue;
+                }
+
                 if (!bounds.FastIntersects2D(currentNode.boundary))
                 {
                     continue;
@@ -213,9 +312,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
                 if (currentNode.isTerminal || bounds.FastContains2D(currentNode.boundary))
                 {
-                    foreach (Entry element in currentNode.elements)
+                    int start = currentNode.startIndex;
+                    int end = start + currentNode.count;
+                    for (int i = start; i < end; ++i)
                     {
-                        float squareDistance = (element.position - position).sqrMagnitude;
+                        Entry entry = entries[indices[i]];
+                        float squareDistance = (entry.position - position).sqrMagnitude;
                         if (squareDistance > rangeSquared)
                         {
                             continue;
@@ -226,25 +328,25 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                             continue;
                         }
 
-                        elementsInRange.Add(element.value);
+                        elementsInRange.Add(entry.value);
                     }
 
                     continue;
                 }
 
-                foreach (QuadTreeNode child in currentNode.children)
+                QuadTreeNode[] childNodes = currentNode.children;
+                for (int i = 0; i < childNodes.Length; ++i)
                 {
-                    if (child.elements.Length == 0)
+                    QuadTreeNode child = childNodes[i];
+                    if (child is null || child.count <= 0)
                     {
                         continue;
                     }
 
-                    if (!bounds.FastIntersects2D(child.boundary))
+                    if (bounds.FastIntersects2D(child.boundary))
                     {
-                        continue;
+                        nodesToVisit.Push(child);
                     }
-
-                    nodesToVisit.Push(child);
                 }
             }
 
@@ -265,7 +367,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         )
         {
             elementsInBounds.Clear();
-            if (!bounds.FastIntersects2D(_bounds))
+            if (_head.count <= 0 || !bounds.FastIntersects2D(_bounds))
             {
                 return elementsInBounds;
             }
@@ -274,76 +376,122 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             nodesToVisit.Clear();
             nodesToVisit.Push(_head);
 
+            Entry[] entries = _entries;
+            int[] indices = _indices;
+
             while (nodesToVisit.TryPop(out QuadTreeNode currentNode))
             {
+                if (currentNode is null || currentNode.count <= 0)
+                {
+                    continue;
+                }
+
+                if (bounds.FastContains2D(currentNode.boundary))
+                {
+                    int start = currentNode.startIndex;
+                    int end = start + currentNode.count;
+                    for (int i = start; i < end; ++i)
+                    {
+                        elementsInBounds.Add(entries[indices[i]].value);
+                    }
+
+                    continue;
+                }
+
                 if (currentNode.isTerminal)
                 {
-                    foreach (Entry element in currentNode.elements)
+                    int start = currentNode.startIndex;
+                    int end = start + currentNode.count;
+                    for (int i = start; i < end; ++i)
                     {
-                        if (bounds.FastContains2D(element.position))
+                        Entry entry = entries[indices[i]];
+                        if (bounds.FastContains2D(entry.position))
                         {
-                            elementsInBounds.Add(element.value);
+                            elementsInBounds.Add(entry.value);
                         }
                     }
 
                     continue;
                 }
 
-                foreach (QuadTreeNode child in currentNode.children)
+                QuadTreeNode[] childNodes = currentNode.children;
+                for (int i = 0; i < childNodes.Length; ++i)
                 {
-                    if (child.elements.Length <= 0)
+                    QuadTreeNode child = childNodes[i];
+                    if (child is null || child.count <= 0)
                     {
                         continue;
                     }
 
-                    if (!bounds.FastIntersects2D(child.boundary))
+                    if (bounds.FastIntersects2D(child.boundary))
                     {
-                        continue;
+                        nodesToVisit.Push(child);
                     }
-
-                    nodesToVisit.Push(child);
                 }
             }
 
             return elementsInBounds;
         }
 
-        // Heavily adapted http://homepage.divms.uiowa.edu/%7Ekvaradar/sp2012/daa/ann.pdf
         public List<T> GetApproximateNearestNeighbors(
             Vector2 position,
             int count,
             List<T> nearestNeighbors
         )
         {
+            nearestNeighbors.Clear();
+
+            if (count <= 0 || _head.count == 0)
+            {
+                return nearestNeighbors;
+            }
+
             QuadTreeNode current = _head;
-            PooledResource<Stack<QuadTreeNode>> nodeBufferResource =
+
+            using PooledResource<Stack<QuadTreeNode>> nodeBufferResource =
                 Buffers<QuadTreeNode>.Stack.Get();
             Stack<QuadTreeNode> nodeBuffer = nodeBufferResource.resource;
             nodeBuffer.Push(_head);
-            PooledResource<List<QuadTreeNode>> childrenBufferResource =
+            using PooledResource<List<QuadTreeNode>> childrenBufferResource =
                 Buffers<QuadTreeNode>.List.Get();
             List<QuadTreeNode> childrenBuffer = childrenBufferResource.resource;
-            PooledResource<HashSet<T>> nearestNeighborBufferResource = Buffers<T>.HashSet.Get();
+            using PooledResource<HashSet<T>> nearestNeighborBufferResource =
+                Buffers<T>.HashSet.Get();
             HashSet<T> nearestNeighborBuffer = nearestNeighborBufferResource.resource;
-            PooledResource<List<Entry>> nearestNeighborsCacheResource = Buffers<Entry>.List.Get();
+            using PooledResource<List<Entry>> nearestNeighborsCacheResource =
+                Buffers<Entry>.List.Get();
             List<Entry> nearestNeighborsCache = nearestNeighborsCacheResource.resource;
+
+            Entry[] entries = _entries;
+            int[] indices = _indices;
 
             Comparison<QuadTreeNode> comparison = Comparison;
             while (!current.isTerminal)
             {
                 childrenBuffer.Clear();
-                foreach (QuadTreeNode child in current.children)
+                QuadTreeNode[] childNodes = current.children;
+                for (int i = 0; i < childNodes.Length; ++i)
                 {
-                    childrenBuffer.Add(child);
+                    QuadTreeNode child = childNodes[i];
+                    if (child is not null && child.count > 0)
+                    {
+                        childrenBuffer.Add(child);
+                    }
                 }
+
+                if (childrenBuffer.Count == 0)
+                {
+                    break;
+                }
+
                 childrenBuffer.Sort(comparison);
-                for (int i = childrenBuffer.Count - 1; 0 <= i; --i)
+                for (int i = childrenBuffer.Count - 1; i >= 0; --i)
                 {
                     nodeBuffer.Push(childrenBuffer[i]);
                 }
 
                 current = childrenBuffer[0];
-                if (current.elements.Length <= count)
+                if (current.count <= count)
                 {
                     break;
                 }
@@ -353,11 +501,19 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 nearestNeighborBuffer.Count < count && nodeBuffer.TryPop(out QuadTreeNode selected)
             )
             {
-                foreach (Entry element in selected.elements)
+                if (selected is null || selected.count <= 0)
                 {
-                    if (nearestNeighborBuffer.Add(element.value))
+                    continue;
+                }
+
+                int start = selected.startIndex;
+                int end = start + selected.count;
+                for (int i = start; i < end; ++i)
+                {
+                    Entry entry = entries[indices[i]];
+                    if (nearestNeighborBuffer.Add(entry.value))
                     {
-                        nearestNeighborsCache.Add(element);
+                        nearestNeighborsCache.Add(entry);
                     }
                 }
             }

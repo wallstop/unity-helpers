@@ -52,7 +52,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             {
                 tree.GetElementsInRange(center, radius, elementsInRange);
                 int elementCount = elementsInRange.Count;
-                Assert.AreEqual(785456, elementCount);
+                Assert.IsTrue(elementCount == 785456);
                 ++count;
             } while (timer.Elapsed < timeout);
 
@@ -67,7 +67,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             {
                 tree.GetElementsInRange(center, radius, elementsInRange);
                 int elementCount = elementsInRange.Count;
-                Assert.AreEqual(196364, elementCount);
+                Assert.IsTrue(elementCount == 196364);
                 ++count;
             } while (timer.Elapsed < timeout);
             UnityEngine.Debug.Log(
@@ -81,7 +81,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             {
                 tree.GetElementsInRange(center, radius, elementsInRange);
                 int elementCount = elementsInRange.Count;
-                Assert.AreEqual(49080, elementCount);
+                Assert.IsTrue(elementCount == 49080);
                 ++count;
             } while (timer.Elapsed < timeout);
             UnityEngine.Debug.Log(
@@ -95,7 +95,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             {
                 tree.GetElementsInRange(center, radius, elementsInRange);
                 int elementCount = elementsInRange.Count;
-                Assert.AreEqual(4, elementCount);
+                Assert.IsTrue(elementCount == 4);
                 ++count;
             } while (timer.Elapsed < timeout);
             UnityEngine.Debug.Log(
