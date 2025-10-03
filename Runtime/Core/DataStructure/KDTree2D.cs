@@ -69,6 +69,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         }
 
         private const float MinimumNodeSize = 0.001f;
+        private const int SmallPartitionThreshold = 32;
 
         public const int DefaultBucketSize = 12;
 
@@ -102,30 +103,38 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             _balanced = balanced;
             _bucketSize = Math.Max(1, bucketSize);
 
-            Bounds bounds = default;
-            bool boundsInitialized = false;
+            float minX = float.PositiveInfinity;
+            float minY = float.PositiveInfinity;
+            float maxX = float.NegativeInfinity;
+            float maxY = float.NegativeInfinity;
+
             for (int i = 0; i < elementCount; ++i)
             {
                 T element = elements[i];
                 Vector2 position = elementTransformer(element);
                 _entries[i] = new Entry(element, position);
-                if (boundsInitialized)
+
+                if (position.x < minX)
                 {
-                    bounds.Encapsulate(position);
+                    minX = position.x;
                 }
-                else
+                if (position.y < minY)
                 {
-                    bounds = new Bounds(position, new Vector3(0f, 0f, 1f));
-                    boundsInitialized = true;
+                    minY = position.y;
+                }
+                if (position.x > maxX)
+                {
+                    maxX = position.x;
+                }
+                if (position.y > maxY)
+                {
+                    maxY = position.y;
                 }
 
                 _indices[i] = i;
             }
 
-            if (boundsInitialized)
-            {
-                EnsureMinimumBounds(ref bounds);
-            }
+            Bounds bounds = CreateBounds(minX, maxX, minY, maxY);
 
             if (elementCount == 0)
             {
@@ -282,17 +291,34 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             Entry[] entries = _entries;
             int[] indices = _indices;
-            Bounds bounds = new Bounds(
-                entries[indices[startIndex]].position,
-                new Vector3(0f, 0f, 1f)
-            );
-            for (int i = 1; i < count; ++i)
+            float minX = float.PositiveInfinity;
+            float minY = float.PositiveInfinity;
+            float maxX = float.NegativeInfinity;
+            float maxY = float.NegativeInfinity;
+
+            int end = startIndex + count;
+            for (int i = startIndex; i < end; ++i)
             {
-                bounds.Encapsulate(entries[indices[startIndex + i]].position);
+                Vector2 position = entries[indices[i]].position;
+                if (position.x < minX)
+                {
+                    minX = position.x;
+                }
+                if (position.y < minY)
+                {
+                    minY = position.y;
+                }
+                if (position.x > maxX)
+                {
+                    maxX = position.x;
+                }
+                if (position.y > maxY)
+                {
+                    maxY = position.y;
+                }
             }
 
-            EnsureMinimumBounds(ref bounds);
-            return bounds;
+            return CreateBounds(minX, maxX, minY, maxY);
         }
 
         private void SelectKth(Span<int> span, int k, int axis)
@@ -301,68 +327,157 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             int left = 0;
             int right = span.Length - 1;
 
-            while (left <= right)
+            while (left < right)
             {
-                if (left == right)
+                if (right - left <= SmallPartitionThreshold)
                 {
+                    InsertionSort(span.Slice(left, right - left + 1), axis, entries);
                     return;
                 }
 
-                int pivotIndex = left + ((right - left) >> 1);
-                (int lower, int upper) = Partition(span, left, right, pivotIndex, axis, entries);
+                int pivotIndex = SelectPivot(span, left, right, axis, entries);
+                float pivot = GetAxis(entries[span[pivotIndex]], axis);
 
-                if (k < lower)
+                int i = left;
+                int j = right;
+
+                if (axis == 0)
                 {
-                    right = lower - 1;
+                    while (i <= j)
+                    {
+                        while (i <= j && entries[span[i]].position.x < pivot)
+                        {
+                            i++;
+                        }
+
+                        while (i <= j && entries[span[j]].position.x > pivot)
+                        {
+                            j--;
+                        }
+
+                        if (i <= j)
+                        {
+                            (span[i], span[j]) = (span[j], span[i]);
+                            i++;
+                            j--;
+                        }
+                    }
+                }
+                else
+                {
+                    while (i <= j)
+                    {
+                        while (i <= j && entries[span[i]].position.y < pivot)
+                        {
+                            i++;
+                        }
+
+                        while (i <= j && entries[span[j]].position.y > pivot)
+                        {
+                            j--;
+                        }
+
+                        if (i <= j)
+                        {
+                            (span[i], span[j]) = (span[j], span[i]);
+                            i++;
+                            j--;
+                        }
+                    }
+                }
+
+                if (k <= j)
+                {
+                    right = j;
                     continue;
                 }
 
-                if (k < upper)
+                if (k >= i)
                 {
-                    return;
+                    left = i;
+                    continue;
                 }
 
-                left = upper;
+                return;
             }
         }
 
-        private static (int lowerBound, int upperBound) Partition(
+        private static int SelectPivot(
             Span<int> span,
             int left,
             int right,
-            int pivotIndex,
             int axis,
             Entry[] entries
         )
         {
-            int pivotEntryIndex = span[pivotIndex];
-            float pivotValue = GetAxis(entries[pivotEntryIndex], axis);
-            (span[pivotIndex], span[right]) = (span[right], span[pivotIndex]);
+            int mid = left + ((right - left) >> 1);
 
-            int storeIndex = left;
-            for (int i = left; i < right; ++i)
+            float leftValue = GetAxis(entries[span[left]], axis);
+            float midValue = GetAxis(entries[span[mid]], axis);
+            float rightValue = GetAxis(entries[span[right]], axis);
+
+            if (leftValue > midValue)
             {
-                if (GetAxis(entries[span[i]], axis) < pivotValue)
+                (span[left], span[mid]) = (span[mid], span[left]);
+                (leftValue, midValue) = (midValue, leftValue);
+            }
+
+            if (midValue > rightValue)
+            {
+                (span[mid], span[right]) = (span[right], span[mid]);
+                (midValue, rightValue) = (rightValue, midValue);
+
+                if (leftValue > midValue)
                 {
-                    (span[storeIndex], span[i]) = (span[i], span[storeIndex]);
-                    storeIndex++;
+                    (span[left], span[mid]) = (span[mid], span[left]);
+                    (leftValue, midValue) = (midValue, leftValue);
                 }
             }
 
-            int storeIndexEq = storeIndex;
-            for (int i = storeIndex; i < right; ++i)
+            return mid;
+        }
+
+        private static void InsertionSort(Span<int> span, int axis, Entry[] entries)
+        {
+            if (span.Length <= 1)
             {
-                if (GetAxis(entries[span[i]], axis) == pivotValue)
-                {
-                    (span[storeIndexEq], span[i]) = (span[i], span[storeIndexEq]);
-                    storeIndexEq++;
-                }
+                return;
             }
 
-            (span[right], span[storeIndexEq]) = (span[storeIndexEq], span[right]);
-            storeIndexEq++;
+            if (axis == 0)
+            {
+                for (int i = 1; i < span.Length; ++i)
+                {
+                    int currentIndex = span[i];
+                    float currentValue = entries[currentIndex].position.x;
+                    int j = i - 1;
 
-            return (storeIndex, storeIndexEq);
+                    while (j >= 0 && entries[span[j]].position.x > currentValue)
+                    {
+                        span[j + 1] = span[j];
+                        j--;
+                    }
+
+                    span[j + 1] = currentIndex;
+                }
+            }
+            else
+            {
+                for (int i = 1; i < span.Length; ++i)
+                {
+                    int currentIndex = span[i];
+                    float currentValue = entries[currentIndex].position.y;
+                    int j = i - 1;
+
+                    while (j >= 0 && entries[span[j]].position.y > currentValue)
+                    {
+                        span[j + 1] = span[j];
+                        j--;
+                    }
+
+                    span[j + 1] = currentIndex;
+                }
+            }
         }
 
         private static float GetAxis(in Entry entry, int axis) =>

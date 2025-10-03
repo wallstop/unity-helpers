@@ -6,10 +6,7 @@ namespace WallstopStudios.UnityHelpers.Utils
 {
     using System;
     using System.Collections.Generic;
-    using System.IO;
-    using System.Runtime.Serialization.Formatters.Binary;
     using System.Text;
-    using System.Text.Json;
     using UnityEngine;
 #if !SINGLE_THREADED
     using System.Threading;
@@ -82,10 +79,36 @@ namespace WallstopStudios.UnityHelpers.Utils
             () => new Stack<T>(),
             onRelease: stack => stack.Clear()
         );
+    }
 
+    public static class SortedSetBuffer<T>
+    {
         public static readonly WallstopGenericPool<SortedSet<T>> SortedSet = new(
             () => new SortedSet<T>(),
             onRelease: set => set.Clear()
+        );
+    }
+
+    public static class LinkedListBuffer<T>
+    {
+        public static readonly WallstopGenericPool<LinkedList<T>> LinkedList = new(
+            () => new LinkedList<T>(),
+            onRelease: linkedList => linkedList.Clear()
+        );
+    }
+
+    public static class DictionaryBuffer<TKey, TValue>
+    {
+        public static readonly WallstopGenericPool<Dictionary<TKey, TValue>> Dictionary = new(
+            () => new Dictionary<TKey, TValue>(),
+            onRelease: dictionary => dictionary.Clear()
+        );
+
+        public static readonly WallstopGenericPool<
+            SortedDictionary<TKey, TValue>
+        > SortedDictionary = new(
+            () => new SortedDictionary<TKey, TValue>(),
+            onRelease: sortedDictionary => sortedDictionary.Clear()
         );
     }
 
