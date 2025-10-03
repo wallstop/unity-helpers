@@ -658,10 +658,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 throw new ArgumentException(nameof(gridPositions));
             }
 
-            QuadTree<FastVector3Int> NewQuadTree() =>
+            QuadTree2D<FastVector3Int> NewQuadTree2D() =>
                 new(gridPositions, CellToWorld, maybeBounds.Value, bucketSize: bucketSize);
 
-            QuadTree<FastVector3Int> quadTree = NewQuadTree();
+            QuadTree2D<FastVector3Int> quadTree = NewQuadTree2D();
             using PooledResource<List<FastVector3Int>> neighborsBuffer =
                 Buffers<FastVector3Int>.List.Get();
             List<FastVector3Int> neighbors = neighborsBuffer.resource;

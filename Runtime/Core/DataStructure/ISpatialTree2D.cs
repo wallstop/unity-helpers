@@ -3,7 +3,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     using System.Collections.Generic;
     using UnityEngine;
 
-    public interface ISpatialTree<T>
+    public interface ISpatialTree2D<T>
     {
         Bounds Boundary { get; }
 

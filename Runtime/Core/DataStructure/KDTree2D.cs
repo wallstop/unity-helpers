@@ -9,7 +9,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     using Utils;
 
     [Serializable]
-    public sealed class KDTree<T> : ISpatialTree<T>
+    public sealed class KDTree2D<T> : ISpatialTree2D<T>
     {
         [Serializable]
         public readonly struct Entry
@@ -82,7 +82,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         private readonly bool _balanced;
         private readonly int _bucketSize;
 
-        public KDTree(
+        public KDTree2D(
             IEnumerable<T> points,
             Func<T, Vector2> elementTransformer,
             int bucketSize = DefaultBucketSize,

@@ -1,4 +1,4 @@
-﻿namespace WallstopStudios.UnityHelpers.Tests.DataStructures
+namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 {
     using System;
     using System.Collections.Generic;
@@ -7,16 +7,16 @@
     using WallstopStudios.UnityHelpers.Core.DataStructure;
     using WallstopStudios.UnityHelpers.Core.Random;
 
-    public sealed class RTreeTests
+    public sealed class RTree2DTests
     {
         private IRandom Random => PRNG.Instance;
 
-        private RTree<Bounds> CreateTree(IEnumerable<Bounds> bounds)
+        private RTree2D<Bounds> CreateTree(IEnumerable<Bounds> bounds)
         {
-            return new RTree<Bounds>(bounds, b => b);
+            return new RTree2D<Bounds>(bounds, b => b);
         }
 
-        private static List<Bounds> QueryBounds(RTree<Bounds> tree, Bounds bounds)
+        private static List<Bounds> QueryBounds(RTree2D<Bounds> tree, Bounds bounds)
         {
             List<Bounds> results = new();
             tree.GetElementsInBounds(bounds, results);
@@ -24,7 +24,7 @@
         }
 
         private static List<Bounds> QueryRange(
-            RTree<Bounds> tree,
+            RTree2D<Bounds> tree,
             Vector2 position,
             float range,
             float minimumRange = 0f
@@ -40,7 +40,7 @@
         {
             Assert.Throws<ArgumentNullException>(() =>
             {
-                new RTree<Bounds>(null, b => b);
+                new RTree2D<Bounds>(null, b => b);
             });
         }
 
@@ -50,7 +50,7 @@
             List<Bounds> bounds = new() { new Bounds(Vector3.zero, Vector3.one) };
             Assert.Throws<ArgumentNullException>(() =>
             {
-                new RTree<Bounds>(bounds, null);
+                new RTree2D<Bounds>(bounds, null);
             });
         }
 
@@ -58,7 +58,7 @@
         public void ConstructorWithEmptyCollectionSucceeds()
         {
             List<Bounds> bounds = new();
-            RTree<Bounds> tree = CreateTree(bounds);
+            RTree2D<Bounds> tree = CreateTree(bounds);
             Assert.IsNotNull(tree);
 
             List<Bounds> results = QueryBounds(tree, new Bounds(Vector3.zero, Vector3.one * 1000));
@@ -73,7 +73,7 @@
                 Vector3.one * 10
             );
             List<Bounds> bounds = new() { bound };
-            RTree<Bounds> tree = CreateTree(bounds);
+            RTree2D<Bounds> tree = CreateTree(bounds);
 
             Assert.IsNotNull(tree);
 
@@ -87,7 +87,7 @@
         {
             Bounds bound = new(new Vector3(5, 5, 0), Vector3.one * 2);
             List<Bounds> bounds = new() { bound, bound, bound };
-            RTree<Bounds> tree = CreateTree(bounds);
+            RTree2D<Bounds> tree = CreateTree(bounds);
 
             List<Bounds> results = QueryBounds(tree, new Bounds(Vector3.zero, Vector3.one * 1000));
             Assert.AreEqual(3, results.Count);
@@ -97,7 +97,7 @@
         public void GetElementsInBoundsWithEmptyTreeReturnsEmpty()
         {
             List<Bounds> bounds = new();
-            RTree<Bounds> tree = CreateTree(bounds);
+            RTree2D<Bounds> tree = CreateTree(bounds);
 
             List<Bounds> results = QueryBounds(tree, new Bounds(Vector3.zero, Vector3.one * 100));
             Assert.AreEqual(0, results.Count);
@@ -114,7 +114,7 @@
                     bounds.Add(new Bounds(new Vector3(x * 10, y * 10, 0), Vector3.one * 5));
                 }
             }
-            RTree<Bounds> tree = CreateTree(bounds);
+            RTree2D<Bounds> tree = CreateTree(bounds);
 
             Bounds searchBounds = new(new Vector3(50, 50, 0), Vector3.one * 30);
             List<Bounds> results = QueryBounds(tree, searchBounds);
@@ -135,7 +135,7 @@
                 new(new Vector3(10, 10, 0), Vector3.one),
                 new(new Vector3(20, 20, 0), Vector3.one),
             };
-            RTree<Bounds> tree = CreateTree(bounds);
+            RTree2D<Bounds> tree = CreateTree(bounds);
 
             Bounds searchBounds = new(new Vector3(1000, 1000, 0), Vector3.one * 10);
             List<Bounds> results = QueryBounds(tree, searchBounds);
@@ -152,7 +152,7 @@
                 new(new Vector3(15, 15, 0), Vector3.one * 2),
                 new(new Vector3(25, 25, 0), Vector3.one * 2),
             };
-            RTree<Bounds> tree = CreateTree(bounds);
+            RTree2D<Bounds> tree = CreateTree(bounds);
 
             Bounds searchBounds = new(new Vector3(5, 5, 0), Vector3.one * 1);
             List<Bounds> results = QueryBounds(tree, searchBounds);
@@ -164,7 +164,7 @@
         public void GetElementsInRangeWithEmptyTreeReturnsEmpty()
         {
             List<Bounds> bounds = new();
-            RTree<Bounds> tree = CreateTree(bounds);
+            RTree2D<Bounds> tree = CreateTree(bounds);
 
             List<Bounds> results = QueryRange(tree, Vector2.zero, 100f);
             Assert.AreEqual(0, results.Count);
@@ -181,7 +181,7 @@
                     bounds.Add(new Bounds(new Vector3(x * 10, y * 10, 0), Vector3.one * 2));
                 }
             }
-            RTree<Bounds> tree = CreateTree(bounds);
+            RTree2D<Bounds> tree = CreateTree(bounds);
 
             Vector2 center = new(50, 50);
             float range = 30f;
@@ -210,7 +210,7 @@
                 new(new Vector3(10, 0, 0), Vector3.one), // distance ~10
                 new(new Vector3(20, 0, 0), Vector3.one), // distance ~20
             };
-            RTree<Bounds> tree = CreateTree(bounds);
+            RTree2D<Bounds> tree = CreateTree(bounds);
 
             // Get elements between distance 5 and 15
             List<Bounds> results = QueryRange(tree, center, 15f, minimumRange: 5f);
@@ -221,7 +221,7 @@
         public void GetApproximateNearestNeighborsWithEmptyTreeReturnsEmpty()
         {
             List<Bounds> bounds = new();
-            RTree<Bounds> tree = CreateTree(bounds);
+            RTree2D<Bounds> tree = CreateTree(bounds);
             List<Bounds> results = new();
 
             tree.GetApproximateNearestNeighbors(Vector2.zero, 5, results);
@@ -236,7 +236,7 @@
                 new(Vector3.zero, Vector3.one),
                 new(Vector3.one * 10, Vector3.one),
             };
-            RTree<Bounds> tree = CreateTree(bounds);
+            RTree2D<Bounds> tree = CreateTree(bounds);
             List<Bounds> results = new();
 
             tree.GetApproximateNearestNeighbors(Vector2.zero, 0, results);
@@ -256,7 +256,7 @@
                     )
                 );
             }
-            RTree<Bounds> tree = CreateTree(bounds);
+            RTree2D<Bounds> tree = CreateTree(bounds);
             List<Bounds> results = new();
 
             int requestedCount = 10;
@@ -273,7 +273,7 @@
                 new(Vector3.one * 10, Vector3.one),
                 new(Vector3.right * 10, Vector3.one),
             };
-            RTree<Bounds> tree = CreateTree(bounds);
+            RTree2D<Bounds> tree = CreateTree(bounds);
             List<Bounds> results = new();
 
             tree.GetApproximateNearestNeighbors(Vector2.zero, 100, results);
@@ -291,7 +291,7 @@
                 new(new Vector3(500, 500, 0), Vector3.one),
                 new(new Vector3(1000, 1000, 0), Vector3.one),
             };
-            RTree<Bounds> tree = CreateTree(bounds);
+            RTree2D<Bounds> tree = CreateTree(bounds);
             List<Bounds> results = new();
 
             tree.GetApproximateNearestNeighbors(center, 2, results);
@@ -318,7 +318,7 @@
                 new(new Vector3(0, 20, 0), Vector3.one * 2),
                 new(new Vector3(20, 20, 0), Vector3.one * 2),
             };
-            RTree<Bounds> tree = CreateTree(bounds);
+            RTree2D<Bounds> tree = CreateTree(bounds);
 
             Bounds boundary = tree.Boundary;
             Assert.Greater(boundary.size.x, 0);
@@ -334,7 +334,7 @@
                 new(new Vector3(-10, -10, 0), Vector3.one * 2),
                 new(new Vector3(-5, -5, 0), Vector3.one * 2),
             };
-            RTree<Bounds> tree = CreateTree(bounds);
+            RTree2D<Bounds> tree = CreateTree(bounds);
 
             Bounds boundary = tree.Boundary;
             Assert.IsTrue(boundary.Contains(new Vector3(-10, -10, 0)));
@@ -357,7 +357,7 @@
                     )
                 );
             }
-            RTree<Bounds> tree = CreateTree(bounds);
+            RTree2D<Bounds> tree = CreateTree(bounds);
 
             List<Bounds> allResults = QueryBounds(
                 tree,
@@ -378,8 +378,8 @@
                 bounds.Add(new Bounds(new Vector3(i * 10, i * 10, 0), Vector3.one * 2));
             }
 
-            RTree<Bounds> treeSmallBucket = new(bounds, b => b, bucketSize: 1);
-            RTree<Bounds> treeLargeBucket = new(bounds, b => b, bucketSize: 100);
+            RTree2D<Bounds> treeSmallBucket = new(bounds, b => b, bucketSize: 1);
+            RTree2D<Bounds> treeLargeBucket = new(bounds, b => b, bucketSize: 100);
 
             List<Bounds> resultsSmall = QueryBounds(
                 treeSmallBucket,
@@ -403,8 +403,8 @@
                 bounds.Add(new Bounds(new Vector3(i * 10, i * 10, 0), Vector3.one * 2));
             }
 
-            RTree<Bounds> treeSmallBranch = new(bounds, b => b, branchFactor: 2);
-            RTree<Bounds> treeLargeBranch = new(bounds, b => b, branchFactor: 16);
+            RTree2D<Bounds> treeSmallBranch = new(bounds, b => b, branchFactor: 2);
+            RTree2D<Bounds> treeLargeBranch = new(bounds, b => b, branchFactor: 16);
 
             List<Bounds> resultsSmall = QueryBounds(
                 treeSmallBranch,
@@ -428,7 +428,7 @@
                 new(new Vector3(5, 5, 0), Vector3.one * 10),
                 new(new Vector3(10, 10, 0), Vector3.one * 5),
             };
-            RTree<Bounds> tree = CreateTree(bounds);
+            RTree2D<Bounds> tree = CreateTree(bounds);
 
             Bounds searchBounds = new(new Vector3(7, 7, 0), Vector3.one * 2);
             List<Bounds> results = QueryBounds(tree, searchBounds);
@@ -446,7 +446,7 @@
                 new(new Vector3(10, 0, 0), Vector3.one * 10),
                 new(new Vector3(20, 0, 0), Vector3.one * 10),
             };
-            RTree<Bounds> tree = CreateTree(bounds);
+            RTree2D<Bounds> tree = CreateTree(bounds);
 
             Bounds searchBounds = new(new Vector3(10, 0, 0), Vector3.one * 10);
             List<Bounds> results = QueryBounds(tree, searchBounds);
@@ -463,7 +463,7 @@
                 new(new Vector3(0.01f, 0, 0), Vector3.one * 0.001f),
                 new(new Vector3(0, 0.01f, 0), Vector3.one * 0.001f),
             };
-            RTree<Bounds> tree = CreateTree(bounds);
+            RTree2D<Bounds> tree = CreateTree(bounds);
 
             List<Bounds> results = QueryBounds(tree, new Bounds(Vector3.zero, Vector3.one * 0.1f));
             Assert.AreEqual(3, results.Count);
@@ -478,7 +478,7 @@
                 new(new Vector3(5000, 5000, 0), Vector3.one * 5000),
                 new(new Vector3(100, 100, 0), Vector3.one * 10),
             };
-            RTree<Bounds> tree = CreateTree(bounds);
+            RTree2D<Bounds> tree = CreateTree(bounds);
 
             List<Bounds> results = QueryBounds(
                 tree,
@@ -501,7 +501,7 @@
                     )
                 );
             }
-            RTree<Bounds> tree = CreateTree(bounds);
+            RTree2D<Bounds> tree = CreateTree(bounds);
 
             Bounds queryBounds = new(Vector3.zero, Vector3.one * 30);
 
@@ -520,7 +520,7 @@
             {
                 bounds.Add(new Bounds(new Vector3(i * 10, 0, 0), Vector3.one * 2));
             }
-            RTree<Bounds> tree = CreateTree(bounds);
+            RTree2D<Bounds> tree = CreateTree(bounds);
 
             List<Bounds> allResults = QueryBounds(
                 tree,
@@ -546,7 +546,7 @@
                     bounds.Add(new Bounds(new Vector3(x * 10, y * 10, 0), Vector3.one * 4));
                 }
             }
-            RTree<Bounds> tree = CreateTree(bounds);
+            RTree2D<Bounds> tree = CreateTree(bounds);
 
             Bounds searchBounds = new(new Vector3(50, 50, 0), Vector3.one * 20);
             List<Bounds> results = QueryBounds(tree, searchBounds);
@@ -562,7 +562,7 @@
             {
                 bounds.Add(new Bounds(new Vector3(i, 0, 0), Vector3.one));
             }
-            RTree<Bounds> tree = CreateTree(bounds);
+            RTree2D<Bounds> tree = CreateTree(bounds);
 
             List<Bounds> buffer = new();
             List<Bounds> results = tree.GetElementsInBounds(
@@ -583,7 +583,7 @@
                 new(new Vector3(10, 10, 0), Vector3.zero),
                 new(new Vector3(15, 15, 0), Vector3.zero),
             };
-            RTree<Bounds> tree = CreateTree(bounds);
+            RTree2D<Bounds> tree = CreateTree(bounds);
 
             List<Bounds> results = QueryBounds(
                 tree,
@@ -603,7 +603,7 @@
             };
 
             // Should not throw
-            RTree<Bounds> tree = CreateTree(bounds);
+            RTree2D<Bounds> tree = CreateTree(bounds);
             Assert.IsNotNull(tree);
         }
 
@@ -617,7 +617,7 @@
                 new(new Vector3(-100, 100, 0), Vector3.one * 2),
                 new(new Vector3(100, -100, 0), Vector3.one * 2),
             };
-            RTree<Bounds> tree = CreateTree(bounds);
+            RTree2D<Bounds> tree = CreateTree(bounds);
 
             List<Bounds> results = QueryRange(tree, Vector2.zero, 200f);
             Assert.AreEqual(4, results.Count);
@@ -626,14 +626,14 @@
         [Test]
         public void StrPackingAlgorithmCreatesBalancedStructure()
         {
-            // RTree uses STR (Sort-Tile-Recursive) packing
+            // RTree2D uses STR (Sort-Tile-Recursive) packing
             List<Bounds> bounds = new();
             for (int i = 0; i < 100; i++)
             {
                 bounds.Add(new Bounds(new Vector3(i, i, 0), Vector3.one));
             }
 
-            RTree<Bounds> tree = CreateTree(bounds);
+            RTree2D<Bounds> tree = CreateTree(bounds);
 
             // Tree should be able to efficiently query anywhere
             List<Bounds> corner1 = QueryBounds(
@@ -658,7 +658,7 @@
                 // All bounds on x-axis (y=0)
                 bounds.Add(new Bounds(new Vector3(i, 0, 0), Vector3.one * 0.5f));
             }
-            RTree<Bounds> tree = CreateTree(bounds);
+            RTree2D<Bounds> tree = CreateTree(bounds);
 
             // Verify tree was created successfully
             Assert.IsNotNull(tree);
@@ -715,7 +715,7 @@
                 // All bounds on y-axis (x=0)
                 bounds.Add(new Bounds(new Vector3(0, i, 0), Vector3.one * 0.5f));
             }
-            RTree<Bounds> tree = CreateTree(bounds);
+            RTree2D<Bounds> tree = CreateTree(bounds);
 
             // Verify tree was created successfully
             Assert.IsNotNull(tree);

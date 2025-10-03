@@ -8,8 +8,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using WallstopStudios.UnityHelpers.Core.Random;
     using Vector2 = UnityEngine.Vector2;
 
-    public abstract class SpatialTreeTests<TTree>
-        where TTree : ISpatialTree<Vector2>
+    public abstract class SpatialTree2DTests<TTree>
+        where TTree : ISpatialTree2D<Vector2>
     {
         private IRandom Random => PRNG.Instance;
 

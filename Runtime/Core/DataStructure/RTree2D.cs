@@ -8,7 +8,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     using Utils;
 
     [Serializable]
-    public sealed class RTree<T> : ISpatialTree<T>
+    public sealed class RTree2D<T> : ISpatialTree2D<T>
     {
         internal const float MinimumNodeSize = 0.001f;
 
@@ -82,7 +82,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         private readonly ElementData[] _elementData;
         private readonly RTreeNode _head;
 
-        public RTree(
+        public RTree2D(
             IEnumerable<T> points,
             Func<T, Bounds> elementTransformer,
             int bucketSize = DefaultBucketSize,

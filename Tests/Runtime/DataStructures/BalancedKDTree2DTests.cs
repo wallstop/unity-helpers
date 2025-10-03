@@ -1,4 +1,4 @@
-﻿namespace WallstopStudios.UnityHelpers.Tests.DataStructures
+namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 {
     using System;
     using System.Collections.Generic;
@@ -8,13 +8,13 @@
     using WallstopStudios.UnityHelpers.Core.DataStructure;
     using WallstopStudios.UnityHelpers.Core.Random;
 
-    public sealed class QuadTreeTests : SpatialTreeTests<QuadTree<Vector2>>
+    public sealed class BalancedKdTree2DTests : SpatialTree2DTests<KDTree2D<Vector2>>
     {
         private IRandom Random => PRNG.Instance;
 
-        protected override QuadTree<Vector2> CreateTree(IEnumerable<Vector2> points)
+        protected override KDTree2D<Vector2> CreateTree(IEnumerable<Vector2> points)
         {
-            return new QuadTree<Vector2>(points, _ => _);
+            return new KDTree2D<Vector2>(points, _ => _, balanced: true);
         }
 
         [Test]
@@ -22,7 +22,7 @@
         {
             Assert.Throws<ArgumentNullException>(() =>
             {
-                new QuadTree<Vector2>(null, _ => _);
+                new KDTree2D<Vector2>(null, _ => _, balanced: true);
             });
         }
 
@@ -32,7 +32,7 @@
             List<Vector2> points = new() { Vector2.zero };
             Assert.Throws<ArgumentNullException>(() =>
             {
-                new QuadTree<Vector2>(points, null);
+                new KDTree2D<Vector2>(points, null, balanced: true);
             });
         }
 
@@ -40,7 +40,7 @@
         public void ConstructorWithEmptyCollectionSucceeds()
         {
             List<Vector2> points = new();
-            QuadTree<Vector2> tree = CreateTree(points);
+            KDTree2D<Vector2> tree = CreateTree(points);
             Assert.IsNotNull(tree);
 
             List<Vector2> results = new();
@@ -53,7 +53,7 @@
         {
             Vector2 point = new(Random.NextFloat(-100, 100), Random.NextFloat(-100, 100));
             List<Vector2> points = new() { point };
-            QuadTree<Vector2> tree = CreateTree(points);
+            KDTree2D<Vector2> tree = CreateTree(points);
 
             Assert.IsNotNull(tree);
 
@@ -68,7 +68,7 @@
         {
             Vector2 point = new(5, 5);
             List<Vector2> points = new() { point, point, point };
-            QuadTree<Vector2> tree = CreateTree(points);
+            KDTree2D<Vector2> tree = CreateTree(points);
 
             List<Vector2> results = new();
             tree.GetElementsInRange(point, 10000f, results);
@@ -79,7 +79,7 @@
         public void GetElementsInRangeWithEmptyTreeReturnsEmpty()
         {
             List<Vector2> points = new();
-            QuadTree<Vector2> tree = CreateTree(points);
+            KDTree2D<Vector2> tree = CreateTree(points);
             List<Vector2> results = new();
 
             tree.GetElementsInRange(Vector2.zero, 100f, results);
@@ -91,7 +91,7 @@
         {
             Vector2 target = new(10, 10);
             List<Vector2> points = new() { target, new(10.1f, 10), new(10, 10.1f) };
-            QuadTree<Vector2> tree = CreateTree(points);
+            KDTree2D<Vector2> tree = CreateTree(points);
             List<Vector2> results = new();
 
             tree.GetElementsInRange(target, 0f, results);
@@ -107,7 +107,7 @@
             {
                 points.Add(new Vector2(Random.NextFloat(-50, 50), Random.NextFloat(-50, 50)));
             }
-            QuadTree<Vector2> tree = CreateTree(points);
+            KDTree2D<Vector2> tree = CreateTree(points);
             List<Vector2> results = new();
 
             tree.GetElementsInRange(Vector2.zero, 10000f, results);
@@ -124,7 +124,7 @@
                 new(5, 0), // distance 5
                 new(10, 0), // distance 10
             };
-            QuadTree<Vector2> tree = CreateTree(points);
+            KDTree2D<Vector2> tree = CreateTree(points);
             List<Vector2> results = new();
 
             // Get elements between distance 2 and 8
@@ -144,7 +144,7 @@
                     points.Add(new Vector2(x, y));
                 }
             }
-            QuadTree<Vector2> tree = CreateTree(points);
+            KDTree2D<Vector2> tree = CreateTree(points);
             List<Vector2> results = new();
 
             Bounds searchBounds = new(new Vector3(5, 5, 0), new Vector3(3, 3, 1));
@@ -161,7 +161,7 @@
         public void GetElementsInBoundsWithEmptyTreeReturnsEmpty()
         {
             List<Vector2> points = new();
-            QuadTree<Vector2> tree = CreateTree(points);
+            KDTree2D<Vector2> tree = CreateTree(points);
             List<Vector2> results = new();
 
             Bounds searchBounds = new(Vector3.zero, Vector3.one * 10);
@@ -173,7 +173,7 @@
         public void GetElementsInBoundsWithNonIntersectingBoundsReturnsEmpty()
         {
             List<Vector2> points = new() { new(0, 0), new(1, 1), new(2, 2) };
-            QuadTree<Vector2> tree = CreateTree(points);
+            KDTree2D<Vector2> tree = CreateTree(points);
             List<Vector2> results = new();
 
             Bounds searchBounds = new(new Vector3(100, 100, 0), new Vector3(10, 10, 1));
@@ -182,24 +182,10 @@
         }
 
         [Test]
-        public void GetElementsInBoundsWithTinyBoundsFindsExactElements()
-        {
-            Vector2 target = new(5, 5);
-            List<Vector2> points = new() { target, new(5.5f, 5.5f), new(10, 10) };
-            QuadTree<Vector2> tree = CreateTree(points);
-            List<Vector2> results = new();
-
-            Bounds searchBounds = new(new Vector3(5, 5, 0), new Vector3(0.1f, 0.1f, 1));
-            tree.GetElementsInBounds(searchBounds, results);
-            Assert.AreEqual(1, results.Count);
-            Assert.AreEqual(target, results[0]);
-        }
-
-        [Test]
         public void GetApproximateNearestNeighborsWithEmptyTreeReturnsEmpty()
         {
             List<Vector2> points = new();
-            QuadTree<Vector2> tree = CreateTree(points);
+            KDTree2D<Vector2> tree = CreateTree(points);
             List<Vector2> results = new();
 
             tree.GetApproximateNearestNeighbors(Vector2.zero, 5, results);
@@ -210,7 +196,7 @@
         public void GetApproximateNearestNeighborsWithCountZeroReturnsEmpty()
         {
             List<Vector2> points = new() { Vector2.zero, Vector2.one };
-            QuadTree<Vector2> tree = CreateTree(points);
+            KDTree2D<Vector2> tree = CreateTree(points);
             List<Vector2> results = new();
 
             tree.GetApproximateNearestNeighbors(Vector2.zero, 0, results);
@@ -225,7 +211,7 @@
             {
                 points.Add(new Vector2(Random.NextFloat(-100, 100), Random.NextFloat(-100, 100)));
             }
-            QuadTree<Vector2> tree = CreateTree(points);
+            KDTree2D<Vector2> tree = CreateTree(points);
             List<Vector2> results = new();
 
             int requestedCount = 10;
@@ -237,7 +223,7 @@
         public void GetApproximateNearestNeighborsWithCountGreaterThanElementsReturnsAll()
         {
             List<Vector2> points = new() { Vector2.zero, Vector2.one, Vector2.right };
-            QuadTree<Vector2> tree = CreateTree(points);
+            KDTree2D<Vector2> tree = CreateTree(points);
             List<Vector2> results = new();
 
             tree.GetApproximateNearestNeighbors(Vector2.zero, 100, results);
@@ -245,48 +231,26 @@
         }
 
         [Test]
-        public void GetApproximateNearestNeighborsReturnsClosestElements()
+        public void BalancedTreeCreatesBalancedStructure()
         {
-            Vector2 center = Vector2.zero;
-            List<Vector2> points = new() { new(1, 0), new(0, 1), new(100, 100), new(200, 200) };
-            QuadTree<Vector2> tree = CreateTree(points);
-            List<Vector2> results = new();
-
-            tree.GetApproximateNearestNeighbors(center, 2, results);
-            Assert.AreEqual(2, results.Count);
-
-            // Verify both results are closer than the far points
-            foreach (Vector2 result in results)
-            {
-                float distance = Vector2.Distance(center, result);
-                Assert.Less(distance, 10f);
-            }
-        }
-
-        [Test]
-        public void GetApproximateNearestNeighborsAtTreeCornerFindsElements()
-        {
+            // Balanced tree should handle sorted input efficiently
             List<Vector2> points = new();
-            for (int x = 0; x < 10; x++)
+            for (int i = 0; i < 100; i++)
             {
-                for (int y = 0; y < 10; y++)
-                {
-                    points.Add(new Vector2(x, y));
-                }
+                points.Add(new Vector2(i, i));
             }
-            QuadTree<Vector2> tree = CreateTree(points);
-            List<Vector2> results = new();
+            KDTree2D<Vector2> tree = CreateTree(points);
 
-            Vector2 corner = new(-100, -100);
-            tree.GetApproximateNearestNeighbors(corner, 5, results);
-            Assert.AreEqual(5, results.Count);
+            List<Vector2> results = new();
+            tree.GetElementsInRange(new Vector2(50, 50), 10f, results);
+            Assert.Greater(results.Count, 0);
         }
 
         [Test]
         public void BoundaryCalculatedCorrectlyForPositivePoints()
         {
             List<Vector2> points = new() { new(0, 0), new(10, 0), new(0, 10), new(10, 10) };
-            QuadTree<Vector2> tree = CreateTree(points);
+            KDTree2D<Vector2> tree = CreateTree(points);
 
             Bounds bounds = tree.Boundary;
             Assert.Greater(bounds.size.x, 0);
@@ -298,22 +262,10 @@
         public void BoundaryCalculatedCorrectlyForNegativePoints()
         {
             List<Vector2> points = new() { new(-10, -10), new(-5, -5), new(-1, -1) };
-            QuadTree<Vector2> tree = CreateTree(points);
+            KDTree2D<Vector2> tree = CreateTree(points);
 
             Bounds bounds = tree.Boundary;
             Assert.IsTrue(bounds.Contains(new Vector3(-5, -5, 0)));
-        }
-
-        [Test]
-        public void BoundaryCalculatedCorrectlyForMixedPoints()
-        {
-            List<Vector2> points = new() { new(-100, -100), new(100, 100) };
-            QuadTree<Vector2> tree = CreateTree(points);
-
-            Bounds bounds = tree.Boundary;
-            Assert.IsTrue(bounds.Contains(new Vector3(-100, -100, 0)));
-            Assert.IsTrue(bounds.Contains(new Vector3(100, 100, 0)));
-            Assert.IsTrue(bounds.Contains(Vector3.zero));
         }
 
         [Test]
@@ -326,7 +278,7 @@
                     new Vector2(Random.NextFloat(-1000, 1000), Random.NextFloat(-1000, 1000))
                 );
             }
-            QuadTree<Vector2> tree = CreateTree(points);
+            KDTree2D<Vector2> tree = CreateTree(points);
 
             List<Vector2> allResults = new();
             tree.GetElementsInRange(Vector2.zero, 100000f, allResults);
@@ -346,8 +298,13 @@
                 points.Add(new Vector2(i, i));
             }
 
-            QuadTree<Vector2> treeSmallBucket = new(points, _ => _, bucketSize: 1);
-            QuadTree<Vector2> treeLargeBucket = new(points, _ => _, bucketSize: 100);
+            KDTree2D<Vector2> treeSmallBucket = new(points, _ => _, bucketSize: 1, balanced: true);
+            KDTree2D<Vector2> treeLargeBucket = new(
+                points,
+                _ => _,
+                bucketSize: 100,
+                balanced: true
+            );
 
             List<Vector2> resultsSmall = new();
             List<Vector2> resultsLarge = new();
@@ -359,68 +316,6 @@
         }
 
         [Test]
-        public void ElementsAtBoundaryAreHandledCorrectly()
-        {
-            List<Vector2> points = new()
-            {
-                new(0, 0),
-                new(100, 0),
-                new(0, 100),
-                new(100, 100),
-                new(50, 50),
-            };
-            QuadTree<Vector2> tree = CreateTree(points);
-            List<Vector2> results = new();
-
-            tree.GetElementsInRange(new Vector2(50, 50), 100f, results);
-            Assert.AreEqual(5, results.Count);
-        }
-
-        [Test]
-        public void MultipleQueriesOnSameTreeReturnConsistentResults()
-        {
-            List<Vector2> points = new();
-            for (int i = 0; i < 50; i++)
-            {
-                points.Add(new Vector2(Random.NextFloat(-50, 50), Random.NextFloat(-50, 50)));
-            }
-            QuadTree<Vector2> tree = CreateTree(points);
-
-            List<Vector2> results1 = new();
-            List<Vector2> results2 = new();
-
-            Vector2 queryPoint = Vector2.zero;
-            float queryRange = 25f;
-
-            tree.GetElementsInRange(queryPoint, queryRange, results1);
-            tree.GetElementsInRange(queryPoint, queryRange, results2);
-
-            Assert.AreEqual(results1.Count, results2.Count);
-            CollectionAssert.AreEquivalent(results1, results2);
-        }
-
-        [Test]
-        public void VeryClosePointsAreDistinguished()
-        {
-            List<Vector2> points = new()
-            {
-                new(0, 0),
-                new(0.0001f, 0),
-                new(0, 0.0001f),
-                new(0.0001f, 0.0001f),
-            };
-            QuadTree<Vector2> tree = CreateTree(points);
-
-            List<Vector2> allResults = new();
-            tree.GetElementsInRange(Vector2.zero, 10000f, allResults);
-            Assert.AreEqual(4, allResults.Count);
-
-            List<Vector2> results = new();
-            tree.GetElementsInRange(Vector2.zero, 0.001f, results);
-            Assert.AreEqual(4, results.Count);
-        }
-
-        [Test]
         public void ColinearPointsHandledCorrectly()
         {
             List<Vector2> points = new();
@@ -428,7 +323,7 @@
             {
                 points.Add(new Vector2(i, 0)); // All on x-axis
             }
-            QuadTree<Vector2> tree = CreateTree(points);
+            KDTree2D<Vector2> tree = CreateTree(points);
 
             // Verify tree was created successfully
             Assert.IsNotNull(tree);
@@ -478,7 +373,7 @@
             {
                 points.Add(new Vector2(0, i)); // All on y-axis
             }
-            QuadTree<Vector2> tree = CreateTree(points);
+            KDTree2D<Vector2> tree = CreateTree(points);
 
             // Verify tree was created successfully
             Assert.IsNotNull(tree);
@@ -532,117 +427,84 @@
             foreach (Vector2 result in results)
             {
                 Assert.AreEqual(0, result.x, "All points should be on y-axis (x=0)");
-                Assert.GreaterOrEqual(result.y, 40, "Points should be >= y=40");
-                Assert.LessOrEqual(
-                    result.y,
-                    60,
-                    "Points should be < y=60 (max bound is exclusive)"
-                );
-            }
-
-            // Test bounds at the start of the vertical line
-            results.Clear();
-            tree.GetElementsInBounds(
-                new Bounds(new Vector3(0, 5, 0), new Vector3(4, 10, 1)),
-                results
-            );
-            Assert.Greater(results.Count, 0, "Should find points at start of line");
-            foreach (Vector2 result in results)
-            {
-                Assert.AreEqual(0, result.x, "All points should be on y-axis (x=0)");
-                Assert.GreaterOrEqual(result.y, 0, "Points should be >= y=0");
-                Assert.LessOrEqual(result.y, 10, "Points should be <= y=10");
-            }
-
-            // Test bounds at the end of the vertical line
-            results.Clear();
-            tree.GetElementsInBounds(
-                new Bounds(new Vector3(0, 95, 0), new Vector3(4, 10, 1)),
-                results
-            );
-            Assert.Greater(results.Count, 0, "Should find points at end of line");
-            foreach (Vector2 result in results)
-            {
-                Assert.AreEqual(0, result.x, "All points should be on y-axis (x=0)");
-                Assert.GreaterOrEqual(result.y, 90, "Points should be >= y=90");
-                Assert.LessOrEqual(result.y, 99, "Points should be <= y=99");
-            }
-
-            // Test bounds that don't intersect the vertical line
-            results.Clear();
-            tree.GetElementsInBounds(
-                new Bounds(new Vector3(50, 50, 0), new Vector3(10, 20, 1)),
-                results
-            );
-            Assert.AreEqual(0, results.Count, "Should find no points in bounds away from line");
-
-            // Test very narrow bounds along the line
-            results.Clear();
-            tree.GetElementsInBounds(
-                new Bounds(new Vector3(0, 50, 0), new Vector3(0.1f, 5, 1)),
-                results
-            );
-            Assert.Greater(results.Count, 0, "Should find points even with narrow bounds");
-            Assert.LessOrEqual(results.Count, 11, "Should find at most 11 points (y=45 to y=55)");
-
-            // Test querying the entire vertical line with large bounds
-            results.Clear();
-            tree.GetElementsInBounds(
-                new Bounds(new Vector3(0, 50, 0), new Vector3(10, 100, 1)),
-                results
-            );
-            Assert.AreEqual(100, results.Count, "Should find all 100 points with large bounds");
-
-            // Test small range queries at specific positions
-            results.Clear();
-            tree.GetElementsInRange(new Vector2(0, 25), 2f, results);
-            Assert.Greater(results.Count, 0, "Should find points near y=25");
-            foreach (Vector2 result in results)
-            {
-                Assert.AreEqual(0, result.x, "All points should be on y-axis (x=0)");
-                float distance = Vector2.Distance(result, new Vector2(0, 25));
-                Assert.LessOrEqual(distance, 2f, $"Point {result} should be within range 2");
-            }
-
-            // Test range query with minimum range
-            results.Clear();
-            tree.GetElementsInRange(new Vector2(0, 50), 10f, results, minimumRange: 5f);
-            Assert.Greater(results.Count, 0, "Should find points in annular region");
-            foreach (Vector2 result in results)
-            {
-                float distance = Vector2.Distance(result, new Vector2(0, 50));
-                Assert.GreaterOrEqual(distance, 5f, $"Point {result} should be >= minimum range 5");
-                Assert.LessOrEqual(distance, 10f, $"Point {result} should be <= maximum range 10");
+                Assert.GreaterOrEqual(result.y, 40f, "Points should be >= y=40");
+                Assert.LessOrEqual(result.y, 60f, "Points should be <= y=60");
             }
         }
 
         [Test]
-        public void ExtremeCoordinatesHandledCorrectly()
+        public void VeryClosePointsAreDistinguished()
         {
             List<Vector2> points = new()
             {
-                new(float.MinValue / 2, float.MinValue / 2),
-                new(float.MaxValue / 2, float.MaxValue / 2),
                 new(0, 0),
+                new(0.0001f, 0),
+                new(0, 0.0001f),
+                new(0.0001f, 0.0001f),
             };
-
-            // Should not throw
-            QuadTree<Vector2> tree = CreateTree(points);
+            KDTree2D<Vector2> tree = CreateTree(points);
 
             List<Vector2> results = new();
-            tree.GetElementsInRange(Vector2.zero, float.MaxValue / 2, results);
-            Assert.AreEqual(3, results.Count);
+            tree.GetElementsInRange(Vector2.zero, 0.001f, results);
+            Assert.AreEqual(4, results.Count);
+        }
+
+        [Test]
+        public void MultipleQueriesOnSameTreeReturnConsistentResults()
+        {
+            List<Vector2> points = new();
+            for (int i = 0; i < 50; i++)
+            {
+                points.Add(new Vector2(Random.NextFloat(-50, 50), Random.NextFloat(-50, 50)));
+            }
+            KDTree2D<Vector2> tree = CreateTree(points);
+
+            List<Vector2> results1 = new();
+            List<Vector2> results2 = new();
+
+            Vector2 queryPoint = Vector2.zero;
+            float queryRange = 25f;
+
+            tree.GetElementsInRange(queryPoint, queryRange, results1);
+            tree.GetElementsInRange(queryPoint, queryRange, results2);
+
+            Assert.AreEqual(results1.Count, results2.Count);
+            CollectionAssert.AreEquivalent(results1, results2);
+        }
+
+        [Test]
+        public void BalancedVsUnbalancedBothFindSameElements()
+        {
+            List<Vector2> points = new();
+            for (int i = 0; i < 100; i++)
+            {
+                points.Add(new Vector2(Random.NextFloat(-50, 50), Random.NextFloat(-50, 50)));
+            }
+
+            KDTree2D<Vector2> balancedTree = new(points, _ => _, balanced: true);
+            KDTree2D<Vector2> unbalancedTree = new(points, _ => _, balanced: false);
+
+            List<Vector2> balancedResults = new();
+            List<Vector2> unbalancedResults = new();
+
+            Vector2 queryPoint = Vector2.zero;
+            float queryRange = 25f;
+
+            balancedTree.GetElementsInRange(queryPoint, queryRange, balancedResults);
+            unbalancedTree.GetElementsInRange(queryPoint, queryRange, unbalancedResults);
+
+            Assert.AreEqual(balancedResults.Count, unbalancedResults.Count);
+            CollectionAssert.AreEquivalent(balancedResults, unbalancedResults);
         }
 
         [Test]
         public void GetElementsInRangeClearsResultsList()
         {
             List<Vector2> points = new() { Vector2.zero };
-            QuadTree<Vector2> tree = CreateTree(points);
+            KDTree2D<Vector2> tree = CreateTree(points);
             List<Vector2> results = new() { Vector2.one, Vector2.right };
 
             tree.GetElementsInRange(Vector2.zero, 1f, results);
-            // Results should be cleared and repopulated
             Assert.IsTrue(results.All(v => points.Contains(v)));
         }
 
@@ -650,11 +512,51 @@
         public void GetElementsInBoundsClearsResultsList()
         {
             List<Vector2> points = new() { Vector2.zero };
-            QuadTree<Vector2> tree = CreateTree(points);
+            KDTree2D<Vector2> tree = CreateTree(points);
             List<Vector2> results = new() { Vector2.one, Vector2.right };
 
             tree.GetElementsInBounds(new Bounds(Vector3.zero, Vector3.one * 10), results);
             Assert.IsTrue(results.All(v => points.Contains(v)));
+        }
+
+        [Test]
+        public void WorstCaseSortedInputHandledEfficiently()
+        {
+            // Worst case for unbalanced tree - sorted data
+            List<Vector2> points = new();
+            for (int i = 0; i < 1000; i++)
+            {
+                points.Add(new Vector2(i, 0));
+            }
+
+            KDTree2D<Vector2> tree = CreateTree(points);
+
+            List<Vector2> results = new();
+            tree.GetElementsInRange(new Vector2(500, 0), 50f, results);
+            Assert.Greater(results.Count, 0);
+        }
+
+        [Test]
+        public void AlternatingPatternHandledCorrectly()
+        {
+            List<Vector2> points = new();
+            for (int i = 0; i < 100; i++)
+            {
+                if (i % 2 == 0)
+                {
+                    points.Add(new Vector2(i, 0));
+                }
+                else
+                {
+                    points.Add(new Vector2(0, i));
+                }
+            }
+
+            KDTree2D<Vector2> tree = CreateTree(points);
+
+            List<Vector2> results = new();
+            tree.GetElementsInRange(Vector2.zero, 20f, results);
+            Assert.Greater(results.Count, 0);
         }
     }
 }

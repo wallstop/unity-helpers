@@ -11,7 +11,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.DataStructure;
 
-    public sealed class SpatialTreePerformanceTests
+    public sealed class SpatialTree2DPerformanceTests
     {
         private const int PointsPerAxis = 1_000;
         private const float PointBoundsSize = 0.001f;
@@ -35,7 +35,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
 
         private readonly struct TreeSpec
         {
-            public TreeSpec(string name, Func<IEnumerable<Vector2>, ISpatialTree<Vector2>> factory)
+            public TreeSpec(
+                string name,
+                Func<IEnumerable<Vector2>, ISpatialTree2D<Vector2>> factory
+            )
             {
                 Name = name;
                 Factory = factory;
@@ -43,7 +46,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
 
             public string Name { get; }
 
-            public Func<IEnumerable<Vector2>, ISpatialTree<Vector2>> Factory { get; }
+            public Func<IEnumerable<Vector2>, ISpatialTree2D<Vector2>> Factory { get; }
         }
 
         private readonly struct BoundsSpec
@@ -78,7 +81,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             foreach (TreeSpec spec in treeSpecs)
             {
                 Stopwatch timer = Stopwatch.StartNew();
-                ISpatialTree<Vector2> tree = spec.Factory(points);
+                ISpatialTree2D<Vector2> tree = spec.Factory(points);
                 timer.Stop();
 
                 RecordRow(
@@ -176,7 +179,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
 
             foreach (string group in groupOrder)
             {
-                if (!groupRows.TryGetValue(group, out List<string>? rows))
+                if (!groupRows.TryGetValue(group, out List<string> rows))
                 {
                     continue;
                 }
@@ -199,13 +202,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
         {
             return new[]
             {
-                new TreeSpec("KDTree (Balanced)", points => new KDTree<Vector2>(points, p => p)),
                 new TreeSpec(
-                    "KDTree (Unbalanced)",
-                    points => new KDTree<Vector2>(points, p => p, balanced: false)
+                    "KDTree2D (Balanced)",
+                    points => new KDTree2D<Vector2>(points, p => p)
                 ),
-                new TreeSpec("QuadTree", points => new QuadTree<Vector2>(points, p => p)),
-                new TreeSpec("RTree", points => new RTree<Vector2>(points, CreatePointBounds)),
+                new TreeSpec(
+                    "KDTree2D (Unbalanced)",
+                    points => new KDTree2D<Vector2>(points, p => p, balanced: false)
+                ),
+                new TreeSpec("QuadTree2D", points => new QuadTree2D<Vector2>(points, p => p)),
+                new TreeSpec("RTree2D", points => new RTree2D<Vector2>(points, CreatePointBounds)),
             };
         }
 
@@ -255,7 +261,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
         }
 
         private static int MeasureRange(
-            ISpatialTree<Vector2> tree,
+            ISpatialTree2D<Vector2> tree,
             Vector2 center,
             float radius,
             List<Vector2> buffer
@@ -273,7 +279,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
         }
 
         private static int MeasureBounds(
-            ISpatialTree<Vector2> tree,
+            ISpatialTree2D<Vector2> tree,
             Bounds bounds,
             List<Vector2> buffer
         )
@@ -290,7 +296,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
         }
 
         private static int MeasureApproximateNearestNeighbors(
-            ISpatialTree<Vector2> tree,
+            ISpatialTree2D<Vector2> tree,
             Vector2 center,
             int count,
             List<Vector2> buffer
@@ -319,13 +325,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
         {
             string key = $"{group}::{label}";
 
-            if (!groupRows.TryGetValue(group, out List<string>? rows))
+            if (!groupRows.TryGetValue(group, out List<string> rows))
             {
                 rows = new List<string>();
                 groupRows[group] = rows;
             }
 
-            if (!rowValues.TryGetValue(key, out Dictionary<string, string>? row))
+            if (!rowValues.TryGetValue(key, out Dictionary<string, string> row))
             {
                 row = new Dictionary<string, string>();
                 rowValues[key] = row;
@@ -380,7 +386,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             IEnumerable<string> rowKeys,
             IReadOnlyDictionary<string, Dictionary<string, string>> rowValues,
             IReadOnlyDictionary<string, (string Group, string Label)> rowMetadata,
-            ICollection<string>? readmeLines
+            ICollection<string> readmeLines
         )
         {
             string headerLine = $"| {header} | {string.Join(" | ", treeNames)} |";
@@ -413,10 +419,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                     )
                     + " |";
                 UnityEngine.Debug.Log(rowLine);
-                readmeLines?.Add(rowLine);
+                if (readmeLines != null)
+                {
+                    readmeLines.Add(rowLine);
+                }
             }
 
-            readmeLines?.Add(string.Empty);
+            if (readmeLines != null)
+            {
+                readmeLines.Add(string.Empty);
+            }
         }
 
         private static Bounds CreatePointBounds(Vector2 point)

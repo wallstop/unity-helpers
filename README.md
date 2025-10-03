@@ -151,9 +151,9 @@ random.NextNoiseMap(width, height); // A configurable noise map generated using 
 # Spatial Trees
 There are three implemented 2D immutable spatial trees that can store generic objects, as long as there is some resolution function that can convert them into Vector2 spatial positions.
 
-- QuadTree (easiest to use)
-- KDTree
-- RTree
+- QuadTree2D (easiest to use)
+- KDTree2D
+- RTree2D
 
 Spatial trees, after construction, allow for O(log(n)) spatial query time instead of O(n). They are extremely useful if you need repeated spatial queries, or if you have relatively static spatial data.
 
@@ -161,40 +161,40 @@ Spatial trees, after construction, allow for O(log(n)) spatial query time instea
 
 <!-- SPATIAL_TREE_BENCHMARKS_START -->
 #### Construction
-| Construction | KDTree (Balanced) | KDTree (Unbalanced) | QuadTree | RTree |
+| Construction | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | --- | --- | --- | --- | --- |
-| 1 million points | 0 (3.799s) | 1 (0.551s) | 2 (0.381s) | 0 (1.264s) |
+| 1 million points | 0 (3.758s) | 1 (0.529s) | 2 (0.409s) | 0 (1.301s) |
 
 #### Elements In Range
-| Elements In Range | KDTree (Balanced) | KDTree (Unbalanced) | QuadTree | RTree |
+| Elements In Range | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | --- | --- | --- | --- | --- |
 | Full (r=500) | 23 | 23 | 23 | 3 |
-| Half (r=250) | 91 | 92 | 82 | 11 |
-| Quarter (r=125) | 364 | 364 | 307 | 45 |
-| Tiny (r=1) | 33,187 | 34,111 | 43,629 | 26,952 |
+| Half (r=250) | 92 | 92 | 79 | 11 |
+| Quarter (r=125) | 364 | 364 | 306 | 45 |
+| Tiny (r=1) | 33,181 | 34,114 | 43,273 | 27,334 |
 
 #### Get Elements In Bounds
-| Get Elements In Bounds | KDTree (Balanced) | KDTree (Unbalanced) | QuadTree | RTree |
+| Get Elements In Bounds | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | --- | --- | --- | --- | --- |
-| Full (size≈dataset) | 130 | 132 | 121 | 5 |
-| Half (size≈dataset/2) | 560 | 550 | 354 | 21 |
-| Quarter (size≈dataset/4) | 2,185 | 2,157 | 1,052 | 85 |
-| Unit (size=1) | 41,661 | 41,280 | 52,025 | 27,968 |
+| Full (size≈dataset) | 128 | 130 | 115 | 6 |
+| Half (size≈dataset/2) | 559 | 559 | 326 | 21 |
+| Quarter (size≈dataset/4) | 2,197 | 2,197 | 1,050 | 85 |
+| Unit (size=1) | 41,711 | 42,064 | 50,362 | 27,941 |
 
 #### Approximate Nearest Neighbors
-| Approximate Nearest Neighbors | KDTree (Balanced) | KDTree (Unbalanced) | QuadTree | RTree |
+| Approximate Nearest Neighbors | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | --- | --- | --- | --- | --- |
-| 500 neighbors | 1,103 | 2,164 | 1,611 | 22,599 |
-| 100 neighbors | 12,818 | 11,735 | 11,761 | 62,724 |
-| 10 neighbors | 137,234 | 124,564 | 81,644 | 103,804 |
-| 1 neighbor | 225,830 | 245,892 | 105,082 | 111,474 |
+| 500 neighbors | 1,104 | 2,168 | 1,611 | 23,235 |
+| 100 neighbors | 12,821 | 11,698 | 11,755 | 63,324 |
+| 10 neighbors | 135,086 | 120,633 | 84,824 | 104,876 |
+| 1 neighbor | 220,488 | 254,340 | 104,822 | 111,941 |
 <!-- SPATIAL_TREE_BENCHMARKS_END -->
 
 ## Usage
 
 ```csharp
 GameObject [] spatialStorage = { myCoolGameObject };
-QuadTree<GameObject> quadTree = new(spatialStorage, go => go.transform.position);
+QuadTree2D<GameObject> quadTree = new(spatialStorage, go => go.transform.position);
 
 // Might return your object, might not
 List<GameObject> inBounds = new();
@@ -222,3 +222,4 @@ All spatial trees expect the positional data to be *immutable*. It is very impor
 This project uses [CSharpier](https://csharpier.com/) with the default configuration to enable an enforced, consistent style. If you would like to contribute, recommendation is to ensure that changed files are ran through CSharpier prior to merge. This can be done automatically through editor plugins, or, minimally, by installing a [pre-commit hook](https://pre-commit.com/#3-install-the-git-hook-scripts).
 
 If you think there is something useful that you would like to see, please open an issue or contact me directly.
+

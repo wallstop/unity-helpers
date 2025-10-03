@@ -9,7 +9,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     using Utils;
 
     [Serializable]
-    public sealed class QuadTree<T> : ISpatialTree<T>
+    public sealed class QuadTree2D<T> : ISpatialTree2D<T>
     {
         private const int NumChildren = 4;
 
@@ -82,7 +82,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         private readonly int[] _indices;
         private readonly QuadTreeNode _head;
 
-        public QuadTree(
+        public QuadTree2D(
             IEnumerable<T> points,
             Func<T, Vector2> elementTransformer,
             Bounds? boundary = null,
