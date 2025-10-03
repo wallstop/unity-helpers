@@ -246,7 +246,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             matcher.SendMessage("Awake");
             yield return null;
 
-            Assert.IsNotNull(matcher._transform);
+            Assert.IsTrue(matcher._transform != null);
             Assert.AreEqual(follower.transform, matcher._transform);
         }
 

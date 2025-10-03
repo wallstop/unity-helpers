@@ -168,7 +168,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
             tester.AssignChildComponents();
 
-            Assert.IsNull(tester.requiredRenderer);
+            Assert.IsTrue(tester.requiredRenderer == null);
 
             yield break;
         }
@@ -261,7 +261,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             // Should NOT log error for optional component
             tester.AssignChildComponents();
 
-            Assert.IsNull(tester.optionalRenderer);
+            Assert.IsTrue(tester.optionalRenderer == null);
             yield break;
         }
 
@@ -335,7 +335,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
             tester.AssignChildComponents();
 
-            Assert.IsNull(tester.descendentOnly);
+            Assert.IsTrue(tester.descendentOnly == null);
             Assert.AreEqual(0, tester.descendentOnlyArray.Length);
 
             yield break;
@@ -549,8 +549,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             testerB.AssignChildComponents();
 
             // Both should have their own cached field info
-            Assert.IsNotNull(testerA.childRenderer);
-            Assert.IsNotNull(testerB.childRenderer);
+            Assert.IsTrue(testerA.childRenderer != null);
+            Assert.IsTrue(testerB.childRenderer != null);
             Assert.AreSame(testerA.childRenderer, testerB.childRenderer);
 
             yield break;
@@ -651,7 +651,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             // No children, no SpriteRenderer on root
             tester.AssignChildComponents();
 
-            Assert.IsNull(tester.optionalRenderer);
+            Assert.IsTrue(tester.optionalRenderer == null);
             yield break;
         }
     }

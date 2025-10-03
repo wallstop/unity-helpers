@@ -85,16 +85,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public void GetAllSpriteLabelNamesReturnsEmptyWhenBatchOrCi()
         {
             string originalCi = Environment.GetEnvironmentVariable("CI");
-            FieldInfo cacheField = typeof(Helpers).GetField(
-                nameof(Helpers.AllSpriteLabels),
-                BindingFlags.Static | BindingFlags.NonPublic
-            );
-            string[] cached = cacheField?.GetValue(null) as string[];
+            string[] cached = Helpers.AllSpriteLabels;
 
             try
             {
                 Environment.SetEnvironmentVariable("CI", "true");
-                cacheField?.SetValue(null, null);
+                Helpers.AllSpriteLabels = null;
 
                 string[] labels = Helpers.GetAllSpriteLabelNames();
                 Assert.IsNotNull(labels);
@@ -103,7 +99,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             finally
             {
                 Environment.SetEnvironmentVariable("CI", originalCi);
-                cacheField?.SetValue(null, cached);
+                Helpers.AllSpriteLabels = cached;
             }
         }
 

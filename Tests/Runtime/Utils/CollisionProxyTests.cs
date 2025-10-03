@@ -50,7 +50,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             if (eventInvoked)
             {
-                Assert.IsNotNull(invokedCollider);
+                Assert.IsTrue(invokedCollider != null);
             }
         }
 
@@ -150,7 +150,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             if (eventInvoked)
             {
-                Assert.IsNotNull(invokedCollision);
+                Assert.IsTrue(invokedCollision != null);
             }
         }
 

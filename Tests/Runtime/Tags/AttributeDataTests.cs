@@ -11,7 +11,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
     using Attribute = WallstopStudios.UnityHelpers.Tags.Attribute;
     using Object = UnityEngine.Object;
 
-    public abstract partial class AttributeTagsTestBase
+    public abstract class AttributeTagsTestBase
     {
         protected readonly List<Object> _spawnedObjects = new();
 
@@ -54,11 +54,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
 
         protected static void ResetEffectHandleId(long value = 0)
         {
-            FieldInfo idField = typeof(EffectHandle).GetField(
-                "Id",
-                BindingFlags.Static | BindingFlags.NonPublic
-            );
-            idField?.SetValue(null, value);
+            EffectHandle.Id = value;
         }
     }
 

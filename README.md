@@ -163,31 +163,31 @@ Spatial trees, after construction, allow for O(log(n)) spatial query time instea
 #### Construction
 | Construction | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | --- | --- | --- | --- | --- |
-| 1 million points | 2 (0.471s) | 3 (0.333s) | 2 (0.382s) | 0 (1.257s) |
+| 1 million points | 2 (0.442s) | 2 (0.349s) | 2 (0.380s) | 0 (1.262s) |
 
 #### Elements In Range
 | Elements In Range | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | --- | --- | --- | --- | --- |
 | Full (r=500) | 23 | 23 | 23 | 3 |
-| Half (r=250) | 91 | 92 | 83 | 11 |
-| Quarter (r=125) | 363 | 364 | 307 | 45 |
-| Tiny (r=1) | 33,169 | 34,074 | 43,656 | 27,263 |
+| Half (r=250) | 92 | 92 | 83 | 11 |
+| Quarter (r=125) | 364 | 364 | 307 | 45 |
+| Tiny (r=1) | 33,173 | 34,123 | 43,636 | 26,933 |
 
 #### Get Elements In Bounds
 | Get Elements In Bounds | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | --- | --- | --- | --- | --- |
-| Full (size≈dataset) | 125 | 132 | 122 | 5 |
-| Half (size≈dataset/2) | 559 | 559 | 354 | 21 |
-| Quarter (size≈dataset/4) | 2,197 | 2,192 | 1,052 | 85 |
-| Unit (size=1) | 41,790 | 42,020 | 52,015 | 27,953 |
+| Full (size≈dataset) | 133 | 132 | 123 | 5 |
+| Half (size≈dataset/2) | 561 | 559 | 354 | 21 |
+| Quarter (size≈dataset/4) | 2,199 | 2,199 | 1,053 | 86 |
+| Unit (size=1) | 41,835 | 42,166 | 52,100 | 27,723 |
 
 #### Approximate Nearest Neighbors
 | Approximate Nearest Neighbors | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | --- | --- | --- | --- | --- |
-| 500 neighbors | 1,103 | 2,167 | 1,612 | 22,131 |
-| 100 neighbors | 13,141 | 11,731 | 11,780 | 63,021 |
-| 10 neighbors | 160,194 | 124,542 | 71,826 | 104,906 |
-| 1 neighbor | 227,367 | 247,498 | 98,374 | 112,560 |
+| 500 neighbors | 1,125 | 2,171 | 1,610 | 22,410 |
+| 100 neighbors | 12,485 | 11,754 | 11,776 | 58,314 |
+| 10 neighbors | 152,401 | 124,662 | 81,793 | 104,515 |
+| 1 neighbor | 230,782 | 247,239 | 105,658 | 112,005 |
 <!-- SPATIAL_TREE_BENCHMARKS_END -->
 
 ## Usage

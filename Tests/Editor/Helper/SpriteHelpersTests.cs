@@ -128,7 +128,7 @@
             _testTexture.MakeReadable();
 
             TextureImporter importer = AssetImporter.GetAtPath(assetPath) as TextureImporter;
-            Assert.IsNotNull(importer, "Should be able to get TextureImporter");
+            Assert.IsTrue(importer != null, "Should be able to get TextureImporter");
             Assert.IsTrue(importer.isReadable, "TextureImporter isReadable should be true");
         }
 

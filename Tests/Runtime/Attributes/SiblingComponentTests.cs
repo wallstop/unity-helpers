@@ -45,7 +45,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             CollectionAssert.AreEquivalent(new[] { first, second }, tester.array);
             CollectionAssert.AreEquivalent(new[] { first, second }, tester.list);
 
-            Assert.IsNull(tester.optional);
+            Assert.IsTrue(tester.optional == null);
             yield break;
         }
 
@@ -65,7 +65,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
             tester.AssignSiblingComponents();
 
-            Assert.IsNull(tester.required);
+            Assert.IsTrue(tester.required == null);
             yield break;
         }
 
@@ -148,7 +148,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             // Should NOT log error for optional component
             tester.AssignSiblingComponents();
 
-            Assert.IsNull(tester.optionalCollider);
+            Assert.IsTrue(tester.optionalCollider == null);
             yield break;
         }
 
@@ -165,7 +165,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             tester.AssignSiblingComponents();
 
             // Single should return first one found
-            Assert.IsNotNull(tester.single);
+            Assert.IsTrue(tester.single != null);
             Assert.IsTrue(
                 tester.single == first || tester.single == second || tester.single == third
             );
@@ -296,9 +296,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
             tester.AssignSiblingComponents();
 
-            Assert.IsNotNull(tester.siblingCollider);
-            Assert.IsNotNull(tester.siblingRenderer);
-            Assert.IsNotNull(tester.siblingRigidBody);
+            Assert.IsTrue(tester.siblingCollider != null);
+            Assert.IsTrue(tester.siblingRenderer != null);
+            Assert.IsTrue(tester.siblingRigidBody != null);
 
             yield break;
         }
@@ -351,7 +351,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
             tester.AssignSiblingComponents();
 
-            Assert.IsNull(tester.siblingCollider);
+            Assert.IsTrue(tester.siblingCollider == null);
             Assert.AreEqual(0, tester.colliderArray.Length);
             Assert.AreEqual(0, tester.colliderList.Count);
 
@@ -394,7 +394,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             tester.AssignSiblingComponents();
 
             // includeInactive=true should find both enabled and disabled components
-            Assert.IsNotNull(tester.includeInactiveSingle);
+            Assert.IsTrue(tester.includeInactiveSingle != null);
             Assert.AreEqual(2, tester.includeInactiveArray.Length);
             CollectionAssert.Contains(tester.includeInactiveArray, first);
             CollectionAssert.Contains(tester.includeInactiveArray, second);
@@ -458,7 +458,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             tester.AssignSiblingComponents();
 
             // includeInactive=false on inactive GameObject should find nothing
-            Assert.IsNull(tester.activeOnlySingle);
+            Assert.IsTrue(tester.activeOnlySingle == null);
             Assert.AreEqual(0, tester.activeOnlyArray.Length);
             Assert.AreEqual(0, tester.activeOnlyList.Count);
 
@@ -478,7 +478,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             tester.AssignSiblingComponents();
 
             // includeInactive=true on inactive GameObject should still find components
-            Assert.IsNotNull(tester.includeInactiveSingle);
+            Assert.IsTrue(tester.includeInactiveSingle != null);
             Assert.AreEqual(2, tester.includeInactiveArray.Length);
             Assert.AreEqual(2, tester.includeInactiveList.Count);
 

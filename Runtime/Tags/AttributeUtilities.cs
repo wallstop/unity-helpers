@@ -11,8 +11,8 @@ namespace WallstopStudios.UnityHelpers.Tags
 
     public static class AttributeUtilities
     {
-        private static string[] AllAttributeNames;
-        private static readonly Dictionary<Type, Dictionary<string, FieldInfo>> AttributeFields =
+        internal static string[] AllAttributeNames;
+        internal static readonly Dictionary<Type, Dictionary<string, FieldInfo>> AttributeFields =
             new();
 
         private static readonly Dictionary<

@@ -139,7 +139,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             );
 
             tester.AssignParentComponents();
-            Assert.IsNull(tester.requiredRenderer);
+            Assert.IsTrue(tester.requiredRenderer == null);
             yield break;
         }
 
@@ -241,7 +241,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             // Should NOT log error for optional component
             tester.AssignParentComponents();
 
-            Assert.IsNull(tester.optionalRenderer);
+            Assert.IsTrue(tester.optionalRenderer == null);
             yield break;
         }
 
@@ -316,7 +316,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
             tester.AssignParentComponents();
 
-            Assert.IsNull(tester.ancestorOnly);
+            Assert.IsTrue(tester.ancestorOnly == null);
             Assert.AreEqual(0, tester.ancestorOnlyArray.Length);
 
             yield break;
@@ -453,8 +453,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             testerB.AssignParentComponents();
 
             // Both should have their own cached field info
-            Assert.IsNotNull(testerA.parentRenderer);
-            Assert.IsNotNull(testerB.parentRenderer);
+            Assert.IsTrue(testerA.parentRenderer != null);
+            Assert.IsTrue(testerB.parentRenderer != null);
             Assert.AreSame(testerA.parentRenderer, testerB.parentRenderer);
 
             yield break;

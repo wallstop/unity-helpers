@@ -10,7 +10,7 @@ namespace WallstopStudios.UnityHelpers.Tags
             IComparable<EffectHandle>,
             IComparable
     {
-        private static long Id;
+        internal static long Id;
 
         public readonly AttributeEffect effect;
 

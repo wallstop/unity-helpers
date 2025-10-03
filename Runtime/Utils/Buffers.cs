@@ -77,12 +77,57 @@ namespace WallstopStudios.UnityHelpers.Utils
         );
     }
 
-    public static class SortedSetBuffer<T>
+    public static class SetBuffers<T>
     {
         public static readonly WallstopGenericPool<SortedSet<T>> SortedSet = new(
             () => new SortedSet<T>(),
             onRelease: set => set.Clear()
         );
+#if SINGLE_THREADED
+        private static readonly Dictionary<
+            IComparer<T>,
+            WallstopGenericPool<SortedSet<T>>
+        > SortedSetCache = new();
+        private static readonly Dictionary<
+            IComparer<T>,
+            WallstopGenericPool<HashSet<T>>
+        > HashSetCache = new();
+#else
+        private static readonly ConcurrentDictionary<
+            IComparer<T>,
+            WallstopGenericPool<SortedSet<T>>
+        > SortedSetCache = new();
+        private static readonly ConcurrentDictionary<
+            IEqualityComparer<T>,
+            WallstopGenericPool<HashSet<T>>
+        > HashSetCache = new();
+#endif
+
+        public static WallstopGenericPool<SortedSet<T>> GetSortedSetPool(IComparer<T> comparer)
+        {
+            return comparer == null
+                ? throw new ArgumentNullException(nameof(comparer))
+                : SortedSetCache.GetOrAdd(
+                    comparer,
+                    inComparer => new WallstopGenericPool<SortedSet<T>>(
+                        () => new SortedSet<T>(inComparer),
+                        onRelease: set => set.Clear()
+                    )
+                );
+        }
+
+        public static WallstopGenericPool<HashSet<T>> GetHashSetPool(IEqualityComparer<T> comparer)
+        {
+            return comparer == null
+                ? throw new ArgumentNullException(nameof(comparer))
+                : HashSetCache.GetOrAdd(
+                    comparer,
+                    inComparer => new WallstopGenericPool<HashSet<T>>(
+                        () => new HashSet<T>(inComparer),
+                        onRelease: set => set.Clear()
+                    )
+                );
+        }
     }
 
     public static class LinkedListBuffer<T>
@@ -106,6 +151,56 @@ namespace WallstopStudios.UnityHelpers.Utils
             () => new SortedDictionary<TKey, TValue>(),
             onRelease: sortedDictionary => sortedDictionary.Clear()
         );
+
+#if SINGLE_THREADED
+        private static readonly Dictionary<
+            IEqualityComparer<TKey>,
+            WallstopGenericPool<Dictionary<TKey, TValue>>
+        > DictionaryCache = new();
+        private static readonly Dictionary<
+            IComparer<TKey>,
+            WallstopGenericPool<SortedDictionary<TKey, TValue>>
+        > SortedDictionaryCache = new();
+#else
+        private static readonly ConcurrentDictionary<
+            IEqualityComparer<TKey>,
+            WallstopGenericPool<Dictionary<TKey, TValue>>
+        > DictionaryCache = new();
+        private static readonly ConcurrentDictionary<
+            IComparer<TKey>,
+            WallstopGenericPool<SortedDictionary<TKey, TValue>>
+        > SortedDictionaryCache = new();
+#endif
+
+        public static WallstopGenericPool<Dictionary<TKey, TValue>> GetDictionaryPool(
+            IEqualityComparer<TKey> comparer
+        )
+        {
+            return comparer == null
+                ? throw new ArgumentNullException(nameof(comparer))
+                : DictionaryCache.GetOrAdd(
+                    comparer,
+                    inComparer => new WallstopGenericPool<Dictionary<TKey, TValue>>(
+                        () => new Dictionary<TKey, TValue>(inComparer),
+                        onRelease: dictionary => dictionary.Clear()
+                    )
+                );
+        }
+
+        public static WallstopGenericPool<SortedDictionary<TKey, TValue>> GetSortedDictionaryPool(
+            IComparer<TKey> comparer
+        )
+        {
+            return comparer == null
+                ? throw new ArgumentNullException(nameof(comparer))
+                : SortedDictionaryCache.GetOrAdd(
+                    comparer,
+                    inComparer => new WallstopGenericPool<SortedDictionary<TKey, TValue>>(
+                        () => new SortedDictionary<TKey, TValue>(inComparer),
+                        onRelease: dictionary => dictionary.Clear()
+                    )
+                );
+        }
     }
 
 #if SINGLE_THREADED

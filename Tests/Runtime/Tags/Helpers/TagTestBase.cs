@@ -44,22 +44,8 @@
 
         protected static void ClearAttributeUtilitiesCaches()
         {
-            FieldInfo namesField = typeof(AttributeUtilities).GetField(
-                "AllAttributeNames",
-                BindingFlags.Static | BindingFlags.NonPublic
-            );
-            namesField?.SetValue(null, null);
-
-            FieldInfo fieldsField = typeof(AttributeUtilities).GetField(
-                "AttributeFields",
-                BindingFlags.Static | BindingFlags.NonPublic
-            );
-            if (
-                fieldsField?.GetValue(null) is Dictionary<Type, Dictionary<string, FieldInfo>> cache
-            )
-            {
-                cache.Clear();
-            }
+            AttributeUtilities.AllAttributeNames = null;
+            AttributeUtilities.AttributeFields.Clear();
         }
     }
 }

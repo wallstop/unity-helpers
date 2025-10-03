@@ -68,7 +68,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             yield return null;
 
-            Assert.IsNotNull(matcher.polygonCollider);
+            Assert.IsTrue(matcher.polygonCollider != null);
         }
 
         [UnityTest]
@@ -87,7 +87,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             matcher.OnValidate();
             yield return null;
 
-            Assert.IsNotNull(matcher.spriteRenderer);
+            Assert.IsTrue(matcher.spriteRenderer != null);
         }
 
         [UnityTest]
@@ -179,7 +179,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             matcher.OnValidate();
             yield return null;
 
-            Assert.IsNotNull(matcher.image);
+            Assert.IsTrue(matcher.image != null);
         }
 
         [UnityTest]
@@ -283,7 +283,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             matcher.OnValidate();
             yield return null;
 
-            Assert.IsNull(matcher.polygonCollider);
+            Assert.IsTrue(matcher.polygonCollider == null);
         }
 
         [UnityTest]
@@ -447,7 +447,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             matcher.SendMessage("Update");
             yield return null;
 
-            Assert.IsNull(matcher._lastHandled);
+            Assert.IsTrue(matcher._lastHandled == null);
         }
 
         [UnityTest]
