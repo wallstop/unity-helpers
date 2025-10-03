@@ -169,31 +169,31 @@ Spatial trees, after construction, allow for O(log(n)) spatial query time instea
 #### Construction
 | Construction | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | --- | --- | --- | --- | --- |
-| 1 million points | 2 (0.442s) | 2 (0.350s) | 2 (0.379s) | 1 (0.566s) |
+| 1 million points | 2 (0.448s) | 2 (0.362s) | 2 (0.382s) | 1 (0.567s) |
 
 #### Elements In Range
 | Elements In Range | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | --- | --- | --- | --- | --- |
-| Full (r=500) | 23 | 23 | 23 | 3 |
-| Half (r=250) | 92 | 92 | 82 | 12 |
-| Quarter (r=125) | 363 | 363 | 307 | 49 |
-| Tiny (r=1) | 33,175 | 34,082 | 43,691 | 27,993 |
+| Full (r=500) | 23 | 23 | 22 | 3 |
+| Half (r=250) | 91 | 91 | 80 | 12 |
+| Quarter (r=125) | 363 | 361 | 306 | 48 |
+| Tiny (r=1) | 33,095 | 33,742 | 43,642 | 28,126 |
 
 #### Get Elements In Bounds
 | Get Elements In Bounds | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | --- | --- | --- | --- | --- |
-| Full (size≈dataset) | 134 | 129 | 117 | 6 |
-| Half (size≈dataset/2) | 560 | 558 | 345 | 22 |
-| Quarter (size≈dataset/4) | 2,199 | 2,193 | 1,047 | 94 |
-| Unit (size=1) | 41,605 | 41,948 | 52,004 | 28,713 |
+| Full (size≈dataset) | 122 | 124 | 119 | 6 |
+| Half (size≈dataset/2) | 557 | 558 | 351 | 22 |
+| Quarter (size≈dataset/4) | 2,193 | 2,191 | 1,049 | 93 |
+| Unit (size=1) | 41,557 | 41,923 | 51,962 | 28,715 |
 
 #### Approximate Nearest Neighbors
 | Approximate Nearest Neighbors | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | --- | --- | --- | --- | --- |
-| 500 neighbors | 1,124 | 2,168 | 1,613 | 29,220 |
-| 100 neighbors | 12,446 | 11,718 | 11,765 | 72,300 |
-| 10 neighbors | 151,798 | 124,790 | 82,030 | 107,992 |
-| 1 neighbor | 229,882 | 247,272 | 106,568 | 114,126 |
+| 500 neighbors | 1,122 | 2,160 | 1,609 | 28,633 |
+| 100 neighbors | 12,302 | 11,669 | 11,736 | 70,769 |
+| 10 neighbors | 150,363 | 123,176 | 81,908 | 106,541 |
+| 1 neighbor | 231,691 | 244,856 | 106,164 | 112,464 |
 <!-- SPATIAL_TREE_BENCHMARKS_END -->
 
 ## Usage

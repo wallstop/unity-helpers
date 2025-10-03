@@ -179,17 +179,21 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             float inverseRangeX = rangeX > float.Epsilon ? 1f / rangeX : 0f;
             float inverseRangeY = rangeY > float.Epsilon ? 1f / rangeY : 0f;
 
-            for (int i = 0; i < elementCount; ++i)
+            if (elementCount > 0)
             {
-                ref ElementData data = ref elementData[i];
-                Vector2 center = data.Center;
-                float normalizedX = (center.x - minX) * inverseRangeX;
-                float normalizedY = (center.y - minY) * inverseRangeY;
-                ushort quantizedX = QuantizeNormalized(normalizedX);
-                ushort quantizedY = QuantizeNormalized(normalizedY);
-                uint mortonKey = EncodeMorton(quantizedX, quantizedY);
-                data.MortonKey = mortonKey;
-                data.SortKey = ComposeSortKey(mortonKey, quantizedX, quantizedY);
+                ref ElementData elementRef = ref elementData[0];
+                for (int i = 0; i < elementCount; ++i)
+                {
+                    ref ElementData data = ref Unsafe.Add(ref elementRef, i);
+                    Vector2 center = data.Center;
+                    float normalizedX = (center.x - minX) * inverseRangeX;
+                    float normalizedY = (center.y - minY) * inverseRangeY;
+                    ushort quantizedX = QuantizeNormalized(normalizedX);
+                    ushort quantizedY = QuantizeNormalized(normalizedY);
+                    uint mortonKey = EncodeMorton(quantizedX, quantizedY);
+                    data.MortonKey = mortonKey;
+                    data.SortKey = ComposeSortKey(mortonKey, quantizedX, quantizedY);
+                }
             }
 
             if (elementCount > 1)
@@ -501,9 +505,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             for (int shift = 0; shift < 64; shift += BitsPerPass)
             {
                 counts.Clear();
+                ref ElementData sourceRef = ref source[0];
                 for (int i = 0; i < length; ++i)
                 {
-                    ulong key = source[i].SortKey;
+                    ulong key = Unsafe.Add(ref sourceRef, i).SortKey;
                     counts[(int)((key >> shift) & (BucketCount - 1))]++;
                 }
 
@@ -515,16 +520,15 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     total += count;
                 }
 
+                ref ElementData destinationRef = ref destination[0];
                 for (int i = 0; i < length; ++i)
                 {
-                    ElementData value = source[i];
+                    ElementData value = Unsafe.Add(ref sourceRef, i);
                     int bucket = (int)((value.SortKey >> shift) & (BucketCount - 1));
-                    destination[counts[bucket]++] = value;
+                    Unsafe.Add(ref destinationRef, counts[bucket]++) = value;
                 }
 
-                ElementData[] temp = source;
-                source = destination;
-                destination = temp;
+                (source, destination) = (destination, source);
                 dataInScratch = !dataInScratch;
             }
 
@@ -552,7 +556,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 maxY = Math.Max(maxY, max.y);
             }
 
-            Bounds nodeBounds = new Bounds(
+            Bounds nodeBounds = new(
                 new Vector3(minX + (maxX - minX) / 2f, minY + (maxY - minY) / 2f, 0f),
                 new Vector3(maxX - minX, maxY - minY, 0f)
             );
