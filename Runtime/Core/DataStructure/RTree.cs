@@ -252,9 +252,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 }
 
                 RTreeNode[] childNodes = currentNode.children;
-                for (int i = 0; i < childNodes.Length; ++i)
+                foreach (RTreeNode child in childNodes)
                 {
-                    RTreeNode child = childNodes[i];
                     if (child.count <= 0)
                     {
                         continue;
@@ -312,9 +311,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 minimumArea = new Circle(position, minimumRange);
             }
 
-            for (int i = 0; i < candidateIndices.Count; ++i)
+            foreach (int index in candidateIndices)
             {
-                ElementData elementData = _elementData[candidateIndices[i]];
+                ref ElementData elementData = ref _elementData[index];
                 Bounds elementBoundary = elementData.Bounds;
                 if (!area.Intersects(elementBoundary))
                 {
@@ -414,7 +413,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 int endIndex = startIndex + selected.count;
                 for (int i = startIndex; i < endIndex; ++i)
                 {
-                    ElementData elementData = _elementData[i];
+                    ref ElementData elementData = ref _elementData[i];
                     if (!nearestNeighborsSet.Add(elementData.Value))
                     {
                         continue;
@@ -453,9 +452,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 }
             }
 
-            for (int i = 0; i < nearestIndices.Count; ++i)
+            foreach (int index in nearestIndices)
             {
-                nearestNeighbors.Add(_elementData[nearestIndices[i]].Value);
+                nearestNeighbors.Add(_elementData[index].Value);
             }
 
             stack.Clear();
