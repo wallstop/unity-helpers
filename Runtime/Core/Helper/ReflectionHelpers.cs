@@ -7,18 +7,37 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 {
     using System;
     using System.Collections;
-    using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Linq;
     using System.Linq.Expressions;
     using System.Reflection;
     using System.Reflection.Emit;
     using System.Runtime.CompilerServices;
+#if !SINGLE_THREADED
+    using System.Collections.Concurrent;
+#else
+    using Extension;
+#endif
 
     public delegate void FieldSetter<TInstance, in TValue>(ref TInstance instance, TValue value);
 
     public static class ReflectionHelpers
     {
+#if SINGLE_THREADED
+        private static readonly Dictionary<Type, Func<int, Array>> ArrayCreators = new();
+        private static readonly Dictionary<Type, Func<IList>> ListCreators = new();
+        private static readonly Dictionary<Type, Func<int, IList>> ListWithCapacityCreators = new();
+        private static readonly Dictionary<
+            MethodInfo,
+            Func<object, object[], object>
+        > MethodInvokers = new();
+        private static readonly Dictionary<
+            MethodInfo,
+            Func<object[], object>
+        > StaticMethodInvokers = new();
+        private static readonly Dictionary<ConstructorInfo, Func<object[], object>> Constructors =
+            new();
+#else
         private static readonly ConcurrentDictionary<Type, Func<int, Array>> ArrayCreators = new();
         private static readonly ConcurrentDictionary<Type, Func<IList>> ListCreators = new();
         private static readonly ConcurrentDictionary<
@@ -37,6 +56,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             ConstructorInfo,
             Func<object[], object>
         > Constructors = new();
+#endif
 
         private static readonly bool CanCompileExpressions = CheckExpressionCompilationSupport();
 
@@ -1124,10 +1144,14 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             return null;
         }
 
+#if SINGLE_THREADED
+        private static readonly Dictionary<Type, Func<object, bool>> EnabledPropertyGetters = new();
+#else
         private static readonly ConcurrentDictionary<
             Type,
             Func<object, bool>
         > EnabledPropertyGetters = new();
+#endif
 
         private static Func<object, bool> BuildEnabledPropertyGetter(Type type)
         {

@@ -6,11 +6,11 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     using System.Runtime.Serialization;
     using DataStructure.Adapters;
     using UnityEngine;
-    using WallstopStudios.UnityHelpers.Utils;
+    using Utils;
 #if !SINGLE_THREADED
     using System.Collections.Concurrent;
 #else
-    using WallstopStudios.UnityHelpers.Core.Extension;
+    using Extension;
 #endif
 
     [Serializable]

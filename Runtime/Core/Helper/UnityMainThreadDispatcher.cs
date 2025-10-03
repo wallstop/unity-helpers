@@ -2,6 +2,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 {
     using System;
     using System.Collections.Concurrent;
+    using System.Collections.Generic;
     using UnityEditor;
     using UnityEngine;
     using Utils;

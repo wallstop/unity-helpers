@@ -2,7 +2,6 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 {
     using System;
     using System.Collections;
-    using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Linq;
     using System.Reflection;
@@ -12,6 +11,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
     using UnityEngine;
     using Utils;
     using Object = UnityEngine.Object;
+#if !SINGLE_THREADED
+    using System.Collections.Concurrent;
+#endif
 #if UNITY_EDITOR
     using UnityEditor;
     using UnityEditorInternal;
