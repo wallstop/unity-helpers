@@ -1,6 +1,7 @@
 namespace WallstopStudios.UnityHelpers.Tests.Performance
 {
     using System;
+    using System.Collections.Generic;
     using System.Diagnostics;
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Random;
@@ -14,28 +15,39 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
         {
             TimeSpan timeout = TimeSpan.FromSeconds(1);
 
-            UnityEngine.Debug.Log(
-                "| Random | NextBool | Next | NextUInt | NextFloat | NextDouble | NextUint - Range | NextInt - Range |"
-            );
-            UnityEngine.Debug.Log(
-                "| ------ | -------- | ---- | -------- | --------- | ---------- | ---------------- | --------------- |"
-            );
+            const string headerLine =
+                "| Random | NextBool | Next | NextUInt | NextFloat | NextDouble | NextUint - Range | NextInt - Range |";
+            const string dividerLine =
+                "| ------ | -------- | ---- | -------- | --------- | ---------- | ---------------- | --------------- |";
 
-            RunTest(new DotNetRandom(), timeout);
-            RunTest(new LinearCongruentialGenerator(), timeout);
-            RunTest(new IllusionFlow(), timeout);
-            RunTest(new PcgRandom(), timeout);
-            RunTest(new RomuDuo(), timeout);
-            RunTest(new SplitMix64(), timeout);
-            RunTest(new SquirrelRandom(), timeout);
-            RunTest(new SystemRandom(), timeout);
-            RunTest(new UnityRandom(), timeout);
-            RunTest(new WyRandom(), timeout);
-            RunTest(new XorShiftRandom(), timeout);
-            RunTest(new XoroShiroRandom(), timeout);
+            List<string> tableLines = new() { headerLine, dividerLine };
+
+            UnityEngine.Debug.Log(headerLine);
+            UnityEngine.Debug.Log(dividerLine);
+
+            LogRow(RunTest(new DotNetRandom(), timeout));
+            LogRow(RunTest(new LinearCongruentialGenerator(), timeout));
+            LogRow(RunTest(new IllusionFlow(), timeout));
+            LogRow(RunTest(new PcgRandom(), timeout));
+            LogRow(RunTest(new RomuDuo(), timeout));
+            LogRow(RunTest(new SplitMix64(), timeout));
+            LogRow(RunTest(new SquirrelRandom(), timeout));
+            LogRow(RunTest(new SystemRandom(), timeout));
+            LogRow(RunTest(new UnityRandom(), timeout));
+            LogRow(RunTest(new WyRandom(), timeout));
+            LogRow(RunTest(new XorShiftRandom(), timeout));
+            LogRow(RunTest(new XoroShiroRandom(), timeout));
+
+            BenchmarkReadmeUpdater.UpdateSection("RANDOM_BENCHMARKS", tableLines);
+
+            void LogRow(string row)
+            {
+                tableLines.Add(row);
+                UnityEngine.Debug.Log(row);
+            }
         }
 
-        private static void RunTest<T>(T random, TimeSpan timeout)
+        private static string RunTest<T>(T random, TimeSpan timeout)
             where T : IRandom
         {
             int nextBool = RunNextBool(timeout, random);
@@ -46,16 +58,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             int nextUintRange = RunNextUintRange(timeout, random);
             int nextIntRange = RunNextIntRange(timeout, random);
 
-            UnityEngine.Debug.Log(
-                $"| {random.GetType().Name} | "
-                    + $"{(nextBool / timeout.TotalSeconds):N0} | "
-                    + $"{(nextInt / timeout.TotalSeconds):N0} | "
-                    + $"{(nextUint / timeout.TotalSeconds):N0} | "
-                    + $"{(nextFloat / timeout.TotalSeconds):N0} | "
-                    + $"{(nextDouble / timeout.TotalSeconds):N0} |"
-                    + $"{(nextUintRange / timeout.TotalSeconds):N0} |"
-                    + $"{(nextIntRange / timeout.TotalSeconds):N0} |"
-            );
+            return $"| {random.GetType().Name} | "
+                + $"{(nextBool / timeout.TotalSeconds):N0} | "
+                + $"{(nextInt / timeout.TotalSeconds):N0} | "
+                + $"{(nextUint / timeout.TotalSeconds):N0} | "
+                + $"{(nextFloat / timeout.TotalSeconds):N0} | "
+                + $"{(nextDouble / timeout.TotalSeconds):N0} |"
+                + $"{(nextUintRange / timeout.TotalSeconds):N0} |"
+                + $"{(nextIntRange / timeout.TotalSeconds):N0} |";
         }
 
         // Copy-pasta'd for maximum speed

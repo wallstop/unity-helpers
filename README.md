@@ -131,6 +131,7 @@ random.NextNoiseMap(width, height); // A configurable noise map generated using 
 
 ## Performance (Number of Operations / Second)
 
+<!-- RANDOM_BENCHMARKS_START -->
 | Random | NextBool | Next | NextUInt | NextFloat | NextDouble | NextUint - Range | NextInt - Range |
 | ------ | -------- | ---- | -------- | --------- | ---------- | ---------------- | --------------- |
 | DotNetRandom | 29,600,000 | 29,600,000 | 31,400,000 | 25,100,000 | 25,600,000 |19,200,000 |18,300,000 |
@@ -145,6 +146,7 @@ random.NextNoiseMap(width, height); // A configurable noise map generated using 
 | WyRandom | 74,200,000 | 74,900,000 | 84,800,000 | 52,100,000 | 53,100,000 |32,000,000 |29,400,000 |
 | XorShiftRandom | 171,800,000 | 172,200,000 | 245,700,000 | 90,000,000 | 89,900,000 |42,400,000 |38,900,000 |
 | XoroShiroRandom | 98,700,000 | 98,600,000 | 118,500,000 | 64,200,000 | 64,900,000 |35,100,000 |33,200,000 |
+<!-- RANDOM_BENCHMARKS_END -->
 
 # Spatial Trees
 There are three implemented 2D immutable spatial trees that can store generic objects, as long as there is some resolution function that can convert them into Vector2 spatial positions.
@@ -154,6 +156,39 @@ There are three implemented 2D immutable spatial trees that can store generic ob
 - RTree
 
 Spatial trees, after construction, allow for O(log(n)) spatial query time instead of O(n). They are extremely useful if you need repeated spatial queries, or if you have relatively static spatial data.
+
+## Performance Benchmarks
+
+<!-- SPATIAL_TREE_BENCHMARKS_START -->
+#### Construction
+| Construction | KDTree (Balanced) | KDTree (Unbalanced) | QuadTree | RTree |
+| --- | --- | --- | --- | --- |
+| 1 million points | 0 (3.799s) | 1 (0.551s) | 2 (0.381s) | 0 (1.264s) |
+
+#### Elements In Range
+| Elements In Range | KDTree (Balanced) | KDTree (Unbalanced) | QuadTree | RTree |
+| --- | --- | --- | --- | --- |
+| Full (r=500) | 23 | 23 | 23 | 3 |
+| Half (r=250) | 91 | 92 | 82 | 11 |
+| Quarter (r=125) | 364 | 364 | 307 | 45 |
+| Tiny (r=1) | 33,187 | 34,111 | 43,629 | 26,952 |
+
+#### Get Elements In Bounds
+| Get Elements In Bounds | KDTree (Balanced) | KDTree (Unbalanced) | QuadTree | RTree |
+| --- | --- | --- | --- | --- |
+| Full (size≈dataset) | 130 | 132 | 121 | 5 |
+| Half (size≈dataset/2) | 560 | 550 | 354 | 21 |
+| Quarter (size≈dataset/4) | 2,185 | 2,157 | 1,052 | 85 |
+| Unit (size=1) | 41,661 | 41,280 | 52,025 | 27,968 |
+
+#### Approximate Nearest Neighbors
+| Approximate Nearest Neighbors | KDTree (Balanced) | KDTree (Unbalanced) | QuadTree | RTree |
+| --- | --- | --- | --- | --- |
+| 500 neighbors | 1,103 | 2,164 | 1,611 | 22,599 |
+| 100 neighbors | 12,818 | 11,735 | 11,761 | 62,724 |
+| 10 neighbors | 137,234 | 124,564 | 81,644 | 103,804 |
+| 1 neighbor | 225,830 | 245,892 | 105,082 | 111,474 |
+<!-- SPATIAL_TREE_BENCHMARKS_END -->
 
 ## Usage
 

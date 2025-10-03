@@ -68,6 +68,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             TreeSpec[] treeSpecs = BuildTreeSpecs();
 
             List<string> treeNames = treeSpecs.Select(spec => spec.Name).ToList();
+            List<string> readmeLines = new();
 
             Dictionary<string, List<string>> groupRows = new();
             Dictionary<string, Dictionary<string, string>> rowValues = new();
@@ -180,9 +181,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                     continue;
                 }
 
-                LogTable(group, treeNames, rows, rowValues, rowMetadata);
+                LogTable(group, treeNames, rows, rowValues, rowMetadata, readmeLines);
                 UnityEngine.Debug.Log(string.Empty);
             }
+
+            if (readmeLines.Count > 0 && string.IsNullOrWhiteSpace(readmeLines[^1]))
+            {
+                readmeLines.RemoveAt(readmeLines.Count - 1);
+            }
+
+            BenchmarkReadmeUpdater.UpdateSection("SPATIAL_TREE_BENCHMARKS", readmeLines);
 
             yield break;
         }
@@ -371,13 +379,23 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             IReadOnlyList<string> treeNames,
             IEnumerable<string> rowKeys,
             IReadOnlyDictionary<string, Dictionary<string, string>> rowValues,
-            IReadOnlyDictionary<string, (string Group, string Label)> rowMetadata
+            IReadOnlyDictionary<string, (string Group, string Label)> rowMetadata,
+            ICollection<string>? readmeLines
         )
         {
-            UnityEngine.Debug.Log($"| {header} | {string.Join(" | ", treeNames)} |");
-            UnityEngine.Debug.Log(
-                $"| {string.Join(" | ", Enumerable.Repeat("---", treeNames.Count + 1))} |"
-            );
+            string headerLine = $"| {header} | {string.Join(" | ", treeNames)} |";
+            string dividerLine =
+                $"| {string.Join(" | ", Enumerable.Repeat("---", treeNames.Count + 1))} |";
+
+            if (readmeLines != null)
+            {
+                readmeLines.Add($"#### {header}");
+                readmeLines.Add(headerLine);
+                readmeLines.Add(dividerLine);
+            }
+
+            UnityEngine.Debug.Log(headerLine);
+            UnityEngine.Debug.Log(dividerLine);
 
             foreach (string rowKey in rowKeys)
             {
@@ -395,7 +413,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                     )
                     + " |";
                 UnityEngine.Debug.Log(rowLine);
+                readmeLines?.Add(rowLine);
             }
+
+            readmeLines?.Add(string.Empty);
         }
 
         private static Bounds CreatePointBounds(Vector2 point)
