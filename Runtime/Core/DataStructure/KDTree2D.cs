@@ -607,24 +607,14 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
         public List<T> GetElementsInBounds(Bounds bounds, List<T> elementsInBounds)
         {
-            using PooledResource<Stack<KDTreeNode>> stackResource = Buffers<KDTreeNode>.Stack.Get();
-            return GetElementsInBounds(bounds, elementsInBounds, stackResource.resource);
-        }
-
-        public List<T> GetElementsInBounds(
-            Bounds bounds,
-            List<T> elementsInBounds,
-            Stack<KDTreeNode> nodeBuffer
-        )
-        {
             elementsInBounds.Clear();
             if (_head.count <= 0 || !bounds.FastIntersects2D(_bounds))
             {
                 return elementsInBounds;
             }
-
-            Stack<KDTreeNode> nodesToVisit = nodeBuffer ?? new Stack<KDTreeNode>();
-            nodesToVisit.Clear();
+            using PooledResource<Stack<KDTreeNode>> stackResource = Buffers<KDTreeNode>.Stack.Get(
+                out Stack<KDTreeNode> nodesToVisit
+            );
             nodesToVisit.Push(_head);
 
             Entry[] entries = _entries;

@@ -177,7 +177,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
 
             Span<int> counts = stackalloc int[NumChildren];
-            counts.Clear();
             Span<int> starts = stackalloc int[NumChildren];
             Span<int> next = stackalloc int[NumChildren];
 
@@ -355,25 +354,13 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
         public List<T> GetElementsInBounds(Bounds bounds, List<T> elementsInBounds)
         {
-            using PooledResource<Stack<QuadTreeNode>> stackResource =
-                Buffers<QuadTreeNode>.Stack.Get();
-            return GetElementsInBounds(bounds, elementsInBounds, stackResource.resource);
-        }
-
-        public List<T> GetElementsInBounds(
-            Bounds bounds,
-            List<T> elementsInBounds,
-            Stack<QuadTreeNode> nodeBuffer
-        )
-        {
             elementsInBounds.Clear();
             if (_head.count <= 0 || !bounds.FastIntersects2D(_bounds))
             {
                 return elementsInBounds;
             }
-
-            Stack<QuadTreeNode> nodesToVisit = nodeBuffer ?? new Stack<QuadTreeNode>();
-            nodesToVisit.Clear();
+            using PooledResource<Stack<QuadTreeNode>> stackResource =
+                Buffers<QuadTreeNode>.Stack.Get(out Stack<QuadTreeNode> nodesToVisit);
             nodesToVisit.Push(_head);
 
             Entry[] entries = _entries;
@@ -465,6 +452,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             Entry[] entries = _entries;
             int[] indices = _indices;
 
+            Vector2 comparisonPosition = position;
             Comparison<QuadTreeNode> comparison = Comparison;
             while (!current.isTerminal)
             {
@@ -538,8 +526,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             return nearestNeighbors;
 
             int Comparison(QuadTreeNode lhs, QuadTreeNode rhs) =>
-                ((Vector2)lhs.boundary.center - position).sqrMagnitude.CompareTo(
-                    ((Vector2)rhs.boundary.center - position).sqrMagnitude
+                ((Vector2)lhs.boundary.center - comparisonPosition).sqrMagnitude.CompareTo(
+                    ((Vector2)rhs.boundary.center - comparisonPosition).sqrMagnitude
                 );
         }
     }

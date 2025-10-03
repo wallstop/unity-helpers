@@ -136,9 +136,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             comparer ??= EqualityComparer<T>.Default;
 
-            using PooledResource<List<T>> listResource = Buffers<T>.List.Get();
-            // Linearize the buffer first
-            List<T> temp = listResource.resource;
+            using PooledResource<List<T>> listResource = Buffers<T>.List.Get(out List<T> temp);
             for (int i = 0; i < Count; ++i)
             {
                 temp.Add(_buffer[AdjustedIndexFor(i)]);
@@ -169,7 +167,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             return true;
         }
 
-        public int RemoveAll(Func<T, bool> predicate)
+        public int RemoveAll(Predicate<T> predicate)
         {
             if (Count == 0)
             {
@@ -177,15 +175,13 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
 
             // Linearize the buffer first
-            List<T> temp = new List<T>(Count);
+            using PooledResource<List<T>> listResource = Buffers<T>.List.Get(out List<T> temp);
             for (int i = 0; i < Count; ++i)
             {
                 temp.Add(_buffer[AdjustedIndexFor(i)]);
             }
 
-            // Remove all matching elements
-            int removedCount = temp.RemoveAll(x => predicate(x));
-
+            int removedCount = temp.RemoveAll(predicate);
             if (removedCount == 0)
             {
                 return 0;
@@ -196,7 +192,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             _buffer.AddRange(temp);
             Count = temp.Count;
             _position = Count < Capacity ? Count : 0;
-
             return removedCount;
         }
 

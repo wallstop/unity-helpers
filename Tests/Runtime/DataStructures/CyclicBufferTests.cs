@@ -689,6 +689,577 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
+        public void RemoveAllFirstElement()
+        {
+            CyclicBuffer<int> buffer = new(5);
+            buffer.Add(1);
+            buffer.Add(2);
+            buffer.Add(3);
+            buffer.Add(4);
+
+            int removed = buffer.RemoveAll(x => x == 1);
+
+            Assert.AreEqual(1, removed);
+            Assert.AreEqual(3, buffer.Count);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 2, 3, 4 }));
+        }
+
+        [Test]
+        public void RemoveAllLastElement()
+        {
+            CyclicBuffer<int> buffer = new(5);
+            buffer.Add(1);
+            buffer.Add(2);
+            buffer.Add(3);
+            buffer.Add(4);
+
+            int removed = buffer.RemoveAll(x => x == 4);
+
+            Assert.AreEqual(1, removed);
+            Assert.AreEqual(3, buffer.Count);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 1, 2, 3 }));
+        }
+
+        [Test]
+        public void RemoveAllMiddleElements()
+        {
+            CyclicBuffer<int> buffer = new(5);
+            buffer.Add(1);
+            buffer.Add(2);
+            buffer.Add(3);
+            buffer.Add(4);
+            buffer.Add(5);
+
+            int removed = buffer.RemoveAll(x => x >= 2 && x <= 4);
+
+            Assert.AreEqual(3, removed);
+            Assert.AreEqual(2, buffer.Count);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 1, 5 }));
+        }
+
+        [Test]
+        public void RemoveAllOnlyElement()
+        {
+            CyclicBuffer<int> buffer = new(5);
+            buffer.Add(42);
+
+            int removed = buffer.RemoveAll(x => x == 42);
+
+            Assert.AreEqual(1, removed);
+            Assert.AreEqual(0, buffer.Count);
+            Assert.That(buffer.ToArray(), Is.EqualTo(Array.Empty<int>()));
+        }
+
+        [Test]
+        public void RemoveAllNullPredicate()
+        {
+            CyclicBuffer<int> buffer = new(5);
+            buffer.Add(1);
+            buffer.Add(2);
+
+            Assert.Throws<ArgumentNullException>(() => buffer.RemoveAll(null));
+        }
+
+        [Test]
+        public void RemoveAllWithNullValues()
+        {
+            CyclicBuffer<string> buffer = new(5);
+            buffer.Add("A");
+            buffer.Add(null);
+            buffer.Add("B");
+            buffer.Add(null);
+            buffer.Add("C");
+
+            int removed = buffer.RemoveAll(x => x == null);
+
+            Assert.AreEqual(2, removed);
+            Assert.AreEqual(3, buffer.Count);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { "A", "B", "C" }));
+        }
+
+        [Test]
+        public void RemoveAllKeepingNullValues()
+        {
+            CyclicBuffer<string> buffer = new(5);
+            buffer.Add("A");
+            buffer.Add(null);
+            buffer.Add("B");
+            buffer.Add(null);
+            buffer.Add("C");
+
+            int removed = buffer.RemoveAll(x => x != null);
+
+            Assert.AreEqual(3, removed);
+            Assert.AreEqual(2, buffer.Count);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new string[] { null, null }));
+        }
+
+        [Test]
+        public void RemoveAllAlternatingPattern()
+        {
+            CyclicBuffer<int> buffer = new(10);
+            buffer.Add(1);
+            buffer.Add(2);
+            buffer.Add(3);
+            buffer.Add(4);
+            buffer.Add(5);
+            buffer.Add(6);
+
+            int removed = buffer.RemoveAll(x => x % 2 == 0);
+
+            Assert.AreEqual(3, removed);
+            Assert.AreEqual(3, buffer.Count);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 1, 3, 5 }));
+        }
+
+        [Test]
+        public void RemoveAllPredicateNeverTrue()
+        {
+            CyclicBuffer<int> buffer = new(5);
+            buffer.Add(1);
+            buffer.Add(2);
+            buffer.Add(3);
+
+            int removed = buffer.RemoveAll(x => x > 100);
+
+            Assert.AreEqual(0, removed);
+            Assert.AreEqual(3, buffer.Count);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 1, 2, 3 }));
+        }
+
+        [Test]
+        public void RemoveAllPredicateAlwaysTrue()
+        {
+            CyclicBuffer<int> buffer = new(5);
+            buffer.Add(1);
+            buffer.Add(2);
+            buffer.Add(3);
+            buffer.Add(4);
+
+            int removed = buffer.RemoveAll(x => true);
+
+            Assert.AreEqual(4, removed);
+            Assert.AreEqual(0, buffer.Count);
+            Assert.That(buffer.ToArray(), Is.EqualTo(Array.Empty<int>()));
+        }
+
+        [Test]
+        public void RemoveAllPredicateAlwaysFalse()
+        {
+            CyclicBuffer<int> buffer = new(5);
+            buffer.Add(1);
+            buffer.Add(2);
+            buffer.Add(3);
+
+            int removed = buffer.RemoveAll(x => false);
+
+            Assert.AreEqual(0, removed);
+            Assert.AreEqual(3, buffer.Count);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 1, 2, 3 }));
+        }
+
+        [Test]
+        public void RemoveAllFromSingleElementBuffer()
+        {
+            CyclicBuffer<int> buffer = new(1);
+            buffer.Add(5);
+
+            int removed = buffer.RemoveAll(x => x == 5);
+
+            Assert.AreEqual(1, removed);
+            Assert.AreEqual(0, buffer.Count);
+            Assert.That(buffer.ToArray(), Is.EqualTo(Array.Empty<int>()));
+        }
+
+        [Test]
+        public void RemoveAllFromSingleElementBufferNoMatch()
+        {
+            CyclicBuffer<int> buffer = new(1);
+            buffer.Add(5);
+
+            int removed = buffer.RemoveAll(x => x == 10);
+
+            Assert.AreEqual(0, removed);
+            Assert.AreEqual(1, buffer.Count);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 5 }));
+        }
+
+        [Test]
+        public void RemoveAllFromFullBuffer()
+        {
+            CyclicBuffer<int> buffer = new(5);
+            buffer.Add(1);
+            buffer.Add(2);
+            buffer.Add(3);
+            buffer.Add(4);
+            buffer.Add(5);
+
+            int removed = buffer.RemoveAll(x => x > 2);
+
+            Assert.AreEqual(3, removed);
+            Assert.AreEqual(2, buffer.Count);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 1, 2 }));
+        }
+
+        [Test]
+        public void RemoveAllEntireFullBuffer()
+        {
+            CyclicBuffer<int> buffer = new(5);
+            buffer.Add(1);
+            buffer.Add(2);
+            buffer.Add(3);
+            buffer.Add(4);
+            buffer.Add(5);
+
+            int removed = buffer.RemoveAll(x => x > 0);
+
+            Assert.AreEqual(5, removed);
+            Assert.AreEqual(0, buffer.Count);
+            Assert.That(buffer.ToArray(), Is.EqualTo(Array.Empty<int>()));
+        }
+
+        [Test]
+        public void RemoveAllWithWrappedBufferRemoveFirst()
+        {
+            CyclicBuffer<int> buffer = new(5);
+            buffer.Add(1);
+            buffer.Add(2);
+            buffer.Add(3);
+            buffer.Add(4);
+            buffer.Add(5);
+            buffer.Add(6);
+
+            // Buffer now: [2, 3, 4, 5, 6]
+            int removed = buffer.RemoveAll(x => x == 2);
+
+            Assert.AreEqual(1, removed);
+            Assert.AreEqual(4, buffer.Count);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 3, 4, 5, 6 }));
+        }
+
+        [Test]
+        public void RemoveAllWithWrappedBufferRemoveLast()
+        {
+            CyclicBuffer<int> buffer = new(5);
+            buffer.Add(1);
+            buffer.Add(2);
+            buffer.Add(3);
+            buffer.Add(4);
+            buffer.Add(5);
+            buffer.Add(6);
+
+            // Buffer now: [2, 3, 4, 5, 6]
+            int removed = buffer.RemoveAll(x => x == 6);
+
+            Assert.AreEqual(1, removed);
+            Assert.AreEqual(4, buffer.Count);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 2, 3, 4, 5 }));
+        }
+
+        [Test]
+        public void RemoveAllWithWrappedBufferRemoveMiddle()
+        {
+            CyclicBuffer<int> buffer = new(5);
+            buffer.Add(1);
+            buffer.Add(2);
+            buffer.Add(3);
+            buffer.Add(4);
+            buffer.Add(5);
+            buffer.Add(6);
+            buffer.Add(7);
+
+            // Buffer now: [3, 4, 5, 6, 7]
+            int removed = buffer.RemoveAll(x => x == 5);
+
+            Assert.AreEqual(1, removed);
+            Assert.AreEqual(4, buffer.Count);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 3, 4, 6, 7 }));
+        }
+
+        [Test]
+        public void RemoveAllWithWrappedBufferMultipleElements()
+        {
+            CyclicBuffer<int> buffer = new(5);
+            buffer.Add(1);
+            buffer.Add(2);
+            buffer.Add(3);
+            buffer.Add(4);
+            buffer.Add(5);
+            buffer.Add(6);
+            buffer.Add(7);
+            buffer.Add(8);
+
+            // Buffer now: [4, 5, 6, 7, 8]
+            int removed = buffer.RemoveAll(x => x == 4 || x == 6 || x == 8);
+
+            Assert.AreEqual(3, removed);
+            Assert.AreEqual(2, buffer.Count);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 5, 7 }));
+        }
+
+        [Test]
+        public void RemoveAllWithDuplicates()
+        {
+            CyclicBuffer<int> buffer = new(10);
+            buffer.Add(1);
+            buffer.Add(2);
+            buffer.Add(2);
+            buffer.Add(3);
+            buffer.Add(2);
+            buffer.Add(4);
+
+            int removed = buffer.RemoveAll(x => x == 2);
+
+            Assert.AreEqual(3, removed);
+            Assert.AreEqual(3, buffer.Count);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 1, 3, 4 }));
+        }
+
+        [Test]
+        public void RemoveAllWithDuplicatesWrapped()
+        {
+            CyclicBuffer<int> buffer = new(5);
+            buffer.Add(1);
+            buffer.Add(2);
+            buffer.Add(2);
+            buffer.Add(3);
+            buffer.Add(2);
+            buffer.Add(4);
+            buffer.Add(2);
+
+            // Buffer now: [2, 3, 2, 4, 2]
+            int removed = buffer.RemoveAll(x => x == 2);
+
+            Assert.AreEqual(3, removed);
+            Assert.AreEqual(2, buffer.Count);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 3, 4 }));
+        }
+
+        [Test]
+        public void RemoveAllThenAdd()
+        {
+            CyclicBuffer<int> buffer = new(5);
+            buffer.Add(1);
+            buffer.Add(2);
+            buffer.Add(3);
+            buffer.Add(4);
+
+            int removed = buffer.RemoveAll(x => x % 2 == 0);
+            Assert.AreEqual(2, removed);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 1, 3 }));
+
+            buffer.Add(5);
+            buffer.Add(6);
+            buffer.Add(7);
+
+            Assert.AreEqual(5, buffer.Count);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 1, 3, 5, 6, 7 }));
+        }
+
+        [Test]
+        public void RemoveAllMultipleTimes()
+        {
+            CyclicBuffer<int> buffer = new(10);
+            buffer.Add(1);
+            buffer.Add(2);
+            buffer.Add(3);
+            buffer.Add(4);
+            buffer.Add(5);
+            buffer.Add(6);
+
+            int removed1 = buffer.RemoveAll(x => x % 2 == 0);
+            Assert.AreEqual(3, removed1);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 1, 3, 5 }));
+
+            int removed2 = buffer.RemoveAll(x => x > 3);
+            Assert.AreEqual(1, removed2);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 1, 3 }));
+
+            int removed3 = buffer.RemoveAll(x => x == 1);
+            Assert.AreEqual(1, removed3);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 3 }));
+        }
+
+        [Test]
+        public void RemoveAllWithZeroCapacityBuffer()
+        {
+            CyclicBuffer<int> buffer = new(0);
+
+            int removed = buffer.RemoveAll(x => true);
+
+            Assert.AreEqual(0, removed);
+            Assert.AreEqual(0, buffer.Count);
+        }
+
+        [Test]
+        public void RemoveAllPreservesOrderOfRemainingElements()
+        {
+            CyclicBuffer<int> buffer = new(10);
+            buffer.Add(10);
+            buffer.Add(20);
+            buffer.Add(30);
+            buffer.Add(40);
+            buffer.Add(50);
+            buffer.Add(60);
+            buffer.Add(70);
+
+            int removed = buffer.RemoveAll(x => x == 20 || x == 40 || x == 60);
+
+            Assert.AreEqual(3, removed);
+            Assert.AreEqual(4, buffer.Count);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 10, 30, 50, 70 }));
+        }
+
+        [Test]
+        public void RemoveAllWithComplexObjectsPredicate()
+        {
+            CyclicBuffer<string> buffer = new(10);
+            buffer.Add("apple");
+            buffer.Add("banana");
+            buffer.Add("apricot");
+            buffer.Add("cherry");
+            buffer.Add("avocado");
+
+            int removed = buffer.RemoveAll(x => x.StartsWith("a"));
+
+            Assert.AreEqual(3, removed);
+            Assert.AreEqual(2, buffer.Count);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { "banana", "cherry" }));
+        }
+
+        [Test]
+        public void RemoveAllAfterMultipleWraparounds()
+        {
+            CyclicBuffer<int> buffer = new(3);
+            buffer.Add(1);
+            buffer.Add(2);
+            buffer.Add(3);
+            buffer.Add(4);
+            buffer.Add(5);
+            buffer.Add(6);
+            buffer.Add(7);
+            buffer.Add(8);
+
+            // Buffer now: [6, 7, 8]
+            int removed = buffer.RemoveAll(x => x == 7);
+
+            Assert.AreEqual(1, removed);
+            Assert.AreEqual(2, buffer.Count);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 6, 8 }));
+        }
+
+        [Test]
+        public void RemoveAllLeavingSingleElement()
+        {
+            CyclicBuffer<int> buffer = new(5);
+            buffer.Add(1);
+            buffer.Add(2);
+            buffer.Add(3);
+            buffer.Add(4);
+            buffer.Add(5);
+
+            int removed = buffer.RemoveAll(x => x != 3);
+
+            Assert.AreEqual(4, removed);
+            Assert.AreEqual(1, buffer.Count);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 3 }));
+        }
+
+        [Test]
+        public void RemoveAllWithCapacityOne()
+        {
+            CyclicBuffer<int> buffer = new(1);
+            buffer.Add(42);
+
+            int removed = buffer.RemoveAll(x => x == 42);
+
+            Assert.AreEqual(1, removed);
+            Assert.AreEqual(0, buffer.Count);
+            Assert.That(buffer.ToArray(), Is.EqualTo(Array.Empty<int>()));
+        }
+
+        [Test]
+        public void RemoveAllWithCapacityOneNoMatch()
+        {
+            CyclicBuffer<int> buffer = new(1);
+            buffer.Add(42);
+
+            int removed = buffer.RemoveAll(x => x != 42);
+
+            Assert.AreEqual(0, removed);
+            Assert.AreEqual(1, buffer.Count);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 42 }));
+        }
+
+        [Test]
+        public void RemoveAllPartialBufferBeginning()
+        {
+            CyclicBuffer<int> buffer = new(10);
+            buffer.Add(1);
+            buffer.Add(2);
+            buffer.Add(3);
+
+            int removed = buffer.RemoveAll(x => x <= 2);
+
+            Assert.AreEqual(2, removed);
+            Assert.AreEqual(1, buffer.Count);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 3 }));
+        }
+
+        [Test]
+        public void RemoveAllPartialBufferEnd()
+        {
+            CyclicBuffer<int> buffer = new(10);
+            buffer.Add(1);
+            buffer.Add(2);
+            buffer.Add(3);
+
+            int removed = buffer.RemoveAll(x => x >= 2);
+
+            Assert.AreEqual(2, removed);
+            Assert.AreEqual(1, buffer.Count);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 1 }));
+        }
+
+        [Test]
+        public void RemoveAllConsecutiveElements()
+        {
+            CyclicBuffer<int> buffer = new(10);
+            buffer.Add(1);
+            buffer.Add(2);
+            buffer.Add(3);
+            buffer.Add(4);
+            buffer.Add(5);
+            buffer.Add(6);
+            buffer.Add(7);
+
+            int removed = buffer.RemoveAll(x => x >= 3 && x <= 5);
+
+            Assert.AreEqual(3, removed);
+            Assert.AreEqual(4, buffer.Count);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 1, 2, 6, 7 }));
+        }
+
+        [Test]
+        public void RemoveAllNonConsecutiveElements()
+        {
+            CyclicBuffer<int> buffer = new(10);
+            buffer.Add(1);
+            buffer.Add(2);
+            buffer.Add(3);
+            buffer.Add(4);
+            buffer.Add(5);
+            buffer.Add(6);
+            buffer.Add(7);
+
+            int removed = buffer.RemoveAll(x => x == 1 || x == 4 || x == 7);
+
+            Assert.AreEqual(3, removed);
+            Assert.AreEqual(4, buffer.Count);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 2, 3, 5, 6 }));
+        }
+
+        [Test]
         public void EnumerationEmpty()
         {
             CyclicBuffer<int> buffer = new(5);

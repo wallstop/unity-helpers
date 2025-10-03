@@ -20,6 +20,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             internal Bounds Bounds;
             internal Vector2 Center;
             internal uint MortonKey;
+            internal ulong SortKey;
         }
 
         [Serializable]
@@ -178,29 +179,32 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             float inverseRangeX = rangeX > float.Epsilon ? 1f / rangeX : 0f;
             float inverseRangeY = rangeY > float.Epsilon ? 1f / rangeY : 0f;
 
+            for (int i = 0; i < elementCount; ++i)
+            {
+                ref ElementData data = ref elementData[i];
+                Vector2 center = data.Center;
+                float normalizedX = (center.x - minX) * inverseRangeX;
+                float normalizedY = (center.y - minY) * inverseRangeY;
+                ushort quantizedX = QuantizeNormalized(normalizedX);
+                ushort quantizedY = QuantizeNormalized(normalizedY);
+                uint mortonKey = EncodeMorton(quantizedX, quantizedY);
+                data.MortonKey = mortonKey;
+                data.SortKey = ComposeSortKey(mortonKey, quantizedX, quantizedY);
+            }
+
             if (elementCount > 1)
             {
-                using PooledResource<ulong[]> sortKeysResource = WallstopFastArrayPool<ulong>.Get(
-                    elementCount,
-                    out ulong[] sortKeys
-                );
-                for (int i = 0; i < elementCount; ++i)
-                {
-                    ref ElementData data = ref elementData[i];
-                    Vector2 center = data.Center;
-                    float normalizedX = (center.x - minX) * inverseRangeX;
-                    float normalizedY = (center.y - minY) * inverseRangeY;
-                    ushort quantizedX = QuantizeNormalized(normalizedX);
-                    ushort quantizedY = QuantizeNormalized(normalizedY);
-                    data.MortonKey = EncodeMorton(quantizedX, quantizedY);
-                    sortKeys[i] = ComposeSortKey(data.MortonKey, quantizedX, quantizedY);
-                }
-                Array.Sort(sortKeys, elementData, 0, elementCount);
+                RadixSort(elementData, elementCount);
             }
 
             using PooledResource<List<RTreeNode>> nodeBufferResource = Buffers<RTreeNode>.List.Get(
                 out List<RTreeNode> currentLevel
             );
+            int leafCount = (elementCount + bucketSize - 1) / bucketSize;
+            if (currentLevel.Capacity < leafCount)
+            {
+                currentLevel.Capacity = leafCount;
+            }
             for (int startIndex = 0; startIndex < elementCount; startIndex += bucketSize)
             {
                 int count = Math.Min(bucketSize, elementCount - startIndex);
@@ -211,6 +215,11 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             {
                 using PooledResource<List<RTreeNode>> nextLevelResource =
                     Buffers<RTreeNode>.List.Get(out List<RTreeNode> nextLevel);
+                int parentCount = (currentLevel.Count + branchFactor - 1) / branchFactor;
+                if (nextLevel.Capacity < parentCount)
+                {
+                    nextLevel.Capacity = parentCount;
+                }
                 for (int i = 0; i < currentLevel.Count; i += branchFactor)
                 {
                     int childCount = Math.Min(branchFactor, currentLevel.Count - i);
@@ -279,8 +288,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     nodesToVisit.Push(child);
                 }
             }
-
-            nodesToVisit.Clear();
         }
 
         public List<T> GetElementsInRange(
@@ -391,6 +398,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             HashSet<T> nearestNeighborsSet = nearestNeighborBufferResource.resource;
             List<int> nearestIndices = nearestIndexBufferResource.resource;
 
+            Vector2 comparisonPosition = position;
             Comparison<RTreeNode> comparison = Comparison;
             while (!current.isTerminal)
             {
@@ -441,10 +449,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             if (nearestIndices.Count == 0)
             {
-                stack.Clear();
-                childrenCopy.Clear();
-                nearestNeighborsSet.Clear();
-                nearestIndices.Clear();
                 return nearestNeighbors;
             }
 
@@ -469,17 +473,65 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 nearestNeighbors.Add(_elementData[index].Value);
             }
 
-            stack.Clear();
-            childrenCopy.Clear();
-            nearestNeighborsSet.Clear();
-            nearestIndices.Clear();
-
             return nearestNeighbors;
 
             int Comparison(RTreeNode lhs, RTreeNode rhs) =>
-                ((Vector2)lhs.boundary.center - position).sqrMagnitude.CompareTo(
-                    ((Vector2)rhs.boundary.center - position).sqrMagnitude
+                ((Vector2)lhs.boundary.center - comparisonPosition).sqrMagnitude.CompareTo(
+                    ((Vector2)rhs.boundary.center - comparisonPosition).sqrMagnitude
                 );
+        }
+
+        private static void RadixSort(ElementData[] elements, int length)
+        {
+            if (length <= 1)
+            {
+                return;
+            }
+
+            const int BitsPerPass = 8;
+            const int BucketCount = 1 << BitsPerPass;
+            Span<int> counts = stackalloc int[BucketCount];
+
+            using PooledResource<ElementData[]> scratchResource =
+                WallstopFastArrayPool<ElementData>.Get(length, out ElementData[] scratch);
+            ElementData[] source = elements;
+            ElementData[] destination = scratch;
+            bool dataInScratch = false;
+
+            for (int shift = 0; shift < 64; shift += BitsPerPass)
+            {
+                counts.Clear();
+                for (int i = 0; i < length; ++i)
+                {
+                    ulong key = source[i].SortKey;
+                    counts[(int)((key >> shift) & (BucketCount - 1))]++;
+                }
+
+                int total = 0;
+                for (int bucket = 0; bucket < BucketCount; ++bucket)
+                {
+                    int count = counts[bucket];
+                    counts[bucket] = total;
+                    total += count;
+                }
+
+                for (int i = 0; i < length; ++i)
+                {
+                    ElementData value = source[i];
+                    int bucket = (int)((value.SortKey >> shift) & (BucketCount - 1));
+                    destination[counts[bucket]++] = value;
+                }
+
+                ElementData[] temp = source;
+                source = destination;
+                destination = temp;
+                dataInScratch = !dataInScratch;
+            }
+
+            if (dataInScratch)
+            {
+                Array.Copy(source, elements, length);
+            }
         }
 
         private static Bounds CalculateBounds(ElementData[] elements, int startIndex, int count)
