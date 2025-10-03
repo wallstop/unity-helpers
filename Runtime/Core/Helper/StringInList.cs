@@ -15,19 +15,27 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
         public StringInList(Type type, string methodName)
         {
-            MethodInfo method = type.GetMethod(
-                methodName,
-                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic
-            );
-            if (method != null)
+            foreach (
+                MethodInfo method in type.GetMethods(
+                    BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic
+                )
+            )
             {
-                _getStringList = () => ReflectionHelpers.InvokeStaticMethod(method) as string[];
+                if (
+                    string.Equals(method.Name, methodName, StringComparison.Ordinal)
+                    && method.ReturnParameter != null
+                    && method.ReturnParameter.ParameterType == typeof(string[])
+                )
+                {
+                    MethodInfo localMethod = method;
+                    _getStringList = () =>
+                        ReflectionHelpers.InvokeStaticMethod(localMethod) as string[]
+                        ?? Array.Empty<string>();
+                    return;
+                }
             }
-            else
-            {
-                Debug.LogError($"NO SUCH METHOD {methodName} FOR {type}");
-                _getStringList = () => Array.Empty<string>();
-            }
+            Debug.LogError($"NO SUCH METHOD {methodName} FOR {type}");
+            _getStringList = () => Array.Empty<string>();
         }
 
         public string[] List => _getStringList();

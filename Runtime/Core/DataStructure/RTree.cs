@@ -313,7 +313,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             foreach (int index in candidateIndices)
             {
-                ref ElementData elementData = ref _elementData[index];
+                ElementData elementData = _elementData[index];
                 Bounds elementBoundary = elementData.Bounds;
                 if (!area.Intersects(elementBoundary))
                 {
@@ -413,7 +413,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 int endIndex = startIndex + selected.count;
                 for (int i = startIndex; i < endIndex; ++i)
                 {
-                    ref ElementData elementData = ref _elementData[i];
+                    ElementData elementData = _elementData[i];
                     if (!nearestNeighborsSet.Add(elementData.Value))
                     {
                         continue;
