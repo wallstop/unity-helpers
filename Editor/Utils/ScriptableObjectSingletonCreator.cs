@@ -9,6 +9,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
     [InitializeOnLoad]
     public static class ScriptableObjectSingletonCreator
     {
+        private static bool IsTestAssembly(Type type)
+        {
+            string assemblyName = type.Assembly.GetName().Name;
+            return !string.IsNullOrWhiteSpace(assemblyName)
+                && assemblyName.Contains("Test", StringComparison.OrdinalIgnoreCase);
+        }
+
         static ScriptableObjectSingletonCreator()
         {
             bool anyCreated = false;
@@ -18,7 +25,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 )
             )
             {
-                if (!derivedType.IsAbstract && !derivedType.IsGenericType)
+                if (
+                    !derivedType.IsAbstract
+                    && !derivedType.IsGenericType
+                    && !IsTestAssembly(derivedType)
+                )
                 {
                     Object[] existing = Resources.LoadAll(string.Empty, derivedType);
                     if (existing.Length != 0)

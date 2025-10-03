@@ -9,7 +9,7 @@ namespace WallstopStudios.UnityHelpers.Utils
         public float width = 1f;
         public float height = 1f;
 
-        private Vector3 _initialLocalPosition;
+        internal Vector3 _initialLocalPosition;
 
         private void Awake()
         {

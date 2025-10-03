@@ -20,7 +20,7 @@ namespace WallstopStudios.UnityHelpers.Utils
     {
         public static bool HasInstance => _instance != null;
 
-        protected static T _instance;
+        protected internal static T _instance;
 
         protected virtual bool Preserve => true;
 

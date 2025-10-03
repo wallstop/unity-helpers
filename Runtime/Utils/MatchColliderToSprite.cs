@@ -22,7 +22,7 @@ namespace WallstopStudios.UnityHelpers.Utils
         [FormerlySerializedAs("_collider")]
         public PolygonCollider2D polygonCollider;
 
-        private Sprite _lastHandled;
+        internal Sprite _lastHandled;
 
         private void Awake()
         {

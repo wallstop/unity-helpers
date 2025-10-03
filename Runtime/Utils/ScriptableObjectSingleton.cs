@@ -29,14 +29,15 @@ namespace WallstopStudios.UnityHelpers.Utils
             return type.Name;
         }
 
-        protected static readonly Lazy<T> LazyInstance = new(() =>
+        protected internal static readonly Lazy<T> LazyInstance = new(() =>
         {
+            Type type = typeof(T);
             string path = GetResourcesPath();
             T[] instances = Resources.LoadAll<T>(path);
 
             if (instances == null || instances.Length == 0)
             {
-                T named = Resources.Load<T>(typeof(T).Name);
+                T named = Resources.Load<T>(type.Name);
                 if (named != null)
                 {
                     instances = new[] { named };
@@ -51,7 +52,7 @@ namespace WallstopStudios.UnityHelpers.Utils
             if (instances == null)
             {
                 Debug.LogError(
-                    $"Failed to find ScriptableSingleton of {typeof(T).Name} - null instances."
+                    $"Failed to find ScriptableSingleton of {type.Name} - null instances."
                 );
                 return default;
             }
@@ -65,14 +66,14 @@ namespace WallstopStudios.UnityHelpers.Utils
                 case 0:
                 {
                     Debug.LogError(
-                        $"Failed to find ScriptableSingleton of type {typeof(T).Name} - empty instances."
+                        $"Failed to find ScriptableSingleton of type {type.Name} - empty instances."
                     );
                     return null;
                 }
             }
 
             Debug.LogWarning(
-                $"Found multiple ScriptableSingletons of type {typeof(T).Name}, defaulting to first by name."
+                $"Found multiple ScriptableSingletons of type {type.Name}, defaulting to first by name."
             );
             Array.Sort(instances, UnityObjectNameComparer<T>.Instance);
             return instances[0];
