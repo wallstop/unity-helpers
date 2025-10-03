@@ -128,6 +128,36 @@ namespace WallstopStudios.UnityHelpers.Utils
                     )
                 );
         }
+
+        public static bool DestroyHashSetPool(IEqualityComparer<T> comparer)
+        {
+            if (comparer == null)
+            {
+                throw new ArgumentNullException(nameof(comparer));
+            }
+
+            if (!HashSetCache.TryRemove(comparer, out WallstopGenericPool<HashSet<T>> pool))
+            {
+                return false;
+            }
+            pool.Dispose();
+            return true;
+        }
+
+        public static bool DestroySortedSetPool(IComparer<T> comparer)
+        {
+            if (comparer == null)
+            {
+                throw new ArgumentNullException(nameof(comparer));
+            }
+
+            if (!SortedSetCache.TryRemove(comparer, out WallstopGenericPool<SortedSet<T>> pool))
+            {
+                return false;
+            }
+            pool.Dispose();
+            return true;
+        }
     }
 
     public static class LinkedListBuffer<T>
@@ -200,6 +230,46 @@ namespace WallstopStudios.UnityHelpers.Utils
                         onRelease: dictionary => dictionary.Clear()
                     )
                 );
+        }
+
+        public static bool DestroyDictionaryPool(IEqualityComparer<TKey> comparer)
+        {
+            if (comparer == null)
+            {
+                throw new ArgumentNullException(nameof(comparer));
+            }
+            if (
+                !DictionaryCache.TryRemove(
+                    comparer,
+                    out WallstopGenericPool<Dictionary<TKey, TValue>> pool
+                )
+            )
+            {
+                return false;
+            }
+            pool.Dispose();
+            return true;
+        }
+
+        public static bool DestroySortedDictionaryPool(IComparer<TKey> comparer)
+        {
+            if (comparer == null)
+            {
+                throw new ArgumentNullException(nameof(comparer));
+            }
+
+            if (
+                !SortedDictionaryCache.TryRemove(
+                    comparer,
+                    out WallstopGenericPool<SortedDictionary<TKey, TValue>> pool
+                )
+            )
+            {
+                return false;
+            }
+
+            pool.Dispose();
+            return true;
         }
     }
 

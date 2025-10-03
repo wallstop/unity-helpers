@@ -56,7 +56,7 @@
         }
 
         [Test]
-        public void GetEnclosingObject_SimpleField_ReturnsOwnerAndFieldInfo()
+        public void GetEnclosingObjectSimpleFieldReturnsOwnerAndFieldInfo()
         {
             SerializedObject so = CreateSO(out TestContainer container);
             SerializedProperty prop = so.FindProperty("publicInt");
@@ -71,7 +71,7 @@
         }
 
         [Test]
-        public void GetTargetObjectWithField_SimpleField_ReturnsValue()
+        public void GetTargetObjectWithFieldSimpleFieldReturnsValue()
         {
             SerializedObject so = CreateSO(out _);
             SerializedProperty prop = so.FindProperty("publicInt");
@@ -85,7 +85,7 @@
         }
 
         [Test]
-        public void GetTargetObjectWithField_NestedField_ReturnsFinalValue()
+        public void GetTargetObjectWithFieldNestedFieldReturnsFinalValue()
         {
             SerializedObject so = CreateSO(out _);
             // Unity serializes nested [Serializable] types with dot-separated path
@@ -101,7 +101,7 @@
         }
 
         [Test]
-        public void GetTargetObjectWithField_ArrayElement_ReturnsElement()
+        public void GetTargetObjectWithFieldArrayElementReturnsElement()
         {
             SerializedObject so = CreateSO(out _);
             SerializedProperty prop = so.FindProperty("intArray.Array.data[1]");
@@ -117,7 +117,7 @@
         }
 
         [Test]
-        public void GetEnclosingObject_ArrayElement_ReturnsRootOwnerAndArrayFieldInfo()
+        public void GetEnclosingObjectArrayElementReturnsRootOwnerAndArrayFieldInfo()
         {
             SerializedObject so = CreateSO(out TestContainer container);
             SerializedProperty prop = so.FindProperty("intList.Array.data[2]");
@@ -134,7 +134,7 @@
         }
 
         [Test]
-        public void GetTargetObjectWithField_ListElementFollowedByNestedField_ReturnsFinal()
+        public void GetTargetObjectWithFieldListElementFollowedByNestedFieldReturnsFinal()
         {
             // Build a list of nested, then access a field on an element: nestedList[1].f
             SerializedObject so = CreateSO(out TestContainer container);
@@ -180,7 +180,7 @@
         }
 
         [Test]
-        public void GetEnclosingObject_PrivateSerializedField_ReturnsOwnerAndFieldInfo()
+        public void GetEnclosingObjectPrivateSerializedFieldReturnsOwnerAndFieldInfo()
         {
             SerializedObject so = CreateSO(out TestContainer container);
             SerializedProperty prop = so.FindProperty("privateString");
