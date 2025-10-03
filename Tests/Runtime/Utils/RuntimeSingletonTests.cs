@@ -262,6 +262,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             GameObject secondObject = new("SecondCustomStartSingleton");
             CustomStartSingleton second = secondObject.AddComponent<CustomStartSingleton>();
 
+            LogAssert.Expect(
+                LogType.Error,
+                new System.Text.RegularExpressions.Regex(".*Double singleton detected.*")
+            );
+
             yield return null;
             yield return null;
 
@@ -518,8 +523,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             yield return null;
             yield return null;
 
-            Assert.IsNotNull(first);
-            Assert.IsNull(second);
+            Assert.IsTrue(first != null);
+            Assert.IsTrue(second == null);
         }
 
         [UnityTest]

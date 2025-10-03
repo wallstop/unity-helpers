@@ -29,55 +29,72 @@ namespace WallstopStudios.UnityHelpers.Utils
             return type.Name;
         }
 
-        protected internal static readonly Lazy<T> LazyInstance = new(() =>
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void ClearInstance()
         {
-            Type type = typeof(T);
-            string path = GetResourcesPath();
-            T[] instances = Resources.LoadAll<T>(path);
-
-            if (instances == null || instances.Length == 0)
+            if (!LazyInstance.IsValueCreated)
             {
-                T named = Resources.Load<T>(type.Name);
-                if (named != null)
+                return;
+            }
+
+            LazyInstance.Value.Destroy();
+            LazyInstance = CreateLazy();
+        }
+
+        protected internal static Lazy<T> LazyInstance = CreateLazy();
+
+        private static Lazy<T> CreateLazy()
+        {
+            return new Lazy<T>(() =>
+            {
+                Type type = typeof(T);
+                string path = GetResourcesPath();
+                T[] instances = Resources.LoadAll<T>(path);
+
+                if (instances == null || instances.Length == 0)
                 {
-                    instances = new[] { named };
+                    T named = Resources.Load<T>(type.Name);
+                    if (named != null)
+                    {
+                        instances = new[] { named };
+                    }
                 }
-            }
 
-            if (instances == null || instances.Length == 0)
-            {
-                instances = Resources.LoadAll<T>(string.Empty);
-            }
-
-            if (instances == null)
-            {
-                Debug.LogError(
-                    $"Failed to find ScriptableSingleton of {type.Name} - null instances."
-                );
-                return default;
-            }
-
-            switch (instances.Length)
-            {
-                case 1:
+                if (instances == null || instances.Length == 0)
                 {
-                    return instances[0];
+                    instances = Resources.LoadAll<T>(string.Empty);
                 }
-                case 0:
+
+                if (instances == null)
                 {
                     Debug.LogError(
-                        $"Failed to find ScriptableSingleton of type {type.Name} - empty instances."
+                        $"Failed to find ScriptableSingleton of {type.Name} - null instances."
                     );
-                    return null;
+                    return default;
                 }
-            }
 
-            Debug.LogWarning(
-                $"Found multiple ScriptableSingletons of type {type.Name}, defaulting to first by name."
-            );
-            Array.Sort(instances, UnityObjectNameComparer<T>.Instance);
-            return instances[0];
-        });
+                switch (instances.Length)
+                {
+                    case 1:
+                    {
+                        return instances[0];
+                    }
+                    case 0:
+                    {
+                        Debug.LogError(
+                            $"Failed to find ScriptableSingleton of type {type.Name} - empty instances."
+                        );
+                        return null;
+                    }
+                }
+
+                Debug.LogWarning(
+                    $"Found multiple ScriptableSingletons of type {type.Name}, defaulting to first by name."
+                );
+                Array.Sort(instances, UnityObjectNameComparer<T>.Instance);
+                return instances[0];
+            });
+        }
 
         public static bool HasInstance => LazyInstance.IsValueCreated && LazyInstance.Value != null;
 

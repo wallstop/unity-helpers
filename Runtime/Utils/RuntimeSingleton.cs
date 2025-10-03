@@ -50,6 +50,12 @@ namespace WallstopStudios.UnityHelpers.Utils
             }
         }
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void ClearInstance()
+        {
+            _instance.Destroy();
+        }
+
         protected virtual void Awake()
         {
             this.AssignRelationalComponents();
