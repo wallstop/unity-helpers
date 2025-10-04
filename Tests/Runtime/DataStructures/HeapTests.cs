@@ -148,13 +148,6 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void PeekThrowsWhenEmpty()
-        {
-            Heap<int> heap = Heap<int>.CreateMinHeap();
-            Assert.Throws<InvalidOperationException>(() => heap.Peek());
-        }
-
-        [Test]
         public void TryPeekReturnsTrueWhenNotEmpty()
         {
             Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 5, 3, 7 });
@@ -175,6 +168,31 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             Assert.IsFalse(success);
             Assert.AreEqual(0, result);
+        }
+
+        [Test]
+        public void TryGetReturnsTrueForValidIndex()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 5, 3, 7 });
+
+            bool success = heap.TryGet(0, out int result);
+
+            Assert.IsTrue(success);
+            Assert.AreEqual(3, result); // Min element at index 0
+        }
+
+        [Test]
+        public void TryGetReturnsFalseForInvalidIndex()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 5, 3, 7 });
+
+            bool success1 = heap.TryGet(-1, out int result1);
+            bool success2 = heap.TryGet(10, out int result2);
+
+            Assert.IsFalse(success1);
+            Assert.IsFalse(success2);
+            Assert.AreEqual(0, result1);
+            Assert.AreEqual(0, result2);
         }
 
         [Test]
@@ -204,13 +222,6 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void PopThrowsWhenEmpty()
-        {
-            Heap<int> heap = Heap<int>.CreateMinHeap();
-            Assert.Throws<InvalidOperationException>(() => heap.Pop());
-        }
-
-        [Test]
         public void TryPopReturnsTrueWhenNotEmpty()
         {
             Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 5, 3, 7 });
@@ -231,6 +242,23 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             Assert.IsFalse(success);
             Assert.AreEqual(0, result);
+        }
+
+        [Test]
+        public void TryPopMultipleTimes()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 5, 3, 7, 1, 9 });
+
+            Assert.IsTrue(heap.TryPop(out int first));
+            Assert.AreEqual(1, first);
+
+            Assert.IsTrue(heap.TryPop(out int second));
+            Assert.AreEqual(3, second);
+
+            Assert.IsTrue(heap.TryPop(out int third));
+            Assert.AreEqual(5, third);
+
+            Assert.AreEqual(2, heap.Count);
         }
 
         [Test]
@@ -928,6 +956,247 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.AreEqual(4, count);
             Assert.AreEqual(4, heap.Count);
             Assert.AreEqual(1, heap.Peek());
+        }
+    }
+
+    public sealed class HeapUpdatePriorityTests
+    {
+        [Test]
+        public void UpdatePriorityIncreasePriorityBubblesUp()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 10, 20, 30, 40, 50 });
+
+            // Find index of element 40 and change it to 5 (higher priority in min-heap)
+            int index = -1;
+            for (int i = 0; i < heap.Count; i++)
+            {
+                if (heap[i] == 40)
+                {
+                    index = i;
+                    break;
+                }
+            }
+
+            heap.UpdatePriority(index, 5);
+
+            Assert.AreEqual(5, heap.Peek());
+            Assert.AreEqual(5, heap.Pop());
+        }
+
+        [Test]
+        public void UpdatePriorityDecreasePriorityBubblesDown()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 10, 20, 30, 40, 50 });
+
+            // Update root (10) to a larger value (45)
+            heap.UpdatePriority(0, 45);
+
+            Assert.AreEqual(20, heap.Peek());
+            Assert.AreEqual(20, heap.Pop());
+        }
+
+        [Test]
+        public void UpdatePrioritySameValueDoesNothing()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 10, 20, 30 });
+
+            int peekBefore = heap.Peek();
+            heap.UpdatePriority(0, 10);
+
+            Assert.AreEqual(peekBefore, heap.Peek());
+            Assert.AreEqual(3, heap.Count);
+        }
+
+        [Test]
+        public void UpdatePriorityThrowsOnInvalidIndex()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 10, 20, 30 });
+
+            Assert.Throws<IndexOutOfRangeException>(() => heap.UpdatePriority(-1, 5));
+            Assert.Throws<IndexOutOfRangeException>(() => heap.UpdatePriority(3, 5));
+            Assert.Throws<IndexOutOfRangeException>(() => heap.UpdatePriority(100, 5));
+        }
+
+        [Test]
+        public void UpdatePriorityOnEmptyHeapThrows()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap();
+
+            Assert.Throws<IndexOutOfRangeException>(() => heap.UpdatePriority(0, 5));
+        }
+
+        [Test]
+        public void UpdatePriorityMaintainsHeapProperty()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 5, 10, 15, 20, 25, 30 });
+
+            // Update multiple elements
+            heap.UpdatePriority(0, 100); // Move min to max
+            heap.UpdatePriority(1, 3); // Make second element new min
+
+            List<int> results = new();
+            while (!heap.IsEmpty)
+            {
+                results.Add(heap.Pop());
+            }
+
+            CollectionAssert.AreEqual(new[] { 3, 15, 20, 25, 30, 100 }, results);
+        }
+
+        [Test]
+        public void UpdatePriorityWorksWithMaxHeap()
+        {
+            Heap<int> heap = Heap<int>.CreateMaxHeap(new[] { 50, 40, 30, 20, 10 });
+
+            // Find and update element 20 to 60 (higher priority in max-heap)
+            int index = -1;
+            for (int i = 0; i < heap.Count; i++)
+            {
+                if (heap[i] == 20)
+                {
+                    index = i;
+                    break;
+                }
+            }
+
+            heap.UpdatePriority(index, 60);
+
+            Assert.AreEqual(60, heap.Peek());
+            Assert.AreEqual(60, heap.Pop());
+        }
+
+        [Test]
+        public void UpdatePriorityOnSingleElementHeap()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap();
+            heap.Add(42);
+
+            heap.UpdatePriority(0, 100);
+
+            Assert.AreEqual(100, heap.Peek());
+            Assert.AreEqual(1, heap.Count);
+        }
+
+        [Test]
+        public void TryUpdatePriorityReturnsTrueOnSuccess()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 10, 20, 30 });
+
+            bool success = heap.TryUpdatePriority(0, 5);
+
+            Assert.IsTrue(success);
+            Assert.AreEqual(5, heap.Peek());
+        }
+
+        [Test]
+        public void TryUpdatePriorityReturnsFalseOnInvalidIndex()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 10, 20, 30 });
+
+            bool success1 = heap.TryUpdatePriority(-1, 5);
+            bool success2 = heap.TryUpdatePriority(3, 5);
+
+            Assert.IsFalse(success1);
+            Assert.IsFalse(success2);
+            Assert.AreEqual(10, heap.Peek()); // Heap unchanged
+        }
+
+        [Test]
+        public void TryUpdatePriorityReturnsFalseOnEmptyHeap()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap();
+
+            bool success = heap.TryUpdatePriority(0, 5);
+
+            Assert.IsFalse(success);
+        }
+
+        [Test]
+        public void UpdatePriorityWorksWithDuplicateValues()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 10, 10, 10, 10 });
+
+            heap.UpdatePriority(0, 5);
+
+            Assert.AreEqual(5, heap.Peek());
+            heap.Pop();
+            Assert.AreEqual(10, heap.Peek());
+        }
+
+        [Test]
+        public void UpdatePriorityStressTest()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap(Enumerable.Range(0, 1000).ToArray());
+
+            // Update every 10th element
+            for (int i = 0; i < 1000; i += 10)
+            {
+                heap.UpdatePriority(i, -i);
+            }
+
+            // First element should be negative
+            int first = heap.Pop();
+            Assert.Less(first, 0);
+        }
+
+        [Test]
+        public void UpdatePriorityWithCustomComparerIncrease()
+        {
+            Heap<string> heap = Heap<string>.CreateMinHeap(
+                new[] { "apple", "banana", "cherry", "date" }
+            );
+
+            // Find "date" and change to "aaa" (comes before "apple")
+            int index = -1;
+            for (int i = 0; i < heap.Count; i++)
+            {
+                if (heap[i] == "date")
+                {
+                    index = i;
+                    break;
+                }
+            }
+
+            heap.UpdatePriority(index, "aaa");
+
+            Assert.AreEqual("aaa", heap.Peek());
+        }
+
+        [Test]
+        public void UpdatePriorityWithCustomComparerDecrease()
+        {
+            Heap<string> heap = Heap<string>.CreateMinHeap(new[] { "apple", "banana", "cherry" });
+
+            // Update "apple" to "zebra"
+            heap.UpdatePriority(0, "zebra");
+
+            Assert.AreEqual("banana", heap.Peek());
+        }
+
+        [Test]
+        public void UpdatePriorityOnLastElement()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 10, 20, 30, 40, 50 });
+
+            int lastIndex = heap.Count - 1;
+            heap.UpdatePriority(lastIndex, 5);
+
+            Assert.AreEqual(5, heap.Peek());
+        }
+
+        [Test]
+        public void UpdatePriorityMultipleTimesOnSameIndex()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 10, 20, 30 });
+
+            heap.UpdatePriority(0, 25);
+            Assert.AreEqual(20, heap.Peek());
+
+            heap.UpdatePriority(0, 5);
+            Assert.AreEqual(5, heap.Peek());
+
+            heap.UpdatePriority(0, 15);
+            Assert.AreEqual(15, heap.Peek());
         }
     }
 }

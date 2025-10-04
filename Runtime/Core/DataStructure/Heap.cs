@@ -4,6 +4,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     using System.Collections;
     using System.Collections.Generic;
     using System.Runtime.CompilerServices;
+    using ProtoBuf;
 
     /// <summary>
     /// A highly optimized, array-backed generic heap implementation supporting both min-heap and max-heap ordering.
@@ -11,6 +12,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     /// Allocation-free enumerator and minimal heap operations ensure optimal performance.
     /// </summary>
     /// <typeparam name="T">The type of elements in the heap. Must be comparable.</typeparam>
+    [ProtoContract]
     public sealed class Heap<T> : IReadOnlyList<T>
     {
         public struct HeapEnumerator : IEnumerator<T>
@@ -56,9 +58,14 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         private const int DefaultCapacity = 16;
         private const int MinimumGrowth = 4;
 
-        private T[] _items;
+        [ProtoMember(1)]
+        private T[] _items = new T[DefaultCapacity];
+
+        [ProtoMember(2)]
         private int _count;
-        private readonly IComparer<T> _comparer;
+
+        [ProtoMember(3)]
+        private IComparer<T> _comparer = Comparer<T>.Default;
 
         /// <summary>
         /// Gets the number of elements in the heap.
@@ -93,10 +100,30 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         }
 
         /// <summary>
+        /// Attempts to get the element at the specified index in heap order (not sorted order).
+        /// </summary>
+        /// <param name="index">The index to access.</param>
+        /// <param name="result">The element at the index if valid.</param>
+        /// <returns>True if the index is valid, false otherwise.</returns>
+        public bool TryGet(int index, out T result)
+        {
+            if (index < 0 || index >= _count)
+            {
+                result = default;
+                return false;
+            }
+            result = _items[index];
+            return true;
+        }
+
+        public Heap()
+            : this(Comparer<T>.Default, DefaultCapacity) { }
+
+        /// <summary>
         /// Constructs a heap with the default comparer (min-heap for natural ordering).
         /// </summary>
         /// <param name="capacity">Initial capacity of the heap.</param>
-        public Heap(int capacity = DefaultCapacity)
+        public Heap(int capacity)
             : this(Comparer<T>.Default, capacity) { }
 
         /// <summary>
@@ -115,7 +142,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
             _items = new T[capacity];
             _count = 0;
-            _comparer = comparer ?? throw new ArgumentNullException(nameof(comparer));
+            _comparer = comparer ?? Comparer<T>.Default;
         }
 
         /// <summary>
@@ -231,19 +258,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         }
 
         /// <summary>
-        /// Returns the root element (minimum for min-heap, maximum for max-heap) without removing it.
-        /// Throws if the heap is empty.
-        /// </summary>
-        public T Peek()
-        {
-            if (_count == 0)
-            {
-                throw new InvalidOperationException("Heap is empty.");
-            }
-            return _items[0];
-        }
-
-        /// <summary>
         /// Attempts to peek at the root element without removing it.
         /// </summary>
         /// <returns>True if the heap is not empty, false otherwise.</returns>
@@ -259,29 +273,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         }
 
         /// <summary>
-        /// Removes and returns the root element in O(log n) time.
-        /// Throws if the heap is empty.
-        /// </summary>
-        public T Pop()
-        {
-            if (_count == 0)
-            {
-                throw new InvalidOperationException("Heap is empty.");
-            }
-
-            T result = _items[0];
-            _count--;
-            if (_count > 0)
-            {
-                _items[0] = _items[_count];
-                HeapifyDown(0);
-            }
-            _items[_count] = default; // Clear reference
-            return result;
-        }
-
-        /// <summary>
-        /// Attempts to remove and return the root element.
+        /// Attempts to remove and return the root element in O(log n) time.
         /// </summary>
         /// <returns>True if the heap was not empty, false otherwise.</returns>
         public bool TryPop(out T result)
@@ -292,7 +284,14 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return false;
             }
 
-            result = Pop();
+            result = _items[0];
+            _count--;
+            if (_count > 0)
+            {
+                _items[0] = _items[_count];
+                HeapifyDown(0);
+            }
+            _items[_count] = default; // Clear reference
             return true;
         }
 
@@ -362,6 +361,38 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 int newCapacity = Math.Max(DefaultCapacity, _count);
                 Resize(newCapacity);
             }
+        }
+
+        /// <summary>
+        /// Attempts to update the priority of an element at the specified index in O(log n) time.
+        /// After updating, the heap property is restored.
+        /// </summary>
+        /// <param name="index">The index of the element to update.</param>
+        /// <param name="newValue">The new value for the element.</param>
+        /// <returns>True if the index was valid and the update succeeded, false otherwise.</returns>
+        public bool TryUpdatePriority(int index, T newValue)
+        {
+            if (index < 0 || index >= _count)
+            {
+                return false;
+            }
+
+            T oldValue = _items[index];
+            _items[index] = newValue;
+
+            int comparison = _comparer.Compare(newValue, oldValue);
+            if (comparison < 0)
+            {
+                // Priority increased (smaller value in min-heap), bubble up
+                HeapifyUp(index);
+            }
+            else if (comparison > 0)
+            {
+                // Priority decreased (larger value in min-heap), bubble down
+                HeapifyDown(index);
+            }
+            // If equal, no need to do anything
+            return true;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

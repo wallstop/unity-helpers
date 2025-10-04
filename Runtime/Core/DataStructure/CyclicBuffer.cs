@@ -5,9 +5,11 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     using System.Collections.Generic;
     using Extension;
     using Helper;
+    using ProtoBuf;
     using WallstopStudios.UnityHelpers.Utils;
 
     [Serializable]
+    [ProtoContract]
     public sealed class CyclicBuffer<T> : IReadOnlyList<T>
     {
         public struct CyclicBufferEnumerator : IEnumerator<T>
@@ -49,10 +51,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             public void Dispose() { }
         }
 
+        [ProtoMember(1)]
         public int Capacity { get; private set; }
+
+        [ProtoMember(2)]
         public int Count { get; private set; }
 
-        private readonly List<T> _buffer;
+        [ProtoMember(3)]
+        private List<T> _buffer = new List<T>();
+
+        [ProtoMember(4)]
         private int _position;
 
         public T this[int index]
@@ -69,6 +77,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
         }
 
+        public CyclicBuffer()
+            : this(0, null) { }
+
         public CyclicBuffer(int capacity, IEnumerable<T> initialContents = null)
         {
             if (capacity < 0)
@@ -79,7 +90,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             Capacity = capacity;
             _position = 0;
             Count = 0;
-            _buffer = new List<T>();
+            _buffer ??= new List<T>();
             if (initialContents != null)
             {
                 foreach (T item in initialContents)
@@ -228,6 +239,51 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         public bool Contains(T item)
         {
             return _buffer.Contains(item);
+        }
+
+        /// <summary>
+        /// Attempts to remove and return the element at the front of the buffer in O(1) time.
+        /// </summary>
+        /// <param name="result">The element at the front if the buffer is not empty.</param>
+        /// <returns>True if an element was removed, false if the buffer is empty.</returns>
+        public bool TryPopFront(out T result)
+        {
+            if (Count == 0)
+            {
+                result = default;
+                return false;
+            }
+
+            int frontIndex = AdjustedIndexFor(0);
+            result = _buffer[frontIndex];
+            _buffer[frontIndex] = default; // Clear reference for GC
+
+            // Move position backward to skip the removed element
+            _position = (_position - 1 + Capacity) % Capacity;
+            Count--;
+
+            return true;
+        }
+
+        /// <summary>
+        /// Attempts to remove and return the element at the back of the buffer in O(1) time.
+        /// </summary>
+        /// <param name="result">The element at the back if the buffer is not empty.</param>
+        /// <returns>True if an element was removed, false if the buffer is empty.</returns>
+        public bool TryPopBack(out T result)
+        {
+            if (Count == 0)
+            {
+                result = default;
+                return false;
+            }
+
+            int backIndex = AdjustedIndexFor(Count - 1);
+            result = _buffer[backIndex];
+            _buffer[backIndex] = default; // Clear reference for GC
+            Count--;
+
+            return true;
         }
 
         private int AdjustedIndexFor(int index)
