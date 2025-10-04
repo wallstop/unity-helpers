@@ -29,9 +29,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         public sealed class OctTreeNode
         {
             public readonly Bounds boundary;
-            internal readonly OctTreeNode[] children;
-            internal readonly int startIndex;
-            internal readonly int count;
+            internal readonly OctTreeNode[] _children;
+            internal readonly int _startIndex;
+            internal readonly int _count;
             public readonly bool isTerminal;
 
             private OctTreeNode(
@@ -43,10 +43,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             )
             {
                 this.boundary = boundary;
-                this.startIndex = startIndex;
-                this.count = count;
+                _startIndex = startIndex;
+                _count = count;
                 this.isTerminal = isTerminal;
-                this.children = children ?? Array.Empty<OctTreeNode>();
+                _children = children ?? Array.Empty<OctTreeNode>();
             }
 
             internal static OctTreeNode CreateLeaf(Bounds boundary, int startIndex, int count)
@@ -73,13 +73,13 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
         private readonly struct NodeDistance
         {
-            internal readonly OctTreeNode node;
-            internal readonly float distanceSquared;
+            internal readonly OctTreeNode _node;
+            internal readonly float _distanceSquared;
 
             internal NodeDistance(OctTreeNode node, float distanceSquared)
             {
-                this.node = node;
-                this.distanceSquared = distanceSquared;
+                _node = node;
+                _distanceSquared = distanceSquared;
             }
         }
 
@@ -340,7 +340,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         )
         {
             elementsInRange.Clear();
-            if (range < 0f || _head.count <= 0)
+            if (range < 0f || _head._count <= 0)
             {
                 return elementsInRange;
             }
@@ -365,7 +365,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             while (nodesToVisit.TryPop(out OctTreeNode currentNode))
             {
-                if (currentNode is null || currentNode.count <= 0)
+                if (currentNode is null || currentNode._count <= 0)
                 {
                     continue;
                 }
@@ -383,8 +383,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     )
                 )
                 {
-                    int start = currentNode.startIndex;
-                    int end = start + currentNode.count;
+                    int start = currentNode._startIndex;
+                    int end = start + currentNode._count;
                     for (int i = start; i < end; ++i)
                     {
                         Entry entry = entries[indices[i]];
@@ -405,11 +405,11 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     continue;
                 }
 
-                OctTreeNode[] childNodes = currentNode.children;
+                OctTreeNode[] childNodes = currentNode._children;
                 for (int i = 0; i < childNodes.Length; ++i)
                 {
                     OctTreeNode child = childNodes[i];
-                    if (child is null || child.count <= 0)
+                    if (child is null || child._count <= 0)
                     {
                         continue;
                     }
@@ -438,7 +438,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         )
         {
             elementsInBounds.Clear();
-            if (_head.count <= 0 || !bounds.Intersects(_bounds))
+            if (_head._count <= 0 || !bounds.Intersects(_bounds))
             {
                 return elementsInBounds;
             }
@@ -451,7 +451,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             while (nodesToVisit.TryPop(out OctTreeNode currentNode))
             {
-                if (currentNode is null || currentNode.count <= 0)
+                if (currentNode is null || currentNode._count <= 0)
                 {
                     continue;
                 }
@@ -461,8 +461,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     && bounds.Contains(currentNode.boundary.max)
                 )
                 {
-                    int start = currentNode.startIndex;
-                    int end = start + currentNode.count;
+                    int start = currentNode._startIndex;
+                    int end = start + currentNode._count;
                     for (int i = start; i < end; ++i)
                     {
                         elementsInBounds.Add(entries[indices[i]].value);
@@ -473,8 +473,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
                 if (currentNode.isTerminal)
                 {
-                    int start = currentNode.startIndex;
-                    int end = start + currentNode.count;
+                    int start = currentNode._startIndex;
+                    int end = start + currentNode._count;
                     for (int i = start; i < end; ++i)
                     {
                         Entry entry = entries[indices[i]];
@@ -487,11 +487,11 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     continue;
                 }
 
-                OctTreeNode[] childNodes = currentNode.children;
+                OctTreeNode[] childNodes = currentNode._children;
                 for (int i = 0; i < childNodes.Length; ++i)
                 {
                     OctTreeNode child = childNodes[i];
-                    if (child is null || child.count <= 0)
+                    if (child is null || child._count <= 0)
                     {
                         continue;
                     }
@@ -514,7 +514,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         {
             nearestNeighbors.Clear();
 
-            if (count <= 0 || _head.count == 0)
+            if (count <= 0 || _head._count == 0)
             {
                 return nearestNeighbors;
             }
@@ -546,21 +546,21 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
                 if (
                     nearestNeighborBuffer.Count >= count
-                    && best.distanceSquared >= currentWorstDistanceSquared
+                    && best._distanceSquared >= currentWorstDistanceSquared
                 )
                 {
                     break;
                 }
 
-                OctTreeNode currentNode = best.node;
+                OctTreeNode currentNode = best._node;
 
                 if (!currentNode.isTerminal)
                 {
-                    OctTreeNode[] childNodes = currentNode.children;
+                    OctTreeNode[] childNodes = currentNode._children;
                     for (int i = 0; i < childNodes.Length; ++i)
                     {
                         OctTreeNode child = childNodes[i];
-                        if (child is not null && child.count > 0)
+                        if (child is not null && child._count > 0)
                         {
                             PushNode(nodeHeap, child, position);
                         }
@@ -569,8 +569,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     continue;
                 }
 
-                int startIndex = currentNode.startIndex;
-                int endIndex = startIndex + currentNode.count;
+                int startIndex = currentNode._startIndex;
+                int endIndex = startIndex + currentNode._count;
                 for (int i = startIndex; i < endIndex; ++i)
                 {
                     Entry entry = entries[indices[i]];
@@ -614,7 +614,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 {
                     int parent = (index - 1) >> 1;
                     NodeDistance parentEntry = heap[parent];
-                    if (parentEntry.distanceSquared <= entry.distanceSquared)
+                    if (parentEntry._distanceSquared <= entry._distanceSquared)
                     {
                         break;
                     }
@@ -645,11 +645,11 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
                     int right = left + 1;
                     int smallest =
-                        right < count && heap[right].distanceSquared < heap[left].distanceSquared
+                        right < count && heap[right]._distanceSquared < heap[left]._distanceSquared
                             ? right
                             : left;
 
-                    if (last.distanceSquared <= heap[smallest].distanceSquared)
+                    if (last._distanceSquared <= heap[smallest]._distanceSquared)
                     {
                         break;
                     }

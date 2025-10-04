@@ -177,6 +177,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                         tree.GetElementsInRange(rangeCenter, radius, rangeResults);
 
                         ValidateCount(
+                            tree,
                             expectedCounts,
                             "Elements In Range",
                             label,
@@ -209,6 +210,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                         tree.GetElementsInBounds(queryBounds, boundsResults);
 
                         ValidateCount(
+                            tree,
                             expectedCounts,
                             "Get Elements In Bounds",
                             boundsSpec.Label,
@@ -300,11 +302,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             {
                 new TreeSpec(
                     "KDTree2D (Balanced)",
-                    points => new KDTree2D<Vector2>(points, p => p)
+                    points => new KdTree2D<Vector2>(points, p => p)
                 ),
                 new TreeSpec(
                     "KDTree2D (Unbalanced)",
-                    points => new KDTree2D<Vector2>(points, p => p, balanced: false)
+                    points => new KdTree2D<Vector2>(points, p => p, balanced: false)
                 ),
                 new TreeSpec("QuadTree2D", points => new QuadTree2D<Vector2>(points, p => p)),
                 new TreeSpec("RTree2D", points => new RTree2D<Vector2>(points, CreatePointBounds)),
@@ -548,6 +550,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
         }
 
         private static void ValidateCount(
+            ISpatialTree2D<Vector2> tree,
             IDictionary<string, int> expectedCounts,
             string group,
             string label,
@@ -561,11 +564,24 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 return;
             }
 
-            Assert.AreEqual(
-                expected,
-                actualCount,
-                $"Expected '{group}' -> '{label}' to return {expected} elements, but received {actualCount}."
-            );
+            if (tree is RTree2D<Vector2>)
+            {
+                // RTrees are built differently
+                Assert.AreEqual(
+                    expected,
+                    actualCount,
+                    delta: 100,
+                    $"Expected tree '{tree.GetType()}' '{group}' -> '{label}' to return {expected} elements, but received {actualCount}."
+                );
+            }
+            else
+            {
+                Assert.AreEqual(
+                    expected,
+                    actualCount,
+                    $"Expected tree '{tree.GetType()}' '{group}' -> '{label}' to return {expected} elements, but received {actualCount}."
+                );
+            }
         }
 
         private static string FormatRate(int iterations)

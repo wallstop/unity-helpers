@@ -8,13 +8,13 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using WallstopStudios.UnityHelpers.Core.DataStructure;
     using WallstopStudios.UnityHelpers.Core.Random;
 
-    public sealed class BalancedKDTree2DTests : SpatialTree2DTests<KDTree2D<Vector2>>
+    public sealed class BalancedKDTree2DTests : SpatialTree2DTests<KdTree2D<Vector2>>
     {
         private IRandom Random => PRNG.Instance;
 
-        protected override KDTree2D<Vector2> CreateTree(IEnumerable<Vector2> points)
+        protected override KdTree2D<Vector2> CreateTree(IEnumerable<Vector2> points)
         {
-            return new KDTree2D<Vector2>(points, _ => _, balanced: true);
+            return new KdTree2D<Vector2>(points, _ => _, balanced: true);
         }
 
         [Test]
@@ -22,7 +22,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             Assert.Throws<ArgumentNullException>(() =>
             {
-                new KDTree2D<Vector2>(null, _ => _, balanced: true);
+                new KdTree2D<Vector2>(null, _ => _, balanced: true);
             });
         }
 
@@ -32,7 +32,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             List<Vector2> points = new() { Vector2.zero };
             Assert.Throws<ArgumentNullException>(() =>
             {
-                new KDTree2D<Vector2>(points, null, balanced: true);
+                new KdTree2D<Vector2>(points, null, balanced: true);
             });
         }
 
@@ -40,7 +40,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void ConstructorWithEmptyCollectionSucceeds()
         {
             List<Vector2> points = new();
-            KDTree2D<Vector2> tree = CreateTree(points);
+            KdTree2D<Vector2> tree = CreateTree(points);
             Assert.IsNotNull(tree);
 
             List<Vector2> results = new();
@@ -53,7 +53,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             Vector2 point = new(Random.NextFloat(-100, 100), Random.NextFloat(-100, 100));
             List<Vector2> points = new() { point };
-            KDTree2D<Vector2> tree = CreateTree(points);
+            KdTree2D<Vector2> tree = CreateTree(points);
 
             Assert.IsNotNull(tree);
 
@@ -68,7 +68,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             Vector2 point = new(5, 5);
             List<Vector2> points = new() { point, point, point };
-            KDTree2D<Vector2> tree = CreateTree(points);
+            KdTree2D<Vector2> tree = CreateTree(points);
 
             List<Vector2> results = new();
             tree.GetElementsInRange(point, 10000f, results);
@@ -79,7 +79,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void GetElementsInRangeWithEmptyTreeReturnsEmpty()
         {
             List<Vector2> points = new();
-            KDTree2D<Vector2> tree = CreateTree(points);
+            KdTree2D<Vector2> tree = CreateTree(points);
             List<Vector2> results = new();
 
             tree.GetElementsInRange(Vector2.zero, 100f, results);
@@ -91,7 +91,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             Vector2 target = new(10, 10);
             List<Vector2> points = new() { target, new(10.1f, 10), new(10, 10.1f) };
-            KDTree2D<Vector2> tree = CreateTree(points);
+            KdTree2D<Vector2> tree = CreateTree(points);
             List<Vector2> results = new();
 
             tree.GetElementsInRange(target, 0f, results);
@@ -107,7 +107,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             {
                 points.Add(new Vector2(Random.NextFloat(-50, 50), Random.NextFloat(-50, 50)));
             }
-            KDTree2D<Vector2> tree = CreateTree(points);
+            KdTree2D<Vector2> tree = CreateTree(points);
             List<Vector2> results = new();
 
             tree.GetElementsInRange(Vector2.zero, 10000f, results);
@@ -124,7 +124,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 new(5, 0), // distance 5
                 new(10, 0), // distance 10
             };
-            KDTree2D<Vector2> tree = CreateTree(points);
+            KdTree2D<Vector2> tree = CreateTree(points);
             List<Vector2> results = new();
 
             // Get elements between distance 2 and 8
@@ -144,7 +144,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                     points.Add(new Vector2(x, y));
                 }
             }
-            KDTree2D<Vector2> tree = CreateTree(points);
+            KdTree2D<Vector2> tree = CreateTree(points);
             List<Vector2> results = new();
 
             Bounds searchBounds = new(new Vector3(5, 5, 0), new Vector3(3, 3, 1));
@@ -161,7 +161,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void GetElementsInBoundsWithEmptyTreeReturnsEmpty()
         {
             List<Vector2> points = new();
-            KDTree2D<Vector2> tree = CreateTree(points);
+            KdTree2D<Vector2> tree = CreateTree(points);
             List<Vector2> results = new();
 
             Bounds searchBounds = new(Vector3.zero, Vector3.one * 10);
@@ -173,7 +173,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void GetElementsInBoundsWithNonIntersectingBoundsReturnsEmpty()
         {
             List<Vector2> points = new() { new(0, 0), new(1, 1), new(2, 2) };
-            KDTree2D<Vector2> tree = CreateTree(points);
+            KdTree2D<Vector2> tree = CreateTree(points);
             List<Vector2> results = new();
 
             Bounds searchBounds = new(new Vector3(100, 100, 0), new Vector3(10, 10, 1));
@@ -185,7 +185,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void GetApproximateNearestNeighborsWithEmptyTreeReturnsEmpty()
         {
             List<Vector2> points = new();
-            KDTree2D<Vector2> tree = CreateTree(points);
+            KdTree2D<Vector2> tree = CreateTree(points);
             List<Vector2> results = new();
 
             tree.GetApproximateNearestNeighbors(Vector2.zero, 5, results);
@@ -196,7 +196,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void GetApproximateNearestNeighborsWithCountZeroReturnsEmpty()
         {
             List<Vector2> points = new() { Vector2.zero, Vector2.one };
-            KDTree2D<Vector2> tree = CreateTree(points);
+            KdTree2D<Vector2> tree = CreateTree(points);
             List<Vector2> results = new();
 
             tree.GetApproximateNearestNeighbors(Vector2.zero, 0, results);
@@ -211,7 +211,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             {
                 points.Add(new Vector2(Random.NextFloat(-100, 100), Random.NextFloat(-100, 100)));
             }
-            KDTree2D<Vector2> tree = CreateTree(points);
+            KdTree2D<Vector2> tree = CreateTree(points);
             List<Vector2> results = new();
 
             int requestedCount = 10;
@@ -223,7 +223,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void GetApproximateNearestNeighborsWithCountGreaterThanElementsReturnsAll()
         {
             List<Vector2> points = new() { Vector2.zero, Vector2.one, Vector2.right };
-            KDTree2D<Vector2> tree = CreateTree(points);
+            KdTree2D<Vector2> tree = CreateTree(points);
             List<Vector2> results = new();
 
             tree.GetApproximateNearestNeighbors(Vector2.zero, 100, results);
@@ -239,7 +239,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             {
                 points.Add(new Vector2(i, i));
             }
-            KDTree2D<Vector2> tree = CreateTree(points);
+            KdTree2D<Vector2> tree = CreateTree(points);
 
             List<Vector2> results = new();
             tree.GetElementsInRange(new Vector2(50, 50), 10f, results);
@@ -250,7 +250,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void BoundaryCalculatedCorrectlyForPositivePoints()
         {
             List<Vector2> points = new() { new(0, 0), new(10, 0), new(0, 10), new(10, 10) };
-            KDTree2D<Vector2> tree = CreateTree(points);
+            KdTree2D<Vector2> tree = CreateTree(points);
 
             Bounds bounds = tree.Boundary;
             Assert.Greater(bounds.size.x, 0);
@@ -262,7 +262,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void BoundaryCalculatedCorrectlyForNegativePoints()
         {
             List<Vector2> points = new() { new(-10, -10), new(-5, -5), new(-1, -1) };
-            KDTree2D<Vector2> tree = CreateTree(points);
+            KdTree2D<Vector2> tree = CreateTree(points);
 
             Bounds bounds = tree.Boundary;
             Assert.IsTrue(bounds.Contains(new Vector3(-5, -5, 0)));
@@ -278,7 +278,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                     new Vector2(Random.NextFloat(-1000, 1000), Random.NextFloat(-1000, 1000))
                 );
             }
-            KDTree2D<Vector2> tree = CreateTree(points);
+            KdTree2D<Vector2> tree = CreateTree(points);
 
             List<Vector2> allResults = new();
             tree.GetElementsInRange(Vector2.zero, 100000f, allResults);
@@ -298,8 +298,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 points.Add(new Vector2(i, i));
             }
 
-            KDTree2D<Vector2> treeSmallBucket = new(points, _ => _, bucketSize: 1, balanced: true);
-            KDTree2D<Vector2> treeLargeBucket = new(
+            KdTree2D<Vector2> treeSmallBucket = new(points, _ => _, bucketSize: 1, balanced: true);
+            KdTree2D<Vector2> treeLargeBucket = new(
                 points,
                 _ => _,
                 bucketSize: 100,
@@ -323,7 +323,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             {
                 points.Add(new Vector2(i, 0)); // All on x-axis
             }
-            KDTree2D<Vector2> tree = CreateTree(points);
+            KdTree2D<Vector2> tree = CreateTree(points);
 
             // Verify tree was created successfully
             Assert.IsNotNull(tree);
@@ -373,7 +373,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             {
                 points.Add(new Vector2(0, i)); // All on y-axis
             }
-            KDTree2D<Vector2> tree = CreateTree(points);
+            KdTree2D<Vector2> tree = CreateTree(points);
 
             // Verify tree was created successfully
             Assert.IsNotNull(tree);
@@ -442,7 +442,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 new(0, 0.0001f),
                 new(0.0001f, 0.0001f),
             };
-            KDTree2D<Vector2> tree = CreateTree(points);
+            KdTree2D<Vector2> tree = CreateTree(points);
 
             List<Vector2> results = new();
             tree.GetElementsInRange(Vector2.zero, 0.001f, results);
@@ -457,7 +457,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             {
                 points.Add(new Vector2(Random.NextFloat(-50, 50), Random.NextFloat(-50, 50)));
             }
-            KDTree2D<Vector2> tree = CreateTree(points);
+            KdTree2D<Vector2> tree = CreateTree(points);
 
             List<Vector2> results1 = new();
             List<Vector2> results2 = new();
@@ -481,8 +481,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 points.Add(new Vector2(Random.NextFloat(-50, 50), Random.NextFloat(-50, 50)));
             }
 
-            KDTree2D<Vector2> balancedTree = new(points, _ => _, balanced: true);
-            KDTree2D<Vector2> unbalancedTree = new(points, _ => _, balanced: false);
+            KdTree2D<Vector2> balancedTree = new(points, _ => _, balanced: true);
+            KdTree2D<Vector2> unbalancedTree = new(points, _ => _, balanced: false);
 
             List<Vector2> balancedResults = new();
             List<Vector2> unbalancedResults = new();
@@ -501,7 +501,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void GetElementsInRangeClearsResultsList()
         {
             List<Vector2> points = new() { Vector2.zero };
-            KDTree2D<Vector2> tree = CreateTree(points);
+            KdTree2D<Vector2> tree = CreateTree(points);
             List<Vector2> results = new() { Vector2.one, Vector2.right };
 
             tree.GetElementsInRange(Vector2.zero, 1f, results);
@@ -512,7 +512,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void GetElementsInBoundsClearsResultsList()
         {
             List<Vector2> points = new() { Vector2.zero };
-            KDTree2D<Vector2> tree = CreateTree(points);
+            KdTree2D<Vector2> tree = CreateTree(points);
             List<Vector2> results = new() { Vector2.one, Vector2.right };
 
             tree.GetElementsInBounds(new Bounds(Vector3.zero, Vector3.one * 10), results);
@@ -529,7 +529,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 points.Add(new Vector2(i, 0));
             }
 
-            KDTree2D<Vector2> tree = CreateTree(points);
+            KdTree2D<Vector2> tree = CreateTree(points);
 
             List<Vector2> results = new();
             tree.GetElementsInRange(new Vector2(500, 0), 50f, results);
@@ -552,7 +552,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 }
             }
 
-            KDTree2D<Vector2> tree = CreateTree(points);
+            KdTree2D<Vector2> tree = CreateTree(points);
 
             List<Vector2> results = new();
             tree.GetElementsInRange(Vector2.zero, 20f, results);

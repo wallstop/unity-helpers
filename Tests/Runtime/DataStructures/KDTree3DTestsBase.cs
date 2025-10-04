@@ -8,15 +8,15 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using WallstopStudios.UnityHelpers.Core.Random;
     using Vector3 = UnityEngine.Vector3;
 
-    public abstract class KDTree3DTestsBase : SpatialTree3DTests<KDTree3D<Vector3>>
+    public abstract class KDTree3DTestsBase : SpatialTree3DTests<KdTree3D<Vector3>>
     {
         private IRandom Random => PRNG.Instance;
 
         protected abstract bool IsBalanced { get; }
 
-        protected override KDTree3D<Vector3> CreateTree(IEnumerable<Vector3> points)
+        protected override KdTree3D<Vector3> CreateTree(IEnumerable<Vector3> points)
         {
-            return new KDTree3D<Vector3>(points, point => point, balanced: IsBalanced);
+            return new KdTree3D<Vector3>(points, point => point, balanced: IsBalanced);
         }
 
         [Test]
@@ -24,7 +24,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             Assert.Throws<ArgumentNullException>(() =>
             {
-                new KDTree3D<Vector3>(null, point => point, balanced: IsBalanced);
+                new KdTree3D<Vector3>(null, point => point, balanced: IsBalanced);
             });
         }
 
@@ -34,7 +34,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             List<Vector3> points = new() { Vector3.zero };
             Assert.Throws<ArgumentNullException>(() =>
             {
-                new KDTree3D<Vector3>(points, null, balanced: IsBalanced);
+                new KdTree3D<Vector3>(points, null, balanced: IsBalanced);
             });
         }
 
@@ -42,7 +42,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void ConstructorWithEmptyCollectionSucceeds()
         {
             List<Vector3> points = new();
-            KDTree3D<Vector3> tree = CreateTree(points);
+            KdTree3D<Vector3> tree = CreateTree(points);
             Assert.IsNotNull(tree);
 
             List<Vector3> results = new();
@@ -59,7 +59,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 Random.NextFloat(-100, 100)
             );
             List<Vector3> points = new() { point };
-            KDTree3D<Vector3> tree = CreateTree(points);
+            KdTree3D<Vector3> tree = CreateTree(points);
 
             List<Vector3> results = new();
             tree.GetElementsInRange(point, 1f, results);
@@ -72,7 +72,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             Vector3 point = new(5f, -3f, 2f);
             List<Vector3> points = new() { point, point, point };
-            KDTree3D<Vector3> tree = CreateTree(points);
+            KdTree3D<Vector3> tree = CreateTree(points);
 
             List<Vector3> results = new();
             tree.GetElementsInRange(point, 0.1f, results);
@@ -83,7 +83,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void GetElementsInRangeWithEmptyTreeReturnsEmpty()
         {
-            KDTree3D<Vector3> tree = CreateTree(new List<Vector3>());
+            KdTree3D<Vector3> tree = CreateTree(new List<Vector3>());
             List<Vector3> results = new();
 
             tree.GetElementsInRange(Vector3.zero, 10f, results);
@@ -103,7 +103,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 target + new Vector3(0f, 0.01f, 0f),
             };
 
-            KDTree3D<Vector3> tree = CreateTree(points);
+            KdTree3D<Vector3> tree = CreateTree(points);
 
             List<Vector3> results = new() { new Vector3(999f, 999f, 999f) };
             tree.GetElementsInRange(target, 0f, results);
@@ -123,7 +123,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 new Vector3(0f, 0f, 7f),
             };
 
-            KDTree3D<Vector3> tree = CreateTree(points);
+            KdTree3D<Vector3> tree = CreateTree(points);
             List<Vector3> results = new();
             tree.GetElementsInRange(Vector3.zero, 5.5f, results, minimumRange: 2f);
 
@@ -146,7 +146,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 );
             }
 
-            KDTree3D<Vector3> tree = CreateTree(points);
+            KdTree3D<Vector3> tree = CreateTree(points);
 
             List<Vector3> first = new();
             List<Vector3> second = new();
@@ -169,7 +169,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 points.Add(new Vector3(i, 0f, 0f));
             }
 
-            KDTree3D<Vector3> tree = CreateTree(points);
+            KdTree3D<Vector3> tree = CreateTree(points);
             List<Vector3> results = new();
 
             tree.GetElementsInRange(new Vector3(500f, 0f, 0f), 25f, results);
@@ -192,7 +192,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 }
             }
 
-            KDTree3D<Vector3> tree = CreateTree(points);
+            KdTree3D<Vector3> tree = CreateTree(points);
             List<Vector3> results = new();
 
             tree.GetElementsInRange(Vector3.zero, 30f, results);
@@ -214,8 +214,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 );
             }
 
-            KDTree3D<Vector3> balancedTree = new(points, point => point, balanced: true);
-            KDTree3D<Vector3> unbalancedTree = new(points, point => point, balanced: false);
+            KdTree3D<Vector3> balancedTree = new(points, point => point, balanced: true);
+            KdTree3D<Vector3> unbalancedTree = new(points, point => point, balanced: false);
 
             Vector3 query = Vector3.zero;
             float range = 40f;

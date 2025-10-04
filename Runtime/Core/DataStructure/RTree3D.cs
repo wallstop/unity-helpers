@@ -15,28 +15,28 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         [Serializable]
         internal struct ElementData
         {
-            internal T Value;
-            internal Bounds Bounds;
-            internal Vector3 Center;
-            internal uint MortonKey;
+            internal T _value;
+            internal Bounds _bounds;
+            internal Vector3 _center;
+            internal uint _mortonKey;
         }
 
         [Serializable]
         public sealed class RTreeNode
         {
             public readonly Bounds boundary;
-            internal readonly RTreeNode[] children;
-            internal readonly int startIndex;
-            internal readonly int count;
+            internal readonly RTreeNode[] _children;
+            internal readonly int _startIndex;
+            internal readonly int _count;
             public readonly bool isTerminal;
 
             private RTreeNode(int startIndex, int count, Bounds boundary, RTreeNode[] children)
             {
-                this.startIndex = startIndex;
-                this.count = count;
+                _startIndex = startIndex;
+                _count = count;
                 this.boundary = boundary;
-                this.children = children ?? Array.Empty<RTreeNode>();
-                isTerminal = this.children.Length == 0;
+                _children = children ?? Array.Empty<RTreeNode>();
+                isTerminal = _children.Length == 0;
             }
 
             internal static RTreeNode CreateEmpty()
@@ -57,10 +57,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     return CreateEmpty();
                 }
 
-                int startIndex = children[0].startIndex;
+                int startIndex = children[0]._startIndex;
                 int lastChildIndex = children.Length - 1;
                 RTreeNode lastChild = children[lastChildIndex];
-                int endIndex = lastChild.startIndex + lastChild.count;
+                int endIndex = lastChild._startIndex + lastChild._count;
                 Bounds nodeBounds = children[0].boundary;
                 for (int i = 1; i < children.Length; ++i)
                 {
@@ -74,13 +74,13 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
         private readonly struct NodeDistance
         {
-            internal readonly RTreeNode node;
-            internal readonly float distanceSquared;
+            internal readonly RTreeNode _node;
+            internal readonly float _distanceSquared;
 
             internal NodeDistance(RTreeNode node, float distanceSquared)
             {
-                this.node = node;
-                this.distanceSquared = distanceSquared;
+                _node = node;
+                _distanceSquared = distanceSquared;
             }
         }
 
@@ -126,9 +126,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
                 Bounds elementBounds = transformer(element);
                 ElementData data = default;
-                data.Value = element;
-                data.Bounds = elementBounds;
-                data.Center = elementBounds.center;
+                data._value = element;
+                data._bounds = elementBounds;
+                data._center = elementBounds.center;
                 elementData[i] = data;
                 Vector3 min = elementBounds.min;
                 Vector3 max = elementBounds.max;
@@ -218,18 +218,18 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             for (int i = 0; i < elementCount; ++i)
             {
                 ref ElementData data = ref elementData[i];
-                Vector3 center = data.Center;
+                Vector3 center = data._center;
                 float normalizedX = (center.x - minX) * inverseRangeX;
                 float normalizedY = (center.y - minY) * inverseRangeY;
                 float normalizedZ = (center.z - minZ) * inverseRangeZ;
                 ushort quantizedX = QuantizeNormalized(normalizedX);
                 ushort quantizedY = QuantizeNormalized(normalizedY);
                 ushort quantizedZ = QuantizeNormalized(normalizedZ);
-                data.MortonKey = EncodeMorton(quantizedX, quantizedY, quantizedZ);
+                data._mortonKey = EncodeMorton(quantizedX, quantizedY, quantizedZ);
                 if (sortKeys is not null)
                 {
                     sortKeys[i] = ComposeSortKey(
-                        data.MortonKey,
+                        data._mortonKey,
                         quantizedX,
                         quantizedY,
                         quantizedZ
@@ -293,12 +293,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
                 if (currentNode.isTerminal)
                 {
-                    int start = currentNode.startIndex;
-                    int end = start + currentNode.count;
+                    int start = currentNode._startIndex;
+                    int end = start + currentNode._count;
                     for (int i = start; i < end; ++i)
                     {
                         ElementData elementData = _elementData[i];
-                        if (bounds.Intersects(elementData.Bounds))
+                        if (bounds.Intersects(elementData._bounds))
                         {
                             indices.Add(i);
                         }
@@ -307,10 +307,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     continue;
                 }
 
-                RTreeNode[] childNodes = currentNode.children;
+                RTreeNode[] childNodes = currentNode._children;
                 foreach (RTreeNode child in childNodes)
                 {
-                    if (child.count <= 0)
+                    if (child._count <= 0)
                     {
                         continue;
                     }
@@ -367,7 +367,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             foreach (int index in candidateIndices)
             {
                 ElementData elementData = _elementData[index];
-                Bounds elementBoundary = elementData.Bounds;
+                Bounds elementBoundary = elementData._bounds;
                 if (!area.Intersects(elementBoundary))
                 {
                     continue;
@@ -378,7 +378,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     continue;
                 }
 
-                elementsInRange.Add(elementData.Value);
+                elementsInRange.Add(elementData._value);
             }
 
             return elementsInRange;
@@ -397,7 +397,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             CollectElementIndicesInBounds(bounds, indices);
             foreach (int index in indices)
             {
-                elementsInBounds.Add(_elementData[index].Value);
+                elementsInBounds.Add(_elementData[index]._value);
             }
 
             return elementsInBounds;
@@ -411,7 +411,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         {
             nearestNeighbors.Clear();
 
-            if (count <= 0 || _head.count == 0)
+            if (count <= 0 || _head._count == 0)
             {
                 return nearestNeighbors;
             }
@@ -439,21 +439,21 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
                 if (
                     nearestNeighborsSet.Count >= count
-                    && best.distanceSquared >= currentWorstDistanceSquared
+                    && best._distanceSquared >= currentWorstDistanceSquared
                 )
                 {
                     break;
                 }
 
-                RTreeNode currentNode = best.node;
+                RTreeNode currentNode = best._node;
 
                 if (!currentNode.isTerminal)
                 {
-                    RTreeNode[] childNodes = currentNode.children;
+                    RTreeNode[] childNodes = currentNode._children;
                     for (int i = 0; i < childNodes.Length; ++i)
                     {
                         RTreeNode child = childNodes[i];
-                        if (child.count > 0)
+                        if (child._count > 0)
                         {
                             PushNode(nodeHeap, child, position);
                         }
@@ -462,12 +462,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     continue;
                 }
 
-                int startIndex = currentNode.startIndex;
-                int endIndex = startIndex + currentNode.count;
+                int startIndex = currentNode._startIndex;
+                int endIndex = startIndex + currentNode._count;
                 for (int i = startIndex; i < endIndex; ++i)
                 {
                     ElementData elementData = _elementData[i];
-                    if (!nearestNeighborsSet.Add(elementData.Value))
+                    if (!nearestNeighborsSet.Add(elementData._value))
                     {
                         continue;
                     }
@@ -497,8 +497,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 nearestIndices.Sort(
                     (lhsIndex, rhsIndex) =>
                     {
-                        Vector3 lhsCenter = _elementData[lhsIndex].Center;
-                        Vector3 rhsCenter = _elementData[rhsIndex].Center;
+                        Vector3 lhsCenter = _elementData[lhsIndex]._center;
+                        Vector3 rhsCenter = _elementData[rhsIndex]._center;
                         return (lhsCenter - localPosition).sqrMagnitude.CompareTo(
                             (rhsCenter - localPosition).sqrMagnitude
                         );
@@ -513,7 +513,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             foreach (int index in nearestIndices)
             {
-                nearestNeighbors.Add(_elementData[index].Value);
+                nearestNeighbors.Add(_elementData[index]._value);
             }
 
             nodeHeap.Clear();
@@ -532,7 +532,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 {
                     int parent = (index - 1) >> 1;
                     NodeDistance parentEntry = heap[parent];
-                    if (parentEntry.distanceSquared <= entry.distanceSquared)
+                    if (parentEntry._distanceSquared <= entry._distanceSquared)
                     {
                         break;
                     }
@@ -563,11 +563,11 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
                     int right = left + 1;
                     int smallest =
-                        right < count && heap[right].distanceSquared < heap[left].distanceSquared
+                        right < count && heap[right]._distanceSquared < heap[left]._distanceSquared
                             ? right
                             : left;
 
-                    if (last.distanceSquared <= heap[smallest].distanceSquared)
+                    if (last._distanceSquared <= heap[smallest]._distanceSquared)
                     {
                         break;
                     }
@@ -595,7 +595,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 float worst = 0f;
                 for (int i = 0; i < indices.Count; ++i)
                 {
-                    Vector3 center = _elementData[indices[i]].Center;
+                    Vector3 center = _elementData[indices[i]]._center;
                     float distanceSquared = (center - point).sqrMagnitude;
                     if (distanceSquared > worst)
                     {
@@ -618,7 +618,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             int endIndex = startIndex + count;
             for (int i = startIndex; i < endIndex; ++i)
             {
-                Bounds bounds = elements[i].Bounds;
+                Bounds bounds = elements[i]._bounds;
                 Vector3 min = bounds.min;
                 Vector3 max = bounds.max;
                 minX = Math.Min(minX, min.x);

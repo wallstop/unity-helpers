@@ -30,9 +30,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         public sealed class QuadTreeNode
         {
             public readonly Bounds boundary;
-            internal readonly QuadTreeNode[] children;
-            internal readonly int startIndex;
-            internal readonly int count;
+            internal readonly QuadTreeNode[] _children;
+            internal readonly int _startIndex;
+            internal readonly int _count;
             public readonly bool isTerminal;
 
             private QuadTreeNode(
@@ -44,10 +44,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             )
             {
                 this.boundary = boundary;
-                this.startIndex = startIndex;
-                this.count = count;
+                _startIndex = startIndex;
+                _count = count;
                 this.isTerminal = isTerminal;
-                this.children = children ?? Array.Empty<QuadTreeNode>();
+                _children = children ?? Array.Empty<QuadTreeNode>();
             }
 
             internal static QuadTreeNode CreateLeaf(Bounds boundary, int startIndex, int count)
@@ -274,7 +274,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         )
         {
             elementsInRange.Clear();
-            if (range < 0f || _head.count <= 0)
+            if (range < 0f || _head._count <= 0)
             {
                 return elementsInRange;
             }
@@ -299,7 +299,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             while (nodesToVisit.TryPop(out QuadTreeNode currentNode))
             {
-                if (currentNode is null || currentNode.count <= 0)
+                if (currentNode is null || currentNode._count <= 0)
                 {
                     continue;
                 }
@@ -311,8 +311,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
                 if (currentNode.isTerminal || bounds.FastContains2D(currentNode.boundary))
                 {
-                    int start = currentNode.startIndex;
-                    int end = start + currentNode.count;
+                    int start = currentNode._startIndex;
+                    int end = start + currentNode._count;
                     for (int i = start; i < end; ++i)
                     {
                         Entry entry = entries[indices[i]];
@@ -333,11 +333,11 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     continue;
                 }
 
-                QuadTreeNode[] childNodes = currentNode.children;
+                QuadTreeNode[] childNodes = currentNode._children;
                 for (int i = 0; i < childNodes.Length; ++i)
                 {
                     QuadTreeNode child = childNodes[i];
-                    if (child is null || child.count <= 0)
+                    if (child is null || child._count <= 0)
                     {
                         continue;
                     }
@@ -355,7 +355,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         public List<T> GetElementsInBounds(Bounds bounds, List<T> elementsInBounds)
         {
             elementsInBounds.Clear();
-            if (_head.count <= 0 || !bounds.FastIntersects2D(_bounds))
+            if (_head._count <= 0 || !bounds.FastIntersects2D(_bounds))
             {
                 return elementsInBounds;
             }
@@ -368,15 +368,15 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             while (nodesToVisit.TryPop(out QuadTreeNode currentNode))
             {
-                if (currentNode is null || currentNode.count <= 0)
+                if (currentNode is null || currentNode._count <= 0)
                 {
                     continue;
                 }
 
                 if (bounds.FastContains2D(currentNode.boundary))
                 {
-                    int start = currentNode.startIndex;
-                    int end = start + currentNode.count;
+                    int start = currentNode._startIndex;
+                    int end = start + currentNode._count;
                     for (int i = start; i < end; ++i)
                     {
                         elementsInBounds.Add(entries[indices[i]].value);
@@ -387,8 +387,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
                 if (currentNode.isTerminal)
                 {
-                    int start = currentNode.startIndex;
-                    int end = start + currentNode.count;
+                    int start = currentNode._startIndex;
+                    int end = start + currentNode._count;
                     for (int i = start; i < end; ++i)
                     {
                         Entry entry = entries[indices[i]];
@@ -401,11 +401,11 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     continue;
                 }
 
-                QuadTreeNode[] childNodes = currentNode.children;
+                QuadTreeNode[] childNodes = currentNode._children;
                 for (int i = 0; i < childNodes.Length; ++i)
                 {
                     QuadTreeNode child = childNodes[i];
-                    if (child is null || child.count <= 0)
+                    if (child is null || child._count <= 0)
                     {
                         continue;
                     }
@@ -428,7 +428,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         {
             nearestNeighbors.Clear();
 
-            if (count <= 0 || _head.count == 0)
+            if (count <= 0 || _head._count == 0)
             {
                 return nearestNeighbors;
             }
@@ -457,11 +457,11 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             while (!current.isTerminal)
             {
                 childrenBuffer.Clear();
-                QuadTreeNode[] childNodes = current.children;
+                QuadTreeNode[] childNodes = current._children;
                 for (int i = 0; i < childNodes.Length; ++i)
                 {
                     QuadTreeNode child = childNodes[i];
-                    if (child is not null && child.count > 0)
+                    if (child is not null && child._count > 0)
                     {
                         childrenBuffer.Add(child);
                     }
@@ -479,7 +479,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 }
 
                 current = childrenBuffer[0];
-                if (current.count <= count)
+                if (current._count <= count)
                 {
                     break;
                 }
@@ -489,13 +489,13 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 nearestNeighborBuffer.Count < count && nodeBuffer.TryPop(out QuadTreeNode selected)
             )
             {
-                if (selected is null || selected.count <= 0)
+                if (selected is null || selected._count <= 0)
                 {
                     continue;
                 }
 
-                int start = selected.startIndex;
-                int end = start + selected.count;
+                int start = selected._startIndex;
+                int end = start + selected._count;
                 for (int i = start; i < end; ++i)
                 {
                     Entry entry = entries[indices[i]];

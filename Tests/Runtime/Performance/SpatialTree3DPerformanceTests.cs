@@ -302,11 +302,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             {
                 new TreeSpec(
                     "KDTree3D (Balanced)",
-                    points => new KDTree3D<Vector3>(points, p => p)
+                    points => new KdTree3D<Vector3>(points, p => p)
                 ),
                 new TreeSpec(
                     "KDTree3D (Unbalanced)",
-                    points => new KDTree3D<Vector3>(points, p => p, balanced: false)
+                    points => new KdTree3D<Vector3>(points, p => p, balanced: false)
                 ),
                 new TreeSpec("OctTree3D", points => new OctTree3D<Vector3>(points, p => p)),
                 new TreeSpec("RTree3D", points => new RTree3D<Vector3>(points, CreatePointBounds)),

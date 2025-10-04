@@ -9,7 +9,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     using Utils;
 
     [Serializable]
-    public sealed class KDTree2D<T> : ISpatialTree2D<T>
+    public sealed class KdTree2D<T> : ISpatialTree2D<T>
     {
         [Serializable]
         public readonly struct Entry
@@ -25,19 +25,19 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         }
 
         [Serializable]
-        public sealed class KDTreeNode
+        public sealed class KdTreeNode
         {
             public readonly Bounds boundary;
-            public readonly KDTreeNode left;
-            public readonly KDTreeNode right;
-            internal readonly int startIndex;
-            internal readonly int count;
+            public readonly KdTreeNode left;
+            public readonly KdTreeNode right;
+            internal readonly int _startIndex;
+            internal readonly int _count;
             public readonly bool isTerminal;
 
-            private KDTreeNode(
+            private KdTreeNode(
                 Bounds boundary,
-                KDTreeNode left,
-                KDTreeNode right,
+                KdTreeNode left,
+                KdTreeNode right,
                 int startIndex,
                 int count,
                 bool isTerminal
@@ -46,25 +46,25 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 this.boundary = boundary;
                 this.left = left;
                 this.right = right;
-                this.startIndex = startIndex;
-                this.count = count;
+                _startIndex = startIndex;
+                _count = count;
                 this.isTerminal = isTerminal;
             }
 
-            internal static KDTreeNode CreateLeaf(Bounds boundary, int startIndex, int count)
+            internal static KdTreeNode CreateLeaf(Bounds boundary, int startIndex, int count)
             {
-                return new KDTreeNode(boundary, null, null, startIndex, count, true);
+                return new KdTreeNode(boundary, null, null, startIndex, count, true);
             }
 
-            internal static KDTreeNode CreateInternal(
+            internal static KdTreeNode CreateInternal(
                 Bounds boundary,
-                KDTreeNode left,
-                KDTreeNode right,
+                KdTreeNode left,
+                KdTreeNode right,
                 int startIndex,
                 int count
             )
             {
-                return new KDTreeNode(boundary, left, right, startIndex, count, false);
+                return new KdTreeNode(boundary, left, right, startIndex, count, false);
             }
         }
 
@@ -79,11 +79,11 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         private readonly Bounds _bounds;
         private readonly Entry[] _entries;
         private readonly int[] _indices;
-        private readonly KDTreeNode _head;
+        private readonly KdTreeNode _head;
         private readonly bool _balanced;
         private readonly int _bucketSize;
 
-        public KDTree2D(
+        public KdTree2D(
             IEnumerable<T> points,
             Func<T, Vector2> elementTransformer,
             int bucketSize = DefaultBucketSize,
@@ -139,11 +139,11 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             if (elementCount == 0)
             {
                 _bounds = bounds;
-                _head = KDTreeNode.CreateLeaf(_bounds, 0, 0);
+                _head = KdTreeNode.CreateLeaf(_bounds, 0, 0);
                 return;
             }
 
-            KDTreeNode root;
+            KdTreeNode root;
             if (_balanced)
             {
                 root = BuildBalanced(0, elementCount, depth: 0);
@@ -165,12 +165,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             _bounds = root.boundary;
         }
 
-        private KDTreeNode BuildBalanced(int startIndex, int count, int depth)
+        private KdTreeNode BuildBalanced(int startIndex, int count, int depth)
         {
             if (count <= _bucketSize)
             {
                 Bounds leafBounds = CalculateLeafBounds(startIndex, count);
-                return KDTreeNode.CreateLeaf(leafBounds, startIndex, count);
+                return KdTreeNode.CreateLeaf(leafBounds, startIndex, count);
             }
 
             bool splitOnXAxis = (depth & 1) == 0;
@@ -181,7 +181,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             if (leftCount == 0)
             {
                 Bounds leafBounds = CalculateLeafBounds(startIndex, count);
-                return KDTreeNode.CreateLeaf(leafBounds, startIndex, count);
+                return KdTreeNode.CreateLeaf(leafBounds, startIndex, count);
             }
 
             SelectKth(span, leftCount, axis);
@@ -189,16 +189,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             if (rightCount == 0)
             {
                 Bounds leafBounds = CalculateLeafBounds(startIndex, count);
-                return KDTreeNode.CreateLeaf(leafBounds, startIndex, count);
+                return KdTreeNode.CreateLeaf(leafBounds, startIndex, count);
             }
 
-            KDTreeNode left = BuildBalanced(startIndex, leftCount, depth + 1);
-            KDTreeNode right = BuildBalanced(startIndex + leftCount, rightCount, depth + 1);
+            KdTreeNode left = BuildBalanced(startIndex, leftCount, depth + 1);
+            KdTreeNode right = BuildBalanced(startIndex + leftCount, rightCount, depth + 1);
             Bounds boundary = CombineChildBounds(left.boundary, right.boundary);
-            return KDTreeNode.CreateInternal(boundary, left, right, startIndex, count);
+            return KdTreeNode.CreateInternal(boundary, left, right, startIndex, count);
         }
 
-        private KDTreeNode BuildUnbalanced(
+        private KdTreeNode BuildUnbalanced(
             int startIndex,
             int count,
             bool splitOnXAxis,
@@ -239,7 +239,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             if (count <= _bucketSize)
             {
-                return KDTreeNode.CreateLeaf(nodeBounds, startIndex, count);
+                return KdTreeNode.CreateLeaf(nodeBounds, startIndex, count);
             }
 
             float cutoff = splitOnXAxis ? nodeBounds.center.x : nodeBounds.center.y;
@@ -266,20 +266,20 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             if (leftCount == 0 || rightCount == 0)
             {
-                return KDTreeNode.CreateLeaf(nodeBounds, startIndex, count);
+                return KdTreeNode.CreateLeaf(nodeBounds, startIndex, count);
             }
 
             temp.CopyTo(source);
 
-            KDTreeNode left = BuildUnbalanced(startIndex, leftCount, !splitOnXAxis, scratch);
-            KDTreeNode right = BuildUnbalanced(
+            KdTreeNode left = BuildUnbalanced(startIndex, leftCount, !splitOnXAxis, scratch);
+            KdTreeNode right = BuildUnbalanced(
                 startIndex + leftCount,
                 rightCount,
                 !splitOnXAxis,
                 scratch
             );
             Bounds boundary = CombineChildBounds(left.boundary, right.boundary);
-            return KDTreeNode.CreateInternal(boundary, left, right, startIndex, count);
+            return KdTreeNode.CreateInternal(boundary, left, right, startIndex, count);
         }
 
         private Bounds CalculateLeafBounds(int startIndex, int count)
@@ -531,7 +531,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         {
             elementsInRange.Clear();
             // Allow zero range to return only exact matches (distance == 0)
-            if (range < 0f || _head.count <= 0)
+            if (range < 0f || _head._count <= 0)
             {
                 return elementsInRange;
             }
@@ -543,8 +543,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return elementsInRange;
             }
 
-            using PooledResource<Stack<KDTreeNode>> stackResource = Buffers<KDTreeNode>.Stack.Get();
-            Stack<KDTreeNode> nodesToVisit = stackResource.resource;
+            using PooledResource<Stack<KdTreeNode>> stackResource = Buffers<KdTreeNode>.Stack.Get();
+            Stack<KdTreeNode> nodesToVisit = stackResource.resource;
             nodesToVisit.Push(_head);
 
             Entry[] entries = _entries;
@@ -553,9 +553,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             bool hasMinimumRange = 0f < minimumRange;
             float minimumRangeSquared = minimumRange * minimumRange;
 
-            while (nodesToVisit.TryPop(out KDTreeNode currentNode))
+            while (nodesToVisit.TryPop(out KdTreeNode currentNode))
             {
-                if (currentNode is null || currentNode.count <= 0)
+                if (currentNode is null || currentNode._count <= 0)
                 {
                     continue;
                 }
@@ -567,8 +567,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
                 if (currentNode.isTerminal || bounds.FastContains2D(currentNode.boundary))
                 {
-                    int start = currentNode.startIndex;
-                    int end = start + currentNode.count;
+                    int start = currentNode._startIndex;
+                    int end = start + currentNode._count;
                     for (int i = start; i < end; ++i)
                     {
                         Entry entry = entries[indices[i]];
@@ -589,14 +589,18 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     continue;
                 }
 
-                KDTreeNode left = currentNode.left;
-                if (left is not null && left.count > 0 && bounds.FastIntersects2D(left.boundary))
+                KdTreeNode left = currentNode.left;
+                if (left is not null && left._count > 0 && bounds.FastIntersects2D(left.boundary))
                 {
                     nodesToVisit.Push(left);
                 }
 
-                KDTreeNode right = currentNode.right;
-                if (right is not null && right.count > 0 && bounds.FastIntersects2D(right.boundary))
+                KdTreeNode right = currentNode.right;
+                if (
+                    right is not null
+                    && right._count > 0
+                    && bounds.FastIntersects2D(right.boundary)
+                )
                 {
                     nodesToVisit.Push(right);
                 }
@@ -608,29 +612,29 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         public List<T> GetElementsInBounds(Bounds bounds, List<T> elementsInBounds)
         {
             elementsInBounds.Clear();
-            if (_head.count <= 0 || !bounds.FastIntersects2D(_bounds))
+            if (_head._count <= 0 || !bounds.FastIntersects2D(_bounds))
             {
                 return elementsInBounds;
             }
-            using PooledResource<Stack<KDTreeNode>> stackResource = Buffers<KDTreeNode>.Stack.Get(
-                out Stack<KDTreeNode> nodesToVisit
+            using PooledResource<Stack<KdTreeNode>> stackResource = Buffers<KdTreeNode>.Stack.Get(
+                out Stack<KdTreeNode> nodesToVisit
             );
             nodesToVisit.Push(_head);
 
             Entry[] entries = _entries;
             int[] indices = _indices;
 
-            while (nodesToVisit.TryPop(out KDTreeNode currentNode))
+            while (nodesToVisit.TryPop(out KdTreeNode currentNode))
             {
-                if (currentNode is null || currentNode.count <= 0)
+                if (currentNode is null || currentNode._count <= 0)
                 {
                     continue;
                 }
 
                 if (bounds.FastContains2D(currentNode.boundary))
                 {
-                    int start = currentNode.startIndex;
-                    int end = start + currentNode.count;
+                    int start = currentNode._startIndex;
+                    int end = start + currentNode._count;
                     for (int i = start; i < end; ++i)
                     {
                         elementsInBounds.Add(entries[indices[i]].value);
@@ -641,8 +645,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
                 if (currentNode.isTerminal)
                 {
-                    int start = currentNode.startIndex;
-                    int end = start + currentNode.count;
+                    int start = currentNode._startIndex;
+                    int end = start + currentNode._count;
                     for (int i = start; i < end; ++i)
                     {
                         Entry entry = entries[indices[i]];
@@ -655,14 +659,18 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     continue;
                 }
 
-                KDTreeNode left = currentNode.left;
-                if (left is not null && left.count > 0 && bounds.FastIntersects2D(left.boundary))
+                KdTreeNode left = currentNode.left;
+                if (left is not null && left._count > 0 && bounds.FastIntersects2D(left.boundary))
                 {
                     nodesToVisit.Push(left);
                 }
 
-                KDTreeNode right = currentNode.right;
-                if (right is not null && right.count > 0 && bounds.FastIntersects2D(right.boundary))
+                KdTreeNode right = currentNode.right;
+                if (
+                    right is not null
+                    && right._count > 0
+                    && bounds.FastIntersects2D(right.boundary)
+                )
                 {
                     nodesToVisit.Push(right);
                 }
@@ -679,16 +687,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         {
             nearestNeighbors.Clear();
 
-            if (count <= 0 || _head.count == 0)
+            if (count <= 0 || _head._count == 0)
             {
                 return nearestNeighbors;
             }
 
-            KDTreeNode current = _head;
+            KdTreeNode current = _head;
 
-            using PooledResource<Stack<KDTreeNode>> nodeBufferResource =
-                Buffers<KDTreeNode>.Stack.Get();
-            Stack<KDTreeNode> nodeBuffer = nodeBufferResource.resource;
+            using PooledResource<Stack<KdTreeNode>> nodeBufferResource =
+                Buffers<KdTreeNode>.Stack.Get();
+            Stack<KdTreeNode> nodeBuffer = nodeBufferResource.resource;
             nodeBuffer.Push(_head);
             using PooledResource<HashSet<T>> nearestNeighborBufferResource =
                 Buffers<T>.HashSet.Get();
@@ -702,18 +710,18 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             while (!current.isTerminal)
             {
-                KDTreeNode left = current.left;
-                KDTreeNode right = current.right;
-                if (left is null || left.count == 0)
+                KdTreeNode left = current.left;
+                KdTreeNode right = current.right;
+                if (left is null || left._count == 0)
                 {
-                    if (right is null || right.count == 0)
+                    if (right is null || right._count == 0)
                     {
                         break;
                     }
 
                     nodeBuffer.Push(right);
                     current = right;
-                    if (right.count <= count)
+                    if (right._count <= count)
                     {
                         break;
                     }
@@ -721,11 +729,11 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     continue;
                 }
 
-                if (right is null || right.count == 0)
+                if (right is null || right._count == 0)
                 {
                     nodeBuffer.Push(left);
                     current = left;
-                    if (left.count <= count)
+                    if (left._count <= count)
                     {
                         break;
                     }
@@ -739,7 +747,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 {
                     nodeBuffer.Push(left);
                     current = left;
-                    if (left.count <= count)
+                    if (left._count <= count)
                     {
                         break;
                     }
@@ -748,7 +756,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 {
                     nodeBuffer.Push(right);
                     current = right;
-                    if (right.count <= count)
+                    if (right._count <= count)
                     {
                         break;
                     }
@@ -756,16 +764,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
 
             while (
-                nearestNeighborBuffer.Count < count && nodeBuffer.TryPop(out KDTreeNode selected)
+                nearestNeighborBuffer.Count < count && nodeBuffer.TryPop(out KdTreeNode selected)
             )
             {
-                if (selected is null || selected.count <= 0)
+                if (selected is null || selected._count <= 0)
                 {
                     continue;
                 }
 
-                int start = selected.startIndex;
-                int end = start + selected.count;
+                int start = selected._startIndex;
+                int end = start + selected._count;
                 for (int i = start; i < end; ++i)
                 {
                     Entry entry = entries[indices[i]];

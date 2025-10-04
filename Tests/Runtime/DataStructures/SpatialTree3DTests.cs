@@ -3,9 +3,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using System.Collections.Generic;
     using System.Linq;
     using NUnit.Framework;
-    using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure;
-    using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Core.Random;
     using Bounds = UnityEngine.Bounds;
     using Vector3 = UnityEngine.Vector3;
