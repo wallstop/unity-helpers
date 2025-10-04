@@ -329,7 +329,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                     Mathf.Max(baseSize.z * ratio, 1f)
                 );
 
-                string label = $"{name} (sizeâ‰ˆ{FormatValue(size.x)}x{FormatValue(size.y)})";
+                string label = $"{name} (size={FormatValue(size.x)}x{FormatValue(size.y)})";
 
                 specs.Add(new BoundsSpec(label, new Bounds(center, size)));
             }
