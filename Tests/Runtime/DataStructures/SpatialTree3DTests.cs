@@ -118,11 +118,13 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             List<Vector3> nearestNeighbors = new();
             int nearestNeighborCount = 1;
             tree.GetApproximateNearestNeighbors(center, nearestNeighborCount, nearestNeighbors);
+
             Assert.AreEqual(nearestNeighborCount, nearestNeighbors.Count);
             Assert.IsTrue(nearestNeighbors.All(neighbor => (neighbor - center).magnitude <= 2f));
 
             nearestNeighborCount = 8;
             tree.GetApproximateNearestNeighbors(center, nearestNeighborCount, nearestNeighbors);
+
             Assert.AreEqual(nearestNeighborCount, nearestNeighbors.Count);
             Assert.IsTrue(nearestNeighbors.All(neighbor => (neighbor - center).magnitude <= 3f));
 

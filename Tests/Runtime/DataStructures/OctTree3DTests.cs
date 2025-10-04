@@ -112,7 +112,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void GetElementsInRangeWithVeryLargeRangeReturnsAllPoints()
+        public void GetElementsInRangeWithVeryLargeRangeReturnsAllPointsAdditional()
         {
             List<Vector3> points = new();
             for (int i = 0; i < 96; ++i)
@@ -186,7 +186,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void GetElementsInRangeClearsResultsList()
+        public void GetElementsInRangeClearsResultsListAdditional()
         {
             List<Vector3> points = new() { Vector3.zero };
             OctTree3D<Vector3> tree = CreateTree(points);
@@ -199,7 +199,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void GetElementsInBoundsClearsResultsList()
+        public void GetElementsInBoundsClearsResultsListAdditional2()
         {
             List<Vector3> points = new() { Vector3.zero };
             OctTree3D<Vector3> tree = CreateTree(points);

@@ -13,25 +13,75 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
 
     public sealed class SpatialTree2DPerformanceTests
     {
-        private const int PointsPerAxis = 1_000;
         private const float PointBoundsSize = 0.001f;
+
         private static readonly TimeSpan BenchmarkDuration = TimeSpan.FromSeconds(1);
 
-        private static readonly (string Label, float Radius)[] RangeBenchmarks =
+        private static readonly DatasetSpec[] DatasetSpecs =
         {
-            ("Full (r=500)", 500f),
-            ("Half (r=250)", 250f),
-            ("Quarter (r=125)", 125f),
-            ("Tiny (r=1)", 1f),
+            new DatasetSpec("1,000,000 entries", new Vector2Int(1_000, 1_000)),
+            new DatasetSpec("100,000 entries", new Vector2Int(400, 250)),
+            new DatasetSpec("10,000 entries", new Vector2Int(100, 100)),
+            new DatasetSpec("1,000 entries", new Vector2Int(50, 20)),
+            new DatasetSpec("100 entries", new Vector2Int(10, 10)),
         };
 
-        private static readonly (string Label, int Count)[] NeighborBenchmarks =
+        private static readonly (string Name, float Ratio)[] RangeBenchmarkDefinitions =
+        {
+            ("Full (~span/2)", 0.5f),
+            ("Half (~span/4)", 0.25f),
+            ("Quarter (~span/8)", 0.125f),
+            ("Tiny (~span/1000)", 0.001f),
+        };
+
+        private static readonly (string Name, float Ratio)[] BoundsBenchmarkDefinitions =
+        {
+            ("Full", 1f),
+            ("Half", 0.5f),
+            ("Quarter", 0.25f),
+        };
+
+        private static readonly (string Label, int Count)[] NeighborBenchmarkDefinitions =
         {
             ("500 neighbors", 500),
             ("100 neighbors", 100),
             ("10 neighbors", 10),
             ("1 neighbor", 1),
         };
+
+        private readonly struct DatasetSpec
+        {
+            public DatasetSpec(string label, Vector2Int gridSize)
+            {
+                Label = label;
+
+                GridSize = gridSize;
+
+                TotalPoints = gridSize.x * gridSize.y;
+
+                Span = new Vector2(Mathf.Max(gridSize.x - 1, 1), Mathf.Max(gridSize.y - 1, 1));
+
+                BoundsCenter = new Vector3((gridSize.x - 1) * 0.5f, (gridSize.y - 1) * 0.5f, 0f);
+
+                BoundsSize = new Vector3(Span.x, Span.y, 1f);
+
+                MaxSpan = Mathf.Max(Span.x, Span.y);
+            }
+
+            public string Label { get; }
+
+            public Vector2Int GridSize { get; }
+
+            public int TotalPoints { get; }
+
+            public Vector2 Span { get; }
+
+            public Vector3 BoundsCenter { get; }
+
+            public Vector3 BoundsSize { get; }
+
+            public float MaxSpan { get; }
+        }
 
         private readonly struct TreeSpec
         {
@@ -66,134 +116,180 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
         [Timeout(0)]
         public IEnumerator Benchmark()
         {
-            Vector2[] points = CreateGridPoints();
-            BoundsSpec[] boundsSpecs = BuildBoundsSpecs();
             TreeSpec[] treeSpecs = BuildTreeSpecs();
 
             List<string> treeNames = treeSpecs.Select(spec => spec.Name).ToList();
-            List<string> readmeLines = new();
 
-            Dictionary<string, List<string>> groupRows = new();
-            Dictionary<string, Dictionary<string, string>> rowValues = new();
-            Dictionary<string, (string Group, string Label)> rowMetadata = new();
-            Dictionary<string, int> expectedCounts = new();
+            List<(DatasetSpec Dataset, List<string> Lines)> datasetOutputs = new();
 
-            foreach (TreeSpec spec in treeSpecs)
+            foreach (DatasetSpec dataset in DatasetSpecs)
             {
-                Stopwatch timer = Stopwatch.StartNew();
-                ISpatialTree2D<Vector2> tree = spec.Factory(points);
-                timer.Stop();
-
-                RecordRow(
-                    groupRows,
-                    rowValues,
-                    rowMetadata,
-                    "Construction",
-                    "1 million points",
-                    spec.Name,
-                    FormatConstruction(timer.Elapsed)
-                );
-
-                Vector3 boundaryCenter = tree.Boundary.center;
-                float minimumDepth = Mathf.Max(tree.Boundary.size.z, 1f);
-                Vector2 rangeCenter = boundaryCenter;
-
-                List<Vector2> rangeResults = new();
-                foreach ((string label, float radius) in RangeBenchmarks)
-                {
-                    tree.GetElementsInRange(rangeCenter, radius, rangeResults);
-                    ValidateCount(expectedCounts, "Elements In Range", label, rangeResults.Count);
-                    int iterations = MeasureRange(tree, rangeCenter, radius, rangeResults);
-                    RecordRow(
-                        groupRows,
-                        rowValues,
-                        rowMetadata,
-                        "Elements In Range",
-                        label,
-                        spec.Name,
-                        FormatRate(iterations)
-                    );
-                }
-
-                List<Vector2> boundsResults = new();
-                foreach (BoundsSpec boundsSpec in boundsSpecs)
-                {
-                    Bounds queryBounds = TranslateBounds(
-                        boundsSpec.Bounds,
-                        boundaryCenter,
-                        minimumDepth
-                    );
-                    tree.GetElementsInBounds(queryBounds, boundsResults);
-                    ValidateCount(
-                        expectedCounts,
-                        "Get Elements In Bounds",
-                        boundsSpec.Label,
-                        boundsResults.Count
-                    );
-                    int iterations = MeasureBounds(tree, queryBounds, boundsResults);
-                    RecordRow(
-                        groupRows,
-                        rowValues,
-                        rowMetadata,
-                        "Get Elements In Bounds",
-                        boundsSpec.Label,
-                        spec.Name,
-                        FormatRate(iterations)
-                    );
-                }
-
-                List<Vector2> nearestNeighbors = new();
-                foreach ((string label, int count) in NeighborBenchmarks)
-                {
-                    tree.GetApproximateNearestNeighbors(rangeCenter, count, nearestNeighbors);
-                    Assert.LessOrEqual(
-                        nearestNeighbors.Count,
-                        count,
-                        $"Tree '{spec.Name}' returned more than {count} neighbors for '{label}'."
-                    );
-                    int iterations = MeasureApproximateNearestNeighbors(
-                        tree,
-                        rangeCenter,
-                        count,
-                        nearestNeighbors
-                    );
-                    RecordRow(
-                        groupRows,
-                        rowValues,
-                        rowMetadata,
-                        "Approximate Nearest Neighbors",
-                        label,
-                        spec.Name,
-                        FormatRate(iterations)
-                    );
-                }
-            }
-
-            string[] groupOrder =
-            {
-                "Construction",
-                "Elements In Range",
-                "Get Elements In Bounds",
-                "Approximate Nearest Neighbors",
-            };
-
-            foreach (string group in groupOrder)
-            {
-                if (!groupRows.TryGetValue(group, out List<string> rows))
-                {
-                    continue;
-                }
-
-                LogTable(group, treeNames, rows, rowValues, rowMetadata, readmeLines);
                 UnityEngine.Debug.Log(string.Empty);
+
+                UnityEngine.Debug.Log($"SpatialTree2D Benchmarks - {dataset.Label}");
+
+                Vector2[] points = CreateGridPoints(dataset);
+
+                BoundsSpec[] boundsSpecs = BuildBoundsSpecs(dataset);
+
+                (string Label, float Radius)[] rangeBenchmarks = BuildRangeBenchmarks(dataset);
+
+                (string Label, int Count)[] neighborBenchmarks = BuildNeighborBenchmarks(dataset);
+
+                List<string> readmeLines = new();
+
+                Dictionary<string, List<string>> groupRows = new();
+
+                Dictionary<string, Dictionary<string, string>> rowValues = new();
+
+                Dictionary<string, (string Group, string Label)> rowMetadata = new();
+
+                Dictionary<string, int> expectedCounts = new();
+
+                foreach (TreeSpec spec in treeSpecs)
+                {
+                    Stopwatch timer = Stopwatch.StartNew();
+
+                    ISpatialTree2D<Vector2> tree = spec.Factory(points);
+
+                    timer.Stop();
+
+                    RecordRow(
+                        groupRows,
+                        rowValues,
+                        rowMetadata,
+                        "Construction",
+                        dataset.Label,
+                        spec.Name,
+                        FormatConstruction(timer.Elapsed)
+                    );
+
+                    Vector3 boundaryCenter = tree.Boundary.center;
+
+                    float minimumDepth = Mathf.Max(tree.Boundary.size.z, 1f);
+
+                    Vector2 rangeCenter = boundaryCenter;
+
+                    List<Vector2> rangeResults = new();
+
+                    foreach ((string label, float radius) in rangeBenchmarks)
+                    {
+                        tree.GetElementsInRange(rangeCenter, radius, rangeResults);
+
+                        ValidateCount(
+                            expectedCounts,
+                            "Elements In Range",
+                            label,
+                            rangeResults.Count
+                        );
+
+                        int iterations = MeasureRange(tree, rangeCenter, radius, rangeResults);
+
+                        RecordRow(
+                            groupRows,
+                            rowValues,
+                            rowMetadata,
+                            "Elements In Range",
+                            label,
+                            spec.Name,
+                            FormatRate(iterations)
+                        );
+                    }
+
+                    List<Vector2> boundsResults = new();
+
+                    foreach (BoundsSpec boundsSpec in boundsSpecs)
+                    {
+                        Bounds queryBounds = TranslateBounds(
+                            boundsSpec.Bounds,
+                            boundaryCenter,
+                            minimumDepth
+                        );
+
+                        tree.GetElementsInBounds(queryBounds, boundsResults);
+
+                        ValidateCount(
+                            expectedCounts,
+                            "Get Elements In Bounds",
+                            boundsSpec.Label,
+                            boundsResults.Count
+                        );
+
+                        int iterations = MeasureBounds(tree, queryBounds, boundsResults);
+
+                        RecordRow(
+                            groupRows,
+                            rowValues,
+                            rowMetadata,
+                            "Get Elements In Bounds",
+                            boundsSpec.Label,
+                            spec.Name,
+                            FormatRate(iterations)
+                        );
+                    }
+
+                    List<Vector2> nearestNeighbors = new();
+
+                    foreach ((string label, int count) in neighborBenchmarks)
+                    {
+                        tree.GetApproximateNearestNeighbors(rangeCenter, count, nearestNeighbors);
+
+                        Assert.LessOrEqual(
+                            nearestNeighbors.Count,
+                            count,
+                            $"Tree '{spec.Name}' returned more than {count} neighbors for '{label}'."
+                        );
+
+                        int iterations = MeasureApproximateNearestNeighbors(
+                            tree,
+                            rangeCenter,
+                            count,
+                            nearestNeighbors
+                        );
+
+                        RecordRow(
+                            groupRows,
+                            rowValues,
+                            rowMetadata,
+                            "Approximate Nearest Neighbors",
+                            label,
+                            spec.Name,
+                            FormatRate(iterations)
+                        );
+                    }
+                }
+
+                string[] groupOrder =
+                {
+                    "Construction",
+                    "Elements In Range",
+                    "Get Elements In Bounds",
+                    "Approximate Nearest Neighbors",
+                };
+
+                foreach (string group in groupOrder)
+                {
+                    if (!groupRows.TryGetValue(group, out List<string> rows))
+                    {
+                        continue;
+                    }
+
+                    LogTable(group, treeNames, rows, rowValues, rowMetadata, readmeLines);
+
+                    UnityEngine.Debug.Log(string.Empty);
+                }
+
+                if (readmeLines.Count > 0 && string.IsNullOrWhiteSpace(readmeLines[^1]))
+                {
+                    readmeLines.RemoveAt(readmeLines.Count - 1);
+                }
+
+                datasetOutputs.Add((dataset, readmeLines));
             }
 
-            if (readmeLines.Count > 0 && string.IsNullOrWhiteSpace(readmeLines[^1]))
-            {
-                readmeLines.RemoveAt(readmeLines.Count - 1);
-            }
+            List<string> finalReadmeLines = BuildTabbedReadmeLines(datasetOutputs);
 
-            BenchmarkReadmeUpdater.UpdateSection("SPATIAL_TREE_BENCHMARKS", readmeLines);
+            BenchmarkReadmeUpdater.UpdateSection("SPATIAL_TREE_BENCHMARKS", finalReadmeLines);
 
             yield break;
         }
@@ -215,38 +311,147 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             };
         }
 
-        private static BoundsSpec[] BuildBoundsSpecs()
+        private static BoundsSpec[] BuildBoundsSpecs(DatasetSpec dataset)
         {
-            float span = PointsPerAxis - 1;
-            Vector3 center = new(span * 0.5f, span * 0.5f, 0f);
-            Vector3 fullSize = new(span, span, 1f);
+            Vector3 center = dataset.BoundsCenter;
 
-            return new[]
+            Vector3 baseSize = dataset.BoundsSize;
+
+            List<BoundsSpec> specs = new();
+
+            foreach ((string name, float ratio) in BoundsBenchmarkDefinitions)
             {
-                new BoundsSpec("Full (size≈dataset)", new Bounds(center, fullSize)),
-                new BoundsSpec("Half (size≈dataset/2)", new Bounds(center, fullSize * 0.5f)),
-                new BoundsSpec("Quarter (size≈dataset/4)", new Bounds(center, fullSize * 0.25f)),
-                new BoundsSpec("Unit (size=1)", new Bounds(center, new Vector3(1f, 1f, 1f))),
-            };
+                Vector3 size = new(
+                    Mathf.Max(baseSize.x * ratio, 1f),
+                    Mathf.Max(baseSize.y * ratio, 1f),
+                    Mathf.Max(baseSize.z * ratio, 1f)
+                );
+
+                string label = $"{name} (sizeâ‰ˆ{FormatValue(size.x)}x{FormatValue(size.y)})";
+
+                specs.Add(new BoundsSpec(label, new Bounds(center, size)));
+            }
+
+            specs.Add(new BoundsSpec("Unit (size=1)", new Bounds(center, new Vector3(1f, 1f, 1f))));
+
+            return specs.ToArray();
         }
 
-        private static Vector2[] CreateGridPoints()
+        private static Vector2[] CreateGridPoints(DatasetSpec dataset)
         {
-            Vector2[] points = new Vector2[PointsPerAxis * PointsPerAxis];
+            Vector2[] points = new Vector2[dataset.TotalPoints];
+
+            int width = dataset.GridSize.x;
+
+            int height = dataset.GridSize.y;
+
             Parallel.For(
                 0,
-                PointsPerAxis,
+                height,
                 y =>
                 {
-                    int rowOffset = y * PointsPerAxis;
-                    for (int x = 0; x < PointsPerAxis; ++x)
+                    int rowOffset = y * width;
+
+                    for (int x = 0; x < width; ++x)
                     {
-                        points[rowOffset + x] = new Vector2(x, y);
+                        int index = rowOffset + x;
+
+                        if (index >= points.Length)
+                        {
+                            continue;
+                        }
+
+                        points[index] = new Vector2(x, y);
                     }
                 }
             );
 
             return points;
+        }
+
+        private static (string Label, float Radius)[] BuildRangeBenchmarks(DatasetSpec dataset)
+        {
+            (string Label, float Radius)[] benchmarks = new (string, float)[
+                RangeBenchmarkDefinitions.Length
+            ];
+
+            for (int i = 0; i < RangeBenchmarkDefinitions.Length; ++i)
+            {
+                (string name, float ratio) = RangeBenchmarkDefinitions[i];
+
+                float radius = Mathf.Max(1f, dataset.MaxSpan * ratio);
+
+                benchmarks[i] = ($"{name} (r={FormatValue(radius)})", radius);
+            }
+
+            return benchmarks;
+        }
+
+        private static (string Label, int Count)[] BuildNeighborBenchmarks(DatasetSpec dataset)
+        {
+            List<(string Label, int Count)> benchmarks = new();
+
+            HashSet<int> seenCounts = new();
+
+            foreach ((string label, int count) in NeighborBenchmarkDefinitions)
+            {
+                int effectiveCount = Mathf.Min(count, dataset.TotalPoints);
+
+                if (effectiveCount <= 0 || !seenCounts.Add(effectiveCount))
+                {
+                    continue;
+                }
+
+                string effectiveLabel =
+                    count == effectiveCount ? label : $"{effectiveCount} neighbors (max)";
+
+                benchmarks.Add((effectiveLabel, effectiveCount));
+            }
+
+            return benchmarks.ToArray();
+        }
+
+        private static List<string> BuildTabbedReadmeLines(
+            IReadOnlyList<(DatasetSpec Dataset, List<string> Lines)> datasetOutputs
+        )
+        {
+            List<string> lines = new();
+
+            if (datasetOutputs.Count == 0)
+            {
+                return lines;
+            }
+
+            lines.Add("<!-- tabs:start -->");
+
+            lines.Add(string.Empty);
+
+            foreach ((DatasetSpec dataset, List<string> datasetLines) in datasetOutputs)
+            {
+                lines.Add($"#### **{dataset.Label}**");
+
+                lines.Add(string.Empty);
+
+                if (datasetLines.Count > 0)
+                {
+                    lines.AddRange(datasetLines);
+                }
+                else
+                {
+                    lines.Add("_No benchmark data recorded._");
+                }
+
+                lines.Add(string.Empty);
+            }
+
+            if (lines.Count > 0 && string.IsNullOrWhiteSpace(lines[^1]))
+            {
+                lines.RemoveAt(lines.Count - 1);
+            }
+
+            lines.Add("<!-- tabs:end -->");
+
+            return lines;
         }
 
         private static Bounds TranslateBounds(
@@ -380,6 +585,31 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             return $"{rate:N0} ({elapsed.TotalSeconds:F3}s)";
         }
 
+        private static string FormatValue(float value)
+        {
+            if (value >= 1_000f)
+            {
+                return value.ToString("N0");
+            }
+
+            if (value >= 100f)
+            {
+                return value.ToString("N1");
+            }
+
+            if (value >= 10f)
+            {
+                return value.ToString("N2");
+            }
+
+            if (value >= 1f)
+            {
+                return value.ToString("0.##");
+            }
+
+            return value.ToString("0.###");
+        }
+
         private static void LogTable(
             string header,
             IReadOnlyList<string> treeNames,
@@ -395,7 +625,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
 
             if (readmeLines != null)
             {
-                readmeLines.Add($"#### {header}");
+                readmeLines.Add($"##### {header}");
                 readmeLines.Add(headerLine);
                 readmeLines.Add(dividerLine);
             }

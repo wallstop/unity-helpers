@@ -71,6 +71,18 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
         }
 
+        private readonly struct NodeDistance
+        {
+            internal readonly OctTreeNode node;
+            internal readonly float distanceSquared;
+
+            internal NodeDistance(OctTreeNode node, float distanceSquared)
+            {
+                this.node = node;
+                this.distanceSquared = distanceSquared;
+            }
+        }
+
         public const int DefaultBucketSize = 12;
 
         public readonly ImmutableArray<T> elements;
@@ -197,7 +209,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             {
                 int entryIndex = source[i];
                 Vector3 position = entries[entryIndex].position;
-                bool east = position.x > centerX;
+                bool east = position.x >= centerX;
                 bool north = position.y >= centerY;
                 bool up = position.z >= centerZ;
                 int octant = (up ? 4 : 0) | (east ? 2 : 0) | (north ? 1 : 0);
@@ -226,7 +238,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             {
                 int entryIndex = source[i];
                 Vector3 position = entries[entryIndex].position;
-                bool east = position.x > centerX;
+                bool east = position.x >= centerX;
                 bool north = position.y >= centerY;
                 bool up = position.z >= centerZ;
                 int octant = (up ? 4 : 0) | (east ? 2 : 0) | (north ? 1 : 0);
@@ -241,7 +253,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             octants[0] = new Bounds(
                 new Vector3(
                     centerX - halfOctantSize.x,
-                    centerY + halfOctantSize.y,
+                    centerY - halfOctantSize.y,
                     centerZ - halfOctantSize.z
                 ),
                 octantSize
@@ -249,7 +261,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             octants[2] = new Bounds(
                 new Vector3(
                     centerX + halfOctantSize.x,
-                    centerY + halfOctantSize.y,
+                    centerY - halfOctantSize.y,
                     centerZ - halfOctantSize.z
                 ),
                 octantSize
@@ -257,7 +269,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             octants[1] = new Bounds(
                 new Vector3(
                     centerX - halfOctantSize.x,
-                    centerY - halfOctantSize.y,
+                    centerY + halfOctantSize.y,
                     centerZ - halfOctantSize.z
                 ),
                 octantSize
@@ -265,7 +277,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             octants[3] = new Bounds(
                 new Vector3(
                     centerX + halfOctantSize.x,
-                    centerY - halfOctantSize.y,
+                    centerY + halfOctantSize.y,
                     centerZ - halfOctantSize.z
                 ),
                 octantSize
@@ -274,7 +286,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             octants[4] = new Bounds(
                 new Vector3(
                     centerX - halfOctantSize.x,
-                    centerY + halfOctantSize.y,
+                    centerY - halfOctantSize.y,
                     centerZ + halfOctantSize.z
                 ),
                 octantSize
@@ -282,7 +294,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             octants[6] = new Bounds(
                 new Vector3(
                     centerX + halfOctantSize.x,
-                    centerY + halfOctantSize.y,
+                    centerY - halfOctantSize.y,
                     centerZ + halfOctantSize.z
                 ),
                 octantSize
@@ -290,7 +302,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             octants[5] = new Bounds(
                 new Vector3(
                     centerX - halfOctantSize.x,
-                    centerY - halfOctantSize.y,
+                    centerY + halfOctantSize.y,
                     centerZ + halfOctantSize.z
                 ),
                 octantSize
@@ -298,7 +310,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             octants[7] = new Bounds(
                 new Vector3(
                     centerX + halfOctantSize.x,
-                    centerY - halfOctantSize.y,
+                    centerY + halfOctantSize.y,
                     centerZ + halfOctantSize.z
                 ),
                 octantSize
@@ -507,69 +519,59 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return nearestNeighbors;
             }
 
-            OctTreeNode current = _head;
-
-            using PooledResource<Stack<OctTreeNode>> nodeBufferResource =
-                Buffers<OctTreeNode>.Stack.Get();
-            Stack<OctTreeNode> nodeBuffer = nodeBufferResource.resource;
-            nodeBuffer.Push(_head);
-            using PooledResource<List<OctTreeNode>> childrenBufferResource =
-                Buffers<OctTreeNode>.List.Get();
-            List<OctTreeNode> childrenBuffer = childrenBufferResource.resource;
-            using PooledResource<HashSet<T>> nearestNeighborBufferResource =
-                Buffers<T>.HashSet.Get();
-            HashSet<T> nearestNeighborBuffer = nearestNeighborBufferResource.resource;
-            using PooledResource<List<Entry>> nearestNeighborsCacheResource =
-                Buffers<Entry>.List.Get();
-            List<Entry> nearestNeighborsCache = nearestNeighborsCacheResource.resource;
-
             Entry[] entries = _entries;
             int[] indices = _indices;
 
-            Comparison<OctTreeNode> comparison = Comparison;
-            while (!current.isTerminal)
+            using PooledResource<List<NodeDistance>> nodeHeapResource =
+                Buffers<NodeDistance>.List.Get();
+            List<NodeDistance> nodeHeap = nodeHeapResource.resource;
+            nodeHeap.Clear();
+            PushNode(nodeHeap, _head, position);
+
+            using PooledResource<HashSet<T>> nearestNeighborBufferResource =
+                Buffers<T>.HashSet.Get();
+            HashSet<T> nearestNeighborBuffer = nearestNeighborBufferResource.resource;
+            nearestNeighborBuffer.Clear();
+
+            using PooledResource<List<Entry>> nearestNeighborsCacheResource =
+                Buffers<Entry>.List.Get();
+            List<Entry> nearestNeighborsCache = nearestNeighborsCacheResource.resource;
+            nearestNeighborsCache.Clear();
+
+            float currentWorstDistanceSquared = float.PositiveInfinity;
+
+            while (nodeHeap.Count > 0)
             {
-                childrenBuffer.Clear();
-                OctTreeNode[] childNodes = current.children;
-                for (int i = 0; i < childNodes.Length; ++i)
+                NodeDistance best = PopNode(nodeHeap);
+
+                if (
+                    nearestNeighborBuffer.Count >= count
+                    && best.distanceSquared >= currentWorstDistanceSquared
+                )
                 {
-                    OctTreeNode child = childNodes[i];
-                    if (child is not null && child.count > 0)
+                    break;
+                }
+
+                OctTreeNode currentNode = best.node;
+
+                if (!currentNode.isTerminal)
+                {
+                    OctTreeNode[] childNodes = currentNode.children;
+                    for (int i = 0; i < childNodes.Length; ++i)
                     {
-                        childrenBuffer.Add(child);
+                        OctTreeNode child = childNodes[i];
+                        if (child is not null && child.count > 0)
+                        {
+                            PushNode(nodeHeap, child, position);
+                        }
                     }
-                }
 
-                if (childrenBuffer.Count == 0)
-                {
-                    break;
-                }
-
-                childrenBuffer.Sort(comparison);
-                for (int i = childrenBuffer.Count - 1; i >= 0; --i)
-                {
-                    nodeBuffer.Push(childrenBuffer[i]);
-                }
-
-                current = childrenBuffer[0];
-                if (current.count <= count)
-                {
-                    break;
-                }
-            }
-
-            while (
-                nearestNeighborBuffer.Count < count && nodeBuffer.TryPop(out OctTreeNode selected)
-            )
-            {
-                if (selected is null || selected.count <= 0)
-                {
                     continue;
                 }
 
-                int start = selected.startIndex;
-                int end = start + selected.count;
-                for (int i = start; i < end; ++i)
+                int startIndex = currentNode.startIndex;
+                int endIndex = startIndex + currentNode.count;
+                for (int i = startIndex; i < endIndex; ++i)
                 {
                     Entry entry = entries[indices[i]];
                     if (nearestNeighborBuffer.Add(entry.value))
@@ -577,20 +579,23 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                         nearestNeighborsCache.Add(entry);
                     }
                 }
-            }
 
-            // Always sort by proximity to ensure closest candidates are selected
-            {
-                Vector3 localPosition = position;
-                nearestNeighborsCache.Sort(NearestComparison);
-
-                int NearestComparison(Entry lhs, Entry rhs) =>
-                    (lhs.position - localPosition).sqrMagnitude.CompareTo(
-                        (rhs.position - localPosition).sqrMagnitude
+                if (nearestNeighborBuffer.Count >= count)
+                {
+                    currentWorstDistanceSquared = CalculateWorstDistanceSquared(
+                        nearestNeighborsCache,
+                        position
                     );
+                }
             }
 
-            // Trim to requested count
+            nearestNeighborsCache.Sort(
+                (lhs, rhs) =>
+                    (lhs.position - position).sqrMagnitude.CompareTo(
+                        (rhs.position - position).sqrMagnitude
+                    )
+            );
+
             nearestNeighbors.Clear();
             for (int i = 0; i < nearestNeighborsCache.Count && i < count; ++i)
             {
@@ -599,10 +604,89 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             return nearestNeighbors;
 
-            int Comparison(OctTreeNode lhs, OctTreeNode rhs) =>
-                (lhs.boundary.center - position).sqrMagnitude.CompareTo(
-                    (rhs.boundary.center - position).sqrMagnitude
-                );
+            static void PushNode(List<NodeDistance> heap, OctTreeNode node, Vector3 point)
+            {
+                NodeDistance entry = new NodeDistance(node, DistanceSquaredToBounds(node, point));
+                heap.Add(entry);
+                int index = heap.Count - 1;
+
+                while (index > 0)
+                {
+                    int parent = (index - 1) >> 1;
+                    NodeDistance parentEntry = heap[parent];
+                    if (parentEntry.distanceSquared <= entry.distanceSquared)
+                    {
+                        break;
+                    }
+
+                    heap[index] = parentEntry;
+                    index = parent;
+                }
+
+                heap[index] = entry;
+            }
+
+            static NodeDistance PopNode(List<NodeDistance> heap)
+            {
+                int lastIndex = heap.Count - 1;
+                NodeDistance result = heap[0];
+                NodeDistance last = heap[lastIndex];
+                heap.RemoveAt(lastIndex);
+
+                int index = 0;
+                int count = heap.Count;
+                while (true)
+                {
+                    int left = (index << 1) + 1;
+                    if (left >= count)
+                    {
+                        break;
+                    }
+
+                    int right = left + 1;
+                    int smallest =
+                        right < count && heap[right].distanceSquared < heap[left].distanceSquared
+                            ? right
+                            : left;
+
+                    if (last.distanceSquared <= heap[smallest].distanceSquared)
+                    {
+                        break;
+                    }
+
+                    heap[index] = heap[smallest];
+                    index = smallest;
+                }
+
+                if (count > 0)
+                {
+                    heap[index] = last;
+                }
+
+                return result;
+            }
+
+            static float DistanceSquaredToBounds(OctTreeNode node, Vector3 point)
+            {
+                Bounds boundary = node.boundary;
+                Vector3 closest = boundary.ClosestPoint(point);
+                return (closest - point).sqrMagnitude;
+            }
+
+            static float CalculateWorstDistanceSquared(List<Entry> candidates, Vector3 point)
+            {
+                float worst = 0f;
+                for (int i = 0; i < candidates.Count; ++i)
+                {
+                    float distanceSquared = (candidates[i].position - point).sqrMagnitude;
+                    if (distanceSquared > worst)
+                    {
+                        worst = distanceSquared;
+                    }
+                }
+
+                return worst;
+            }
         }
     }
 }

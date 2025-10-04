@@ -165,35 +165,57 @@ Spatial trees, after construction, allow for O(log(n)) spatial query time instea
 
 ## 2D Performance Benchmarks
 
-<!-- SPATIAL_TREE_BENCHMARKS_START -->
-#### Construction
-| Construction | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
-| --- | --- | --- | --- | --- |
-| 1 million points | 2 (0.448s) | 2 (0.362s) | 2 (0.382s) | 1 (0.567s) |
-
-#### Elements In Range
-| Elements In Range | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
-| --- | --- | --- | --- | --- |
-| Full (r=500) | 23 | 23 | 22 | 3 |
-| Half (r=250) | 91 | 91 | 80 | 12 |
-| Quarter (r=125) | 363 | 361 | 306 | 48 |
-| Tiny (r=1) | 33,095 | 33,742 | 43,642 | 28,126 |
-
-#### Get Elements In Bounds
-| Get Elements In Bounds | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
-| --- | --- | --- | --- | --- |
-| Full (size≈dataset) | 122 | 124 | 119 | 6 |
-| Half (size≈dataset/2) | 557 | 558 | 351 | 22 |
-| Quarter (size≈dataset/4) | 2,193 | 2,191 | 1,049 | 93 |
-| Unit (size=1) | 41,557 | 41,923 | 51,962 | 28,715 |
-
-#### Approximate Nearest Neighbors
-| Approximate Nearest Neighbors | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
-| --- | --- | --- | --- | --- |
-| 500 neighbors | 1,122 | 2,160 | 1,609 | 28,633 |
-| 100 neighbors | 12,302 | 11,669 | 11,736 | 70,769 |
-| 10 neighbors | 150,363 | 123,176 | 81,908 | 106,541 |
-| 1 neighbor | 231,691 | 244,856 | 106,164 | 112,464 |
+<!-- SPATIAL_TREE_BENCHMARKS_START -->
+<!-- tabs:start -->
+
+#### **1,000,000 entries**
+
+##### Construction
+| Construction | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
+| --- | --- | --- | --- | --- |
+| 1 million points | 2 (0.448s) | 2 (0.362s) | 2 (0.382s) | 1 (0.567s) |
+
+##### Elements In Range
+| Elements In Range | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
+| --- | --- | --- | --- | --- |
+| Full (r=500) | 23 | 23 | 22 | 3 |
+| Half (r=250) | 91 | 91 | 80 | 12 |
+| Quarter (r=125) | 363 | 361 | 306 | 48 |
+| Tiny (r=1) | 33,095 | 33,742 | 43,642 | 28,126 |
+
+##### Get Elements In Bounds
+| Get Elements In Bounds | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
+| --- | --- | --- | --- | --- |
+| Full (size≈dataset) | 122 | 124 | 119 | 6 |
+| Half (size≈dataset/2) | 557 | 558 | 351 | 22 |
+| Quarter (size≈dataset/4) | 2,193 | 2,191 | 1,049 | 93 |
+| Unit (size=1) | 41,557 | 41,923 | 51,962 | 28,715 |
+
+##### Approximate Nearest Neighbors
+| Approximate Nearest Neighbors | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
+| --- | --- | --- | --- | --- |
+| 500 neighbors | 1,122 | 2,160 | 1,609 | 28,633 |
+| 100 neighbors | 12,302 | 11,669 | 11,736 | 70,769 |
+| 10 neighbors | 150,363 | 123,176 | 81,908 | 106,541 |
+| 1 neighbor | 231,691 | 244,856 | 106,164 | 112,464 |
+
+#### **100,000 entries**
+
+_Run the performance tests to populate these tables._
+
+#### **10,000 entries**
+
+_Run the performance tests to populate these tables._
+
+#### **1,000 entries**
+
+_Run the performance tests to populate these tables._
+
+#### **100 entries**
+
+_Run the performance tests to populate these tables._
+
+<!-- tabs:end -->
 <!-- SPATIAL_TREE_BENCHMARKS_END -->
 
 ## Usage
@@ -215,7 +237,26 @@ Assert.AreEqual(myCoolGameObject, nearestNeighbors[0]);
 
 ## 3D Performance Benchmarks
 
-<!-- SPATIAL_TREE_3D_BENCHMARKS_START -->
+<!-- SPATIAL_TREE_3D_BENCHMARKS_START -->
+<!-- tabs:start -->
+
+#### **1,000,000 entries**
+
+_Run the performance tests to populate these tables._
+#### **100,000 entries**
+
+_Run the performance tests to populate these tables._
+#### **10,000 entries**
+
+_Run the performance tests to populate these tables._
+#### **1,000 entries**
+
+_Run the performance tests to populate these tables._
+#### **100 entries**
+
+_Run the performance tests to populate these tables._
+
+<!-- tabs:end -->
 <!-- SPATIAL_TREE_3D_BENCHMARKS_END -->
 
 ## Note

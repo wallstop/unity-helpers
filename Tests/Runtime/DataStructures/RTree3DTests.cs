@@ -172,7 +172,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void GetElementsInRangeRespectsMinimumRange()
+        public void GetElementsInRangeRespectsMinimumRangeAdditional()
         {
             List<Vector3> points = new()
             {
@@ -191,7 +191,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void GetElementsInRangeClearsResultsList()
+        public void GetElementsInRangeClearsResultsListAdditional()
         {
             List<Vector3> points = new() { Vector3.zero };
             RTree3D<Vector3> tree = CreateTree(points);
@@ -204,7 +204,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void GetElementsInBoundsClearsResultsList()
+        public void GetElementsInBoundsClearsResultsListAdditional2()
         {
             List<Vector3> points = new() { Vector3.zero };
             RTree3D<Vector3> tree = CreateTree(points);

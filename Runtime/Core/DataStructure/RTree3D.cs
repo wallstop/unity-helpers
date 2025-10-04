@@ -72,6 +72,18 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
         }
 
+        private readonly struct NodeDistance
+        {
+            internal readonly RTreeNode node;
+            internal readonly float distanceSquared;
+
+            internal NodeDistance(RTreeNode node, float distanceSquared)
+            {
+                this.node = node;
+                this.distanceSquared = distanceSquared;
+            }
+        }
+
         public const int DefaultBucketSize = 10;
         public const int DefaultBranchFactor = 4;
 
@@ -404,56 +416,54 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return nearestNeighbors;
             }
 
-            RTreeNode current = _head;
+            using PooledResource<List<NodeDistance>> nodeHeapResource =
+                Buffers<NodeDistance>.List.Get();
+            List<NodeDistance> nodeHeap = nodeHeapResource.resource;
+            nodeHeap.Clear();
+            PushNode(nodeHeap, _head, position);
 
-            using PooledResource<List<RTreeNode>> childrenBufferResource =
-                Buffers<RTreeNode>.List.Get();
             using PooledResource<HashSet<T>> nearestNeighborBufferResource =
                 Buffers<T>.HashSet.Get();
-            using PooledResource<Stack<RTreeNode>> nodeBufferResource =
-                Buffers<RTreeNode>.Stack.Get();
-            using PooledResource<List<int>> nearestIndexBufferResource = Buffers<int>.List.Get();
-            Stack<RTreeNode> stack = nodeBufferResource.resource;
-            stack.Push(_head);
-            List<RTreeNode> childrenCopy = childrenBufferResource.resource;
-            childrenCopy.Clear();
             HashSet<T> nearestNeighborsSet = nearestNeighborBufferResource.resource;
             nearestNeighborsSet.Clear();
+
+            using PooledResource<List<int>> nearestIndexBufferResource = Buffers<int>.List.Get();
             List<int> nearestIndices = nearestIndexBufferResource.resource;
             nearestIndices.Clear();
 
-            Comparison<RTreeNode> comparison = Comparison;
-            while (!current.isTerminal)
-            {
-                childrenCopy.Clear();
-                RTreeNode[] childNodes = current.children;
-                for (int i = 0; i < childNodes.Length; ++i)
-                {
-                    childrenCopy.Add(childNodes[i]);
-                }
+            float currentWorstDistanceSquared = float.PositiveInfinity;
 
-                if (childrenCopy.Count == 0)
+            while (nodeHeap.Count > 0)
+            {
+                NodeDistance best = PopNode(nodeHeap);
+
+                if (
+                    nearestNeighborsSet.Count >= count
+                    && best.distanceSquared >= currentWorstDistanceSquared
+                )
                 {
                     break;
                 }
 
-                childrenCopy.Sort(comparison);
-                for (int i = childrenCopy.Count - 1; i >= 0; --i)
+                RTreeNode currentNode = best.node;
+
+                if (!currentNode.isTerminal)
                 {
-                    stack.Push(childrenCopy[i]);
+                    RTreeNode[] childNodes = currentNode.children;
+                    for (int i = 0; i < childNodes.Length; ++i)
+                    {
+                        RTreeNode child = childNodes[i];
+                        if (child.count > 0)
+                        {
+                            PushNode(nodeHeap, child, position);
+                        }
+                    }
+
+                    continue;
                 }
 
-                current = childrenCopy[0];
-                if (current.count <= count)
-                {
-                    break;
-                }
-            }
-
-            while (nearestNeighborsSet.Count < count && stack.TryPop(out RTreeNode selected))
-            {
-                int startIndex = selected.startIndex;
-                int endIndex = startIndex + selected.count;
+                int startIndex = currentNode.startIndex;
+                int endIndex = startIndex + currentNode.count;
                 for (int i = startIndex; i < endIndex; ++i)
                 {
                     ElementData elementData = _elementData[i];
@@ -463,38 +473,41 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     }
 
                     nearestIndices.Add(i);
-                    if (nearestNeighborsSet.Count >= count)
-                    {
-                        break;
-                    }
+                }
+
+                if (nearestNeighborsSet.Count >= count)
+                {
+                    currentWorstDistanceSquared = CalculateWorstDistanceSquared(
+                        nearestIndices,
+                        position
+                    );
                 }
             }
 
             if (nearestIndices.Count == 0)
             {
-                stack.Clear();
-                childrenCopy.Clear();
+                nodeHeap.Clear();
                 nearestNeighborsSet.Clear();
                 nearestIndices.Clear();
                 return nearestNeighbors;
             }
 
-            // Always sort by proximity and then trim to requested count
             {
                 Vector3 localPosition = position;
-                nearestIndices.Sort(IndexComparison);
+                nearestIndices.Sort(
+                    (lhsIndex, rhsIndex) =>
+                    {
+                        Vector3 lhsCenter = _elementData[lhsIndex].Center;
+                        Vector3 rhsCenter = _elementData[rhsIndex].Center;
+                        return (lhsCenter - localPosition).sqrMagnitude.CompareTo(
+                            (rhsCenter - localPosition).sqrMagnitude
+                        );
+                    }
+                );
+
                 if (nearestIndices.Count > count)
                 {
                     nearestIndices.RemoveRange(count, nearestIndices.Count - count);
-                }
-
-                int IndexComparison(int lhsIndex, int rhsIndex)
-                {
-                    Vector3 lhsCenter = _elementData[lhsIndex].Center;
-                    Vector3 rhsCenter = _elementData[rhsIndex].Center;
-                    return (lhsCenter - localPosition).sqrMagnitude.CompareTo(
-                        (rhsCenter - localPosition).sqrMagnitude
-                    );
                 }
             }
 
@@ -503,17 +516,95 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 nearestNeighbors.Add(_elementData[index].Value);
             }
 
-            stack.Clear();
-            childrenCopy.Clear();
+            nodeHeap.Clear();
             nearestNeighborsSet.Clear();
             nearestIndices.Clear();
 
             return nearestNeighbors;
 
-            int Comparison(RTreeNode lhs, RTreeNode rhs) =>
-                (lhs.boundary.center - position).sqrMagnitude.CompareTo(
-                    (rhs.boundary.center - position).sqrMagnitude
-                );
+            static void PushNode(List<NodeDistance> heap, RTreeNode node, Vector3 point)
+            {
+                NodeDistance entry = new NodeDistance(node, DistanceSquaredToBounds(node, point));
+                heap.Add(entry);
+                int index = heap.Count - 1;
+
+                while (index > 0)
+                {
+                    int parent = (index - 1) >> 1;
+                    NodeDistance parentEntry = heap[parent];
+                    if (parentEntry.distanceSquared <= entry.distanceSquared)
+                    {
+                        break;
+                    }
+
+                    heap[index] = parentEntry;
+                    index = parent;
+                }
+
+                heap[index] = entry;
+            }
+
+            static NodeDistance PopNode(List<NodeDistance> heap)
+            {
+                int lastIndex = heap.Count - 1;
+                NodeDistance result = heap[0];
+                NodeDistance last = heap[lastIndex];
+                heap.RemoveAt(lastIndex);
+
+                int index = 0;
+                int count = heap.Count;
+                while (true)
+                {
+                    int left = (index << 1) + 1;
+                    if (left >= count)
+                    {
+                        break;
+                    }
+
+                    int right = left + 1;
+                    int smallest =
+                        right < count && heap[right].distanceSquared < heap[left].distanceSquared
+                            ? right
+                            : left;
+
+                    if (last.distanceSquared <= heap[smallest].distanceSquared)
+                    {
+                        break;
+                    }
+
+                    heap[index] = heap[smallest];
+                    index = smallest;
+                }
+
+                if (count > 0)
+                {
+                    heap[index] = last;
+                }
+
+                return result;
+            }
+
+            static float DistanceSquaredToBounds(RTreeNode node, Vector3 point)
+            {
+                Vector3 closest = node.boundary.ClosestPoint(point);
+                return (closest - point).sqrMagnitude;
+            }
+
+            float CalculateWorstDistanceSquared(List<int> indices, Vector3 point)
+            {
+                float worst = 0f;
+                for (int i = 0; i < indices.Count; ++i)
+                {
+                    Vector3 center = _elementData[indices[i]].Center;
+                    float distanceSquared = (center - point).sqrMagnitude;
+                    if (distanceSquared > worst)
+                    {
+                        worst = distanceSquared;
+                    }
+                }
+
+                return worst;
+            }
         }
 
         private static Bounds CalculateBounds(ElementData[] elements, int startIndex, int count)
