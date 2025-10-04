@@ -60,7 +60,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             var s = new Sphere(Vector3.zero, 1f);
             var b = new Bounds(new Vector3(5f, 5f, 5f), new Vector3(2f, 2f, 2f));
-            Assert.IsFalse(s.Intersects(b));
+            Assert.IsFalse(s.Intersects(BoundingBox3D.FromClosedBounds(b)));
         }
 
         [Test]
@@ -69,7 +69,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             // Sphere at origin radius 1. Bounds begins at x=1, spans across y,z = [-1,1]
             var s = new Sphere(Vector3.zero, 1f);
             var b = new Bounds(center: new Vector3(1.5f, 0f, 0f), size: new Vector3(1f, 2f, 2f)); // min.x = 1
-            Assert.IsTrue(s.Intersects(b));
+            Assert.IsTrue(s.Intersects(BoundingBox3D.FromClosedBounds(b)));
         }
 
         [Test]
@@ -79,7 +79,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             // For unit sphere, we instead create bounds such that closest point is (1,0,0) along an "edge" (zero thickness in z)
             var s = new Sphere(Vector3.zero, 1f);
             var b = new Bounds(center: new Vector3(1.5f, 0f, 0f), size: new Vector3(1f, 2f, 0f)); // an edge along Y at x in [1,2]
-            Assert.IsTrue(s.Intersects(b));
+            Assert.IsTrue(s.Intersects(BoundingBox3D.FromClosedBounds(b)));
         }
 
         [Test]
@@ -88,7 +88,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             var s = new Sphere(Vector3.zero, 1f);
             // A point-like bounds whose center is on the sphere surface
             var b = new Bounds(center: new Vector3(1f, 0f, 0f), size: Vector3.zero);
-            Assert.IsTrue(s.Intersects(b));
+            Assert.IsTrue(s.Intersects(BoundingBox3D.FromClosedBounds(b)));
         }
 
         [Test]
@@ -99,7 +99,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 center: new Vector3(0.5f, 0.5f, 0.5f),
                 size: new Vector3(1f, 1f, 1f)
             );
-            Assert.IsTrue(s.Intersects(b));
+            Assert.IsTrue(s.Intersects(BoundingBox3D.FromClosedBounds(b)));
         }
 
         [Test]
@@ -107,7 +107,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             var s = new Sphere(Vector3.zero, 1f);
             var b = new Bounds(center: Vector3.zero, size: new Vector3(10f, 10f, 10f));
-            Assert.IsTrue(s.Intersects(b));
+            Assert.IsTrue(s.Intersects(BoundingBox3D.FromClosedBounds(b)));
         }
 
         [Test]
@@ -121,7 +121,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 center: new Vector3(1f + epsilon + 0.5f, 0f, 0f),
                 size: new Vector3(1f, 2f, 2f)
             ); // min.x = 1 + epsilon
-            Assert.IsTrue(s.Intersects(b));
+            Assert.IsTrue(s.Intersects(BoundingBox3D.FromClosedBounds(b)));
         }
 
         [Test]
@@ -134,7 +134,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 center: new Vector3(1f + epsilon + 0.5f, 0f, 0f),
                 size: new Vector3(1f, 2f, 2f)
             ); // min.x = 1 + epsilon
-            Assert.IsFalse(s.Intersects(b));
+            Assert.IsFalse(s.Intersects(BoundingBox3D.FromClosedBounds(b)));
         }
 
         // Overlaps(Bounds) tests: in implementation this means bounds are fully contained in the sphere
@@ -146,7 +146,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 center: new Vector3(0.5f, 0.5f, 0.5f),
                 size: new Vector3(1f, 1f, 1f)
             );
-            Assert.IsTrue(s.Overlaps(b));
+            Assert.IsTrue(s.Overlaps(BoundingBox3D.FromClosedBounds(b)));
         }
 
         [Test]
@@ -154,7 +154,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             var s = new Sphere(Vector3.zero, 1f);
             var b = new Bounds(center: new Vector3(0.8f, 0f, 0f), size: new Vector3(1f, 1f, 1f));
-            Assert.IsFalse(s.Overlaps(b));
+            Assert.IsFalse(s.Overlaps(BoundingBox3D.FromClosedBounds(b)));
         }
 
         [Test]
@@ -162,7 +162,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             var s = new Sphere(Vector3.zero, 1f);
             var b = new Bounds(center: new Vector3(5f, 0f, 0f), size: new Vector3(1f, 1f, 1f));
-            Assert.IsFalse(s.Overlaps(b));
+            Assert.IsFalse(s.Overlaps(BoundingBox3D.FromClosedBounds(b)));
         }
 
         [Test]
@@ -171,7 +171,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             var center = new Vector3(2f, -1f, 3f);
             var s = new Sphere(center, 0f);
             var b = new Bounds(center: center, size: Vector3.zero);
-            Assert.IsTrue(s.Overlaps(b));
+            Assert.IsTrue(s.Overlaps(BoundingBox3D.FromClosedBounds(b)));
         }
     }
 }

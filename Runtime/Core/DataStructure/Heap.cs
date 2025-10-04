@@ -1,0 +1,473 @@
+namespace WallstopStudios.UnityHelpers.Core.DataStructure
+{
+    using System;
+    using System.Collections;
+    using System.Collections.Generic;
+    using System.Runtime.CompilerServices;
+
+    /// <summary>
+    /// A highly optimized, array-backed generic heap implementation supporting both min-heap and max-heap ordering.
+    /// Uses dynamic resizing with geometric growth for efficient amortized insertions.
+    /// Allocation-free enumerator and minimal heap operations ensure optimal performance.
+    /// </summary>
+    /// <typeparam name="T">The type of elements in the heap. Must be comparable.</typeparam>
+    public sealed class Heap<T> : IReadOnlyList<T>
+    {
+        public struct HeapEnumerator : IEnumerator<T>
+        {
+            private readonly T[] _items;
+            private readonly int _count;
+            private int _index;
+            private T _current;
+
+            internal HeapEnumerator(T[] items, int count)
+            {
+                _items = items;
+                _count = count;
+                _index = -1;
+                _current = default;
+            }
+
+            public bool MoveNext()
+            {
+                if (++_index < _count)
+                {
+                    _current = _items[_index];
+                    return true;
+                }
+
+                _current = default;
+                return false;
+            }
+
+            public T Current => _current;
+
+            object IEnumerator.Current => Current;
+
+            public void Reset()
+            {
+                _index = -1;
+                _current = default;
+            }
+
+            public void Dispose() { }
+        }
+
+        private const int DefaultCapacity = 16;
+        private const int MinimumGrowth = 4;
+
+        private T[] _items;
+        private int _count;
+        private readonly IComparer<T> _comparer;
+
+        /// <summary>
+        /// Gets the number of elements in the heap.
+        /// </summary>
+        public int Count => _count;
+
+        /// <summary>
+        /// Gets whether the heap is empty.
+        /// </summary>
+        public bool IsEmpty => _count == 0;
+
+        /// <summary>
+        /// Gets the current capacity of the underlying array.
+        /// </summary>
+        public int Capacity => _items.Length;
+
+        /// <summary>
+        /// Gets the element at the specified index in heap order (not sorted order).
+        /// </summary>
+        public T this[int index]
+        {
+            get
+            {
+                if (index < 0 || index >= _count)
+                {
+                    throw new IndexOutOfRangeException(
+                        $"{index} is outside of bounds [0, {_count})"
+                    );
+                }
+                return _items[index];
+            }
+        }
+
+        /// <summary>
+        /// Constructs a heap with the default comparer (min-heap for natural ordering).
+        /// </summary>
+        /// <param name="capacity">Initial capacity of the heap.</param>
+        public Heap(int capacity = DefaultCapacity)
+            : this(Comparer<T>.Default, capacity) { }
+
+        /// <summary>
+        /// Constructs a heap with a custom comparer.
+        /// </summary>
+        /// <param name="comparer">The comparer to use for ordering elements.</param>
+        /// <param name="capacity">Initial capacity of the heap.</param>
+        public Heap(IComparer<T> comparer, int capacity = DefaultCapacity)
+        {
+            if (capacity <= 0)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(capacity),
+                    "Capacity must be positive."
+                );
+            }
+            _items = new T[capacity];
+            _count = 0;
+            _comparer = comparer ?? throw new ArgumentNullException(nameof(comparer));
+        }
+
+        /// <summary>
+        /// Constructs a heap from an existing collection (heapifies in O(n) time).
+        /// </summary>
+        /// <param name="items">The collection to heapify.</param>
+        /// <param name="comparer">The comparer to use for ordering elements.</param>
+        public Heap(IEnumerable<T> items, IComparer<T> comparer = null)
+        {
+            if (items == null)
+            {
+                throw new ArgumentNullException(nameof(items));
+            }
+
+            _comparer = comparer ?? Comparer<T>.Default;
+
+            if (items is IReadOnlyList<T> readonlyList)
+            {
+                int capacity = Math.Max(DefaultCapacity, readonlyList.Count);
+                _items = new T[capacity];
+                for (int i = 0; i < readonlyList.Count; i++)
+                {
+                    _items[i] = readonlyList[i];
+                }
+
+                _count = readonlyList.Count;
+            }
+            else if (items is ICollection<T> collection)
+            {
+                int capacity = Math.Max(DefaultCapacity, collection.Count);
+                _items = new T[capacity];
+                collection.CopyTo(_items, 0);
+                _count = collection.Count;
+            }
+            else if (items is IReadOnlyCollection<T> readOnlyCollection)
+            {
+                int capacity = Math.Max(DefaultCapacity, readOnlyCollection.Count);
+                _items = new T[capacity];
+                _count = 0;
+                foreach (T item in readOnlyCollection)
+                {
+                    _items[_count++] = item;
+                }
+            }
+            else
+            {
+                _items = new T[DefaultCapacity];
+                _count = 0;
+                foreach (T item in items)
+                {
+                    if (_count == _items.Length)
+                    {
+                        int newCapacity = ComputeGrowth(_items.Length);
+                        Resize(newCapacity);
+                    }
+                    _items[_count++] = item;
+                }
+            }
+
+            // Floyd's heap construction algorithm - O(n)
+            for (int i = (_count - 1) / 2; i >= 0; i--)
+            {
+                HeapifyDown(i);
+            }
+        }
+
+        /// <summary>
+        /// Creates a min-heap with the default comparer.
+        /// </summary>
+        public static Heap<T> CreateMinHeap(int capacity = DefaultCapacity)
+        {
+            return new Heap<T>(Comparer<T>.Default, capacity);
+        }
+
+        /// <summary>
+        /// Creates a max-heap with a reversed comparer.
+        /// </summary>
+        public static Heap<T> CreateMaxHeap(int capacity = DefaultCapacity)
+        {
+            return new Heap<T>(ReverseComparer<T>.Instance, capacity);
+        }
+
+        /// <summary>
+        /// Creates a min-heap from an existing collection.
+        /// </summary>
+        public static Heap<T> CreateMinHeap(IEnumerable<T> items)
+        {
+            return new Heap<T>(items, Comparer<T>.Default);
+        }
+
+        /// <summary>
+        /// Creates a max-heap from an existing collection.
+        /// </summary>
+        public static Heap<T> CreateMaxHeap(IEnumerable<T> items)
+        {
+            return new Heap<T>(items, ReverseComparer<T>.Instance);
+        }
+
+        /// <summary>
+        /// Adds an element to the heap in O(log n) time.
+        /// </summary>
+        public void Add(T item)
+        {
+            if (_count == _items.Length)
+            {
+                int newCapacity = ComputeGrowth(_items.Length);
+                Resize(newCapacity);
+            }
+
+            _items[_count] = item;
+            HeapifyUp(_count);
+            _count++;
+        }
+
+        /// <summary>
+        /// Returns the root element (minimum for min-heap, maximum for max-heap) without removing it.
+        /// Throws if the heap is empty.
+        /// </summary>
+        public T Peek()
+        {
+            if (_count == 0)
+            {
+                throw new InvalidOperationException("Heap is empty.");
+            }
+            return _items[0];
+        }
+
+        /// <summary>
+        /// Attempts to peek at the root element without removing it.
+        /// </summary>
+        /// <returns>True if the heap is not empty, false otherwise.</returns>
+        public bool TryPeek(out T result)
+        {
+            if (_count == 0)
+            {
+                result = default;
+                return false;
+            }
+            result = _items[0];
+            return true;
+        }
+
+        /// <summary>
+        /// Removes and returns the root element in O(log n) time.
+        /// Throws if the heap is empty.
+        /// </summary>
+        public T Pop()
+        {
+            if (_count == 0)
+            {
+                throw new InvalidOperationException("Heap is empty.");
+            }
+
+            T result = _items[0];
+            _count--;
+            if (_count > 0)
+            {
+                _items[0] = _items[_count];
+                HeapifyDown(0);
+            }
+            _items[_count] = default; // Clear reference
+            return result;
+        }
+
+        /// <summary>
+        /// Attempts to remove and return the root element.
+        /// </summary>
+        /// <returns>True if the heap was not empty, false otherwise.</returns>
+        public bool TryPop(out T result)
+        {
+            if (_count == 0)
+            {
+                result = default;
+                return false;
+            }
+
+            result = Pop();
+            return true;
+        }
+
+        /// <summary>
+        /// Removes all elements from the heap.
+        /// </summary>
+        public void Clear()
+        {
+            Array.Clear(_items, 0, _count);
+            _count = 0;
+        }
+
+        /// <summary>
+        /// Checks if the heap contains a specific element in O(n) time.
+        /// </summary>
+        public bool Contains(T item)
+        {
+            for (int i = 0; i < _count; i++)
+            {
+                if (EqualityComparer<T>.Default.Equals(_items[i], item))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Copies the heap elements to an array (not in sorted order).
+        /// </summary>
+        public void CopyTo(T[] array, int arrayIndex)
+        {
+            if (array == null)
+            {
+                throw new ArgumentNullException(nameof(array));
+            }
+            if (arrayIndex < 0 || arrayIndex > array.Length)
+            {
+                throw new ArgumentOutOfRangeException(nameof(arrayIndex));
+            }
+            if (array.Length - arrayIndex < _count)
+            {
+                throw new ArgumentException("Destination array is not large enough.");
+            }
+
+            Array.Copy(_items, 0, array, arrayIndex, _count);
+        }
+
+        /// <summary>
+        /// Returns an array containing all elements (not in sorted order).
+        /// </summary>
+        public T[] ToArray()
+        {
+            T[] result = new T[_count];
+            Array.Copy(_items, 0, result, 0, _count);
+            return result;
+        }
+
+        /// <summary>
+        /// Trims excess capacity to match the current count.
+        /// </summary>
+        public void TrimExcess()
+        {
+            int threshold = (int)(_items.Length * 0.9);
+            if (_count < threshold)
+            {
+                int newCapacity = Math.Max(DefaultCapacity, _count);
+                Resize(newCapacity);
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void HeapifyUp(int index)
+        {
+            T item = _items[index];
+            while (index > 0)
+            {
+                int parentIndex = (index - 1) >> 1;
+                T parent = _items[parentIndex];
+
+                if (_comparer.Compare(item, parent) >= 0)
+                {
+                    break;
+                }
+
+                _items[index] = parent;
+                index = parentIndex;
+            }
+            _items[index] = item;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void HeapifyDown(int index)
+        {
+            T item = _items[index];
+            int halfCount = _count >> 1;
+
+            while (index < halfCount)
+            {
+                int leftChild = (index << 1) + 1;
+                int rightChild = leftChild + 1;
+                int smallestChild = leftChild;
+
+                if (
+                    rightChild < _count
+                    && _comparer.Compare(_items[rightChild], _items[leftChild]) < 0
+                )
+                {
+                    smallestChild = rightChild;
+                }
+
+                if (_comparer.Compare(item, _items[smallestChild]) <= 0)
+                {
+                    break;
+                }
+
+                _items[index] = _items[smallestChild];
+                index = smallestChild;
+            }
+            _items[index] = item;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static int ComputeGrowth(int currentCapacity)
+        {
+            // Use 1.5x growth strategy (capacity + capacity/2)
+            // Ensures better memory reuse than 2x while maintaining O(1) amortized growth
+            // Minimum growth of MinimumGrowth to avoid tiny increments for small arrays
+            int growth = currentCapacity + (currentCapacity >> 1);
+            int newCapacity = currentCapacity + Math.Max(growth - currentCapacity, MinimumGrowth);
+
+            // Handle overflow by capping at Array.MaxLength
+            if ((uint)newCapacity > 0X7FFFFFC7) // Array.MaxLength
+            {
+                newCapacity = 0X7FFFFFC7;
+            }
+
+            return newCapacity;
+        }
+
+        private void Resize(int newCapacity)
+        {
+            T[] newItems = new T[newCapacity];
+            Array.Copy(_items, 0, newItems, 0, _count);
+            _items = newItems;
+        }
+
+        public HeapEnumerator GetEnumerator()
+        {
+            return new HeapEnumerator(_items, _count);
+        }
+
+        IEnumerator<T> IEnumerable<T>.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
+
+        /// <summary>
+        /// A reverse comparer used for max-heaps.
+        /// </summary>
+        private sealed class ReverseComparer<TElement> : IComparer<TElement>
+        {
+            public static readonly ReverseComparer<TElement> Instance =
+                new ReverseComparer<TElement>();
+            private readonly IComparer<TElement> _baseComparer = Comparer<TElement>.Default;
+
+            public int Compare(TElement x, TElement y)
+            {
+                return _baseComparer.Compare(y, x); // Reversed
+            }
+        }
+    }
+}

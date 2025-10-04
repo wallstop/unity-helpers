@@ -20,21 +20,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             return (center - point).sqrMagnitude <= _radiusSquared;
         }
 
-        public bool Intersects(Bounds bounds)
+        public bool Intersects(BoundingBox3D bounds)
         {
-            // Find the closest point on the bounds to the sphere center by clamping
-            Vector3 closest = new(
-                Mathf.Clamp(center.x, bounds.min.x, bounds.max.x),
-                Mathf.Clamp(center.y, bounds.min.y, bounds.max.y),
-                Mathf.Clamp(center.z, bounds.min.z, bounds.max.z)
-            );
+            Vector3 closest = bounds.ClosestPoint(center);
             Vector3 delta = closest - center;
             // Add a tiny tolerance to account for floating-point rounding when touching exactly at an edge/corner
             const float Tolerance = 1e-6f;
             return delta.sqrMagnitude <= (_radiusSquared + Tolerance);
         }
 
-        public bool Overlaps(Bounds bounds)
+        public bool Overlaps(BoundingBox3D bounds)
         {
             return Contains(bounds.min) && Contains(bounds.max);
         }

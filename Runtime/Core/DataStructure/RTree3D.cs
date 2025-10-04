@@ -16,7 +16,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         internal struct ElementData
         {
             internal T _value;
-            internal Bounds _bounds;
+            internal BoundingBox3D _bounds;
             internal Vector3 _center;
             internal uint _mortonKey;
         }
@@ -24,13 +24,18 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         [Serializable]
         public sealed class RTreeNode
         {
-            public readonly Bounds boundary;
+            public readonly BoundingBox3D boundary;
             internal readonly RTreeNode[] _children;
             internal readonly int _startIndex;
             internal readonly int _count;
             public readonly bool isTerminal;
 
-            private RTreeNode(int startIndex, int count, Bounds boundary, RTreeNode[] children)
+            private RTreeNode(
+                int startIndex,
+                int count,
+                BoundingBox3D boundary,
+                RTreeNode[] children
+            )
             {
                 _startIndex = startIndex;
                 _count = count;
@@ -41,12 +46,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             internal static RTreeNode CreateEmpty()
             {
-                return new RTreeNode(0, 0, new Bounds(), Array.Empty<RTreeNode>());
+                return new RTreeNode(0, 0, BoundingBox3D.Empty, Array.Empty<RTreeNode>());
             }
 
             internal static RTreeNode CreateLeaf(ElementData[] elements, int startIndex, int count)
             {
-                Bounds nodeBounds = CalculateBounds(elements, startIndex, count);
+                BoundingBox3D nodeBounds = CalculateBounds(elements, startIndex, count);
                 return new RTreeNode(startIndex, count, nodeBounds, Array.Empty<RTreeNode>());
             }
 
@@ -61,10 +66,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 int lastChildIndex = children.Length - 1;
                 RTreeNode lastChild = children[lastChildIndex];
                 int endIndex = lastChild._startIndex + lastChild._count;
-                Bounds nodeBounds = children[0].boundary;
+                BoundingBox3D nodeBounds = children[0].boundary;
                 for (int i = 1; i < children.Length; ++i)
                 {
-                    nodeBounds.Encapsulate(children[i].boundary);
+                    nodeBounds = nodeBounds.ExpandToInclude(children[i].boundary);
                 }
 
                 nodeBounds = EnsureMinimumBounds(nodeBounds);
@@ -88,9 +93,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         public const int DefaultBranchFactor = 4;
 
         public readonly ImmutableArray<T> elements;
-        public Bounds Boundary => _bounds;
+        public Bounds Boundary => _bounds.ToBounds();
 
-        private readonly Bounds _bounds;
+        private readonly BoundingBox3D _bounds;
         private readonly ElementData[] _elementData;
         private readonly RTreeNode _head;
 
@@ -125,13 +130,14 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 T element = elements[i];
 
                 Bounds elementBounds = transformer(element);
+                BoundingBox3D elementBox = BoundingBox3D.FromClosedBounds(elementBounds);
                 ElementData data = default;
                 data._value = element;
-                data._bounds = elementBounds;
-                data._center = elementBounds.center;
+                data._bounds = elementBox;
+                data._center = elementBox.Center;
                 elementData[i] = data;
-                Vector3 min = elementBounds.min;
-                Vector3 max = elementBounds.max;
+                Vector3 min = elementBox.min;
+                Vector3 max = elementBox.max;
 
                 if (!hasElements)
                 {
@@ -164,34 +170,13 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 }
             }
 
-            Bounds bounds = hasElements
-                ? new Bounds(
-                    new Vector3(
-                        minX + (maxX - minX) / 2,
-                        minY + (maxY - minY) / 2,
-                        minZ + (maxZ - minZ) / 2
-                    ),
-                    new Vector3(maxX - minX, maxY - minY, maxZ - minZ)
-                )
-                : new Bounds();
+            BoundingBox3D bounds = hasElements
+                ? new BoundingBox3D(new Vector3(minX, minY, minZ), new Vector3(maxX, maxY, maxZ))
+                : BoundingBox3D.Empty;
 
-            // Ensure bounds have minimum size to handle colinear points
             if (hasElements)
             {
-                Vector3 size = bounds.size;
-                if (size.x < MinimumNodeSize)
-                {
-                    size.x = MinimumNodeSize;
-                }
-                if (size.y < MinimumNodeSize)
-                {
-                    size.y = MinimumNodeSize;
-                }
-                if (size.z < MinimumNodeSize)
-                {
-                    size.z = MinimumNodeSize;
-                }
-                bounds.size = size;
+                bounds = bounds.EnsureMinimumSize(MinimumNodeSize);
             }
 
             _bounds = bounds;
@@ -271,7 +256,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             _bounds = _head.boundary;
         }
 
-        private void CollectElementIndicesInBounds(Bounds bounds, List<int> indices)
+        private void CollectElementIndicesInBounds(BoundingBox3D bounds, List<int> indices)
         {
             indices.Clear();
             if (!bounds.Intersects(_bounds))
@@ -340,7 +325,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return elementsInRange;
             }
 
-            Bounds queryBounds = new(position, new Vector3(range * 2f, range * 2f, range * 2f));
+            BoundingBox3D queryBounds = BoundingBox3D.FromCenterAndSize(
+                position,
+                new Vector3(range * 2f, range * 2f, range * 2f)
+            );
 
             if (!queryBounds.Intersects(_bounds))
             {
@@ -367,7 +355,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             foreach (int index in candidateIndices)
             {
                 ElementData elementData = _elementData[index];
-                Bounds elementBoundary = elementData._bounds;
+                BoundingBox3D elementBoundary = elementData._bounds;
                 if (!area.Intersects(elementBoundary))
                 {
                     continue;
@@ -387,14 +375,15 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         public List<T> GetElementsInBounds(Bounds bounds, List<T> elementsInBounds)
         {
             elementsInBounds.Clear();
-            if (!bounds.Intersects(_bounds))
+            BoundingBox3D queryBounds = BoundingBox3D.FromClosedBounds(bounds);
+            if (!queryBounds.Intersects(_bounds))
             {
                 return elementsInBounds;
             }
 
             using PooledResource<List<int>> indicesResource = Buffers<int>.List.Get();
             List<int> indices = indicesResource.resource;
-            CollectElementIndicesInBounds(bounds, indices);
+            CollectElementIndicesInBounds(queryBounds, indices);
             foreach (int index in indices)
             {
                 elementsInBounds.Add(_elementData[index]._value);
@@ -524,7 +513,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             static void PushNode(List<NodeDistance> heap, RTreeNode node, Vector3 point)
             {
-                NodeDistance entry = new NodeDistance(node, DistanceSquaredToBounds(node, point));
+                NodeDistance entry = new NodeDistance(node, node.boundary.DistanceSquaredTo(point));
                 heap.Add(entry);
                 int index = heap.Count - 1;
 
@@ -584,12 +573,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return result;
             }
 
-            static float DistanceSquaredToBounds(RTreeNode node, Vector3 point)
-            {
-                Vector3 closest = node.boundary.ClosestPoint(point);
-                return (closest - point).sqrMagnitude;
-            }
-
             float CalculateWorstDistanceSquared(List<int> indices, Vector3 point)
             {
                 float worst = 0f;
@@ -607,7 +590,11 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
         }
 
-        private static Bounds CalculateBounds(ElementData[] elements, int startIndex, int count)
+        private static BoundingBox3D CalculateBounds(
+            ElementData[] elements,
+            int startIndex,
+            int count
+        )
         {
             float minX = float.MaxValue;
             float minY = float.MaxValue;
@@ -618,7 +605,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             int endIndex = startIndex + count;
             for (int i = startIndex; i < endIndex; ++i)
             {
-                Bounds bounds = elements[i]._bounds;
+                BoundingBox3D bounds = elements[i]._bounds;
                 Vector3 min = bounds.min;
                 Vector3 max = bounds.max;
                 minX = Math.Min(minX, min.x);
@@ -629,36 +616,17 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 maxZ = Math.Max(maxZ, max.z);
             }
 
-            Bounds nodeBounds = new Bounds(
-                new Vector3(
-                    minX + (maxX - minX) / 2f,
-                    minY + (maxY - minY) / 2f,
-                    minZ + (maxZ - minZ) / 2f
-                ),
-                new Vector3(maxX - minX, maxY - minY, maxZ - minZ)
+            BoundingBox3D nodeBounds = new BoundingBox3D(
+                new Vector3(minX, minY, minZ),
+                new Vector3(maxX, maxY, maxZ)
             );
 
             return EnsureMinimumBounds(nodeBounds);
         }
 
-        private static Bounds EnsureMinimumBounds(Bounds bounds)
+        private static BoundingBox3D EnsureMinimumBounds(BoundingBox3D bounds)
         {
-            Vector3 size = bounds.size;
-            if (size.x < MinimumNodeSize)
-            {
-                size.x = MinimumNodeSize;
-            }
-            if (size.y < MinimumNodeSize)
-            {
-                size.y = MinimumNodeSize;
-            }
-            if (size.z < MinimumNodeSize)
-            {
-                size.z = MinimumNodeSize;
-            }
-
-            bounds.size = size;
-            return bounds;
+            return bounds.EnsureMinimumSize(MinimumNodeSize);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

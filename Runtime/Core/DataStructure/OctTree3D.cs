@@ -28,14 +28,14 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         [Serializable]
         public sealed class OctTreeNode
         {
-            public readonly Bounds boundary;
+            public readonly BoundingBox3D boundary;
             internal readonly OctTreeNode[] _children;
             internal readonly int _startIndex;
             internal readonly int _count;
             public readonly bool isTerminal;
 
             private OctTreeNode(
-                Bounds boundary,
+                BoundingBox3D boundary,
                 int startIndex,
                 int count,
                 bool isTerminal,
@@ -49,7 +49,11 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 _children = children ?? Array.Empty<OctTreeNode>();
             }
 
-            internal static OctTreeNode CreateLeaf(Bounds boundary, int startIndex, int count)
+            internal static OctTreeNode CreateLeaf(
+                BoundingBox3D boundary,
+                int startIndex,
+                int count
+            )
             {
                 return new OctTreeNode(
                     boundary,
@@ -61,7 +65,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
 
             internal static OctTreeNode CreateInternal(
-                Bounds boundary,
+                BoundingBox3D boundary,
                 OctTreeNode[] children,
                 int startIndex,
                 int count
@@ -86,9 +90,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         public const int DefaultBucketSize = 12;
 
         public readonly ImmutableArray<T> elements;
-        public Bounds Boundary => _bounds;
+        public Bounds Boundary => _bounds.ToBounds();
 
-        private readonly Bounds _bounds;
+        private readonly BoundingBox3D _bounds;
         private readonly Entry[] _entries;
         private readonly int[] _indices;
         private readonly OctTreeNode _head;
@@ -112,7 +116,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             _entries = elementCount == 0 ? Array.Empty<Entry>() : new Entry[elementCount];
             _indices = elementCount == 0 ? Array.Empty<int>() : new int[elementCount];
 
-            Bounds bounds = boundary ?? default;
+            BoundingBox3D bounds = boundary.HasValue
+                ? BoundingBox3D.FromClosedBounds(boundary.Value)
+                : BoundingBox3D.Empty;
             bool anyPoints = boundary.HasValue;
 
             for (int i = 0; i < elementCount; ++i)
@@ -122,11 +128,11 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 _entries[i] = new Entry(element, position);
                 if (anyPoints)
                 {
-                    bounds.Encapsulate(position);
+                    bounds = bounds.ExpandToInclude(position);
                 }
                 else
                 {
-                    bounds = new Bounds(position, Vector3.zero);
+                    bounds = BoundingBox3D.FromPoint(position);
                     anyPoints = true;
                 }
 
@@ -135,21 +141,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             if (anyPoints)
             {
-                Vector3 size = bounds.size;
-                const float minSize = 0.001f;
-                if (size.x < minSize)
-                {
-                    size.x = minSize;
-                }
-                if (size.y < minSize)
-                {
-                    size.y = minSize;
-                }
-                if (size.z < minSize)
-                {
-                    size.z = minSize;
-                }
-                bounds.size = size;
+                bounds = bounds.EnsureMinimumSize(0.001f);
             }
 
             _bounds = bounds;
@@ -173,7 +165,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         }
 
         private OctTreeNode BuildNode(
-            Bounds boundary,
+            BoundingBox3D boundary,
             int startIndex,
             int count,
             int bucketSize,
@@ -197,9 +189,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             Span<int> source = _indices.AsSpan(startIndex, count);
             Span<int> temp = scratch.AsSpan(0, count);
 
-            Vector3 octantSize = boundary.size / 2f;
-            Vector3 halfOctantSize = octantSize / 2f;
-            Vector3 boundaryCenter = boundary.center;
+            Vector3 boundaryMin = boundary.min;
+            Vector3 boundaryMax = boundary.max;
+            Vector3 boundaryCenter = boundary.Center;
             float centerX = boundaryCenter.x;
             float centerY = boundaryCenter.y;
             float centerZ = boundaryCenter.z;
@@ -248,72 +240,47 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             temp.CopyTo(source);
 
-            Span<Bounds> octants = stackalloc Bounds[NumChildren];
+            float minX = boundaryMin.x;
+            float minY = boundaryMin.y;
+            float minZ = boundaryMin.z;
+            float maxX = boundaryMax.x;
+            float maxY = boundaryMax.y;
+            float maxZ = boundaryMax.z;
+
+            Span<BoundingBox3D> octants = stackalloc BoundingBox3D[NumChildren];
             // Bottom layer (z-)
-            octants[0] = new Bounds(
-                new Vector3(
-                    centerX - halfOctantSize.x,
-                    centerY - halfOctantSize.y,
-                    centerZ - halfOctantSize.z
-                ),
-                octantSize
+            octants[0] = new BoundingBox3D(
+                new Vector3(minX, minY, minZ),
+                new Vector3(centerX, centerY, centerZ)
             );
-            octants[2] = new Bounds(
-                new Vector3(
-                    centerX + halfOctantSize.x,
-                    centerY - halfOctantSize.y,
-                    centerZ - halfOctantSize.z
-                ),
-                octantSize
+            octants[2] = new BoundingBox3D(
+                new Vector3(centerX, minY, minZ),
+                new Vector3(maxX, centerY, centerZ)
             );
-            octants[1] = new Bounds(
-                new Vector3(
-                    centerX - halfOctantSize.x,
-                    centerY + halfOctantSize.y,
-                    centerZ - halfOctantSize.z
-                ),
-                octantSize
+            octants[1] = new BoundingBox3D(
+                new Vector3(minX, centerY, minZ),
+                new Vector3(centerX, maxY, centerZ)
             );
-            octants[3] = new Bounds(
-                new Vector3(
-                    centerX + halfOctantSize.x,
-                    centerY + halfOctantSize.y,
-                    centerZ - halfOctantSize.z
-                ),
-                octantSize
+            octants[3] = new BoundingBox3D(
+                new Vector3(centerX, centerY, minZ),
+                new Vector3(maxX, maxY, centerZ)
             );
             // Top layer (z+)
-            octants[4] = new Bounds(
-                new Vector3(
-                    centerX - halfOctantSize.x,
-                    centerY - halfOctantSize.y,
-                    centerZ + halfOctantSize.z
-                ),
-                octantSize
+            octants[4] = new BoundingBox3D(
+                new Vector3(minX, minY, centerZ),
+                new Vector3(centerX, centerY, maxZ)
             );
-            octants[6] = new Bounds(
-                new Vector3(
-                    centerX + halfOctantSize.x,
-                    centerY - halfOctantSize.y,
-                    centerZ + halfOctantSize.z
-                ),
-                octantSize
+            octants[6] = new BoundingBox3D(
+                new Vector3(centerX, minY, centerZ),
+                new Vector3(maxX, centerY, maxZ)
             );
-            octants[5] = new Bounds(
-                new Vector3(
-                    centerX - halfOctantSize.x,
-                    centerY + halfOctantSize.y,
-                    centerZ + halfOctantSize.z
-                ),
-                octantSize
+            octants[5] = new BoundingBox3D(
+                new Vector3(minX, centerY, centerZ),
+                new Vector3(centerX, maxY, maxZ)
             );
-            octants[7] = new Bounds(
-                new Vector3(
-                    centerX + halfOctantSize.x,
-                    centerY + halfOctantSize.y,
-                    centerZ + halfOctantSize.z
-                ),
-                octantSize
+            octants[7] = new BoundingBox3D(
+                new Vector3(centerX, centerY, centerZ),
+                new Vector3(maxX, maxY, maxZ)
             );
 
             OctTreeNode[] children = new OctTreeNode[NumChildren];
@@ -345,9 +312,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return elementsInRange;
             }
 
-            Bounds bounds = new(position, new Vector3(range * 2f, range * 2f, range * 2f));
+            BoundingBox3D queryBounds = BoundingBox3D.FromCenterAndSize(
+                position,
+                new Vector3(range * 2f, range * 2f, range * 2f)
+            );
 
-            if (!bounds.Intersects(_bounds))
+            if (!queryBounds.Intersects(_bounds))
             {
                 return elementsInRange;
             }
@@ -370,18 +340,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     continue;
                 }
 
-                if (!bounds.Intersects(currentNode.boundary))
+                if (!queryBounds.Intersects(currentNode.boundary))
                 {
                     continue;
                 }
 
-                if (
-                    currentNode.isTerminal
-                    || (
-                        bounds.Contains(currentNode.boundary.min)
-                        && bounds.Contains(currentNode.boundary.max)
-                    )
-                )
+                if (currentNode.isTerminal || queryBounds.Contains(currentNode.boundary))
                 {
                     int start = currentNode._startIndex;
                     int end = start + currentNode._count;
@@ -414,7 +378,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                         continue;
                     }
 
-                    if (bounds.Intersects(child.boundary))
+                    if (queryBounds.Intersects(child.boundary))
                     {
                         nodesToVisit.Push(child);
                     }
@@ -428,17 +392,21 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         {
             using PooledResource<Stack<OctTreeNode>> stackResource =
                 Buffers<OctTreeNode>.Stack.Get();
-            return GetElementsInBounds(bounds, elementsInBounds, stackResource.resource);
+            return GetElementsInBounds(
+                BoundingBox3D.FromClosedBounds(bounds),
+                elementsInBounds,
+                stackResource.resource
+            );
         }
 
         public List<T> GetElementsInBounds(
-            Bounds bounds,
+            BoundingBox3D queryBounds,
             List<T> elementsInBounds,
             Stack<OctTreeNode> nodeBuffer
         )
         {
             elementsInBounds.Clear();
-            if (_head._count <= 0 || !bounds.Intersects(_bounds))
+            if (_head._count <= 0 || !queryBounds.Intersects(_bounds))
             {
                 return elementsInBounds;
             }
@@ -456,10 +424,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     continue;
                 }
 
-                if (
-                    bounds.Contains(currentNode.boundary.min)
-                    && bounds.Contains(currentNode.boundary.max)
-                )
+                if (queryBounds.Contains(currentNode.boundary))
                 {
                     int start = currentNode._startIndex;
                     int end = start + currentNode._count;
@@ -478,7 +443,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     for (int i = start; i < end; ++i)
                     {
                         Entry entry = entries[indices[i]];
-                        if (bounds.Contains(entry.position))
+                        if (queryBounds.Contains(entry.position))
                         {
                             elementsInBounds.Add(entry.value);
                         }
@@ -496,7 +461,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                         continue;
                     }
 
-                    if (bounds.Intersects(child.boundary))
+                    if (queryBounds.Intersects(child.boundary))
                     {
                         nodesToVisit.Push(child);
                     }
@@ -606,7 +571,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             static void PushNode(List<NodeDistance> heap, OctTreeNode node, Vector3 point)
             {
-                NodeDistance entry = new NodeDistance(node, DistanceSquaredToBounds(node, point));
+                NodeDistance entry = new NodeDistance(node, node.boundary.DistanceSquaredTo(point));
                 heap.Add(entry);
                 int index = heap.Count - 1;
 
@@ -665,14 +630,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
                 return result;
             }
-
-            static float DistanceSquaredToBounds(OctTreeNode node, Vector3 point)
-            {
-                Bounds boundary = node.boundary;
-                Vector3 closest = boundary.ClosestPoint(point);
-                return (closest - point).sqrMagnitude;
-            }
-
             static float CalculateWorstDistanceSquared(List<Entry> candidates, Vector3 point)
             {
                 float worst = 0f;

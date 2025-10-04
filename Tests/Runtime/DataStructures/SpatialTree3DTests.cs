@@ -217,7 +217,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             List<Vector3> results = new();
 
             tree.GetElementsInBounds(bounds, results);
-            List<Vector3> expected = points.Where(bounds.Contains).ToList();
+            BoundingBox3D queryBounds = BoundingBox3D.FromClosedBounds(bounds);
+            List<Vector3> expected = points.Where(queryBounds.Contains).ToList();
             CollectionAssert.AreEquivalent(expected, results);
         }
 

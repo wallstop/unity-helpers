@@ -168,8 +168,26 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             List<Vector3> results = new();
 
             tree.GetElementsInBounds(bounds, results);
-            List<Vector3> expected = points.Where(bounds.Contains).ToList();
+            BoundingBox3D queryBounds = BoundingBox3D.FromClosedBounds(bounds);
+            List<Vector3> expected = points.Where(queryBounds.Contains).ToList();
             CollectionAssert.AreEquivalent(expected, results);
+        }
+
+        [Test]
+        public void GetElementsInBoundsTreatsUpperBoundaryAsExclusive()
+        {
+            List<Vector3> points = new() { new Vector3(0f, 0f, 0f), new Vector3(1f, 0f, 0f) };
+
+            OctTree3D<Vector3> tree = CreateTree(points);
+            Bounds bounds = new(
+                center: new Vector3(0.5f, 0f, 0f),
+                size: new Vector3(1f, 0.1f, 0.1f)
+            );
+            List<Vector3> results = new();
+
+            tree.GetElementsInBounds(bounds, results);
+
+            CollectionAssert.AreEquivalent(new[] { points[0] }, results);
         }
 
         [Test]
