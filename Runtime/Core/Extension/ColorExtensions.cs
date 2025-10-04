@@ -176,118 +176,63 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         // HSV space averaging - good for preserving vibrant colors
         private static Color AverageInHSVSpace(IEnumerable<Color> pixels, float alphaCutoff)
         {
-            float avgH = 0f;
-            float avgS = 0f;
-            float avgV = 0f;
+            float sumCos = 0f;
+            float sumSin = 0f;
+            float sumS = 0f;
+            float sumV = 0f;
             int count = 0;
+
+            void Accumulate(IEnumerable<Color> source)
+            {
+                foreach (Color pixel in source)
+                {
+                    if (pixel.a <= alphaCutoff)
+                    {
+                        continue;
+                    }
+
+                    Color.RGBToHSV(pixel, out float h, out float s, out float v);
+                    float hueRadians = h * 2f * Mathf.PI;
+                    sumCos += Mathf.Cos(hueRadians);
+                    sumSin += Mathf.Sin(hueRadians);
+                    sumS += s;
+                    sumV += v;
+                    ++count;
+                }
+            }
 
             switch (pixels)
             {
-                case List<Color> pixelList:
-                {
-                    foreach (Color pixel in pixelList)
-                    {
-                        if (pixel.a <= alphaCutoff)
-                        {
-                            continue;
-                        }
-
-                        Color.RGBToHSV(pixel, out float h, out float s, out float v);
-
-                        // Handle hue wrapping around 360 degrees
-                        float hRad = h * 2f * Mathf.PI;
-                        avgH += Mathf.Cos(hRad);
-                        avgH += Mathf.Sin(hRad);
-
-                        avgS += s;
-                        avgV += v;
-                        ++count;
-                    }
-
+                case List<Color> list:
+                    Accumulate(list);
                     break;
-                }
-                case Color[] pixelArray:
-                {
-                    foreach (Color pixel in pixelArray)
-                    {
-                        if (pixel.a <= alphaCutoff)
-                        {
-                            continue;
-                        }
-
-                        Color.RGBToHSV(pixel, out float h, out float s, out float v);
-
-                        // Handle hue wrapping around 360 degrees
-                        float hRad = h * 2f * Mathf.PI;
-                        avgH += Mathf.Cos(hRad);
-                        avgH += Mathf.Sin(hRad);
-
-                        avgS += s;
-                        avgV += v;
-                        ++count;
-                    }
-
+                case Color[] array:
+                    Accumulate(array);
                     break;
-                }
-                case HashSet<Color> pixelSet:
-                {
-                    foreach (Color pixel in pixelSet)
-                    {
-                        if (pixel.a <= alphaCutoff)
-                        {
-                            continue;
-                        }
-
-                        Color.RGBToHSV(pixel, out float h, out float s, out float v);
-
-                        // Handle hue wrapping around 360 degrees
-                        float hRad = h * 2f * Mathf.PI;
-                        avgH += Mathf.Cos(hRad);
-                        avgH += Mathf.Sin(hRad);
-
-                        avgS += s;
-                        avgV += v;
-                        ++count;
-                    }
-
+                case HashSet<Color> set:
+                    Accumulate(set);
                     break;
-                }
                 default:
-                {
-                    foreach (Color pixel in pixels)
-                    {
-                        if (pixel.a <= alphaCutoff)
-                        {
-                            continue;
-                        }
-
-                        Color.RGBToHSV(pixel, out float h, out float s, out float v);
-
-                        // Handle hue wrapping around 360 degrees
-                        float hRad = h * 2f * Mathf.PI;
-                        avgH += Mathf.Cos(hRad);
-                        avgH += Mathf.Sin(hRad);
-
-                        avgS += s;
-                        avgV += v;
-                        ++count;
-                    }
-
+                    Accumulate(pixels);
                     break;
-                }
             }
-            count = Mathf.Max(count, 1);
-            avgH = Mathf.Atan2(avgH / count, avgH / count) / (2f * Mathf.PI);
 
-            if (avgH < 0)
+            if (count == 0)
             {
-                avgH += 1f;
+                return Color.black;
             }
 
-            avgS /= count;
-            avgV /= count;
+            float averageHueRadians = Mathf.Atan2(sumSin / count, sumCos / count);
+            if (averageHueRadians < 0f)
+            {
+                averageHueRadians += 2f * Mathf.PI;
+            }
 
-            return Color.HSVToRGB(avgH, avgS, avgV);
+            float averageHue = averageHueRadians / (2f * Mathf.PI);
+            float averageS = sumS / count;
+            float averageV = sumV / count;
+
+            return Color.HSVToRGB(averageHue, averageS, averageV);
         }
 
         // Weighted RGB averaging using perceived luminance

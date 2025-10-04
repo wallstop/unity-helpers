@@ -19,7 +19,9 @@ namespace WallstopStudios.UnityHelpers.Tags
         private TagHandler _tagHandler;
 
         [SiblingComponent(optional = true)]
-        private AttributesComponent[] _attributes;
+        private List<AttributesComponent> _attributes;
+
+        private readonly HashSet<AttributesComponent> _uniqueAttributesComponents = new();
 
         // Stores instanced cosmetic effect data for associated effects.
         private readonly Dictionary<
@@ -40,7 +42,28 @@ namespace WallstopStudios.UnityHelpers.Tags
         private void Awake()
         {
             this.AssignRelationalComponents();
+            foreach (AttributesComponent attributesComponent in _attributes)
+            {
+                _uniqueAttributesComponents.Add(attributesComponent);
+            }
+
             _initialized = true;
+        }
+
+        internal void Register(AttributesComponent attributesComponent)
+        {
+            _attributes ??= new List<AttributesComponent>();
+            if (_uniqueAttributesComponents.Add(attributesComponent))
+            {
+                _attributes.Add(attributesComponent);
+            }
+        }
+
+        internal void Remove(AttributesComponent attributesComponent)
+        {
+            _attributes ??= new List<AttributesComponent>();
+            _uniqueAttributesComponents.Remove(attributesComponent);
+            _attributes.Remove(attributesComponent);
         }
 
         public EffectHandle? ApplyEffect(AttributeEffect effect)

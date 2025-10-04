@@ -44,9 +44,8 @@ namespace WallstopStudios.UnityHelpers.Tags
         public readonly List<CosmeticEffectData> cosmeticEffects = new();
 
         private List<string> CosmeticEffectsForJson =>
-            cosmeticEffects
-                ?.Select(cosmeticEffectData => cosmeticEffectData.name)
-                .ToList(cosmeticEffects.Count) ?? new List<string>(0);
+            cosmeticEffects?.Select(cosmeticEffectData => cosmeticEffectData.name).ToList()
+            ?? new List<string>(0);
 
         public override string ToString()
         {

@@ -158,7 +158,7 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
 
             string assetsFullPath = Path.GetFullPath(Application.dataPath);
             if (
-                DefaultRootPath == "Assets"
+                string.Equals(DefaultRootPath, "Assets", StringComparison.Ordinal)
                 && !fullPath.StartsWith(assetsFullPath, StringComparison.OrdinalIgnoreCase)
                 && fullPath.StartsWith(projectRootPath)
             )

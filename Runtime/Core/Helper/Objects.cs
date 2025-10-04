@@ -757,12 +757,22 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             {
                 int hash = HashBase;
                 IEnumerator walker = enumerable.GetEnumerator();
-                while (walker.MoveNext())
+                try
                 {
-                    hash = hash * HashMultiplier + NullSafeHashCode(walker.Current);
-                }
+                    while (walker.MoveNext())
+                    {
+                        hash = hash * HashMultiplier + NullSafeHashCode(walker.Current);
+                    }
 
-                return hash;
+                    return hash;
+                }
+                finally
+                {
+                    if (walker is IDisposable disposable)
+                    {
+                        disposable.Dispose();
+                    }
+                }
             }
         }
     }

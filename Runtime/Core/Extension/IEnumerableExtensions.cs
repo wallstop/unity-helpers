@@ -1,15 +1,14 @@
 namespace WallstopStudios.UnityHelpers.Core.Extension
 {
     using System;
-    using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Linq;
     using Random;
+    using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Utils;
 
     public static class IEnumerableExtensions
     {
-        private static readonly ConcurrentDictionary<object, object> ComparerCache = new();
-
         public static LinkedList<T> ToLinkedList<T>(this IEnumerable<T> source)
         {
             return new LinkedList<T>(source);
@@ -30,10 +29,8 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             Func<T, T, int> comparer
         )
         {
-            FuncBasedComparer<T> comparerObject =
-                (FuncBasedComparer<T>)
-                    ComparerCache.GetOrAdd(comparer, () => new FuncBasedComparer<T>(comparer));
-            return enumeration.OrderBy(x => x, comparerObject);
+            FuncBasedComparer<T> typedComparer = new(comparer);
+            return enumeration.OrderBy(x => x, typedComparer);
         }
 
         public static IEnumerable<T> Ordered<T>(this IEnumerable<T> enumerable)
@@ -47,77 +44,152 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             IRandom random = null
         )
         {
-            random ??= ThreadLocalRandom<PcgRandom>.Instance;
-            return enumerable.OrderBy(_ => random.Next());
+            random ??= PRNG.Instance;
+            return enumerable.OrderBy(x => x, new RandomComparer<T>(random));
         }
 
         public static IEnumerable<T> Infinite<T>(this IEnumerable<T> enumerable)
         {
-            ICollection<T> collection = enumerable as ICollection<T> ?? enumerable.ToList();
-            if (collection.Count == 0)
+            switch (enumerable)
+            {
+                case IReadOnlyList<T> { Count: 0 }:
+                {
+                    yield break;
+                }
+                case IReadOnlyList<T> readonlyList:
+                {
+                    while (true)
+                    {
+                        for (int i = 0; i < readonlyList.Count; ++i)
+                        {
+                            yield return readonlyList[i];
+                        }
+                    }
+                }
+                case IList<T> { Count: 0 }:
+                {
+                    yield break;
+                }
+                case IList<T> list:
+                {
+                    while (true)
+                    {
+                        for (int i = 0; i < list.Count; ++i)
+                        {
+                            yield return list[i];
+                        }
+                    }
+                }
+                case HashSet<T> { Count: 0 }:
+                {
+                    yield break;
+                }
+                case HashSet<T> hashSet:
+                {
+                    while (true)
+                    {
+                        foreach (T element in hashSet)
+                        {
+                            yield return element;
+                        }
+                    }
+                }
+                case Queue<T> { Count: 0 }:
+                {
+                    yield break;
+                }
+                case Queue<T> queue:
+                {
+                    while (true)
+                    {
+                        foreach (T element in queue)
+                        {
+                            yield return element;
+                        }
+                    }
+                }
+                case Stack<T> { Count: 0 }:
+                {
+                    yield break;
+                }
+                case Stack<T> stack:
+                {
+                    while (true)
+                    {
+                        foreach (T element in stack)
+                        {
+                            yield return element;
+                        }
+                    }
+                }
+                case SortedSet<T> { Count: 0 }:
+                {
+                    yield break;
+                }
+                case SortedSet<T> sortedSet:
+                {
+                    while (true)
+                    {
+                        foreach (T element in sortedSet)
+                        {
+                            yield return element;
+                        }
+                    }
+                }
+                case LinkedList<T> { Count: 0 }:
+                {
+                    yield break;
+                }
+                case LinkedList<T> linkedList:
+                {
+                    while (true)
+                    {
+                        foreach (T element in linkedList)
+                        {
+                            yield return element;
+                        }
+                    }
+                }
+            }
+
+            using PooledResource<List<T>> buffer = Buffers<T>.List.Get();
+            List<T> bufferList = buffer.resource;
+            foreach (T element in enumerable)
+            {
+                bufferList.Add(element);
+                yield return element;
+            }
+
+            if (bufferList.Count == 0)
             {
                 yield break;
             }
 
             while (true)
             {
-                foreach (T element in collection)
+                foreach (T element in bufferList)
                 {
                     yield return element;
                 }
             }
         }
 
-        public static void ForEach<T>(this IEnumerable<T> enumerable, Action<T> action)
-        {
-            foreach (T item in enumerable)
-            {
-                action(item);
-            }
-        }
-
         public static IEnumerable<IEnumerable<T>> Partition<T>(this IEnumerable<T> items, int size)
         {
             using IEnumerator<T> enumerator = items.GetEnumerator();
-            bool hasNext = enumerator.MoveNext();
+            using PooledResource<List<T>> listBuffer = Buffers<T>.List.Get();
+            List<T> partition = listBuffer.resource;
 
-            while (hasNext)
+            while (enumerator.MoveNext())
             {
-                yield return NextPartitionOf().ToList();
-            }
-
-            yield break;
-
-            IEnumerable<T> NextPartitionOf()
-            {
-                int remainingCountForPartition = size;
-                while (remainingCountForPartition-- > 0 && hasNext)
+                int count = 0;
+                do
                 {
-                    yield return enumerator.Current;
-                    hasNext = enumerator.MoveNext();
-                }
-            }
-        }
+                    partition.Add(enumerator.Current);
+                } while (++count < size && enumerator.MoveNext());
 
-        public static List<T> ToList<T>(this IEnumerable<T> enumerable, int count)
-        {
-            List<T> list = new(count);
-            list.AddRange(enumerable);
-            return list;
-        }
-
-        private class FuncBasedComparer<T> : IComparer<T>
-        {
-            private readonly Func<T, T, int> _comparer;
-
-            public FuncBasedComparer(Func<T, T, int> comparer)
-            {
-                _comparer = comparer ?? throw new ArgumentNullException(nameof(comparer));
-            }
-
-            public int Compare(T x, T y)
-            {
-                return _comparer(x, y);
+                yield return partition;
+                partition.Clear();
             }
         }
     }

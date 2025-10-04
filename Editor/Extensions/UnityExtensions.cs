@@ -1,9 +1,7 @@
 namespace WallstopStudios.UnityHelpers.Editor.Extensions
 {
 #if UNITY_EDITOR
-    using System.Linq;
     using System.Reflection;
-    using Core.Helper;
     using UnityEditor.U2D;
     using UnityEngine;
     using UnityEngine.U2D;
@@ -17,9 +15,20 @@ namespace WallstopStudios.UnityHelpers.Editor.Extensions
                 BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public
             );
             object obj = method?.Invoke(null, new object[] { spriteAtlas });
-            return obj is not Texture2D[] { Length: > 0 } textures
-                ? null
-                : textures.Where(Objects.NotNull).FirstOrDefault();
+            if (obj is not Texture2D[] { Length: > 0 } textures)
+            {
+                return null;
+            }
+
+            foreach (Texture2D texture in textures)
+            {
+                if (texture != null)
+                {
+                    return texture;
+                }
+            }
+
+            return null;
         }
     }
 #endif

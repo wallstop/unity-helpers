@@ -26,7 +26,7 @@ namespace WallstopStudios.UnityHelpers.Utils
         public MatchTransformMode mode = MatchTransformMode.Update;
 
         [SiblingComponent]
-        private Transform _transform;
+        internal Transform _transform;
 
         private void Awake()
         {

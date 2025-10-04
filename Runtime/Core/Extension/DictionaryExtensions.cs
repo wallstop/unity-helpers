@@ -99,7 +99,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
         public static V GetOrElse<K, V>(this IReadOnlyDictionary<K, V> dictionary, K key, V value)
         {
-            return GetOrElse(dictionary, key, () => value);
+            return dictionary.GetValueOrDefault(key, value);
         }
 
         public static V AddOrUpdate<K, V>(
@@ -166,6 +166,16 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
 
             return result;
+        }
+
+        public static bool TryRemove<K, V>(this IDictionary<K, V> dictionary, K key, out V value)
+        {
+            if (dictionary is ConcurrentDictionary<K, V> concurrentDictionary)
+            {
+                return concurrentDictionary.TryRemove(key, out value);
+            }
+
+            return dictionary.Remove(key, out value);
         }
 
         /// <summary>

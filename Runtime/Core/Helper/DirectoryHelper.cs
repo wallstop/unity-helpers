@@ -177,18 +177,6 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     : projectRoot.Length + 1;
                 return absolutePath.Length > startIndex ? absolutePath[startIndex..] : string.Empty;
             }
-            if (absolutePath.StartsWith(projectRoot, StringComparison.OrdinalIgnoreCase))
-            {
-                int startIndex = projectRoot.EndsWith("/", StringComparison.OrdinalIgnoreCase)
-                    ? projectRoot.Length
-                    : projectRoot.Length + 1;
-                if (startIndex < absolutePath.Length)
-                {
-                    return "Assets/" + absolutePath[startIndex..];
-                }
-
-                return "Assets";
-            }
 
             return string.Empty;
         }

@@ -27,17 +27,17 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         // > 0 -> to the left
         public static float IsAPointLeftOfVectorOrOnTheLine(Vector2 a, Vector2 b, Vector2 p)
         {
-            return (a.x - p.x) * (b.y - p.y) - (a.y - p.y) * (b.x - p.x);
+            return (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
         }
 
         public static float IsAPointLeftOfVectorOrOnTheLine(Vector3 a, Vector3 b, Vector3 p)
         {
-            return (a.x - p.x) * (b.y - p.y) - (a.y - p.y) * (b.x - p.x);
+            return (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
         }
 
         public static int IsAPointLeftOfVectorOrOnTheLine(Vector2Int a, Vector2Int b, Vector2Int p)
         {
-            return (a.x - p.x) * (b.y - p.y) - (a.y - p.y) * (b.x - p.x);
+            return (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
         }
     }
 }

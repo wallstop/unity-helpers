@@ -10,6 +10,7 @@ namespace WallstopStudios.UnityHelpers.Utils
     [Flags]
     public enum ChildSpawnMethod
     {
+        [Obsolete]
         None = 0,
         Awake = 1 << 0,
         OnEnabled = 1 << 1,
@@ -23,19 +24,21 @@ namespace WallstopStudios.UnityHelpers.Utils
 
         [FormerlySerializedAs("dontDestroyOnLoad")]
         [SerializeField]
-        private bool _dontDestroyOnLoad = true;
+        internal bool _dontDestroyOnLoad = true;
 
         [SerializeField]
-        private ChildSpawnMethod _spawnMethod = ChildSpawnMethod.Start;
+        internal ChildSpawnMethod _spawnMethod = ChildSpawnMethod.Start;
 
         [SerializeField]
-        private GameObject[] _prefabs = Array.Empty<GameObject>();
+        internal GameObject[] _prefabs = Array.Empty<GameObject>();
 
         [SerializeField]
-        private GameObject[] _editorOnlyPrefabs = Array.Empty<GameObject>();
+        internal GameObject[] _editorOnlyPrefabs = Array.Empty<GameObject>();
 
         [SerializeField]
-        private GameObject[] _developmentOnlyPrefabs = Array.Empty<GameObject>();
+        internal GameObject[] _developmentOnlyPrefabs = Array.Empty<GameObject>();
+
+        private readonly HashSet<GameObject> _spawnedPrefabs = new();
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void ClearSpawnedPrefabs()
@@ -100,6 +103,14 @@ namespace WallstopStudios.UnityHelpers.Utils
                 }
             }
 
+            foreach (GameObject prefab in _prefabs)
+            {
+                if (prefab != null)
+                {
+                    _spawnedPrefabs.Add(prefab);
+                }
+            }
+
             if (Application.isEditor)
             {
                 foreach (GameObject prefab in _editorOnlyPrefabs)
@@ -108,6 +119,14 @@ namespace WallstopStudios.UnityHelpers.Utils
                     if (child != null)
                     {
                         child.name = $"{child.name} (EDITOR-ONLY {count++:00})";
+                    }
+                }
+
+                foreach (GameObject prefab in _editorOnlyPrefabs)
+                {
+                    if (prefab != null)
+                    {
+                        _spawnedPrefabs.Add(prefab);
                     }
                 }
             }
@@ -122,6 +141,14 @@ namespace WallstopStudios.UnityHelpers.Utils
                         child.name = $"{child.name} (DEVELOPMENT-ONLY {count++:00})";
                     }
                 }
+
+                foreach (GameObject prefab in _developmentOnlyPrefabs)
+                {
+                    if (prefab != null)
+                    {
+                        _spawnedPrefabs.Add(prefab);
+                    }
+                }
             }
         }
 
@@ -132,6 +159,17 @@ namespace WallstopStudios.UnityHelpers.Utils
 
         private GameObject Spawn(GameObject prefab)
         {
+            if (prefab == null)
+            {
+                this.LogError($"Unexpectedly null prefab - cannot spawn.");
+                return null;
+            }
+
+            if (_spawnedPrefabs.Contains(prefab))
+            {
+                return null;
+            }
+
             if (SpawnedPrefabs.Contains(prefab))
             {
                 return null;
@@ -139,7 +177,11 @@ namespace WallstopStudios.UnityHelpers.Utils
 
             GameObject child = Instantiate(prefab, transform);
             CleanName(child);
-            if (child.IsDontDestroyOnLoad() || gameObject.IsDontDestroyOnLoad())
+            if (
+                child.IsDontDestroyOnLoad()
+                || gameObject.IsDontDestroyOnLoad()
+                || prefab.IsDontDestroyOnLoad()
+            )
             {
                 SpawnedPrefabs.Add(prefab);
             }

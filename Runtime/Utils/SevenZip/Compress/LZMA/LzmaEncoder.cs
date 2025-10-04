@@ -206,26 +206,20 @@ namespace SevenZip.Compression.LZMA
 
         class LenEncoder
         {
-            RangeCoder.BitEncoder _choice = new RangeCoder.BitEncoder();
-            RangeCoder.BitEncoder _choice2 = new RangeCoder.BitEncoder();
+            BitEncoder _choice = new BitEncoder();
+            BitEncoder _choice2 = new BitEncoder();
 
-            readonly RangeCoder.BitTreeEncoder[] _lowCoder = new RangeCoder.BitTreeEncoder[
-                Base.kNumPosStatesEncodingMax
-            ];
+            readonly BitTreeEncoder[] _lowCoder = new BitTreeEncoder[Base.kNumPosStatesEncodingMax];
 
-            readonly RangeCoder.BitTreeEncoder[] _midCoder = new RangeCoder.BitTreeEncoder[
-                Base.kNumPosStatesEncodingMax
-            ];
-            RangeCoder.BitTreeEncoder _highCoder = new RangeCoder.BitTreeEncoder(
-                Base.kNumHighLenBits
-            );
+            readonly BitTreeEncoder[] _midCoder = new BitTreeEncoder[Base.kNumPosStatesEncodingMax];
+            BitTreeEncoder _highCoder = new BitTreeEncoder(Base.kNumHighLenBits);
 
             public LenEncoder()
             {
                 for (UInt32 posState = 0; posState < Base.kNumPosStatesEncodingMax; posState++)
                 {
-                    _lowCoder[posState] = new RangeCoder.BitTreeEncoder(Base.kNumLowLenBits);
-                    _midCoder[posState] = new RangeCoder.BitTreeEncoder(Base.kNumMidLenBits);
+                    _lowCoder[posState] = new BitTreeEncoder(Base.kNumLowLenBits);
+                    _midCoder[posState] = new BitTreeEncoder(Base.kNumMidLenBits);
                 }
             }
 
@@ -387,29 +381,25 @@ namespace SevenZip.Compression.LZMA
         LZ.IMatchFinder _matchFinder = null;
         readonly RangeCoder.Encoder _rangeEncoder = new RangeCoder.Encoder();
 
-        readonly RangeCoder.BitEncoder[] _isMatch = new RangeCoder.BitEncoder[
+        readonly BitEncoder[] _isMatch = new BitEncoder[
             Base.kNumStates << Base.kNumPosStatesBitsMax
         ];
 
-        readonly RangeCoder.BitEncoder[] _isRep = new RangeCoder.BitEncoder[Base.kNumStates];
-        readonly RangeCoder.BitEncoder[] _isRepG0 = new RangeCoder.BitEncoder[Base.kNumStates];
-        readonly RangeCoder.BitEncoder[] _isRepG1 = new RangeCoder.BitEncoder[Base.kNumStates];
-        readonly RangeCoder.BitEncoder[] _isRepG2 = new RangeCoder.BitEncoder[Base.kNumStates];
+        readonly BitEncoder[] _isRep = new BitEncoder[Base.kNumStates];
+        readonly BitEncoder[] _isRepG0 = new BitEncoder[Base.kNumStates];
+        readonly BitEncoder[] _isRepG1 = new BitEncoder[Base.kNumStates];
+        readonly BitEncoder[] _isRepG2 = new BitEncoder[Base.kNumStates];
 
-        readonly RangeCoder.BitEncoder[] _isRep0Long = new RangeCoder.BitEncoder[
+        readonly BitEncoder[] _isRep0Long = new BitEncoder[
             Base.kNumStates << Base.kNumPosStatesBitsMax
         ];
 
-        readonly RangeCoder.BitTreeEncoder[] _posSlotEncoder = new RangeCoder.BitTreeEncoder[
-            Base.kNumLenToPosStates
-        ];
+        readonly BitTreeEncoder[] _posSlotEncoder = new BitTreeEncoder[Base.kNumLenToPosStates];
 
-        readonly RangeCoder.BitEncoder[] _posEncoders = new RangeCoder.BitEncoder[
+        readonly BitEncoder[] _posEncoders = new BitEncoder[
             Base.kNumFullDistances - Base.kEndPosModelIndex
         ];
-        RangeCoder.BitTreeEncoder _posAlignEncoder = new RangeCoder.BitTreeEncoder(
-            Base.kNumAlignBits
-        );
+        BitTreeEncoder _posAlignEncoder = new BitTreeEncoder(Base.kNumAlignBits);
 
         readonly LenPriceTableEncoder _lenEncoder = new LenPriceTableEncoder();
         readonly LenPriceTableEncoder _repMatchLenEncoder = new LenPriceTableEncoder();
@@ -495,7 +485,7 @@ namespace SevenZip.Compression.LZMA
 
             for (int i = 0; i < Base.kNumLenToPosStates; i++)
             {
-                _posSlotEncoder[i] = new RangeCoder.BitTreeEncoder(Base.kNumPosSlotBits);
+                _posSlotEncoder[i] = new BitTreeEncoder(Base.kNumPosSlotBits);
             }
         }
 
@@ -1494,7 +1484,7 @@ namespace SevenZip.Compression.LZMA
 
                             if (posSlot < Base.kEndPosModelIndex)
                             {
-                                RangeCoder.BitTreeEncoder.ReverseEncode(
+                                BitTreeEncoder.ReverseEncode(
                                     _posEncoders,
                                     baseVal - posSlot - 1,
                                     _rangeEncoder,
@@ -1683,7 +1673,7 @@ namespace SevenZip.Compression.LZMA
             for (UInt32 lenToPosState = 0; lenToPosState < Base.kNumLenToPosStates; lenToPosState++)
             {
                 UInt32 posSlot;
-                RangeCoder.BitTreeEncoder encoder = _posSlotEncoder[lenToPosState];
+                BitTreeEncoder encoder = _posSlotEncoder[lenToPosState];
 
                 UInt32 st = (lenToPosState << Base.kNumPosSlotBits);
                 for (posSlot = 0; posSlot < _distTableSize; posSlot++)
@@ -1695,7 +1685,7 @@ namespace SevenZip.Compression.LZMA
                 {
                     _posSlotPrices[st + posSlot] += (
                         (((posSlot >> 1) - 1) - Base.kNumAlignBits)
-                        << RangeCoder.BitEncoder.kNumBitPriceShiftBits
+                        << BitEncoder.kNumBitPriceShiftBits
                     );
                 }
 

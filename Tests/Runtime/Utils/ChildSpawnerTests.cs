@@ -1,0 +1,496 @@
+namespace WallstopStudios.UnityHelpers.Tests.Utils
+{
+    using System;
+    using System.Collections;
+    using NUnit.Framework;
+    using UnityEngine;
+    using UnityEngine.TestTools;
+    using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Utils;
+    using Object = UnityEngine.Object;
+
+    public sealed class ChildSpawnerTests
+    {
+        [TearDown]
+        public void Cleanup()
+        {
+            foreach (
+                GameObject go in Object.FindObjectsByType<GameObject>(FindObjectsSortMode.None)
+            )
+            {
+                Object.Destroy(go);
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator SpawnsChildrenOnAwake()
+        {
+            GameObject prefab = new("TestPrefab");
+            GameObject spawner = new("Spawner", typeof(ChildSpawner));
+            ChildSpawner childSpawner = spawner.GetComponent<ChildSpawner>();
+
+            childSpawner._spawnMethod = ChildSpawnMethod.Awake;
+            childSpawner._prefabs = new[] { prefab };
+            childSpawner._dontDestroyOnLoad = false;
+            Assert.AreEqual(0, spawner.transform.childCount);
+            yield return null;
+
+            childSpawner.SendMessage("Awake");
+            Assert.AreEqual(1, spawner.transform.childCount);
+            Assert.IsTrue(
+                spawner
+                    .transform.GetChild(0)
+                    .name.Contains("TestPrefab", StringComparison.OrdinalIgnoreCase)
+            );
+            Assert.IsTrue(
+                spawner
+                    .transform.GetChild(0)
+                    .name.Contains("00)", StringComparison.OrdinalIgnoreCase)
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator SpawnsChildrenOnStart()
+        {
+            GameObject prefab = new("TestPrefab");
+            GameObject spawner = new("Spawner", typeof(ChildSpawner));
+            ChildSpawner childSpawner = spawner.GetComponent<ChildSpawner>();
+
+            childSpawner._spawnMethod = ChildSpawnMethod.Start;
+            childSpawner._prefabs = new[] { prefab };
+            childSpawner._dontDestroyOnLoad = false;
+
+            Assert.AreEqual(0, spawner.transform.childCount);
+            yield return null;
+
+            Assert.AreEqual(1, spawner.transform.childCount);
+        }
+
+        [UnityTest]
+        public IEnumerator SpawnsChildrenOnEnabled()
+        {
+            GameObject prefab = new("TestPrefab");
+            GameObject spawner = new("Spawner", typeof(ChildSpawner));
+            ChildSpawner childSpawner = spawner.GetComponent<ChildSpawner>();
+
+            childSpawner._spawnMethod = ChildSpawnMethod.OnEnabled;
+            childSpawner._prefabs = new[] { prefab };
+            childSpawner._dontDestroyOnLoad = false;
+
+            childSpawner.enabled = false;
+            childSpawner.enabled = true;
+            yield return null;
+
+            Assert.AreEqual(1, spawner.transform.childCount);
+        }
+
+        [UnityTest]
+        public IEnumerator SpawnsMultiplePrefabs()
+        {
+            GameObject prefab1 = new("Prefab1");
+            GameObject prefab2 = new("Prefab2");
+            GameObject prefab3 = new("Prefab3");
+            GameObject spawner = new("Spawner", typeof(ChildSpawner));
+            ChildSpawner childSpawner = spawner.GetComponent<ChildSpawner>();
+
+            childSpawner._spawnMethod = ChildSpawnMethod.Start;
+            childSpawner._prefabs = new[] { prefab1, prefab2, prefab3 };
+            childSpawner._dontDestroyOnLoad = false;
+            Assert.AreEqual(0, spawner.transform.childCount);
+            yield return null;
+
+            Assert.AreEqual(3, spawner.transform.childCount);
+        }
+
+        [UnityTest]
+        public IEnumerator RemovesCloneFromName()
+        {
+            GameObject prefab = new("TestPrefab");
+            GameObject spawner = new("Spawner", typeof(ChildSpawner));
+            ChildSpawner childSpawner = spawner.GetComponent<ChildSpawner>();
+
+            childSpawner._spawnMethod = ChildSpawnMethod.Start;
+            childSpawner._prefabs = new[] { prefab };
+            childSpawner._dontDestroyOnLoad = false;
+
+            Assert.AreEqual(0, spawner.transform.childCount);
+            yield return null;
+
+            Assert.AreEqual(1, spawner.transform.childCount);
+            Transform child = spawner.transform.GetChild(0);
+            Assert.IsFalse(child.name.Contains("Clone", StringComparison.OrdinalIgnoreCase));
+        }
+
+        [UnityTest]
+        public IEnumerator NumbersChildrenSequentially()
+        {
+            GameObject prefab1 = new("TestPrefab1");
+            GameObject prefab2 = new("TestPrefab2");
+            GameObject spawner = new("Spawner", typeof(ChildSpawner));
+            ChildSpawner childSpawner = spawner.GetComponent<ChildSpawner>();
+
+            childSpawner._spawnMethod = ChildSpawnMethod.Start;
+            childSpawner._prefabs = new[] { prefab1, prefab1, prefab2 };
+            childSpawner._dontDestroyOnLoad = false;
+
+            Assert.AreEqual(0, spawner.transform.childCount);
+            LogAssert.Expect(
+                LogType.Error,
+                new System.Text.RegularExpressions.Regex(
+                    "Duplicate child prefab detected: TestPrefab"
+                )
+            );
+            yield return null;
+
+            Assert.AreEqual(3, spawner.transform.childCount);
+            Assert.IsTrue(
+                spawner
+                    .transform.GetChild(0)
+                    .name.Contains("00)", StringComparison.OrdinalIgnoreCase),
+                spawner.transform.GetChild(0).name
+            );
+            Assert.IsTrue(
+                spawner
+                    .transform.GetChild(1)
+                    .name.Contains("01)", StringComparison.OrdinalIgnoreCase),
+                spawner.transform.GetChild(1).name
+            );
+            Assert.IsTrue(
+                spawner
+                    .transform.GetChild(2)
+                    .name.Contains("02)", StringComparison.OrdinalIgnoreCase),
+                spawner.transform.GetChild(2).name
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator DoesNotSpawnOnWrongMethod()
+        {
+            GameObject prefab = new("TestPrefab");
+            GameObject spawner = new("Spawner", typeof(ChildSpawner));
+            ChildSpawner childSpawner = spawner.GetComponent<ChildSpawner>();
+
+            childSpawner._spawnMethod = ChildSpawnMethod.Start;
+            childSpawner._prefabs = new[] { prefab };
+            childSpawner._dontDestroyOnLoad = false;
+
+            childSpawner.SendMessage("Awake");
+            Assert.AreEqual(0, spawner.transform.childCount);
+            yield return null;
+
+            Assert.AreEqual(1, spawner.transform.childCount);
+        }
+
+        [UnityTest]
+        public IEnumerator HandlesEmptyPrefabArray()
+        {
+            GameObject spawner = new("Spawner", typeof(ChildSpawner));
+            ChildSpawner childSpawner = spawner.GetComponent<ChildSpawner>();
+
+            childSpawner._spawnMethod = ChildSpawnMethod.Start;
+            childSpawner._prefabs = Array.Empty<GameObject>();
+            childSpawner._dontDestroyOnLoad = false;
+
+            Assert.AreEqual(0, spawner.transform.childCount);
+            yield return null;
+
+            Assert.AreEqual(0, spawner.transform.childCount);
+        }
+
+        [UnityTest]
+        public IEnumerator HandlesNullPrefabInArray()
+        {
+            GameObject prefab = new("TestPrefab");
+            GameObject spawner = new("Spawner", typeof(ChildSpawner));
+            ChildSpawner childSpawner = spawner.GetComponent<ChildSpawner>();
+
+            childSpawner._spawnMethod = ChildSpawnMethod.Start;
+            childSpawner._prefabs = new[] { prefab, null };
+            childSpawner._dontDestroyOnLoad = false;
+
+            LogAssert.Expect(LogType.Error, new System.Text.RegularExpressions.Regex(".*"));
+            Assert.AreEqual(0, spawner.transform.childCount);
+            yield return null;
+
+            Assert.AreEqual(1, spawner.transform.childCount);
+        }
+
+        [UnityTest]
+        public IEnumerator SupportsCombinedSpawnMethods()
+        {
+            GameObject prefab = new("TestPrefab");
+            GameObject spawner = new("Spawner", typeof(ChildSpawner));
+            ChildSpawner childSpawner = spawner.GetComponent<ChildSpawner>();
+
+            childSpawner._spawnMethod = ChildSpawnMethod.Awake | ChildSpawnMethod.Start;
+            childSpawner._prefabs = new[] { prefab };
+            childSpawner._dontDestroyOnLoad = false;
+
+            childSpawner.SendMessage("Awake");
+            yield return null;
+
+            Assert.AreEqual(1, spawner.transform.childCount);
+
+            childSpawner.SendMessage("Start");
+            yield return null;
+
+            Assert.AreEqual(1, spawner.transform.childCount);
+        }
+
+        [UnityTest]
+        public IEnumerator EditorOnlyPrefabsSpawnInEditor()
+        {
+            if (!Application.isEditor)
+            {
+                Assert.Pass("Test only runs in editor");
+                yield break;
+            }
+
+            GameObject prefab = new("EditorPrefab");
+            GameObject spawner = new("Spawner", typeof(ChildSpawner));
+            ChildSpawner childSpawner = spawner.GetComponent<ChildSpawner>();
+
+            childSpawner._spawnMethod = ChildSpawnMethod.Start;
+            childSpawner._editorOnlyPrefabs = new[] { prefab };
+            childSpawner._dontDestroyOnLoad = false;
+
+            Assert.AreEqual(0, spawner.transform.childCount);
+            yield return null;
+
+            Assert.AreEqual(1, spawner.transform.childCount);
+            Assert.IsTrue(spawner.transform.GetChild(0).name.Contains("EDITOR-ONLY"));
+        }
+
+        [UnityTest]
+        public IEnumerator DevelopmentOnlyPrefabsSpawnInDevelopment()
+        {
+            if (!Application.isEditor && !Debug.isDebugBuild)
+            {
+                Assert.Pass("Test only runs in editor or debug build");
+                yield break;
+            }
+
+            GameObject prefab = new("DevPrefab");
+            GameObject spawner = new("Spawner", typeof(ChildSpawner));
+            ChildSpawner childSpawner = spawner.GetComponent<ChildSpawner>();
+
+            childSpawner._spawnMethod = ChildSpawnMethod.Start;
+            childSpawner._developmentOnlyPrefabs = new[] { prefab };
+            childSpawner._dontDestroyOnLoad = false;
+            yield return null;
+
+            Assert.AreEqual(1, spawner.transform.childCount);
+            Assert.IsTrue(spawner.transform.GetChild(0).name.Contains("DEVELOPMENT-ONLY"));
+        }
+
+        [UnityTest]
+        public IEnumerator DetectsDuplicatePrefabs()
+        {
+            GameObject prefab = new("TestPrefab");
+            GameObject spawner = new("Spawner", typeof(ChildSpawner));
+            ChildSpawner childSpawner = spawner.GetComponent<ChildSpawner>();
+
+            childSpawner._spawnMethod = ChildSpawnMethod.Start;
+            childSpawner._prefabs = new[] { prefab, prefab };
+            childSpawner._dontDestroyOnLoad = false;
+            LogAssert.Expect(
+                LogType.Error,
+                new System.Text.RegularExpressions.Regex(".*Duplicate.*")
+            );
+            yield return null;
+
+            Assert.AreEqual(2, spawner.transform.childCount);
+        }
+
+        [UnityTest]
+        public IEnumerator HandlesMultipleSpawnMethodsCombined()
+        {
+            GameObject prefab = new("TestPrefab");
+            Object.DontDestroyOnLoad(prefab);
+            GameObject spawner = new("Spawner", typeof(ChildSpawner));
+            ChildSpawner childSpawner = spawner.GetComponent<ChildSpawner>();
+
+            childSpawner._spawnMethod =
+                ChildSpawnMethod.Awake | ChildSpawnMethod.OnEnabled | ChildSpawnMethod.Start;
+            childSpawner._prefabs = new[] { prefab };
+            childSpawner._dontDestroyOnLoad = false;
+
+            childSpawner.SendMessage("Awake");
+            yield return null;
+
+            int childCountAfterAwake = spawner.transform.childCount;
+            Assert.AreEqual(1, childCountAfterAwake);
+        }
+
+        [UnityTest]
+        public IEnumerator SpawnsPrefabsInCorrectOrder()
+        {
+            GameObject prefab1 = new("Prefab_A");
+            GameObject prefab2 = new("Prefab_B");
+            GameObject prefab3 = new("Prefab_C");
+            GameObject spawner = new("Spawner", typeof(ChildSpawner));
+            ChildSpawner childSpawner = spawner.GetComponent<ChildSpawner>();
+
+            childSpawner._spawnMethod = ChildSpawnMethod.Start;
+            childSpawner._prefabs = new[] { prefab1, prefab2, prefab3 };
+            childSpawner._dontDestroyOnLoad = false;
+
+            childSpawner.SendMessage("Start");
+            yield return null;
+
+            Assert.IsTrue(
+                spawner
+                    .transform.GetChild(0)
+                    .name.Contains("Prefab_A", StringComparison.OrdinalIgnoreCase)
+            );
+            Assert.IsTrue(
+                spawner
+                    .transform.GetChild(1)
+                    .name.Contains("Prefab_B", StringComparison.OrdinalIgnoreCase)
+            );
+            Assert.IsTrue(
+                spawner
+                    .transform.GetChild(2)
+                    .name.Contains("Prefab_C", StringComparison.OrdinalIgnoreCase)
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator ChildrenAreSpawnedUnderSpawner()
+        {
+            GameObject prefab = new("TestPrefab");
+            GameObject spawner = new("Spawner", typeof(ChildSpawner));
+            ChildSpawner childSpawner = spawner.GetComponent<ChildSpawner>();
+
+            childSpawner._spawnMethod = ChildSpawnMethod.Start;
+            childSpawner._prefabs = new[] { prefab };
+            childSpawner._dontDestroyOnLoad = false;
+
+            childSpawner.SendMessage("Start");
+            yield return null;
+
+            Transform child = spawner.transform.GetChild(0);
+            Assert.AreEqual(spawner.transform, child.parent);
+        }
+
+        [UnityTest]
+        public IEnumerator MixedPrefabTypesCombineNumbering()
+        {
+            if (!Application.isEditor)
+            {
+                Assert.Pass("Test only runs in editor");
+                yield break;
+            }
+
+            GameObject prefab1 = new("Regular");
+            GameObject prefab2 = new("Editor");
+            GameObject prefab3 = new("Dev");
+            GameObject spawner = new("Spawner", typeof(ChildSpawner));
+            ChildSpawner childSpawner = spawner.GetComponent<ChildSpawner>();
+
+            childSpawner._spawnMethod = ChildSpawnMethod.Start;
+            childSpawner._prefabs = new[] { prefab1 };
+            childSpawner._editorOnlyPrefabs = new[] { prefab2 };
+            childSpawner._developmentOnlyPrefabs = new[] { prefab3 };
+            childSpawner._dontDestroyOnLoad = false;
+            Assert.AreEqual(0, spawner.transform.childCount);
+            yield return null;
+
+            Assert.AreEqual(3, spawner.transform.childCount);
+            Assert.IsTrue(
+                spawner
+                    .transform.GetChild(0)
+                    .name.Contains("00)", StringComparison.OrdinalIgnoreCase),
+                spawner.transform.GetChild(0).name
+            );
+            Assert.IsTrue(
+                spawner
+                    .transform.GetChild(1)
+                    .name.Contains("01)", StringComparison.OrdinalIgnoreCase),
+                spawner.transform.GetChild(1).name
+            );
+            Assert.IsTrue(
+                spawner
+                    .transform.GetChild(2)
+                    .name.Contains("02)", StringComparison.OrdinalIgnoreCase),
+                spawner.transform.GetChild(2).name
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator DontDestroyOnLoadWhenEnabled()
+        {
+            GameObject prefab = new("TestPrefab");
+            GameObject spawner = new("Spawner", typeof(ChildSpawner));
+            ChildSpawner childSpawner = spawner.GetComponent<ChildSpawner>();
+
+            childSpawner._spawnMethod = ChildSpawnMethod.Start;
+            childSpawner._prefabs = new[] { prefab };
+            childSpawner._dontDestroyOnLoad = true;
+            yield return null;
+
+            Assert.IsTrue(spawner.IsDontDestroyOnLoad());
+        }
+
+        [UnityTest]
+        public IEnumerator DoesNotDontDestroyOnLoadWhenDisabled()
+        {
+            GameObject prefab = new("TestPrefab");
+            GameObject spawner = new("Spawner", typeof(ChildSpawner));
+            ChildSpawner childSpawner = spawner.GetComponent<ChildSpawner>();
+
+            childSpawner._spawnMethod = ChildSpawnMethod.Start;
+            childSpawner._prefabs = new[] { prefab };
+            childSpawner._dontDestroyOnLoad = false;
+
+            childSpawner.SendMessage("Start");
+            yield return null;
+
+            Assert.IsFalse(spawner.IsDontDestroyOnLoad());
+        }
+
+        [UnityTest]
+        public IEnumerator AllSpawnMethodsWorkIndependently()
+        {
+            GameObject prefabAwake = new("AwakePrefab");
+            GameObject prefabOnEnabled = new("OnEnabledPrefab");
+            GameObject prefabStart = new("StartPrefab");
+
+            GameObject spawnerAwake = new("SpawnerAwake", typeof(ChildSpawner));
+            ChildSpawner childSpawnerAwake = spawnerAwake.GetComponent<ChildSpawner>();
+            childSpawnerAwake._spawnMethod = ChildSpawnMethod.Awake;
+            childSpawnerAwake._prefabs = new[] { prefabAwake };
+            childSpawnerAwake._dontDestroyOnLoad = false;
+
+            GameObject spawnerOnEnabled = new("SpawnerOnEnabled", typeof(ChildSpawner));
+            ChildSpawner childSpawnerOnEnabled = spawnerOnEnabled.GetComponent<ChildSpawner>();
+            childSpawnerOnEnabled._spawnMethod = ChildSpawnMethod.OnEnabled;
+            childSpawnerOnEnabled._prefabs = new[] { prefabOnEnabled };
+            childSpawnerOnEnabled._dontDestroyOnLoad = false;
+
+            GameObject spawnerStart = new("SpawnerStart", typeof(ChildSpawner));
+            ChildSpawner childSpawnerStart = spawnerStart.GetComponent<ChildSpawner>();
+            childSpawnerStart._spawnMethod = ChildSpawnMethod.Start;
+            childSpawnerStart._prefabs = new[] { prefabStart };
+            childSpawnerStart._dontDestroyOnLoad = false;
+
+            childSpawnerAwake.SendMessage("Awake");
+            Assert.AreEqual(1, spawnerAwake.transform.childCount);
+            Assert.AreEqual(0, spawnerOnEnabled.transform.childCount);
+            Assert.AreEqual(0, spawnerStart.transform.childCount);
+
+            childSpawnerOnEnabled.enabled = false;
+            childSpawnerOnEnabled.enabled = true;
+            Assert.AreEqual(1, spawnerAwake.transform.childCount);
+            Assert.AreEqual(1, spawnerOnEnabled.transform.childCount);
+            Assert.AreEqual(0, spawnerStart.transform.childCount);
+
+            childSpawnerStart.SendMessage("Start");
+            Assert.AreEqual(1, spawnerAwake.transform.childCount);
+            Assert.AreEqual(1, spawnerOnEnabled.transform.childCount);
+            Assert.AreEqual(1, spawnerStart.transform.childCount);
+
+            yield return null;
+        }
+    }
+}

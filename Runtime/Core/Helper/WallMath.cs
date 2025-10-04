@@ -21,14 +21,13 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
         public static float BoundedFloat(float max, float value)
         {
-            return value < max
-                ? value
-                : BitConverter.ToSingle(
-                    BitConverter.GetBytes(
-                        BitConverter.ToInt32(BitConverter.GetBytes(value), 0) - 1
-                    ),
-                    0
-                );
+            if (value < max)
+            {
+                return value;
+            }
+
+            int bits = BitConverter.SingleToInt32Bits(value);
+            return BitConverter.Int32BitsToSingle(bits - 1);
         }
 
         public static float PositiveMod(this float value, float max)

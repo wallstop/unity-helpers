@@ -14,18 +14,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return random.NextVector2(-amplitude, amplitude);
         }
 
-        public static T NextEnumExcept<T>(this IRandom random, params T[] exceptions)
-            where T : struct, Enum
-        {
-            T value;
-            do
-            {
-                value = random.NextEnum<T>();
-            } while (0 <= Array.IndexOf(exceptions, value));
-
-            return value;
-        }
-
         public static T NextOfExcept<T>(
             this IRandom random,
             IEnumerable<T> values,
@@ -33,7 +21,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         )
         {
             T value;
-
             switch (values)
             {
                 case IReadOnlyList<T> list:

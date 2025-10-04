@@ -11,26 +11,29 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         public static string FormatBytes(long bytes)
         {
             bytes = Math.Max(0L, bytes);
-            double len = bytes;
+            long workingValue = bytes;
             int order = 0;
 
-            const int byteInChunk = 1024;
-            while (byteInChunk <= len)
+            const int bitShift = 10; // 2^10 = 1024
+            // Use bit shifting to determine the order without precision loss
+            while (workingValue >= 1024 && order < ByteSizes.Length - 1)
             {
-                len /= byteInChunk;
-                if (order < ByteSizes.Length - 1)
-                {
-                    ++order;
-                }
-                else
-                {
-                    throw new ArgumentException($"Too many bytes! Cannot parse {bytes}");
-                }
+                workingValue >>= bitShift;
+                ++order;
             }
+
+            // Check if we still have a value >= 1024 after exhausting all units
+            if (workingValue >= 1024)
+            {
+                throw new ArgumentException($"Too many bytes! Cannot parse {bytes}");
+            }
+
+            // Now calculate the precise double value for display
+            double displayValue = bytes / Math.Pow(1024, order);
 
             using PooledResource<StringBuilder> stringBuilderResource = Buffers.StringBuilder.Get();
             StringBuilder stringBuilder = stringBuilderResource.resource;
-            stringBuilder.AppendFormat("{0:0.##} ", len);
+            stringBuilder.AppendFormat("{0:0.##} ", displayValue);
             stringBuilder.Append(ByteSizes[order]);
             return stringBuilder.ToString();
         }

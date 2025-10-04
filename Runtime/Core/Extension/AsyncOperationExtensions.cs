@@ -1,6 +1,7 @@
 namespace WallstopStudios.UnityHelpers.Core.Extension
 {
     using System;
+    using System.Collections;
     using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Runtime.CompilerServices;
@@ -95,7 +96,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         )
         {
             TResult result = await task;
-            return continuation(result);
+            return continuation != null ? continuation(result) : result;
         }
 
         public static async ValueTask WithContinuation<TResult>(
@@ -104,7 +105,112 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         )
         {
             TResult result = await task;
-            continuation(result);
+            continuation?.Invoke(result);
+        }
+
+        // Task/ValueTask to IEnumerator conversions
+        public static IEnumerator AsCoroutine(this Task task)
+        {
+            while (!task.IsCompleted)
+            {
+                yield return null;
+            }
+
+            if (task.IsFaulted)
+            {
+                throw task.Exception;
+            }
+        }
+
+        public static IEnumerator AsCoroutine<T>(this Task<T> task, Action<T> onResult = null)
+        {
+            while (!task.IsCompleted)
+            {
+                yield return null;
+            }
+
+            if (task.IsFaulted)
+            {
+                throw task.Exception;
+            }
+
+            onResult?.Invoke(task.Result);
+        }
+
+        public static IEnumerator AsCoroutine(this ValueTask task)
+        {
+            if (task.IsCompleted)
+            {
+                if (task.IsFaulted)
+                {
+                    throw task.AsTask().Exception;
+                }
+                yield break;
+            }
+
+            Task innerTask = task.AsTask();
+            while (!innerTask.IsCompleted)
+            {
+                yield return null;
+            }
+
+            if (innerTask.IsFaulted)
+            {
+                throw innerTask.Exception;
+            }
+        }
+
+        public static IEnumerator AsCoroutine<T>(this ValueTask<T> task, Action<T> onResult = null)
+        {
+            if (task.IsCompleted)
+            {
+                if (task.IsFaulted)
+                {
+                    throw task.AsTask().Exception;
+                }
+                onResult?.Invoke(task.Result);
+                yield break;
+            }
+
+            Task<T> innerTask = task.AsTask();
+            while (!innerTask.IsCompleted)
+            {
+                yield return null;
+            }
+
+            if (innerTask.IsFaulted)
+            {
+                throw innerTask.Exception;
+            }
+
+            onResult?.Invoke(innerTask.Result);
+        }
+
+        // IEnumerator to Task/ValueTask conversions
+        public static async Task AsTask(this IEnumerator coroutine)
+        {
+            if (coroutine == null)
+            {
+                throw new ArgumentNullException(nameof(coroutine));
+            }
+
+            while (coroutine.MoveNext())
+            {
+                await Task.Yield();
+            }
+        }
+
+        public static async ValueTask AsValueTask(this IEnumerator coroutine)
+        {
+            if (coroutine == null)
+            {
+                throw new ArgumentNullException(nameof(coroutine));
+            }
+
+            while (coroutine.MoveNext())
+            {
+                await Task.Yield();
+            }
         }
     }
 }

@@ -30,11 +30,14 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         // https://www.geeksforgeeks.org/check-if-any-point-overlaps-the-given-circle-and-rectangle/
         public bool Intersects(Rect rectangle)
         {
-            float xN = Math.Max(center.x, rectangle.x);
-            float yN = Math.Max(center.y, rectangle.y);
+            // Compute the closest point on the rectangle to the circle center by clamping
+            float xN = Mathf.Clamp(center.x, rectangle.xMin, rectangle.xMax);
+            float yN = Mathf.Clamp(center.y, rectangle.yMin, rectangle.yMax);
             float dX = xN - center.x;
             float dY = yN - center.y;
-            return (dX * dX + dY * dY) <= _radiusSquared;
+            // Add a tiny tolerance to account for floating-point rounding when touching exactly at an edge/corner
+            const float Tolerance = 1e-6f;
+            return (dX * dX + dY * dY) <= (_radiusSquared + Tolerance);
         }
 
         public bool Overlaps(Bounds bounds)

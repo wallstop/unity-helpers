@@ -7,24 +7,39 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     using System.Reflection;
     using Extension;
     using Helper;
-    using JetBrains.Annotations;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Utils;
 
     [AttributeUsage(AttributeTargets.Field)]
-    [MeansImplicitUse]
     public sealed class ChildComponentAttribute : Attribute
     {
         public bool optional = false;
         public bool includeInactive = true;
         public bool onlyDescendents = false;
+        public bool skipIfAssigned = false;
     }
 
     public static class ChildComponentExtensions
     {
+        private enum FieldKind : byte
+        {
+            Single = 0,
+            Array = 1,
+            List = 2,
+        }
+
         private static readonly Dictionary<
             Type,
-            (FieldInfo field, ChildComponentAttribute attribute, Action<object, object> setter)[]
+            (
+                FieldInfo field,
+                ChildComponentAttribute attribute,
+                Action<object, object> setter,
+                Func<object, object> getter,
+                FieldKind kind,
+                Type elementType,
+                Func<int, Array> arrayCreator,
+                Func<int, IList> listCreator
+            )[]
         > FieldsByType = new();
 
         public static void AssignChildComponents(this Component component)
@@ -33,7 +48,12 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             (
                 FieldInfo field,
                 ChildComponentAttribute attribute,
-                Action<object, object> setter
+                Action<object, object> setter,
+                Func<object, object> getter,
+                FieldKind kind,
+                Type elementType,
+                Func<int, Array> arrayCreator,
+                Func<int, IList> listCreator
             )[] fields = FieldsByType.GetOrAdd(
                 componentType,
                 type =>
@@ -43,10 +63,57 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     );
                     return fields
                         .Select(field =>
-                            field.IsAttributeDefined(out ChildComponentAttribute attribute)
-                                ? (field, attribute, ReflectionHelpers.GetFieldSetter(field))
-                                : (null, null, null)
-                        )
+                        {
+                            if (
+                                !field.IsAttributeDefined(
+                                    out ChildComponentAttribute attribute,
+                                    inherit: false
+                                )
+                            )
+                            {
+                                return (null, null, null, null, default, null, null, null);
+                            }
+
+                            Type fieldType = field.FieldType;
+                            FieldKind kind;
+                            Type elementType;
+                            Func<int, Array> arrayCreator = null;
+                            Func<int, IList> listCreator = null;
+
+                            if (fieldType.IsArray)
+                            {
+                                kind = FieldKind.Array;
+                                elementType = fieldType.GetElementType();
+                                arrayCreator = ReflectionHelpers.GetArrayCreator(elementType);
+                            }
+                            else if (
+                                fieldType.IsGenericType
+                                && fieldType.GetGenericTypeDefinition() == typeof(List<>)
+                            )
+                            {
+                                kind = FieldKind.List;
+                                elementType = fieldType.GenericTypeArguments[0];
+                                listCreator = ReflectionHelpers.GetListWithCapacityCreator(
+                                    elementType
+                                );
+                            }
+                            else
+                            {
+                                kind = FieldKind.Single;
+                                elementType = fieldType;
+                            }
+
+                            return (
+                                field,
+                                attribute,
+                                ReflectionHelpers.GetFieldSetter(field),
+                                ReflectionHelpers.GetFieldGetter(field),
+                                kind,
+                                elementType,
+                                arrayCreator,
+                                listCreator
+                            );
+                        })
                         .Where(tuple => tuple.attribute != null)
                         .ToArray();
                 }
@@ -56,169 +123,224 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 (
                     FieldInfo field,
                     ChildComponentAttribute attribute,
-                    Action<object, object> setter
+                    Action<object, object> setter,
+                    Func<object, object> getter,
+                    FieldKind kind,
+                    Type elementType,
+                    Func<int, Array> arrayCreator,
+                    Func<int, IList> listCreator
                 ) in fields
             )
             {
-                Type fieldType = field.FieldType;
-                bool isArray = fieldType.IsArray;
-                Type childComponentType = isArray ? fieldType.GetElementType() : fieldType;
-                bool foundChild;
-                if (attribute.onlyDescendents)
+                if (attribute.skipIfAssigned)
                 {
-                    using PooledResource<List<Transform>> childBufferResource =
-                        Buffers<Transform>.List.Get();
-                    List<Transform> childBuffer = childBufferResource.resource;
-                    if (isArray)
+                    object currentValue = getter(component);
+                    if (ValueHelpers.IsAssigned(currentValue))
+                    {
+                        continue;
+                    }
+                }
+
+                bool foundChild;
+
+                using PooledResource<List<Transform>> childBufferResource =
+                    Buffers<Transform>.List.Get();
+                List<Transform> childBuffer = childBufferResource.resource;
+                switch (kind)
+                {
+                    case FieldKind.Array:
                     {
                         using PooledResource<List<Component>> componentResource =
                             Buffers<Component>.List.Get();
                         List<Component> cache = componentResource.resource;
-                        foreach (Transform child in component.IterateOverAllChildren(childBuffer))
+
+                        using PooledResource<List<Component>> childComponentBuffer =
+                            Buffers<Component>.List.Get();
+                        List<Component> childComponents = childComponentBuffer.resource;
+                        if (attribute.includeInactive)
                         {
                             foreach (
-                                Component childComponent in child.GetComponentsInChildren(
-                                    childComponentType,
-                                    attribute.includeInactive
+                                Transform child in component.IterateOverAllChildrenRecursivelyBreadthFirst(
+                                    childBuffer,
+                                    includeSelf: !attribute.onlyDescendents
                                 )
                             )
                             {
-                                cache.Add(childComponent);
+                                child.GetComponents(elementType, childComponents);
+                                cache.AddRange(childComponents);
+                            }
+                        }
+                        else
+                        {
+                            foreach (
+                                Transform child in component.IterateOverAllChildrenRecursivelyBreadthFirst(
+                                    childBuffer,
+                                    includeSelf: !attribute.onlyDescendents
+                                )
+                            )
+                            {
+                                if (!child.gameObject.activeInHierarchy)
+                                {
+                                    continue;
+                                }
+                                child.GetComponents(elementType, childComponents);
+                                foreach (Component childComponent in childComponents)
+                                {
+                                    if (!childComponent.IsComponentEnabled())
+                                    {
+                                        continue;
+                                    }
+
+                                    cache.Add(childComponent);
+                                }
                             }
                         }
 
-                        foundChild = 0 < cache.Count;
+                        Array correctTypedArray = arrayCreator(cache.Count);
+                        for (int i = 0; i < cache.Count; ++i)
+                        {
+                            correctTypedArray.SetValue(cache[i], i);
+                        }
 
-                        Array correctTypedArray = ReflectionHelpers.CreateArray(
-                            childComponentType,
-                            cache.Count
-                        );
-                        Array.Copy(cache.ToArray(), correctTypedArray, cache.Count);
                         setter(component, correctTypedArray);
+                        foundChild = cache.Count > 0;
+                        break;
                     }
-                    else if (
-                        fieldType.IsGenericType
-                        && fieldType.GetGenericTypeDefinition() == typeof(List<>)
-                    )
+                    case FieldKind.List:
                     {
-                        childComponentType = fieldType.GenericTypeArguments[0];
+                        using PooledResource<List<Component>> cacheResource =
+                            Buffers<Component>.List.Get();
+                        List<Component> cache = cacheResource.resource;
 
-                        IList instance = ReflectionHelpers.CreateList(childComponentType);
-                        foundChild = false;
-                        foreach (Transform child in component.IterateOverAllChildren(childBuffer))
+                        using PooledResource<List<Component>> childComponentBuffer =
+                            Buffers<Component>.List.Get();
+                        List<Component> childComponents = childComponentBuffer.resource;
+                        if (attribute.includeInactive)
                         {
                             foreach (
-                                Component childComponent in child.GetComponentsInChildren(
-                                    childComponentType,
-                                    attribute.includeInactive
+                                Transform child in component.IterateOverAllChildrenRecursivelyBreadthFirst(
+                                    childBuffer,
+                                    includeSelf: !attribute.onlyDescendents
                                 )
                             )
                             {
-                                instance.Add(childComponent);
-                                foundChild = true;
+                                child.GetComponents(elementType, childComponents);
+                                cache.AddRange(childComponents);
+                            }
+                        }
+                        else
+                        {
+                            foreach (
+                                Transform child in component.IterateOverAllChildrenRecursivelyBreadthFirst(
+                                    childBuffer,
+                                    includeSelf: !attribute.onlyDescendents
+                                )
+                            )
+                            {
+                                if (!child.gameObject.activeInHierarchy)
+                                {
+                                    continue;
+                                }
+
+                                child.GetComponents(elementType, childComponents);
+                                foreach (Component childComponent in childComponents)
+                                {
+                                    if (!childComponent.IsComponentEnabled())
+                                    {
+                                        continue;
+                                    }
+
+                                    cache.Add(childComponent);
+                                }
                             }
                         }
 
+                        IList instance = listCreator(cache.Count);
+                        for (int i = 0; i < cache.Count; ++i)
+                        {
+                            instance.Add(cache[i]);
+                        }
+
+                        foundChild = cache.Count > 0;
                         setter(component, instance);
+                        break;
                     }
-                    else
+                    default:
                     {
                         foundChild = false;
                         Component childComponent = null;
-                        foreach (
-                            Transform child in component.IterateOverAllChildrenRecursivelyBreadthFirst(
-                                childBuffer
-                            )
-                        )
+                        using PooledResource<List<Component>> childComponentBuffer =
+                            Buffers<Component>.List.Get();
+                        List<Component> childComponents = childComponentBuffer.resource;
+                        if (attribute.includeInactive)
                         {
-                            childComponent = child.GetComponent(childComponentType);
-                            if (
-                                childComponent == null
-                                || (
-                                    !attribute.includeInactive
-                                    && (
-                                        !childComponent.gameObject.activeInHierarchy
-                                        || childComponent is Behaviour { enabled: false }
-                                    )
+                            foreach (
+                                Transform child in component.IterateOverAllChildrenRecursivelyBreadthFirst(
+                                    childBuffer,
+                                    includeSelf: !attribute.onlyDescendents
                                 )
                             )
                             {
-                                continue;
+                                child.GetComponents(elementType, childComponents);
+                                foreach (Component entry in childComponents)
+                                {
+                                    childComponent = entry;
+                                    foundChild = true;
+                                    break;
+                                }
+
+                                if (foundChild)
+                                {
+                                    break;
+                                }
                             }
-
-                            foundChild = true;
-                            break;
                         }
-                        if (foundChild)
+                        else
                         {
-                            setter(component, childComponent);
-                        }
-                    }
-                }
-                else
-                {
-                    if (isArray)
-                    {
-                        Component[] childComponents = component.GetComponentsInChildren(
-                            childComponentType,
-                            attribute.includeInactive
-                        );
-                        foundChild = 0 < childComponents.Length;
-
-                        Array correctTypedArray = ReflectionHelpers.CreateArray(
-                            childComponentType,
-                            childComponents.Length
-                        );
-                        Array.Copy(childComponents, correctTypedArray, childComponents.Length);
-                        setter(component, correctTypedArray);
-                    }
-                    else if (
-                        fieldType.IsGenericType
-                        && fieldType.GetGenericTypeDefinition() == typeof(List<>)
-                    )
-                    {
-                        childComponentType = fieldType.GenericTypeArguments[0];
-
-                        Component[] children = component.GetComponentsInChildren(
-                            childComponentType,
-                            true
-                        );
-
-                        IList instance = ReflectionHelpers.CreateList(
-                            childComponentType,
-                            children.Length
-                        );
-                        foundChild = false;
-                        foreach (
-                            Component childComponent in component.GetComponentsInChildren(
-                                childComponentType,
-                                attribute.includeInactive
+                            foreach (
+                                Transform child in component.IterateOverAllChildrenRecursivelyBreadthFirst(
+                                    childBuffer,
+                                    includeSelf: !attribute.onlyDescendents
+                                )
                             )
-                        )
-                        {
-                            instance.Add(childComponent);
-                            foundChild = true;
+                            {
+                                if (!child.gameObject.activeInHierarchy)
+                                {
+                                    continue;
+                                }
+
+                                child.GetComponents(elementType, childComponents);
+                                foreach (Component entry in childComponents)
+                                {
+                                    if (!entry.IsComponentEnabled())
+                                    {
+                                        continue;
+                                    }
+
+                                    childComponent = entry;
+                                    foundChild = true;
+                                    break;
+                                }
+
+                                if (foundChild)
+                                {
+                                    break;
+                                }
+                            }
                         }
 
-                        setter(component, instance);
-                    }
-                    else
-                    {
-                        Component childComponent = component.GetComponentInChildren(
-                            childComponentType,
-                            attribute.includeInactive
-                        );
-                        foundChild = childComponent != null;
                         if (foundChild)
                         {
                             setter(component, childComponent);
                         }
+
+                        break;
                     }
                 }
 
                 if (!foundChild && !attribute.optional)
                 {
-                    component.LogError($"Unable to find child component of type {fieldType}");
+                    component.LogError($"Unable to find child component of type {field.FieldType}");
                 }
             }
         }

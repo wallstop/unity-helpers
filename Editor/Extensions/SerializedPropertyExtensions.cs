@@ -90,7 +90,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Extensions
 
             if (fieldInfo == null)
             {
-                UpdateField(property.name, ref fieldInfo);
+                // Use the last segment of the possibly-trimmed path (actual field name), not property.name (which can be "data")
+                if (pathParts.Length > 0)
+                {
+                    UpdateField(pathParts[^1], ref fieldInfo);
+                }
             }
 
             return obj;

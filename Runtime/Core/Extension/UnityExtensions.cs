@@ -104,7 +104,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return new BoundsInt(xMin, yMin, zMin, xMax - xMin, yMax - yMin, zMax - zMin);
         }
 
-        public static BoundsInt? GetBounds(this IEnumerable<Vector3Int> positions)
+        public static BoundsInt? GetBounds(
+            this IEnumerable<Vector3Int> positions,
+            bool inclusive = false
+        )
         {
             bool any = false;
             int xMin = int.MaxValue;
@@ -132,9 +135,9 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 xMin,
                 yMin,
                 zMin,
-                xMax - xMin + 1,
-                yMax - yMin + 1,
-                zMax - zMin + 1
+                xMax - xMin + (inclusive ? 0 : 1),
+                yMax - yMin + (inclusive ? 0 : 1),
+                zMax - zMin + (inclusive ? 0 : 1)
             );
         }
 
@@ -655,10 +658,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 throw new ArgumentException(nameof(gridPositions));
             }
 
-            QuadTree<FastVector3Int> NewQuadTree() =>
+            QuadTree2D<FastVector3Int> NewQuadTree2D() =>
                 new(gridPositions, CellToWorld, maybeBounds.Value, bucketSize: bucketSize);
 
-            QuadTree<FastVector3Int> quadTree = NewQuadTree();
+            QuadTree2D<FastVector3Int> quadTree = NewQuadTree2D();
             using PooledResource<List<FastVector3Int>> neighborsBuffer =
                 Buffers<FastVector3Int>.List.Get();
             List<FastVector3Int> neighbors = neighborsBuffer.resource;
@@ -1462,6 +1465,12 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
         public static bool FastIntersects2D(this BoundsInt bounds, BoundsInt other)
         {
+            // Zero-size bounds cannot intersect
+            if (bounds.size.x <= 0 || bounds.size.y <= 0 || other.size.x <= 0 || other.size.y <= 0)
+            {
+                return false;
+            }
+
             if (other.xMax < bounds.xMin || other.yMax < bounds.yMin)
             {
                 return false;
@@ -1478,7 +1487,21 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return false;
             }
             Vector3 max = bounds.max;
-            return position.x < max.x && position.y < max.y;
+            return position.x <= max.x && position.y <= max.y;
+        }
+
+        public static bool FastContains2D(this Bounds bounds, Bounds other)
+        {
+            Vector3 boundsMin = bounds.min;
+            Vector3 otherMin = other.min;
+            if (otherMin.x < boundsMin.x || otherMin.y < boundsMin.y)
+            {
+                return false;
+            }
+
+            Vector3 boundsMax = bounds.max;
+            Vector3 otherMax = other.max;
+            return otherMax.x <= boundsMax.x && otherMax.y <= boundsMax.y;
         }
 
         public static bool FastIntersects2D(this Bounds bounds, Bounds other)
@@ -1498,15 +1521,15 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         public static bool Overlaps2D(this Bounds bounds, Bounds other)
         {
             Vector3 boundsMin = bounds.min;
-            Vector3 otherMin = other.min;
-            if (otherMin.x < boundsMin.x || otherMin.y < boundsMin.y)
+            Vector3 otherMax = other.max;
+            if (otherMax.x < boundsMin.x || otherMax.y < boundsMin.y)
             {
                 return false;
             }
 
             Vector3 boundsMax = bounds.max;
-            Vector3 otherMax = other.max;
-            return otherMax.x <= boundsMax.x && otherMax.y <= boundsMax.y;
+            Vector3 otherMin = other.min;
+            return boundsMax.x >= otherMin.x && boundsMax.y >= otherMin.y;
         }
 
         public static BoundsInt WithPadding(this BoundsInt bounds, int xPadding, int yPadding)

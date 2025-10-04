@@ -4,16 +4,20 @@ namespace WallstopStudios.UnityHelpers.Tags
     using System.Collections.Generic;
     using System.ComponentModel;
     using System.Globalization;
-    using System.Linq;
     using System.Runtime.Serialization;
     using System.Text.Json.Serialization;
     using Core.Extension;
     using ProtoBuf;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Utils;
 
     [Serializable]
     [ProtoContract]
-    public sealed class Attribute : IEquatable<Attribute>, IEquatable<float>
+    public sealed class Attribute
+        : IEquatable<Attribute>,
+            IEquatable<float>,
+            IComparable<Attribute>,
+            IComparable<float>
     {
         public float CurrentValue
         {
@@ -53,11 +57,22 @@ namespace WallstopStudios.UnityHelpers.Tags
         internal void CalculateCurrentValue()
         {
             float calculatedValue = _baseValue;
+            using PooledResource<List<AttributeModification>> modificationBuffer =
+                Buffers<AttributeModification>.List.Get();
+            List<AttributeModification> modifications = modificationBuffer.resource;
             foreach (
-                AttributeModification attributeModification in _modifications
-                    .SelectMany(kvp => kvp.Value)
-                    .OrderBy(mod => mod.action)
+                KeyValuePair<EffectHandle, List<AttributeModification>> entry in _modifications
             )
+            {
+                foreach (AttributeModification modification in entry.Value)
+                {
+                    modifications.Add(modification);
+                }
+            }
+
+            modifications.Sort((a, b) => ((int)a.action).CompareTo((int)b.action));
+
+            foreach (AttributeModification attributeModification in modifications)
             {
                 ApplyAttributeModification(attributeModification, ref calculatedValue);
             }
@@ -144,20 +159,28 @@ namespace WallstopStudios.UnityHelpers.Tags
             switch (attributeModification.action)
             {
                 case ModificationAction.Addition:
+                {
                     value += attributeModification.value;
                     break;
+                }
                 case ModificationAction.Multiplication:
+                {
                     value *= attributeModification.value;
                     break;
+                }
                 case ModificationAction.Override:
+                {
                     value = attributeModification.value;
                     break;
+                }
                 default:
+                {
                     throw new InvalidEnumArgumentException(
                         nameof(attributeModification.action),
                         (int)attributeModification.action,
                         typeof(ModificationAction)
                     );
+                }
             }
         }
 
@@ -171,18 +194,72 @@ namespace WallstopStudios.UnityHelpers.Tags
             return other != null && CurrentValue.Equals(other.CurrentValue);
         }
 
+        public int CompareTo(Attribute other)
+        {
+            if (ReferenceEquals(this, other))
+            {
+                return 0;
+            }
+            return other == null ? 1 : CurrentValue.CompareTo(other.CurrentValue);
+        }
+
+        public int CompareTo(float other)
+        {
+            return CurrentValue.CompareTo(other);
+        }
+
         public override bool Equals(object other)
         {
             switch (other)
             {
                 case Attribute attribute:
+                {
                     return Equals(attribute);
+                }
                 case float attribute:
+                {
                     return Equals(attribute);
+                }
                 case double attribute:
+                {
                     return Equals((float)attribute);
+                }
+                case int attribute:
+                {
+                    return Equals((float)attribute);
+                }
+                case long attribute:
+                {
+                    return Equals((float)attribute);
+                }
+                case short attribute:
+                {
+                    return Equals((float)attribute);
+                }
+                case uint attribute:
+                {
+                    return Equals((float)attribute);
+                }
+                case ulong attribute:
+                {
+                    return Equals((float)attribute);
+                }
+                case ushort attribute:
+                {
+                    return Equals((float)attribute);
+                }
+                case byte attribute:
+                {
+                    return Equals((float)attribute);
+                }
+                case sbyte attribute:
+                {
+                    return Equals((float)attribute);
+                }
                 default:
+                {
                     return false;
+                }
             }
         }
 

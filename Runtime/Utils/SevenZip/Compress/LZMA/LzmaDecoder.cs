@@ -45,20 +45,18 @@ namespace SevenZip.Compression.LZMA
                 {
                     return m_LowCoder[posState].Decode(rangeDecoder);
                 }
+
+                uint symbol = Base.kNumLowLenSymbols;
+                if (m_Choice2.Decode(rangeDecoder) == 0)
+                {
+                    symbol += m_MidCoder[posState].Decode(rangeDecoder);
+                }
                 else
                 {
-                    uint symbol = Base.kNumLowLenSymbols;
-                    if (m_Choice2.Decode(rangeDecoder) == 0)
-                    {
-                        symbol += m_MidCoder[posState].Decode(rangeDecoder);
-                    }
-                    else
-                    {
-                        symbol += Base.kNumMidLenSymbols;
-                        symbol += m_HighCoder.Decode(rangeDecoder);
-                    }
-                    return symbol;
+                    symbol += Base.kNumMidLenSymbols;
+                    symbol += m_HighCoder.Decode(rangeDecoder);
                 }
+                return symbol;
             }
         }
 

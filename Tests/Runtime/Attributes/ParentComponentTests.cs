@@ -1,28 +1,52 @@
 namespace WallstopStudios.UnityHelpers.Tests.Attributes
 {
+    using System;
     using System.Collections;
+    using System.Collections.Generic;
     using System.Linq;
     using Components;
+    using NUnit.Framework;
     using UnityEngine;
-    using UnityEngine.Assertions;
+    using UnityEngine.Serialization;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Attributes;
+    using Object = UnityEngine.Object;
 
     public sealed class ParentComponentTests
     {
+        private readonly List<Object> _spawned = new();
+
+        [UnityTearDown]
+        public IEnumerator Cleanup()
+        {
+            foreach (Object spawned in _spawned)
+            {
+                if (spawned != null)
+                {
+                    Object.Destroy(spawned);
+                    yield return null;
+                }
+            }
+            _spawned.Clear();
+        }
+
         [UnityTest]
         public IEnumerator Nominal()
         {
             GameObject root = new("PartComponentTest - Root", typeof(SpriteRenderer));
+            _spawned.Add(root);
             GameObject parentLevel1 = new("ParentLevel1", typeof(SpriteRenderer));
+            _spawned.Add(parentLevel1);
             parentLevel1.transform.SetParent(root.transform);
             GameObject parentLevel2 = new("ParentLevel2", typeof(SpriteRenderer));
+            _spawned.Add(parentLevel2);
             parentLevel2.transform.SetParent(parentLevel1.transform);
             GameObject parentLevel3 = new(
                 "ParentLevel3",
                 typeof(SpriteRenderer),
                 typeof(ExpectParentSpriteRenderers)
             );
+            _spawned.Add(parentLevel3);
             parentLevel3.transform.SetParent(parentLevel2.transform);
 
             ExpectParentSpriteRenderers expect =
@@ -64,5 +88,490 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
             yield break;
         }
+
+        [UnityTest]
+        public IEnumerator IncludeInactiveControlsAncestorSelection()
+        {
+            GameObject activeRoot = new("ParentActiveRoot", typeof(SpriteRenderer));
+            _spawned.Add(activeRoot);
+            SpriteRenderer rootRenderer = activeRoot.GetComponent<SpriteRenderer>();
+
+            GameObject inactiveParent = new("ParentInactive", typeof(SpriteRenderer));
+            _spawned.Add(inactiveParent);
+            inactiveParent.transform.SetParent(activeRoot.transform);
+            inactiveParent.SetActive(false);
+            SpriteRenderer inactiveRenderer = inactiveParent.GetComponent<SpriteRenderer>();
+
+            GameObject child = new(
+                "ParentChild",
+                typeof(SpriteRenderer),
+                typeof(ParentAssignmentTester)
+            );
+            _spawned.Add(child);
+            child.transform.SetParent(inactiveParent.transform);
+            ParentAssignmentTester tester = child.GetComponent<ParentAssignmentTester>();
+            SpriteRenderer childRenderer = child.GetComponent<SpriteRenderer>();
+
+            tester.AssignParentComponents();
+
+            Assert.AreSame(rootRenderer, tester.ancestorsActiveOnly);
+            Assert.AreSame(inactiveRenderer, tester.ancestorsIncludeInactive);
+            CollectionAssert.AreEquivalent(
+                new[] { childRenderer, inactiveRenderer, rootRenderer },
+                tester.allParents
+            );
+
+            yield break;
+        }
+
+        [UnityTest]
+        public IEnumerator MissingRequiredParentLogsError()
+        {
+            GameObject orphan = new("ParentOrphan", typeof(ParentMissingTester));
+            _spawned.Add(orphan);
+            ParentMissingTester tester = orphan.GetComponent<ParentMissingTester>();
+
+            LogAssert.Expect(
+                LogType.Error,
+                new System.Text.RegularExpressions.Regex(
+                    @"^\d+(\.\d+)?\|ParentOrphan\[ParentMissingTester\]\|Unable to find parent component of type UnityEngine\.SpriteRenderer$"
+                )
+            );
+
+            tester.AssignParentComponents();
+            Assert.IsTrue(tester.requiredRenderer == null);
+            yield break;
+        }
+
+        [UnityTest]
+        public IEnumerator SkipIfAssignedPreservesExistingValues()
+        {
+            GameObject root = new("SkipIfAssignedRoot", typeof(SpriteRenderer));
+            _spawned.Add(root);
+            GameObject child = new(
+                "SkipIfAssignedChild",
+                typeof(SpriteRenderer),
+                typeof(ParentSkipIfAssignedTester)
+            );
+            _spawned.Add(child);
+            child.transform.SetParent(root.transform);
+
+            ParentSkipIfAssignedTester tester = child.GetComponent<ParentSkipIfAssignedTester>();
+            SpriteRenderer childRenderer = child.GetComponent<SpriteRenderer>();
+            SpriteRenderer rootRenderer = root.GetComponent<SpriteRenderer>();
+
+            // Pre-assign values that should NOT be overwritten
+            tester.preAssignedParent = childRenderer;
+            tester.preAssignedParentArray = new[] { childRenderer };
+            tester.preAssignedParentList = new List<SpriteRenderer> { childRenderer };
+
+            // Call assignment
+            tester.AssignParentComponents();
+
+            // Verify pre-assigned values were preserved (skipIfAssigned = true)
+            Assert.AreSame(childRenderer, tester.preAssignedParent);
+            Assert.AreEqual(1, tester.preAssignedParentArray.Length);
+            Assert.AreSame(childRenderer, tester.preAssignedParentArray[0]);
+            Assert.AreEqual(1, tester.preAssignedParentList.Count);
+            Assert.AreSame(childRenderer, tester.preAssignedParentList[0]);
+
+            // Verify normal assignments (without skipIfAssigned) were assigned
+            Assert.AreSame(rootRenderer, tester.normalParent);
+
+            yield break;
+        }
+
+        [UnityTest]
+        public IEnumerator SkipIfAssignedDoesNotSkipEmptyCollections()
+        {
+            GameObject root = new("SkipEmptyRoot", typeof(SpriteRenderer));
+            _spawned.Add(root);
+            GameObject child = new("SkipEmptyChild", typeof(ParentSkipIfAssignedTester));
+            _spawned.Add(child);
+            child.transform.SetParent(root.transform);
+
+            ParentSkipIfAssignedTester tester = child.GetComponent<ParentSkipIfAssignedTester>();
+            SpriteRenderer rootRenderer = root.GetComponent<SpriteRenderer>();
+
+            // Pre-assign EMPTY collections (should be overwritten)
+            tester.preAssignedParentArray = Array.Empty<SpriteRenderer>();
+            tester.preAssignedParentList = new List<SpriteRenderer>();
+
+            tester.AssignParentComponents();
+
+            // Empty collections should have been overwritten
+            Assert.AreEqual(1, tester.preAssignedParentArray.Length);
+            Assert.AreSame(rootRenderer, tester.preAssignedParentArray[0]);
+            Assert.AreEqual(1, tester.preAssignedParentList.Count);
+            Assert.AreSame(rootRenderer, tester.preAssignedParentList[0]);
+
+            yield break;
+        }
+
+        [UnityTest]
+        public IEnumerator SkipIfAssignedWithNullUnityObjectStillAssigns()
+        {
+            GameObject root = new("SkipNullRoot", typeof(SpriteRenderer));
+            _spawned.Add(root);
+            GameObject child = new("SkipNullChild", typeof(ParentSkipIfAssignedTester));
+            _spawned.Add(child);
+            child.transform.SetParent(root.transform);
+
+            ParentSkipIfAssignedTester tester = child.GetComponent<ParentSkipIfAssignedTester>();
+            SpriteRenderer rootRenderer = root.GetComponent<SpriteRenderer>();
+
+            // Explicitly set to null (destroyed Unity object)
+            tester.preAssignedParent = null;
+
+            tester.AssignParentComponents();
+
+            // Null Unity object should have been reassigned
+            Assert.AreSame(rootRenderer, tester.preAssignedParent);
+
+            yield break;
+        }
+
+        [UnityTest]
+        public IEnumerator OptionalParentDoesNotLogErrorWhenMissing()
+        {
+            GameObject orphan = new("OptionalOrphan", typeof(ParentOptionalTester));
+            _spawned.Add(orphan);
+            ParentOptionalTester tester = orphan.GetComponent<ParentOptionalTester>();
+
+            // Should NOT log error for optional component
+            tester.AssignParentComponents();
+
+            Assert.IsTrue(tester.optionalRenderer == null);
+            yield break;
+        }
+
+        [UnityTest]
+        public IEnumerator OnlyAncestorsExcludesSelf()
+        {
+            GameObject root = new("OnlyAncestorsRoot", typeof(SpriteRenderer));
+            _spawned.Add(root);
+            GameObject child = new(
+                "OnlyAncestorsChild",
+                typeof(SpriteRenderer),
+                typeof(ParentOnlyAncestorsTester)
+            );
+            _spawned.Add(child);
+            child.transform.SetParent(root.transform);
+
+            ParentOnlyAncestorsTester tester = child.GetComponent<ParentOnlyAncestorsTester>();
+            SpriteRenderer childRenderer = child.GetComponent<SpriteRenderer>();
+            SpriteRenderer rootRenderer = root.GetComponent<SpriteRenderer>();
+
+            tester.AssignParentComponents();
+
+            // onlyAncestors=true should exclude self
+            Assert.AreSame(rootRenderer, tester.ancestorOnly);
+            CollectionAssert.AreEquivalent(new[] { rootRenderer }, tester.ancestorOnlyArray);
+
+            // onlyAncestors=false should include self
+            Assert.AreSame(childRenderer, tester.includeSelf);
+            CollectionAssert.AreEquivalent(
+                new[] { childRenderer, rootRenderer },
+                tester.includeSelfArray
+            );
+
+            yield break;
+        }
+
+        [UnityTest]
+        public IEnumerator OnlyAncestorsWithNoParentReturnsNothing()
+        {
+            GameObject orphan = new("OnlyAncestorsOrphan", typeof(ParentOnlyAncestorsTester));
+            _spawned.Add(orphan);
+            ParentOnlyAncestorsTester tester = orphan.GetComponent<ParentOnlyAncestorsTester>();
+
+            // Expect errors for ancestorOnly field (onlyAncestors=true, no parent)
+            LogAssert.Expect(
+                LogType.Error,
+                new System.Text.RegularExpressions.Regex(
+                    @"^\d+(\.\d+)?\|OnlyAncestorsOrphan\[ParentOnlyAncestorsTester\]\|Unable to find parent component of type UnityEngine\.SpriteRenderer$"
+                )
+            );
+            // Expect errors for ancestorOnlyArray field (onlyAncestors=true, no parent)
+            LogAssert.Expect(
+                LogType.Error,
+                new System.Text.RegularExpressions.Regex(
+                    @"^\d+(\.\d+)?\|OnlyAncestorsOrphan\[ParentOnlyAncestorsTester\]\|Unable to find parent component of type UnityEngine\.SpriteRenderer\[\]$"
+                )
+            );
+            // Expect errors for includeSelf field (onlyAncestors=false, no SpriteRenderer on self)
+            LogAssert.Expect(
+                LogType.Error,
+                new System.Text.RegularExpressions.Regex(
+                    @"^\d+(\.\d+)?\|OnlyAncestorsOrphan\[ParentOnlyAncestorsTester\]\|Unable to find parent component of type UnityEngine\.SpriteRenderer$"
+                )
+            );
+            // Expect errors for includeSelfArray field (onlyAncestors=false, no SpriteRenderer on self)
+            LogAssert.Expect(
+                LogType.Error,
+                new System.Text.RegularExpressions.Regex(
+                    @"^\d+(\.\d+)?\|OnlyAncestorsOrphan\[ParentOnlyAncestorsTester\]\|Unable to find parent component of type UnityEngine\.SpriteRenderer\[\]$"
+                )
+            );
+
+            tester.AssignParentComponents();
+
+            Assert.IsTrue(tester.ancestorOnly == null);
+            Assert.AreEqual(0, tester.ancestorOnlyArray.Length);
+
+            yield break;
+        }
+
+        [UnityTest]
+        public IEnumerator MultipleParentComponentsReturnedInCorrectOrder()
+        {
+            GameObject grandParent = new("GrandParent", typeof(SpriteRenderer));
+            _spawned.Add(grandParent);
+            GameObject parent = new("Parent", typeof(SpriteRenderer));
+            _spawned.Add(parent);
+            parent.transform.SetParent(grandParent.transform);
+            GameObject child = new("Child", typeof(SpriteRenderer), typeof(ParentMultipleTester));
+            _spawned.Add(child);
+            child.transform.SetParent(parent.transform);
+
+            ParentMultipleTester tester = child.GetComponent<ParentMultipleTester>();
+            SpriteRenderer childRenderer = child.GetComponent<SpriteRenderer>();
+            SpriteRenderer parentRenderer = parent.GetComponent<SpriteRenderer>();
+            SpriteRenderer grandParentRenderer = grandParent.GetComponent<SpriteRenderer>();
+
+            tester.AssignParentComponents();
+
+            // Should return in parent hierarchy order (closest first)
+            Assert.AreEqual(3, tester.allParents.Length);
+            Assert.AreSame(childRenderer, tester.allParents[0]);
+            Assert.AreSame(parentRenderer, tester.allParents[1]);
+            Assert.AreSame(grandParentRenderer, tester.allParents[2]);
+
+            Assert.AreEqual(3, tester.allParentsList.Count);
+            Assert.AreSame(childRenderer, tester.allParentsList[0]);
+            Assert.AreSame(parentRenderer, tester.allParentsList[1]);
+            Assert.AreSame(grandParentRenderer, tester.allParentsList[2]);
+
+            yield break;
+        }
+
+        [UnityTest]
+        public IEnumerator DeepHierarchyHandledCorrectly()
+        {
+            GameObject root = new("DeepRoot", typeof(SpriteRenderer));
+            _spawned.Add(root);
+            GameObject current = root;
+
+            // Create deep hierarchy (10 levels)
+            for (int i = 0; i < 10; i++)
+            {
+                GameObject next = new($"DeepLevel{i}", typeof(SpriteRenderer));
+                _spawned.Add(next);
+                next.transform.SetParent(current.transform);
+                current = next;
+            }
+
+            GameObject leaf = new("DeepLeaf", typeof(ParentMultipleTester));
+            _spawned.Add(leaf);
+            leaf.transform.SetParent(current.transform);
+
+            ParentMultipleTester tester = leaf.GetComponent<ParentMultipleTester>();
+            tester.AssignParentComponents();
+
+            // Should find all 11 parents (10 levels + root)
+            Assert.AreEqual(11, tester.allParents.Length);
+            Assert.AreEqual(11, tester.allParentsList.Count);
+
+            yield break;
+        }
+
+        [UnityTest]
+        public IEnumerator InactiveParentComponentExcludedWhenIncludeInactiveFalse()
+        {
+            GameObject root = new("InactiveRoot", typeof(SpriteRenderer));
+            _spawned.Add(root);
+            GameObject inactiveParent = new("InactiveParent", typeof(SpriteRenderer));
+            _spawned.Add(inactiveParent);
+            inactiveParent.transform.SetParent(root.transform);
+            inactiveParent.SetActive(false);
+            GameObject child = new("InactiveChild", typeof(ParentInactiveTester));
+            _spawned.Add(child);
+            child.transform.SetParent(inactiveParent.transform);
+
+            ParentInactiveTester tester = child.GetComponent<ParentInactiveTester>();
+            SpriteRenderer rootRenderer = root.GetComponent<SpriteRenderer>();
+
+            tester.AssignParentComponents();
+
+            // includeInactive=false should skip inactive parent
+            Assert.AreSame(rootRenderer, tester.activeOnly);
+            CollectionAssert.AreEquivalent(new[] { rootRenderer }, tester.activeOnlyArray);
+
+            yield break;
+        }
+
+        [UnityTest]
+        public IEnumerator DisabledBehaviourNotFilteredByIncludeInactive()
+        {
+            GameObject root = new("DisabledRoot", typeof(BoxCollider));
+            _spawned.Add(root);
+            BoxCollider rootCollider = root.GetComponent<BoxCollider>();
+            rootCollider.enabled = false;
+
+            GameObject child = new("DisabledChild", typeof(ParentDisabledBehaviourTester));
+            _spawned.Add(child);
+            child.transform.SetParent(root.transform);
+
+            ParentDisabledBehaviourTester tester =
+                child.GetComponent<ParentDisabledBehaviourTester>();
+            tester.AssignParentComponents();
+
+            // Disabled Behaviour (BoxCollider) should still be found
+            // includeInactive only affects GameObject.activeInHierarchy
+            Assert.AreSame(rootCollider, tester.parentCollider);
+
+            yield break;
+        }
+
+        [UnityTest]
+        public IEnumerator CacheIsolationBetweenDifferentComponentTypes()
+        {
+            GameObject root = new("CacheRoot", typeof(SpriteRenderer));
+            _spawned.Add(root);
+            GameObject child = new(
+                "CacheChild",
+                typeof(ParentCacheIsolationTesterA),
+                typeof(ParentCacheIsolationTesterB)
+            );
+            _spawned.Add(child);
+            child.transform.SetParent(root.transform);
+
+            ParentCacheIsolationTesterA testerA = child.GetComponent<ParentCacheIsolationTesterA>();
+            ParentCacheIsolationTesterB testerB = child.GetComponent<ParentCacheIsolationTesterB>();
+
+            testerA.AssignParentComponents();
+            testerB.AssignParentComponents();
+
+            // Both should have their own cached field info
+            Assert.IsTrue(testerA.parentRenderer != null);
+            Assert.IsTrue(testerB.parentRenderer != null);
+            Assert.AreSame(testerA.parentRenderer, testerB.parentRenderer);
+
+            yield break;
+        }
+
+        [UnityTest]
+        public IEnumerator RepeatedAssignmentsAreIdempotent()
+        {
+            GameObject root = new("IdempotentRoot", typeof(SpriteRenderer));
+            _spawned.Add(root);
+            GameObject child = new("IdempotentChild", typeof(ParentMultipleTester));
+            _spawned.Add(child);
+            child.transform.SetParent(root.transform);
+
+            ParentMultipleTester tester = child.GetComponent<ParentMultipleTester>();
+            SpriteRenderer rootRenderer = root.GetComponent<SpriteRenderer>();
+
+            tester.AssignParentComponents();
+            SpriteRenderer[] firstAssignment = tester.allParents;
+
+            tester.AssignParentComponents();
+            SpriteRenderer[] secondAssignment = tester.allParents;
+
+            // Repeated calls should produce same results
+            CollectionAssert.AreEqual(firstAssignment, secondAssignment);
+
+            yield break;
+        }
+    }
+
+    internal sealed class ParentAssignmentTester : MonoBehaviour
+    {
+        [ParentComponent(onlyAncestors = true, includeInactive = false)]
+        public SpriteRenderer ancestorsActiveOnly;
+
+        [ParentComponent(onlyAncestors = true, includeInactive = true)]
+        public SpriteRenderer ancestorsIncludeInactive;
+
+        [ParentComponent(includeInactive = true)]
+        public List<SpriteRenderer> allParents;
+    }
+
+    internal sealed class ParentMissingTester : MonoBehaviour
+    {
+        [ParentComponent(onlyAncestors = true)]
+        public SpriteRenderer requiredRenderer;
+    }
+
+    internal sealed class ParentSkipIfAssignedTester : MonoBehaviour
+    {
+        [ParentComponent(skipIfAssigned = true)]
+        public SpriteRenderer preAssignedParent;
+
+        [ParentComponent(skipIfAssigned = true)]
+        public SpriteRenderer[] preAssignedParentArray;
+
+        [ParentComponent(skipIfAssigned = true)]
+        public List<SpriteRenderer> preAssignedParentList;
+
+        [ParentComponent(onlyAncestors = true)]
+        public SpriteRenderer normalParent;
+    }
+
+    internal sealed class ParentOptionalTester : MonoBehaviour
+    {
+        [ParentComponent(optional = true)]
+        public SpriteRenderer optionalRenderer;
+    }
+
+    internal sealed class ParentOnlyAncestorsTester : MonoBehaviour
+    {
+        [ParentComponent(onlyAncestors = true)]
+        public SpriteRenderer ancestorOnly;
+
+        [ParentComponent(onlyAncestors = true)]
+        public SpriteRenderer[] ancestorOnlyArray;
+
+        [ParentComponent(onlyAncestors = false)]
+        public SpriteRenderer includeSelf;
+
+        [ParentComponent(onlyAncestors = false)]
+        public SpriteRenderer[] includeSelfArray;
+    }
+
+    internal sealed class ParentMultipleTester : MonoBehaviour
+    {
+        [ParentComponent(includeInactive = true)]
+        public SpriteRenderer[] allParents;
+
+        [ParentComponent(includeInactive = true)]
+        public List<SpriteRenderer> allParentsList;
+    }
+
+    internal sealed class ParentInactiveTester : MonoBehaviour
+    {
+        [ParentComponent(includeInactive = false)]
+        public SpriteRenderer activeOnly;
+
+        [ParentComponent(includeInactive = false)]
+        public SpriteRenderer[] activeOnlyArray;
+    }
+
+    internal sealed class ParentDisabledBehaviourTester : MonoBehaviour
+    {
+        [ParentComponent(includeInactive = false)]
+        public BoxCollider parentCollider;
+    }
+
+    internal sealed class ParentCacheIsolationTesterA : MonoBehaviour
+    {
+        [ParentComponent]
+        public SpriteRenderer parentRenderer;
+    }
+
+    internal sealed class ParentCacheIsolationTesterB : MonoBehaviour
+    {
+        [ParentComponent]
+        public SpriteRenderer parentRenderer;
     }
 }

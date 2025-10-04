@@ -131,38 +131,208 @@ random.NextNoiseMap(width, height); // A configurable noise map generated using 
 
 ## Performance (Number of Operations / Second)
 
+<!-- RANDOM_BENCHMARKS_START -->
 | Random | NextBool | Next | NextUInt | NextFloat | NextDouble | NextUint - Range | NextInt - Range |
 | ------ | -------- | ---- | -------- | --------- | ---------- | ---------------- | --------------- |
-| DotNetRandom | 29,600,000 | 29,600,000 | 31,400,000 | 25,100,000 | 25,600,000 |19,200,000 |18,300,000 |
-| LinearCongruentialGenerator | 170,500,000 | 170,600,000 | 242,100,000 | 88,600,000 | 89,100,000 |42,400,000 |39,200,000 |
-| IllusionFlow | 143,600,000 | 143,400,000 | 190,600,000 | 80,600,000 | 81,100,000 |40,200,000 |37,100,000 |
-| PcgRandom | 160,200,000 | 161,900,000 | 224,000,000 | 85,900,000 | 86,600,000 |41,900,000 |38,100,000 |
-| RomuDuo | 128,400,000 | 128,400,000 | 166,100,000 | 76,000,000 | 76,300,000 |39,200,000 |35,600,000 |
-| SplitMix64 | 156,700,000 | 157,100,000 | 214,500,000 | 84,900,000 | 84,700,000 |41,600,000 |38,200,000 |
-| SquirrelRandom | 123,200,000 | 123,200,000 | 156,800,000 | 73,800,000 | 74,300,000 |38,700,000 |35,400,000 |
-| SystemRandom | 74,800,000 | 85,800,000 | 36,000,000 | 67,400,000 | 67,000,000 |37,300,000 |34,200,000 |
-| UnityRandom | 50,400,000 | 49,400,000 | 55,500,000 | 38,400,000 | 39,500,000 |26,400,000 |24,900,000 |
-| WyRandom | 74,200,000 | 74,900,000 | 84,800,000 | 52,100,000 | 53,100,000 |32,000,000 |29,400,000 |
-| XorShiftRandom | 171,800,000 | 172,200,000 | 245,700,000 | 90,000,000 | 89,900,000 |42,400,000 |38,900,000 |
-| XoroShiroRandom | 98,700,000 | 98,600,000 | 118,500,000 | 64,200,000 | 64,900,000 |35,100,000 |33,200,000 |
+| DotNetRandom | 56,800,000 | 56,500,000 | 60,500,000 | 48,000,000 | 47,700,000 |33,100,000 |32,200,000 |
+| LinearCongruentialGenerator | 875,800,000 | 875,000,000 | 1,320,000,000 | 188,100,000 | 183,200,000 |67,000,000 |64,900,000 |
+| IllusionFlow | 649,200,000 | 648,200,000 | 878,000,000 | 181,600,000 | 176,600,000 |66,600,000 |64,700,000 |
+| PcgRandom | 676,500,000 | 677,800,000 | 907,600,000 | 188,500,000 | 182,300,000 |67,200,000 |65,800,000 |
+| RomuDuo | 831,900,000 | 782,200,000 | 1,170,900,000 | 188,600,000 | 183,800,000 |67,500,000 |65,900,000 |
+| SplitMix64 | 739,600,000 | 747,100,000 | 1,045,100,000 | 188,400,000 | 184,000,000 |67,400,000 |65,700,000 |
+| SquirrelRandom | 390,400,000 | 391,000,000 | 413,800,000 | 176,400,000 | 170,800,000 |65,500,000 |64,200,000 |
+| SystemRandom | 145,100,000 | 149,500,000 | 64,600,000 | 132,600,000 | 139,600,000 |60,400,000 |58,300,000 |
+| UnityRandom | 84,700,000 | 84,900,000 | 87,700,000 | 62,700,000 | 62,200,000 |39,300,000 |38,800,000 |
+| WyRandom | 385,600,000 | 385,700,000 | 443,200,000 | 154,100,000 | 165,100,000 |65,000,000 |63,400,000 |
+| XorShiftRandom | 764,500,000 | 719,100,000 | 892,500,000 | 189,000,000 | 183,700,000 |67,500,000 |65,600,000 |
+| XoroShiroRandom | 768,800,000 | 721,500,000 | 1,059,900,000 | 189,300,000 | 184,400,000 |67,600,000 |66,000,000 |
+<!-- RANDOM_BENCHMARKS_END -->
 
 # Spatial Trees
-There are three implemented 2D immutable spatial trees that can store generic objects, as long as there is some resolution function that can convert them into Vector2 spatial positions.
+There are spatial tree implementations for both 2D and 3D immutable spatial trees that can store generic objects, as long as there is some resolution function that can convert them into spatial positions.
 
-- QuadTree (easiest to use)
-- KDTree
-- RTree
+## 2D Spatial Trees
+- QuadTree2D (easiest to use)
+- KDTree2D
+- RTree2D
+
+## 3D Spatial Trees
+- OctTree3D (easiest to use)
+- KDTree3D
+- RTree3D
 
 Spatial trees, after construction, allow for O(log(n)) spatial query time instead of O(n). They are extremely useful if you need repeated spatial queries, or if you have relatively static spatial data.
+
+## 2D Performance Benchmarks
+
+<!-- SPATIAL_TREE_BENCHMARKS_START -->
+<!-- tabs:start -->
+
+#### **1,000,000 entries**
+
+##### Construction
+| Construction | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
+| --- | --- | --- | --- | --- |
+| 1,000,000 entries | 4 (0.247s) | 5 (0.187s) | 3 (0.285s) | 2 (0.348s) |
+
+##### Elements In Range
+| Elements In Range | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
+| --- | --- | --- | --- | --- |
+| Full (~span/2) (r=499.5) | 59 | 58 | 56 | 7 |
+| Half (~span/4) (r=249.8) | 237 | 235 | 215 | 27 |
+| Quarter (~span/8) (r=124.9) | 946 | 939 | 806 | 117 |
+| Tiny (~span/1000) (r=1) | 103,107 | 104,622 | 141,862 | 106,276 |
+
+##### Get Elements In Bounds
+| Get Elements In Bounds | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
+| --- | --- | --- | --- | --- |
+| Full (size=999.0x999.0) | 359 | 387 | 329 | 16 |
+| Half (size=499.5x499.5) | 1,854 | 1,848 | 1,217 | 66 |
+| Quarter (size=249.8x249.8) | 7,308 | 7,271 | 3,801 | 376 |
+| Unit (size=1) | 146,762 | 151,751 | 196,413 | 112,248 |
+
+##### Approximate Nearest Neighbors
+| Approximate Nearest Neighbors | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
+| --- | --- | --- | --- | --- |
+| 500 neighbors | 2,172 | 4,358 | 3,194 | 65,204 |
+| 100 neighbors | 24,835 | 23,163 | 24,385 | 157,811 |
+| 10 neighbors | 288,446 | 240,205 | 190,653 | 216,205 |
+| 1 neighbor | 465,012 | 500,096 | 176,138 | 235,963 |
+
+#### **100,000 entries**
+
+##### Construction
+| Construction | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
+| --- | --- | --- | --- | --- |
+| 100,000 entries | 50 (0.020s) | 82 (0.012s) | 42 (0.023s) | 46 (0.021s) |
+
+##### Elements In Range
+| Elements In Range | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
+| --- | --- | --- | --- | --- |
+| Full (~span/2) (r=199.5) | 601 | 602 | 593 | 71 |
+| Half (~span/4) (r=99.75) | 1,356 | 1,352 | 1,235 | 183 |
+| Quarter (~span/8) (r=49.88) | 4,673 | 5,127 | 4,260 | 718 |
+| Tiny (~span/1000) (r=1) | 127,735 | 126,876 | 174,736 | 145,721 |
+
+##### Get Elements In Bounds
+| Get Elements In Bounds | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
+| --- | --- | --- | --- | --- |
+| Full (size=399.0x249.0) | 4,561 | 4,626 | 4,566 | 228 |
+| Half (size=199.5x124.5) | 9,741 | 11,911 | 7,997 | 970 |
+| Quarter (size=99.75x62.25) | 25,768 | 32,226 | 19,597 | 3,800 |
+| Unit (size=1) | 184,335 | 183,492 | 238,824 | 154,088 |
+
+##### Approximate Nearest Neighbors
+| Approximate Nearest Neighbors | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
+| --- | --- | --- | --- | --- |
+| 500 neighbors | 2,718 | 2,722 | 2,832 | 65,344 |
+| 100 neighbors | 15,190 | 31,000 | 15,124 | 193,287 |
+| 10 neighbors | 274,987 | 240,540 | 222,541 | 283,630 |
+| 1 neighbor | 325,808 | 489,646 | 254,666 | 287,294 |
+
+#### **10,000 entries**
+
+##### Construction
+| Construction | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
+| --- | --- | --- | --- | --- |
+| 10,000 entries | 530 (0.002s) | 804 (0.001s) | 546 (0.002s) | 472 (0.002s) |
+
+##### Elements In Range
+| Elements In Range | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
+| --- | --- | --- | --- | --- |
+| Full (~span/2) (r=49.50) | 5,939 | 5,947 | 5,868 | 728 |
+| Half (~span/4) (r=24.75) | 22,245 | 22,145 | 13,743 | 2,895 |
+| Quarter (~span/8) (r=12.38) | 44,307 | 51,052 | 38,022 | 12,095 |
+| Tiny (~span/1000) (r=1) | 166,163 | 161,160 | 233,931 | 166,851 |
+
+##### Get Elements In Bounds
+| Get Elements In Bounds | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
+| --- | --- | --- | --- | --- |
+| Full (size=99.00x99.00) | 45,781 | 46,133 | 46,523 | 2,388 |
+| Half (size=49.50x49.50) | 166,089 | 165,865 | 37,609 | 9,233 |
+| Quarter (size=24.75x24.75) | 75,042 | 103,207 | 75,726 | 35,182 |
+| Unit (size=1) | 239,139 | 231,814 | 318,370 | 176,978 |
+
+##### Approximate Nearest Neighbors
+| Approximate Nearest Neighbors | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
+| --- | --- | --- | --- | --- |
+| 500 neighbors | 3,639 | 3,472 | 3,739 | 59,062 |
+| 100 neighbors | 18,238 | 17,125 | 29,690 | 211,150 |
+| 10 neighbors | 266,230 | 261,326 | 186,181 | 336,525 |
+| 1 neighbor | 481,720 | 556,128 | 283,814 | 384,134 |
+
+#### **1,000 entries**
+
+##### Construction
+| Construction | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
+| --- | --- | --- | --- | --- |
+| 1,000 entries | 5,336 (0.000s) | 7,246 (0.000s) | 4,835 (0.000s) | 4,426 (0.000s) |
+
+##### Elements In Range
+| Elements In Range | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
+| --- | --- | --- | --- | --- |
+| Full (~span/2) (r=24.50) | 57,414 | 58,063 | 57,299 | 7,367 |
+| Half (~span/4) (r=12.25) | 59,828 | 75,859 | 57,017 | 14,660 |
+| Quarter (~span/8) (r=6.13) | 94,968 | 107,976 | 95,260 | 37,894 |
+| Tiny (~span/1000) (r=1) | 237,548 | 226,698 | 335,919 | 248,125 |
+
+##### Get Elements In Bounds
+| Get Elements In Bounds | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
+| --- | --- | --- | --- | --- |
+| Full (size=49.00x19.00) | 494,282 | 491,324 | 514,053 | 23,938 |
+| Half (size=24.50x9.5) | 165,024 | 288,620 | 126,952 | 74,185 |
+| Quarter (size=12.25x4.75) | 260,825 | 286,115 | 194,106 | 171,388 |
+| Unit (size=1) | 339,194 | 335,318 | 463,648 | 267,899 |
+
+##### Approximate Nearest Neighbors
+| Approximate Nearest Neighbors | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
+| --- | --- | --- | --- | --- |
+| 500 neighbors | 77,160 | 77,849 | 56,308 | 67,167 |
+| 100 neighbors | 23,928 | 22,347 | 27,114 | 247,440 |
+| 10 neighbors | 432,011 | 422,060 | 236,533 | 427,681 |
+| 1 neighbor | 627,691 | 453,725 | 251,426 | 379,354 |
+
+#### **100 entries**
+
+##### Construction
+| Construction | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
+| --- | --- | --- | --- | --- |
+| 100 entries | 11,273 (0.000s) | 36,630 (0.000s) | 29,850 (0.000s) | 21,551 (0.000s) |
+
+##### Elements In Range
+| Elements In Range | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
+| --- | --- | --- | --- | --- |
+| Full (~span/2) (r=4.5) | 475,823 | 500,595 | 498,910 | 72,771 |
+| Half (~span/4) (r=2.25) | 430,457 | 431,471 | 254,456 | 236,793 |
+| Quarter (~span/8) (r=1.13) | 430,419 | 431,062 | 589,525 | 339,089 |
+| Tiny (~span/1000) (r=1) | 430,842 | 428,426 | 579,176 | 338,411 |
+
+##### Get Elements In Bounds
+| Get Elements In Bounds | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
+| --- | --- | --- | --- | --- |
+| Full (size=9x9) | 2,468,755 | 2,389,191 | 2,490,357 | 222,956 |
+| Half (size=4.5x4.5) | 563,312 | 558,511 | 368,042 | 368,222 |
+| Quarter (size=2.25x2.25) | 566,003 | 591,958 | 790,906 | 389,098 |
+| Unit (size=1) | 586,686 | 594,412 | 788,921 | 368,923 |
+
+##### Approximate Nearest Neighbors
+| Approximate Nearest Neighbors | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
+| --- | --- | --- | --- | --- |
+| 100 neighbors (max) | 224,263 | 222,333 | 273,070 | 296,841 |
+| 10 neighbors | 379,243 | 343,914 | 592,798 | 601,512 |
+| 1 neighbor | 378,896 | 633,078 | 530,761 | 665,095 |
+<!-- tabs:end -->
+<!-- SPATIAL_TREE_BENCHMARKS_END -->
 
 ## Usage
 
 ```csharp
 GameObject [] spatialStorage = { myCoolGameObject };
-QuadTree<GameObject> quadTree = new(spatialStorage, go => go.transform.position);
+QuadTree2D<GameObject> quadTree = new(spatialStorage, go => go.transform.position);
 
 // Might return your object, might not
-GameObject [] inBounds = quadTree.GetElementsInBounds(new Bounds(0, 0, 100, 100));
+List<GameObject> inBounds = new();
+quadTree.GetElementsInBounds(new Bounds(0, 0, 100, 100), inBounds);
 
 // Uses a "good-enough" nearest-neighbor approximately for cheap neighbors
 List<GameObject> nearestNeighbors = new();
@@ -170,6 +340,58 @@ quadTree.GetApproximateNearestNeighbors(myCoolGameObject.transform.position, 1, 
 Assert.AreEqual(1, nearestNeighbors.Count);
 Assert.AreEqual(myCoolGameObject, nearestNeighbors[0]);
 ```
+
+## 3D Performance Benchmarks
+
+<!-- SPATIAL_TREE_3D_BENCHMARKS_START -->
+
+<!-- tabs:start -->
+
+
+
+#### **1,000,000 entries**
+
+
+
+_Run the performance tests to populate these tables._
+
+
+
+#### **100,000 entries**
+
+
+
+_Run the performance tests to populate these tables._
+
+
+
+#### **10,000 entries**
+
+
+
+_Run the performance tests to populate these tables._
+
+
+
+#### **1,000 entries**
+
+
+
+_Run the performance tests to populate these tables._
+
+
+
+#### **100 entries**
+
+
+
+_Run the performance tests to populate these tables._
+
+
+
+<!-- tabs:end -->
+
+<!-- SPATIAL_TREE_3D_BENCHMARKS_END -->
 
 ## Note
 All spatial trees expect the positional data to be *immutable*. It is very important that the positions do not change. If they do, you will need to reconstruct the tree.
@@ -186,3 +408,4 @@ All spatial trees expect the positional data to be *immutable*. It is very impor
 This project uses [CSharpier](https://csharpier.com/) with the default configuration to enable an enforced, consistent style. If you would like to contribute, recommendation is to ensure that changed files are ran through CSharpier prior to merge. This can be done automatically through editor plugins, or, minimally, by installing a [pre-commit hook](https://pre-commit.com/#3-install-the-git-hook-scripts).
 
 If you think there is something useful that you would like to see, please open an issue or contact me directly.
+
