@@ -204,11 +204,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             using PooledResource<List<RTreeNode>> nodeBufferResource = Buffers<RTreeNode>.List.Get(
                 out List<RTreeNode> currentLevel
             );
-            int leafCount = (elementCount + bucketSize - 1) / bucketSize;
-            if (currentLevel.Capacity < leafCount)
-            {
-                currentLevel.Capacity = leafCount;
-            }
             for (int startIndex = 0; startIndex < elementCount; startIndex += bucketSize)
             {
                 int count = Math.Min(bucketSize, elementCount - startIndex);
@@ -219,11 +214,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             {
                 using PooledResource<List<RTreeNode>> nextLevelResource =
                     Buffers<RTreeNode>.List.Get(out List<RTreeNode> nextLevel);
-                int parentCount = (currentLevel.Count + branchFactor - 1) / branchFactor;
-                if (nextLevel.Capacity < parentCount)
-                {
-                    nextLevel.Capacity = parentCount;
-                }
                 for (int i = 0; i < currentLevel.Count; i += branchFactor)
                 {
                     int childCount = Math.Min(branchFactor, currentLevel.Count - i);

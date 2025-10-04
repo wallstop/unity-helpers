@@ -9,28 +9,28 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     {
         // Contains(point) tests
         [Test]
-        public void ContainsPointInside_ReturnsTrue()
+        public void ContainsPointInsideReturnsTrue()
         {
             var s = new Sphere(Vector3.zero, 2f);
             Assert.IsTrue(s.Contains(new Vector3(1f, 0.5f, 0.5f)));
         }
 
         [Test]
-        public void ContainsPointOnSurface_ReturnsTrue()
+        public void ContainsPointOnSurfaceReturnsTrue()
         {
             var s = new Sphere(Vector3.zero, 1f);
             Assert.IsTrue(s.Contains(new Vector3(1f, 0f, 0f)));
         }
 
         [Test]
-        public void ContainsPointOutside_ReturnsFalse()
+        public void ContainsPointOutsideReturnsFalse()
         {
             var s = new Sphere(Vector3.zero, 1f);
             Assert.IsFalse(s.Contains(new Vector3(1.0001f, 0f, 0f)));
         }
 
         [Test]
-        public void ContainsZeroRadius_OnlyCenterIsTrue()
+        public void ContainsZeroRadiusOnlyCenterIsTrue()
         {
             var center = new Vector3(3.2f, -5f, 7.7f);
             var s = new Sphere(center, 0f);
@@ -39,7 +39,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void ContainsNegativeRadius_BehavesLikePositiveDueToSquaring()
+        public void ContainsNegativeRadiusBehavesLikePositiveDueToSquaring()
         {
             var center = new Vector3(0.1f, 0.2f, 0.3f);
             var sNeg = new Sphere(center, -2f);
@@ -56,7 +56,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
         // Intersects(Bounds) tests
         [Test]
-        public void IntersectsBoundsFarOutside_ReturnsFalse()
+        public void IntersectsBoundsFarOutsideReturnsFalse()
         {
             var s = new Sphere(Vector3.zero, 1f);
             var b = new Bounds(new Vector3(5f, 5f, 5f), new Vector3(2f, 2f, 2f));
@@ -64,7 +64,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void IntersectsBoundsTouchingFace_ReturnsTrue()
+        public void IntersectsBoundsTouchingFaceReturnsTrue()
         {
             // Sphere at origin radius 1. Bounds begins at x=1, spans across y,z = [-1,1]
             var s = new Sphere(Vector3.zero, 1f);
@@ -73,7 +73,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void IntersectsBoundsTouchingEdge_ReturnsTrue()
+        public void IntersectsBoundsTouchingEdgeReturnsTrue()
         {
             // Use a thin slab that aligns so closest point is exactly (1,1,0) on a radius sqrt(2) sphere
             // For unit sphere, we instead create bounds such that closest point is (1,0,0) along an "edge" (zero thickness in z)
@@ -83,7 +83,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void IntersectsBoundsTouchingCorner_ReturnsTrue()
+        public void IntersectsBoundsTouchingCornerReturnsTrue()
         {
             var s = new Sphere(Vector3.zero, 1f);
             // A point-like bounds whose center is on the sphere surface
@@ -92,7 +92,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void IntersectsBoundsFullyInsideSphere_ReturnsTrue()
+        public void IntersectsBoundsFullyInsideSphereReturnsTrue()
         {
             var s = new Sphere(Vector3.zero, 5f);
             var b = new Bounds(
@@ -103,7 +103,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void IntersectsSphereFullyInsideBounds_ReturnsTrue()
+        public void IntersectsSphereFullyInsideBoundsReturnsTrue()
         {
             var s = new Sphere(Vector3.zero, 1f);
             var b = new Bounds(center: Vector3.zero, size: new Vector3(10f, 10f, 10f));
@@ -111,7 +111,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void IntersectsTouchingDueToTolerance_IsTrue()
+        public void IntersectsTouchingDueToToleranceIsTrue()
         {
             // Place bounds so its face is at distance 1 + 1e-7 (just inside tolerance 1e-6)
             var radius = 1f;
@@ -125,7 +125,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void IntersectsOutsideBeyondTolerance_IsFalse()
+        public void IntersectsOutsideBeyondToleranceIsFalse()
         {
             var radius = 1f;
             var s = new Sphere(Vector3.zero, radius);
@@ -139,7 +139,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
         // Overlaps(Bounds) tests: in implementation this means bounds are fully contained in the sphere
         [Test]
-        public void OverlapsBoundsFullyInsideSphere_ReturnsTrue()
+        public void OverlapsBoundsFullyInsideSphereReturnsTrue()
         {
             var s = new Sphere(Vector3.zero, 3f);
             var b = new Bounds(
@@ -150,7 +150,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void OverlapsBoundsPartiallyInside_ReturnsFalse()
+        public void OverlapsBoundsPartiallyInsideReturnsFalse()
         {
             var s = new Sphere(Vector3.zero, 1f);
             var b = new Bounds(center: new Vector3(0.8f, 0f, 0f), size: new Vector3(1f, 1f, 1f));
@@ -158,7 +158,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void OverlapsBoundsCompletelyOutside_ReturnsFalse()
+        public void OverlapsBoundsCompletelyOutsideReturnsFalse()
         {
             var s = new Sphere(Vector3.zero, 1f);
             var b = new Bounds(center: new Vector3(5f, 0f, 0f), size: new Vector3(1f, 1f, 1f));
@@ -166,7 +166,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void OverlapsZeroSizeBoundsAtCenter_ReturnsTrue()
+        public void OverlapsZeroSizeBoundsAtCenterReturnsTrue()
         {
             var center = new Vector3(2f, -1f, 3f);
             var s = new Sphere(center, 0f);

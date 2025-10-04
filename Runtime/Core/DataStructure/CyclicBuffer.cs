@@ -142,7 +142,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 temp.Add(_buffer[AdjustedIndexFor(i)]);
             }
 
-            // Find and remove the element
             bool removed = false;
             for (int i = 0; i < temp.Count; ++i)
             {
@@ -159,11 +158,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return false;
             }
 
-            // Rebuild the buffer with linearized data
-            _buffer.Clear();
-            _buffer.AddRange(temp);
-            Count = temp.Count;
-            _position = Count < Capacity ? Count : 0;
+            RebuildFromCache(temp);
             return true;
         }
 
@@ -174,7 +169,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return 0;
             }
 
-            // Linearize the buffer first
             using PooledResource<List<T>> listResource = Buffers<T>.List.Get(out List<T> temp);
             for (int i = 0; i < Count; ++i)
             {
@@ -187,12 +181,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return 0;
             }
 
-            // Rebuild the buffer with linearized data
+            RebuildFromCache(temp);
+            return removedCount;
+        }
+
+        private void RebuildFromCache(List<T> temp)
+        {
             _buffer.Clear();
             _buffer.AddRange(temp);
             Count = temp.Count;
             _position = Count < Capacity ? Count : 0;
-            return removedCount;
         }
 
         public void Clear()
