@@ -137,7 +137,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         /// <returns>A hash code for the current circle.</returns>
         public override int GetHashCode()
         {
-            return Objects.ValueTypeHashCode(center, radius);
+            return Objects.HashCode(center, radius);
         }
 
         /// <summary>

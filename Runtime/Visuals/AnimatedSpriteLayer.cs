@@ -124,7 +124,7 @@ namespace WallstopStudios.UnityHelpers.Visuals
 
         public override int GetHashCode()
         {
-            return Objects.ValueTypeHashCode(perFramePixelOffsets.Length, frames.Length, alpha);
+            return Objects.HashCode(perFramePixelOffsets.Length, frames.Length, alpha);
         }
     }
 }

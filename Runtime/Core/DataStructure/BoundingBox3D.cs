@@ -1,12 +1,13 @@
 namespace WallstopStudios.UnityHelpers.Core.DataStructure
 {
     using System;
+    using Helper;
     using UnityEngine;
 
     /// <summary>
     /// Represents an axis-aligned bounding box with half-open semantics on the maximum edge.
     /// </summary>
-    public readonly struct BoundingBox3D
+    public readonly struct BoundingBox3D : IEquatable<BoundingBox3D>
     {
         private const float MinimumExclusivePadding = 1e-6f;
 
@@ -21,12 +22,29 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
 
             this.min = min;
-            this.max = EnsureExclusiveMax(min, max);
+            // Only ensure exclusive max if we have degenerate bounds (min == max)
+            if (min.x == max.x || min.y == max.y || min.z == max.z)
+            {
+                this.max = EnsureExclusiveMax(min, max);
+            }
+            else
+            {
+                this.max = max;
+            }
         }
 
         public Vector3 Center => (min + max) * 0.5f;
 
         public Vector3 Size => max - min;
+
+        public float Volume
+        {
+            get
+            {
+                Vector3 size = Size;
+                return size.x * size.y * size.z;
+            }
+        }
 
         public bool IsEmpty => max.x <= min.x || max.y <= min.y || max.z <= min.z;
 
@@ -47,7 +65,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
         public static BoundingBox3D FromPoint(Vector3 point)
         {
-            return new BoundingBox3D(point, MoveMaxExclusive(point, point));
+            Vector3 exclusiveMax = new Vector3(
+                NextFloat(point.x),
+                NextFloat(point.y),
+                NextFloat(point.z)
+            );
+            return new BoundingBox3D(point, exclusiveMax);
         }
 
         public BoundingBox3D ExpandToInclude(Vector3 point)
@@ -80,6 +103,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 localMax.z = NextFloat(point.z);
             }
 
+            // Skip validation since we know the bounds are valid
             return new BoundingBox3D(localMin, localMax);
         }
 
@@ -107,8 +131,15 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 Math.Max(max.z, other.max.z)
             );
 
+            // Skip validation since we know the bounds are valid
             return new BoundingBox3D(localMin, localMax);
         }
+
+        public BoundingBox3D Encapsulate(Vector3 point) => ExpandToInclude(point);
+
+        public BoundingBox3D Encapsulate(BoundingBox3D other) => ExpandToInclude(other);
+
+        public BoundingBox3D Union(BoundingBox3D other) => ExpandToInclude(other);
 
         public BoundingBox3D EnsureMinimumSize(float minimum)
         {
@@ -120,12 +151,14 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             Vector3 size = Size;
             Vector3 localMin = min;
             Vector3 localMax = max;
+            bool changed = false;
 
             if (size.x < minimum)
             {
                 float delta = (minimum - size.x) * 0.5f;
                 localMin.x -= delta;
                 localMax.x += delta;
+                changed = true;
             }
 
             if (size.y < minimum)
@@ -133,6 +166,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 float delta = (minimum - size.y) * 0.5f;
                 localMin.y -= delta;
                 localMax.y += delta;
+                changed = true;
             }
 
             if (size.z < minimum)
@@ -140,9 +174,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 float delta = (minimum - size.z) * 0.5f;
                 localMin.z -= delta;
                 localMax.z += delta;
+                changed = true;
             }
 
-            return new BoundingBox3D(localMin, localMax);
+            return changed ? new BoundingBox3D(localMin, localMax) : this;
         }
 
         public bool Contains(Vector3 point)
@@ -157,12 +192,41 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
         public bool Contains(BoundingBox3D other)
         {
+            // Empty boxes are not contained by anything, not even themselves
+            if (other.IsEmpty)
+            {
+                return false;
+            }
+
             return min.x <= other.min.x
                 && min.y <= other.min.y
                 && min.z <= other.min.z
                 && max.x >= other.max.x
                 && max.y >= other.max.y
                 && max.z >= other.max.z;
+        }
+
+        public BoundingBox3D? Intersection(BoundingBox3D other)
+        {
+            if (!Intersects(other))
+            {
+                return null;
+            }
+
+            Vector3 intersectionMin = new(
+                Math.Max(min.x, other.min.x),
+                Math.Max(min.y, other.min.y),
+                Math.Max(min.z, other.min.z)
+            );
+
+            Vector3 intersectionMax = new(
+                Math.Min(max.x, other.max.x),
+                Math.Min(max.y, other.max.y),
+                Math.Min(max.z, other.max.z)
+            );
+
+            // Skip validation since we know it intersects
+            return new BoundingBox3D(intersectionMin, intersectionMax);
         }
 
         public bool Intersects(BoundingBox3D other)
@@ -177,37 +241,32 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
         public Vector3 ClosestPoint(Vector3 point)
         {
-            float x = point.x;
-            if (x < min.x)
+            // For half-open semantics [min, max), the valid range is [min, max)
+            // But for closest point purposes, we clamp to the representable boundary
+            return new Vector3(
+                Mathf.Clamp(point.x, min.x, max.x),
+                Mathf.Clamp(point.y, min.y, max.y),
+                Mathf.Clamp(point.z, min.z, max.z)
+            );
+        }
+
+        public void GetCorners(Vector3[] corners)
+        {
+            if (corners == null || corners.Length < 8)
             {
-                x = min.x;
-            }
-            else if (x > max.x)
-            {
-                x = max.x;
+                throw new ArgumentException(
+                    "Corners array must not be null and have at least 8 elements."
+                );
             }
 
-            float y = point.y;
-            if (y < min.y)
-            {
-                y = min.y;
-            }
-            else if (y > max.y)
-            {
-                y = max.y;
-            }
-
-            float z = point.z;
-            if (z < min.z)
-            {
-                z = min.z;
-            }
-            else if (z > max.z)
-            {
-                z = max.z;
-            }
-
-            return new Vector3(x, y, z);
+            corners[0] = new Vector3(min.x, min.y, min.z);
+            corners[1] = new Vector3(max.x, min.y, min.z);
+            corners[2] = new Vector3(min.x, max.y, min.z);
+            corners[3] = new Vector3(max.x, max.y, min.z);
+            corners[4] = new Vector3(min.x, min.y, max.z);
+            corners[5] = new Vector3(max.x, min.y, max.z);
+            corners[6] = new Vector3(min.x, max.y, max.z);
+            corners[7] = new Vector3(max.x, max.y, max.z);
         }
 
         public float DistanceSquaredTo(Vector3 point)
@@ -219,45 +278,37 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         public Bounds ToBounds()
         {
             Vector3 size = Size;
-            Vector3 center = new(
-                min.x + (size.x * 0.5f),
-                min.y + (size.y * 0.5f),
-                min.z + (size.z * 0.5f)
-            );
-            return new Bounds(center, size);
+            return new Bounds(Center, size);
         }
 
-        private static Vector3 MoveMaxExclusive(Vector3 min, Vector3 inclusiveMax)
+        public bool Equals(BoundingBox3D other)
         {
-            Vector3 exclusive = inclusiveMax;
-            if (exclusive.x <= min.x)
-            {
-                exclusive.x = NextFloat(min.x + MinimumExclusivePadding);
-            }
-            else
-            {
-                exclusive.x = NextFloat(exclusive.x);
-            }
+            return min.Equals(other.min) && max.Equals(other.max);
+        }
 
-            if (exclusive.y <= min.y)
-            {
-                exclusive.y = NextFloat(min.y + MinimumExclusivePadding);
-            }
-            else
-            {
-                exclusive.y = NextFloat(exclusive.y);
-            }
+        public override bool Equals(object obj)
+        {
+            return obj is BoundingBox3D other && Equals(other);
+        }
 
-            if (exclusive.z <= min.z)
-            {
-                exclusive.z = NextFloat(min.z + MinimumExclusivePadding);
-            }
-            else
-            {
-                exclusive.z = NextFloat(exclusive.z);
-            }
+        public override int GetHashCode()
+        {
+            return Objects.HashCode(min, max);
+        }
 
-            return exclusive;
+        public static bool operator ==(BoundingBox3D left, BoundingBox3D right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(BoundingBox3D left, BoundingBox3D right)
+        {
+            return !left.Equals(right);
+        }
+
+        public override string ToString()
+        {
+            return $"BoundingBox3D(min: {min}, max: {max})";
         }
 
         private static Vector3 EnsureExclusiveMax(Vector3 min, Vector3 max)

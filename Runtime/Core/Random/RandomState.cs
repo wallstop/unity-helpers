@@ -62,12 +62,12 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             _hasGaussian = gaussian.HasValue;
             _gaussian = gaussian ?? 0;
             _payload = payload?.ToArray();
-            _hashCode = Objects.ValueTypeHashCode(
-                state1,
-                state2,
+            _hashCode = Objects.HashCode(
+                _state1,
+                _state2,
                 _hasGaussian,
                 _gaussian,
-                _payload != null
+                _payload?.Length
             );
         }
 
@@ -79,19 +79,25 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             _hasGaussian = false;
             _gaussian = 0;
             _payload = null;
-            _hashCode = Objects.ValueTypeHashCode(
+            _hashCode = Objects.HashCode(
                 _state1,
                 _state2,
                 _hasGaussian,
                 _gaussian,
-                _payload != null
+                _payload?.Length
             );
         }
 
         [ProtoAfterDeserialization]
         private void OnProtoDeserialize()
         {
-            _hashCode = Objects.ValueTypeHashCode(_state1, _state2, _hasGaussian, _gaussian);
+            _hashCode = Objects.HashCode(
+                _state1,
+                _state2,
+                _hasGaussian,
+                _gaussian,
+                _payload?.Length
+            );
         }
 
         public override bool Equals(object other)
@@ -102,21 +108,44 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         public bool Equals(RandomState other)
         {
             // ReSharper disable once CompareOfFloatsByEqualityOperator
-            return _state1 == other._state1
+            bool equivalent =
+                _state1 == other._state1
                 && _state2 == other._state2
                 && _hasGaussian == other._hasGaussian
                 && (!_hasGaussian || _gaussian == other._gaussian);
+            if (!equivalent)
+            {
+                return false;
+            }
+
+            if (_payload == null && other._payload == null)
+            {
+                return true;
+            }
+
+            if (_payload == null || other._payload == null)
+            {
+                return false;
+            }
+
+            if (_payload.Length != other._payload.Length)
+            {
+                return false;
+            }
+
+            return _payload.AsSpan().SequenceEqual(other._payload);
         }
 
         public override int GetHashCode()
         {
             if (_hashCode == 0)
             {
-                return _hashCode = Objects.ValueTypeHashCode(
+                return _hashCode = Objects.HashCode(
                     _state1,
                     _state2,
                     _hasGaussian,
-                    _gaussian
+                    _gaussian,
+                    _payload?.Length
                 );
             }
 

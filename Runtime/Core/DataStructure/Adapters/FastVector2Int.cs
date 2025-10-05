@@ -8,7 +8,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
     [Serializable]
     [ProtoContract]
-    public struct FastVector2Int
+    public readonly struct FastVector2Int
         : IEquatable<FastVector2Int>,
             IEquatable<FastVector3Int>,
             IEquatable<Vector2Int>,
@@ -19,19 +19,34 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             IComparable<Vector3Int>,
             IComparable
     {
+        public static readonly FastVector2Int zero = new(0, 0);
+
         [ProtoMember(1)]
         public readonly int x;
 
         [ProtoMember(2)]
         public readonly int y;
 
-        private int _hash;
+        [ProtoMember(3)]
+        private readonly int _hash;
 
         public FastVector2Int(int x, int y)
         {
             this.x = x;
             this.y = y;
-            _hash = Objects.ValueTypeHashCode(x, y);
+            _hash = Objects.HashCode(x, y);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool operator ==(FastVector2Int lhs, FastVector2Int rhs)
+        {
+            return lhs.Equals(rhs);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool operator !=(FastVector2Int lhs, FastVector2Int rhs)
+        {
+            return !lhs.Equals(rhs);
         }
 
         public static implicit operator Vector2Int(FastVector2Int vector)
@@ -129,10 +144,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public override int GetHashCode()
         {
-            if (_hash == 0)
-            {
-                _hash = Objects.ValueTypeHashCode(x, y);
-            }
             return _hash;
         }
 
@@ -153,23 +164,17 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             };
         }
 
-        [ProtoAfterDeserialization]
-        private void AfterDeserialize()
-        {
-            _hash = Objects.ValueTypeHashCode(x, y);
-        }
-
-        public readonly FastVector3Int AsFastVector3Int()
+        public FastVector3Int AsFastVector3Int()
         {
             return new FastVector3Int(x, y);
         }
 
-        public readonly Vector2 AsVector2()
+        public Vector2 AsVector2()
         {
             return new Vector2(x, y);
         }
 
-        public readonly Vector3 AsVector3()
+        public Vector3 AsVector3()
         {
             return new Vector3(x, y);
         }

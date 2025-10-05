@@ -2,6 +2,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 {
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.DataStructure;
+    using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
+    using WallstopStudios.UnityHelpers.Core.Math;
     using Serializer = WallstopStudios.UnityHelpers.Core.Serialization.Serializer;
 
     public sealed class ProtobufSerializationTests
@@ -270,6 +272,171 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                     $"Element {i} containment mismatch"
                 );
             }
+        }
+
+        [Test]
+        public void FastVector2IntSerializesAndDeserializes()
+        {
+            FastVector2Int original = new(42, -17);
+
+            FastVector2Int deserialized = SerializeDeserialize(original);
+
+            Assert.AreEqual(original.x, deserialized.x);
+            Assert.AreEqual(original.y, deserialized.y);
+            Assert.AreEqual(original.GetHashCode(), deserialized.GetHashCode());
+            Assert.IsTrue(original.Equals(deserialized));
+        }
+
+        [Test]
+        public void FastVector2IntZeroSerializesAndDeserializes()
+        {
+            FastVector2Int original = new(0, 0);
+
+            FastVector2Int deserialized = SerializeDeserialize(original);
+
+            Assert.AreEqual(0, deserialized.x);
+            Assert.AreEqual(0, deserialized.y);
+            Assert.IsTrue(original.Equals(deserialized));
+        }
+
+        [Test]
+        public void FastVector2IntNegativeValuesSerializeAndDeserialize()
+        {
+            FastVector2Int original = new(-1000, -2000);
+
+            FastVector2Int deserialized = SerializeDeserialize(original);
+
+            Assert.AreEqual(-1000, deserialized.x);
+            Assert.AreEqual(-2000, deserialized.y);
+            Assert.IsTrue(original.Equals(deserialized));
+        }
+
+        [Test]
+        public void FastVector2IntLargeValuesSerializeAndDeserialize()
+        {
+            FastVector2Int original = new(int.MaxValue, int.MinValue);
+
+            FastVector2Int deserialized = SerializeDeserialize(original);
+
+            Assert.AreEqual(int.MaxValue, deserialized.x);
+            Assert.AreEqual(int.MinValue, deserialized.y);
+            Assert.IsTrue(original.Equals(deserialized));
+        }
+
+        [Test]
+        public void FastVector3IntSerializesAndDeserializes()
+        {
+            FastVector3Int original = new(123, -456, 789);
+
+            FastVector3Int deserialized = SerializeDeserialize(original);
+
+            Assert.AreEqual(original.x, deserialized.x);
+            Assert.AreEqual(original.y, deserialized.y);
+            Assert.AreEqual(original.z, deserialized.z);
+            Assert.AreEqual(original.GetHashCode(), deserialized.GetHashCode());
+            Assert.IsTrue(original.Equals(deserialized));
+        }
+
+        [Test]
+        public void FastVector3IntZeroSerializesAndDeserializes()
+        {
+            FastVector3Int original = FastVector3Int.zero;
+
+            FastVector3Int deserialized = SerializeDeserialize(original);
+
+            Assert.AreEqual(0, deserialized.x);
+            Assert.AreEqual(0, deserialized.y);
+            Assert.AreEqual(0, deserialized.z);
+            Assert.IsTrue(original.Equals(deserialized));
+        }
+
+        [Test]
+        public void FastVector3IntNegativeValuesSerializeAndDeserialize()
+        {
+            FastVector3Int original = new(-100, -200, -300);
+
+            FastVector3Int deserialized = SerializeDeserialize(original);
+
+            Assert.AreEqual(-100, deserialized.x);
+            Assert.AreEqual(-200, deserialized.y);
+            Assert.AreEqual(-300, deserialized.z);
+            Assert.IsTrue(original.Equals(deserialized));
+        }
+
+        [Test]
+        public void FastVector3IntLargeValuesSerializeAndDeserialize()
+        {
+            FastVector3Int original = new(int.MaxValue, 0, int.MinValue);
+
+            FastVector3Int deserialized = SerializeDeserialize(original);
+
+            Assert.AreEqual(int.MaxValue, deserialized.x);
+            Assert.AreEqual(0, deserialized.y);
+            Assert.AreEqual(int.MinValue, deserialized.z);
+            Assert.IsTrue(original.Equals(deserialized));
+        }
+
+        [Test]
+        public void FastVector3IntTwoParameterConstructorSerializesAndDeserializes()
+        {
+            FastVector3Int original = new(50, 75);
+
+            FastVector3Int deserialized = SerializeDeserialize(original);
+
+            Assert.AreEqual(50, deserialized.x);
+            Assert.AreEqual(75, deserialized.y);
+            Assert.AreEqual(0, deserialized.z);
+            Assert.IsTrue(original.Equals(deserialized));
+        }
+
+        [Test]
+        public void ParabolaSerializesAndDeserializes()
+        {
+            Parabola original = new(maxHeight: 10f, length: 20f);
+
+            Parabola deserialized = SerializeDeserialize(original);
+
+            Assert.AreEqual(original.Length, deserialized.Length, 0.0001f);
+            Assert.AreEqual(original.MaxHeight, deserialized.MaxHeight, 0.0001f);
+            Assert.AreEqual(original.A, deserialized.A, 0.0001f);
+            Assert.AreEqual(original.B, deserialized.B, 0.0001f);
+            Assert.IsTrue(original.Equals(deserialized));
+        }
+
+        [Test]
+        public void ParabolaWithDifferentValuesSerializesAndDeserializes()
+        {
+            Parabola original = new(maxHeight: 15.5f, length: 30.25f);
+
+            Parabola deserialized = SerializeDeserialize(original);
+
+            Assert.AreEqual(15.5f, deserialized.MaxHeight, 0.0001f);
+            Assert.AreEqual(30.25f, deserialized.Length, 0.0001f);
+            Assert.IsTrue(original.Equals(deserialized));
+        }
+
+        [Test]
+        public void ParabolaSmallValuesSerializeAndDeserialize()
+        {
+            Parabola original = new(maxHeight: 0.001f, length: 0.002f);
+
+            Parabola deserialized = SerializeDeserialize(original);
+
+            Assert.AreEqual(0.001f, deserialized.MaxHeight, 0.000001f);
+            Assert.AreEqual(0.002f, deserialized.Length, 0.000001f);
+            Assert.IsTrue(original.Equals(deserialized));
+        }
+
+        [Test]
+        public void ParabolaLargeValuesSerializeAndDeserialize()
+        {
+            Parabola original = new(maxHeight: 10000f, length: 50000f);
+
+            Parabola deserialized = SerializeDeserialize(original);
+
+            Assert.AreEqual(10000f, deserialized.MaxHeight, 1f);
+            Assert.AreEqual(50000f, deserialized.Length, 1f);
+            Assert.IsTrue(original.Equals(deserialized));
         }
     }
 }

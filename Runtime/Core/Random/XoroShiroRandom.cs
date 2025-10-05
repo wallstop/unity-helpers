@@ -95,7 +95,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         public override int GetHashCode()
         {
-            return Objects.ValueTypeHashCode(_s0, _s1);
+            return Objects.HashCode(_s0, _s1);
         }
 
         public override string ToString()

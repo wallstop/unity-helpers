@@ -8,7 +8,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
     [Serializable]
     [ProtoContract]
-    public struct FastVector3Int
+    public readonly struct FastVector3Int
         : IEquatable<FastVector3Int>,
             IEquatable<FastVector2Int>,
             IEquatable<Vector3Int>,
@@ -27,17 +27,19 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         [ProtoMember(2)]
         public readonly int y;
 
-        [ProtoMember(3)]
+        [ProtoMember(4)]
         public readonly int z;
 
-        private int _hash;
+        // Out of order proto is expected
+        [ProtoMember(3)]
+        private readonly int _hash;
 
         public FastVector3Int(int x, int y, int z)
         {
             this.x = x;
             this.y = y;
             this.z = z;
-            _hash = Objects.ValueTypeHashCode(x, y, z);
+            _hash = Objects.HashCode(x, y, z);
         }
 
         public FastVector3Int(Vector3Int vector)
@@ -116,10 +118,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public override int GetHashCode()
         {
-            if (_hash == 0)
-            {
-                _hash = Objects.ValueTypeHashCode(x, y, z);
-            }
             return _hash;
         }
 
@@ -238,23 +236,17 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             return $"({x}, {y}, {z})";
         }
 
-        [ProtoAfterDeserialization]
-        private void AfterDeserialize()
-        {
-            _hash = Objects.ValueTypeHashCode(x, y, z);
-        }
-
-        public readonly FastVector2Int FastVector2Int()
+        public FastVector2Int FastVector2Int()
         {
             return new FastVector2Int(x, y);
         }
 
-        public readonly Vector2 AsVector2()
+        public Vector2 AsVector2()
         {
             return new Vector2(x, y);
         }
 
-        public readonly Vector3 AsVector3()
+        public Vector3 AsVector3()
         {
             return new Vector3(x, y, z);
         }

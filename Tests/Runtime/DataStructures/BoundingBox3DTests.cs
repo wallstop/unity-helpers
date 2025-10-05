@@ -212,10 +212,10 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void ContainsEmptyBoxReturnsTrue()
+        public void ContainsEmptyBoxReturnsFalse()
         {
             BoundingBox3D box = new(Vector3.zero, Vector3.one);
-            Assert.IsTrue(box.Contains(BoundingBox3D.Empty));
+            Assert.IsFalse(box.Contains(BoundingBox3D.Empty));
         }
 
         [Test]
@@ -711,6 +711,149 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.AreEqual(original.min.x, reconstructed.min.x, 0.01f);
             Assert.AreEqual(original.min.y, reconstructed.min.y, 0.01f);
             Assert.AreEqual(original.min.z, reconstructed.min.z, 0.01f);
+        }
+
+        [Test]
+        public void VolumeReturnsCorrectValue()
+        {
+            BoundingBox3D box = new(Vector3.zero, new Vector3(2f, 3f, 4f));
+            Assert.AreEqual(24f, box.Volume, 0.0001f);
+        }
+
+        [Test]
+        public void VolumeForEmptyBoxReturnsZeroOrNegative()
+        {
+            BoundingBox3D empty = BoundingBox3D.Empty;
+            Assert.LessOrEqual(empty.Volume, 0f);
+        }
+
+        [Test]
+        public void EncapsulatePointAliasWorks()
+        {
+            BoundingBox3D box = new(Vector3.zero, Vector3.one);
+            Vector3 point = new(5f, 5f, 5f);
+            BoundingBox3D expanded = box.Encapsulate(point);
+
+            Assert.IsTrue(expanded.Contains(point));
+            Assert.AreEqual(Vector3.zero, expanded.min);
+        }
+
+        [Test]
+        public void EncapsulateBoxAliasWorks()
+        {
+            BoundingBox3D box1 = new(Vector3.zero, new Vector3(5f, 5f, 5f));
+            BoundingBox3D box2 = new(new Vector3(3f, 3f, 3f), new Vector3(10f, 10f, 10f));
+            BoundingBox3D expanded = box1.Encapsulate(box2);
+
+            Assert.AreEqual(Vector3.zero, expanded.min);
+            Assert.IsTrue(expanded.Contains(box2));
+        }
+
+        [Test]
+        public void UnionAliasWorks()
+        {
+            BoundingBox3D box1 = new(Vector3.zero, new Vector3(5f, 5f, 5f));
+            BoundingBox3D box2 = new(new Vector3(3f, 3f, 3f), new Vector3(10f, 10f, 10f));
+            BoundingBox3D union = box1.Union(box2);
+
+            Assert.AreEqual(Vector3.zero, union.min);
+            Assert.IsTrue(union.Contains(box1));
+            Assert.IsTrue(union.Contains(box2));
+        }
+
+        [Test]
+        public void IntersectionReturnsCorrectBox()
+        {
+            BoundingBox3D box1 = new(Vector3.zero, new Vector3(10f, 10f, 10f));
+            BoundingBox3D box2 = new(new Vector3(5f, 5f, 5f), new Vector3(15f, 15f, 15f));
+            BoundingBox3D? intersection = box1.Intersection(box2);
+
+            Assert.IsTrue(intersection.HasValue);
+            Assert.AreEqual(new Vector3(5f, 5f, 5f), intersection.Value.min);
+            Assert.AreEqual(new Vector3(10f, 10f, 10f), intersection.Value.max);
+        }
+
+        [Test]
+        public void IntersectionOfNonOverlappingBoxesReturnsNull()
+        {
+            BoundingBox3D box1 = new(Vector3.zero, Vector3.one);
+            BoundingBox3D box2 = new(new Vector3(2f, 2f, 2f), new Vector3(3f, 3f, 3f));
+            BoundingBox3D? intersection = box1.Intersection(box2);
+
+            Assert.IsFalse(intersection.HasValue);
+        }
+
+        [Test]
+        public void GetCornersReturnsAllEightCorners()
+        {
+            BoundingBox3D box = new(Vector3.zero, new Vector3(1f, 2f, 3f));
+            Vector3[] corners = new Vector3[8];
+            box.GetCorners(corners);
+
+            Assert.AreEqual(new Vector3(0f, 0f, 0f), corners[0]);
+            Assert.AreEqual(new Vector3(1f, 0f, 0f), corners[1]);
+            Assert.AreEqual(new Vector3(0f, 2f, 0f), corners[2]);
+            Assert.AreEqual(new Vector3(1f, 2f, 0f), corners[3]);
+            Assert.AreEqual(new Vector3(0f, 0f, 3f), corners[4]);
+            Assert.AreEqual(new Vector3(1f, 0f, 3f), corners[5]);
+            Assert.AreEqual(new Vector3(0f, 2f, 3f), corners[6]);
+            Assert.AreEqual(new Vector3(1f, 2f, 3f), corners[7]);
+        }
+
+        [Test]
+        public void GetCornersThrowsOnNullArray()
+        {
+            BoundingBox3D box = new(Vector3.zero, Vector3.one);
+            Assert.Throws<System.ArgumentException>(() => box.GetCorners(null));
+        }
+
+        [Test]
+        public void GetCornersThrowsOnSmallArray()
+        {
+            BoundingBox3D box = new(Vector3.zero, Vector3.one);
+            Vector3[] corners = new Vector3[7];
+            Assert.Throws<System.ArgumentException>(() => box.GetCorners(corners));
+        }
+
+        [Test]
+        public void EqualsReturnsTrueForIdenticalBoxes()
+        {
+            BoundingBox3D box1 = new(Vector3.zero, Vector3.one);
+            BoundingBox3D box2 = new(Vector3.zero, Vector3.one);
+
+            Assert.IsTrue(box1.Equals(box2));
+            Assert.IsTrue(box1 == box2);
+            Assert.IsFalse(box1 != box2);
+        }
+
+        [Test]
+        public void EqualsReturnsFalseForDifferentBoxes()
+        {
+            BoundingBox3D box1 = new(Vector3.zero, Vector3.one);
+            BoundingBox3D box2 = new(Vector3.one, new Vector3(2f, 2f, 2f));
+
+            Assert.IsFalse(box1.Equals(box2));
+            Assert.IsFalse(box1 == box2);
+            Assert.IsTrue(box1 != box2);
+        }
+
+        [Test]
+        public void HashCodeIsConsistent()
+        {
+            BoundingBox3D box1 = new(Vector3.zero, Vector3.one);
+            BoundingBox3D box2 = new(Vector3.zero, Vector3.one);
+
+            Assert.AreEqual(box1.GetHashCode(), box2.GetHashCode());
+        }
+
+        [Test]
+        public void ToStringReturnsValidString()
+        {
+            BoundingBox3D box = new(Vector3.zero, Vector3.one);
+            string str = box.ToString();
+
+            Assert.IsNotNull(str);
+            Assert.IsTrue(str.Contains("BoundingBox3D"));
         }
     }
 }

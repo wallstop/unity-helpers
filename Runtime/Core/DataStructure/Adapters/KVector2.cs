@@ -129,7 +129,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
         public override int GetHashCode()
         {
-            return Objects.ValueTypeHashCode(x, y);
+            return Objects.HashCode(x, y);
         }
 
         public int CompareTo(object obj)

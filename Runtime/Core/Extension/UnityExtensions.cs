@@ -222,28 +222,34 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         {
             float minX = float.MaxValue;
             float minY = float.MaxValue;
+            float minZ = float.MaxValue;
             float maxX = float.MinValue;
             float maxY = float.MinValue;
-            bool any = false;
+            float maxZ = float.MinValue;
+            Vector3 centerSum = Vector3.zero;
+            int count = 0;
             foreach (Bounds boundary in boundaries)
             {
-                any = true;
+                centerSum += boundary.center;
+                count++;
                 Vector3 min = boundary.min;
                 Vector3 max = boundary.max;
                 minX = Math.Min(minX, min.x);
                 maxX = Math.Max(maxX, max.x);
                 minY = Math.Min(minY, min.y);
                 maxY = Math.Max(maxY, max.y);
+                minZ = Math.Min(minZ, min.z);
+                maxZ = Math.Max(maxZ, max.z);
             }
 
-            if (!any)
+            if (count == 0)
             {
                 return null;
             }
 
             return new Bounds(
-                new Vector3(minX + (maxX - minX) / 2, minY + (maxY - minY) / 2),
-                new Vector3(maxX - minX, maxY - minY)
+                centerSum / count,
+                new Vector3(maxX - minX, maxY - minY, maxZ - minZ)
             );
         }
 
@@ -810,6 +816,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             const int minimumNearestNeighbors = 3;
             nearestNeighbors = Math.Max(minimumNearestNeighbors, nearestNeighbors);
             List<FastVector3Int> dataSet = gridPositions.Distinct().ToList();
+            int maximumNearestNeighbors = dataSet.Count;
             if (dataSet.Count <= 3)
             {
                 return dataSet;
@@ -966,6 +973,11 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     {
                         if (!IsPositionInside(hull, dataSet[i], grid))
                         {
+                            if (nearestNeighbors >= maximumNearestNeighbors)
+                            {
+                                return gridPositions.BuildConvexHull(grid, random);
+                            }
+
                             return BuildConcaveHull2(
                                 gridPositions,
                                 grid,
@@ -1005,6 +1017,11 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             {
                 if (!IsPositionInside(hull, dataSet[i], grid))
                 {
+                    if (nearestNeighbors >= maximumNearestNeighbors)
+                    {
+                        return gridPositions.BuildConvexHull(grid, random);
+                    }
+
                     return BuildConcaveHull2(gridPositions, grid, random, nearestNeighbors + 1);
                 }
             }

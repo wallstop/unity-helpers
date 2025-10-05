@@ -1,6 +1,7 @@
 namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 {
     using System;
+    using System.Runtime.CompilerServices;
     using System.Runtime.InteropServices;
     using System.Runtime.Serialization;
     using System.Text.Json.Serialization;
@@ -10,7 +11,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
     [Serializable]
     [DataContract]
     [ProtoContract]
-    public struct KGuid
+    public readonly struct KGuid
         : IEquatable<KGuid>,
             IEquatable<Guid>,
             IComparable<KGuid>,
@@ -22,39 +23,40 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             Since we know the underlying data, do this shit (this is what a Guid looks like anyway)...
          */
         [ProtoMember(1)]
-        private int _a;
+        private readonly int _a;
 
         [ProtoMember(2)]
-        private short _b;
+        private readonly short _b;
 
         [ProtoMember(3)]
-        private short _c;
+        private readonly short _c;
 
         [ProtoMember(4)]
-        private byte _d;
+        private readonly byte _d;
 
         [ProtoMember(5)]
-        private byte _e;
+        private readonly byte _e;
 
         [ProtoMember(6)]
-        private byte _f;
+        private readonly byte _f;
 
         [ProtoMember(7)]
-        private byte _g;
+        private readonly byte _g;
 
         [ProtoMember(8)]
-        private byte _h;
+        private readonly byte _h;
 
         [ProtoMember(9)]
-        private byte _i;
+        private readonly byte _i;
 
         [ProtoMember(10)]
-        private byte _j;
+        private readonly byte _j;
 
         [ProtoMember(11)]
-        private byte _k;
+        private readonly byte _k;
 
-        private int _hashCode;
+        [ProtoMember(12)]
+        private readonly int _hashCode;
 
         [JsonInclude]
         [DataMember]
@@ -81,7 +83,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             _i = guidBytes[13];
             _j = guidBytes[14];
             _k = guidBytes[15];
-            _hashCode = 0;
+            _hashCode = Objects.HashCode(_a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k);
         }
 
         [JsonConstructor]
@@ -101,7 +103,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             _i = guidBytes[13];
             _j = guidBytes[14];
             _k = guidBytes[15];
-            _hashCode = 0;
+            _hashCode = Objects.HashCode(_a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k);
         }
 
         public static implicit operator Guid(KGuid guid)
@@ -281,13 +283,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             };
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public override int GetHashCode()
         {
-            if (_hashCode == 0)
-            {
-                _hashCode = Objects.ValueTypeHashCode(_a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k);
-            }
-
             return _hashCode;
         }
 
@@ -327,12 +325,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 _j,
                 _k,
             };
-        }
-
-        [ProtoAfterDeserialization]
-        private void AfterDeserialize()
-        {
-            _hashCode = 0;
         }
     }
 }
