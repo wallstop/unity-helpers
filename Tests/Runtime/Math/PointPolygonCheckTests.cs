@@ -366,13 +366,22 @@ namespace WallstopStudios.UnityHelpers.Tests.Math
             Vector3 planeNormal = new Vector3(1f, 1f, 0f).normalized;
             Vector3 center = new(5f, 5f, 5f);
 
-            // Create a simple square centered at origin, then translate
+            // Build a square directly in the tilted plane so the polygon matches the supplied normal
+            Vector3 tangent = Vector3.Cross(planeNormal, Vector3.forward);
+            if (tangent.sqrMagnitude < 1e-6f)
+            {
+                tangent = Vector3.Cross(planeNormal, Vector3.up);
+            }
+            tangent.Normalize();
+            Vector3 bitangent = Vector3.Cross(planeNormal, tangent).normalized;
+            float halfSize = 2f;
+
             Vector3[] square =
             {
-                center + new Vector3(-2f, 2f, 0f),
-                center + new Vector3(2f, 2f, 0f),
-                center + new Vector3(2f, -2f, 0f),
-                center + new Vector3(-2f, -2f, 0f),
+                center - tangent * halfSize + bitangent * halfSize,
+                center + tangent * halfSize + bitangent * halfSize,
+                center + tangent * halfSize - bitangent * halfSize,
+                center - tangent * halfSize - bitangent * halfSize,
             };
 
             // Point at center should be inside
@@ -614,14 +623,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Math
         public void IsPointInsidePolygonMultipleVerticesAtSameYHandlesCorrectly()
         {
             // Polygon with multiple vertices at the same Y coordinate
+            // Vertices ordered to form a valid non-self-intersecting hexagon
             Vector2[] polygon =
             {
                 new(0f, 0f),
-                new(2f, 2f),
-                new(4f, 2f),
-                new(6f, 2f),
                 new(8f, 0f),
+                new(6f, 2f),
+                new(4f, 2f),
                 new(4f, 4f),
+                new(2f, 2f),
             };
 
             // Point inside
@@ -732,7 +742,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Math
         [Test]
         public void IsPointInsidePolygonZigzagWithManyHorizontalSegmentsHandlesCorrectly()
         {
-            // Create a zigzag pattern with alternating horizontal and vertical segments
+            // Create a zigzag shape with stepped plateaus and gaps at different heights
             Vector2[] zigzag =
             {
                 new(0f, 0f),
@@ -742,7 +752,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Math
                 new(4f, 2f),
                 new(6f, 2f),
                 new(6f, 3f),
-                new(0f, 3f),
+                new(2f, 3f),
+                new(2f, 2f),
+                new(0f, 2f),
             };
 
             // Points inside at different heights
@@ -877,31 +889,32 @@ namespace WallstopStudios.UnityHelpers.Tests.Math
         [Test]
         public void IsPointInsidePolygonCombShapeHandlesCorrectly()
         {
-            // Comb shape with multiple teeth (many horizontal edges)
+            // Comb shape with alternating teeth and gaps (stress horizontal edges)
             Vector2[] comb =
             {
                 new(0f, 0f),
                 new(10f, 0f),
-                new(10f, 1f),
-                new(9f, 1f),
+                new(10f, 3f),
                 new(9f, 3f),
-                new(8f, 3f),
+                new(9f, 1f),
                 new(8f, 1f),
-                new(7f, 1f),
+                new(8f, 3f),
                 new(7f, 3f),
-                new(6f, 3f),
+                new(7f, 1f),
                 new(6f, 1f),
-                new(5f, 1f),
+                new(6f, 3f),
                 new(5f, 3f),
-                new(4f, 3f),
+                new(5f, 1f),
                 new(4f, 1f),
-                new(3f, 1f),
+                new(4f, 3f),
                 new(3f, 3f),
-                new(2f, 3f),
+                new(3f, 1f),
                 new(2f, 1f),
-                new(1f, 1f),
+                new(2f, 3f),
                 new(1f, 3f),
-                new(0f, 3f),
+                new(1f, 1f),
+                new(0f, 1f),
+                new(0f, 0f),
             };
 
             // Point in base of comb

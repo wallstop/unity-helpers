@@ -405,6 +405,30 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         }
 
         [Test]
+        public void IsPointInsideConvexHullTreatsBoundaryAsInside()
+        {
+            Grid grid = CreateGrid(out GameObject owner);
+            try
+            {
+                List<Vector3Int> hull = new()
+                {
+                    new Vector3Int(0, 0, 0),
+                    new Vector3Int(4, 0, 0),
+                    new Vector3Int(4, 4, 0),
+                    new Vector3Int(0, 4, 0),
+                };
+
+                Assert.IsTrue(hull.IsPointInsideConvexHull(grid, new Vector3Int(0, 2, 0)));
+                Assert.IsTrue(hull.IsPointInsideConvexHull(grid, new Vector3Int(2, 0, 0)));
+                Assert.IsFalse(hull.IsPointInsideConvexHull(grid, new Vector3Int(-1, 2, 0)));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(owner);
+            }
+        }
+
+        [Test]
         public void IsPointInsideConvexHullFastVectorDetectsContainment()
         {
             Grid grid = CreateGrid(out GameObject owner);
@@ -420,6 +444,30 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
 
                 Assert.IsTrue(hull.IsPointInsideConvexHull(grid, new FastVector3Int(1, 1, 0)));
                 Assert.IsFalse(hull.IsPointInsideConvexHull(grid, new FastVector3Int(3, 3, 0)));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(owner);
+            }
+        }
+
+        [Test]
+        public void IsPointInsideConvexHullFastVectorTreatsBoundaryAsInside()
+        {
+            Grid grid = CreateGrid(out GameObject owner);
+            try
+            {
+                List<FastVector3Int> hull = new()
+                {
+                    new FastVector3Int(0, 0, 0),
+                    new FastVector3Int(4, 0, 0),
+                    new FastVector3Int(4, 4, 0),
+                    new FastVector3Int(0, 4, 0),
+                };
+
+                Assert.IsTrue(hull.IsPointInsideConvexHull(grid, new FastVector3Int(0, 2, 0)));
+                Assert.IsTrue(hull.IsPointInsideConvexHull(grid, new FastVector3Int(2, 0, 0)));
+                Assert.IsFalse(hull.IsPointInsideConvexHull(grid, new FastVector3Int(-1, 2, 0)));
             }
             finally
             {
@@ -450,6 +498,37 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
 
                 Assert.IsTrue(hull.IsConvexHullInsideConvexHull(grid, inner));
                 inner.Add(new Vector3Int(5, 5, 0));
+                Assert.IsFalse(hull.IsConvexHullInsideConvexHull(grid, inner));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(owner);
+            }
+        }
+
+        [Test]
+        public void IsConvexHullInsideConvexHullHandlesCounterClockwiseOrder()
+        {
+            Grid grid = CreateGrid(out GameObject owner);
+            try
+            {
+                List<Vector3Int> hull = new()
+                {
+                    new Vector3Int(0, 0, 0),
+                    new Vector3Int(4, 0, 0),
+                    new Vector3Int(4, 4, 0),
+                    new Vector3Int(0, 4, 0),
+                };
+
+                List<Vector3Int> inner = new()
+                {
+                    new Vector3Int(1, 1, 0),
+                    new Vector3Int(2, 2, 0),
+                    new Vector3Int(3, 1, 0),
+                };
+
+                Assert.IsTrue(hull.IsConvexHullInsideConvexHull(grid, inner));
+                inner.Add(new Vector3Int(-1, 0, 0));
                 Assert.IsFalse(hull.IsConvexHullInsideConvexHull(grid, inner));
             }
             finally
@@ -490,7 +569,73 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         }
 
         [Test]
+        public void IsConvexHullInsideConvexHullFastVectorHandlesCounterClockwiseOrder()
+        {
+            Grid grid = CreateGrid(out GameObject owner);
+            try
+            {
+                List<FastVector3Int> hull = new()
+                {
+                    new FastVector3Int(0, 0, 0),
+                    new FastVector3Int(4, 0, 0),
+                    new FastVector3Int(4, 4, 0),
+                    new FastVector3Int(0, 4, 0),
+                };
+
+                List<FastVector3Int> inner = new()
+                {
+                    new FastVector3Int(1, 1, 0),
+                    new FastVector3Int(2, 2, 0),
+                    new FastVector3Int(3, 1, 0),
+                };
+
+                Assert.IsTrue(hull.IsConvexHullInsideConvexHull(grid, inner));
+                inner.Add(new FastVector3Int(-1, 0, 0));
+                Assert.IsFalse(hull.IsConvexHullInsideConvexHull(grid, inner));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(owner);
+            }
+        }
+
+        [Test]
         public void BuildConcaveHullVariantsMatchConvexHullForRectangle()
+        {
+            Grid grid = CreateGrid(out GameObject owner);
+            try
+            {
+                List<FastVector3Int> points = new()
+                {
+                    new FastVector3Int(0, 0, 0),
+                    new FastVector3Int(0, 3, 0),
+                    new FastVector3Int(3, 3, 0),
+                    new FastVector3Int(3, 0, 0),
+                };
+
+                DeterministicRandom random = new(Array.Empty<double>());
+                List<FastVector3Int> convex = points.BuildConvexHull(
+                    grid,
+                    random,
+                    includeColinearPoints: false
+                );
+                List<FastVector3Int> concave3 = points.BuildConcaveHull3(grid, random);
+                List<FastVector3Int> concave2 = points.BuildConcaveHull2(grid, random);
+                List<FastVector3Int> concave = points.BuildConcaveHull(grid, random);
+
+                CollectionAssert.AreEquivalent(convex, concave3);
+                CollectionAssert.AreEquivalent(convex, concave2);
+
+                CollectionAssert.AreEquivalent(convex, concave);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(owner);
+            }
+        }
+
+        [Test]
+        public void BuildConcaveHullVariantsMatchConvexHullForTriangle()
         {
             Grid grid = CreateGrid(out GameObject owner);
             try

@@ -60,19 +60,7 @@ namespace WallstopStudios.UnityHelpers.Core.Math
                 Vector2 vi = polygon[i];
                 Vector2 vj = polygon[j];
 
-                // Special case: Check if point lies on a horizontal edge
-                if (vi.y == vj.y && vi.y == point.y)
-                {
-                    float minX = Mathf.Min(vi.x, vj.x);
-                    float maxX = Mathf.Max(vi.x, vj.x);
-                    if (point.x >= minX && point.x <= maxX)
-                    {
-                        return true; // Point is on the edge
-                    }
-                }
-
-                // Check if the edge properly crosses the horizontal ray through the point
-                // Use < on one side and >= on the other to ensure consistent vertex handling
+                // Check if the edge crosses the horizontal ray through the point
                 if ((vi.y < point.y && vj.y >= point.y) || (vj.y < point.y && vi.y >= point.y))
                 {
                     // Calculate x-coordinate of edge intersection with horizontal ray at point.y

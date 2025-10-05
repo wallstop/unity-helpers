@@ -16,6 +16,9 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
     public static class UnityExtensions
     {
+        private const float ConvexHullRelationEpsilon = 1e-5f;
+        private const double ConvexHullOrientationEpsilon = 1e-8d;
+
         public static Vector2 GetCenter(this GameObject gameObject)
         {
             if (gameObject.TryGetComponent(out CenterPointOffset centerPointOffset))
@@ -509,9 +512,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             List<FastVector3Int> maybeInside
         )
         {
+            int orientation = DetermineConvexHullOrientation(convexHull, grid);
             foreach (FastVector3Int point in maybeInside)
             {
-                if (!IsPointInsideConvexHull(convexHull, grid, point))
+                if (!IsPointInsideConvexHull(convexHull, grid, point, orientation))
                 {
                     return false;
                 }
@@ -526,21 +530,8 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             Vector3Int point
         )
         {
-            for (int i = 0; i < convexHull.Count; ++i)
-            {
-                Vector3Int lhs = convexHull[i];
-                Vector3Int rhs = convexHull[(i + 1) % convexHull.Count];
-                float relation = Geometry.IsAPointLeftOfVectorOrOnTheLine(
-                    grid.CellToWorld(lhs),
-                    grid.CellToWorld(rhs),
-                    grid.CellToWorld(point)
-                );
-                if (relation < 0)
-                {
-                    return false;
-                }
-            }
-            return true;
+            int orientation = DetermineConvexHullOrientation(convexHull, grid);
+            return IsPointInsideConvexHull(convexHull, grid, point, orientation);
         }
 
         public static bool IsPointInsideConvexHull(
@@ -549,21 +540,8 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             FastVector3Int point
         )
         {
-            for (int i = 0; i < convexHull.Count; ++i)
-            {
-                FastVector3Int lhs = convexHull[i];
-                FastVector3Int rhs = convexHull[(i + 1) % convexHull.Count];
-                float relation = Geometry.IsAPointLeftOfVectorOrOnTheLine(
-                    grid.CellToWorld(lhs),
-                    grid.CellToWorld(rhs),
-                    grid.CellToWorld(point)
-                );
-                if (relation < 0)
-                {
-                    return false;
-                }
-            }
-            return true;
+            int orientation = DetermineConvexHullOrientation(convexHull, grid);
+            return IsPointInsideConvexHull(convexHull, grid, point, orientation);
         }
 
         public static bool IsConvexHullInsideConvexHull(
@@ -572,9 +550,158 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             List<Vector3Int> maybeInside
         )
         {
+            int orientation = DetermineConvexHullOrientation(convexHull, grid);
             foreach (Vector3Int point in maybeInside)
             {
-                if (!IsPointInsideConvexHull(convexHull, grid, point))
+                if (!IsPointInsideConvexHull(convexHull, grid, point, orientation))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private static int DetermineConvexHullOrientation(
+            IReadOnlyList<FastVector3Int> convexHull,
+            Grid grid
+        )
+        {
+            if (convexHull == null || convexHull.Count < 3)
+            {
+                return 0;
+            }
+
+            double twiceArea = 0d;
+            Vector3 previousWorld = grid.CellToWorld(convexHull[^1]);
+            Vector2 previous = new Vector2(previousWorld.x, previousWorld.y);
+            for (int i = 0; i < convexHull.Count; ++i)
+            {
+                Vector3 currentWorld = grid.CellToWorld(convexHull[i]);
+                Vector2 current = new Vector2(currentWorld.x, currentWorld.y);
+                twiceArea += (previous.x * current.y) - (current.x * previous.y);
+                previous = current;
+            }
+
+            if (Math.Abs(twiceArea) <= ConvexHullOrientationEpsilon)
+            {
+                return 0;
+            }
+
+            return twiceArea > 0d ? 1 : -1;
+        }
+
+        private static int DetermineConvexHullOrientation(
+            IReadOnlyList<Vector3Int> convexHull,
+            Grid grid
+        )
+        {
+            if (convexHull == null || convexHull.Count < 3)
+            {
+                return 0;
+            }
+
+            double twiceArea = 0d;
+            Vector3 previousWorld = grid.CellToWorld(convexHull[^1]);
+            Vector2 previous = new Vector2(previousWorld.x, previousWorld.y);
+            for (int i = 0; i < convexHull.Count; ++i)
+            {
+                Vector3 currentWorld = grid.CellToWorld(convexHull[i]);
+                Vector2 current = new Vector2(currentWorld.x, currentWorld.y);
+                twiceArea += (previous.x * current.y) - (current.x * previous.y);
+                previous = current;
+            }
+
+            if (Math.Abs(twiceArea) <= ConvexHullOrientationEpsilon)
+            {
+                return 0;
+            }
+
+            return twiceArea > 0d ? 1 : -1;
+        }
+
+        private static bool IsPointInsideConvexHull(
+            List<FastVector3Int> convexHull,
+            Grid grid,
+            FastVector3Int point,
+            int expectedSide
+        )
+        {
+            if (convexHull == null || convexHull.Count == 0)
+            {
+                return true;
+            }
+
+            int requiredSide = expectedSide;
+            Vector3 pointWorld = grid.CellToWorld(point);
+            for (int i = 0; i < convexHull.Count; ++i)
+            {
+                FastVector3Int lhs = convexHull[i];
+                FastVector3Int rhs = convexHull[(i + 1) % convexHull.Count];
+                float relation = Geometry.IsAPointLeftOfVectorOrOnTheLine(
+                    grid.CellToWorld(lhs),
+                    grid.CellToWorld(rhs),
+                    pointWorld
+                );
+
+                if (Mathf.Abs(relation) <= ConvexHullRelationEpsilon)
+                {
+                    continue;
+                }
+
+                int side = requiredSide;
+                if (side == 0)
+                {
+                    side = relation > 0f ? 1 : -1;
+                    requiredSide = side;
+                }
+
+                if (relation * side < -ConvexHullRelationEpsilon)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private static bool IsPointInsideConvexHull(
+            List<Vector3Int> convexHull,
+            Grid grid,
+            Vector3Int point,
+            int expectedSide
+        )
+        {
+            if (convexHull == null || convexHull.Count == 0)
+            {
+                return true;
+            }
+
+            int requiredSide = expectedSide;
+            Vector3 pointWorld = grid.CellToWorld(point);
+            for (int i = 0; i < convexHull.Count; ++i)
+            {
+                Vector3Int lhs = convexHull[i];
+                Vector3Int rhs = convexHull[(i + 1) % convexHull.Count];
+                float relation = Geometry.IsAPointLeftOfVectorOrOnTheLine(
+                    grid.CellToWorld(lhs),
+                    grid.CellToWorld(rhs),
+                    pointWorld
+                );
+
+                if (Mathf.Abs(relation) <= ConvexHullRelationEpsilon)
+                {
+                    continue;
+                }
+
+                int side = requiredSide;
+                if (side == 0)
+                {
+                    side = relation > 0f ? 1 : -1;
+                    requiredSide = side;
+                }
+
+                if (relation * side < -ConvexHullRelationEpsilon)
                 {
                     return false;
                 }

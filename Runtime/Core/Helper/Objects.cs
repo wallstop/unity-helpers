@@ -369,6 +369,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             private const uint NullSentinel = 0x9E3779B9u;
 
             private static readonly bool IsReferenceType = !typeof(T).IsValueType;
+            private static readonly bool IsObjectType = typeof(T) == typeof(object);
             private static readonly bool IsUnityObject =
                 typeof(UnityEngine.Object).IsAssignableFrom(typeof(T));
             private static readonly EqualityComparer<T> EqualityComparer =
@@ -383,17 +384,14 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     return unchecked((uint)EqualityComparer.GetHashCode(value));
                 }
 
+                if (IsObjectType)
+                {
+                    return GetBoxedObjectHash(value, out hasNonNullValue);
+                }
+
                 if (IsUnityObject)
                 {
-                    UnityEngine.Object unityObject = value as UnityEngine.Object;
-                    if (unityObject == null)
-                    {
-                        hasNonNullValue = false;
-                        return NullSentinel;
-                    }
-
-                    hasNonNullValue = true;
-                    return unchecked((uint)unityObject.GetHashCode());
+                    return GetUnityObjectHash(value, out hasNonNullValue);
                 }
 
                 if (ReferenceEquals(value, null))
@@ -404,6 +402,49 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
                 hasNonNullValue = true;
                 return unchecked((uint)EqualityComparer.GetHashCode(value));
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            private static uint GetUnityObjectHash(T value, out bool hasNonNullValue)
+            {
+                T local = value;
+                UnityEngine.Object unityObject = Unsafe.As<T, UnityEngine.Object>(ref local);
+
+                if (unityObject == null)
+                {
+                    hasNonNullValue = false;
+                    return NullSentinel;
+                }
+
+                hasNonNullValue = true;
+                return unchecked((uint)unityObject.GetHashCode());
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            private static uint GetBoxedObjectHash(T value, out bool hasNonNullValue)
+            {
+                object boxed = value;
+
+                if (boxed is UnityEngine.Object unityObject)
+                {
+                    if (unityObject == null)
+                    {
+                        hasNonNullValue = false;
+                        return NullSentinel;
+                    }
+
+                    hasNonNullValue = true;
+                    return unchecked((uint)unityObject.GetHashCode());
+                }
+
+                if (boxed is null)
+                {
+                    hasNonNullValue = false;
+                    return NullSentinel;
+                }
+
+                hasNonNullValue = true;
+                return unchecked((uint)EqualityComparer<object>.Default.GetHashCode(boxed));
             }
         }
     }
