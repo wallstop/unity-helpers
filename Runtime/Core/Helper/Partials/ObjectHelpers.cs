@@ -212,11 +212,13 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
         public static void DestroyAllChildrenGameObjects(this GameObject gameObject)
         {
+#if UNITY_EDITOR
             if (Application.isEditor)
             {
                 EditorDestroyAllChildrenGameObjects(gameObject);
             }
             else
+#endif
             {
                 PlayDestroyAllChildrenGameObjects(gameObject);
             }
@@ -241,11 +243,13 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return;
             }
 
+#if UNITY_EDITOR
             if (Application.isEditor && !Application.isPlaying)
             {
                 Object.DestroyImmediate(obj);
             }
             else
+#endif
             {
                 if (afterTime.HasValue)
                 {

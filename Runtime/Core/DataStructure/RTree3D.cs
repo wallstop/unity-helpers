@@ -19,6 +19,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             internal BoundingBox3D _bounds;
             internal Vector3 _center;
             internal uint _mortonKey;
+            internal ulong _sortKey;
         }
 
         [Serializable]
@@ -148,22 +149,27 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 {
                     minX = min.x;
                 }
+
                 if (min.y < minY)
                 {
                     minY = min.y;
                 }
+
                 if (min.z < minZ)
                 {
                     minZ = min.z;
                 }
+
                 if (max.x > maxX)
                 {
                     maxX = max.x;
                 }
+
                 if (max.y > maxY)
                 {
                     maxY = max.y;
                 }
+
                 if (max.z > maxZ)
                 {
                     maxZ = max.z;
@@ -193,13 +199,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             float inverseRangeY = rangeY > float.Epsilon ? 1f / rangeY : 0f;
             float inverseRangeZ = rangeZ > float.Epsilon ? 1f / rangeZ : 0f;
 
-            PooledResource<ulong[]> sortKeysResource = default;
-            ulong[] sortKeys = null;
-            if (elementCount > 1)
-            {
-                sortKeysResource = WallstopFastArrayPool<ulong>.Get(elementCount, out sortKeys);
-            }
-
             for (int i = 0; i < elementCount; ++i)
             {
                 ref ElementData data = ref elementData[i];
@@ -210,55 +209,65 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 ushort quantizedX = QuantizeNormalized(normalizedX);
                 ushort quantizedY = QuantizeNormalized(normalizedY);
                 ushort quantizedZ = QuantizeNormalized(normalizedZ);
-                data._mortonKey = EncodeMorton(quantizedX, quantizedY, quantizedZ);
-                if (sortKeys is not null)
+                uint mortonKey = EncodeMorton(quantizedX, quantizedY, quantizedZ);
+                data._mortonKey = mortonKey;
+                data._sortKey = ComposeSortKey(mortonKey, quantizedX, quantizedY, quantizedZ);
+            }
+
+            if (elementCount > 1)
+            {
+                RadixSort(elementData, elementCount);
+            }
+
+            RTreeNode head;
+            using (
+                PooledResource<List<RTreeNode>> currentLevelResource = Buffers<RTreeNode>.List.Get(
+                    out List<RTreeNode> currentLevel
+                )
+            )
+            {
+                int leafCount = Math.Max(1, (elementCount + bucketSize - 1) / bucketSize);
+                //      currentLevel.EnsureCapacity(leafCount);
+                for (int startIndex = 0; startIndex < elementCount; startIndex += bucketSize)
                 {
-                    sortKeys[i] = ComposeSortKey(
-                        data._mortonKey,
-                        quantizedX,
-                        quantizedY,
-                        quantizedZ
-                    );
-                }
-            }
-
-            if (sortKeys is not null)
-            {
-                Array.Sort(sortKeys, elementData, 0, elementCount);
-                sortKeysResource.Dispose();
-            }
-
-            List<RTreeNode> currentLevel = new(
-                Math.Max(1, (int)Math.Ceiling(elementCount / (double)bucketSize))
-            );
-            for (int startIndex = 0; startIndex < elementCount; startIndex += bucketSize)
-            {
-                int count = Math.Min(bucketSize, elementCount - startIndex);
-                currentLevel.Add(RTreeNode.CreateLeaf(elementData, startIndex, count));
-            }
-
-            while (currentLevel.Count > 1)
-            {
-                int parentCount = (currentLevel.Count + branchFactor - 1) / branchFactor;
-                List<RTreeNode> nextLevel = new(parentCount);
-                for (int i = 0; i < currentLevel.Count; i += branchFactor)
-                {
-                    int childCount = Math.Min(branchFactor, currentLevel.Count - i);
-                    RTreeNode[] children = new RTreeNode[childCount];
-                    currentLevel.CopyTo(i, children, 0, childCount);
-                    nextLevel.Add(RTreeNode.CreateInternal(children));
+                    int count = Math.Min(bucketSize, elementCount - startIndex);
+                    currentLevel.Add(RTreeNode.CreateLeaf(elementData, startIndex, count));
                 }
 
-                currentLevel = nextLevel;
+                while (currentLevel.Count > 1)
+                {
+                    int parentCount = (currentLevel.Count + branchFactor - 1) / branchFactor;
+                    using PooledResource<List<RTreeNode>> nextLevelResource =
+                        Buffers<RTreeNode>.List.Get(out List<RTreeNode> nextLevel);
+                    //        nextLevel.EnsureCapacity(parentCount);
+                    for (int i = 0; i < currentLevel.Count; i += branchFactor)
+                    {
+                        int childCount = Math.Min(branchFactor, currentLevel.Count - i);
+                        RTreeNode[] children = new RTreeNode[childCount];
+                        currentLevel.CopyTo(i, children, 0, childCount);
+                        nextLevel.Add(RTreeNode.CreateInternal(children));
+                    }
+
+                    currentLevel.Clear();
+                    //          currentLevel.EnsureCapacity(parentCount);
+                    currentLevel.AddRange(nextLevel);
+                }
+
+                head = currentLevel.Count > 0 ? currentLevel[0] : RTreeNode.CreateEmpty();
             }
 
-            _head = currentLevel[0];
+            _head = head;
             _bounds = _head.boundary;
         }
 
         private void CollectElementIndicesInBounds(BoundingBox3D bounds, List<int> indices)
         {
             indices.Clear();
+            if (_head._count == 0)
+            {
+                return;
+            }
+
             if (!bounds.Intersects(_bounds))
             {
                 return;
@@ -416,9 +425,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             HashSet<T> nearestNeighborsSet = nearestNeighborBufferResource.resource;
             nearestNeighborsSet.Clear();
 
-            using PooledResource<List<int>> nearestIndexBufferResource = Buffers<int>.List.Get();
-            List<int> nearestIndices = nearestIndexBufferResource.resource;
-            nearestIndices.Clear();
+            using PooledResource<List<(int index, float distanceSquared)>> candidateBufferResource =
+                Buffers<(int index, float distanceSquared)>.List.Get();
+            List<(int index, float distanceSquared)> candidates = candidateBufferResource.resource;
+            candidates.Clear();
 
             float currentWorstDistanceSquared = float.PositiveInfinity;
 
@@ -427,7 +437,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 NodeDistance best = PopNode(nodeHeap);
 
                 if (
-                    nearestNeighborsSet.Count >= count
+                    candidates.Count >= count
                     && best._distanceSquared >= currentWorstDistanceSquared
                 )
                 {
@@ -456,58 +466,61 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 for (int i = startIndex; i < endIndex; ++i)
                 {
                     ElementData elementData = _elementData[i];
-                    if (!nearestNeighborsSet.Add(elementData._value))
+                    T value = elementData._value;
+                    if (nearestNeighborsSet.Contains(value))
                     {
                         continue;
                     }
 
-                    nearestIndices.Add(i);
-                }
+                    float distanceSquared = (elementData._center - position).sqrMagnitude;
 
-                if (nearestNeighborsSet.Count >= count)
-                {
-                    currentWorstDistanceSquared = CalculateWorstDistanceSquared(
-                        nearestIndices,
-                        position
-                    );
+                    if (candidates.Count < count)
+                    {
+                        candidates.Add((i, distanceSquared));
+                        nearestNeighborsSet.Add(value);
+                        if (candidates.Count == count)
+                        {
+                            currentWorstDistanceSquared = FindWorstDistance(candidates);
+                        }
+
+                        continue;
+                    }
+
+                    if (distanceSquared >= currentWorstDistanceSquared)
+                    {
+                        continue;
+                    }
+
+                    int worstCandidateIndex = FindIndexOfWorstCandidate(candidates);
+                    T removedValue = _elementData[candidates[worstCandidateIndex].index]._value;
+                    nearestNeighborsSet.Remove(removedValue);
+
+                    candidates[worstCandidateIndex] = (i, distanceSquared);
+                    nearestNeighborsSet.Add(value);
+
+                    currentWorstDistanceSquared = FindWorstDistance(candidates);
                 }
             }
 
-            if (nearestIndices.Count == 0)
+            if (candidates.Count == 0)
             {
                 nodeHeap.Clear();
                 nearestNeighborsSet.Clear();
-                nearestIndices.Clear();
+                candidates.Clear();
                 return nearestNeighbors;
             }
 
-            {
-                Vector3 localPosition = position;
-                nearestIndices.Sort(
-                    (lhsIndex, rhsIndex) =>
-                    {
-                        Vector3 lhsCenter = _elementData[lhsIndex]._center;
-                        Vector3 rhsCenter = _elementData[rhsIndex]._center;
-                        return (lhsCenter - localPosition).sqrMagnitude.CompareTo(
-                            (rhsCenter - localPosition).sqrMagnitude
-                        );
-                    }
-                );
+            candidates.Sort((lhs, rhs) => lhs.distanceSquared.CompareTo(rhs.distanceSquared));
 
-                if (nearestIndices.Count > count)
-                {
-                    nearestIndices.RemoveRange(count, nearestIndices.Count - count);
-                }
-            }
-
-            foreach (int index in nearestIndices)
+            int resultCount = Math.Min(count, candidates.Count);
+            for (int i = 0; i < resultCount; ++i)
             {
-                nearestNeighbors.Add(_elementData[index]._value);
+                nearestNeighbors.Add(_elementData[candidates[i].index]._value);
             }
 
             nodeHeap.Clear();
             nearestNeighborsSet.Clear();
-            nearestIndices.Clear();
+            candidates.Clear();
 
             return nearestNeighbors;
 
@@ -573,20 +586,89 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return result;
             }
 
-            float CalculateWorstDistanceSquared(List<int> indices, Vector3 point)
+            static float FindWorstDistance(List<(int index, float distanceSquared)> list)
             {
                 float worst = 0f;
-                for (int i = 0; i < indices.Count; ++i)
+                for (int i = 0; i < list.Count; ++i)
                 {
-                    Vector3 center = _elementData[indices[i]]._center;
-                    float distanceSquared = (center - point).sqrMagnitude;
-                    if (distanceSquared > worst)
+                    float distance = list[i].distanceSquared;
+                    if (distance > worst)
                     {
-                        worst = distanceSquared;
+                        worst = distance;
                     }
                 }
 
                 return worst;
+            }
+
+            static int FindIndexOfWorstCandidate(List<(int index, float distanceSquared)> list)
+            {
+                int worstIndex = 0;
+                float worstDistance = list[0].distanceSquared;
+                for (int i = 1; i < list.Count; ++i)
+                {
+                    float distance = list[i].distanceSquared;
+                    if (distance > worstDistance)
+                    {
+                        worstDistance = distance;
+                        worstIndex = i;
+                    }
+                }
+
+                return worstIndex;
+            }
+        }
+
+        private static void RadixSort(ElementData[] elements, int length)
+        {
+            if (length <= 1)
+            {
+                return;
+            }
+
+            const int BitsPerPass = 8;
+            const int BucketCount = 1 << BitsPerPass;
+            Span<int> counts = stackalloc int[BucketCount];
+
+            using PooledResource<ElementData[]> scratchResource =
+                WallstopFastArrayPool<ElementData>.Get(length, out ElementData[] scratch);
+            ElementData[] source = elements;
+            ElementData[] destination = scratch;
+            bool dataInScratch = false;
+
+            for (int shift = 0; shift < 64; shift += BitsPerPass)
+            {
+                counts.Clear();
+                ref ElementData sourceRef = ref source[0];
+                for (int i = 0; i < length; ++i)
+                {
+                    ulong key = Unsafe.Add(ref sourceRef, i)._sortKey;
+                    counts[(int)((key >> shift) & (BucketCount - 1))]++;
+                }
+
+                int total = 0;
+                for (int bucket = 0; bucket < BucketCount; ++bucket)
+                {
+                    int count = counts[bucket];
+                    counts[bucket] = total;
+                    total += count;
+                }
+
+                ref ElementData destinationRef = ref destination[0];
+                for (int i = 0; i < length; ++i)
+                {
+                    ElementData value = Unsafe.Add(ref sourceRef, i);
+                    int bucket = (int)((value._sortKey >> shift) & (BucketCount - 1));
+                    Unsafe.Add(ref destinationRef, counts[bucket]++) = value;
+                }
+
+                (source, destination) = (destination, source);
+                dataInScratch = !dataInScratch;
+            }
+
+            if (dataInScratch)
+            {
+                Array.Copy(source, elements, length);
             }
         }
 

@@ -4,7 +4,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     using System.Collections;
     using System.Collections.Generic;
     using System.Runtime.CompilerServices;
-    using ProtoBuf;
+    using WallstopStudios.UnityHelpers.Core.Helper;
 
     /// <summary>
     /// A highly optimized, array-backed generic heap implementation supporting both min-heap and max-heap ordering.
@@ -12,7 +12,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     /// Allocation-free enumerator and minimal heap operations ensure optimal performance.
     /// </summary>
     /// <typeparam name="T">The type of elements in the heap. Must be comparable.</typeparam>
-    [ProtoContract]
+    [Serializable]
     public sealed class Heap<T> : IReadOnlyList<T>
     {
         public struct HeapEnumerator : IEnumerator<T>
@@ -58,14 +58,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         private const int DefaultCapacity = 16;
         private const int MinimumGrowth = 4;
 
-        [ProtoMember(1)]
-        private T[] _items = new T[DefaultCapacity];
-
-        [ProtoMember(2)]
+        private T[] _items;
         private int _count;
-
-        [ProtoMember(3)]
-        private IComparer<T> _comparer = Comparer<T>.Default;
+        private readonly IComparer<T> _comparer;
 
         /// <summary>
         /// Gets the number of elements in the heap.
@@ -117,7 +112,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         }
 
         public Heap()
-            : this(Comparer<T>.Default, DefaultCapacity) { }
+            : this(Comparer<T>.Default) { }
 
         /// <summary>
         /// Constructs a heap with the default comparer (min-heap for natural ordering).
@@ -158,52 +153,58 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
 
             _comparer = comparer ?? Comparer<T>.Default;
-
-            if (items is IReadOnlyList<T> readonlyList)
+            _count = 0;
+            switch (items)
             {
-                int capacity = Math.Max(DefaultCapacity, readonlyList.Count);
-                _items = new T[capacity];
-                for (int i = 0; i < readonlyList.Count; i++)
+                case IReadOnlyList<T> readonlyList:
                 {
-                    _items[i] = readonlyList[i];
-                }
-
-                _count = readonlyList.Count;
-            }
-            else if (items is ICollection<T> collection)
-            {
-                int capacity = Math.Max(DefaultCapacity, collection.Count);
-                _items = new T[capacity];
-                collection.CopyTo(_items, 0);
-                _count = collection.Count;
-            }
-            else if (items is IReadOnlyCollection<T> readOnlyCollection)
-            {
-                int capacity = Math.Max(DefaultCapacity, readOnlyCollection.Count);
-                _items = new T[capacity];
-                _count = 0;
-                foreach (T item in readOnlyCollection)
-                {
-                    _items[_count++] = item;
-                }
-            }
-            else
-            {
-                _items = new T[DefaultCapacity];
-                _count = 0;
-                foreach (T item in items)
-                {
-                    if (_count == _items.Length)
+                    int capacity = Math.Max(DefaultCapacity, readonlyList.Count);
+                    _items = new T[capacity];
+                    for (int i = 0; i < readonlyList.Count; i++)
                     {
-                        int newCapacity = ComputeGrowth(_items.Length);
-                        Resize(newCapacity);
+                        _items[_count++] = readonlyList[i];
                     }
-                    _items[_count++] = item;
+
+                    break;
+                }
+                case ICollection<T> collection:
+                {
+                    int capacity = Math.Max(DefaultCapacity, collection.Count);
+                    _items = new T[capacity];
+                    collection.CopyTo(_items, 0);
+                    _count = collection.Count;
+                    break;
+                }
+                case IReadOnlyCollection<T> readOnlyCollection:
+                {
+                    int capacity = Math.Max(DefaultCapacity, readOnlyCollection.Count);
+                    _items = new T[capacity];
+                    foreach (T item in readOnlyCollection)
+                    {
+                        _items[_count++] = item;
+                    }
+
+                    break;
+                }
+                default:
+                {
+                    _items = new T[DefaultCapacity];
+                    foreach (T item in items)
+                    {
+                        if (_count == _items.Length)
+                        {
+                            int newCapacity = ComputeGrowth(_items.Length);
+                            Resize(newCapacity);
+                        }
+                        _items[_count++] = item;
+                    }
+
+                    break;
                 }
             }
 
             // Floyd's heap construction algorithm - O(n)
-            for (int i = (_count - 1) / 2; i >= 0; i--)
+            for (int i = (_count - 1) >> 1; i >= 0; i--)
             {
                 HeapifyDown(i);
             }
@@ -212,33 +213,43 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         /// <summary>
         /// Creates a min-heap with the default comparer.
         /// </summary>
-        public static Heap<T> CreateMinHeap(int capacity = DefaultCapacity)
+        public static Heap<T> CreateMinHeap(
+            IComparer<T> comparer = null,
+            int capacity = DefaultCapacity
+        )
         {
-            return new Heap<T>(Comparer<T>.Default, capacity);
+            return new Heap<T>(comparer, capacity);
         }
 
         /// <summary>
         /// Creates a max-heap with a reversed comparer.
         /// </summary>
-        public static Heap<T> CreateMaxHeap(int capacity = DefaultCapacity)
+        public static Heap<T> CreateMaxHeap(
+            IComparer<T> comparer = null,
+            int capacity = DefaultCapacity
+        )
         {
-            return new Heap<T>(ReverseComparer<T>.Instance, capacity);
+            return comparer == null
+                ? new Heap<T>(ReverseComparer<T>.Instance, capacity)
+                : new Heap<T>(new ReverseComparer<T>(comparer), capacity);
         }
 
         /// <summary>
         /// Creates a min-heap from an existing collection.
         /// </summary>
-        public static Heap<T> CreateMinHeap(IEnumerable<T> items)
+        public static Heap<T> CreateMinHeap(IEnumerable<T> items, IComparer<T> comparer = null)
         {
-            return new Heap<T>(items, Comparer<T>.Default);
+            return new Heap<T>(items, comparer ?? Comparer<T>.Default);
         }
 
         /// <summary>
         /// Creates a max-heap from an existing collection.
         /// </summary>
-        public static Heap<T> CreateMaxHeap(IEnumerable<T> items)
+        public static Heap<T> CreateMaxHeap(IEnumerable<T> items, IComparer<T> comparer = null)
         {
-            return new Heap<T>(items, ReverseComparer<T>.Instance);
+            return comparer == null
+                ? new Heap<T>(items, ReverseComparer<T>.Instance)
+                : new Heap<T>(items, new ReverseComparer<T>(comparer));
         }
 
         /// <summary>
@@ -291,7 +302,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 _items[0] = _items[_count];
                 HeapifyDown(0);
             }
-            _items[_count] = default; // Clear reference
+            _items[_count] = default;
             return true;
         }
 
@@ -305,13 +316,13 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         }
 
         /// <summary>
-        /// Checks if the heap contains a specific element in O(n) time.
+        /// Checks if the heap contains a specific element in O(log(n)) time.
         /// </summary>
         public bool Contains(T item)
         {
             for (int i = 0; i < _count; i++)
             {
-                if (EqualityComparer<T>.Default.Equals(_items[i], item))
+                if (_comparer.Compare(_items[i], item) == 0)
                 {
                     return true;
                 }
@@ -345,9 +356,20 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         /// </summary>
         public T[] ToArray()
         {
-            T[] result = new T[_count];
-            Array.Copy(_items, 0, result, 0, _count);
+            T[] result = null;
+            _ = ToArray(ref result);
             return result;
+        }
+
+        public int ToArray(ref T[] result)
+        {
+            if (result == null || result.Length < _count)
+            {
+                result = new T[_count];
+            }
+
+            Array.Copy(_items, 0, result, 0, _count);
+            return _count;
         }
 
         /// <summary>
@@ -466,9 +488,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
         private void Resize(int newCapacity)
         {
-            T[] newItems = new T[newCapacity];
-            Array.Copy(_items, 0, newItems, 0, _count);
-            _items = newItems;
+            if (newCapacity <= _count)
+            {
+                return;
+            }
+
+            Array.Resize(ref _items, newCapacity);
         }
 
         public HeapEnumerator GetEnumerator()
@@ -484,21 +509,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         IEnumerator IEnumerable.GetEnumerator()
         {
             return GetEnumerator();
-        }
-
-        /// <summary>
-        /// A reverse comparer used for max-heaps.
-        /// </summary>
-        private sealed class ReverseComparer<TElement> : IComparer<TElement>
-        {
-            public static readonly ReverseComparer<TElement> Instance =
-                new ReverseComparer<TElement>();
-            private readonly IComparer<TElement> _baseComparer = Comparer<TElement>.Default;
-
-            public int Compare(TElement x, TElement y)
-            {
-                return _baseComparer.Compare(y, x); // Reversed
-            }
         }
     }
 }

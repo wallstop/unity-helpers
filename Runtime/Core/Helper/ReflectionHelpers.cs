@@ -78,7 +78,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                         attribute = default;
                         return false;
                     }
-                    attribute = attributes[0] as T;
+                    attribute = Unsafe.As<T>(attributes[0]);
                     return attribute != null;
                 }
             }

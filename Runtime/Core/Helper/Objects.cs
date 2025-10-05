@@ -14,7 +14,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             where T : class
         {
             object empty = weakReference.Target;
-            return (T)empty;
+            return Unsafe.As<T>(empty);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

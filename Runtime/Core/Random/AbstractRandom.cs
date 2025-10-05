@@ -3,6 +3,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Runtime.CompilerServices;
     using System.Runtime.Serialization;
     using DataStructure.Adapters;
     using UnityEngine;
@@ -519,7 +520,8 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             where T : struct, Enum
         {
             Type enumType = typeof(T);
-            T[] enumValues = (T[])EnumTypeCache.GetOrAdd(enumType, type => Enum.GetValues(type));
+            object enumArrays = EnumTypeCache.GetOrAdd(enumType, type => Enum.GetValues(type));
+            T[] enumValues = Unsafe.As<object, T[]>(ref enumArrays);
             return RandomOf(enumValues);
         }
 

@@ -4,6 +4,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     using System.Collections;
     using System.Collections.Generic;
     using System.Runtime.CompilerServices;
+    using ProtoBuf;
+    using UnityEngine;
     using WallstopStudios.UnityHelpers.Utils;
 
     /// <summary>
@@ -12,6 +14,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     /// fast membership testing combined with cache-friendly iteration over active elements.
     /// Elements must be non-negative integers within a specified universe size.
     /// </summary>
+    [Serializable]
+    [ProtoContract(IgnoreListHandling = true)]
     public sealed class SparseSet : IReadOnlyList<int>
     {
         public struct SparseSetEnumerator : IEnumerator<int>
@@ -54,8 +58,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             public void Dispose() { }
         }
 
-        private readonly int[] _sparse;
-        private readonly int[] _dense;
+        [SerializeField]
+        [ProtoMember(1)]
+        private int[] _sparse;
+
+        [SerializeField]
+        [ProtoMember(2)]
+        private int[] _dense;
+
+        [SerializeField]
+        [ProtoMember(3)]
         private int _count;
 
         /// <summary>
@@ -88,6 +100,13 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 }
                 return _dense[index];
             }
+        }
+
+        private SparseSet()
+        {
+            _sparse = Array.Empty<int>();
+            _dense = Array.Empty<int>();
+            _count = 0;
         }
 
         /// <summary>
@@ -221,9 +240,19 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         /// </summary>
         public int[] ToArray()
         {
-            int[] result = new int[_count];
-            Array.Copy(_dense, 0, result, 0, _count);
+            int[] result = null;
+            _ = ToArray(ref result);
             return result;
+        }
+
+        public int ToArray(ref int[] result)
+        {
+            if (result == null || result.Length < _count)
+            {
+                result = new int[_count];
+            }
+            Array.Copy(_dense, 0, result, 0, _count);
+            return _count;
         }
 
         /// <summary>
@@ -265,6 +294,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     /// A generic sparse set that maps elements of type T to internal indices.
     /// Provides O(1) operations with support for any element type.
     /// </summary>
+    [Serializable]
     public sealed class SparseSet<T> : IReadOnlyList<T>
     {
         public struct SparseSetEnumerator : IEnumerator<T>
@@ -400,9 +430,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryAdd(T element)
         {
-            if (_elementToIndex.ContainsKey(element))
+            if (element == null)
             {
-                return false;
+                throw new ArgumentNullException(nameof(element));
             }
 
             if (_nextIndex >= _elements.Length)
@@ -410,8 +440,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return false; // Capacity reached
             }
 
+            if (!_elementToIndex.TryAdd(element, _nextIndex + 1))
+            {
+                return false;
+            }
+
             int index = _nextIndex++;
-            _elementToIndex[element] = index;
             _elements[index] = element;
             _dense[_count] = index;
             _sparse[index] = _count;
@@ -425,7 +459,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryRemove(T element)
         {
-            if (!_elementToIndex.TryGetValue(element, out int index))
+            if (element == null)
+            {
+                throw new ArgumentNullException(nameof(element));
+            }
+
+            if (!_elementToIndex.Remove(element, out int index))
             {
                 return false;
             }
@@ -436,8 +475,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             // Swap with last element
             _dense[indexInDense] = lastDenseIndex;
             _sparse[lastDenseIndex] = indexInDense;
-
-            _elementToIndex.Remove(element);
             _elements[index] = default;
             _count--;
             return true;
@@ -449,6 +486,11 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Contains(T element)
         {
+            if (element == null)
+            {
+                throw new ArgumentNullException(nameof(element));
+            }
+
             return _elementToIndex.ContainsKey(element);
         }
 

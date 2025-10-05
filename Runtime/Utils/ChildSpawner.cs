@@ -111,6 +111,7 @@ namespace WallstopStudios.UnityHelpers.Utils
                 }
             }
 
+#if UNITY_EDITOR
             if (Application.isEditor)
             {
                 foreach (GameObject prefab in _editorOnlyPrefabs)
@@ -130,6 +131,7 @@ namespace WallstopStudios.UnityHelpers.Utils
                     }
                 }
             }
+#endif
 
             if (Application.isEditor || Debug.isDebugBuild)
             {

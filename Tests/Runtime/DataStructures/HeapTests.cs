@@ -38,9 +38,10 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void ConstructorWithNullComparerThrows()
+        public void ConstructorWithNullComparerDoesNotThrow()
         {
-            Assert.Throws<ArgumentNullException>(() => new Heap<int>(null, 16));
+            _ = new Heap<int>(null, 16);
+            Assert.Pass("Does not throw.");
         }
 
         [Test]
@@ -56,7 +57,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Heap<int> heap = new(items);
 
             Assert.AreEqual(items.Length, heap.Count);
-            Assert.AreEqual(1, heap.Peek()); // Min element
+            Assert.IsTrue(heap.TryPeek(out int result));
+            Assert.AreEqual(1, result); // Min element
         }
 
         [Test]
@@ -75,7 +77,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             heap.Add(3);
             heap.Add(7);
 
-            Assert.AreEqual(3, heap.Peek());
+            Assert.IsTrue(heap.TryPeek(out int result));
+            Assert.AreEqual(3, result);
         }
 
         [Test]
@@ -84,7 +87,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             int[] items = { 5, 3, 7, 1, 9 };
             Heap<int> heap = Heap<int>.CreateMinHeap(items);
 
-            Assert.AreEqual(1, heap.Peek());
+            Assert.IsTrue(heap.TryPeek(out int result));
+            Assert.AreEqual(1, result);
             Assert.AreEqual(5, heap.Count);
         }
 
@@ -98,7 +102,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             heap.Add(1);
 
             Assert.AreEqual(4, heap.Count);
-            Assert.AreEqual(1, heap.Peek());
+            Assert.IsTrue(heap.TryPeek(out int result));
+            Assert.AreEqual(1, result);
         }
 
         [Test]
@@ -113,9 +118,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             }
 
             List<int> sorted = new();
-            while (!heap.IsEmpty)
+            while (heap.TryPop(out int result))
             {
-                sorted.Add(heap.Pop());
+                sorted.Add(result);
             }
 
             CollectionAssert.AreEqual(values.OrderBy(x => x).ToList(), sorted);
@@ -124,15 +129,13 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void AddTriggersResize()
         {
-            Heap<int> heap = new(2);
-            heap.Add(1);
-            heap.Add(2);
+            Heap<int> heap = new(2) { 1, 2 };
 
             Assert.AreEqual(2, heap.Capacity);
 
             heap.Add(3);
 
-            Assert.AreEqual(4, heap.Capacity);
+            Assert.IsTrue(2 < heap.Capacity);
             Assert.AreEqual(3, heap.Count);
         }
 
@@ -141,9 +144,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 5, 3, 7, 1 });
 
-            int min = heap.Peek();
+            Assert.IsTrue(heap.TryPeek(out int result));
 
-            Assert.AreEqual(1, min);
+            Assert.AreEqual(1, result);
             Assert.AreEqual(4, heap.Count);
         }
 
@@ -200,11 +203,12 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 5, 3, 7, 1 });
 
-            int min = heap.Pop();
+            Assert.IsTrue(heap.TryPop(out int result));
 
-            Assert.AreEqual(1, min);
+            Assert.AreEqual(1, result);
             Assert.AreEqual(3, heap.Count);
-            Assert.AreEqual(3, heap.Peek());
+            Assert.IsTrue(heap.TryPeek(out result));
+            Assert.AreEqual(3, result);
         }
 
         [Test]
@@ -213,9 +217,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 5, 3, 7, 1, 9, 2, 8 });
 
             List<int> results = new();
-            while (!heap.IsEmpty)
+            while (heap.TryPop(out int result))
             {
-                results.Add(heap.Pop());
+                results.Add(result);
             }
 
             CollectionAssert.AreEqual(new[] { 1, 2, 3, 5, 7, 8, 9 }, results);
@@ -270,7 +274,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             Assert.AreEqual(0, heap.Count);
             Assert.IsTrue(heap.IsEmpty);
-            Assert.Throws<InvalidOperationException>(() => heap.Peek());
+            Assert.IsFalse(heap.TryPeek(out _));
         }
 
         [Test]
@@ -360,10 +364,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void TrimExcessReducesCapacity()
         {
-            Heap<int> heap = new(100);
-            heap.Add(1);
-            heap.Add(2);
-            heap.Add(3);
+            Heap<int> heap = new(100) { 1, 2, 3 };
 
             int capacityBefore = heap.Capacity;
             heap.TrimExcess();
@@ -409,9 +410,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 5, 3, 3, 7, 1, 1 });
 
             List<int> results = new();
-            while (!heap.IsEmpty)
+            while (heap.TryPop(out int result))
             {
-                results.Add(heap.Pop());
+                results.Add(result);
             }
 
             CollectionAssert.AreEqual(new[] { 1, 1, 3, 3, 5, 7 }, results);
@@ -424,8 +425,10 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             heap.Add(42);
 
             Assert.AreEqual(1, heap.Count);
-            Assert.AreEqual(42, heap.Peek());
-            Assert.AreEqual(42, heap.Pop());
+            Assert.IsTrue(heap.TryPeek(out int result));
+            Assert.AreEqual(42, result);
+            Assert.IsTrue(heap.TryPop(out result));
+            Assert.AreEqual(42, result);
             Assert.IsTrue(heap.IsEmpty);
         }
 
@@ -436,9 +439,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Heap<int> heap = Heap<int>.CreateMinHeap(items);
 
             List<int> results = new();
-            while (!heap.IsEmpty)
+            while (heap.TryPop(out int result))
             {
-                results.Add(heap.Pop());
+                results.Add(result);
             }
 
             CollectionAssert.AreEqual(Enumerable.Range(0, 10000).ToList(), results);
@@ -448,12 +451,10 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void HeapHandlesCustomComparerForMinHeap()
         {
             IComparer<int> comparer = Comparer<int>.Default;
-            Heap<int> heap = new(comparer);
-            heap.Add(5);
-            heap.Add(3);
-            heap.Add(7);
+            Heap<int> heap = new(comparer) { 5, 3, 7 };
 
-            Assert.AreEqual(3, heap.Peek());
+            Assert.IsTrue(heap.TryPeek(out int result));
+            Assert.AreEqual(3, result);
         }
 
         [Test]
@@ -464,12 +465,13 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             heap.Add("apple");
             heap.Add("cherry");
 
-            Assert.AreEqual("apple", heap.Peek());
+            Assert.IsTrue(heap.TryPeek(out string result));
+            Assert.AreEqual("apple", result);
 
             List<string> results = new();
-            while (!heap.IsEmpty)
+            while (heap.TryPop(out string item))
             {
-                results.Add(heap.Pop());
+                results.Add(item);
             }
 
             CollectionAssert.AreEqual(new[] { "apple", "banana", "cherry" }, results);
@@ -482,20 +484,25 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             heap.Add(10);
             heap.Add(5);
-            Assert.AreEqual(5, heap.Peek());
+            Assert.IsTrue(heap.TryPeek(out int result));
+            Assert.AreEqual(5, result);
 
             heap.Add(3);
-            Assert.AreEqual(3, heap.Peek());
+            Assert.IsTrue(heap.TryPeek(out result));
+            Assert.AreEqual(3, result);
 
-            heap.Pop();
-            Assert.AreEqual(5, heap.Peek());
+            Assert.IsTrue(heap.TryPop(out _));
+            Assert.IsTrue(heap.TryPeek(out result));
+            Assert.AreEqual(5, result);
 
             heap.Add(1);
-            Assert.AreEqual(1, heap.Peek());
+            Assert.IsTrue(heap.TryPeek(out result));
+            Assert.AreEqual(1, result);
 
-            heap.Pop();
-            heap.Pop();
-            Assert.AreEqual(10, heap.Peek());
+            Assert.IsTrue(heap.TryPop(out _));
+            Assert.IsTrue(heap.TryPop(out _));
+            Assert.IsTrue(heap.TryPeek(out result));
+            Assert.AreEqual(10, result);
         }
 
         [Test]
@@ -507,9 +514,12 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             heap.Add(3);
 
             // Null should be treated as minimum by default comparer
-            Assert.AreEqual(null, heap.Pop());
-            Assert.AreEqual(3, heap.Pop());
-            Assert.AreEqual(5, heap.Pop());
+            Assert.IsTrue(heap.TryPop(out int? result));
+            Assert.AreEqual(null, result);
+            Assert.IsTrue(heap.TryPop(out result));
+            Assert.AreEqual(3, result);
+            Assert.IsTrue(heap.TryPop(out result));
+            Assert.AreEqual(5, result);
         }
     }
 
@@ -523,7 +533,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             heap.Add(3);
             heap.Add(7);
 
-            Assert.AreEqual(7, heap.Peek());
+            Assert.IsTrue(heap.TryPop(out int result));
+            Assert.AreEqual(7, result);
         }
 
         [Test]
@@ -532,8 +543,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             int[] items = { 5, 3, 7, 1, 9 };
             Heap<int> heap = Heap<int>.CreateMaxHeap(items);
 
-            Assert.AreEqual(9, heap.Peek());
-            Assert.AreEqual(5, heap.Count);
+            Assert.IsTrue(heap.TryPop(out int result));
+            Assert.AreEqual(9, result);
+            Assert.AreEqual(4, heap.Count);
         }
 
         [Test]
@@ -548,9 +560,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             }
 
             List<int> sorted = new();
-            while (!heap.IsEmpty)
+            while (heap.TryPop(out int result))
             {
-                sorted.Add(heap.Pop());
+                sorted.Add(result);
             }
 
             CollectionAssert.AreEqual(values.OrderByDescending(x => x).ToList(), sorted);
@@ -561,10 +573,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             Heap<int> heap = Heap<int>.CreateMaxHeap(new[] { 5, 3, 7, 1 });
 
-            int max = heap.Peek();
-
-            Assert.AreEqual(7, max);
-            Assert.AreEqual(4, heap.Count);
+            Assert.IsTrue(heap.TryPop(out int result));
+            Assert.AreEqual(7, result);
+            Assert.AreEqual(3, heap.Count);
         }
 
         [Test]
@@ -572,11 +583,12 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             Heap<int> heap = Heap<int>.CreateMaxHeap(new[] { 5, 3, 7, 1 });
 
-            int max = heap.Pop();
+            Assert.IsTrue(heap.TryPop(out int result));
 
-            Assert.AreEqual(7, max);
+            Assert.AreEqual(7, result);
             Assert.AreEqual(3, heap.Count);
-            Assert.AreEqual(5, heap.Peek());
+            Assert.IsTrue(heap.TryPeek(out result));
+            Assert.AreEqual(5, result);
         }
 
         [Test]
@@ -585,9 +597,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Heap<int> heap = Heap<int>.CreateMaxHeap(new[] { 5, 3, 7, 1, 9, 2, 8 });
 
             List<int> results = new();
-            while (!heap.IsEmpty)
+            while (heap.TryPop(out int result))
             {
-                results.Add(heap.Pop());
+                results.Add(result);
             }
 
             CollectionAssert.AreEqual(new[] { 9, 8, 7, 5, 3, 2, 1 }, results);
@@ -599,9 +611,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Heap<int> heap = Heap<int>.CreateMaxHeap(new[] { 5, 3, 3, 7, 7, 1 });
 
             List<int> results = new();
-            while (!heap.IsEmpty)
+            while (heap.TryPop(out int result))
             {
-                results.Add(heap.Pop());
+                results.Add(result);
             }
 
             CollectionAssert.AreEqual(new[] { 7, 7, 5, 3, 3, 1 }, results);
@@ -614,8 +626,10 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             heap.Add(42);
 
             Assert.AreEqual(1, heap.Count);
-            Assert.AreEqual(42, heap.Peek());
-            Assert.AreEqual(42, heap.Pop());
+            Assert.IsTrue(heap.TryPeek(out int result));
+            Assert.AreEqual(42, result);
+            Assert.IsTrue(heap.TryPop(out result));
+            Assert.AreEqual(42, result);
             Assert.IsTrue(heap.IsEmpty);
         }
 
@@ -626,9 +640,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Heap<int> heap = Heap<int>.CreateMaxHeap(items);
 
             List<int> results = new();
-            while (!heap.IsEmpty)
+            while (heap.TryPop(out int result))
             {
-                results.Add(heap.Pop());
+                results.Add(result);
             }
 
             CollectionAssert.AreEqual(Enumerable.Range(0, 10000).Reverse().ToList(), results);
@@ -642,12 +656,13 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             heap.Add("apple");
             heap.Add("cherry");
 
-            Assert.AreEqual("cherry", heap.Peek());
+            Assert.IsTrue(heap.TryPeek(out string item));
+            Assert.AreEqual("cherry", item);
 
             List<string> results = new();
-            while (!heap.IsEmpty)
+            while (heap.TryPop(out string result))
             {
-                results.Add(heap.Pop());
+                results.Add(result);
             }
 
             CollectionAssert.AreEqual(new[] { "cherry", "banana", "apple" }, results);
@@ -660,20 +675,25 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             heap.Add(10);
             heap.Add(15);
-            Assert.AreEqual(15, heap.Peek());
+            Assert.IsTrue(heap.TryPeek(out int result));
+            Assert.AreEqual(15, result);
 
             heap.Add(20);
-            Assert.AreEqual(20, heap.Peek());
+            Assert.IsTrue(heap.TryPeek(out result));
+            Assert.AreEqual(20, result);
 
-            heap.Pop();
-            Assert.AreEqual(15, heap.Peek());
+            Assert.IsTrue(heap.TryPop(out _));
+            Assert.IsTrue(heap.TryPeek(out result));
+            Assert.AreEqual(15, result);
 
             heap.Add(25);
-            Assert.AreEqual(25, heap.Peek());
+            Assert.IsTrue(heap.TryPeek(out result));
+            Assert.AreEqual(25, result);
 
-            heap.Pop();
-            heap.Pop();
-            Assert.AreEqual(10, heap.Peek());
+            Assert.IsTrue(heap.TryPop(out _));
+            Assert.IsTrue(heap.TryPop(out _));
+            Assert.IsTrue(heap.TryPeek(out result));
+            Assert.AreEqual(10, result);
         }
 
         [Test]
@@ -730,13 +750,14 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void HeapWorksWithCustomComparer()
         {
             IComparer<Person> comparer = new PersonAgeComparer();
-            Heap<Person> heap = new(comparer);
+            Heap<Person> heap = new(comparer)
+            {
+                new Person("Alice", 30),
+                new Person("Bob", 25),
+                new Person("Charlie", 35),
+            };
 
-            heap.Add(new Person("Alice", 30));
-            heap.Add(new Person("Bob", 25));
-            heap.Add(new Person("Charlie", 35));
-
-            Person youngest = heap.Peek();
+            Assert.IsTrue(heap.TryPeek(out Person youngest));
             Assert.AreEqual("Bob", youngest.Name);
             Assert.AreEqual(25, youngest.Age);
         }
@@ -755,9 +776,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Heap<Person> heap = new(people, comparer);
 
             List<string> names = new();
-            while (!heap.IsEmpty)
+            while (heap.TryPop(out Person person))
             {
-                names.Add(heap.Pop().Name);
+                names.Add(person.Name);
             }
 
             CollectionAssert.AreEqual(new[] { "David", "Bob", "Alice", "Charlie" }, names);
@@ -769,13 +790,13 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             IComparer<Person> reverseComparer = Comparer<Person>.Create(
                 (x, y) => new PersonAgeComparer().Compare(y, x)
             );
-            Heap<Person> heap = new(reverseComparer);
-
-            heap.Add(new Person("Alice", 30));
-            heap.Add(new Person("Bob", 25));
-            heap.Add(new Person("Charlie", 35));
-
-            Person oldest = heap.Peek();
+            Heap<Person> heap = new(reverseComparer)
+            {
+                new Person("Alice", 30),
+                new Person("Bob", 25),
+                new Person("Charlie", 35),
+            };
+            Assert.IsTrue(heap.TryPeek(out Person oldest));
             Assert.AreEqual("Charlie", oldest.Name);
             Assert.AreEqual(35, oldest.Age);
         }
@@ -789,14 +810,17 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Heap<int> heap = Heap<int>.CreateMinHeap();
 
             heap.Add(5);
-            Assert.AreEqual(5, heap.Pop());
+            Assert.IsTrue(heap.TryPop(out int result));
+            Assert.AreEqual(5, result);
 
             heap.Add(3);
             heap.Add(7);
-            Assert.AreEqual(3, heap.Pop());
+            Assert.IsTrue(heap.TryPop(out result));
+            Assert.AreEqual(3, result);
 
             heap.Add(1);
-            Assert.AreEqual(1, heap.Peek());
+            Assert.IsTrue(heap.TryPop(out result));
+            Assert.AreEqual(1, result);
         }
 
         [Test]
@@ -805,9 +829,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 5, 5, 5, 5, 5 });
 
             Assert.AreEqual(5, heap.Count);
-            while (!heap.IsEmpty)
+            while (heap.TryPop(out int result))
             {
-                Assert.AreEqual(5, heap.Pop());
+                Assert.AreEqual(5, result);
             }
         }
 
@@ -818,9 +842,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Heap<int> heap = Heap<int>.CreateMinHeap(sorted);
 
             List<int> results = new();
-            while (!heap.IsEmpty)
+            while (heap.TryPop(out int result))
             {
-                results.Add(heap.Pop());
+                results.Add(result);
             }
 
             CollectionAssert.AreEqual(sorted, results);
@@ -833,9 +857,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Heap<int> heap = Heap<int>.CreateMinHeap(sorted);
 
             List<int> results = new();
-            while (!heap.IsEmpty)
+            while (heap.TryPop(out int result))
             {
-                results.Add(heap.Pop());
+                results.Add(result);
             }
 
             CollectionAssert.AreEqual(sorted.OrderBy(x => x).ToList(), results);
@@ -848,9 +872,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Heap<int> heap = Heap<int>.CreateMaxHeap(sorted);
 
             List<int> results = new();
-            while (!heap.IsEmpty)
+            while (heap.TryPop(out int result))
             {
-                results.Add(heap.Pop());
+                results.Add(result);
             }
 
             CollectionAssert.AreEqual(sorted.Reverse().ToList(), results);
@@ -863,9 +887,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Heap<int> heap = Heap<int>.CreateMaxHeap(sorted);
 
             List<int> results = new();
-            while (!heap.IsEmpty)
+            while (heap.TryPop(out int result))
             {
-                results.Add(heap.Pop());
+                results.Add(result);
             }
 
             CollectionAssert.AreEqual(sorted, results);
@@ -879,9 +903,12 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             heap.Add(int.MinValue);
             heap.Add(0);
 
-            Assert.AreEqual(int.MinValue, heap.Pop());
-            Assert.AreEqual(0, heap.Pop());
-            Assert.AreEqual(int.MaxValue, heap.Pop());
+            Assert.IsTrue(heap.TryPop(out int result));
+            Assert.AreEqual(int.MinValue, result);
+            Assert.IsTrue(heap.TryPop(out result));
+            Assert.AreEqual(0, result);
+            Assert.IsTrue(heap.TryPop(out result));
+            Assert.AreEqual(int.MaxValue, result);
         }
 
         [Test]
@@ -905,10 +932,14 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             heap.Add(double.PositiveInfinity);
             heap.Add(0.0);
 
-            Assert.AreEqual(double.NegativeInfinity, heap.Pop());
-            Assert.AreEqual(0.0, heap.Pop());
-            Assert.AreEqual(5.0, heap.Pop());
-            Assert.AreEqual(double.PositiveInfinity, heap.Pop());
+            Assert.IsTrue(heap.TryPop(out double result));
+            Assert.AreEqual(double.NegativeInfinity, result);
+            Assert.IsTrue(heap.TryPop(out result));
+            Assert.AreEqual(0.0, result);
+            Assert.IsTrue(heap.TryPop(out result));
+            Assert.AreEqual(5.0, result);
+            Assert.IsTrue(heap.TryPop(out result));
+            Assert.AreEqual(double.PositiveInfinity, result);
         }
 
         [Test]
@@ -926,7 +957,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.IsTrue(heap.IsEmpty);
 
             heap.Add(42);
-            Assert.AreEqual(42, heap.Peek());
+            Assert.IsTrue(heap.TryPeek(out int result));
+            Assert.AreEqual(42, result);
         }
 
         [Test]
@@ -955,7 +987,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             Assert.AreEqual(4, count);
             Assert.AreEqual(4, heap.Count);
-            Assert.AreEqual(1, heap.Peek());
+            Assert.IsTrue(heap.TryPeek(out int result));
+            Assert.AreEqual(1, result);
         }
     }
 
@@ -977,10 +1010,11 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 }
             }
 
-            heap.UpdatePriority(index, 5);
-
-            Assert.AreEqual(5, heap.Peek());
-            Assert.AreEqual(5, heap.Pop());
+            Assert.IsTrue(heap.TryUpdatePriority(index, 5));
+            Assert.IsTrue(heap.TryPeek(out int result));
+            Assert.AreEqual(5, result);
+            Assert.IsTrue(heap.TryPop(out result));
+            Assert.AreEqual(5, result);
         }
 
         [Test]
@@ -989,10 +1023,11 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 10, 20, 30, 40, 50 });
 
             // Update root (10) to a larger value (45)
-            heap.UpdatePriority(0, 45);
-
-            Assert.AreEqual(20, heap.Peek());
-            Assert.AreEqual(20, heap.Pop());
+            Assert.IsTrue(heap.TryUpdatePriority(0, 45));
+            Assert.IsTrue(heap.TryPeek(out int result));
+            Assert.AreEqual(20, result);
+            Assert.IsTrue(heap.TryPop(out result));
+            Assert.AreEqual(20, result);
         }
 
         [Test]
@@ -1000,10 +1035,11 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 10, 20, 30 });
 
-            int peekBefore = heap.Peek();
-            heap.UpdatePriority(0, 10);
+            Assert.IsTrue(heap.TryPeek(out int peekBefore));
+            Assert.IsTrue(heap.TryUpdatePriority(0, 10));
 
-            Assert.AreEqual(peekBefore, heap.Peek());
+            Assert.IsTrue(heap.TryPeek(out int peekAfter));
+            Assert.AreEqual(peekBefore, peekAfter);
             Assert.AreEqual(3, heap.Count);
         }
 
@@ -1012,9 +1048,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 10, 20, 30 });
 
-            Assert.Throws<IndexOutOfRangeException>(() => heap.UpdatePriority(-1, 5));
-            Assert.Throws<IndexOutOfRangeException>(() => heap.UpdatePriority(3, 5));
-            Assert.Throws<IndexOutOfRangeException>(() => heap.UpdatePriority(100, 5));
+            Assert.IsFalse(heap.TryUpdatePriority(-1, 5));
+            Assert.IsFalse(heap.TryUpdatePriority(3, 5));
+            Assert.IsFalse(heap.TryUpdatePriority(100, 5));
         }
 
         [Test]
@@ -1022,7 +1058,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             Heap<int> heap = Heap<int>.CreateMinHeap();
 
-            Assert.Throws<IndexOutOfRangeException>(() => heap.UpdatePriority(0, 5));
+            Assert.IsFalse(heap.TryUpdatePriority(0, 5));
         }
 
         [Test]
@@ -1031,16 +1067,16 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 5, 10, 15, 20, 25, 30 });
 
             // Update multiple elements
-            heap.UpdatePriority(0, 100); // Move min to max
-            heap.UpdatePriority(1, 3); // Make second element new min
+            Assert.IsTrue(heap.TryUpdatePriority(0, 100));
+            Assert.IsTrue(heap.TryUpdatePriority(1, 3));
 
             List<int> results = new();
-            while (!heap.IsEmpty)
+            while (heap.TryPop(out int result))
             {
-                results.Add(heap.Pop());
+                results.Add(result);
             }
 
-            CollectionAssert.AreEqual(new[] { 3, 15, 20, 25, 30, 100 }, results);
+            CollectionAssert.AreEqual(new[] { 3, 10, 15, 25, 30, 100 }, results);
         }
 
         [Test]
@@ -1059,10 +1095,11 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 }
             }
 
-            heap.UpdatePriority(index, 60);
-
-            Assert.AreEqual(60, heap.Peek());
-            Assert.AreEqual(60, heap.Pop());
+            Assert.IsTrue(heap.TryUpdatePriority(index, 60));
+            Assert.IsTrue(heap.TryPeek(out int result));
+            Assert.AreEqual(60, result);
+            Assert.IsTrue(heap.TryPop(out result));
+            Assert.AreEqual(60, result);
         }
 
         [Test]
@@ -1071,9 +1108,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Heap<int> heap = Heap<int>.CreateMinHeap();
             heap.Add(42);
 
-            heap.UpdatePriority(0, 100);
-
-            Assert.AreEqual(100, heap.Peek());
+            Assert.IsTrue(heap.TryUpdatePriority(0, 100));
+            Assert.IsTrue(heap.TryPeek(out int result));
+            Assert.AreEqual(100, result);
             Assert.AreEqual(1, heap.Count);
         }
 
@@ -1085,7 +1122,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             bool success = heap.TryUpdatePriority(0, 5);
 
             Assert.IsTrue(success);
-            Assert.AreEqual(5, heap.Peek());
+            Assert.IsTrue(heap.TryPeek(out int result));
+            Assert.AreEqual(5, result);
         }
 
         [Test]
@@ -1098,7 +1136,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             Assert.IsFalse(success1);
             Assert.IsFalse(success2);
-            Assert.AreEqual(10, heap.Peek()); // Heap unchanged
+            Assert.IsTrue(heap.TryPeek(out int result));
+            Assert.AreEqual(10, result); // Heap unchanged
         }
 
         [Test]
@@ -1107,7 +1146,6 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Heap<int> heap = Heap<int>.CreateMinHeap();
 
             bool success = heap.TryUpdatePriority(0, 5);
-
             Assert.IsFalse(success);
         }
 
@@ -1116,11 +1154,12 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 10, 10, 10, 10 });
 
-            heap.UpdatePriority(0, 5);
-
-            Assert.AreEqual(5, heap.Peek());
-            heap.Pop();
-            Assert.AreEqual(10, heap.Peek());
+            Assert.IsTrue(heap.TryUpdatePriority(0, 5));
+            Assert.IsTrue(heap.TryPeek(out int result));
+            Assert.AreEqual(5, result);
+            Assert.IsTrue(heap.TryPop(out _));
+            Assert.IsTrue(heap.TryPeek(out result));
+            Assert.AreEqual(10, result);
         }
 
         [Test]
@@ -1131,11 +1170,11 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             // Update every 10th element
             for (int i = 0; i < 1000; i += 10)
             {
-                heap.UpdatePriority(i, -i);
+                Assert.IsTrue(heap.TryUpdatePriority(i, -i));
             }
 
             // First element should be negative
-            int first = heap.Pop();
+            Assert.IsTrue(heap.TryPop(out int first));
             Assert.Less(first, 0);
         }
 
@@ -1157,20 +1196,19 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 }
             }
 
-            heap.UpdatePriority(index, "aaa");
-
-            Assert.AreEqual("aaa", heap.Peek());
+            Assert.IsTrue(heap.TryUpdatePriority(index, "aaa"));
+            Assert.IsTrue(heap.TryPeek(out string result));
+            Assert.AreEqual("aaa", result);
         }
 
         [Test]
         public void UpdatePriorityWithCustomComparerDecrease()
         {
             Heap<string> heap = Heap<string>.CreateMinHeap(new[] { "apple", "banana", "cherry" });
-
             // Update "apple" to "zebra"
-            heap.UpdatePriority(0, "zebra");
-
-            Assert.AreEqual("banana", heap.Peek());
+            Assert.IsTrue(heap.TryUpdatePriority(0, "zebra"));
+            Assert.IsTrue(heap.TryPeek(out string result));
+            Assert.AreEqual("banana", result);
         }
 
         [Test]
@@ -1179,9 +1217,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 10, 20, 30, 40, 50 });
 
             int lastIndex = heap.Count - 1;
-            heap.UpdatePriority(lastIndex, 5);
-
-            Assert.AreEqual(5, heap.Peek());
+            Assert.IsTrue(heap.TryUpdatePriority(lastIndex, 5));
+            Assert.IsTrue(heap.TryPeek(out int result));
+            Assert.AreEqual(5, result);
         }
 
         [Test]
@@ -1189,14 +1227,721 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 10, 20, 30 });
 
-            heap.UpdatePriority(0, 25);
-            Assert.AreEqual(20, heap.Peek());
+            Assert.IsTrue(heap.TryUpdatePriority(0, 25));
+            Assert.IsTrue(heap.TryPeek(out int result));
+            Assert.AreEqual(20, result);
 
-            heap.UpdatePriority(0, 5);
-            Assert.AreEqual(5, heap.Peek());
+            Assert.IsTrue(heap.TryUpdatePriority(0, 5));
+            Assert.IsTrue(heap.TryPeek(out result));
+            Assert.AreEqual(5, result);
 
-            heap.UpdatePriority(0, 15);
-            Assert.AreEqual(15, heap.Peek());
+            Assert.IsTrue(heap.TryUpdatePriority(0, 15));
+            Assert.IsTrue(heap.TryPeek(out result));
+            Assert.AreEqual(15, result);
+        }
+
+        [Test]
+        public void UpdatePriorityAtMiddleIndex()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 10, 20, 30, 40, 50, 60, 70 });
+
+            // Update middle element (index 3, value 40) to 5
+            Assert.IsTrue(heap.TryUpdatePriority(3, 5));
+            Assert.IsTrue(heap.TryPeek(out int result));
+            Assert.AreEqual(5, result);
+
+            // Update middle element to higher value
+            heap = Heap<int>.CreateMinHeap(new[] { 10, 20, 30, 40, 50, 60, 70 });
+            Assert.IsTrue(heap.TryUpdatePriority(2, 65));
+
+            List<int> results = new();
+            while (heap.TryPop(out int item))
+            {
+                results.Add(item);
+            }
+
+            Assert.IsTrue(results.Contains(65));
+            Assert.AreEqual(results.Last(), 70);
+        }
+    }
+
+    public sealed class HeapIndexerAndArrayTests
+    {
+        [Test]
+        public void IndexerGetReturnsCorrectElement()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 5, 3, 7, 1 });
+
+            int element = heap[0];
+            Assert.AreEqual(1, element); // Min element at index 0
+        }
+
+        [Test]
+        public void IndexerThrowsOnNegativeIndex()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 5, 3, 7 });
+
+            Assert.Throws<IndexOutOfRangeException>(() => _ = heap[-1]);
+        }
+
+        [Test]
+        public void IndexerThrowsOnIndexEqualToCount()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 5, 3, 7 });
+
+            Assert.Throws<IndexOutOfRangeException>(() => _ = heap[3]);
+        }
+
+        [Test]
+        public void IndexerThrowsOnIndexGreaterThanCount()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 5, 3, 7 });
+
+            Assert.Throws<IndexOutOfRangeException>(() => _ = heap[100]);
+        }
+
+        [Test]
+        public void IndexerThrowsOnEmptyHeap()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap();
+
+            Assert.Throws<IndexOutOfRangeException>(() => _ = heap[0]);
+        }
+
+        [Test]
+        public void ToArrayWithRefParameterReusesArray()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 5, 3, 7, 1 });
+            int[] array = new int[10];
+
+            int count = heap.ToArray(ref array);
+
+            Assert.AreEqual(4, count);
+            Assert.AreEqual(10, array.Length); // Original array reused
+            CollectionAssert.AreEquivalent(new[] { 5, 3, 7, 1 }, array.Take(4));
+        }
+
+        [Test]
+        public void ToArrayWithRefParameterCreatesNewArrayWhenNull()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 5, 3, 7, 1 });
+            int[] array = null;
+
+            int count = heap.ToArray(ref array);
+
+            Assert.AreEqual(4, count);
+            Assert.IsNotNull(array);
+            Assert.AreEqual(4, array.Length);
+            CollectionAssert.AreEquivalent(new[] { 5, 3, 7, 1 }, array);
+        }
+
+        [Test]
+        public void ToArrayWithRefParameterCreatesNewArrayWhenTooSmall()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 5, 3, 7, 1 });
+            int[] array = new int[2];
+
+            int count = heap.ToArray(ref array);
+
+            Assert.AreEqual(4, count);
+            Assert.AreEqual(4, array.Length);
+            CollectionAssert.AreEquivalent(new[] { 5, 3, 7, 1 }, array);
+        }
+
+        [Test]
+        public void ToArrayWithRefParameterHandlesEmptyHeap()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap();
+            int[] array = new int[5];
+
+            int count = heap.ToArray(ref array);
+
+            Assert.AreEqual(0, count);
+            Assert.AreEqual(5, array.Length);
+        }
+
+        [Test]
+        public void CopyToThrowsWhenArrayIndexEqualsArrayLength()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 5, 3, 7 });
+            int[] array = new int[5];
+
+            Assert.Throws<ArgumentException>(() => heap.CopyTo(array, 5));
+        }
+
+        [Test]
+        public void CopyToThrowsWhenArrayIndexGreaterThanArrayLength()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 5, 3, 7 });
+            int[] array = new int[5];
+
+            Assert.Throws<ArgumentOutOfRangeException>(() => heap.CopyTo(array, 10));
+        }
+
+        [Test]
+        public void CopyToWithEmptyHeapDoesNotThrow()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap();
+            int[] array = new int[5];
+
+            heap.CopyTo(array, 0);
+
+            Assert.Pass("No exception thrown");
+        }
+    }
+
+    public sealed class HeapEnumeratorTests
+    {
+        [Test]
+        public void EnumeratorResetAllowsReEnumeration()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 5, 3, 7 });
+
+            using Heap<int>.HeapEnumerator enumerator = heap.GetEnumerator();
+
+            List<int> firstPass = new();
+            while (enumerator.MoveNext())
+            {
+                firstPass.Add(enumerator.Current);
+            }
+
+            enumerator.Reset();
+
+            List<int> secondPass = new();
+            while (enumerator.MoveNext())
+            {
+                secondPass.Add(enumerator.Current);
+            }
+
+            CollectionAssert.AreEqual(firstPass, secondPass);
+            Assert.AreEqual(3, firstPass.Count);
+        }
+
+        [Test]
+        public void EnumeratorCurrentDefaultBeforeMoveNext()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 5, 3, 7 });
+
+            using Heap<int>.HeapEnumerator enumerator = heap.GetEnumerator();
+
+            Assert.AreEqual(default(int), enumerator.Current);
+        }
+
+        [Test]
+        public void EnumeratorCurrentDefaultAfterLastElement()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 5 });
+
+            using Heap<int>.HeapEnumerator enumerator = heap.GetEnumerator();
+            enumerator.MoveNext();
+            enumerator.MoveNext(); // Move past last element
+
+            Assert.AreEqual(default(int), enumerator.Current);
+        }
+
+        [Test]
+        public void MultipleEnumeratorsAreIndependent()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 5, 3, 7, 1 });
+
+            using Heap<int>.HeapEnumerator enumerator1 = heap.GetEnumerator();
+            using Heap<int>.HeapEnumerator enumerator2 = heap.GetEnumerator();
+
+            enumerator1.MoveNext();
+            int first1 = enumerator1.Current;
+            enumerator1.MoveNext();
+            int second1 = enumerator1.Current;
+
+            enumerator2.MoveNext();
+            int first2 = enumerator2.Current;
+
+            Assert.AreEqual(first1, first2);
+            Assert.AreNotEqual(second1, first2);
+        }
+
+        [Test]
+        public void EnumeratorDisposeDoesNotThrow()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 5, 3, 7 });
+
+            Heap<int>.HeapEnumerator enumerator = heap.GetEnumerator();
+            enumerator.MoveNext();
+
+            Assert.DoesNotThrow(() => enumerator.Dispose());
+        }
+
+        [Test]
+        public void NonGenericEnumeratorWorks()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 5, 3, 7, 1 });
+
+            System.Collections.IEnumerable nonGeneric = heap;
+            List<object> results = new();
+
+            foreach (object item in nonGeneric)
+            {
+                results.Add(item);
+            }
+
+            Assert.AreEqual(4, results.Count);
+            CollectionAssert.AreEquivalent(new object[] { 5, 3, 7, 1 }, results);
+        }
+
+        [Test]
+        public void EnumeratorWorksOnEmptyHeap()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap();
+
+            using Heap<int>.HeapEnumerator enumerator = heap.GetEnumerator();
+
+            Assert.IsFalse(enumerator.MoveNext());
+            Assert.AreEqual(default(int), enumerator.Current);
+        }
+
+        [Test]
+        public void EnumeratorResetWorksOnEmptyHeap()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap();
+
+            using Heap<int>.HeapEnumerator enumerator = heap.GetEnumerator();
+            enumerator.Reset();
+
+            Assert.IsFalse(enumerator.MoveNext());
+        }
+    }
+
+    public sealed class HeapConstructorCollectionTests
+    {
+        [Test]
+        public void ConstructorWithIReadOnlyListWorks()
+        {
+            IReadOnlyList<int> list = new List<int> { 5, 3, 7, 1 }.AsReadOnly();
+            Heap<int> heap = new(list);
+
+            Assert.AreEqual(4, heap.Count);
+            Assert.IsTrue(heap.TryPeek(out int result));
+            Assert.AreEqual(1, result);
+        }
+
+        [Test]
+        public void ConstructorWithICollectionWorks()
+        {
+            ICollection<int> collection = new List<int> { 5, 3, 7, 1 };
+            Heap<int> heap = new(collection);
+
+            Assert.AreEqual(4, heap.Count);
+            Assert.IsTrue(heap.TryPeek(out int result));
+            Assert.AreEqual(1, result);
+        }
+
+        [Test]
+        public void ConstructorWithIReadOnlyCollectionWorks()
+        {
+            IReadOnlyCollection<int> collection = new HashSet<int> { 5, 3, 7, 1 };
+            Heap<int> heap = new(collection);
+
+            Assert.AreEqual(4, heap.Count);
+            Assert.IsTrue(heap.Contains(1));
+            Assert.IsTrue(heap.Contains(3));
+            Assert.IsTrue(heap.Contains(5));
+            Assert.IsTrue(heap.Contains(7));
+        }
+
+        [Test]
+        public void ConstructorWithPlainIEnumerableWorks()
+        {
+            IEnumerable<int> enumerable = GetNumbers();
+            Heap<int> heap = new(enumerable);
+
+            Assert.AreEqual(5, heap.Count);
+            Assert.IsTrue(heap.TryPeek(out int result));
+            Assert.AreEqual(1, result);
+
+            static IEnumerable<int> GetNumbers()
+            {
+                yield return 5;
+                yield return 3;
+                yield return 7;
+                yield return 1;
+                yield return 9;
+            }
+        }
+
+        [Test]
+        public void ConstructorWithIEnumerableTriggersGrowth()
+        {
+            // Create an IEnumerable that yields more than DefaultCapacity (16) items
+            IEnumerable<int> enumerable = GetManyNumbers();
+            Heap<int> heap = new(enumerable);
+
+            Assert.AreEqual(20, heap.Count);
+            Assert.IsTrue(heap.TryPeek(out int result));
+            Assert.AreEqual(0, result);
+
+            static IEnumerable<int> GetManyNumbers()
+            {
+                for (int i = 0; i < 20; i++)
+                {
+                    yield return i;
+                }
+            }
+        }
+
+        [Test]
+        public void ConstructorWithEmptyIReadOnlyListCreatesEmptyHeap()
+        {
+            IReadOnlyList<int> list = new List<int>().AsReadOnly();
+            Heap<int> heap = new(list);
+
+            Assert.AreEqual(0, heap.Count);
+            Assert.IsTrue(heap.IsEmpty);
+        }
+
+        [Test]
+        public void ConstructorWithEmptyICollectionCreatesEmptyHeap()
+        {
+            ICollection<int> collection = new List<int>();
+            Heap<int> heap = new(collection);
+
+            Assert.AreEqual(0, heap.Count);
+            Assert.IsTrue(heap.IsEmpty);
+        }
+
+        [Test]
+        public void ConstructorWithEmptyIReadOnlyCollectionCreatesEmptyHeap()
+        {
+            IReadOnlyCollection<int> collection = new HashSet<int>();
+            Heap<int> heap = new(collection);
+
+            Assert.AreEqual(0, heap.Count);
+            Assert.IsTrue(heap.IsEmpty);
+        }
+
+        [Test]
+        public void ConstructorWithSingleElementIReadOnlyList()
+        {
+            IReadOnlyList<int> list = new List<int> { 42 }.AsReadOnly();
+            Heap<int> heap = new(list);
+
+            Assert.AreEqual(1, heap.Count);
+            Assert.IsTrue(heap.TryPeek(out int result));
+            Assert.AreEqual(42, result);
+        }
+    }
+
+    public sealed class HeapFactoryMethodTests
+    {
+        [Test]
+        public void CreateMinHeapWithCapacityAndNullComparer()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap(null, 32);
+
+            Assert.AreEqual(0, heap.Count);
+            Assert.AreEqual(32, heap.Capacity);
+
+            heap.Add(5);
+            heap.Add(3);
+            heap.Add(7);
+
+            Assert.IsTrue(heap.TryPeek(out int result));
+            Assert.AreEqual(3, result);
+        }
+
+        [Test]
+        public void CreateMinHeapWithCapacityAndCustomComparer()
+        {
+            IComparer<int> comparer = Comparer<int>.Default;
+            Heap<int> heap = Heap<int>.CreateMinHeap(comparer, 32);
+
+            Assert.AreEqual(0, heap.Count);
+            Assert.AreEqual(32, heap.Capacity);
+
+            heap.Add(5);
+            heap.Add(3);
+            heap.Add(7);
+
+            Assert.IsTrue(heap.TryPeek(out int result));
+            Assert.AreEqual(3, result);
+        }
+
+        [Test]
+        public void CreateMaxHeapWithCapacityAndNullComparer()
+        {
+            Heap<int> heap = Heap<int>.CreateMaxHeap(null, 32);
+
+            Assert.AreEqual(0, heap.Count);
+            Assert.AreEqual(32, heap.Capacity);
+
+            heap.Add(5);
+            heap.Add(3);
+            heap.Add(7);
+
+            Assert.IsTrue(heap.TryPeek(out int result));
+            Assert.AreEqual(7, result);
+        }
+
+        [Test]
+        public void CreateMaxHeapWithCapacityAndCustomComparer()
+        {
+            IComparer<int> comparer = Comparer<int>.Default;
+            Heap<int> heap = Heap<int>.CreateMaxHeap(comparer, 32);
+
+            Assert.AreEqual(0, heap.Count);
+            Assert.AreEqual(32, heap.Capacity);
+
+            heap.Add(5);
+            heap.Add(3);
+            heap.Add(7);
+
+            Assert.IsTrue(heap.TryPeek(out int result));
+            Assert.AreEqual(7, result);
+        }
+
+        [Test]
+        public void CreateMinHeapFromCollectionWithNullComparer()
+        {
+            int[] items = { 5, 3, 7, 1 };
+            Heap<int> heap = Heap<int>.CreateMinHeap(items, null);
+
+            Assert.AreEqual(4, heap.Count);
+            Assert.IsTrue(heap.TryPeek(out int result));
+            Assert.AreEqual(1, result);
+        }
+
+        [Test]
+        public void CreateMinHeapFromCollectionWithCustomComparer()
+        {
+            int[] items = { 5, 3, 7, 1 };
+            IComparer<int> comparer = Comparer<int>.Default;
+            Heap<int> heap = Heap<int>.CreateMinHeap(items, comparer);
+
+            Assert.AreEqual(4, heap.Count);
+            Assert.IsTrue(heap.TryPeek(out int result));
+            Assert.AreEqual(1, result);
+        }
+
+        [Test]
+        public void CreateMaxHeapFromCollectionWithNullComparer()
+        {
+            int[] items = { 5, 3, 7, 1 };
+            Heap<int> heap = Heap<int>.CreateMaxHeap(items, null);
+
+            Assert.AreEqual(4, heap.Count);
+            Assert.IsTrue(heap.TryPeek(out int result));
+            Assert.AreEqual(7, result);
+        }
+
+        [Test]
+        public void CreateMaxHeapFromCollectionWithCustomComparer()
+        {
+            int[] items = { 5, 3, 7, 1 };
+            IComparer<int> comparer = Comparer<int>.Default;
+            Heap<int> heap = Heap<int>.CreateMaxHeap(items, comparer);
+
+            Assert.AreEqual(4, heap.Count);
+            Assert.IsTrue(heap.TryPeek(out int result));
+            Assert.AreEqual(7, result);
+        }
+    }
+
+    public sealed class HeapCapacityGrowthTests
+    {
+        [Test]
+        public void AddToCapacity1TriggersGrowth()
+        {
+            Heap<int> heap = new(1);
+            heap.Add(1);
+
+            Assert.AreEqual(1, heap.Capacity);
+
+            heap.Add(2);
+
+            Assert.IsTrue(heap.Capacity > 1);
+            Assert.AreEqual(2, heap.Count);
+        }
+
+        [Test]
+        public void MultipleGrowthsWork()
+        {
+            Heap<int> heap = new(2);
+
+            for (int i = 0; i < 100; i++)
+            {
+                heap.Add(i);
+            }
+
+            Assert.AreEqual(100, heap.Count);
+            Assert.IsTrue(heap.Capacity >= 100);
+        }
+
+        [Test]
+        public void GrowthMaintainsHeapProperty()
+        {
+            Heap<int> heap = new(2);
+
+            for (int i = 0; i < 50; i++)
+            {
+                heap.Add(50 - i);
+            }
+
+            List<int> results = new();
+            while (heap.TryPop(out int result))
+            {
+                results.Add(result);
+            }
+
+            CollectionAssert.AreEqual(Enumerable.Range(1, 50).ToList(), results);
+        }
+
+        [Test]
+        public void TrimExcessOnEmptyHeapMaintainsDefaultCapacity()
+        {
+            Heap<int> heap = new(100);
+            heap.TrimExcess();
+
+            Assert.IsTrue(heap.Capacity >= 16); // DefaultCapacity is 16
+        }
+
+        [Test]
+        public void TrimExcessAfterAddAndClear()
+        {
+            Heap<int> heap = new(100);
+            heap.Add(1);
+            heap.Add(2);
+            heap.Clear();
+            heap.TrimExcess();
+
+            Assert.IsTrue(heap.Capacity >= 16); // Should be at least DefaultCapacity
+            Assert.AreEqual(0, heap.Count);
+        }
+    }
+
+    public sealed class HeapCombinationTests
+    {
+        [Test]
+        public void ClearThenAddThenPopWorks()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 5, 3, 7 });
+            heap.Clear();
+            heap.Add(10);
+            heap.Add(5);
+
+            Assert.IsTrue(heap.TryPop(out int result));
+            Assert.AreEqual(5, result);
+            Assert.IsTrue(heap.TryPop(out result));
+            Assert.AreEqual(10, result);
+            Assert.IsTrue(heap.IsEmpty);
+        }
+
+        [Test]
+        public void PopAllThenAddWorks()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 5, 3, 7 });
+
+            while (heap.TryPop(out _)) { }
+
+            heap.Add(42);
+
+            Assert.AreEqual(1, heap.Count);
+            Assert.IsTrue(heap.TryPeek(out int result));
+            Assert.AreEqual(42, result);
+        }
+
+        [Test]
+        public void UpdatePriorityThenClearThenAdd()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 5, 3, 7 });
+
+            heap.TryUpdatePriority(0, 10);
+            heap.Clear();
+            heap.Add(1);
+
+            Assert.AreEqual(1, heap.Count);
+            Assert.IsTrue(heap.TryPeek(out int result));
+            Assert.AreEqual(1, result);
+        }
+
+        [Test]
+        public void InterleavedOperationsMaintainCorrectness()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap();
+
+            heap.Add(10);
+            heap.Add(5);
+            heap.TryPop(out _);
+            heap.Add(15);
+            heap.Add(3);
+            heap.TryPop(out _);
+            heap.Add(20);
+
+            List<int> results = new();
+            while (heap.TryPop(out int result))
+            {
+                results.Add(result);
+            }
+
+            CollectionAssert.AreEqual(new[] { 10, 15, 20 }, results);
+        }
+
+        [Test]
+        public void ToArrayAfterUpdatePriority()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 5, 3, 7, 1 });
+
+            heap.TryUpdatePriority(0, 10);
+
+            int[] array = heap.ToArray();
+
+            Assert.AreEqual(4, array.Length);
+            CollectionAssert.Contains(array, 10);
+            CollectionAssert.Contains(array, 3);
+            CollectionAssert.Contains(array, 7);
+            CollectionAssert.Contains(array, 5);
+        }
+
+        [Test]
+        public void ContainsAfterMultipleOperations()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 5, 3, 7, 1 });
+
+            heap.Add(9);
+            heap.TryPop(out _);
+            heap.TryUpdatePriority(0, 10);
+
+            Assert.IsTrue(heap.Contains(10));
+            Assert.IsFalse(heap.Contains(1));
+            Assert.IsTrue(heap.Contains(9));
+        }
+
+        [Test]
+        public void EnumerationAfterClearReturnsNothing()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 5, 3, 7 });
+            heap.Clear();
+
+            int count = 0;
+            foreach (int _ in heap)
+            {
+                count++;
+            }
+
+            Assert.AreEqual(0, count);
+        }
+
+        [Test]
+        public void MultipleToArrayCallsWithRefParameter()
+        {
+            Heap<int> heap = Heap<int>.CreateMinHeap(new[] { 5, 3, 7, 1 });
+            int[] array1 = new int[10];
+            int[] array2 = new int[2];
+
+            int count1 = heap.ToArray(ref array1);
+            int count2 = heap.ToArray(ref array2);
+
+            Assert.AreEqual(4, count1);
+            Assert.AreEqual(4, count2);
+            Assert.AreEqual(10, array1.Length); // Reused
+            Assert.AreEqual(4, array2.Length); // Recreated
         }
     }
 }

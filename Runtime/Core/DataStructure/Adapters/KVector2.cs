@@ -9,7 +9,14 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
     [Serializable]
     [DataContract]
     [ProtoContract]
-    public struct KVector2 : IEquatable<KVector2>, IEquatable<Vector2>
+    public struct KVector2
+        : IEquatable<KVector2>,
+            IEquatable<Vector2>,
+            IEquatable<Vector3>,
+            IComparable<KVector2>,
+            IComparable<Vector2>,
+            IComparable<Vector3>,
+            IComparable
     {
         [DataMember]
         [ProtoMember(1)]
@@ -43,38 +50,97 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             return new KVector2(vector);
         }
 
-        public bool Equals(Vector2 vector)
+        public bool Equals(Vector2 other)
         {
             // ReSharper disable once CompareOfFloatsByEqualityOperator
-            if (x != vector.x)
+            if (x != other.x)
             {
                 return false;
             }
 
             // ReSharper disable once CompareOfFloatsByEqualityOperator
-            return y == vector.y;
+            return y == other.y;
         }
 
-        public bool Equals(KVector2 vector)
+        public bool Equals(KVector2 other)
         {
             // ReSharper disable once CompareOfFloatsByEqualityOperator
-            if (x != vector.x)
+            if (x != other.x)
             {
                 return false;
             }
 
             // ReSharper disable once CompareOfFloatsByEqualityOperator
-            return y == vector.y;
+            return y == other.y;
+        }
+
+        public int CompareTo(KVector2 other)
+        {
+            int comparison = x.CompareTo(other.x);
+            if (comparison != 0)
+            {
+                return comparison;
+            }
+            return y.CompareTo(other.y);
+        }
+
+        public int CompareTo(Vector2 other)
+        {
+            int comparison = x.CompareTo(other.x);
+            if (comparison != 0)
+            {
+                return comparison;
+            }
+            return y.CompareTo(other.y);
+        }
+
+        public bool Equals(Vector3 other)
+        {
+            // ReSharper disable once CompareOfFloatsByEqualityOperator
+            if (x != other.x)
+            {
+                return false;
+            }
+
+            // ReSharper disable once CompareOfFloatsByEqualityOperator
+            return y == other.y;
+        }
+
+        public int CompareTo(Vector3 other)
+        {
+            int comparison = x.CompareTo(other.x);
+            if (comparison != 0)
+            {
+                return comparison;
+            }
+            return y.CompareTo(other.y);
         }
 
         public override bool Equals(object obj)
         {
-            return obj is KVector2 vector && Equals(vector);
+            return obj switch
+            {
+                KVector2 vector => Equals(vector),
+                Vector2 vector => Equals(vector),
+                Vector3 vector3 => Equals(vector3),
+                _ => false,
+            };
         }
 
         public override int GetHashCode()
         {
             return Objects.ValueTypeHashCode(x, y);
+        }
+
+        public int CompareTo(object obj)
+        {
+            return obj switch
+            {
+                KVector2 vector => CompareTo(vector),
+                Vector2 vector => CompareTo(vector),
+                Vector3 vector3 => CompareTo(vector3),
+                _ => -1,
+            };
         }
     }
 }

@@ -9,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     /// Provides clearer semantics for priority-based task scheduling, A* pathfinding,
     /// event systems, and AI decision making. Supports both min-priority and max-priority modes.
     /// </summary>
+    [Serializable]
     public sealed class PriorityQueue<T> : IEnumerable<T>
     {
         private readonly Heap<T> _heap;
@@ -28,10 +29,13 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         /// </summary>
         public int Capacity => _heap.Capacity;
 
+        public PriorityQueue()
+            : this(16) { }
+
         /// <summary>
         /// Constructs a priority queue with the default comparer (min-priority).
         /// </summary>
-        public PriorityQueue(int capacity = 16)
+        public PriorityQueue(int capacity)
             : this(Comparer<T>.Default, capacity) { }
 
         /// <summary>
@@ -153,6 +157,11 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         public T[] ToArray()
         {
             return _heap.ToArray();
+        }
+
+        public int ToArray(ref T[] result)
+        {
+            return _heap.ToArray(ref result);
         }
 
         /// <summary>

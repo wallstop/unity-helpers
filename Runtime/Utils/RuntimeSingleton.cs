@@ -1,6 +1,7 @@
 namespace WallstopStudios.UnityHelpers.Utils
 {
     using System;
+    using System.Runtime.CompilerServices;
     using Core.Attributes;
     using Core.Extension;
     using Core.Helper;
@@ -61,7 +62,7 @@ namespace WallstopStudios.UnityHelpers.Utils
             this.AssignRelationalComponents();
             if (_instance == null)
             {
-                _instance = this as T;
+                _instance = Unsafe.As<T>(this);
             }
 
             if (Preserve && Application.isPlaying)

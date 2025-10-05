@@ -4,6 +4,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     using System.Collections;
     using System.Collections.Generic;
     using System.Runtime.CompilerServices;
+    using ProtoBuf;
+    using UnityEngine;
 
     /// <summary>
     /// A highly optimized double-ended queue (deque) implemented with a circular array.
@@ -11,8 +13,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     /// Ideal for BFS algorithms, undo/redo systems, and sliding window problems.
     /// </summary>
     /// <typeparam name="T">The type of elements in the deque.</typeparam>
+    [Serializable]
+    [ProtoContract(IgnoreListHandling = true)]
     public sealed class Deque<T> : IReadOnlyList<T>
     {
+        public const int DefaultCapacity = 16;
+
         public struct DequeEnumerator : IEnumerator<T>
         {
             private readonly T[] _items;
@@ -58,13 +64,30 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             public void Dispose() { }
         }
 
-        private const int DefaultCapacity = 16;
         private const int MinimumGrowth = 4;
 
+        [SerializeField]
+        [ProtoIgnore]
         private T[] _items;
+
+        [ProtoMember(1)]
+        private List<T> _serializedItems;
+
+        [SerializeField]
+        [ProtoMember(2)]
         private int _head;
+
+        [SerializeField]
+        [ProtoMember(3)]
         private int _tail;
+
+        [SerializeField]
+        [ProtoMember(4)]
         private int _count;
+
+        [SerializeField]
+        [ProtoMember(5)]
+        private int _serializedCapacity;
 
         /// <summary>
         /// Gets the number of elements in the deque.
@@ -110,10 +133,18 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
         }
 
+        private Deque()
+        {
+            _items = Array.Empty<T>();
+            _head = 0;
+            _tail = 0;
+            _count = 0;
+        }
+
         /// <summary>
         /// Constructs an empty deque with the specified capacity.
         /// </summary>
-        public Deque(int capacity = DefaultCapacity)
+        public Deque(int capacity)
         {
             if (capacity <= 0)
             {
@@ -122,6 +153,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     "Capacity must be positive."
                 );
             }
+
             _items = new T[capacity];
             _head = 0;
             _tail = 0;
@@ -138,24 +170,53 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 throw new ArgumentNullException(nameof(collection));
             }
 
-            int capacity = DefaultCapacity;
-            if (collection is IReadOnlyCollection<T> roc)
-            {
-                capacity = Math.Max(DefaultCapacity, roc.Count);
-            }
-            else if (collection is ICollection<T> col)
-            {
-                capacity = Math.Max(DefaultCapacity, col.Count);
-            }
-
-            _items = new T[capacity];
             _head = 0;
             _tail = 0;
             _count = 0;
-
-            foreach (T item in collection)
+            switch (collection)
             {
-                PushBack(item);
+                case IReadOnlyList<T> list:
+                {
+                    int capacity = Math.Max(DefaultCapacity, list.Count);
+                    _items = new T[capacity];
+                    for (int i = 0; i < list.Count; i++)
+                    {
+                        PushBack(list[i]);
+                    }
+
+                    break;
+                }
+                case IReadOnlyCollection<T> readOnlyCollection:
+                {
+                    int capacity = Math.Max(DefaultCapacity, readOnlyCollection.Count);
+                    _items = new T[capacity];
+                    foreach (T item in readOnlyCollection)
+                    {
+                        PushBack(item);
+                    }
+
+                    break;
+                }
+                case ICollection<T> inputCollection:
+                {
+                    int capacity = Math.Max(DefaultCapacity, inputCollection.Count);
+                    _items = new T[capacity];
+                    foreach (T item in inputCollection)
+                    {
+                        PushBack(item);
+                    }
+
+                    break;
+                }
+                default:
+                {
+                    _items = new T[DefaultCapacity];
+                    foreach (T item in collection)
+                    {
+                        PushBack(item);
+                    }
+                    break;
+                }
             }
         }
 
@@ -327,9 +388,19 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         /// </summary>
         public T[] ToArray()
         {
-            T[] result = new T[_count];
-            CopyTo(result, 0);
+            T[] result = null;
+            _ = ToArray(ref result);
             return result;
+        }
+
+        public int ToArray(ref T[] result)
+        {
+            if (result == null || result.Length < _count)
+            {
+                result = new T[_count];
+            }
+            CopyTo(result, 0);
+            return _count;
         }
 
         /// <summary>
@@ -338,14 +409,94 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         public void TrimExcess()
         {
             int threshold = (int)(_items.Length * 0.9);
-            if (_count < threshold)
+            if (_count >= threshold)
             {
-                int newCapacity = Math.Max(DefaultCapacity, _count);
-                if (newCapacity < _items.Length)
-                {
-                    Resize(newCapacity);
-                }
+                return;
             }
+
+            int newCapacity = Math.Max(DefaultCapacity, _count);
+            if (newCapacity < _items.Length)
+            {
+                Resize(newCapacity);
+            }
+        }
+
+        [ProtoBeforeSerialization]
+        private void OnProtoSerialize()
+        {
+            _serializedCapacity = _items.Length;
+
+            if (_count == 0)
+            {
+                _serializedItems = null;
+                return;
+            }
+
+            List<T> buffer = _serializedItems;
+
+            if (buffer == null || buffer.Capacity < _count)
+            {
+                buffer = new List<T>(_count);
+            }
+            else
+            {
+                buffer.Clear();
+            }
+
+            for (int i = 0; i < _count; i++)
+            {
+                int actualIndex = (_head + i) % _items.Length;
+                buffer.Add(_items[actualIndex]);
+            }
+
+            _serializedItems = buffer;
+        }
+
+        [ProtoAfterSerialization]
+        private void OnProtoSerialized()
+        {
+            _serializedItems = null;
+        }
+
+        [ProtoAfterDeserialization]
+        private void OnProtoDeserialized()
+        {
+            int itemCount = _serializedItems?.Count ?? 0;
+            int capacity = _serializedCapacity;
+
+            if (capacity <= 0)
+            {
+                capacity = itemCount > 0 ? itemCount : DefaultCapacity;
+            }
+
+            if (itemCount > capacity)
+            {
+                capacity = itemCount;
+            }
+
+            if (itemCount == 0)
+            {
+                _items = new T[capacity];
+                _head = 0;
+                _tail = 0;
+                _count = 0;
+                _serializedItems = null;
+                _serializedCapacity = _items.Length;
+                return;
+            }
+
+            _items = new T[capacity];
+            for (int i = 0; i < itemCount; i++)
+            {
+                _items[i] = _serializedItems[i];
+            }
+
+            _head = 0;
+            _count = itemCount;
+            _tail = itemCount < capacity ? itemCount : 0;
+
+            _serializedItems = null;
+            _serializedCapacity = _items.Length;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -364,8 +515,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
         private void Resize(int newCapacity)
         {
-            T[] newItems = new T[newCapacity];
+            if (newCapacity <= _count)
+            {
+                return;
+            }
 
+            T[] newItems = new T[newCapacity];
             if (_count > 0)
             {
                 if (_head < _tail)

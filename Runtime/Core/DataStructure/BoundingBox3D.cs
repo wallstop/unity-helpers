@@ -42,9 +42,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
         public static BoundingBox3D FromClosedBounds(Bounds bounds)
         {
-            Vector3 min = bounds.min;
-            Vector3 max = bounds.max;
-            return new BoundingBox3D(min, MoveMaxExclusive(min, max));
+            return new BoundingBox3D(bounds.min, bounds.max);
         }
 
         public static BoundingBox3D FromPoint(Vector3 point)
@@ -294,7 +292,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             if (value == float.MinValue)
             {
-                return BitConverter.ToSingle(BitConverter.GetBytes(unchecked((int)0xFF7FFFFF)), 0);
+                return BitConverter.Int32BitsToSingle(unchecked((int)0xFF7FFFFF));
             }
 
             if (value == 0f)
@@ -302,17 +300,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return float.Epsilon;
             }
 
-            int bits = BitConverter.ToInt32(BitConverter.GetBytes(value), 0);
-            if (value > 0f)
-            {
-                bits++;
-            }
-            else
-            {
-                bits--;
-            }
-
-            return BitConverter.ToSingle(BitConverter.GetBytes(bits), 0);
+            int bits = BitConverter.SingleToInt32Bits(value);
+            bits = value > 0f ? bits + 1 : bits - 1;
+            return BitConverter.Int32BitsToSingle(bits);
         }
     }
 }

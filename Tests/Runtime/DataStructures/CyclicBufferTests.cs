@@ -324,9 +324,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void ResizeInvalidCapacity()
         {
-            CyclicBuffer<int> buffer = new(10);
-            buffer.Add(1);
-            buffer.Add(2);
+            CyclicBuffer<int> buffer = new(10) { 1, 2 };
 
             Assert.Throws<ArgumentException>(() => buffer.Resize(-1));
             Assert.Throws<ArgumentException>(() => buffer.Resize(int.MinValue));
@@ -339,10 +337,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void ResizeToSameCapacity()
         {
-            CyclicBuffer<int> buffer = new(10);
-            buffer.Add(1);
-            buffer.Add(2);
-            buffer.Add(3);
+            CyclicBuffer<int> buffer = new(10) { 1, 2, 3 };
 
             buffer.Resize(10);
 
@@ -377,10 +372,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void IndexerGet()
         {
-            CyclicBuffer<int> buffer = new(5);
-            buffer.Add(1);
-            buffer.Add(2);
-            buffer.Add(3);
+            CyclicBuffer<int> buffer = new(5) { 1, 2, 3 };
 
             Assert.AreEqual(1, buffer[0]);
             Assert.AreEqual(2, buffer[1]);
@@ -401,10 +393,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void IndexerSet()
         {
-            CyclicBuffer<int> buffer = new(5);
-            buffer.Add(1);
-            buffer.Add(2);
-            buffer.Add(3);
+            CyclicBuffer<int> buffer = new(5) { 1, 2, 3 };
 
             buffer[0] = 10;
             buffer[1] = 20;
@@ -430,38 +419,34 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void IndexerGetOutOfBounds()
         {
-            CyclicBuffer<int> buffer = new(5);
-            buffer.Add(1);
-            buffer.Add(2);
+            CyclicBuffer<int> buffer = new(5) { 1, 2 };
 
             Assert.Throws<IndexOutOfRangeException>(() =>
             {
-                int x = buffer[-1];
+                _ = buffer[-1];
             });
             Assert.Throws<IndexOutOfRangeException>(() =>
             {
-                int x = buffer[2];
+                _ = buffer[2];
             });
             Assert.Throws<IndexOutOfRangeException>(() =>
             {
-                int x = buffer[5];
+                _ = buffer[5];
             });
             Assert.Throws<IndexOutOfRangeException>(() =>
             {
-                int x = buffer[int.MaxValue];
+                _ = buffer[int.MaxValue];
             });
             Assert.Throws<IndexOutOfRangeException>(() =>
             {
-                int x = buffer[int.MinValue];
+                _ = buffer[int.MinValue];
             });
         }
 
         [Test]
         public void IndexerSetOutOfBounds()
         {
-            CyclicBuffer<int> buffer = new(5);
-            buffer.Add(1);
-            buffer.Add(2);
+            CyclicBuffer<int> buffer = new(5) { 1, 2 };
 
             Assert.Throws<IndexOutOfRangeException>(() => buffer[-1] = 10);
             Assert.Throws<IndexOutOfRangeException>(() => buffer[2] = 10);
@@ -477,7 +462,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             Assert.Throws<IndexOutOfRangeException>(() =>
             {
-                int x = buffer[0];
+                _ = buffer[0];
             });
             Assert.Throws<IndexOutOfRangeException>(() => buffer[0] = 10);
         }
@@ -485,10 +470,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveElement()
         {
-            CyclicBuffer<int> buffer = new(5);
-            buffer.Add(1);
-            buffer.Add(2);
-            buffer.Add(3);
+            CyclicBuffer<int> buffer = new(5) { 1, 2, 3 };
 
             bool removed = buffer.Remove(2);
 
@@ -501,10 +483,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveFirstElement()
         {
-            CyclicBuffer<int> buffer = new(5);
-            buffer.Add(1);
-            buffer.Add(2);
-            buffer.Add(3);
+            CyclicBuffer<int> buffer = new(5) { 1, 2, 3 };
 
             bool removed = buffer.Remove(1);
 
@@ -516,10 +495,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveLastElement()
         {
-            CyclicBuffer<int> buffer = new(5);
-            buffer.Add(1);
-            buffer.Add(2);
-            buffer.Add(3);
+            CyclicBuffer<int> buffer = new(5) { 1, 2, 3 };
 
             bool removed = buffer.Remove(3);
 
@@ -531,10 +507,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveNonExistentElement()
         {
-            CyclicBuffer<int> buffer = new(5);
-            buffer.Add(1);
-            buffer.Add(2);
-            buffer.Add(3);
+            CyclicBuffer<int> buffer = new(5) { 1, 2, 3 };
 
             bool removed = buffer.Remove(10);
 
@@ -557,8 +530,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveOnlyElement()
         {
-            CyclicBuffer<int> buffer = new(5);
-            buffer.Add(1);
+            CyclicBuffer<int> buffer = new(5) { 1 };
 
             bool removed = buffer.Remove(1);
 
@@ -570,10 +542,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveWithCustomComparer()
         {
-            CyclicBuffer<string> buffer = new(5);
-            buffer.Add("Hello");
-            buffer.Add("World");
-            buffer.Add("HELLO");
+            CyclicBuffer<string> buffer = new(5) { "Hello", "World", "HELLO" };
 
             bool removed = buffer.Remove("hello", StringComparer.OrdinalIgnoreCase);
 
@@ -586,10 +555,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveWithNullComparer()
         {
-            CyclicBuffer<int> buffer = new(5);
-            buffer.Add(1);
-            buffer.Add(2);
-            buffer.Add(3);
+            CyclicBuffer<int> buffer = new(5) { 1, 2, 3 };
 
             bool removed = buffer.Remove(2, null);
 
@@ -601,10 +567,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveNullValue()
         {
-            CyclicBuffer<string> buffer = new(5);
-            buffer.Add("A");
-            buffer.Add(null);
-            buffer.Add("B");
+            CyclicBuffer<string> buffer = new(5) { "A", null, "B" };
 
             bool removed = buffer.Remove(null);
 
@@ -616,13 +579,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveAllMatchingElements()
         {
-            CyclicBuffer<int> buffer = new(10);
-            buffer.Add(1);
-            buffer.Add(2);
-            buffer.Add(3);
-            buffer.Add(2);
-            buffer.Add(4);
-            buffer.Add(2);
+            CyclicBuffer<int> buffer = new(10) { 1, 2, 3, 2, 4, 2 };
 
             int removed = buffer.RemoveAll(x => x == 2);
 
@@ -634,10 +591,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveAllNoMatches()
         {
-            CyclicBuffer<int> buffer = new(5);
-            buffer.Add(1);
-            buffer.Add(2);
-            buffer.Add(3);
+            CyclicBuffer<int> buffer = new(5) { 1, 2, 3 };
 
             int removed = buffer.RemoveAll(x => x == 10);
 
@@ -660,10 +614,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveAllElements()
         {
-            CyclicBuffer<int> buffer = new(5);
-            buffer.Add(1);
-            buffer.Add(2);
-            buffer.Add(3);
+            CyclicBuffer<int> buffer = new(5) { 1, 2, 3 };
 
             int removed = buffer.RemoveAll(x => true);
 
@@ -691,11 +642,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveAllFirstElement()
         {
-            CyclicBuffer<int> buffer = new(5);
-            buffer.Add(1);
-            buffer.Add(2);
-            buffer.Add(3);
-            buffer.Add(4);
+            CyclicBuffer<int> buffer = new(5) { 1, 2, 3, 4 };
 
             int removed = buffer.RemoveAll(x => x == 1);
 
@@ -707,11 +654,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveAllLastElement()
         {
-            CyclicBuffer<int> buffer = new(5);
-            buffer.Add(1);
-            buffer.Add(2);
-            buffer.Add(3);
-            buffer.Add(4);
+            CyclicBuffer<int> buffer = new(5) { 1, 2, 3, 4 };
 
             int removed = buffer.RemoveAll(x => x == 4);
 
@@ -723,12 +666,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveAllMiddleElements()
         {
-            CyclicBuffer<int> buffer = new(5);
-            buffer.Add(1);
-            buffer.Add(2);
-            buffer.Add(3);
-            buffer.Add(4);
-            buffer.Add(5);
+            CyclicBuffer<int> buffer = new(5) { 1, 2, 3, 4, 5 };
 
             int removed = buffer.RemoveAll(x => x >= 2 && x <= 4);
 
@@ -740,8 +678,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveAllOnlyElement()
         {
-            CyclicBuffer<int> buffer = new(5);
-            buffer.Add(42);
+            CyclicBuffer<int> buffer = new(5) { 42 };
 
             int removed = buffer.RemoveAll(x => x == 42);
 
@@ -753,9 +690,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveAllNullPredicate()
         {
-            CyclicBuffer<int> buffer = new(5);
-            buffer.Add(1);
-            buffer.Add(2);
+            CyclicBuffer<int> buffer = new(5) { 1, 2 };
 
             Assert.Throws<ArgumentNullException>(() => buffer.RemoveAll(null));
         }
@@ -763,12 +698,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveAllWithNullValues()
         {
-            CyclicBuffer<string> buffer = new(5);
-            buffer.Add("A");
-            buffer.Add(null);
-            buffer.Add("B");
-            buffer.Add(null);
-            buffer.Add("C");
+            CyclicBuffer<string> buffer = new(5) { "A", null, "B", null, "C" };
 
             int removed = buffer.RemoveAll(x => x == null);
 
@@ -780,12 +710,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveAllKeepingNullValues()
         {
-            CyclicBuffer<string> buffer = new(5);
-            buffer.Add("A");
-            buffer.Add(null);
-            buffer.Add("B");
-            buffer.Add(null);
-            buffer.Add("C");
+            CyclicBuffer<string> buffer = new(5) { "A", null, "B", null, "C" };
 
             int removed = buffer.RemoveAll(x => x != null);
 
@@ -797,13 +722,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveAllAlternatingPattern()
         {
-            CyclicBuffer<int> buffer = new(10);
-            buffer.Add(1);
-            buffer.Add(2);
-            buffer.Add(3);
-            buffer.Add(4);
-            buffer.Add(5);
-            buffer.Add(6);
+            CyclicBuffer<int> buffer = new(10) { 1, 2, 3, 4, 5, 6 };
 
             int removed = buffer.RemoveAll(x => x % 2 == 0);
 
@@ -815,10 +734,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveAllPredicateNeverTrue()
         {
-            CyclicBuffer<int> buffer = new(5);
-            buffer.Add(1);
-            buffer.Add(2);
-            buffer.Add(3);
+            CyclicBuffer<int> buffer = new(5) { 1, 2, 3 };
 
             int removed = buffer.RemoveAll(x => x > 100);
 
@@ -830,11 +746,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveAllPredicateAlwaysTrue()
         {
-            CyclicBuffer<int> buffer = new(5);
-            buffer.Add(1);
-            buffer.Add(2);
-            buffer.Add(3);
-            buffer.Add(4);
+            CyclicBuffer<int> buffer = new(5) { 1, 2, 3, 4 };
 
             int removed = buffer.RemoveAll(x => true);
 
@@ -846,10 +758,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveAllPredicateAlwaysFalse()
         {
-            CyclicBuffer<int> buffer = new(5);
-            buffer.Add(1);
-            buffer.Add(2);
-            buffer.Add(3);
+            CyclicBuffer<int> buffer = new(5) { 1, 2, 3 };
 
             int removed = buffer.RemoveAll(x => false);
 
@@ -861,8 +770,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveAllFromSingleElementBuffer()
         {
-            CyclicBuffer<int> buffer = new(1);
-            buffer.Add(5);
+            CyclicBuffer<int> buffer = new(1) { 5 };
 
             int removed = buffer.RemoveAll(x => x == 5);
 
@@ -874,8 +782,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveAllFromSingleElementBufferNoMatch()
         {
-            CyclicBuffer<int> buffer = new(1);
-            buffer.Add(5);
+            CyclicBuffer<int> buffer = new(1) { 5 };
 
             int removed = buffer.RemoveAll(x => x == 10);
 
@@ -887,12 +794,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveAllFromFullBuffer()
         {
-            CyclicBuffer<int> buffer = new(5);
-            buffer.Add(1);
-            buffer.Add(2);
-            buffer.Add(3);
-            buffer.Add(4);
-            buffer.Add(5);
+            CyclicBuffer<int> buffer = new(5) { 1, 2, 3, 4, 5 };
 
             int removed = buffer.RemoveAll(x => x > 2);
 
@@ -904,12 +806,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveAllEntireFullBuffer()
         {
-            CyclicBuffer<int> buffer = new(5);
-            buffer.Add(1);
-            buffer.Add(2);
-            buffer.Add(3);
-            buffer.Add(4);
-            buffer.Add(5);
+            CyclicBuffer<int> buffer = new(5) { 1, 2, 3, 4, 5 };
 
             int removed = buffer.RemoveAll(x => x > 0);
 
@@ -921,13 +818,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveAllWithWrappedBufferRemoveFirst()
         {
-            CyclicBuffer<int> buffer = new(5);
-            buffer.Add(1);
-            buffer.Add(2);
-            buffer.Add(3);
-            buffer.Add(4);
-            buffer.Add(5);
-            buffer.Add(6);
+            CyclicBuffer<int> buffer = new(5) { 1, 2, 3, 4, 5, 6 };
 
             // Buffer now: [2, 3, 4, 5, 6]
             int removed = buffer.RemoveAll(x => x == 2);
@@ -940,13 +831,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveAllWithWrappedBufferRemoveLast()
         {
-            CyclicBuffer<int> buffer = new(5);
-            buffer.Add(1);
-            buffer.Add(2);
-            buffer.Add(3);
-            buffer.Add(4);
-            buffer.Add(5);
-            buffer.Add(6);
+            CyclicBuffer<int> buffer = new(5) { 1, 2, 3, 4, 5, 6 };
 
             // Buffer now: [2, 3, 4, 5, 6]
             int removed = buffer.RemoveAll(x => x == 6);
@@ -959,14 +844,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveAllWithWrappedBufferRemoveMiddle()
         {
-            CyclicBuffer<int> buffer = new(5);
-            buffer.Add(1);
-            buffer.Add(2);
-            buffer.Add(3);
-            buffer.Add(4);
-            buffer.Add(5);
-            buffer.Add(6);
-            buffer.Add(7);
+            CyclicBuffer<int> buffer = new(5) { 1, 2, 3, 4, 5, 6, 7 };
 
             // Buffer now: [3, 4, 5, 6, 7]
             int removed = buffer.RemoveAll(x => x == 5);
@@ -979,15 +857,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveAllWithWrappedBufferMultipleElements()
         {
-            CyclicBuffer<int> buffer = new(5);
-            buffer.Add(1);
-            buffer.Add(2);
-            buffer.Add(3);
-            buffer.Add(4);
-            buffer.Add(5);
-            buffer.Add(6);
-            buffer.Add(7);
-            buffer.Add(8);
+            CyclicBuffer<int> buffer = new(5) { 1, 2, 3, 4, 5, 6, 7, 8 };
 
             // Buffer now: [4, 5, 6, 7, 8]
             int removed = buffer.RemoveAll(x => x == 4 || x == 6 || x == 8);
@@ -1000,13 +870,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveAllWithDuplicates()
         {
-            CyclicBuffer<int> buffer = new(10);
-            buffer.Add(1);
-            buffer.Add(2);
-            buffer.Add(2);
-            buffer.Add(3);
-            buffer.Add(2);
-            buffer.Add(4);
+            CyclicBuffer<int> buffer = new(10) { 1, 2, 2, 3, 2, 4 };
 
             int removed = buffer.RemoveAll(x => x == 2);
 
@@ -1018,14 +882,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveAllWithDuplicatesWrapped()
         {
-            CyclicBuffer<int> buffer = new(5);
-            buffer.Add(1);
-            buffer.Add(2);
-            buffer.Add(2);
-            buffer.Add(3);
-            buffer.Add(2);
-            buffer.Add(4);
-            buffer.Add(2);
+            CyclicBuffer<int> buffer = new(5) { 1, 2, 2, 3, 2, 4, 2 };
 
             // Buffer now: [2, 3, 2, 4, 2]
             int removed = buffer.RemoveAll(x => x == 2);
@@ -1038,11 +895,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveAllThenAdd()
         {
-            CyclicBuffer<int> buffer = new(5);
-            buffer.Add(1);
-            buffer.Add(2);
-            buffer.Add(3);
-            buffer.Add(4);
+            CyclicBuffer<int> buffer = new(5) { 1, 2, 3, 4 };
 
             int removed = buffer.RemoveAll(x => x % 2 == 0);
             Assert.AreEqual(2, removed);
@@ -1059,13 +912,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveAllMultipleTimes()
         {
-            CyclicBuffer<int> buffer = new(10);
-            buffer.Add(1);
-            buffer.Add(2);
-            buffer.Add(3);
-            buffer.Add(4);
-            buffer.Add(5);
-            buffer.Add(6);
+            CyclicBuffer<int> buffer = new(10) { 1, 2, 3, 4, 5, 6 };
 
             int removed1 = buffer.RemoveAll(x => x % 2 == 0);
             Assert.AreEqual(3, removed1);
@@ -1094,14 +941,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveAllPreservesOrderOfRemainingElements()
         {
-            CyclicBuffer<int> buffer = new(10);
-            buffer.Add(10);
-            buffer.Add(20);
-            buffer.Add(30);
-            buffer.Add(40);
-            buffer.Add(50);
-            buffer.Add(60);
-            buffer.Add(70);
+            CyclicBuffer<int> buffer = new(10) { 10, 20, 30, 40, 50, 60, 70 };
 
             int removed = buffer.RemoveAll(x => x == 20 || x == 40 || x == 60);
 
@@ -1113,12 +953,14 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveAllWithComplexObjectsPredicate()
         {
-            CyclicBuffer<string> buffer = new(10);
-            buffer.Add("apple");
-            buffer.Add("banana");
-            buffer.Add("apricot");
-            buffer.Add("cherry");
-            buffer.Add("avocado");
+            CyclicBuffer<string> buffer = new(10)
+            {
+                "apple",
+                "banana",
+                "apricot",
+                "cherry",
+                "avocado",
+            };
 
             int removed = buffer.RemoveAll(x => x.StartsWith("a"));
 
@@ -1130,15 +972,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveAllAfterMultipleWraparounds()
         {
-            CyclicBuffer<int> buffer = new(3);
-            buffer.Add(1);
-            buffer.Add(2);
-            buffer.Add(3);
-            buffer.Add(4);
-            buffer.Add(5);
-            buffer.Add(6);
-            buffer.Add(7);
-            buffer.Add(8);
+            CyclicBuffer<int> buffer = new(3) { 1, 2, 3, 4, 5, 6, 7, 8 };
 
             // Buffer now: [6, 7, 8]
             int removed = buffer.RemoveAll(x => x == 7);
@@ -1151,12 +985,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveAllLeavingSingleElement()
         {
-            CyclicBuffer<int> buffer = new(5);
-            buffer.Add(1);
-            buffer.Add(2);
-            buffer.Add(3);
-            buffer.Add(4);
-            buffer.Add(5);
+            CyclicBuffer<int> buffer = new(5) { 1, 2, 3, 4, 5 };
 
             int removed = buffer.RemoveAll(x => x != 3);
 
@@ -1168,8 +997,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveAllWithCapacityOne()
         {
-            CyclicBuffer<int> buffer = new(1);
-            buffer.Add(42);
+            CyclicBuffer<int> buffer = new(1) { 42 };
 
             int removed = buffer.RemoveAll(x => x == 42);
 
@@ -1181,8 +1009,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveAllWithCapacityOneNoMatch()
         {
-            CyclicBuffer<int> buffer = new(1);
-            buffer.Add(42);
+            CyclicBuffer<int> buffer = new(1) { 42 };
 
             int removed = buffer.RemoveAll(x => x != 42);
 
@@ -1194,10 +1021,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveAllPartialBufferBeginning()
         {
-            CyclicBuffer<int> buffer = new(10);
-            buffer.Add(1);
-            buffer.Add(2);
-            buffer.Add(3);
+            CyclicBuffer<int> buffer = new(10) { 1, 2, 3 };
 
             int removed = buffer.RemoveAll(x => x <= 2);
 
@@ -1209,10 +1033,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveAllPartialBufferEnd()
         {
-            CyclicBuffer<int> buffer = new(10);
-            buffer.Add(1);
-            buffer.Add(2);
-            buffer.Add(3);
+            CyclicBuffer<int> buffer = new(10) { 1, 2, 3 };
 
             int removed = buffer.RemoveAll(x => x >= 2);
 
@@ -1224,14 +1045,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveAllConsecutiveElements()
         {
-            CyclicBuffer<int> buffer = new(10);
-            buffer.Add(1);
-            buffer.Add(2);
-            buffer.Add(3);
-            buffer.Add(4);
-            buffer.Add(5);
-            buffer.Add(6);
-            buffer.Add(7);
+            CyclicBuffer<int> buffer = new(10) { 1, 2, 3, 4, 5, 6, 7 };
 
             int removed = buffer.RemoveAll(x => x >= 3 && x <= 5);
 
@@ -1243,14 +1057,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveAllNonConsecutiveElements()
         {
-            CyclicBuffer<int> buffer = new(10);
-            buffer.Add(1);
-            buffer.Add(2);
-            buffer.Add(3);
-            buffer.Add(4);
-            buffer.Add(5);
-            buffer.Add(6);
-            buffer.Add(7);
+            CyclicBuffer<int> buffer = new(10) { 1, 2, 3, 4, 5, 6, 7 };
 
             int removed = buffer.RemoveAll(x => x == 1 || x == 4 || x == 7);
 
@@ -1276,10 +1083,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void EnumerationNormal()
         {
-            CyclicBuffer<int> buffer = new(5);
-            buffer.Add(1);
-            buffer.Add(2);
-            buffer.Add(3);
+            CyclicBuffer<int> buffer = new(5) { 1, 2, 3 };
 
             List<int> items = new();
             foreach (int item in buffer)
@@ -1293,12 +1097,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void EnumerationAfterWraparound()
         {
-            CyclicBuffer<int> buffer = new(3);
-            buffer.Add(1);
-            buffer.Add(2);
-            buffer.Add(3);
-            buffer.Add(4);
-            buffer.Add(5);
+            CyclicBuffer<int> buffer = new(3) { 1, 2, 3, 4, 5 };
 
             List<int> items = new();
             foreach (int item in buffer)
@@ -1312,9 +1111,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void EnumerationMultipleTimes()
         {
-            CyclicBuffer<int> buffer = new(3);
-            buffer.Add(1);
-            buffer.Add(2);
+            CyclicBuffer<int> buffer = new(3) { 1, 2 };
 
             for (int i = 0; i < 3; i++)
             {
@@ -1330,10 +1127,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void EnumeratorReset()
         {
-            CyclicBuffer<int> buffer = new(5);
-            buffer.Add(1);
-            buffer.Add(2);
-            buffer.Add(3);
+            CyclicBuffer<int> buffer = new(5) { 1, 2, 3 };
 
             using CyclicBuffer<int>.CyclicBufferEnumerator enumerator = buffer.GetEnumerator();
 
@@ -1359,10 +1153,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void ContainsNullValue()
         {
-            CyclicBuffer<string> buffer = new(5);
-            buffer.Add("A");
-            buffer.Add(null);
-            buffer.Add("B");
+            CyclicBuffer<string> buffer = new(5) { "A", null, "B" };
 
             Assert.IsTrue(buffer.Contains(null));
             Assert.IsTrue(buffer.Contains("A"));
@@ -1382,10 +1173,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void ContainsAfterClear()
         {
-            CyclicBuffer<int> buffer = new(5);
-            buffer.Add(1);
-            buffer.Add(2);
-            buffer.Add(3);
+            CyclicBuffer<int> buffer = new(5) { 1, 2, 3 };
 
             Assert.IsTrue(buffer.Contains(2));
 
@@ -1399,10 +1187,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void AddAfterRemove()
         {
-            CyclicBuffer<int> buffer = new(5);
-            buffer.Add(1);
-            buffer.Add(2);
-            buffer.Add(3);
+            CyclicBuffer<int> buffer = new(5) { 1, 2, 3 };
 
             buffer.Remove(2);
             Assert.AreEqual(2, buffer.Count);
@@ -1420,11 +1205,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void AddAfterRemoveAll()
         {
-            CyclicBuffer<int> buffer = new(5);
-            buffer.Add(1);
-            buffer.Add(2);
-            buffer.Add(3);
-            buffer.Add(4);
+            CyclicBuffer<int> buffer = new(5) { 1, 2, 3, 4 };
 
             buffer.RemoveAll(x => x % 2 == 0);
             Assert.AreEqual(2, buffer.Count);
@@ -1579,10 +1360,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void FullBufferOperations()
         {
-            CyclicBuffer<int> buffer = new(3);
-            buffer.Add(1);
-            buffer.Add(2);
-            buffer.Add(3);
+            CyclicBuffer<int> buffer = new(3) { 1, 2, 3 };
 
             Assert.AreEqual(3, buffer.Count);
             Assert.AreEqual(3, buffer.Capacity);
@@ -1608,37 +1386,28 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveAfterWraparound()
         {
-            CyclicBuffer<int> buffer = new(5);
-            // Fill buffer
-            buffer.Add(1);
-            buffer.Add(2);
-            buffer.Add(3);
-            buffer.Add(4);
-            buffer.Add(5);
-
-            // Cause wraparound
-            buffer.Add(6);
-            buffer.Add(7);
+            CyclicBuffer<int> buffer = new(5)
+            {
+                // Fill buffer
+                1,
+                2,
+                3,
+                4,
+                5,
+                // Cause wraparound
+                6,
+                7,
+            };
 
             // Buffer should now contain: [3, 4, 5, 6, 7]
-            Console.WriteLine($"[DEBUG_LOG] After wraparound: [{string.Join(", ", buffer)}]");
             Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 3, 4, 5, 6, 7 }));
-
-            // Remove element from middle
             bool removed = buffer.Remove(5);
-            Console.WriteLine(
-                $"[DEBUG_LOG] After remove(5): removed={removed}, count={buffer.Count}, buffer=[{string.Join(", ", buffer)}]"
-            );
 
             Assert.IsTrue(removed);
             Assert.AreEqual(4, buffer.Count);
             Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 3, 4, 6, 7 }));
 
-            // Add new element after remove
             buffer.Add(8);
-            Console.WriteLine(
-                $"[DEBUG_LOG] After add(8): count={buffer.Count}, buffer=[{string.Join(", ", buffer)}]"
-            );
             Assert.AreEqual(5, buffer.Count);
             Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 3, 4, 6, 7, 8 }));
         }
@@ -1646,18 +1415,19 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveAllAfterWraparound()
         {
-            CyclicBuffer<int> buffer = new(5);
-            // Fill buffer
-            buffer.Add(1);
-            buffer.Add(2);
-            buffer.Add(3);
-            buffer.Add(4);
-            buffer.Add(5);
-
-            // Cause wraparound
-            buffer.Add(6);
-            buffer.Add(7);
-            buffer.Add(8);
+            CyclicBuffer<int> buffer = new(5)
+            {
+                // Fill buffer
+                1,
+                2,
+                3,
+                4,
+                5,
+                // Cause wraparound
+                6,
+                7,
+                8,
+            };
 
             // Buffer should now contain: [4, 5, 6, 7, 8]
             Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 4, 5, 6, 7, 8 }));
@@ -1679,12 +1449,14 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void MultipleOperationsSequence()
         {
-            CyclicBuffer<int> buffer = new(5);
+            CyclicBuffer<int> buffer = new(5)
+            {
+                // Initial adds
+                1,
+                2,
+                3,
+            };
 
-            // Initial adds
-            buffer.Add(1);
-            buffer.Add(2);
-            buffer.Add(3);
             Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 1, 2, 3 }));
 
             // Wrap around
@@ -1714,6 +1486,326 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             buffer.Add(9);
             buffer.Add(10);
             Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 3, 5, 6, 9, 10 }));
+        }
+
+        [Test]
+        public void TryPopFrontExhaustionResetsState()
+        {
+            CyclicBuffer<int> buffer = new(4) { 1, 2, 3, 4 };
+
+            Assert.That(buffer.Count, Is.EqualTo(4));
+
+            Assert.IsTrue(buffer.TryPopFront(out int first));
+            Assert.AreEqual(1, first);
+
+            Assert.IsTrue(buffer.TryPopFront(out int second));
+            Assert.AreEqual(2, second);
+
+            Assert.IsTrue(buffer.TryPopFront(out int third));
+            Assert.AreEqual(3, third);
+
+            Assert.IsTrue(buffer.TryPopFront(out int fourth));
+            Assert.AreEqual(4, fourth);
+
+            Assert.AreEqual(0, buffer.Count);
+            Assert.IsFalse(buffer.TryPopFront(out int emptyFront));
+            Assert.AreEqual(default(int), emptyFront);
+
+            buffer.Add(99);
+            Assert.That(buffer.Count, Is.EqualTo(1));
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 99 }));
+            Assert.AreEqual(99, buffer[0]);
+        }
+
+        [Test]
+        public void TryPopBackExhaustionResetsState()
+        {
+            CyclicBuffer<int> buffer = new(4) { 1, 2, 3, 4 };
+
+            Assert.That(buffer.Count, Is.EqualTo(4));
+
+            Assert.IsTrue(buffer.TryPopBack(out int first));
+            Assert.AreEqual(4, first);
+
+            Assert.IsTrue(buffer.TryPopBack(out int second));
+            Assert.AreEqual(3, second);
+
+            Assert.IsTrue(buffer.TryPopBack(out int third));
+            Assert.AreEqual(2, third);
+
+            Assert.IsTrue(buffer.TryPopBack(out int fourth));
+            Assert.AreEqual(1, fourth);
+
+            Assert.AreEqual(0, buffer.Count);
+            Assert.IsFalse(buffer.TryPopBack(out int emptyBack));
+            Assert.AreEqual(default(int), emptyBack);
+
+            buffer.Add(42);
+            Assert.That(buffer.Count, Is.EqualTo(1));
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 42 }));
+            Assert.AreEqual(42, buffer[0]);
+        }
+
+        [Test]
+        public void TryPopFrontMaintainsOrderAcrossWraps()
+        {
+            CyclicBuffer<int> buffer = new(3) { 0, 1, 2, 3, 4 };
+
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 2, 3, 4 }));
+
+            Assert.IsTrue(buffer.TryPopFront(out int firstFront));
+            Assert.AreEqual(2, firstFront);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 3, 4 }));
+
+            buffer.Add(5);
+            buffer.Add(6);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 4, 5, 6 }));
+
+            Assert.IsTrue(buffer.TryPopFront(out int secondFront));
+            Assert.AreEqual(4, secondFront);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 5, 6 }));
+
+            buffer.Add(7);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 5, 6, 7 }));
+
+            Assert.IsTrue(buffer.TryPopFront(out int thirdFront));
+            Assert.AreEqual(5, thirdFront);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 6, 7 }));
+        }
+
+        [Test]
+        public void TryPopBackMaintainsTailAcrossWraps()
+        {
+            CyclicBuffer<int> buffer = new(4) { 10, 11, 12, 13, 14, 15 };
+
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 12, 13, 14, 15 }));
+
+            Assert.IsTrue(buffer.TryPopBack(out int firstBack));
+            Assert.AreEqual(15, firstBack);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 12, 13, 14 }));
+
+            buffer.Add(16);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 12, 13, 14, 16 }));
+
+            Assert.IsTrue(buffer.TryPopBack(out int secondBack));
+            Assert.AreEqual(16, secondBack);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 12, 13, 14 }));
+
+            buffer.Add(17);
+            buffer.Add(18);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 13, 14, 17, 18 }));
+
+            Assert.IsTrue(buffer.TryPopBack(out int thirdBack));
+            Assert.AreEqual(18, thirdBack);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 13, 14, 17 }));
+        }
+
+        [Test]
+        public void TryPopOperationsStayInSyncWithReferenceList()
+        {
+            for (int trial = 0; trial < NumTries; trial++)
+            {
+                int capacity = PRNG.Instance.Next(0, 10);
+                CyclicBuffer<int> buffer = new(capacity);
+                List<int> expected = new(capacity > 0 ? capacity : 1);
+
+                int operations = PRNG.Instance.Next(30, 90);
+                for (int step = 0; step < operations; step++)
+                {
+                    int action = PRNG.Instance.Next(0, 3);
+                    switch (action)
+                    {
+                        case 0:
+                        {
+                            int value = PRNG.Instance.Next();
+                            buffer.Add(value);
+                            if (capacity > 0)
+                            {
+                                if (expected.Count == capacity)
+                                {
+                                    expected.RemoveAt(0);
+                                }
+
+                                expected.Add(value);
+                            }
+
+                            break;
+                        }
+                        case 1:
+                        {
+                            bool bufferPopped = buffer.TryPopFront(out int poppedFront);
+                            bool expectedPopped = expected.Count > 0;
+
+                            Assert.AreEqual(expectedPopped, bufferPopped);
+                            if (expectedPopped)
+                            {
+                                Assert.AreEqual(expected[0], poppedFront);
+                                expected.RemoveAt(0);
+                            }
+                            else
+                            {
+                                Assert.AreEqual(default(int), poppedFront);
+                            }
+
+                            break;
+                        }
+                        default:
+                        {
+                            bool bufferPopped = buffer.TryPopBack(out int poppedBack);
+                            bool expectedPopped = expected.Count > 0;
+
+                            Assert.AreEqual(expectedPopped, bufferPopped);
+                            if (expectedPopped)
+                            {
+                                int lastIndex = expected.Count - 1;
+                                Assert.AreEqual(expected[lastIndex], poppedBack);
+                                expected.RemoveAt(lastIndex);
+                            }
+                            else
+                            {
+                                Assert.AreEqual(default(int), poppedBack);
+                            }
+
+                            break;
+                        }
+                    }
+
+                    Assert.That(buffer.Count, Is.EqualTo(expected.Count));
+                    Assert.That(buffer.ToArray(), Is.EqualTo(expected.ToArray()));
+                }
+            }
+        }
+
+        [Test]
+        public void TryPopFrontRemovesFromFront()
+        {
+            CyclicBuffer<int> buffer = new(5) { 1, 2, 3 };
+
+            bool success = buffer.TryPopFront(out int result);
+
+            Assert.IsTrue(success);
+            Assert.AreEqual(1, result);
+            Assert.AreEqual(2, buffer.Count);
+            Assert.AreEqual(2, buffer[0]);
+        }
+
+        [Test]
+        public void TryPopFrontReturnsFalseWhenEmpty()
+        {
+            CyclicBuffer<int> buffer = new(5);
+
+            bool success = buffer.TryPopFront(out int result);
+
+            Assert.IsFalse(success);
+            Assert.AreEqual(0, result);
+        }
+
+        [Test]
+        public void TryPopBackRemovesFromBack()
+        {
+            CyclicBuffer<int> buffer = new(5) { 1, 2, 3 };
+
+            bool success = buffer.TryPopBack(out int result);
+
+            Assert.IsTrue(success);
+            Assert.AreEqual(3, result);
+            Assert.AreEqual(2, buffer.Count);
+            Assert.AreEqual(2, buffer[1]);
+        }
+
+        [Test]
+        public void TryPopBackReturnsFalseWhenEmpty()
+        {
+            CyclicBuffer<int> buffer = new(5);
+
+            bool success = buffer.TryPopBack(out int result);
+
+            Assert.IsFalse(success);
+            Assert.AreEqual(0, result);
+        }
+
+        [Test]
+        public void TryPopFrontMultipleTimes()
+        {
+            CyclicBuffer<int> buffer = new(10);
+            for (int i = 0; i < 5; i++)
+            {
+                buffer.Add(i);
+            }
+
+            Assert.IsTrue(buffer.TryPopFront(out int first));
+            Assert.AreEqual(0, first);
+
+            Assert.IsTrue(buffer.TryPopFront(out int second));
+            Assert.AreEqual(1, second);
+
+            Assert.AreEqual(3, buffer.Count);
+        }
+
+        [Test]
+        public void TryPopBackMultipleTimes()
+        {
+            CyclicBuffer<int> buffer = new(10);
+            for (int i = 0; i < 5; i++)
+            {
+                buffer.Add(i);
+            }
+
+            Assert.IsTrue(buffer.TryPopBack(out int first));
+            Assert.AreEqual(4, first);
+
+            Assert.IsTrue(buffer.TryPopBack(out int second));
+            Assert.AreEqual(3, second);
+
+            Assert.AreEqual(3, buffer.Count);
+        }
+
+        [Test]
+        public void TryPopFrontAndBackMixed()
+        {
+            CyclicBuffer<int> buffer = new(10) { 1, 2, 3, 4 };
+
+            Assert.IsTrue(buffer.TryPopFront(out int front1));
+            Assert.AreEqual(1, front1);
+
+            Assert.IsTrue(buffer.TryPopBack(out int back1));
+            Assert.AreEqual(4, back1);
+
+            Assert.AreEqual(2, buffer.Count);
+            Assert.AreEqual(2, buffer[0]);
+            Assert.AreEqual(3, buffer[1]);
+        }
+
+        [Test]
+        public void TryPopUntilEmpty()
+        {
+            CyclicBuffer<int> buffer = new(5) { 1, 2 };
+
+            Assert.IsTrue(buffer.TryPopFront(out _));
+            Assert.IsTrue(buffer.TryPopFront(out _));
+            Assert.IsFalse(buffer.TryPopFront(out _));
+            Assert.AreEqual(0, buffer.Count);
+        }
+
+        [Test]
+        public void TryPopWithWrappedBuffer()
+        {
+            CyclicBuffer<int> buffer = new(3)
+            {
+                1,
+                2,
+                3,
+                4, // Wraps, removes 1
+                5, // Wraps, removes 2
+            };
+
+            Assert.IsTrue(buffer.TryPopFront(out int front));
+            Assert.AreEqual(3, front);
+
+            Assert.IsTrue(buffer.TryPopBack(out int back));
+            Assert.AreEqual(5, back);
+
+            Assert.AreEqual(1, buffer.Count);
         }
     }
 }

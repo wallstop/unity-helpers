@@ -1,6 +1,7 @@
 namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 {
     using System;
+    using System.Runtime.InteropServices;
     using System.Runtime.Serialization;
     using System.Text.Json.Serialization;
     using Helper;
@@ -9,7 +10,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
     [Serializable]
     [DataContract]
     [ProtoContract]
-    public struct KGuid : IEquatable<KGuid>, IEquatable<Guid>, IComparable<KGuid>
+    public struct KGuid
+        : IEquatable<KGuid>,
+            IEquatable<Guid>,
+            IComparable<KGuid>,
+            IComparable<Guid>,
+            IComparable
     {
         /*
             We need to store this in a NetworkList somewhere, and that means we can't have arrays.
@@ -60,7 +66,23 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         }
 
         public KGuid(Guid guid)
-            : this(guid.ToByteArray()) { }
+        {
+            ReadOnlySpan<byte> guidBytes = MemoryMarshal.AsBytes(
+                MemoryMarshal.CreateReadOnlySpan(ref guid, 1)
+            );
+            _a = guidBytes[3] << 24 | guidBytes[2] << 16 | guidBytes[1] << 8 | guidBytes[0];
+            _b = (short)(guidBytes[5] << 8 | guidBytes[4]);
+            _c = (short)(guidBytes[7] << 8 | guidBytes[6]);
+            _d = guidBytes[8];
+            _e = guidBytes[9];
+            _f = guidBytes[10];
+            _g = guidBytes[11];
+            _h = guidBytes[12];
+            _i = guidBytes[13];
+            _j = guidBytes[14];
+            _k = guidBytes[15];
+            _hashCode = 0;
+        }
 
         [JsonConstructor]
         public KGuid(string guid)
@@ -68,13 +90,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
         public KGuid(byte[] guidBytes)
         {
-            _a =
-                (int)guidBytes[3] << 24
-                | (int)guidBytes[2] << 16
-                | (int)guidBytes[1] << 8
-                | (int)guidBytes[0];
-            _b = (short)((int)guidBytes[5] << 8 | (int)guidBytes[4]);
-            _c = (short)((int)guidBytes[7] << 8 | (int)guidBytes[6]);
+            _a = guidBytes[3] << 24 | guidBytes[2] << 16 | guidBytes[1] << 8 | guidBytes[0];
+            _b = (short)(guidBytes[5] << 8 | guidBytes[4]);
+            _c = (short)(guidBytes[7] << 8 | guidBytes[6]);
             _d = guidBytes[8];
             _e = guidBytes[9];
             _f = guidBytes[10];
@@ -248,6 +266,11 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             return _k.CompareTo(other._k);
         }
 
+        public int CompareTo(Guid other)
+        {
+            return CompareTo(new KGuid(other));
+        }
+
         public override bool Equals(object other)
         {
             return other switch
@@ -271,6 +294,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         public override string ToString()
         {
             return Guid;
+        }
+
+        public int CompareTo(object obj)
+        {
+            return obj switch
+            {
+                KGuid otherKGuid => CompareTo(otherKGuid),
+                Guid otherGuid => CompareTo(otherGuid),
+                _ => -1,
+            };
         }
 
         public byte[] ToByteArray()

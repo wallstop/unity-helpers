@@ -41,22 +41,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             IReadOnlyDictionary<Type, IReadOnlyList<MethodInfo>> mapping =
                 AnimationEventHelpers.TypesToMethods;
 
-            bool hasDerivedIgnore = mapping.TryGetValue(
-                typeof(AnimationEventDerivedIgnore),
-                out IReadOnlyList<MethodInfo> ignoreMethods
-            );
-            if (hasDerivedIgnore)
-            {
-                Console.WriteLine(
-                    $"[DEBUG_LOG] AnimationEventDerivedIgnore has {ignoreMethods.Count} methods:"
-                );
-                foreach (MethodInfo method in ignoreMethods)
-                {
-                    Console.WriteLine(
-                        $"[DEBUG_LOG]   - {method.Name} (DeclaringType: {method.DeclaringType.Name})"
-                    );
-                }
-            }
+            bool hasDerivedIgnore = mapping.TryGetValue(typeof(AnimationEventDerivedIgnore), out _);
 
             Assert.IsFalse(
                 hasDerivedIgnore,

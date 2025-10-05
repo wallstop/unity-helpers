@@ -3,13 +3,15 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     using System;
     using System.Collections;
     using System.Collections.Generic;
+    using System.Runtime.CompilerServices;
     using Extension;
     using Helper;
     using ProtoBuf;
+    using UnityEngine;
     using WallstopStudios.UnityHelpers.Utils;
 
     [Serializable]
-    [ProtoContract]
+    [ProtoContract(IgnoreListHandling = true)]
     public sealed class CyclicBuffer<T> : IReadOnlyList<T>
     {
         public struct CyclicBufferEnumerator : IEnumerator<T>
@@ -52,14 +54,21 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         }
 
         [ProtoMember(1)]
+        [field: SerializeField]
         public int Capacity { get; private set; }
 
         [ProtoMember(2)]
+        [field: SerializeField]
         public int Count { get; private set; }
 
         [ProtoMember(3)]
-        private List<T> _buffer = new List<T>();
+        private List<T> _serializedItems;
 
+        [SerializeField]
+        [ProtoIgnore]
+        private List<T> _buffer;
+
+        [SerializeField]
         [ProtoMember(4)]
         private int _position;
 
@@ -77,8 +86,13 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
         }
 
-        public CyclicBuffer()
-            : this(0, null) { }
+        private CyclicBuffer()
+        {
+            Capacity = 0;
+            _position = 0;
+            Count = 0;
+            _buffer = new List<T>();
+        }
 
         public CyclicBuffer(int capacity, IEnumerable<T> initialContents = null)
         {
@@ -90,7 +104,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             Capacity = capacity;
             _position = 0;
             Count = 0;
-            _buffer ??= new List<T>();
+            _buffer = new List<T>();
             if (initialContents != null)
             {
                 foreach (T item in initialContents)
@@ -254,13 +268,15 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return false;
             }
 
-            int frontIndex = AdjustedIndexFor(0);
+            int frontIndex = GetHeadIndex();
             result = _buffer[frontIndex];
             _buffer[frontIndex] = default; // Clear reference for GC
 
-            // Move position backward to skip the removed element
-            _position = (_position - 1 + Capacity) % Capacity;
             Count--;
+            if (Count == 0)
+            {
+                _position = 0;
+            }
 
             return true;
         }
@@ -281,27 +297,109 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             int backIndex = AdjustedIndexFor(Count - 1);
             result = _buffer[backIndex];
             _buffer[backIndex] = default; // Clear reference for GC
+
             Count--;
+            _position = Count == 0 ? 0 : backIndex;
 
             return true;
         }
 
-        private int AdjustedIndexFor(int index)
+        [ProtoBeforeSerialization]
+        private void OnProtoSerialize()
         {
-            long longCapacity = Capacity;
-            if (longCapacity == 0L)
+            if (Count == 0)
+            {
+                _serializedItems = null;
+                return;
+            }
+
+            List<T> buffer = _serializedItems;
+            if (buffer == null)
+            {
+                buffer = new List<T>(Count);
+            }
+            else
+            {
+                buffer.Clear();
+            }
+
+            for (int i = 0; i < Count; i++)
+            {
+                Debug.Log($"Adding index {i} to buffer of count {Count}..");
+                buffer.Add(_buffer[AdjustedIndexFor(i)]);
+            }
+
+            _serializedItems = buffer;
+        }
+
+        [ProtoAfterSerialization]
+        private void OnProtoSerialized()
+        {
+            _serializedItems = null;
+        }
+
+        [ProtoAfterDeserialization]
+        private void OnProtoDeserialized()
+        {
+            int itemCount = _serializedItems?.Count ?? 0;
+            int capacity = Capacity;
+
+            if (capacity < itemCount)
+            {
+                capacity = itemCount;
+            }
+
+            Capacity = capacity;
+            if (_buffer == null)
+            {
+                _buffer = new List<T>();
+            }
+            else
+            {
+                _buffer.Clear();
+            }
+
+            if (itemCount > 0)
+            {
+                _buffer.AddRange(_serializedItems);
+            }
+
+            Count = itemCount;
+            _position = Count < Capacity ? Count : 0;
+            _serializedItems = null;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private int GetHeadIndex()
+        {
+            int capacity = Capacity;
+            if (capacity == 0 || Count == 0)
             {
                 return 0;
             }
-            unchecked
-            {
-                int adjustedIndex = (int)(
-                    (_position - 1L + longCapacity - (_buffer.Count - 1 - index)) % longCapacity
-                );
-                return adjustedIndex;
-            }
+
+            return (_position - Count).PositiveMod(capacity);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private int AdjustedIndexFor(int index)
+        {
+            int capacity = Capacity;
+            if (capacity == 0 || Count == 0)
+            {
+                return 0;
+            }
+
+            int adjustedIndex = GetHeadIndex() + index;
+            if (adjustedIndex >= capacity)
+            {
+                adjustedIndex -= capacity;
+            }
+
+            return adjustedIndex;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void BoundsCheck(int index)
         {
             if (!InBounds(index))
@@ -310,6 +408,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private bool InBounds(int index)
         {
             return 0 <= index && index < Count;

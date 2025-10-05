@@ -158,10 +158,6 @@
             );
             nestedListField.SetValue(container, new Nested());
 
-            // Also add a dedicated list of Nested for this test
-            List<Nested> soList = new(nestedList);
-            AssemblyBuilderAccess dynField = new(); // just to avoid warnings, not used
-
             // Instead, create a temporary ScriptableObject subclass holding list<Nested>
             // to test a path like nestedHolder.Array.data[i].f
             // We'll embed it directly in TestContainer for simplicity by adding a serialized list via SerializedObject

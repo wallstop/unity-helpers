@@ -87,6 +87,18 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
         }
 
+        private readonly struct EntryDistance
+        {
+            internal readonly Entry entry;
+            internal readonly float distanceSquared;
+
+            internal EntryDistance(Entry entry, float distanceSquared)
+            {
+                this.entry = entry;
+                this.distanceSquared = distanceSquared;
+            }
+        }
+
         public const int DefaultBucketSize = 12;
 
         public readonly ImmutableArray<T> elements;
@@ -493,15 +505,14 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             nodeHeap.Clear();
             PushNode(nodeHeap, _head, position);
 
-            using PooledResource<HashSet<T>> nearestNeighborBufferResource =
-                Buffers<T>.HashSet.Get();
-            HashSet<T> nearestNeighborBuffer = nearestNeighborBufferResource.resource;
-            nearestNeighborBuffer.Clear();
+            using PooledResource<List<EntryDistance>> bestNeighborResource =
+                Buffers<EntryDistance>.List.Get();
+            List<EntryDistance> bestNeighbors = bestNeighborResource.resource;
+            bestNeighbors.Clear();
 
-            using PooledResource<List<Entry>> nearestNeighborsCacheResource =
-                Buffers<Entry>.List.Get();
-            List<Entry> nearestNeighborsCache = nearestNeighborsCacheResource.resource;
-            nearestNeighborsCache.Clear();
+            using PooledResource<HashSet<T>> bestNeighborValuesResource = Buffers<T>.HashSet.Get();
+            HashSet<T> bestNeighborValues = bestNeighborValuesResource.resource;
+            bestNeighborValues.Clear();
 
             float currentWorstDistanceSquared = float.PositiveInfinity;
 
@@ -510,7 +521,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 NodeDistance best = PopNode(nodeHeap);
 
                 if (
-                    nearestNeighborBuffer.Count >= count
+                    bestNeighbors.Count >= count
                     && best._distanceSquared >= currentWorstDistanceSquared
                 )
                 {
@@ -539,32 +550,57 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 for (int i = startIndex; i < endIndex; ++i)
                 {
                     Entry entry = entries[indices[i]];
-                    if (nearestNeighborBuffer.Add(entry.value))
-                    {
-                        nearestNeighborsCache.Add(entry);
-                    }
-                }
+                    float distanceSquared = (entry.position - position).sqrMagnitude;
 
-                if (nearestNeighborBuffer.Count >= count)
-                {
-                    currentWorstDistanceSquared = CalculateWorstDistanceSquared(
-                        nearestNeighborsCache,
-                        position
+                    if (bestNeighbors.Count < count)
+                    {
+                        if (!bestNeighborValues.Add(entry.value))
+                        {
+                            continue;
+                        }
+
+                        bestNeighbors.Add(new EntryDistance(entry, distanceSquared));
+
+                        if (bestNeighbors.Count == count)
+                        {
+                            currentWorstDistanceSquared = FindWorstDistanceSquared(bestNeighbors);
+                        }
+
+                        continue;
+                    }
+
+                    if (distanceSquared >= currentWorstDistanceSquared)
+                    {
+                        continue;
+                    }
+
+                    if (bestNeighborValues.Contains(entry.value))
+                    {
+                        continue;
+                    }
+
+                    EntryDistance replaced = ReplaceWorstNeighbor(
+                        bestNeighbors,
+                        entry,
+                        distanceSquared
                     );
+                    bestNeighborValues.Remove(replaced.entry.value);
+                    bestNeighborValues.Add(entry.value);
+                    currentWorstDistanceSquared = FindWorstDistanceSquared(bestNeighbors);
                 }
             }
 
-            nearestNeighborsCache.Sort(
-                (lhs, rhs) =>
-                    (lhs.position - position).sqrMagnitude.CompareTo(
-                        (rhs.position - position).sqrMagnitude
-                    )
-            );
+            if (bestNeighbors.Count > 1)
+            {
+                bestNeighbors.Sort(
+                    (lhs, rhs) => lhs.distanceSquared.CompareTo(rhs.distanceSquared)
+                );
+            }
 
             nearestNeighbors.Clear();
-            for (int i = 0; i < nearestNeighborsCache.Count && i < count; ++i)
+            for (int i = 0; i < bestNeighbors.Count && i < count; ++i)
             {
-                nearestNeighbors.Add(nearestNeighborsCache[i].value);
+                nearestNeighbors.Add(bestNeighbors[i].entry.value);
             }
 
             return nearestNeighbors;
@@ -630,19 +666,44 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
                 return result;
             }
-            static float CalculateWorstDistanceSquared(List<Entry> candidates, Vector3 point)
+
+            static float FindWorstDistanceSquared(List<EntryDistance> candidates)
             {
                 float worst = 0f;
                 for (int i = 0; i < candidates.Count; ++i)
                 {
-                    float distanceSquared = (candidates[i].position - point).sqrMagnitude;
-                    if (distanceSquared > worst)
+                    float distance = candidates[i].distanceSquared;
+                    if (distance > worst)
                     {
-                        worst = distanceSquared;
+                        worst = distance;
                     }
                 }
 
                 return worst;
+            }
+
+            static EntryDistance ReplaceWorstNeighbor(
+                List<EntryDistance> candidates,
+                Entry entry,
+                float distanceSquared
+            )
+            {
+                int worstIndex = 0;
+                float worstDistance = candidates[0].distanceSquared;
+
+                for (int i = 1; i < candidates.Count; ++i)
+                {
+                    float candidateDistance = candidates[i].distanceSquared;
+                    if (candidateDistance > worstDistance)
+                    {
+                        worstDistance = candidateDistance;
+                        worstIndex = i;
+                    }
+                }
+
+                EntryDistance replaced = candidates[worstIndex];
+                candidates[worstIndex] = new EntryDistance(entry, distanceSquared);
+                return replaced;
             }
         }
     }

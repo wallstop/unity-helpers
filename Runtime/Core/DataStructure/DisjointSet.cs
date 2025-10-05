@@ -2,6 +2,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 {
     using System;
     using System.Collections.Generic;
+    using ProtoBuf;
+    using UnityEngine;
     using WallstopStudios.UnityHelpers.Utils;
 
     /// <summary>
@@ -11,10 +13,20 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     /// the inverse Ackermann function.
     /// Works with integer indices for maximum performance.
     /// </summary>
+    [Serializable]
+    [ProtoContract]
     public sealed class DisjointSet
     {
-        private readonly int[] _parent;
-        private readonly int[] _rank;
+        [SerializeField]
+        [ProtoMember(1)]
+        private int[] _parent = Array.Empty<int>();
+
+        [SerializeField]
+        [ProtoMember(2)]
+        private int[] _rank = Array.Empty<int>();
+
+        [SerializeField]
+        [ProtoMember(3)]
         private int _setCount;
 
         /// <summary>
@@ -26,6 +38,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         /// Gets the number of distinct sets.
         /// </summary>
         public int SetCount => _setCount;
+
+        private DisjointSet() { }
 
         /// <summary>
         /// Constructs a disjoint set with n elements, each in its own set.
@@ -176,7 +190,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             if (!TryFind(x, out int root))
             {
-                return null;
+                return results;
             }
 
             for (int i = 0; i < _parent.Length; i++)
@@ -201,6 +215,18 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 throw new ArgumentNullException(nameof(results));
             }
 
+            using PooledResource<Stack<List<int>>> stackResource = Buffers<List<int>>.Stack.Get(
+                out Stack<List<int>> stack
+            );
+            foreach (List<int> input in results)
+            {
+                if (input != null)
+                {
+                    input.Clear();
+                    stack.Push(input);
+                }
+            }
+
             results.Clear();
 
             using PooledResource<Dictionary<int, List<int>>> dictResource = DictionaryBuffer<
@@ -210,15 +236,21 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             for (int i = 0; i < _parent.Length; i++)
             {
-                if (TryFind(i, out int root))
+                if (!TryFind(i, out int root))
                 {
-                    if (!setMap.TryGetValue(root, out List<int> set))
+                    continue;
+                }
+
+                if (!setMap.TryGetValue(root, out List<int> set))
+                {
+                    if (!stack.TryPop(out set))
                     {
                         set = new List<int>();
-                        setMap[root] = set;
                     }
-                    set.Add(i);
+
+                    setMap[root] = set;
                 }
+                set.Add(i);
             }
 
             foreach (List<int> set in setMap.Values)
@@ -248,6 +280,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     /// Provides the same performance as DisjointSet with support for any element type.
     /// Uses a dictionary to map elements to internal indices.
     /// </summary>
+    [Serializable]
     public sealed class DisjointSet<T>
     {
         private readonly DisjointSet _disjointSet;
@@ -281,9 +314,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             foreach (T element in elements)
             {
-                if (!_elementToIndex.ContainsKey(element))
+                if (_elementToIndex.TryAdd(element, _indexToElement.Count))
                 {
-                    _elementToIndex[element] = _indexToElement.Count;
                     _indexToElement.Add(element);
                 }
             }
@@ -309,6 +341,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 representative = default;
                 return false;
             }
+
             if (!_disjointSet.TryFind(index, out int rootIndex))
             {
                 representative = default;
@@ -324,10 +357,11 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         /// <returns>True if the sets were unioned, false if invalid elements or already in same set.</returns>
         public bool TryUnion(T x, T y)
         {
-            if (
-                !_elementToIndex.TryGetValue(x, out int indexX)
-                || !_elementToIndex.TryGetValue(y, out int indexY)
-            )
+            if (!_elementToIndex.TryGetValue(x, out int indexX))
+            {
+                return false;
+            }
+            if (!_elementToIndex.TryGetValue(y, out int indexY))
             {
                 return false;
             }
@@ -339,14 +373,18 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         /// </summary>
         public bool TryIsConnected(T x, T y, out bool connected)
         {
-            if (
-                !_elementToIndex.TryGetValue(x, out int indexX)
-                || !_elementToIndex.TryGetValue(y, out int indexY)
-            )
+            if (!_elementToIndex.TryGetValue(x, out int indexX))
             {
                 connected = false;
                 return false;
             }
+
+            if (!_elementToIndex.TryGetValue(y, out int indexY))
+            {
+                connected = false;
+                return false;
+            }
+
             return _disjointSet.TryIsConnected(indexX, indexY, out connected);
         }
 
@@ -375,23 +413,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 throw new ArgumentNullException(nameof(results));
             }
 
+            results.Clear();
             if (!_elementToIndex.TryGetValue(x, out int index))
             {
-                results.Clear();
-                return null;
+                return results;
             }
 
             using PooledResource<List<int>> listResource = Buffers<int>.List.Get(
                 out List<int> indices
             );
-            if (_disjointSet.TryGetSet(index, indices) == null)
-            {
-                results.Clear();
-                return null;
-            }
-
-            results.Clear();
-            foreach (int i in indices)
+            foreach (int i in _disjointSet.TryGetSet(index, indices))
             {
                 results.Add(_indexToElement[i]);
             }
@@ -410,16 +441,30 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 throw new ArgumentNullException(nameof(results));
             }
 
+            using PooledResource<Stack<List<T>>> stackResource = Buffers<List<T>>.Stack.Get(
+                out Stack<List<T>> stack
+            );
+            foreach (List<T> input in results)
+            {
+                if (input != null)
+                {
+                    input.Clear();
+                    stack.Push(input);
+                }
+            }
+
+            results.Clear();
             using PooledResource<List<List<int>>> listResource = Buffers<List<int>>.List.Get(
                 out List<List<int>> indexSets
             );
 
-            _disjointSet.TryGetAllSets(indexSets);
-
-            results.Clear();
-            foreach (List<int> indexSet in indexSets)
+            foreach (List<int> indexSet in _disjointSet.TryGetAllSets(indexSets))
             {
-                List<T> elementSet = new();
+                if (!stack.TryPop(out List<T> elementSet))
+                {
+                    elementSet = new List<T>();
+                }
+
                 foreach (int i in indexSet)
                 {
                     elementSet.Add(_indexToElement[i]);

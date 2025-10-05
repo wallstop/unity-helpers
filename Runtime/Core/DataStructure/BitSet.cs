@@ -4,6 +4,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     using System.Collections;
     using System.Collections.Generic;
     using System.Runtime.CompilerServices;
+    using ProtoBuf;
+    using UnityEngine;
 
     /// <summary>
     /// A compact, dynamically resizable bit set data structure for storing boolean flags.
@@ -11,14 +13,21 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     /// visibility masks, collision layers, and any scenario requiring dense boolean storage.
     /// Supports fast O(1) set, clear, and test operations with dynamic growth and shrinking.
     /// </summary>
-    public sealed class BitSet : IEnumerable<bool>
+    [Serializable]
+    [ProtoContract(IgnoreListHandling = true)]
+    public sealed class BitSet : IReadOnlyList<bool>
     {
         private const int BitsPerLong = 64;
         private const int BitsPerLongShift = 6; // log2(64)
         private const int BitsPerLongMask = 63; // 64 - 1
         private const int DefaultCapacity = 64;
 
+        [SerializeField]
+        [ProtoMember(1)]
         private ulong[] _bits;
+
+        [SerializeField]
+        [ProtoMember(2)]
         private int _capacity;
 
         public struct BitEnumerator : IEnumerator<bool>
@@ -58,6 +67,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             public void Dispose() { }
         }
 
+        public int Count => _capacity;
+
         /// <summary>
         /// Gets the current capacity (maximum number of bits that can be stored without resizing).
         /// </summary>
@@ -83,10 +94,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
         }
 
+        private BitSet()
+        {
+            _capacity = 0;
+            _bits = Array.Empty<ulong>();
+        }
+
         /// <summary>
         /// Constructs a bit set with the specified initial capacity.
         /// </summary>
-        public BitSet(int initialCapacity = DefaultCapacity)
+        public BitSet(int initialCapacity)
         {
             if (initialCapacity <= 0)
             {
@@ -223,12 +240,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
 
             int newArraySize = (newCapacity + BitsPerLong - 1) >> BitsPerLongShift;
-            ulong[] newBits = new ulong[newArraySize];
-
-            int copyLength = Math.Min(_bits.Length, newArraySize);
-            Array.Copy(_bits, 0, newBits, 0, copyLength);
-
-            _bits = newBits;
+            Array.Resize(ref _bits, newArraySize);
             _capacity = newCapacity;
 
             // Clear any bits beyond new capacity in the last element
@@ -277,7 +289,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             if (remainingBits != 0 && _bits.Length > 0)
             {
                 ulong mask = (1UL << remainingBits) - 1;
-                _bits[_bits.Length - 1] &= mask;
+                _bits[^1] &= mask;
             }
         }
 
@@ -304,7 +316,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             if (remainingBits != 0 && _bits.Length > 0)
             {
                 ulong mask = (1UL << remainingBits) - 1;
-                _bits[_bits.Length - 1] &= mask;
+                _bits[^1] &= mask;
             }
         }
 
@@ -398,9 +410,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         public int CountSetBits()
         {
             int count = 0;
-            for (int i = 0; i < _bits.Length; i++)
+            foreach (ulong bit in _bits)
             {
-                count += PopCount(_bits[i]);
+                count += PopCount(bit);
             }
             return count;
         }
@@ -410,14 +422,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         /// </summary>
         public bool Any()
         {
-            for (int i = 0; i < _bits.Length; i++)
-            {
-                if (_bits[i] != 0)
-                {
-                    return true;
-                }
-            }
-            return false;
+            return Array.Exists(_bits, bit => bit != 0);
         }
 
         /// <summary>
@@ -433,7 +438,13 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         /// </summary>
         public bool All()
         {
-            for (int i = 0; i < _bits.Length - 1; i++)
+            if (_capacity <= 0)
+            {
+                return false;
+            }
+
+            int fullSegments = _capacity >> BitsPerLongShift;
+            for (int i = 0; i < fullSegments; i++)
             {
                 if (_bits[i] != ulong.MaxValue)
                 {
@@ -441,22 +452,19 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 }
             }
 
-            // Check last element considering capacity
-            if (_bits.Length > 0)
+            int remainingBits = _capacity & BitsPerLongMask;
+            if (remainingBits == 0)
             {
-                int remainingBits = _capacity & BitsPerLongMask;
-                if (remainingBits == 0)
-                {
-                    return _bits[_bits.Length - 1] == ulong.MaxValue;
-                }
-                else
-                {
-                    ulong mask = (1UL << remainingBits) - 1;
-                    return (_bits[_bits.Length - 1] & mask) == mask;
-                }
+                return true;
             }
 
-            return false;
+            if (_bits.Length <= fullSegments)
+            {
+                return false;
+            }
+
+            ulong mask = (1UL << remainingBits) - 1;
+            return (_bits[fullSegments] & mask) == mask;
         }
 
         /// <summary>
