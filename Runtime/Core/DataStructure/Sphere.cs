@@ -42,6 +42,18 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         }
 
         /// <summary>
+        /// Determines whether this sphere intersects with the specified Unity Bounds.
+        /// Returns true if there is any overlap between the sphere and bounds.
+        /// </summary>
+        /// <param name="bounds">The Unity Bounds to test for intersection.</param>
+        /// <returns>True if the sphere and bounds intersect.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool Intersects(Bounds bounds)
+        {
+            return Intersects(BoundingBox3D.FromClosedBounds(bounds));
+        }
+
+        /// <summary>
         /// Determines whether this sphere intersects with the specified bounding box.
         /// Returns true if there is any overlap between the sphere and bounds.
         /// </summary>
@@ -75,6 +87,18 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             float dy = center.y - other.center.y;
             float dz = center.z - other.center.z;
             return dx * dx + dy * dy + dz * dz <= combinedRadiusSquared;
+        }
+
+        /// <summary>
+        /// Determines whether the specified Unity Bounds is completely contained within this sphere.
+        /// All corners of the bounds must be inside the sphere.
+        /// </summary>
+        /// <param name="bounds">The Unity Bounds to test for containment.</param>
+        /// <returns>True if the bounds is completely contained within the sphere.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool Overlaps(Bounds bounds)
+        {
+            return Overlaps(BoundingBox3D.FromClosedBounds(bounds));
         }
 
         /// <summary>

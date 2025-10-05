@@ -319,5 +319,214 @@
                 sNeg.Intersects(BoundingBox3D.FromClosedBounds(b))
             );
         }
+
+        // Intersects(Sphere) tests
+        [Test]
+        public void IntersectsSphereReturnsTrueForOverlappingSpheres()
+        {
+            Sphere sphere1 = new(Vector3.zero, 5f);
+            Sphere sphere2 = new(new Vector3(3f, 0f, 0f), 3f);
+
+            Assert.IsTrue(sphere1.Intersects(sphere2));
+            Assert.IsTrue(sphere2.Intersects(sphere1));
+        }
+
+        [Test]
+        public void IntersectsSphereReturnsTrueForTouchingSpheres()
+        {
+            Sphere sphere1 = new(Vector3.zero, 5f);
+            Sphere sphere2 = new(new Vector3(10f, 0f, 0f), 5f);
+
+            Assert.IsTrue(sphere1.Intersects(sphere2));
+        }
+
+        [Test]
+        public void IntersectsSphereReturnsFalseForNonOverlappingSpheres()
+        {
+            Sphere sphere1 = new(Vector3.zero, 2f);
+            Sphere sphere2 = new(new Vector3(10f, 10f, 10f), 3f);
+
+            Assert.IsFalse(sphere1.Intersects(sphere2));
+        }
+
+        [Test]
+        public void IntersectsSphereHandlesIdenticalSpheres()
+        {
+            Sphere sphere1 = new(new Vector3(5f, 5f, 5f), 3f);
+            Sphere sphere2 = new(new Vector3(5f, 5f, 5f), 3f);
+
+            Assert.IsTrue(sphere1.Intersects(sphere2));
+        }
+
+        [Test]
+        public void IntersectsSphereHandlesOneSphereInsideAnother()
+        {
+            Sphere bigSphere = new(Vector3.zero, 10f);
+            Sphere smallSphere = new(new Vector3(2f, 2f, 2f), 1f);
+
+            Assert.IsTrue(bigSphere.Intersects(smallSphere));
+            Assert.IsTrue(smallSphere.Intersects(bigSphere));
+        }
+
+        [Test]
+        public void IntersectsSphereHandlesZeroRadiusSpheres()
+        {
+            Sphere sphere1 = new(Vector3.zero, 0f);
+            Sphere sphere2 = new(Vector3.zero, 5f);
+
+            Assert.IsTrue(sphere1.Intersects(sphere2));
+            Assert.IsTrue(sphere2.Intersects(sphere1));
+        }
+
+        // Equality tests
+        [Test]
+        public void EqualsReturnsTrueForIdenticalSpheres()
+        {
+            Sphere sphere1 = new(new Vector3(5f, 10f, 15f), 3f);
+            Sphere sphere2 = new(new Vector3(5f, 10f, 15f), 3f);
+
+            Assert.IsTrue(sphere1.Equals(sphere2));
+            Assert.IsTrue(sphere1 == sphere2);
+        }
+
+        [Test]
+        public void EqualsReturnsFalseForDifferentCenters()
+        {
+            Sphere sphere1 = new(new Vector3(5f, 10f, 15f), 3f);
+            Sphere sphere2 = new(new Vector3(6f, 10f, 15f), 3f);
+
+            Assert.IsFalse(sphere1.Equals(sphere2));
+            Assert.IsTrue(sphere1 != sphere2);
+        }
+
+        [Test]
+        public void EqualsReturnsFalseForDifferentRadii()
+        {
+            Sphere sphere1 = new(new Vector3(5f, 10f, 15f), 3f);
+            Sphere sphere2 = new(new Vector3(5f, 10f, 15f), 4f);
+
+            Assert.IsFalse(sphere1.Equals(sphere2));
+            Assert.IsTrue(sphere1 != sphere2);
+        }
+
+        [Test]
+        public void EqualsHandlesNearlyIdenticalSpheres()
+        {
+            Sphere sphere1 = new(new Vector3(5f, 10f, 15f), 3f);
+            // Mathf.Approximately uses very tight tolerance
+            Sphere sphere2 = new(new Vector3(5f, 10f, 15f), 3f + 1e-6f);
+
+            // Should use Mathf.Approximately for radius comparison
+            Assert.IsTrue(sphere1.Equals(sphere2));
+        }
+
+        [Test]
+        public void GetHashCodeReturnsSameValueForEqualSpheres()
+        {
+            Sphere sphere1 = new(new Vector3(5f, 10f, 15f), 3f);
+            Sphere sphere2 = new(new Vector3(5f, 10f, 15f), 3f);
+
+            Assert.AreEqual(sphere1.GetHashCode(), sphere2.GetHashCode());
+        }
+
+        [Test]
+        public void GetHashCodeReturnsDifferentValuesForDifferentSpheres()
+        {
+            Sphere sphere1 = new(new Vector3(5f, 10f, 15f), 3f);
+            Sphere sphere2 = new(new Vector3(6f, 10f, 15f), 3f);
+
+            // While not guaranteed, different spheres should typically have different hash codes
+            Assert.AreNotEqual(sphere1.GetHashCode(), sphere2.GetHashCode());
+        }
+
+        [Test]
+        public void ToStringReturnsValidString()
+        {
+            Sphere sphere = new(new Vector3(5f, 10f, 15f), 3f);
+            string str = sphere.ToString();
+
+            Assert.IsNotNull(str);
+            Assert.IsTrue(str.Contains("Sphere"));
+            Assert.IsTrue(
+                str.Contains("5") || str.Contains("10") || str.Contains("15") || str.Contains("3")
+            );
+        }
+
+        [Test]
+        public void SpheresCanBeUsedInHashSet()
+        {
+            System.Collections.Generic.HashSet<Sphere> spheres = new();
+
+            Sphere sphere1 = new(new Vector3(5f, 10f, 15f), 3f);
+            Sphere sphere2 = new(new Vector3(5f, 10f, 15f), 3f);
+            Sphere sphere3 = new(new Vector3(6f, 10f, 15f), 3f);
+
+            Assert.IsTrue(spheres.Add(sphere1));
+            Assert.IsFalse(spheres.Add(sphere2)); // Should be considered duplicate
+            Assert.IsTrue(spheres.Add(sphere3));
+
+            Assert.AreEqual(2, spheres.Count);
+        }
+
+        // Unity Bounds overload tests
+        [Test]
+        public void IntersectsUnityBoundsReturnsTrueForOverlap()
+        {
+            Sphere sphere = new(Vector3.zero, 5f);
+            Bounds bounds = new(Vector3.zero, new Vector3(4f, 4f, 4f));
+
+            Assert.IsTrue(sphere.Intersects(bounds));
+        }
+
+        [Test]
+        public void IntersectsUnityBoundsReturnsFalseForNonOverlap()
+        {
+            Sphere sphere = new(Vector3.zero, 2f);
+            Bounds bounds = new(new Vector3(10f, 10f, 10f), new Vector3(2f, 2f, 2f));
+
+            Assert.IsFalse(sphere.Intersects(bounds));
+        }
+
+        [Test]
+        public void IntersectsUnityBoundsMatchesBoundingBox3DResult()
+        {
+            Sphere sphere = new(new Vector3(5f, 3f, 2f), 4f);
+            Bounds bounds = new(new Vector3(7f, 3f, 2f), new Vector3(2f, 2f, 2f));
+
+            bool boundsResult = sphere.Intersects(bounds);
+            bool boundingBox3DResult = sphere.Intersects(BoundingBox3D.FromClosedBounds(bounds));
+
+            Assert.AreEqual(boundingBox3DResult, boundsResult);
+        }
+
+        [Test]
+        public void OverlapsUnityBoundsReturnsTrueForFullContainment()
+        {
+            Sphere sphere = new(Vector3.zero, 10f);
+            Bounds bounds = new(Vector3.zero, new Vector3(2f, 2f, 2f));
+
+            Assert.IsTrue(sphere.Overlaps(bounds));
+        }
+
+        [Test]
+        public void OverlapsUnityBoundsReturnsFalseForPartialOverlap()
+        {
+            Sphere sphere = new(Vector3.zero, 5f);
+            Bounds bounds = new(new Vector3(4f, 4f, 4f), new Vector3(4f, 4f, 4f));
+
+            Assert.IsFalse(sphere.Overlaps(bounds));
+        }
+
+        [Test]
+        public void OverlapsUnityBoundsMatchesBoundingBox3DResult()
+        {
+            Sphere sphere = new(new Vector3(5f, 5f, 5f), 5f);
+            Bounds bounds = new(new Vector3(3f, 3f, 3f), new Vector3(2f, 2f, 2f));
+
+            bool boundsResult = sphere.Overlaps(bounds);
+            bool boundingBox3DResult = sphere.Overlaps(BoundingBox3D.FromClosedBounds(bounds));
+
+            Assert.AreEqual(boundingBox3DResult, boundsResult);
+        }
     }
 }
