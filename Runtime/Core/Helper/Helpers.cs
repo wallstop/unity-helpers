@@ -534,6 +534,26 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             );
         }
 
+        public static Vector3 GetRandomPointInSphere(
+            Vector3 center,
+            float radius,
+            IRandom random = null
+        )
+        {
+            random ??= PRNG.Instance;
+            double u = random.NextDouble();
+            double v = random.NextDouble();
+            double theta = 2 * Math.PI * u;
+            double phi = Math.Acos(2 * v - 1);
+            double r = radius * Math.Pow(random.NextDouble(), 1.0 / 3.0);
+            double sinPhi = Math.Sin(phi);
+            return new Vector3(
+                center.x + (float)(r * sinPhi * Math.Cos(theta)),
+                center.y + (float)(r * sinPhi * Math.Sin(theta)),
+                center.z + (float)(r * Math.Cos(phi))
+            );
+        }
+
         public static GameObject GetPlayerObjectInChildHierarchy(
             this GameObject gameObject,
             string playerTag = "Player"

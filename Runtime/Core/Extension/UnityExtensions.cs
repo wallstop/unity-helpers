@@ -997,7 +997,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
         // This one has bugs, user beware
         // https://github.com/Liagson/ConcaveHullGenerator/tree/master
-        #region ConcaveHull Functions
 
         private readonly struct Line
         {
@@ -1422,8 +1421,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return 0 < value ? OrientationType.Clockwise : OrientationType.Counterclockwise;
         }
 
-        #endregion
-
         public static Vector2 Rotate(this Vector2 v, float degrees)
         {
             float sin = Mathf.Sin(degrees * Mathf.Deg2Rad);
@@ -1592,6 +1589,29 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     }
                 }
             }
+        }
+
+        public static List<FastVector3Int> AllFastPositionsWithin(
+            this BoundsInt bounds,
+            List<FastVector3Int> buffer
+        )
+        {
+            buffer.Clear();
+            Vector3Int min = bounds.min;
+            Vector3Int max = bounds.max;
+            for (int x = min.x; x < max.x; ++x)
+            {
+                for (int y = min.y; y < max.y; ++y)
+                {
+                    for (int z = min.z; z < max.z; ++z)
+                    {
+                        FastVector3Int position = new(x, y, z);
+                        buffer.Add(position);
+                    }
+                }
+            }
+
+            return buffer;
         }
 
         public static bool Contains(this BoundsInt bounds, FastVector3Int position)

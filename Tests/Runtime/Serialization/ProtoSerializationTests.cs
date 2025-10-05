@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
     using System.ComponentModel;
     using NUnit.Framework;
     using ProtoBuf;
+    using WallstopStudios.UnityHelpers.Core.DataStructure;
     using WallstopStudios.UnityHelpers.Core.Serialization;
     using Serializer = WallstopStudios.UnityHelpers.Core.Serialization.Serializer;
 
@@ -140,6 +141,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
             Assert.AreEqual(expected.Id, sample.Id);
             Assert.AreEqual(expected.Name, sample.Name);
             Assert.AreEqual(expected.Values, sample.Values);
+        }
+
+        [Test]
+        public void ProtoSerializeRoundTripsImmutableBitSet()
+        {
+            BitSet mutable = new(96);
+            mutable.TrySet(0);
+            mutable.TrySet(15);
+            mutable.TrySet(63);
+            mutable.TrySet(64);
+            mutable.TrySet(95);
+            ImmutableBitSet original = mutable.ToImmutable();
+
+            byte[] data = Serializer.ProtoSerialize(original);
+            ImmutableBitSet clone = Serializer.ProtoDeserialize<ImmutableBitSet>(data);
+
+            Assert.AreEqual(original.Capacity, clone.Capacity);
+            for (int i = 0; i < original.Capacity; i++)
+            {
+                original.TryGet(i, out bool expected);
+                clone.TryGet(i, out bool actual);
+                Assert.AreEqual(expected, actual, $"Bit {i} mismatch");
+            }
         }
     }
 }

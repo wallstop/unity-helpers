@@ -14,13 +14,13 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     /// </summary>
     [Serializable]
     [ProtoContract(IgnoreListHandling = true)]
-    public readonly struct ImmutableBitSet : IReadOnlyList<bool>, IEquatable<ImmutableBitSet>
+    public readonly struct ImmutableBitSet : IEquatable<ImmutableBitSet>
     {
         private const int BitsPerLong = 64;
         private const int BitsPerLongShift = 6; // log2(64)
         private const int BitsPerLongMask = 63; // 64 - 1
 
-        [ProtoMember(1, IsPacked = true)]
+        [ProtoMember(1)]
         private readonly ulong[] _bits;
 
         [ProtoMember(2)]
@@ -40,10 +40,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         /// Gets the bit at the specified index.
         /// Returns false for indices beyond capacity.
         /// </summary>
-        public bool this[int index]
-        {
-            get => TryGet(index, out bool value) && value;
-        }
+        public bool this[int index] => TryGet(index, out bool value) && value;
 
         /// <summary>
         /// Constructs an immutable bit set with the specified capacity and bit data.
@@ -113,6 +110,64 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return false;
             }
             return Array.Exists(_bits, bit => bit != 0);
+        }
+
+        public List<bool> ToList()
+        {
+            List<bool> result = new();
+            foreach (bool value in this)
+            {
+                result.Add(value);
+            }
+
+            return result;
+        }
+
+        public List<bool> ToList(List<bool> result)
+        {
+            if (result == null)
+            {
+                throw new ArgumentNullException(nameof(result));
+            }
+
+            result.Clear();
+            foreach (bool value in this)
+            {
+                result.Add(value);
+            }
+
+            return result;
+        }
+
+        public IEnumerable<bool> AsEnumerable()
+        {
+            foreach (bool value in this)
+            {
+                yield return value;
+            }
+        }
+
+        public bool[] ToArray()
+        {
+            bool[] result = null;
+            _ = ToArray(ref result);
+            return result;
+        }
+
+        public int ToArray(ref bool[] result)
+        {
+            int count = Count;
+            if (result == null || result.Length < count)
+            {
+                result = new bool[count];
+            }
+
+            int index = 0;
+            foreach (bool value in this)
+            {
+                result[index++] = value;
+            }
+            return count;
         }
 
         /// <summary>
@@ -195,16 +250,18 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         /// </summary>
         public BitSet ToBitSet()
         {
-            BitSet result = new BitSet(_capacity > 0 ? _capacity : 64);
-            if (_bits != null && _capacity > 0)
+            BitSet result = new(_capacity > 0 ? _capacity : 64);
+            if (_bits == null || _capacity <= 0)
             {
-                // Copy bits from this immutable set to the new mutable set
-                for (int i = 0; i < _capacity; i++)
+                return result;
+            }
+
+            // Copy bits from this immutable set to the new mutable set
+            for (int i = 0; i < _capacity; i++)
+            {
+                if (TryGet(i, out bool value) && value)
                 {
-                    if (TryGet(i, out bool value) && value)
-                    {
-                        result.TrySet(i);
-                    }
+                    result.TrySet(i);
                 }
             }
             return result;
@@ -231,15 +288,15 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             return new BitEnumerator(this);
         }
 
-        IEnumerator<bool> IEnumerable<bool>.GetEnumerator()
-        {
-            return GetEnumerator();
-        }
-
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            return GetEnumerator();
-        }
+        // IEnumerator<bool> IEnumerable<bool>.GetEnumerator()
+        // {
+        //     return GetEnumerator();
+        // }
+        //
+        // IEnumerator IEnumerable.GetEnumerator()
+        // {
+        //     return GetEnumerator();
+        // }
 
         /// <summary>
         /// Checks if this ImmutableBitSet is equal to another.
@@ -300,7 +357,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
         public static bool operator !=(ImmutableBitSet left, ImmutableBitSet right)
         {
-            return !left.Equals(right);
+            return !(left == right);
         }
 
         public struct BitEnumerator : IEnumerator<bool>

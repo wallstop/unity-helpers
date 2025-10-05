@@ -36,7 +36,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     Vector2 point = new(x, y);
                     if (circle.Contains(point))
                     {
-                        FastVector3Int fastPoint = new FastVector3Int(x, y, z);
+                        FastVector3Int fastPoint = new(x, y, z);
                         buffer.Add(fastPoint);
                     }
                 }
