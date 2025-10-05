@@ -1,8 +1,6 @@
 namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 {
-    using System.Collections.Generic;
     using NUnit.Framework;
-    using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure;
     using Serializer = WallstopStudios.UnityHelpers.Core.Serialization.Serializer;
 
@@ -12,6 +10,13 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             byte[] serialized = Serializer.ProtoSerialize(original);
             return Serializer.ProtoDeserialize<T>(serialized);
+        }
+
+        private static ImmutableBitSet SerializeDeserializeImmutable(ImmutableBitSet original)
+        {
+            byte[] serialized = Serializer.ProtoSerialize(original);
+            ImmutableBitSet deserialized = Serializer.ProtoDeserialize<ImmutableBitSet>(serialized);
+            return deserialized;
         }
 
         [Test]
@@ -109,6 +114,103 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             Assert.IsTrue(deserialized.All());
             Assert.AreEqual(64, deserialized.CountSetBits());
+        }
+
+        [Test]
+        public void ImmutableBitSetSerializesAndDeserializes()
+        {
+            BitSet mutableBitSet = new(100);
+            mutableBitSet.TrySet(0);
+            mutableBitSet.TrySet(15);
+            mutableBitSet.TrySet(31);
+            mutableBitSet.TrySet(63);
+            mutableBitSet.TrySet(99);
+            ImmutableBitSet original = mutableBitSet.ToImmutable();
+
+            ImmutableBitSet deserialized = SerializeDeserializeImmutable(original);
+
+            Assert.AreEqual(original.Capacity, deserialized.Capacity);
+            for (int i = 0; i < original.Capacity; i++)
+            {
+                original.TryGet(i, out bool origVal);
+                deserialized.TryGet(i, out bool deserVal);
+                Assert.AreEqual(origVal, deserVal, $"Bit {i} mismatch");
+            }
+        }
+
+        [Test]
+        public void ImmutableBitSetAllSetSerializesAndDeserializes()
+        {
+            BitSet mutableBitSet = new(64);
+            mutableBitSet.SetAll();
+            ImmutableBitSet original = mutableBitSet.ToImmutable();
+            Assert.IsTrue(original.All());
+
+            ImmutableBitSet deserialized = SerializeDeserializeImmutable(original);
+
+            Assert.IsTrue(deserialized.All());
+            Assert.AreEqual(64, deserialized.CountSetBits());
+        }
+
+        [Test]
+        public void ImmutableBitSetEmptySerializesAndDeserializes()
+        {
+            BitSet mutableBitSet = new(128);
+            ImmutableBitSet original = mutableBitSet.ToImmutable();
+            Assert.IsTrue(original.None());
+
+            ImmutableBitSet deserialized = SerializeDeserializeImmutable(original);
+
+            Assert.AreEqual(original.Capacity, deserialized.Capacity);
+            Assert.IsTrue(deserialized.None());
+            Assert.AreEqual(0, deserialized.CountSetBits());
+        }
+
+        [Test]
+        public void ImmutableBitSetSingleBitSerializesAndDeserializes()
+        {
+            BitSet mutableBitSet = new(200);
+            mutableBitSet.TrySet(123);
+            ImmutableBitSet original = mutableBitSet.ToImmutable();
+
+            ImmutableBitSet deserialized = SerializeDeserializeImmutable(original);
+
+            Assert.AreEqual(original.Capacity, deserialized.Capacity);
+            Assert.AreEqual(1, deserialized.CountSetBits());
+            Assert.IsTrue(deserialized[123]);
+            for (int i = 0; i < original.Capacity; i++)
+            {
+                if (i != 123)
+                {
+                    Assert.IsFalse(deserialized[i], $"Bit {i} should be false");
+                }
+            }
+        }
+
+        [Test]
+        public void ImmutableBitSetMultipleWordsSerializesAndDeserializes()
+        {
+            BitSet mutableBitSet = new(300);
+            // Set bits across multiple 64-bit words
+            mutableBitSet.TrySet(0); // First word
+            mutableBitSet.TrySet(63); // End of first word
+            mutableBitSet.TrySet(64); // Start of second word
+            mutableBitSet.TrySet(127); // End of second word
+            mutableBitSet.TrySet(128); // Start of third word
+            mutableBitSet.TrySet(255); // End of fourth word
+            mutableBitSet.TrySet(299); // Near end
+            ImmutableBitSet original = mutableBitSet.ToImmutable();
+
+            ImmutableBitSet deserialized = SerializeDeserializeImmutable(original);
+
+            Assert.AreEqual(original.Capacity, deserialized.Capacity);
+            Assert.AreEqual(original.CountSetBits(), deserialized.CountSetBits());
+            for (int i = 0; i < original.Capacity; i++)
+            {
+                original.TryGet(i, out bool origVal);
+                deserialized.TryGet(i, out bool deserVal);
+                Assert.AreEqual(origVal, deserVal, $"Bit {i} mismatch");
+            }
         }
 
         [Test]

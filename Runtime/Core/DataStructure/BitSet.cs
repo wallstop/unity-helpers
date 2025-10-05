@@ -579,6 +579,18 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
         }
 
+        /// <summary>
+        /// Converts this BitSet to an immutable ImmutableBitSet.
+        /// Creates a snapshot with a copy of the current bit data.
+        /// </summary>
+        public ImmutableBitSet ToImmutable()
+        {
+            // Create a copy of the bits array to ensure immutability
+            ulong[] bitsCopy = new ulong[_bits.Length];
+            Array.Copy(_bits, bitsCopy, _bits.Length);
+            return new ImmutableBitSet(bitsCopy, _capacity);
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static int PopCount(ulong value)
         {

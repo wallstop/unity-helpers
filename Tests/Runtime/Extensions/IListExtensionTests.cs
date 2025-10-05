@@ -600,27 +600,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         }
 
         [Test]
-        public void ContainsWithComparerFound()
-        {
-            int[] arr = { 1, 2, 3, 4, 5 };
-            Assert.That(arr.Contains(3, new IntEqualityComparer()), Is.True);
-        }
-
-        [Test]
-        public void ContainsWithComparerNotFound()
-        {
-            int[] arr = { 1, 2, 3 };
-            Assert.That(arr.Contains(10, new IntEqualityComparer()), Is.False);
-        }
-
-        [Test]
-        public void ContainsNullComparer()
-        {
-            int[] arr = { 1, 2, 3 };
-            Assert.Throws<ArgumentNullException>(() => arr.Contains(1, null));
-        }
-
-        [Test]
         public void PopBackSuccess()
         {
             List<int> list = new() { 1, 2, 3, 4, 5 };

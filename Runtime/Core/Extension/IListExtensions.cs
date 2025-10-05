@@ -240,9 +240,253 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 {
                     return false;
                 }
+
+                previous = current;
             }
 
             return true;
+        }
+
+        public static void Swap<T>(this IList<T> list, int indexA, int indexB)
+        {
+            if (indexA < 0 || indexA >= list.Count)
+            {
+                throw new ArgumentOutOfRangeException(nameof(indexA));
+            }
+            if (indexB < 0 || indexB >= list.Count)
+            {
+                throw new ArgumentOutOfRangeException(nameof(indexB));
+            }
+
+            if (indexA == indexB)
+            {
+                return;
+            }
+
+            (list[indexA], list[indexB]) = (list[indexB], list[indexA]);
+        }
+
+        public static int BinarySearch<T>(this IList<T> list, T item, IComparer<T> comparer = null)
+        {
+            comparer ??= Comparer<T>.Default;
+            int left = 0;
+            int right = list.Count - 1;
+
+            while (left <= right)
+            {
+                int mid = left + (right - left) / 2;
+                int comparison = comparer.Compare(list[mid], item);
+
+                if (comparison == 0)
+                {
+                    return mid;
+                }
+                else if (comparison < 0)
+                {
+                    left = mid + 1;
+                }
+                else
+                {
+                    right = mid - 1;
+                }
+            }
+
+            return ~left; // Bitwise complement indicates insertion point
+        }
+
+        public static void Fill<T>(this IList<T> list, T value)
+        {
+            for (int i = 0; i < list.Count; ++i)
+            {
+                list[i] = value;
+            }
+        }
+
+        public static void Fill<T>(this IList<T> list, Func<int, T> factory)
+        {
+            if (factory == null)
+            {
+                throw new ArgumentNullException(nameof(factory));
+            }
+
+            for (int i = 0; i < list.Count; ++i)
+            {
+                list[i] = factory(i);
+            }
+        }
+
+        public static int IndexOf<T>(this IList<T> list, Func<T, bool> predicate)
+        {
+            if (predicate == null)
+            {
+                throw new ArgumentNullException(nameof(predicate));
+            }
+
+            for (int i = 0; i < list.Count; ++i)
+            {
+                if (predicate(list[i]))
+                {
+                    return i;
+                }
+            }
+
+            return -1;
+        }
+
+        public static int LastIndexOf<T>(this IList<T> list, Func<T, bool> predicate)
+        {
+            if (predicate == null)
+            {
+                throw new ArgumentNullException(nameof(predicate));
+            }
+
+            for (int i = list.Count - 1; i >= 0; --i)
+            {
+                if (predicate(list[i]))
+                {
+                    return i;
+                }
+            }
+
+            return -1;
+        }
+
+        public static List<T> FindAll<T>(this IList<T> list, Func<T, bool> predicate)
+        {
+            if (predicate == null)
+            {
+                throw new ArgumentNullException(nameof(predicate));
+            }
+
+            List<T> result = new();
+            for (int i = 0; i < list.Count; ++i)
+            {
+                if (predicate(list[i]))
+                {
+                    result.Add(list[i]);
+                }
+            }
+
+            return result;
+        }
+
+        public static void AddRange<T>(this IList<T> list, IEnumerable<T> items)
+        {
+            if (items == null)
+            {
+                throw new ArgumentNullException(nameof(items));
+            }
+
+            if (list is List<T> concreteList)
+            {
+                concreteList.AddRange(items);
+                return;
+            }
+
+            foreach (T item in items)
+            {
+                list.Add(item);
+            }
+        }
+
+        public static int RemoveAll<T>(this IList<T> list, Func<T, bool> predicate)
+        {
+            if (predicate == null)
+            {
+                throw new ArgumentNullException(nameof(predicate));
+            }
+
+            if (list is List<T> concreteList)
+            {
+                return concreteList.RemoveAll(item => predicate(item));
+            }
+
+            int removed = 0;
+            for (int i = list.Count - 1; i >= 0; --i)
+            {
+                if (predicate(list[i]))
+                {
+                    list.RemoveAt(i);
+                    removed++;
+                }
+            }
+
+            return removed;
+        }
+
+        public static void RotateLeft<T>(this IList<T> list, int positions = 1)
+        {
+            Shift(list, -positions);
+        }
+
+        public static void RotateRight<T>(this IList<T> list, int positions = 1)
+        {
+            Shift(list, positions);
+        }
+
+        public static (List<T> matching, List<T> notMatching) Partition<T>(
+            this IList<T> list,
+            Func<T, bool> predicate
+        )
+        {
+            if (predicate == null)
+            {
+                throw new ArgumentNullException(nameof(predicate));
+            }
+
+            List<T> matching = new();
+            List<T> notMatching = new();
+
+            for (int i = 0; i < list.Count; ++i)
+            {
+                if (predicate(list[i]))
+                {
+                    matching.Add(list[i]);
+                }
+                else
+                {
+                    notMatching.Add(list[i]);
+                }
+            }
+
+            return (matching, notMatching);
+        }
+
+        public static T PopBack<T>(this IList<T> list)
+        {
+            if (list.Count == 0)
+            {
+                throw new InvalidOperationException("Cannot pop from empty list");
+            }
+
+            int lastIndex = list.Count - 1;
+            T item = list[lastIndex];
+            list.RemoveAt(lastIndex);
+            return item;
+        }
+
+        public static T PopFront<T>(this IList<T> list)
+        {
+            if (list.Count == 0)
+            {
+                throw new InvalidOperationException("Cannot pop from empty list");
+            }
+
+            T item = list[0];
+            list.RemoveAt(0);
+            return item;
+        }
+
+        [Pure]
+        public static T GetRandomElement<T>(this IList<T> list, IRandom random = null)
+        {
+            if (list.Count == 0)
+            {
+                throw new InvalidOperationException("Cannot get random element from empty list");
+            }
+
+            random ??= PRNG.Instance;
+            return list[random.Next(0, list.Count)];
         }
     }
 }
