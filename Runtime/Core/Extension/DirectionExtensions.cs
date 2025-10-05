@@ -101,12 +101,32 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
         }
 
+        public static List<Direction> Split(this Direction direction, List<Direction> buffer)
+        {
+            buffer.Clear();
+            foreach (Direction singleDirection in Directions)
+            {
+                if (direction.HasFlagNoAlloc(singleDirection))
+                {
+                    buffer.Add(singleDirection);
+                }
+            }
+
+            if (buffer.Count == 0)
+            {
+                buffer.Add(Direction.None);
+            }
+
+            return buffer;
+        }
+
         public static Direction Combine(this IEnumerable<Direction> directions)
         {
             if (directions == null)
             {
                 throw new ArgumentNullException(nameof(directions));
             }
+
             Direction combined = Direction.None;
             switch (directions)
             {

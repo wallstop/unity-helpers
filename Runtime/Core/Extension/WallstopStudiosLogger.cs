@@ -140,22 +140,24 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         )
         {
 #if ENABLE_UBERLOGGING || DEBUG_LOGGING
-            if (LoggingAllowed(component))
+            if (!LoggingAllowed(component))
             {
-                if (ShouldLogOnMainThread)
-                {
-                    LogInstance.Log(message, component, e, pretty);
-                }
-                else
-                {
-                    FormattableString localMessage = message;
-                    Object localComponent = component;
-                    Exception localE = e;
-                    bool localPretty = pretty;
-                    UnityMainThreadDispatcher.Instance.RunOnMainThread(() =>
-                        LogInstance.Log(localMessage, localComponent, localE, localPretty)
-                    );
-                }
+                return;
+            }
+
+            if (ShouldLogOnMainThread)
+            {
+                LogInstance.Log(message, component, e, pretty);
+            }
+            else
+            {
+                FormattableString localMessage = message;
+                Object localComponent = component;
+                Exception localE = e;
+                bool localPretty = pretty;
+                UnityMainThreadDispatcher.Instance.RunOnMainThread(() =>
+                    LogInstance.Log(localMessage, localComponent, localE, localPretty)
+                );
             }
 #endif
         }
@@ -169,22 +171,24 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         )
         {
 #if ENABLE_UBERLOGGING || WARN_LOGGING
-            if (LoggingAllowed(component))
+            if (!LoggingAllowed(component))
             {
-                if (ShouldLogOnMainThread)
-                {
-                    LogInstance.LogWarn(message, component, e, pretty);
-                }
-                else
-                {
-                    FormattableString localMessage = message;
-                    Object localComponent = component;
-                    Exception localE = e;
-                    bool localPretty = pretty;
-                    UnityMainThreadDispatcher.Instance.RunOnMainThread(() =>
-                        LogInstance.LogWarn(localMessage, localComponent, localE, localPretty)
-                    );
-                }
+                return;
+            }
+
+            if (ShouldLogOnMainThread)
+            {
+                LogInstance.LogWarn(message, component, e, pretty);
+            }
+            else
+            {
+                FormattableString localMessage = message;
+                Object localComponent = component;
+                Exception localE = e;
+                bool localPretty = pretty;
+                UnityMainThreadDispatcher.Instance.RunOnMainThread(() =>
+                    LogInstance.LogWarn(localMessage, localComponent, localE, localPretty)
+                );
             }
 #endif
         }
@@ -198,22 +202,24 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         )
         {
 #if ENABLE_UBERLOGGING || ERROR_LOGGING
-            if (LoggingAllowed(component))
+            if (!LoggingAllowed(component))
             {
-                if (ShouldLogOnMainThread)
-                {
-                    LogInstance.LogError(message, component, e, pretty);
-                }
-                else
-                {
-                    FormattableString localMessage = message;
-                    Object localComponent = component;
-                    Exception localE = e;
-                    bool localPretty = pretty;
-                    UnityMainThreadDispatcher.Instance.RunOnMainThread(() =>
-                        LogInstance.LogError(localMessage, localComponent, localE, localPretty)
-                    );
-                }
+                return;
+            }
+
+            if (ShouldLogOnMainThread)
+            {
+                LogInstance.LogError(message, component, e, pretty);
+            }
+            else
+            {
+                FormattableString localMessage = message;
+                Object localComponent = component;
+                Exception localE = e;
+                bool localPretty = pretty;
+                UnityMainThreadDispatcher.Instance.RunOnMainThread(() =>
+                    LogInstance.LogError(localMessage, localComponent, localE, localPretty)
+                );
             }
 #endif
         }
@@ -221,21 +227,24 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         [HideInCallstack]
         private static bool LoggingAllowed(Object component)
         {
-            if (Interlocked.Increment(ref _cacheAccessCount) % LogsPerCacheClean == 0)
+            if (Interlocked.Increment(ref _cacheAccessCount) % LogsPerCacheClean != 0)
             {
-                using PooledResource<List<Object>> bufferResource = Buffers<Object>.List.Get();
-                List<Object> buffer = bufferResource.resource;
-                foreach (Object disabled in Disabled)
-                {
-                    buffer.Add(disabled);
-                }
+                return LoggingEnabled && !Disabled.Contains(component);
+            }
 
-                foreach (Object disabled in buffer)
+            using PooledResource<List<Object>> bufferResource = Buffers<Object>.List.Get(
+                out List<Object> buffer
+            );
+            foreach (Object disabled in Disabled)
+            {
+                buffer.Add(disabled);
+            }
+
+            foreach (Object disabled in buffer)
+            {
+                if (disabled == null)
                 {
-                    if (disabled == null)
-                    {
-                        Disabled.Remove(disabled);
-                    }
+                    _ = Disabled.Remove(disabled);
                 }
             }
 

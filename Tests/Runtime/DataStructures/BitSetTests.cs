@@ -96,7 +96,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             BitSet bits = new(64);
             for (int i = 0; i < 64; i++)
             {
-                bits.TrySet(i);
+                Assert.IsTrue(bits.TrySet(i));
             }
             Assert.AreEqual(64, bits.CountSetBits());
         }
@@ -105,12 +105,12 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void TrySetMultipleBitsAcrossWordsWorks()
         {
             BitSet bits = new(200);
-            bits.TrySet(0);
-            bits.TrySet(63);
-            bits.TrySet(64);
-            bits.TrySet(127);
-            bits.TrySet(128);
-            bits.TrySet(199);
+            Assert.IsTrue(bits.TrySet(0));
+            Assert.IsTrue(bits.TrySet(63));
+            Assert.IsTrue(bits.TrySet(64));
+            Assert.IsTrue(bits.TrySet(127));
+            Assert.IsTrue(bits.TrySet(128));
+            Assert.IsTrue(bits.TrySet(199));
             Assert.AreEqual(6, bits.CountSetBits());
         }
 
@@ -118,8 +118,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void TrySetAlreadySetBitRemainsSet()
         {
             BitSet bits = new(64);
-            bits.TrySet(5);
-            bits.TrySet(5);
+            Assert.IsTrue(bits.TrySet(5));
+            Assert.IsTrue(bits.TrySet(5));
             Assert.IsTrue(bits.TryGet(5, out bool value));
             Assert.IsTrue(value);
             Assert.AreEqual(1, bits.CountSetBits());
@@ -129,7 +129,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void TryClearClearsBit()
         {
             BitSet bits = new(64);
-            bits.TrySet(5);
+            Assert.IsTrue(bits.TrySet(5));
 
             Assert.IsTrue(bits.TryClear(5));
             Assert.IsTrue(bits.TryGet(5, out bool value));
@@ -178,11 +178,11 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             BitSet bits = new(64);
 
-            bits.TryFlip(5);
+            Assert.IsTrue(bits.TryFlip(5));
             Assert.IsTrue(bits.TryGet(5, out bool value1));
             Assert.IsTrue(value1);
 
-            bits.TryFlip(5);
+            Assert.IsTrue(bits.TryFlip(5));
             Assert.IsTrue(bits.TryGet(5, out bool value2));
             Assert.IsFalse(value2);
         }
@@ -211,7 +211,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             BitSet bits = new(64);
             for (int i = 0; i < 10; i++)
             {
-                bits.TryFlip(5);
+                Assert.IsTrue(bits.TryFlip(5));
                 bool expected = i % 2 == 0;
                 Assert.IsTrue(bits.TryGet(5, out bool value));
                 Assert.AreEqual(expected, value);
@@ -262,7 +262,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void IndexerGetSetBitReturnsTrue()
         {
             BitSet bits = new(64);
-            bits.TrySet(5);
+            Assert.IsTrue(bits.TrySet(5));
             Assert.IsTrue(bits[5]);
         }
 
@@ -306,9 +306,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void CountSetBitsWorks()
         {
             BitSet bits = new(64);
-            bits.TrySet(0);
-            bits.TrySet(1);
-            bits.TrySet(10);
+            Assert.IsTrue(bits.TrySet(0));
+            Assert.IsTrue(bits.TrySet(1));
+            Assert.IsTrue(bits.TrySet(10));
 
             Assert.AreEqual(3, bits.CountSetBits());
         }
@@ -334,7 +334,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             BitSet bits = new(200);
             for (int i = 0; i < 200; i += 2)
             {
-                bits.TrySet(i);
+                Assert.IsTrue(bits.TrySet(i));
             }
             Assert.AreEqual(100, bits.CountSetBits());
         }
@@ -372,7 +372,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             BitSet bits = new(100);
             for (int i = 0; i < 50; i++)
             {
-                bits.TrySet(i);
+                Assert.IsTrue(bits.TrySet(i));
             }
             bits.SetAll();
             Assert.AreEqual(100, bits.CountSetBits());
@@ -431,7 +431,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             BitSet bits = new(100);
             for (int i = 0; i < 50; i++)
             {
-                bits.TrySet(i);
+                Assert.IsTrue(bits.TrySet(i));
             }
             bits.FlipAll();
             Assert.AreEqual(50, bits.CountSetBits());
@@ -460,8 +460,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void NotIsAliasForFlipAll()
         {
             BitSet bits = new(64);
-            bits.TrySet(5);
-            bits.TrySet(10);
+            Assert.IsTrue(bits.TrySet(5));
+            Assert.IsTrue(bits.TrySet(10));
             bits.Not();
             Assert.AreEqual(62, bits.CountSetBits());
             Assert.IsFalse(bits[5]);
@@ -479,7 +479,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void AnySingleBitSetReturnsTrue()
         {
             BitSet bits = new(64);
-            bits.TrySet(5);
+            Assert.IsTrue(bits.TrySet(5));
             Assert.IsTrue(bits.Any());
         }
 
@@ -494,7 +494,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void NoneSingleBitSetReturnsFalse()
         {
             BitSet bits = new(64);
-            bits.TrySet(5);
+            Assert.IsTrue(bits.TrySet(5));
             Assert.IsFalse(bits.None());
         }
 
@@ -519,7 +519,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             BitSet bits = new(64);
             for (int i = 0; i < 63; i++)
             {
-                bits.TrySet(i);
+                Assert.IsTrue(bits.TrySet(i));
             }
             Assert.IsFalse(bits.All());
         }
@@ -533,7 +533,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             BitSet bits = new(capacity);
             bits.SetAll();
             Assert.IsTrue(bits.All());
-            bits.TryClear(capacity - 1);
+            Assert.IsTrue(bits.TryClear(capacity - 1));
             Assert.IsFalse(bits.All());
         }
 
@@ -541,8 +541,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void LeftShiftWorks()
         {
             BitSet bits = new(8);
-            bits.TrySet(0);
-            bits.TrySet(1);
+            Assert.IsTrue(bits.TrySet(0));
+            Assert.IsTrue(bits.TrySet(1));
 
             bits.LeftShift(2);
 
@@ -556,8 +556,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void LeftShiftByZeroNoChange()
         {
             BitSet bits = new(8);
-            bits.TrySet(0);
-            bits.TrySet(5);
+            Assert.IsTrue(bits.TrySet(0));
+            Assert.IsTrue(bits.TrySet(5));
             bits.LeftShift(0);
             Assert.IsTrue(bits[0]);
             Assert.IsTrue(bits[5]);
@@ -567,8 +567,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void LeftShiftByNegativeNoChange()
         {
             BitSet bits = new(8);
-            bits.TrySet(0);
-            bits.TrySet(5);
+            Assert.IsTrue(bits.TrySet(0));
+            Assert.IsTrue(bits.TrySet(5));
             bits.LeftShift(-5);
             Assert.IsTrue(bits[0]);
             Assert.IsTrue(bits[5]);
@@ -596,8 +596,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void LeftShiftAcrossWordBoundaryWorks()
         {
             BitSet bits = new(128);
-            bits.TrySet(60);
-            bits.TrySet(61);
+            Assert.IsTrue(bits.TrySet(60));
+            Assert.IsTrue(bits.TrySet(61));
             bits.LeftShift(5);
             Assert.IsTrue(bits[65]);
             Assert.IsTrue(bits[66]);
@@ -609,8 +609,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void LeftShiftShiftsOutHighBits()
         {
             BitSet bits = new(8);
-            bits.TrySet(6);
-            bits.TrySet(7);
+            Assert.IsTrue(bits.TrySet(6));
+            Assert.IsTrue(bits.TrySet(7));
             bits.LeftShift(3);
             Assert.IsFalse(bits[6]);
             Assert.IsFalse(bits[7]);
@@ -621,8 +621,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void RightShiftWorks()
         {
             BitSet bits = new(8);
-            bits.TrySet(5);
-            bits.TrySet(6);
+            Assert.IsTrue(bits.TrySet(5));
+            Assert.IsTrue(bits.TrySet(6));
 
             bits.RightShift(2);
 
@@ -636,8 +636,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void RightShiftByZeroNoChange()
         {
             BitSet bits = new(8);
-            bits.TrySet(3);
-            bits.TrySet(5);
+            Assert.IsTrue(bits.TrySet(3));
+            Assert.IsTrue(bits.TrySet(5));
             bits.RightShift(0);
             Assert.IsTrue(bits[3]);
             Assert.IsTrue(bits[5]);
@@ -647,8 +647,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void RightShiftByNegativeNoChange()
         {
             BitSet bits = new(8);
-            bits.TrySet(3);
-            bits.TrySet(5);
+            Assert.IsTrue(bits.TrySet(3));
+            Assert.IsTrue(bits.TrySet(5));
             bits.RightShift(-5);
             Assert.IsTrue(bits[3]);
             Assert.IsTrue(bits[5]);
@@ -676,8 +676,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void RightShiftAcrossWordBoundaryWorks()
         {
             BitSet bits = new(128);
-            bits.TrySet(66);
-            bits.TrySet(67);
+            Assert.IsTrue(bits.TrySet(66));
+            Assert.IsTrue(bits.TrySet(67));
             bits.RightShift(5);
             Assert.IsTrue(bits[61]);
             Assert.IsTrue(bits[62]);
@@ -689,8 +689,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void RightShiftShiftsOutLowBits()
         {
             BitSet bits = new(8);
-            bits.TrySet(0);
-            bits.TrySet(1);
+            Assert.IsTrue(bits.TrySet(0));
+            Assert.IsTrue(bits.TrySet(1));
             bits.RightShift(3);
             Assert.IsFalse(bits[0]);
             Assert.IsFalse(bits[1]);
@@ -703,12 +703,12 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             BitSet bits1 = new(8);
             BitSet bits2 = new(8);
 
-            bits1.TrySet(0);
-            bits1.TrySet(1);
-            bits2.TrySet(1);
-            bits2.TrySet(2);
+            Assert.IsTrue(bits1.TrySet(0));
+            Assert.IsTrue(bits1.TrySet(1));
+            Assert.IsTrue(bits2.TrySet(1));
+            Assert.IsTrue(bits2.TrySet(2));
 
-            bits1.TryAnd(bits2);
+            Assert.IsTrue(bits1.TryAnd(bits2));
 
             Assert.AreEqual(1, bits1.CountSetBits());
             Assert.IsTrue(bits1.TryGet(1, out bool value));
@@ -719,7 +719,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void TryAndWithNullReturnsFalse()
         {
             BitSet bits = new(8);
-            bits.TrySet(1);
+            Assert.IsTrue(bits.TrySet(1));
             Assert.IsFalse(bits.TryAnd(null));
             Assert.AreEqual(1, bits.CountSetBits());
         }
@@ -729,11 +729,11 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             BitSet bits1 = new(8);
             BitSet bits2 = new(16);
-            bits1.TrySet(5);
-            bits2.TrySet(5);
-            bits2.TrySet(10);
+            Assert.IsTrue(bits1.TrySet(5));
+            Assert.IsTrue(bits2.TrySet(5));
+            Assert.IsTrue(bits2.TrySet(10));
 
-            bits1.TryAnd(bits2);
+            Assert.IsTrue(bits1.TryAnd(bits2));
 
             Assert.AreEqual(16, bits1.Capacity);
             Assert.IsTrue(bits1[5]);
@@ -745,12 +745,12 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             BitSet bits1 = new(8);
             BitSet bits2 = new(8);
-            bits1.TrySet(0);
-            bits1.TrySet(1);
-            bits2.TrySet(5);
-            bits2.TrySet(6);
+            Assert.IsTrue(bits1.TrySet(0));
+            Assert.IsTrue(bits1.TrySet(1));
+            Assert.IsTrue(bits2.TrySet(5));
+            Assert.IsTrue(bits2.TrySet(6));
 
-            bits1.TryAnd(bits2);
+            Assert.IsTrue(bits1.TryAnd(bits2));
 
             Assert.AreEqual(0, bits1.CountSetBits());
         }
@@ -762,7 +762,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             BitSet bits2 = new(8);
             bits1.SetAll();
 
-            bits1.TryAnd(bits2);
+            Assert.IsTrue(bits1.TryAnd(bits2));
 
             Assert.AreEqual(0, bits1.CountSetBits());
         }
@@ -773,10 +773,10 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             BitSet bits1 = new(8);
             BitSet bits2 = new(8);
 
-            bits1.TrySet(0);
-            bits2.TrySet(1);
+            Assert.IsTrue(bits1.TrySet(0));
+            Assert.IsTrue(bits2.TrySet(1));
 
-            bits1.TryOr(bits2);
+            Assert.IsTrue(bits1.TryOr(bits2));
 
             Assert.AreEqual(2, bits1.CountSetBits());
         }
@@ -785,7 +785,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void TryOrWithNullReturnsFalse()
         {
             BitSet bits = new(8);
-            bits.TrySet(1);
+            Assert.IsTrue(bits.TrySet(1));
             Assert.IsFalse(bits.TryOr(null));
             Assert.AreEqual(1, bits.CountSetBits());
         }
@@ -795,10 +795,10 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             BitSet bits1 = new(8);
             BitSet bits2 = new(16);
-            bits1.TrySet(5);
-            bits2.TrySet(10);
+            Assert.IsTrue(bits1.TrySet(5));
+            Assert.IsTrue(bits2.TrySet(10));
 
-            bits1.TryOr(bits2);
+            Assert.IsTrue(bits1.TryOr(bits2));
 
             Assert.AreEqual(16, bits1.Capacity);
             Assert.IsTrue(bits1[5]);
@@ -810,10 +810,10 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             BitSet bits1 = new(8);
             BitSet bits2 = new(8);
-            bits1.TrySet(1);
-            bits1.TrySet(5);
+            Assert.IsTrue(bits1.TrySet(1));
+            Assert.IsTrue(bits1.TrySet(5));
 
-            bits1.TryOr(bits2);
+            Assert.IsTrue(bits1.TryOr(bits2));
 
             Assert.AreEqual(2, bits1.CountSetBits());
         }
@@ -1298,16 +1298,19 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void ComplexScenarioMultipleOperations()
         {
             BitSet bits = new(64);
-            bits.TrySet(10);
-            bits.TrySet(20);
-            bits.TrySet(30);
+            Assert.IsTrue(bits.TrySet(10));
+            Assert.IsTrue(bits.TrySet(20));
+            Assert.IsTrue(bits.TrySet(30));
             Assert.AreEqual(3, bits.CountSetBits());
 
             bits.FlipAll();
             Assert.AreEqual(61, bits.CountSetBits());
 
             bits.LeftShift(5);
-            Assert.IsFalse(bits[10]);
+            // After LeftShift(5), position i gets value from position (i-5)
+            // Position 10 gets value from position 5 (which was 1 after FlipAll)
+            // Position 15 gets value from position 10 (which was 0 after FlipAll)
+            Assert.IsTrue(bits[10]);
             Assert.IsFalse(bits[15]);
 
             bits.TrimExcess();
