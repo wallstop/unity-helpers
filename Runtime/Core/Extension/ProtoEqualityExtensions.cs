@@ -2,7 +2,6 @@
 {
     using System;
     using System.Collections.Generic;
-    using System.IO;
     using System.Runtime.CompilerServices;
     using WallstopStudios.UnityHelpers.Core.Serialization;
     using WallstopStudios.UnityHelpers.Utils;
@@ -34,10 +33,10 @@
                 }
             }
 
-            using PooledResource<PooledBufferStream> aLease = ProtoBufferComparer.RentStreamA(
+            using PooledResource<PooledBufferStream> aLease = PooledBufferStream.Rent(
                 out PooledBufferStream a
             );
-            using PooledResource<PooledBufferStream> bLease = ProtoBufferComparer.RentStreamB(
+            using PooledResource<PooledBufferStream> bLease = PooledBufferStream.Rent(
                 out PooledBufferStream b
             );
             PbSerializer.Serialize(a, self);
@@ -83,10 +82,10 @@
                 }
             }
 
-            using PooledResource<PooledBufferStream> aLease = ProtoBufferComparer.RentStreamA(
+            using PooledResource<PooledBufferStream> aLease = PooledBufferStream.Rent(
                 out PooledBufferStream a
             );
-            using PooledResource<PooledBufferStream> bLease = ProtoBufferComparer.RentStreamB(
+            using PooledResource<PooledBufferStream> bLease = PooledBufferStream.Rent(
                 out PooledBufferStream b
             );
             PbSerializer.Serialize(a, x);
@@ -96,7 +95,7 @@
 
         public int GetHashCode(T obj)
         {
-            using PooledResource<PooledBufferStream> sLease = ProtoBufferComparer.RentStreamA(
+            using PooledResource<PooledBufferStream> sLease = PooledBufferStream.Rent(
                 out PooledBufferStream s
             );
             PbSerializer.Serialize(s, obj);
@@ -106,25 +105,6 @@
 
     internal static class ProtoBufferComparer
     {
-        // We avoid retaining large arrays across calls; each call creates a local MemoryStream,
-        // but we ensure no extra array copies by using TryGetBuffer and not calling ToArray().
-
-        private static readonly WallstopGenericPool<PooledBufferStream> StreamPool = new(
-            producer: () => new PooledBufferStream(),
-            onRelease: s => s.ResetForReuse(),
-            onDisposal: stream => stream.Dispose()
-        );
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static PooledResource<PooledBufferStream> RentStreamA(
-            out PooledBufferStream stream
-        ) => StreamPool.Get(out stream);
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static PooledResource<PooledBufferStream> RentStreamB(
-            out PooledBufferStream stream
-        ) => StreamPool.Get(out stream);
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool StreamContentEquals(PooledBufferStream a, PooledBufferStream b)
         {
@@ -164,33 +144,6 @@
                 hash *= fnvPrime;
             }
             return unchecked((int)hash);
-        }
-
-        private static bool StreamCompareByRead(MemoryStream a, MemoryStream b)
-        {
-            long posA = a.Position;
-            long posB = b.Position;
-            try
-            {
-                a.Position = 0;
-                b.Position = 0;
-                int ba;
-                do
-                {
-                    ba = a.ReadByte();
-                    int bb = b.ReadByte();
-                    if (ba != bb)
-                    {
-                        return false;
-                    }
-                } while (ba != -1);
-                return true;
-            }
-            finally
-            {
-                a.Position = posA;
-                b.Position = posB;
-            }
         }
     }
 }

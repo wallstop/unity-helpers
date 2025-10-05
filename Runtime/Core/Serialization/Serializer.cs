@@ -465,7 +465,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             out PooledBufferStream stream
         ) => Pool.Get(out stream);
 
-        public PooledBufferStream(int initialCapacity = DefaultInitialCapacity)
+        private PooledBufferStream(int initialCapacity = DefaultInitialCapacity)
         {
             if (initialCapacity < 1)
             {
@@ -482,7 +482,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             return new ArraySegment<byte>(_buffer, 0, _length);
         }
 
-        internal void ResetForReuse()
+        private void ResetForReuse()
         {
             _length = 0;
             _position = 0;
