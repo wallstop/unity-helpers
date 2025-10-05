@@ -355,6 +355,12 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     isAlreadySnakeCase = false;
                     break;
                 }
+                if (CharsToStrip.Contains(c))
+                {
+                    // Presence of chars to strip means it's not already snake_case
+                    isAlreadySnakeCase = false;
+                    break;
+                }
                 if (WordSeparators.Contains(c))
                 {
                     hasWordSeparators = true;
@@ -389,6 +395,12 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             for (int i = 0; i < value.Length; ++i)
             {
                 char current = value[i];
+
+                // Skip characters that should be stripped (apostrophes, quotes)
+                if (CharsToStrip.Contains(current))
+                {
+                    continue;
+                }
 
                 if (WordSeparators.Contains(current))
                 {

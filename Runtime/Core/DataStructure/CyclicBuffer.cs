@@ -325,7 +325,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             for (int i = 0; i < Count; i++)
             {
-                Debug.Log($"Adding index {i} to buffer of count {Count}..");
                 buffer.Add(_buffer[AdjustedIndexFor(i)]);
             }
 

@@ -875,10 +875,21 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         }
 
         [Test]
+        public void ToSnakeCaseStripsQuotesAndApostrophes()
+        {
+            Assert.AreEqual("test_case", "test'Case".ToSnakeCase());
+            Assert.AreEqual("hello_world", "hello\"World".ToSnakeCase());
+            Assert.AreEqual("dont_stop", "don't_stop".ToSnakeCase());
+            Assert.AreEqual("its_working", "it's_working".ToSnakeCase());
+            Assert.AreEqual("mixed_test", "mixed.'Test".ToSnakeCase());
+        }
+
+        [Test]
         public void ToKebabCaseFromPascalCase()
         {
             Assert.AreEqual("pascal-case", "PascalCase".ToKebabCase());
             Assert.AreEqual("hello-world", "HelloWorld".ToKebabCase());
+            Assert.AreEqual("a", "A".ToKebabCase());
         }
 
         [Test]
@@ -889,11 +900,595 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         }
 
         [Test]
+        public void ToKebabCaseFromSnakeCase()
+        {
+            Assert.AreEqual("snake-case", "snake_case".ToKebabCase());
+            Assert.AreEqual("hello-world-test", "hello_world_test".ToKebabCase());
+        }
+
+        [Test]
         public void ToKebabCaseEdgeCases()
         {
             Assert.AreEqual(string.Empty, ((string)null).ToKebabCase());
             Assert.AreEqual(string.Empty, string.Empty.ToKebabCase());
             Assert.AreEqual("html-parser", "HTMLParser".ToKebabCase());
+            Assert.AreEqual(string.Empty, "___".ToKebabCase());
+            Assert.AreEqual(string.Empty, "---".ToKebabCase());
+            Assert.AreEqual("abc", "ABC".ToKebabCase());
+        }
+
+        [Test]
+        public void ToKebabCaseHandlesConsecutiveUppercase()
+        {
+            Assert.AreEqual("html-parser", "HTMLParser".ToKebabCase());
+            Assert.AreEqual("xml-http-request", "XMLHttpRequest".ToKebabCase());
+            Assert.AreEqual("io-exception", "IOException".ToKebabCase());
+        }
+
+        [Test]
+        public void ToKebabCaseHandlesSeparators()
+        {
+            Assert.AreEqual("hello-world", "hello world".ToKebabCase());
+            Assert.AreEqual("hello-world", "hello__world".ToKebabCase());
+            Assert.AreEqual("hello-world", "hello   world".ToKebabCase());
+        }
+
+        [Test]
+        public void ToKebabCaseFromSpaces()
+        {
+            Assert.AreEqual("hello-world", "hello world".ToKebabCase());
+            Assert.AreEqual("test-case", "test case".ToKebabCase());
+            Assert.AreEqual("multiple-words", "multiple  words".ToKebabCase());
+        }
+
+        [Test]
+        public void ToKebabCaseMultipleConsecutiveUppercase()
+        {
+            Assert.AreEqual("xml-http-request", "XMLHttpRequest".ToKebabCase());
+            Assert.AreEqual("html-parser", "HTMLParser".ToKebabCase());
+            Assert.AreEqual("io-error", "IOError".ToKebabCase());
+            Assert.AreEqual("io-exception", "IOException".ToKebabCase());
+        }
+
+        [Test]
+        public void ToKebabCaseSingleCharacter()
+        {
+            Assert.AreEqual("a", "a".ToKebabCase());
+            Assert.AreEqual("a", "A".ToKebabCase());
+            Assert.AreEqual("x", "x".ToKebabCase());
+            Assert.AreEqual("z", "Z".ToKebabCase());
+        }
+
+        [Test]
+        public void ToKebabCaseSingleWord()
+        {
+            Assert.AreEqual("test", "test".ToKebabCase());
+            Assert.AreEqual("test", "TEST".ToKebabCase());
+            Assert.AreEqual("test", "Test".ToKebabCase());
+            Assert.AreEqual("hello", "hello".ToKebabCase());
+            Assert.AreEqual("hello", "HELLO".ToKebabCase());
+        }
+
+        [Test]
+        public void ToKebabCaseOnlySeparators()
+        {
+            Assert.AreEqual(string.Empty, "___".ToKebabCase());
+            Assert.AreEqual(string.Empty, "---".ToKebabCase());
+            Assert.AreEqual(string.Empty, "   ".ToKebabCase());
+            Assert.AreEqual(string.Empty, "_-_ ".ToKebabCase());
+            Assert.AreEqual(string.Empty, "...".ToKebabCase());
+        }
+
+        [Test]
+        public void ToKebabCaseLeadingAndTrailingSeparators()
+        {
+            Assert.AreEqual("test-case", "_test_case".ToKebabCase());
+            Assert.AreEqual("test-case", "test_case_".ToKebabCase());
+            Assert.AreEqual("test-case", "_test_case_".ToKebabCase());
+            Assert.AreEqual("test-case", "-test-case-".ToKebabCase());
+            Assert.AreEqual("test-case", "__test__case__".ToKebabCase());
+            Assert.AreEqual("test-case", "  test  case  ".ToKebabCase());
+        }
+
+        [Test]
+        public void ToKebabCaseMultipleSeparators()
+        {
+            Assert.AreEqual("test-case", "test__case".ToKebabCase());
+            Assert.AreEqual("test-case", "test--case".ToKebabCase());
+            Assert.AreEqual("test-case", "test__--__case".ToKebabCase());
+            Assert.AreEqual("test-case", "test   case".ToKebabCase());
+        }
+
+        [Test]
+        public void ToKebabCaseMixedSeparators()
+        {
+            Assert.AreEqual("this-is-a-test", "this_is-a_test".ToKebabCase());
+            Assert.AreEqual("hello-world-test", "hello-world_test".ToKebabCase());
+            Assert.AreEqual("mixed-case-test", "mixed_Case-Test".ToKebabCase());
+            Assert.AreEqual("test-case", "test.case".ToKebabCase());
+        }
+
+        [Test]
+        public void ToKebabCaseAllSeparators()
+        {
+            Assert.AreEqual("test-case", "test_case".ToKebabCase());
+            Assert.AreEqual("test-case", "test-case".ToKebabCase());
+            Assert.AreEqual("test-case", "test case".ToKebabCase());
+            Assert.AreEqual("test-case", "test.case".ToKebabCase());
+            Assert.AreEqual("test-case", "test\tcase".ToKebabCase());
+            Assert.AreEqual("test-case", "test\ncase".ToKebabCase());
+            Assert.AreEqual("test-case", "test\rcase".ToKebabCase());
+            Assert.AreEqual("test-case", "test\"Case".ToKebabCase());
+        }
+
+        [Test]
+        public void ToKebabCaseUppercaseWords()
+        {
+            Assert.AreEqual("this-is-a-test", "THIS-IS-A-TEST".ToKebabCase());
+            Assert.AreEqual("hello-world", "HELLO_WORLD".ToKebabCase());
+            Assert.AreEqual("abc", "ABC".ToKebabCase());
+        }
+
+        [Test]
+        public void ToKebabCaseMixedCamelAndSnake()
+        {
+            Assert.AreEqual("hello-world-test", "helloWorld_test".ToKebabCase());
+            Assert.AreEqual("test-case-example", "testCase_example".ToKebabCase());
+            Assert.AreEqual("my-test-value", "myTest_value".ToKebabCase());
+        }
+
+        [Test]
+        public void ToKebabCaseWithNumbersAndSeparators()
+        {
+            Assert.AreEqual("test-123-case-456", "test_123_case_456".ToKebabCase());
+            Assert.AreEqual("version-2-update", "version-2-update".ToKebabCase());
+            Assert.AreEqual("test1-test2", "test1_test2".ToKebabCase());
+            Assert.AreEqual("api-2-endpoint", "api_2_endpoint".ToKebabCase());
+        }
+
+        [Test]
+        public void ToKebabCaseSpecialCharacterSeparators()
+        {
+            Assert.AreEqual("test-case", "test'Case".ToKebabCase());
+            Assert.AreEqual("hello-world", "hello\"World".ToKebabCase());
+            Assert.AreEqual("mixed-test", "mixed.'Test".ToKebabCase());
+        }
+
+        [Test]
+        public void ToKebabCaseComplexStrings()
+        {
+            Assert.AreEqual("this-is-a-complex-test", "this_is_a_complex_test".ToKebabCase());
+            Assert.AreEqual("this-is-a-complex-test", "THIS_IS_A_COMPLEX_TEST".ToKebabCase());
+            Assert.AreEqual("this-is-a-complex-test", "this-is-a-complex-test".ToKebabCase());
+            Assert.AreEqual("this-is-a-complex-test", "ThisIsAComplexTest".ToKebabCase());
+        }
+
+        [Test]
+        public void ToKebabCaseAlreadyKebabCase()
+        {
+            Assert.AreEqual("kebab-case", "kebab-case".ToKebabCase());
+            Assert.AreEqual("already-kebab-case", "already-kebab-case".ToKebabCase());
+            Assert.AreEqual("my-variable-name", "my-variable-name".ToKebabCase());
+        }
+
+        [Test]
+        public void ToKebabCaseNumbersAtBoundaries()
+        {
+            Assert.AreEqual("test-123", "Test123".ToKebabCase());
+            Assert.AreEqual("123test", "123test".ToKebabCase());
+            Assert.AreEqual("123-test", "123Test".ToKebabCase());
+            Assert.AreEqual("test-123-test", "test123Test".ToKebabCase());
+        }
+
+        [Test]
+        public void ToKebabCaseConsecutiveNumbers()
+        {
+            Assert.AreEqual("test123456", "test123456".ToKebabCase());
+            Assert.AreEqual("test-123456-end", "test123456End".ToKebabCase());
+            Assert.AreEqual("abc123def456", "abc123def456".ToKebabCase());
+        }
+
+        [Test]
+        public void ToKebabCaseMixedNumbersAndUppercase()
+        {
+            Assert.AreEqual("user123name", "user123name".ToKebabCase());
+            Assert.AreEqual("test-456-value", "Test456Value".ToKebabCase());
+            Assert.AreEqual("model3d", "model3d".ToKebabCase());
+            Assert.AreEqual("http2client", "http2client".ToKebabCase());
+        }
+
+        [Test]
+        public void ToKebabCaseIdempotent()
+        {
+            // Applying ToKebabCase twice should give the same result
+            Assert.AreEqual("test-value", "test-value".ToKebabCase());
+            Assert.AreEqual("hello-world", "hello-world".ToKebabCase());
+
+            // Verify idempotence
+            string test1 = "TestValue123";
+            string kebab1 = test1.ToKebabCase();
+            string kebab2 = kebab1.ToKebabCase();
+            Assert.AreEqual(kebab1, kebab2);
+
+            string test2 = "hello_world_test";
+            string kebab3 = test2.ToKebabCase();
+            string kebab4 = kebab3.ToKebabCase();
+            Assert.AreEqual(kebab3, kebab4);
+        }
+
+        [Test]
+        public void ToKebabCasePerformanceEdgeCases()
+        {
+            // Very long strings
+            string longString = "a".Repeat(100);
+            Assert.AreEqual(longString, longString.ToKebabCase());
+
+            string longPascal = "Test" + "Value".Repeat(50);
+            string result = longPascal.ToKebabCase();
+            Assert.IsTrue(result.Contains("-"));
+            Assert.IsFalse(result.Contains("--")); // No double dashes
+
+            // Many separators
+            string manySeparators = "test_value_test_value_test_value_test_value";
+            string kebabResult = manySeparators.ToKebabCase();
+            Assert.IsTrue(kebabResult.Contains("-"));
+            Assert.IsFalse(kebabResult.Contains("_"));
+        }
+
+        [Test]
+        public void ToKebabCaseUnicodeCharacters()
+        {
+            // Test with non-ASCII characters
+            Assert.AreEqual("tëst-cäse", "tëst_cäse".ToKebabCase());
+            Assert.AreEqual("hëllo-wörld", "hëllo_wörld".ToKebabCase());
+        }
+
+        [Test]
+        public void ToKebabCaseWhitespaceVariations()
+        {
+            Assert.AreEqual("test-case", "test\tcase".ToKebabCase());
+            Assert.AreEqual("test-case", "test\ncase".ToKebabCase());
+            Assert.AreEqual("test-case", "test\rcase".ToKebabCase());
+            Assert.AreEqual("test-case", "test\r\ncase".ToKebabCase());
+        }
+
+        [Test]
+        public void ToKebabCaseNumbersOnly()
+        {
+            Assert.AreEqual("123", "123".ToKebabCase());
+            Assert.AreEqual("456789", "456789".ToKebabCase());
+            Assert.AreEqual("0", "0".ToKebabCase());
+        }
+
+        [Test]
+        public void ToKebabCaseMixedCasingPatterns()
+        {
+            Assert.AreEqual("t-est-case", "TEstCase".ToKebabCase());
+            Assert.AreEqual("h-el-lo-wo-rl-d", "HElLO_WoRlD".ToKebabCase());
+        }
+
+        [Test]
+        public void ToKebabCaseAcronymsAndAbbreviations()
+        {
+            Assert.AreEqual("http-request", "HTTPRequest".ToKebabCase());
+            Assert.AreEqual("xml-parser", "XMLParser".ToKebabCase());
+            Assert.AreEqual("io-stream", "IOStream".ToKebabCase());
+            Assert.AreEqual("url-path", "URLPath".ToKebabCase());
+            Assert.AreEqual("api-key", "APIKey".ToKebabCase());
+        }
+
+        [Test]
+        public void ToKebabCaseQuotesAndApostrophes()
+        {
+            Assert.AreEqual("dont-stop", "don't_stop".ToKebabCase());
+            Assert.AreEqual("its-working", "it's_working".ToKebabCase());
+            Assert.AreEqual("hello-world", "hello\"World".ToKebabCase());
+        }
+
+        [Test]
+        public void ToKebabCaseDotsAndPeriods()
+        {
+            Assert.AreEqual("file-name", "file.name".ToKebabCase());
+            Assert.AreEqual("test-case-value", "test.case.value".ToKebabCase());
+            Assert.AreEqual("my-test-file", "my.test.file".ToKebabCase());
+        }
+
+        [Test]
+        public void ToKebabCaseConversionFromAllFormats()
+        {
+            string expected = "my-variable-name";
+            Assert.AreEqual(expected, "MyVariableName".ToKebabCase()); // PascalCase
+            Assert.AreEqual(expected, "my_variable_name".ToKebabCase()); // snake_case
+            Assert.AreEqual(expected, "my-variable-name".ToKebabCase()); // kebab-case
+            Assert.AreEqual(expected, "my variable name".ToKebabCase()); // space separated
+            Assert.AreEqual(expected, "MY_VARIABLE_NAME".ToKebabCase()); // SCREAMING_SNAKE_CASE
+            Assert.AreEqual(expected, "myVariableName".ToKebabCase()); // camelCase
+        }
+
+        [Test]
+        public void ToKebabCaseExtremeEdgeCases()
+        {
+            // Only uppercase
+            Assert.AreEqual("aaaa", "AAAA".ToKebabCase());
+
+            // Only lowercase (should remain lowercase)
+            Assert.AreEqual("aaaa", "aaaa".ToKebabCase());
+
+            // Alternating case
+            Assert.AreEqual("a-ba-ba-b", "aBaBaB".ToKebabCase());
+
+            // Mixed with all separator types
+            Assert.AreEqual("test-value-example", "test_value-example".ToKebabCase());
+            Assert.AreEqual("my-test-case-here", "my test-case_here".ToKebabCase());
+        }
+
+        [Test]
+        public void ToKebabCaseVeryLongStrings()
+        {
+            // Test with very long input to ensure performance
+            string longInput = string.Join("_", Enumerable.Range(0, 100).Select(i => "word" + i));
+            string result = longInput.ToKebabCase();
+            Assert.IsFalse(result.Contains("_"));
+            Assert.IsTrue(result.Contains("-"));
+            Assert.IsTrue(result.Length > 0);
+
+            // Verify it starts correctly
+            Assert.IsTrue(result.StartsWith("word0"));
+        }
+
+        [Test]
+        public void ToKebabCaseRepeatedConversions()
+        {
+            // Ensure repeated conversions are stable (idempotent)
+            string[] testCases =
+            {
+                "hello_world",
+                "HelloWorld",
+                "HELLO_WORLD",
+                "helloWorld",
+                "hello-world",
+                "hello world",
+            };
+
+            foreach (string testCase in testCases)
+            {
+                string first = testCase.ToKebabCase();
+                string second = first.ToKebabCase();
+                string third = second.ToKebabCase();
+
+                Assert.AreEqual(first, second, $"Failed for {testCase}: first != second");
+                Assert.AreEqual(second, third, $"Failed for {testCase}: second != third");
+                Assert.IsTrue(
+                    char.IsLower(first[0]) || char.IsDigit(first[0]) || !char.IsLetter(first[0]),
+                    $"First character should be lowercase or non-letter for {testCase}"
+                );
+            }
+        }
+
+        [Test]
+        public void ToKebabCaseWithManyConsecutiveCapitals()
+        {
+            Assert.AreEqual("abcdefg", "ABCDEFG".ToKebabCase());
+            Assert.AreEqual("xml-https-api-request", "XmlHttpsAPIRequest".ToKebabCase());
+            Assert.AreEqual("io-exception-error", "IOExceptionError".ToKebabCase());
+        }
+
+        [Test]
+        public void ToKebabCaseWithNumbersBetweenWords()
+        {
+            // Underscores are converted to dashes, but digits within words are preserved
+            Assert.AreEqual("word1-word2-word3", "word1_word2_word3".ToKebabCase());
+            Assert.AreEqual("word-1-word-2-word-3", "Word1_Word2_Word3".ToKebabCase());
+            Assert.AreEqual("test-123-middle-456-end", "test_123_middle_456_end".ToKebabCase());
+        }
+
+        [Test]
+        public void ToKebabCaseSingleLetterWords()
+        {
+            Assert.AreEqual("a-b-c", "a_b_c".ToKebabCase());
+            Assert.AreEqual("a-b-c", "A_B_C".ToKebabCase());
+            Assert.AreEqual("a-b-c-d-e-f", "a_b_c_d_e_f".ToKebabCase());
+        }
+
+        [Test]
+        public void ToKebabCaseWithTrailingNumbers()
+        {
+            Assert.AreEqual("test1", "test1".ToKebabCase());
+            Assert.AreEqual("test-123", "Test123".ToKebabCase());
+            Assert.AreEqual("my-value2", "my_value2".ToKebabCase());
+            Assert.AreEqual("my-value-42", "MyValue42".ToKebabCase());
+        }
+
+        [Test]
+        public void ToKebabCaseWithLeadingNumbers()
+        {
+            Assert.AreEqual("1test", "1test".ToKebabCase());
+            Assert.AreEqual("123-test", "123Test".ToKebabCase());
+            Assert.AreEqual("2-fast-and-2-furious", "2_fast_and_2_furious".ToKebabCase());
+        }
+
+        [Test]
+        public void ToKebabCaseRoundTripWithOtherFormats()
+        {
+            string original = "my-variable-name";
+
+            // Convert to various formats and back
+            string snake = original.Replace('-', '_');
+            string kebabFromSnake = snake.ToKebabCase();
+            Assert.AreEqual(original, kebabFromSnake);
+
+            string pascal = original.ToPascalCase();
+            string kebabFromPascal = pascal.ToKebabCase();
+            Assert.AreEqual(original, kebabFromPascal);
+
+            string camel = original.ToCamelCase();
+            string kebabFromCamel = camel.ToKebabCase();
+            Assert.AreEqual(original, kebabFromCamel);
+        }
+
+        [Test]
+        public void ToKebabCaseEmptyPascalCaseResult()
+        {
+            // When ToPascalCase returns empty, ToKebabCase should too
+            Assert.AreEqual(string.Empty, "___".ToKebabCase());
+            Assert.AreEqual(string.Empty, "---".ToKebabCase());
+            Assert.AreEqual(string.Empty, "   ".ToKebabCase());
+        }
+
+        [Test]
+        public void ToKebabCasePreservesNumbersAndSpecialPatterns()
+        {
+            // When uppercase letters are present, digit boundaries get separators
+            Assert.AreEqual("version-2-point-0", "version2Point0".ToKebabCase());
+            Assert.AreEqual("version-2-point-0", "Version2Point0".ToKebabCase());
+            Assert.AreEqual("i-phone-11", "iPhone11".ToKebabCase());
+            Assert.AreEqual("i-os-14", "iOS14".ToKebabCase());
+        }
+
+        [Test]
+        public void ToKebabCaseStressTest()
+        {
+            // Multiple conversions with different patterns
+            string[] patterns =
+            {
+                "simple",
+                "Simple",
+                "SIMPLE",
+                "simple_case",
+                "SimpleCase",
+                "SIMPLE_CASE",
+                "simple-case",
+                "simple case",
+                "simpleCase",
+                "a",
+                "A",
+                "aB",
+                "AB",
+                "a1",
+                "A1",
+                "1a",
+                "1A",
+                "XMLHttpRequest",
+                "xml_http_request",
+                "xml-http-request",
+            };
+
+            foreach (string pattern in patterns)
+            {
+                string result = pattern.ToKebabCase();
+                // Basic invariants
+                Assert.IsNotNull(result, $"Result should not be null for: {pattern}");
+
+                if (result.Length > 0)
+                {
+                    // First character should be lowercase or a non-letter
+                    Assert.IsTrue(
+                        char.IsLower(result[0]) || !char.IsLetter(result[0]),
+                        $"First char should be lowercase or non-letter for {pattern}, got: {result}"
+                    );
+                }
+
+                // Should not contain other separators
+                Assert.IsFalse(
+                    result.Contains("_"),
+                    $"Should not contain underscore: {pattern} -> {result}"
+                );
+                Assert.IsFalse(
+                    result.Contains(" "),
+                    $"Should not contain space: {pattern} -> {result}"
+                );
+
+                // Idempotent
+                string second = result.ToKebabCase();
+                Assert.AreEqual(result, second, $"Should be idempotent for: {pattern}");
+            }
+        }
+
+        [Test]
+        public void ToKebabCasePreservesLowercaseWithNumbers()
+        {
+            // Pure lowercase strings with numbers should be preserved
+            Assert.AreEqual("user123", "user123".ToKebabCase());
+            Assert.AreEqual("test456", "test456".ToKebabCase());
+            Assert.AreEqual("abc789xyz", "abc789xyz".ToKebabCase());
+            Assert.AreEqual("model3d", "model3d".ToKebabCase());
+            Assert.AreEqual("http2", "http2".ToKebabCase());
+
+            // Pure numbers
+            Assert.AreEqual("12345", "12345".ToKebabCase());
+            Assert.AreEqual("0", "0".ToKebabCase());
+
+            // Numbers at start
+            Assert.AreEqual("2fast", "2fast".ToKebabCase());
+            Assert.AreEqual("404error", "404error".ToKebabCase());
+
+            // Numbers at end
+            Assert.AreEqual("version2", "version2".ToKebabCase());
+            Assert.AreEqual("player1", "player1".ToKebabCase());
+
+            // Mixed numbers
+            Assert.AreEqual("abc123def456", "abc123def456".ToKebabCase());
+            Assert.AreEqual("test1middle2end3", "test1middle2end3".ToKebabCase());
+        }
+
+        [Test]
+        public void ToKebabCaseHandlesNumbersWithCasing()
+        {
+            // When uppercase letters are present, digit boundaries should get separators
+            Assert.AreEqual("user-123-name", "user123Name".ToKebabCase());
+            Assert.AreEqual("test-456-value", "Test456Value".ToKebabCase());
+            Assert.AreEqual("model-3-d", "model3D".ToKebabCase());
+            Assert.AreEqual("http-2-client", "http2Client".ToKebabCase());
+
+            // Multiple transitions
+            Assert.AreEqual("api-v-1-endpoint-2", "apiV1Endpoint2".ToKebabCase());
+            Assert.AreEqual("test-123-abc-456-def", "test123Abc456Def".ToKebabCase());
+
+            // Numbers with consecutive uppercase
+            Assert.AreEqual("http-200-ok", "HTTP200OK".ToKebabCase());
+            Assert.AreEqual("xml-2-parser", "XML2Parser".ToKebabCase());
+        }
+
+        [Test]
+        public void ToKebabCaseHandlesUnderscoresWithNumbers()
+        {
+            // Strings already with underscores
+            Assert.AreEqual("test-123", "test_123".ToKebabCase());
+            Assert.AreEqual("value-456-end", "value_456_end".ToKebabCase());
+            Assert.AreEqual("my-3d-model", "my_3d_model".ToKebabCase());
+
+            // Mixed underscores and uppercase
+            Assert.AreEqual("test-123-value", "test_123Value".ToKebabCase());
+            Assert.AreEqual("my-test-2-beta", "my_test2Beta".ToKebabCase());
+        }
+
+        [Test]
+        public void ToKebabCaseHandlesEdgeCasesWithNumbers()
+        {
+            // Single character with number
+            Assert.AreEqual("a1", "a1".ToKebabCase());
+            Assert.AreEqual("a-1", "A1".ToKebabCase());
+
+            // Multiple single digits
+            Assert.AreEqual("a1b2c3d4", "a1b2c3d4".ToKebabCase());
+            Assert.AreEqual("a-1-b-2-c-3-d-4", "A1B2C3D4".ToKebabCase());
+
+            // Consecutive numbers
+            Assert.AreEqual("test123456", "test123456".ToKebabCase());
+            Assert.AreEqual("test-123456-end", "test123456End".ToKebabCase());
+
+            // Number at very start
+            Assert.AreEqual("1test", "1test".ToKebabCase());
+            Assert.AreEqual("1-test", "1Test".ToKebabCase());
+            Assert.AreEqual("123test456", "123test456".ToKebabCase());
+            Assert.AreEqual("123-test-456", "123Test456".ToKebabCase());
+        }
+
+        [Test]
+        public void ToKebabCaseFromExistingKebabCase()
+        {
+            // These were the old tests, now incorporated above
+            Assert.AreEqual("test-123-value", "test123Value".ToKebabCase());
         }
 
         [Test]
@@ -1391,41 +1986,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             Assert.AreEqual("value1", "value1".ToSnakeCase());
             Assert.AreEqual("123abc", "123abc".ToSnakeCase());
             Assert.AreEqual("a1b2c3", "a1b2c3".ToSnakeCase());
-        }
-
-        [Test]
-        public void ToKebabCasePreservesNumbers()
-        {
-            Assert.AreEqual("test-123-value", "test123Value".ToKebabCase());
-        }
-
-        [Test]
-        public void ToKebabCaseWithNumbers()
-        {
-            // Letter to digit transitions (only when there are uppercase letters)
-            Assert.AreEqual("test-456-end", "test456End".ToKebabCase());
-
-            // Digit to letter transitions (only when there are uppercase letters)
-            Assert.AreEqual("version-2-beta", "version2Beta".ToKebabCase());
-            Assert.AreEqual("my-3-d-model", "my3DModel".ToKebabCase());
-
-            // Multiple number groups
-            Assert.AreEqual("test-123-value-456", "test123Value456".ToKebabCase());
-            Assert.AreEqual("api-v-2-endpoint-3", "apiV2Endpoint3".ToKebabCase());
-
-            // Edge cases
-            Assert.AreEqual("123", "123".ToKebabCase());
-            Assert.AreEqual("test-123-value-456-end", "test123Value456End".ToKebabCase());
-
-            // Already lowercase - should be preserved
-            Assert.AreEqual("abc123", "abc123".ToKebabCase());
-            Assert.AreEqual("value1", "value1".ToKebabCase());
-            Assert.AreEqual("123abc", "123abc".ToKebabCase());
-            Assert.AreEqual("a1b2c3", "a1b2c3".ToKebabCase());
-
-            // Combined with uppercase
-            Assert.AreEqual("my-class-2-d", "MyClass2D".ToKebabCase());
-            Assert.AreEqual("http-2-client", "HTTP2Client".ToKebabCase());
         }
 
         [Test]
