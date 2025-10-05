@@ -81,7 +81,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void GetElementsInRangeWithEmptyTreeReturnsEmpty()
+        public void GetElementsInRangeWithEmptyTreeReturnsEmptyAdditional()
         {
             OctTree3D<Vector3> tree = CreateTree(new List<Vector3>());
             List<Vector3> results = new();
@@ -91,7 +91,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void GetElementsInRangeWithZeroRangeReturnsOnlyExactMatches()
+        public void GetElementsInRangeWithZeroRangeReturnsOnlyExactMatchesAdditional()
         {
             Vector3 target = new(8f, 3f, -5f);
             List<Vector3> points = new()
@@ -191,7 +191,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void GetElementsInBoundsWithNoIntersectionReturnsEmpty()
+        public void GetElementsInBoundsWithNoIntersectionReturnsEmptyAdditional()
         {
             List<Vector3> points = new() { new Vector3(-5f, 0f, 0f), new Vector3(5f, 0f, 0f) };
 

@@ -329,7 +329,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         )
         {
             elementsInRange.Clear();
-            if (range <= 0f)
+            if (range < 0f)
             {
                 return elementsInRange;
             }
@@ -395,7 +395,13 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             CollectElementIndicesInBounds(queryBounds, indices);
             foreach (int index in indices)
             {
-                elementsInBounds.Add(_elementData[index]._value);
+                ElementData elementData = _elementData[index];
+                if (!queryBounds.Contains(elementData._center))
+                {
+                    continue;
+                }
+
+                elementsInBounds.Add(elementData._value);
             }
 
             return elementsInBounds;

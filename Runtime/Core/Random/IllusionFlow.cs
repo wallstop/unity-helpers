@@ -11,9 +11,11 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     using System;
     using System.Runtime.Serialization;
     using System.Text.Json.Serialization;
+    using ProtoBuf;
 
     [Serializable]
     [DataContract]
+    [ProtoContract]
     public sealed class IllusionFlow : AbstractRandom
     {
         private const int UintByteCount = sizeof(uint) * 8;
@@ -33,10 +35,19 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             }
         }
 
+        [ProtoMember(2)]
         private uint _a;
+
+        [ProtoMember(3)]
         private uint _b;
+
+        [ProtoMember(4)]
         private uint _c;
+
+        [ProtoMember(5)]
         private uint _d;
+
+        [ProtoMember(6)]
         private uint _e;
 
         public IllusionFlow()

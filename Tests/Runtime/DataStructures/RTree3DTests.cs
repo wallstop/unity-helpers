@@ -157,14 +157,17 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void GetElementsInRangeWithZeroRangeReturnsEmpty()
+        public void GetElementsInRangeWithZeroRangeReturnsOnlyExactMatches()
         {
-            Vector3 point = Vector3.zero;
-            RTree3D<Vector3> tree = CreateTree(new List<Vector3> { point });
+            Vector3 target = new(5f, -3f, 2f);
+            List<Vector3> points = new() { target, target, target + new Vector3(0.1f, 0f, 0f) };
+            RTree3D<Vector3> tree = CreateTree(points);
             List<Vector3> results = new() { new Vector3(999f, 999f, 999f) };
 
-            tree.GetElementsInRange(point, 0f, results);
-            Assert.AreEqual(0, results.Count);
+            tree.GetElementsInRange(target, 0f, results);
+
+            Vector3[] expected = { target, target };
+            CollectionAssert.AreEquivalent(expected, results);
         }
 
         [Test]

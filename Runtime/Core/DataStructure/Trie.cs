@@ -219,30 +219,28 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
         /// <summary>
         /// Value-based enumerator for efficient foreach iteration without heap allocations.
-        /// Implements IDisposable to return pooled StringBuilders.
+        /// Implements IDisposable to return pooled StringBuilders, Stack, and List.
         /// </summary>
         public struct Enumerator : IDisposable
         {
             private readonly Trie _trie;
-            private readonly Stack<(
-                int node,
-                PooledResource<StringBuilder> sbResource,
-                int sbLength
-            )> _stack;
-            private readonly List<PooledResource<StringBuilder>> _pooledResources;
+            private readonly PooledResource<
+                Stack<(int node, PooledResource<StringBuilder> sbResource, int sbLength)>
+            > _stackResource;
+            private readonly PooledResource<List<PooledResource<StringBuilder>>> _listResource;
             private string _current;
 
             internal Enumerator(Trie trie)
             {
                 _trie = trie;
-                _stack = new Stack<(int, PooledResource<StringBuilder>, int)>();
-                _pooledResources = new List<PooledResource<StringBuilder>>();
+                _stackResource = Buffers<(int, PooledResource<StringBuilder>, int)>.Stack.Get();
+                _listResource = Buffers<PooledResource<StringBuilder>>.List.Get();
                 _current = null;
 
                 // Initialize with root node
                 PooledResource<StringBuilder> sbResource = Buffers.StringBuilder.Get();
-                _pooledResources.Add(sbResource);
-                _stack.Push((0, sbResource, 0));
+                _listResource.resource.Add(sbResource);
+                _stackResource.resource.Push((0, sbResource, 0));
             }
 
             public string Current => _current;
@@ -250,7 +248,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             public bool MoveNext()
             {
                 while (
-                    _stack.TryPop(
+                    _stackResource.resource.TryPop(
                         out (int node, PooledResource<StringBuilder> sbResource, int sbLength) item
                     )
                 )
@@ -277,11 +275,11 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     )
                     {
                         PooledResource<StringBuilder> childResource = Buffers.StringBuilder.Get();
-                        _pooledResources.Add(childResource);
+                        _listResource.resource.Add(childResource);
                         StringBuilder childSb = childResource.resource;
                         childSb.Append(sb);
                         childSb.Append(_trie._chars[child]);
-                        _stack.Push((child, childResource, childSb.Length));
+                        _stackResource.resource.Push((child, childResource, childSb.Length));
                     }
                 }
 
@@ -303,27 +301,25 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 )
                 {
                     PooledResource<StringBuilder> childResource = Buffers.StringBuilder.Get();
-                    _pooledResources.Add(childResource);
+                    _listResource.resource.Add(childResource);
                     StringBuilder childSb = childResource.resource;
                     childSb.Append(sb);
                     childSb.Append(_trie._chars[child]);
-                    _stack.Push((child, childResource, childSb.Length));
+                    _stackResource.resource.Push((child, childResource, childSb.Length));
                 }
             }
 
             public void Dispose()
             {
-                if (_pooledResources == null)
-                {
-                    return;
-                }
-
                 // Return all pooled StringBuilders to the pool
-                foreach (PooledResource<StringBuilder> resource in _pooledResources)
+                foreach (PooledResource<StringBuilder> resource in _listResource.resource)
                 {
                     resource.Dispose();
                 }
-                _pooledResources.Clear();
+
+                // Return the Stack and List to their pools
+                _stackResource.Dispose();
+                _listResource.Dispose();
             }
         }
 
@@ -558,23 +554,24 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
         /// <summary>
         /// Value-based enumerator for efficient foreach iteration without heap allocations.
+        /// Implements IDisposable to return pooled Stack.
         /// </summary>
-        public struct Enumerator
+        public struct Enumerator : IDisposable
         {
             private readonly Trie<T> _trie;
-            private readonly Stack<int> _stack;
+            private readonly PooledResource<Stack<int>> _stackResource;
             private T _current;
 
             internal Enumerator(Trie<T> trie)
             {
                 _trie = trie;
-                _stack = new Stack<int>();
+                _stackResource = Buffers<int>.Stack.Get();
                 _current = default;
 
                 // Initialize with root node
-                if (_trie._nodeCount > 1)
+                if (_trie._nodeCount >= 1)
                 {
-                    _stack.Push(0);
+                    _stackResource.resource.Push(0);
                 }
             }
 
@@ -582,10 +579,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             public bool MoveNext()
             {
-                while (_stack.TryPop(out int node))
+                while (_stackResource.resource.TryPop(out int node))
                 {
-                    // Check if this node has a value
-                    if (node != 0 && _trie._hasValue[node])
+                    // Check if this node has a value (including root for empty string keys)
+                    if (_trie._hasValue[node])
                     {
                         _current = _trie._values[node];
 
@@ -601,7 +598,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                         child = _trie._nextSibling[child]
                     )
                     {
-                        _stack.Push(child);
+                        _stackResource.resource.Push(child);
                     }
                 }
 
@@ -617,8 +614,14 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     child = _trie._nextSibling[child]
                 )
                 {
-                    _stack.Push(child);
+                    _stackResource.resource.Push(child);
                 }
+            }
+
+            public void Dispose()
+            {
+                // Return the Stack to the pool
+                _stackResource.Dispose();
             }
         }
 
@@ -648,7 +651,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 throw new NotSupportedException();
             }
 
-            public void Dispose() { }
+            public void Dispose()
+            {
+                _enumerator.Dispose();
+            }
         }
     }
 }

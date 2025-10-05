@@ -103,10 +103,40 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
         public static Direction Combine(this IEnumerable<Direction> directions)
         {
-            Direction combined = Direction.None;
-            foreach (Direction direction in directions)
+            if (directions == null)
             {
-                combined |= direction;
+                throw new ArgumentNullException(nameof(directions));
+            }
+            Direction combined = Direction.None;
+            switch (directions)
+            {
+                case IReadOnlyList<Direction> list:
+                {
+                    for (int i = 0; i < list.Count; ++i)
+                    {
+                        combined |= list[i];
+                    }
+
+                    break;
+                }
+                case HashSet<Direction> set:
+                {
+                    foreach (Direction direction in set)
+                    {
+                        combined |= direction;
+                    }
+
+                    break;
+                }
+                default:
+                {
+                    foreach (Direction direction in directions)
+                    {
+                        combined |= direction;
+                    }
+
+                    break;
+                }
             }
 
             return combined;

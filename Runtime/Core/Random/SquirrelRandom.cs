@@ -3,10 +3,12 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     using System;
     using System.Runtime.Serialization;
     using System.Text.Json.Serialization;
+    using ProtoBuf;
 
     // https://youtu.be/LWFzPP8ZbdU?t=2673
     [DataContract]
     [Serializable]
+    [ProtoContract]
     public sealed class SquirrelRandom : AbstractRandom
     {
         private const uint BitNoise1 = 0xB5297A4D;
@@ -18,6 +20,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         public override RandomState InternalState => new(_position, gaussian: _cachedGaussian);
 
+        [ProtoMember(2)]
         private uint _position;
 
         public SquirrelRandom()

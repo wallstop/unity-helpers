@@ -6,6 +6,8 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
     using Helper;
     using Random;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
+    using WallstopStudios.UnityHelpers.Utils;
 
     public enum ColorAveragingMethod
     {
@@ -18,8 +20,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
     // https://sharpsnippets.wordpress.com/2014/03/11/c-extension-complementary-color/
     public static class ColorExtensions
     {
-        private static readonly Dictionary<Vector3Int, int> ColorBucketCache = new();
-
         public static string ToHex(this Color color, bool includeAlpha = true)
         {
             int r = (int)(Mathf.Clamp01(color.r) * 255f);
@@ -95,28 +95,11 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             int count = 0;
             switch (pixels)
             {
-                case List<Color> colorList:
+                case IReadOnlyList<Color> colorList:
                 {
-                    foreach (Color pixel in colorList)
+                    for (int i = 0; i < colorList.Count; i++)
                     {
-                        if (pixel.a <= alphaCutoff)
-                        {
-                            continue;
-                        }
-
-                        LABColor lab = RGBToLAB(pixel);
-                        l += lab.l;
-                        a += lab.a;
-                        b += lab.b;
-                        ++count;
-                    }
-
-                    break;
-                }
-                case Color[] colorArray:
-                {
-                    foreach (Color pixel in colorArray)
-                    {
+                        Color pixel = colorList[i];
                         if (pixel.a <= alphaCutoff)
                         {
                             continue;
@@ -182,40 +165,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             float sumV = 0f;
             int count = 0;
 
-            void Accumulate(IEnumerable<Color> source)
-            {
-                foreach (Color pixel in source)
-                {
-                    if (pixel.a <= alphaCutoff)
-                    {
-                        continue;
-                    }
-
-                    Color.RGBToHSV(pixel, out float h, out float s, out float v);
-                    float hueRadians = h * 2f * Mathf.PI;
-                    sumCos += Mathf.Cos(hueRadians);
-                    sumSin += Mathf.Sin(hueRadians);
-                    sumS += s;
-                    sumV += v;
-                    ++count;
-                }
-            }
-
-            switch (pixels)
-            {
-                case List<Color> list:
-                    Accumulate(list);
-                    break;
-                case Color[] array:
-                    Accumulate(array);
-                    break;
-                case HashSet<Color> set:
-                    Accumulate(set);
-                    break;
-                default:
-                    Accumulate(pixels);
-                    break;
-            }
+            Accumulate(pixels);
 
             if (count == 0)
             {
@@ -233,6 +183,74 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             float averageV = sumV / count;
 
             return Color.HSVToRGB(averageHue, averageS, averageV);
+
+            void Accumulate(IEnumerable<Color> source)
+            {
+                switch (source)
+                {
+                    case IReadOnlyList<Color> colorList:
+                    {
+                        for (int i = 0; i < colorList.Count; ++i)
+                        {
+                            Color pixel = colorList[i];
+                            if (pixel.a <= alphaCutoff)
+                            {
+                                continue;
+                            }
+
+                            Color.RGBToHSV(pixel, out float h, out float s, out float v);
+                            float hueRadians = h * 2f * Mathf.PI;
+                            sumCos += Mathf.Cos(hueRadians);
+                            sumSin += Mathf.Sin(hueRadians);
+                            sumS += s;
+                            sumV += v;
+                            ++count;
+                        }
+
+                        break;
+                    }
+                    case HashSet<Color> colorSet:
+                    {
+                        foreach (Color pixel in colorSet)
+                        {
+                            if (pixel.a <= alphaCutoff)
+                            {
+                                continue;
+                            }
+
+                            Color.RGBToHSV(pixel, out float h, out float s, out float v);
+                            float hueRadians = h * 2f * Mathf.PI;
+                            sumCos += Mathf.Cos(hueRadians);
+                            sumSin += Mathf.Sin(hueRadians);
+                            sumS += s;
+                            sumV += v;
+                            ++count;
+                        }
+
+                        break;
+                    }
+                    default:
+                    {
+                        foreach (Color pixel in source)
+                        {
+                            if (pixel.a <= alphaCutoff)
+                            {
+                                continue;
+                            }
+
+                            Color.RGBToHSV(pixel, out float h, out float s, out float v);
+                            float hueRadians = h * 2f * Mathf.PI;
+                            sumCos += Mathf.Cos(hueRadians);
+                            sumSin += Mathf.Sin(hueRadians);
+                            sumS += s;
+                            sumV += v;
+                            ++count;
+                        }
+
+                        break;
+                    }
+                }
+            }
         }
 
         // Weighted RGB averaging using perceived luminance
@@ -251,32 +269,16 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
             switch (pixels)
             {
-                case List<Color> colorList:
+                case IReadOnlyList<Color> colorList:
                 {
-                    foreach (Color pixel in colorList)
+                    for (int i = 0; i < colorList.Count; i++)
                     {
+                        Color pixel = colorList[i];
                         if (pixel.a <= alphaCutoff)
                         {
                             continue;
                         }
-                        float weight = pixel.r * rWeight + pixel.g * gWeight + pixel.b * bWeight;
-                        r += pixel.r * weight;
-                        g += pixel.g * weight;
-                        b += pixel.b * weight;
-                        a += pixel.a * weight;
-                        totalWeight += weight;
-                    }
 
-                    break;
-                }
-                case Color[] colorArray:
-                {
-                    foreach (Color pixel in colorArray)
-                    {
-                        if (pixel.a <= alphaCutoff)
-                        {
-                            continue;
-                        }
                         float weight = pixel.r * rWeight + pixel.g * gWeight + pixel.b * bWeight;
                         r += pixel.r * weight;
                         g += pixel.g * weight;
@@ -340,47 +342,31 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         // Find dominant color using simple clustering
         private static Color GetDominantColor(IEnumerable<Color> pixels, float alphaCutoff)
         {
-            ColorBucketCache.Clear();
+            using PooledResource<Dictionary<FastVector3Int, int>> colorBucketResource =
+                DictionaryBuffer<FastVector3Int, int>.Dictionary.Get(
+                    out Dictionary<FastVector3Int, int> cache
+                );
             const int bucketSize = 32; // Adjust for different precision
 
             switch (pixels)
             {
-                case List<Color> colorList:
+                case IReadOnlyList<Color> colorList:
                 {
-                    foreach (Color pixel in colorList)
+                    for (int i = 0; i < colorList.Count; i++)
                     {
+                        Color pixel = colorList[i];
                         if (pixel.a <= alphaCutoff)
                         {
                             continue;
                         }
 
-                        Vector3Int bucket = new(
+                        FastVector3Int bucket = new(
                             Mathf.RoundToInt(pixel.r * 255 / bucketSize),
                             Mathf.RoundToInt(pixel.g * 255 / bucketSize),
                             Mathf.RoundToInt(pixel.b * 255 / bucketSize)
                         );
 
-                        ColorBucketCache.AddOrUpdate(bucket, _ => 0, (_, value) => value + 1);
-                    }
-
-                    break;
-                }
-                case Color[] colorArray:
-                {
-                    foreach (Color pixel in colorArray)
-                    {
-                        if (pixel.a <= alphaCutoff)
-                        {
-                            continue;
-                        }
-
-                        Vector3Int bucket = new(
-                            Mathf.RoundToInt(pixel.r * 255 / bucketSize),
-                            Mathf.RoundToInt(pixel.g * 255 / bucketSize),
-                            Mathf.RoundToInt(pixel.b * 255 / bucketSize)
-                        );
-
-                        ColorBucketCache.AddOrUpdate(bucket, _ => 0, (_, value) => value + 1);
+                        cache.AddOrUpdate(bucket, _ => 0, (_, value) => value + 1);
                     }
 
                     break;
@@ -394,13 +380,13 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                             continue;
                         }
 
-                        Vector3Int bucket = new(
+                        FastVector3Int bucket = new(
                             Mathf.RoundToInt(pixel.r * 255 / bucketSize),
                             Mathf.RoundToInt(pixel.g * 255 / bucketSize),
                             Mathf.RoundToInt(pixel.b * 255 / bucketSize)
                         );
 
-                        ColorBucketCache.AddOrUpdate(bucket, _ => 0, (_, value) => value + 1);
+                        cache.AddOrUpdate(bucket, _ => 0, (_, value) => value + 1);
                     }
 
                     break;
@@ -414,23 +400,23 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                             continue;
                         }
 
-                        Vector3Int bucket = new(
+                        FastVector3Int bucket = new(
                             Mathf.RoundToInt(pixel.r * 255 / bucketSize),
                             Mathf.RoundToInt(pixel.g * 255 / bucketSize),
                             Mathf.RoundToInt(pixel.b * 255 / bucketSize)
                         );
 
-                        ColorBucketCache.AddOrUpdate(bucket, _ => 0, (_, value) => value + 1);
+                        cache.AddOrUpdate(bucket, _ => 0, (_, value) => value + 1);
                     }
 
                     break;
                 }
             }
 
-            KeyValuePair<Vector3Int, int>? largest = null;
-            if (0 < ColorBucketCache.Count)
+            KeyValuePair<FastVector3Int, int>? largest = null;
+            if (0 < cache.Count)
             {
-                foreach (KeyValuePair<Vector3Int, int> bucketEntry in ColorBucketCache)
+                foreach (KeyValuePair<FastVector3Int, int> bucketEntry in cache)
                 {
                     largest ??= bucketEntry;
                     if (largest.Value.Value < bucketEntry.Value)
@@ -445,7 +431,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return default;
             }
 
-            Vector3Int dominantBucket = largest.Value.Key;
+            FastVector3Int dominantBucket = largest.Value.Key;
             return new Color(
                 dominantBucket.x * bucketSize / 255f,
                 dominantBucket.y * bucketSize / 255f,

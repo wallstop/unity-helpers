@@ -3,12 +3,14 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     using System;
     using System.Runtime.Serialization;
     using System.Text.Json.Serialization;
+    using ProtoBuf;
 
     /// <summary>
     ///     Implementation based off of the reference PCG Random, found here: https://www.pcg-random.org/index.html
     /// </summary>
     [Serializable]
     [DataContract]
+    [ProtoContract]
     public sealed class PcgRandom
         : AbstractRandom,
             IEquatable<PcgRandom>,
@@ -19,8 +21,10 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         public override RandomState InternalState => new(_state, _increment, _cachedGaussian);
 
+        [ProtoMember(2)]
         internal readonly ulong _increment;
 
+        [ProtoMember(3)]
         internal ulong _state;
 
         public PcgRandom()

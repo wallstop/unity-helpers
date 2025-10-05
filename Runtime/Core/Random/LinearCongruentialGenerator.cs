@@ -1,8 +1,13 @@
 namespace WallstopStudios.UnityHelpers.Core.Random
 {
     using System;
+    using System.Runtime.Serialization;
     using System.Text.Json.Serialization;
+    using ProtoBuf;
 
+    [Serializable]
+    [DataContract]
+    [ProtoContract]
     public sealed class LinearCongruentialGenerator : AbstractRandom
     {
         public static LinearCongruentialGenerator Instance =>
@@ -10,6 +15,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         public override RandomState InternalState => new(_state, 0, _cachedGaussian);
 
+        [ProtoMember(2)]
         private uint _state;
 
         public LinearCongruentialGenerator()

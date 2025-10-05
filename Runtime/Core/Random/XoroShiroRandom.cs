@@ -2,10 +2,15 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 {
     using System;
     using System.Runtime.CompilerServices;
+    using System.Runtime.Serialization;
     using System.Text.Json.Serialization;
     using Extension;
     using Helper;
+    using ProtoBuf;
 
+    [Serializable]
+    [DataContract]
+    [ProtoContract]
     public sealed class XoroShiroRandom
         : AbstractRandom,
             IEquatable<XoroShiroRandom>,
@@ -16,7 +21,10 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         public override RandomState InternalState => new(_s0, _s1, _cachedGaussian);
 
+        [ProtoMember(2)]
         internal ulong _s0;
+
+        [ProtoMember(3)]
         internal ulong _s1;
 
         public XoroShiroRandom()

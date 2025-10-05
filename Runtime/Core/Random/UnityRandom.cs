@@ -3,9 +3,11 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     using System;
     using System.Runtime.Serialization;
     using System.Text.Json.Serialization;
+    using ProtoBuf;
 
     [Serializable]
     [DataContract]
+    [ProtoContract]
     public sealed class UnityRandom : AbstractRandom
     {
         public static readonly UnityRandom Instance = new();
@@ -24,6 +26,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             }
         }
 
+        [ProtoMember(2)]
         private readonly int? _seed;
 
         public UnityRandom(int? seed = null)

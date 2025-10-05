@@ -5,10 +5,12 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     using System.Runtime.CompilerServices;
     using System.Runtime.Serialization;
     using System.Text.Json.Serialization;
+    using ProtoBuf;
 
     // https://github.com/cocowalla/wyhash-dotnet/blob/master/src/WyHash/WyRng.cs
     [Serializable]
     [DataContract]
+    [ProtoContract]
     public sealed class WyRandom : AbstractRandom
     {
         private const ulong Prime0 = 0xa0761d6478bd642f;
@@ -18,6 +20,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         public override RandomState InternalState => new(_state);
 
+        [ProtoMember(2)]
         private ulong _state;
 
         public WyRandom()

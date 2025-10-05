@@ -23,13 +23,17 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 Random.NextFloat(-100, 100),
                 Random.NextFloat(-100, 100)
             );
+
             float radius = Random.NextFloat(5, 25f);
 
             const int numPoints = 1_000;
+
             HashSet<Vector3> points = new(numPoints);
+
             for (int i = 0; i < numPoints; ++i)
             {
                 Vector3 point;
+
                 do
                 {
                     point = GetRandomPointInSphere(center, radius);
@@ -39,7 +43,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             TTree tree = CreateTree(points);
 
             List<Vector3> pointsInRange = new();
+
             tree.GetElementsInRange(center, radius, pointsInRange);
+
             Assert.IsTrue(
                 points.SetEquals(pointsInRange),
                 "Found {0} points in range, expected {1}.",
@@ -48,11 +54,15 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             );
 
             Vector3 offset = center;
+
             offset.x -= radius * 2;
+
             offset.y -= radius * 2;
+
             offset.z -= radius * 2;
 
             tree.GetElementsInRange(offset, radius, pointsInRange);
+
             Assert.AreEqual(
                 0,
                 pointsInRange.Count,
@@ -74,15 +84,23 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             );
 
             Vector3 direction = GetRandomPointInSphere(Vector3.zero, 1f).normalized;
+
             float range = Random.NextFloat(25, 1_000);
+
             Vector3 testPoint = point + (direction * range);
+
             List<Vector3> points = new(1) { testPoint };
 
             TTree tree = CreateTree(points);
+
             List<Vector3> pointsInRange = new();
+
             tree.GetElementsInRange(point, range * 0.99f, pointsInRange).ToList();
+
             Assert.AreEqual(0, pointsInRange.Count);
+
             tree.GetElementsInRange(point, range * 1.01f, pointsInRange);
+
             Assert.AreEqual(
                 1,
                 pointsInRange.Count,
@@ -91,6 +109,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 testPoint,
                 range
             );
+
             Assert.AreEqual(testPoint, pointsInRange[0]);
         }
 
@@ -98,6 +117,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void SimpleAnn()
         {
             List<Vector3> points = new();
+
             for (int x = 0; x < 50; ++x)
             {
                 for (int y = 0; y < 50; ++y)
@@ -105,30 +125,40 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                     for (int z = 0; z < 50; ++z)
                     {
                         Vector3 point = new(x, y, z);
+
                         points.Add(point);
                     }
                 }
             }
 
             TTree tree = CreateTree(points);
+
             Vector3 center = tree.Boundary.center;
 
             List<Vector3> nearestNeighbors = new();
+
             int nearestNeighborCount = 1;
+
             tree.GetApproximateNearestNeighbors(center, nearestNeighborCount, nearestNeighbors);
 
             Assert.AreEqual(nearestNeighborCount, nearestNeighbors.Count);
+
             Assert.IsTrue(nearestNeighbors.All(neighbor => (neighbor - center).magnitude <= 2f));
 
             nearestNeighborCount = 8;
+
             tree.GetApproximateNearestNeighbors(center, nearestNeighborCount, nearestNeighbors);
 
             Assert.AreEqual(nearestNeighborCount, nearestNeighbors.Count);
+
             Assert.IsTrue(nearestNeighbors.All(neighbor => (neighbor - center).magnitude <= 3f));
 
             nearestNeighborCount = 27;
+
             tree.GetApproximateNearestNeighbors(center, nearestNeighborCount, nearestNeighbors);
+
             Assert.AreEqual(nearestNeighborCount, nearestNeighbors.Count);
+
             Assert.IsTrue(
                 nearestNeighbors.All(neighbor => (neighbor - center).magnitude <= 6f),
                 "Max: {0}",
@@ -138,6 +168,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             center = new Vector3(-100, -100, -100);
 
             tree.GetApproximateNearestNeighbors(center, nearestNeighborCount, nearestNeighbors);
+
             Assert.AreEqual(nearestNeighborCount, nearestNeighbors.Count);
         }
 
@@ -145,6 +176,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void GetElementsInRangeWithVeryLargeRangeReturnsAllPoints()
         {
             List<Vector3> points = new();
+
             for (int i = 0; i < 64; ++i)
             {
                 points.Add(
@@ -157,14 +189,18 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             }
 
             TTree tree = CreateTree(points);
+
             Vector3 queryPoint = Vector3.zero;
+
             float maxDistance = points
                 .Select(point => (point - queryPoint).magnitude)
                 .DefaultIfEmpty(0f)
                 .Max();
 
             List<Vector3> results = new() { Vector3.one };
+
             tree.GetElementsInRange(queryPoint, maxDistance + 10f, results);
+
             CollectionAssert.AreEquivalent(points, results);
         }
 
@@ -180,10 +216,13 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             };
 
             TTree tree = CreateTree(points);
+
             List<Vector3> results = new();
+
             tree.GetElementsInRange(Vector3.zero, 5.5f, results, minimumRange: 2f);
 
             Vector3[] expected = { points[1], points[2] };
+
             CollectionAssert.AreEquivalent(expected, results);
         }
 
@@ -193,11 +232,15 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             List<Vector3> points = new() { new Vector3(0f, 0f, 0f), new Vector3(1f, 1f, 1f) };
 
             TTree tree = CreateTree(points);
+
             Vector3 sentinel = new(999f, 999f, 999f);
+
             List<Vector3> results = new() { sentinel };
 
             tree.GetElementsInRange(Vector3.zero, 10f, results);
+
             Assert.IsFalse(results.Contains(sentinel));
+
             CollectionAssert.AreEquivalent(points, results);
         }
 
@@ -213,12 +256,17 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             };
 
             TTree tree = CreateTree(points);
+
             Bounds bounds = new(new Vector3(2f, 2f, 2f), new Vector3(8f, 8f, 8f));
+
             List<Vector3> results = new();
 
             tree.GetElementsInBounds(bounds, results);
+
             BoundingBox3D queryBounds = BoundingBox3D.FromClosedBounds(bounds);
+
             List<Vector3> expected = points.Where(queryBounds.Contains).ToList();
+
             CollectionAssert.AreEquivalent(expected, results);
         }
 
@@ -228,11 +276,15 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             List<Vector3> points = new() { new Vector3(-1f, 0f, 0f), new Vector3(1f, 0f, 0f) };
 
             TTree tree = CreateTree(points);
+
             Vector3 sentinel = new(-999f, -999f, -999f);
+
             List<Vector3> results = new() { sentinel };
 
             tree.GetElementsInBounds(new Bounds(Vector3.zero, Vector3.one * 10f), results);
+
             Assert.IsFalse(results.Contains(sentinel));
+
             CollectionAssert.AreEquivalent(points, results);
         }
 
@@ -247,15 +299,18 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             };
 
             TTree tree = CreateTree(points);
+
             List<Vector3> results = new();
 
             tree.GetApproximateNearestNeighbors(Vector3.zero, 10, results);
+
             CollectionAssert.AreEquivalent(points, results);
         }
 
         private Vector3 GetRandomPointInSphere(Vector3 center, float radius)
         {
             Vector3 point;
+
             do
             {
                 point = new Vector3(
@@ -266,6 +321,128 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             } while (point.sqrMagnitude > radius * radius);
 
             return center + point;
+        }
+
+        [Test]
+        public void GetElementsInRangeWithEmptyTreeReturnsEmpty()
+        {
+            TTree tree = CreateTree(Enumerable.Empty<Vector3>());
+
+            List<Vector3> results = new() { new Vector3(123f, 456f, 789f) };
+
+            tree.GetElementsInRange(Vector3.zero, 10f, results);
+
+            Assert.IsEmpty(results);
+        }
+
+        [Test]
+        public void GetElementsInRangeWithNegativeRangeReturnsEmpty()
+        {
+            List<Vector3> points = new() { new Vector3(1f, 1f, 1f) };
+
+            TTree tree = CreateTree(points);
+
+            List<Vector3> results = new() { new Vector3(123f, 456f, 789f) };
+
+            tree.GetElementsInRange(points[0], -1f, results);
+
+            Assert.IsEmpty(results);
+        }
+
+        [Test]
+        public void GetElementsInRangeWithZeroRangeReturnsOnlyExactMatches()
+        {
+            Vector3 target = new(5f, -3f, 2f);
+
+            List<Vector3> points = new() { target, target, target + new Vector3(0.1f, 0f, 0f) };
+
+            TTree tree = CreateTree(points);
+
+            List<Vector3> results = new() { new Vector3(123f, 456f, 789f) };
+
+            tree.GetElementsInRange(target, 0f, results);
+
+            Vector3[] expected = { target, target };
+
+            CollectionAssert.AreEquivalent(expected, results);
+        }
+
+        [Test]
+        public void GetElementsInRangeWithMinimumRangeGreaterThanRangeReturnsEmpty()
+        {
+            List<Vector3> points = new() { new Vector3(0f, 0f, 0f), new Vector3(1f, 1f, 1f) };
+
+            TTree tree = CreateTree(points);
+
+            List<Vector3> results = new() { new Vector3(123f, 456f, 789f) };
+
+            tree.GetElementsInRange(Vector3.zero, 2f, results, minimumRange: 5f);
+
+            Assert.IsEmpty(results);
+        }
+
+        [Test]
+        public void GetElementsInBoundsWithNoIntersectionReturnsEmpty()
+        {
+            List<Vector3> points = new() { Vector3.zero };
+
+            TTree tree = CreateTree(points);
+
+            Bounds bounds = new(new Vector3(100f, 100f, 100f), new Vector3(1f, 1f, 1f));
+
+            List<Vector3> results = new() { new Vector3(123f, 456f, 789f) };
+
+            tree.GetElementsInBounds(bounds, results);
+
+            Assert.IsEmpty(results);
+        }
+
+        [Test]
+        public void GetApproximateNearestNeighborsReturnsEmptyWhenCountZero()
+        {
+            List<Vector3> points = new() { Vector3.zero, new Vector3(1f, 1f, 1f) };
+
+            TTree tree = CreateTree(points);
+
+            Vector3 sentinel = new(123f, 456f, 789f);
+
+            List<Vector3> results = new() { sentinel };
+
+            tree.GetApproximateNearestNeighbors(Vector3.zero, 0, results);
+
+            Assert.IsEmpty(results);
+        }
+
+        [Test]
+        public void GetApproximateNearestNeighborsOnEmptyTreeReturnsEmpty()
+        {
+            TTree tree = CreateTree(Enumerable.Empty<Vector3>());
+
+            Vector3 sentinel = new(123f, 456f, 789f);
+
+            List<Vector3> results = new() { sentinel };
+
+            tree.GetApproximateNearestNeighbors(Vector3.zero, 3, results);
+
+            Assert.IsEmpty(results);
+        }
+
+        [Test]
+        public void GetApproximateNearestNeighborsClearsResultsList()
+        {
+            List<Vector3> points = new() { Vector3.zero, new Vector3(2f, 0f, 0f) };
+
+            TTree tree = CreateTree(points);
+
+            Vector3 sentinel = new(123f, 456f, 789f);
+
+            List<Vector3> results = new() { sentinel };
+
+            tree.GetApproximateNearestNeighbors(Vector3.zero, 1, results);
+
+            Assert.IsFalse(results.Contains(sentinel));
+
+            Assert.AreEqual(1, results.Count);
         }
     }
 }

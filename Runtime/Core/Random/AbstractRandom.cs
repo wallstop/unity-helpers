@@ -6,6 +6,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     using System.Runtime.CompilerServices;
     using System.Runtime.Serialization;
     using DataStructure.Adapters;
+    using ProtoBuf;
     using UnityEngine;
     using Utils;
 #if !SINGLE_THREADED
@@ -16,6 +17,19 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
     [Serializable]
     [DataContract]
+    [ProtoContract]
+    [ProtoInclude(100, typeof(DotNetRandom))]
+    [ProtoInclude(101, typeof(PcgRandom))]
+    [ProtoInclude(102, typeof(XorShiftRandom))]
+    [ProtoInclude(103, typeof(WyRandom))]
+    [ProtoInclude(104, typeof(XoroShiroRandom))]
+    [ProtoInclude(105, typeof(UnityRandom))]
+    [ProtoInclude(106, typeof(SystemRandom))]
+    [ProtoInclude(107, typeof(LinearCongruentialGenerator))]
+    [ProtoInclude(108, typeof(SquirrelRandom))]
+    [ProtoInclude(109, typeof(RomuDuo))]
+    [ProtoInclude(110, typeof(SplitMix64))]
+    [ProtoInclude(111, typeof(IllusionFlow))]
     public abstract class AbstractRandom : IRandom
     {
 #if SINGLE_THREADED
@@ -27,6 +41,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         protected const uint HalfwayUint = uint.MaxValue / 2;
         protected const float MagicFloat = 5.960465E-008F;
 
+        [ProtoMember(1)]
         protected double? _cachedGaussian;
 
         public abstract RandomState InternalState { get; }

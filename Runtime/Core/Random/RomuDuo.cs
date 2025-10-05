@@ -6,9 +6,11 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     using System.Text.Json.Serialization;
     using Extension;
     using Helper;
+    using ProtoBuf;
 
     [Serializable]
     [DataContract]
+    [ProtoContract]
     public sealed class RomuDuo
         : AbstractRandom,
             IEquatable<RomuDuo>,
@@ -18,7 +20,10 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         public static RomuDuo Instance => ThreadLocalRandom<RomuDuo>.Instance;
         public override RandomState InternalState => new(_x, _y, _cachedGaussian);
 
+        [ProtoMember(2)]
         internal ulong _x;
+
+        [ProtoMember(3)]
         internal ulong _y;
 
         public RomuDuo()

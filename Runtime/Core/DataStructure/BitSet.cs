@@ -6,6 +6,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     using System.Runtime.CompilerServices;
     using ProtoBuf;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Utils;
 
     /// <summary>
     /// A compact, dynamically resizable bit set data structure for storing boolean flags.
@@ -345,24 +346,27 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return;
             }
 
-            // Shift bit by bit for correctness
-            for (int i = _capacity - 1; i >= shift; i--)
+            // Rent a temporary array from the pool to avoid reading already-modified values
+            using PooledResource<ulong[]> pooled = WallstopFastArrayPool<ulong>.Get(
+                _bits.Length,
+                out ulong[] temp
+            );
+            Array.Copy(_bits, temp, _bits.Length);
+
+            // Clear all bits first
+            ClearAll();
+
+            // Shift bit by bit from the temporary copy
+            for (int i = shift; i < _capacity; i++)
             {
-                TryGet(i - shift, out bool value);
+                int sourceIndex = i - shift;
+                int sourceWordIndex = sourceIndex >> 6;
+                int sourceBitIndex = sourceIndex & 63;
+                bool value = (temp[sourceWordIndex] & (1UL << sourceBitIndex)) != 0;
                 if (value)
                 {
                     TrySet(i);
                 }
-                else
-                {
-                    TryClear(i);
-                }
-            }
-
-            // Clear the lower bits
-            for (int i = 0; i < shift; i++)
-            {
-                TryClear(i);
             }
         }
 

@@ -81,7 +81,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void GetElementsInRangeWithEmptyTreeReturnsEmpty()
+        public void GetElementsInRangeWithEmptyTreeReturnsEmptyAdditional()
         {
             KdTree3D<Vector3> tree = CreateTree(new List<Vector3>());
             List<Vector3> results = new();
@@ -91,7 +91,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void GetElementsInRangeWithZeroRangeReturnsOnlyExactMatches()
+        public void GetElementsInRangeWithZeroRangeReturnsOnlyExactMatchesAdditional()
         {
             Vector3 target = new(10f, -4f, 2f);
             List<Vector3> points = new()

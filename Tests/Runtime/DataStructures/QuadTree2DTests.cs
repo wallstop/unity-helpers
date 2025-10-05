@@ -76,7 +76,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void GetElementsInRangeWithEmptyTreeReturnsEmpty()
+        public void GetElementsInRangeWithEmptyTreeReturnsEmptyAdditional()
         {
             List<Vector2> points = new();
             QuadTree2D<Vector2> tree = CreateTree(points);
@@ -635,7 +635,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void GetElementsInRangeClearsResultsList()
+        public void GetElementsInRangeClearsResultsListAdditional()
         {
             List<Vector2> points = new() { Vector2.zero };
             QuadTree2D<Vector2> tree = CreateTree(points);
@@ -647,7 +647,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void GetElementsInBoundsClearsResultsList()
+        public void GetElementsInBoundsClearsResultsListAdditional()
         {
             List<Vector2> points = new() { Vector2.zero };
             QuadTree2D<Vector2> tree = CreateTree(points);

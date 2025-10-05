@@ -4,12 +4,14 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     using System.Runtime.Serialization;
     using System.Text.Json.Serialization;
     using Helper;
+    using ProtoBuf;
 
     /// <summary>
     ///     Implementation dependent upon .Net's Random class.
     /// </summary>
     [Serializable]
     [DataContract]
+    [ProtoContract]
     public sealed class SystemRandom : AbstractRandom
     {
         private const int HalfwayInt = int.MaxValue / 2;
@@ -31,8 +33,13 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             same across platforms, a fact which defeats the purpose of these serializable
             randoms.
          */
+        [ProtoMember(2)]
         private int _inext;
+
+        [ProtoMember(3)]
         private int _inextp;
+
+        [ProtoMember(4)]
         private readonly int[] _seedArray = new int[SeedArraySize];
 
         public SystemRandom()

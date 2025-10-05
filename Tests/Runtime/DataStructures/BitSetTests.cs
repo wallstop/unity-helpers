@@ -7,10 +7,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
     public sealed class BitSetTests
     {
-        #region Construction & Initialization
-
         [Test]
-        public void Constructor_WithPositiveCapacity_InitializesCorrectly()
+        public void ConstructorWithPositiveCapacityInitializesCorrectly()
         {
             BitSet bits = new(64);
             Assert.AreEqual(64, bits.Capacity);
@@ -19,13 +17,13 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void Constructor_WithNegativeCapacity_ThrowsArgumentOutOfRangeException()
+        public void ConstructorWithNegativeCapacityThrowsArgumentOutOfRangeException()
         {
             Assert.Throws<ArgumentOutOfRangeException>(() => new BitSet(-1));
         }
 
         [Test]
-        public void Constructor_WithZeroCapacity_ThrowsArgumentOutOfRangeException()
+        public void ConstructorWithZeroCapacityThrowsArgumentOutOfRangeException()
         {
             Assert.Throws<ArgumentOutOfRangeException>(() => new BitSet(0));
         }
@@ -38,16 +36,12 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [TestCase(128)]
         [TestCase(129)]
         [TestCase(1000)]
-        public void Constructor_WithVariousCapacities_InitializesCorrectly(int capacity)
+        public void ConstructorWithVariousCapacitiesInitializesCorrectly(int capacity)
         {
             BitSet bits = new(capacity);
             Assert.AreEqual(capacity, bits.Capacity);
             Assert.AreEqual(0, bits.CountSetBits());
         }
-
-        #endregion
-
-        #region TrySet Tests
 
         [Test]
         public void TrySetSetsBit()
@@ -60,7 +54,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void TrySet_WithNegativeIndex_ReturnsFalse()
+        public void TrySetWithNegativeIndexReturnsFalse()
         {
             BitSet bits = new(64);
             Assert.IsFalse(bits.TrySet(-1));
@@ -68,7 +62,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void TrySet_BeyondCapacity_ExpandsCapacity()
+        public void TrySetBeyondCapacityExpandsCapacity()
         {
             BitSet bits = new(10);
             Assert.IsTrue(bits.TrySet(50));
@@ -78,7 +72,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void TrySet_AtBoundary_Index63_Works()
+        public void TrySetAtBoundaryIndex63Works()
         {
             BitSet bits = new(64);
             Assert.IsTrue(bits.TrySet(63));
@@ -87,7 +81,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void TrySet_AtBoundary_Index64_ExpandsAndWorks()
+        public void TrySetAtBoundaryIndex64ExpandsAndWorks()
         {
             BitSet bits = new(64);
             Assert.IsTrue(bits.TrySet(64));
@@ -97,7 +91,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void TrySet_MultipleBitsInSameWord_Works()
+        public void TrySetMultipleBitsInSameWordWorks()
         {
             BitSet bits = new(64);
             for (int i = 0; i < 64; i++)
@@ -108,7 +102,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void TrySet_MultipleBitsAcrossWords_Works()
+        public void TrySetMultipleBitsAcrossWordsWorks()
         {
             BitSet bits = new(200);
             bits.TrySet(0);
@@ -121,7 +115,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void TrySet_AlreadySetBit_RemainsSet()
+        public void TrySetAlreadySetBitRemainsSet()
         {
             BitSet bits = new(64);
             bits.TrySet(5);
@@ -130,10 +124,6 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.IsTrue(value);
             Assert.AreEqual(1, bits.CountSetBits());
         }
-
-        #endregion
-
-        #region TryClear Tests
 
         [Test]
         public void TryClearClearsBit()
@@ -147,7 +137,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void TryClear_WithNegativeIndex_ReturnsFalse()
+        public void TryClearWithNegativeIndexReturnsFalse()
         {
             BitSet bits = new(64);
             Assert.IsFalse(bits.TryClear(-1));
@@ -155,7 +145,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void TryClear_BeyondCapacity_ReturnsFalse()
+        public void TryClearBeyondCapacityReturnsFalse()
         {
             BitSet bits = new(10);
             Assert.IsFalse(bits.TryClear(50));
@@ -163,7 +153,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void TryClear_AlreadyClearedBit_RemainsClear()
+        public void TryClearAlreadyClearedBitRemainsClear()
         {
             BitSet bits = new(64);
             Assert.IsTrue(bits.TryClear(5));
@@ -172,7 +162,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void TryClear_AtBoundaries_Works()
+        public void TryClearAtBoundariesWorks()
         {
             BitSet bits = new(128);
             bits.SetAll();
@@ -182,10 +172,6 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.IsTrue(bits.TryClear(127));
             Assert.AreEqual(124, bits.CountSetBits());
         }
-
-        #endregion
-
-        #region TryFlip Tests
 
         [Test]
         public void TryFlipTogglesBit()
@@ -202,7 +188,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void TryFlip_WithNegativeIndex_ReturnsFalse()
+        public void TryFlipWithNegativeIndexReturnsFalse()
         {
             BitSet bits = new(64);
             Assert.IsFalse(bits.TryFlip(-1));
@@ -210,7 +196,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void TryFlip_BeyondCapacity_ExpandsCapacity()
+        public void TryFlipBeyondCapacityExpandsCapacity()
         {
             BitSet bits = new(10);
             Assert.IsTrue(bits.TryFlip(50));
@@ -220,7 +206,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void TryFlip_MultipleTimes_TogglesCorrectly()
+        public void TryFlipMultipleTimesTogglesCorrectly()
         {
             BitSet bits = new(64);
             for (int i = 0; i < 10; i++)
@@ -232,12 +218,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             }
         }
 
-        #endregion
-
-        #region TryGet Tests
-
         [Test]
-        public void TryGet_WithNegativeIndex_ReturnsFalseAndFalseValue()
+        public void TryGetWithNegativeIndexReturnsFalseAndFalseValue()
         {
             BitSet bits = new(64);
             Assert.IsFalse(bits.TryGet(-1, out bool value));
@@ -245,7 +227,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void TryGet_BeyondCapacity_ReturnsFalseAndFalseValue()
+        public void TryGetBeyondCapacityReturnsFalseAndFalseValue()
         {
             BitSet bits = new(10);
             Assert.IsFalse(bits.TryGet(50, out bool value));
@@ -253,7 +235,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void TryGet_UnsetBit_ReturnsTrueAndFalseValue()
+        public void TryGetUnsetBitReturnsTrueAndFalseValue()
         {
             BitSet bits = new(64);
             Assert.IsTrue(bits.TryGet(5, out bool value));
@@ -261,7 +243,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void TryGet_SetBit_ReturnsTrueAndTrueValue()
+        public void TryGetSetBitReturnsTrueAndTrueValue()
         {
             BitSet bits = new(64);
             bits.TrySet(5);
@@ -269,19 +251,15 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.IsTrue(value);
         }
 
-        #endregion
-
-        #region Indexer Tests
-
         [Test]
-        public void Indexer_Get_UnsetBit_ReturnsFalse()
+        public void IndexerGetUnsetBitReturnsFalse()
         {
             BitSet bits = new(64);
             Assert.IsFalse(bits[5]);
         }
 
         [Test]
-        public void Indexer_Get_SetBit_ReturnsTrue()
+        public void IndexerGetSetBitReturnsTrue()
         {
             BitSet bits = new(64);
             bits.TrySet(5);
@@ -289,44 +267,40 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void Indexer_Get_NegativeIndex_ReturnsFalse()
+        public void IndexerGetNegativeIndexReturnsFalse()
         {
             BitSet bits = new(64);
             Assert.IsFalse(bits[-1]);
         }
 
         [Test]
-        public void Indexer_Get_BeyondCapacity_ReturnsFalse()
+        public void IndexerGetBeyondCapacityReturnsFalse()
         {
             BitSet bits = new(10);
             Assert.IsFalse(bits[50]);
         }
 
         [Test]
-        public void Indexer_Set_True_SetsBit()
+        public void IndexerSetTrueSetsBit()
         {
             BitSet bits = new(64) { [5] = true };
             Assert.IsTrue(bits[5]);
         }
 
         [Test]
-        public void Indexer_Set_False_ClearsBit()
+        public void IndexerSetFalseClearsBit()
         {
             BitSet bits = new(64) { [5] = true, [5] = false };
             Assert.IsFalse(bits[5]);
         }
 
         [Test]
-        public void Indexer_Set_BeyondCapacity_ExpandsAndSets()
+        public void IndexerSetBeyondCapacityExpandsAndSets()
         {
             BitSet bits = new(10) { [50] = true };
             Assert.IsTrue(bits.Capacity >= 51);
             Assert.IsTrue(bits[50]);
         }
-
-        #endregion
-
-        #region CountSetBits Tests
 
         [Test]
         public void CountSetBitsWorks()
@@ -340,14 +314,14 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void CountSetBits_EmptyBitSet_ReturnsZero()
+        public void CountSetBitsEmptyBitSetReturnsZero()
         {
             BitSet bits = new(64);
             Assert.AreEqual(0, bits.CountSetBits());
         }
 
         [Test]
-        public void CountSetBits_FullBitSet_ReturnsCapacity()
+        public void CountSetBitsFullBitSetReturnsCapacity()
         {
             BitSet bits = new(100);
             bits.SetAll();
@@ -355,7 +329,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void CountSetBits_AcrossMultipleWords_Works()
+        public void CountSetBitsAcrossMultipleWordsWorks()
         {
             BitSet bits = new(200);
             for (int i = 0; i < 200; i += 2)
@@ -364,10 +338,6 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             }
             Assert.AreEqual(100, bits.CountSetBits());
         }
-
-        #endregion
-
-        #region SetAll Tests
 
         [TestCase(10)]
         [TestCase(64)]
@@ -385,7 +355,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [TestCase(63)]
         [TestCase(127)]
         [TestCase(129)]
-        public void SetAll_VariousCapacities_SetsAllBitsCorrectly(int capacity)
+        public void SetAllVariousCapacitiesSetsAllBitsCorrectly(int capacity)
         {
             BitSet bits = new(capacity);
             bits.SetAll();
@@ -397,7 +367,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void SetAll_AfterPartialSet_SetsRemainingBits()
+        public void SetAllAfterPartialSetSetsRemainingBits()
         {
             BitSet bits = new(100);
             for (int i = 0; i < 50; i++)
@@ -407,10 +377,6 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             bits.SetAll();
             Assert.AreEqual(100, bits.CountSetBits());
         }
-
-        #endregion
-
-        #region ClearAll Tests
 
         [Test]
         public void ClearAllClearsAllBits()
@@ -424,7 +390,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void ClearAll_EmptyBitSet_RemainsEmpty()
+        public void ClearAllEmptyBitSetRemainsEmpty()
         {
             BitSet bits = new(64);
             bits.ClearAll();
@@ -432,7 +398,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void ClearAll_AcrossMultipleWords_Works()
+        public void ClearAllAcrossMultipleWordsWorks()
         {
             BitSet bits = new(200);
             bits.SetAll();
@@ -440,12 +406,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.AreEqual(0, bits.CountSetBits());
         }
 
-        #endregion
-
-        #region FlipAll Tests
-
         [Test]
-        public void FlipAll_EmptyBitSet_SetsAllBits()
+        public void FlipAllEmptyBitSetSetsAllBits()
         {
             BitSet bits = new(64);
             bits.FlipAll();
@@ -454,7 +416,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void FlipAll_FullBitSet_ClearsAllBits()
+        public void FlipAllFullBitSetClearsAllBits()
         {
             BitSet bits = new(64);
             bits.SetAll();
@@ -464,7 +426,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void FlipAll_PartiallySet_FlipsCorrectly()
+        public void FlipAllPartiallySetFlipsCorrectly()
         {
             BitSet bits = new(100);
             for (int i = 0; i < 50; i++)
@@ -487,19 +449,15 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [TestCase(127)]
         [TestCase(128)]
         [TestCase(129)]
-        public void FlipAll_NonMultipleOf64_FlipsCorrectly(int capacity)
+        public void FlipAllNonMultipleOf64FlipsCorrectly(int capacity)
         {
             BitSet bits = new(capacity);
             bits.FlipAll();
             Assert.AreEqual(capacity, bits.CountSetBits());
         }
 
-        #endregion
-
-        #region Not Tests
-
         [Test]
-        public void Not_IsAliasForFlipAll()
+        public void NotIsAliasForFlipAll()
         {
             BitSet bits = new(64);
             bits.TrySet(5);
@@ -510,19 +468,15 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.IsFalse(bits[10]);
         }
 
-        #endregion
-
-        #region Any, None, All Tests
-
         [Test]
-        public void Any_EmptyBitSet_ReturnsFalse()
+        public void AnyEmptyBitSetReturnsFalse()
         {
             BitSet bits = new(64);
             Assert.IsFalse(bits.Any());
         }
 
         [Test]
-        public void Any_SingleBitSet_ReturnsTrue()
+        public void AnySingleBitSetReturnsTrue()
         {
             BitSet bits = new(64);
             bits.TrySet(5);
@@ -530,14 +484,14 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void None_EmptyBitSet_ReturnsTrue()
+        public void NoneEmptyBitSetReturnsTrue()
         {
             BitSet bits = new(64);
             Assert.IsTrue(bits.None());
         }
 
         [Test]
-        public void None_SingleBitSet_ReturnsFalse()
+        public void NoneSingleBitSetReturnsFalse()
         {
             BitSet bits = new(64);
             bits.TrySet(5);
@@ -545,14 +499,14 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void All_EmptyBitSet_ReturnsFalse()
+        public void AllEmptyBitSetReturnsFalse()
         {
             BitSet bits = new(64);
             Assert.IsFalse(bits.All());
         }
 
         [Test]
-        public void All_FullBitSet_ReturnsTrue()
+        public void AllFullBitSetReturnsTrue()
         {
             BitSet bits = new(64);
             bits.SetAll();
@@ -560,7 +514,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void All_PartiallySet_ReturnsFalse()
+        public void AllPartiallySetReturnsFalse()
         {
             BitSet bits = new(64);
             for (int i = 0; i < 63; i++)
@@ -574,7 +528,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [TestCase(127)]
         [TestCase(128)]
         [TestCase(129)]
-        public void All_NonMultipleOf64_Works(int capacity)
+        public void AllNonMultipleOf64Works(int capacity)
         {
             BitSet bits = new(capacity);
             bits.SetAll();
@@ -582,10 +536,6 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             bits.TryClear(capacity - 1);
             Assert.IsFalse(bits.All());
         }
-
-        #endregion
-
-        #region LeftShift Tests
 
         [Test]
         public void LeftShiftWorks()
@@ -603,7 +553,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void LeftShift_ByZero_NoChange()
+        public void LeftShiftByZeroNoChange()
         {
             BitSet bits = new(8);
             bits.TrySet(0);
@@ -614,7 +564,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void LeftShift_ByNegative_NoChange()
+        public void LeftShiftByNegativeNoChange()
         {
             BitSet bits = new(8);
             bits.TrySet(0);
@@ -625,7 +575,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void LeftShift_BeyondCapacity_ClearsAll()
+        public void LeftShiftBeyondCapacityClearsAll()
         {
             BitSet bits = new(8);
             bits.SetAll();
@@ -634,7 +584,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void LeftShift_ExactlyCapacity_ClearsAll()
+        public void LeftShiftExactlyCapacityClearsAll()
         {
             BitSet bits = new(8);
             bits.SetAll();
@@ -643,7 +593,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void LeftShift_AcrossWordBoundary_Works()
+        public void LeftShiftAcrossWordBoundaryWorks()
         {
             BitSet bits = new(128);
             bits.TrySet(60);
@@ -656,7 +606,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void LeftShift_ShiftsOutHighBits()
+        public void LeftShiftShiftsOutHighBits()
         {
             BitSet bits = new(8);
             bits.TrySet(6);
@@ -666,10 +616,6 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.IsFalse(bits[7]);
             Assert.AreEqual(0, bits.CountSetBits());
         }
-
-        #endregion
-
-        #region RightShift Tests
 
         [Test]
         public void RightShiftWorks()
@@ -687,7 +633,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void RightShift_ByZero_NoChange()
+        public void RightShiftByZeroNoChange()
         {
             BitSet bits = new(8);
             bits.TrySet(3);
@@ -698,7 +644,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void RightShift_ByNegative_NoChange()
+        public void RightShiftByNegativeNoChange()
         {
             BitSet bits = new(8);
             bits.TrySet(3);
@@ -709,7 +655,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void RightShift_BeyondCapacity_ClearsAll()
+        public void RightShiftBeyondCapacityClearsAll()
         {
             BitSet bits = new(8);
             bits.SetAll();
@@ -718,7 +664,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void RightShift_ExactlyCapacity_ClearsAll()
+        public void RightShiftExactlyCapacityClearsAll()
         {
             BitSet bits = new(8);
             bits.SetAll();
@@ -727,7 +673,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void RightShift_AcrossWordBoundary_Works()
+        public void RightShiftAcrossWordBoundaryWorks()
         {
             BitSet bits = new(128);
             bits.TrySet(66);
@@ -740,7 +686,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void RightShift_ShiftsOutLowBits()
+        public void RightShiftShiftsOutLowBits()
         {
             BitSet bits = new(8);
             bits.TrySet(0);
@@ -750,10 +696,6 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.IsFalse(bits[1]);
             Assert.AreEqual(0, bits.CountSetBits());
         }
-
-        #endregion
-
-        #region TryAnd Tests
 
         [Test]
         public void TryAndWorks()
@@ -774,7 +716,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void TryAnd_WithNull_ReturnsFalse()
+        public void TryAndWithNullReturnsFalse()
         {
             BitSet bits = new(8);
             bits.TrySet(1);
@@ -783,7 +725,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void TryAnd_DifferentSizes_ResizesToMatch()
+        public void TryAndDifferentSizesResizesToMatch()
         {
             BitSet bits1 = new(8);
             BitSet bits2 = new(16);
@@ -799,7 +741,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void TryAnd_NoOverlap_ResultsInEmpty()
+        public void TryAndNoOverlapResultsInEmpty()
         {
             BitSet bits1 = new(8);
             BitSet bits2 = new(8);
@@ -814,7 +756,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void TryAnd_WithEmpty_ResultsInEmpty()
+        public void TryAndWithEmptyResultsInEmpty()
         {
             BitSet bits1 = new(8);
             BitSet bits2 = new(8);
@@ -824,10 +766,6 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             Assert.AreEqual(0, bits1.CountSetBits());
         }
-
-        #endregion
-
-        #region TryOr Tests
 
         [Test]
         public void TryOrWorks()
@@ -844,7 +782,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void TryOr_WithNull_ReturnsFalse()
+        public void TryOrWithNullReturnsFalse()
         {
             BitSet bits = new(8);
             bits.TrySet(1);
@@ -853,7 +791,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void TryOr_DifferentSizes_ExpandsIfNeeded()
+        public void TryOrDifferentSizesExpandsIfNeeded()
         {
             BitSet bits1 = new(8);
             BitSet bits2 = new(16);
@@ -868,7 +806,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void TryOr_WithEmpty_RemainsUnchanged()
+        public void TryOrWithEmptyRemainsUnchanged()
         {
             BitSet bits1 = new(8);
             BitSet bits2 = new(8);
@@ -881,7 +819,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void TryOr_WithOverlap_UnionCorrectly()
+        public void TryOrWithOverlapUnionCorrectly()
         {
             BitSet bits1 = new(8);
             BitSet bits2 = new(8);
@@ -901,12 +839,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.IsTrue(bits1[3]);
         }
 
-        #endregion
-
-        #region TryXor Tests
-
         [Test]
-        public void TryXor_NoOverlap_SetsUnion()
+        public void TryXorNoOverlapSetsUnion()
         {
             BitSet bits1 = new(8);
             BitSet bits2 = new(8);
@@ -925,7 +859,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void TryXor_WithOverlap_TogglesOverlap()
+        public void TryXorWithOverlapTogglesOverlap()
         {
             BitSet bits1 = new(8);
             BitSet bits2 = new(8);
@@ -946,7 +880,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void TryXor_WithNull_ReturnsFalse()
+        public void TryXorWithNullReturnsFalse()
         {
             BitSet bits = new(8);
             bits.TrySet(1);
@@ -955,7 +889,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void TryXor_DifferentSizes_ExpandsIfNeeded()
+        public void TryXorDifferentSizesExpandsIfNeeded()
         {
             BitSet bits1 = new(8);
             BitSet bits2 = new(16);
@@ -971,7 +905,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void TryXor_WithIdentical_ResultsInEmpty()
+        public void TryXorWithIdenticalResultsInEmpty()
         {
             BitSet bits1 = new(8);
             BitSet bits2 = new(8);
@@ -984,10 +918,6 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             Assert.AreEqual(0, bits1.CountSetBits());
         }
-
-        #endregion
-
-        #region Resize Tests
 
         [Test]
         public void ResizeWorks()
@@ -1003,7 +933,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void Resize_ToSameSize_NoChange()
+        public void ResizeToSameSizeNoChange()
         {
             BitSet bits = new(10);
             bits.TrySet(5);
@@ -1013,21 +943,21 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void Resize_ToZero_ThrowsArgumentOutOfRangeException()
+        public void ResizeToZeroThrowsArgumentOutOfRangeException()
         {
             BitSet bits = new(10);
             Assert.Throws<ArgumentOutOfRangeException>(() => bits.Resize(0));
         }
 
         [Test]
-        public void Resize_ToNegative_ThrowsArgumentOutOfRangeException()
+        public void ResizeToNegativeThrowsArgumentOutOfRangeException()
         {
             BitSet bits = new(10);
             Assert.Throws<ArgumentOutOfRangeException>(() => bits.Resize(-5));
         }
 
         [Test]
-        public void Resize_ShrinkingLosesBits()
+        public void ResizeShrinkingLosesBits()
         {
             BitSet bits = new(20);
             bits.TrySet(5);
@@ -1041,7 +971,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void Resize_ShrinkingClearsExtraBitsInLastWord()
+        public void ResizeShrinkingClearsExtraBitsInLastWord()
         {
             BitSet bits = new(100);
             bits.SetAll();
@@ -1050,7 +980,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void Resize_ExpandingPreservesExistingBits()
+        public void ResizeExpandingPreservesExistingBits()
         {
             BitSet bits = new(10);
             for (int i = 0; i < 10; i++)
@@ -1068,12 +998,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             }
         }
 
-        #endregion
-
-        #region EnsureCapacity Tests
-
         [Test]
-        public void EnsureCapacity_BelowCurrent_NoChange()
+        public void EnsureCapacityBelowCurrentNoChange()
         {
             BitSet bits = new(64);
             bits.EnsureCapacity(32);
@@ -1081,7 +1007,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void EnsureCapacity_EqualToCurrent_NoChange()
+        public void EnsureCapacityEqualToCurrentNoChange()
         {
             BitSet bits = new(64);
             bits.EnsureCapacity(64);
@@ -1089,7 +1015,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void EnsureCapacity_AboveCurrent_Expands()
+        public void EnsureCapacityAboveCurrentExpands()
         {
             BitSet bits = new(64);
             bits.EnsureCapacity(100);
@@ -1097,7 +1023,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void EnsureCapacity_PreservesExistingBits()
+        public void EnsureCapacityPreservesExistingBits()
         {
             BitSet bits = new(10);
             bits.TrySet(5);
@@ -1106,19 +1032,15 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void EnsureCapacity_GrowthStrategy_DoublesSmallCapacities()
+        public void EnsureCapacityGrowthStrategyDoublesSmallCapacities()
         {
             BitSet bits = new(4);
             bits.EnsureCapacity(5);
             Assert.AreEqual(8, bits.Capacity);
         }
 
-        #endregion
-
-        #region TrimExcess Tests
-
         [Test]
-        public void TrimExcess_WithNoBits_ShrinksToMinimum()
+        public void TrimExcessWithNoBitsShrinksToMinimum()
         {
             BitSet bits = new(1000);
             bits.TrimExcess();
@@ -1126,7 +1048,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void TrimExcess_WithBits_ShrinksToHighestSetBit()
+        public void TrimExcessWithBitsShrinksToHighestSetBit()
         {
             BitSet bits = new(1000);
             bits.TrySet(50);
@@ -1137,7 +1059,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void TrimExcess_WithCustomMinimum_RespectsMinimum()
+        public void TrimExcessWithCustomMinimumRespectsMinimum()
         {
             BitSet bits = new(1000);
             bits.TrySet(5);
@@ -1146,7 +1068,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void TrimExcess_HighestBitBelowMinimum_UsesMinimum()
+        public void TrimExcessHighestBitBelowMinimumUsesMinimum()
         {
             BitSet bits = new(1000);
             bits.TrySet(10);
@@ -1155,7 +1077,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void TrimExcess_HighestBitAboveMinimum_UsesHighestBit()
+        public void TrimExcessHighestBitAboveMinimumUsesHighestBit()
         {
             BitSet bits = new(1000);
             bits.TrySet(100);
@@ -1164,7 +1086,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void TrimExcess_NoExcessCapacity_NoChange()
+        public void TrimExcessNoExcessCapacityNoChange()
         {
             BitSet bits = new(10);
             bits.TrySet(9);
@@ -1172,12 +1094,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.AreEqual(10, bits.Capacity);
         }
 
-        #endregion
-
-        #region GetSetBits Tests
-
         [Test]
-        public void GetSetBits_ReturnsCorrectIndices()
+        public void GetSetBitsReturnsCorrectIndices()
         {
             BitSet bits = new(100);
             bits.TrySet(5);
@@ -1194,7 +1112,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void GetSetBits_ClearsList()
+        public void GetSetBitsClearsList()
         {
             BitSet bits = new(10);
             bits.TrySet(5);
@@ -1207,14 +1125,14 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void GetSetBits_WithNullList_ThrowsArgumentNullException()
+        public void GetSetBitsWithNullListThrowsArgumentNullException()
         {
             BitSet bits = new(10);
             Assert.Throws<ArgumentNullException>(() => bits.GetSetBits(null));
         }
 
         [Test]
-        public void GetSetBits_EmptyBitSet_ReturnsEmptyList()
+        public void GetSetBitsEmptyBitSetReturnsEmptyList()
         {
             BitSet bits = new(64);
             List<int> result = new();
@@ -1223,7 +1141,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void GetSetBits_ReturnsInAscendingOrder()
+        public void GetSetBitsReturnsInAscendingOrder()
         {
             BitSet bits = new(100);
             bits.TrySet(99);
@@ -1239,12 +1157,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.AreEqual(99, result[2]);
         }
 
-        #endregion
-
-        #region EnumerateSetIndices Tests
-
         [Test]
-        public void EnumerateSetIndices_ReturnsCorrectIndices()
+        public void EnumerateSetIndicesReturnsCorrectIndices()
         {
             BitSet bits = new(100);
             bits.TrySet(5);
@@ -1264,7 +1178,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void EnumerateSetIndices_EmptyBitSet_ReturnsNothing()
+        public void EnumerateSetIndicesEmptyBitSetReturnsNothing()
         {
             BitSet bits = new(64);
             List<int> result = new();
@@ -1276,7 +1190,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void EnumerateSetIndices_ReturnsInAscendingOrder()
+        public void EnumerateSetIndicesReturnsInAscendingOrder()
         {
             BitSet bits = new(100);
             bits.TrySet(99);
@@ -1290,10 +1204,6 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.AreEqual(50, result[1]);
             Assert.AreEqual(99, result[2]);
         }
-
-        #endregion
-
-        #region Enumeration Tests
 
         [Test]
         public void EnumerationYieldsAllBits()
@@ -1317,7 +1227,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void Enumeration_EmptyBitSet_YieldsFalses()
+        public void EnumerationEmptyBitSetYieldsFalses()
         {
             BitSet bits = new(10);
             List<bool> values = new(bits);
@@ -1326,7 +1236,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void Enumeration_FullBitSet_YieldsTrues()
+        public void EnumerationFullBitSetYieldsTrues()
         {
             BitSet bits = new(10);
             bits.SetAll();
@@ -1336,20 +1246,20 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void Enumeration_MultipleIterations_Works()
+        public void EnumerationMultipleIterationsWorks()
         {
             BitSet bits = new(5);
             bits.TrySet(2);
 
             int iterations = 0;
-            foreach (bool _ in bits)
+            foreach (bool bit in bits)
             {
                 iterations++;
             }
             Assert.AreEqual(5, iterations);
 
             iterations = 0;
-            foreach (bool _ in bits)
+            foreach (bool bit in bits)
             {
                 iterations++;
             }
@@ -1357,7 +1267,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void Enumeration_AcrossWordBoundaries_Works()
+        public void EnumerationAcrossWordBoundariesWorks()
         {
             BitSet bits = new(128);
             bits.TrySet(63);
@@ -1369,31 +1279,23 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.IsTrue(values[64]);
         }
 
-        #endregion
-
-        #region IReadOnlyList Tests
-
         [Test]
-        public void Count_ReturnsCapacity()
+        public void CountReturnsCapacity()
         {
             BitSet bits = new(100);
             Assert.AreEqual(100, bits.Count);
         }
 
         [Test]
-        public void Count_AfterResize_ReturnsNewCapacity()
+        public void CountAfterResizeReturnsNewCapacity()
         {
             BitSet bits = new(10);
             bits.Resize(50);
             Assert.AreEqual(50, bits.Count);
         }
 
-        #endregion
-
-        #region Complex Scenario Tests
-
         [Test]
-        public void ComplexScenario_MultipleOperations()
+        public void ComplexScenarioMultipleOperations()
         {
             BitSet bits = new(64);
             bits.TrySet(10);
@@ -1413,7 +1315,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void ComplexScenario_BitwiseOperationsChain()
+        public void ComplexScenarioBitwiseOperationsChain()
         {
             BitSet bits1 = new(16);
             BitSet bits2 = new(16);
@@ -1443,7 +1345,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void ComplexScenario_AutoExpansion()
+        public void ComplexScenarioAutoExpansion()
         {
             BitSet bits = new(10);
             Assert.AreEqual(10, bits.Capacity);
@@ -1458,7 +1360,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void StressTest_ManyBits()
+        public void StressTestManyBits()
         {
             BitSet bits = new(10000);
             for (int i = 0; i < 10000; i += 2)
@@ -1477,9 +1379,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void EdgeCase_AllBoundaries()
+        public void EdgeCaseAllBoundaries()
         {
-            int[] boundaries = { 0, 1, 63, 64, 65, 127, 128, 129 };
+            int[] boundaries = { 1, 63, 64, 65, 127, 128, 129 };
             foreach (int size in boundaries)
             {
                 BitSet bits = new(size);
@@ -1491,7 +1393,5 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 Assert.IsTrue(bits.None(), $"None() failed at size {size}");
             }
         }
-
-        #endregion
     }
 }

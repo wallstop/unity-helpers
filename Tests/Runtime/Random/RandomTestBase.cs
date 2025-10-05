@@ -533,6 +533,25 @@ namespace WallstopStudios.UnityHelpers.Tests.Random
 
         [Test]
         [Parallelizable]
+        public void ProtobufSerialization()
+        {
+            IRandom random = NewRandom();
+            byte[] serialized = Serializer.ProtoSerialize(random);
+            IRandom deserialized = Serializer.ProtoDeserialize<IRandom>(serialized);
+            Assert.AreEqual(random.InternalState, deserialized.InternalState);
+
+            if (NewRandom() is not UnityRandom)
+            {
+                for (int i = 0; i < NumGeneratorChecks; ++i)
+                {
+                    Assert.AreEqual(random.Next(), deserialized.Next());
+                    Assert.AreEqual(random.InternalState, deserialized.InternalState);
+                }
+            }
+        }
+
+        [Test]
+        [Parallelizable]
         public void NextEnumerable()
         {
             IRandom random = NewRandom();
