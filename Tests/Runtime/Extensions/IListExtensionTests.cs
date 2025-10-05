@@ -16,6 +16,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             public int Compare(int x, int y) => x.CompareTo(y);
         }
 
+        private readonly struct IntEqualityComparer : IEqualityComparer<int>
+        {
+            public bool Equals(int x, int y) => x == y;
+
+            public int GetHashCode(int obj) => obj.GetHashCode();
+        }
+
         [Test]
         public void ShiftLeft()
         {
@@ -64,7 +71,32 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 );
             }
 
-            // TODO
+            // Test various ranges
+            for (int start = 0; start < input.Length; ++start)
+            {
+                for (int end = start; end < input.Length; ++end)
+                {
+                    int[] reversed = input.ToArray();
+                    reversed.Reverse(start, end);
+
+                    // Build expected result
+                    int[] expected = input.ToArray();
+                    int left = start;
+                    int right = end;
+                    while (left < right)
+                    {
+                        (expected[left], expected[right]) = (expected[right], expected[left]);
+                        left++;
+                        right--;
+                    }
+
+                    Assert.That(
+                        expected,
+                        Is.EqualTo(reversed),
+                        $"Reverse failed for range [{start}, {end}]."
+                    );
+                }
+            }
         }
 
         [Test]
@@ -162,6 +194,627 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                     insertionSorted.Sort(new IntComparer(), sortAlgorithm);
                     Assert.That(conventionalSorted, Is.EqualTo(insertionSorted));
                     Assert.That(input.OrderBy(x => x), Is.EqualTo(insertionSorted));
+                }
+            }
+        }
+
+        // ===== New Method Tests =====
+
+        [Test]
+        public void ShuffleEmptyList()
+        {
+            int[] empty = Array.Empty<int>();
+            empty.Shuffle();
+            Assert.That(empty, Is.Empty);
+        }
+
+        [Test]
+        public void ShuffleSingleElement()
+        {
+            int[] single = { 42 };
+            single.Shuffle();
+            Assert.That(single, Is.EqualTo(new[] { 42 }));
+        }
+
+        [Test]
+        public void ShuffleActuallyShuffles()
+        {
+            int[] input = Enumerable.Range(0, 100).ToArray();
+            int[] shuffled = input.ToArray();
+            shuffled.Shuffle(new SystemRandom(42));
+
+            // Should have same elements
+            Assert.That(shuffled.OrderBy(x => x), Is.EqualTo(input));
+
+            // Should be different order (very high probability)
+            bool isDifferent = false;
+            for (int i = 0; i < input.Length; ++i)
+            {
+                if (input[i] != shuffled[i])
+                {
+                    isDifferent = true;
+                    break;
+                }
+            }
+            Assert.That(isDifferent, Is.True, "Shuffle should change order");
+        }
+
+        [Test]
+        public void ShuffleDifferentSeeds()
+        {
+            int[] input = Enumerable.Range(0, 50).ToArray();
+            int[] shuffle1 = input.ToArray();
+            int[] shuffle2 = input.ToArray();
+
+            shuffle1.Shuffle(new SystemRandom(42));
+            shuffle2.Shuffle(new SystemRandom(43));
+
+            Assert.That(shuffle1, Is.Not.EqualTo(shuffle2));
+        }
+
+        [Test]
+        public void ShiftEmptyList()
+        {
+            int[] empty = Array.Empty<int>();
+            empty.Shift(5);
+            Assert.That(empty, Is.Empty);
+        }
+
+        [Test]
+        public void ShiftSingleElement()
+        {
+            int[] single = { 42 };
+            single.Shift(10);
+            Assert.That(single, Is.EqualTo(new[] { 42 }));
+        }
+
+        [Test]
+        public void ShiftZero()
+        {
+            int[] input = Enumerable.Range(0, 10).ToArray();
+            int[] expected = input.ToArray();
+            input.Shift(0);
+            Assert.That(input, Is.EqualTo(expected));
+        }
+
+        [Test]
+        public void RemoveAtSwapBackSingleElement()
+        {
+            List<int> single = new() { 42 };
+            single.RemoveAtSwapBack(0);
+            Assert.That(single, Is.Empty);
+        }
+
+        [Test]
+        public void RemoveAtSwapBackLastElement()
+        {
+            List<int> list = new() { 1, 2, 3, 4, 5 };
+            list.RemoveAtSwapBack(4);
+            Assert.That(list, Is.EqualTo(new[] { 1, 2, 3, 4 }));
+        }
+
+        [Test]
+        public void RemoveAtSwapBackFirstElement()
+        {
+            List<int> list = new() { 1, 2, 3, 4, 5 };
+            list.RemoveAtSwapBack(0);
+            Assert.That(list, Is.EqualTo(new[] { 5, 2, 3, 4 }));
+        }
+
+        [Test]
+        public void RemoveAtSwapBackMiddleElement()
+        {
+            List<int> list = new() { 1, 2, 3, 4, 5 };
+            list.RemoveAtSwapBack(2);
+            Assert.That(list, Is.EqualTo(new[] { 1, 2, 5, 4 }));
+        }
+
+        [Test]
+        public void IsSortedEmptyList()
+        {
+            int[] empty = Array.Empty<int>();
+            Assert.That(empty.IsSorted(), Is.True);
+        }
+
+        [Test]
+        public void IsSortedSingleElement()
+        {
+            int[] single = { 42 };
+            Assert.That(single.IsSorted(), Is.True);
+        }
+
+        [Test]
+        public void IsSortedSorted()
+        {
+            int[] sorted = { 1, 2, 3, 4, 5 };
+            Assert.That(sorted.IsSorted(), Is.True);
+        }
+
+        [Test]
+        public void IsSortedNotSorted()
+        {
+            int[] notSorted = { 1, 3, 2, 4, 5 };
+            Assert.That(notSorted.IsSorted(), Is.False);
+        }
+
+        [Test]
+        public void IsSortedDuplicates()
+        {
+            int[] duplicates = { 1, 2, 2, 3, 3, 3, 4 };
+            Assert.That(duplicates.IsSorted(), Is.True);
+        }
+
+        [Test]
+        public void IsSortedCustomComparer()
+        {
+            int[] descending = { 5, 4, 3, 2, 1 };
+            Assert.That(
+                descending.IsSorted(Comparer<int>.Create((a, b) => b.CompareTo(a))),
+                Is.True
+            );
+        }
+
+        [Test]
+        public void SwapValidIndices()
+        {
+            int[] arr = { 1, 2, 3, 4, 5 };
+            arr.Swap(1, 3);
+            Assert.That(arr, Is.EqualTo(new[] { 1, 4, 3, 2, 5 }));
+        }
+
+        [Test]
+        public void SwapSameIndex()
+        {
+            int[] arr = { 1, 2, 3 };
+            int[] expected = arr.ToArray();
+            arr.Swap(1, 1);
+            Assert.That(arr, Is.EqualTo(expected));
+        }
+
+        [Test]
+        public void SwapInvalidIndices()
+        {
+            int[] arr = { 1, 2, 3 };
+            Assert.Throws<ArgumentOutOfRangeException>(() => arr.Swap(-1, 1));
+            Assert.Throws<ArgumentOutOfRangeException>(() => arr.Swap(1, -1));
+            Assert.Throws<ArgumentOutOfRangeException>(() => arr.Swap(3, 1));
+            Assert.Throws<ArgumentOutOfRangeException>(() => arr.Swap(1, 3));
+        }
+
+        [Test]
+        public void BinarySearchFound()
+        {
+            int[] sorted = { 1, 3, 5, 7, 9, 11, 13 };
+            Assert.That(sorted.BinarySearch(7), Is.EqualTo(3));
+            Assert.That(sorted.BinarySearch(1), Is.EqualTo(0));
+            Assert.That(sorted.BinarySearch(13), Is.EqualTo(6));
+        }
+
+        [Test]
+        public void BinarySearchNotFound()
+        {
+            int[] sorted = { 1, 3, 5, 7, 9 };
+            int result = sorted.BinarySearch(4);
+            Assert.That(result, Is.LessThan(0));
+            Assert.That(~result, Is.EqualTo(2)); // Should insert at index 2
+        }
+
+        [Test]
+        public void BinarySearchEmptyList()
+        {
+            int[] empty = Array.Empty<int>();
+            int result = empty.BinarySearch(42);
+            Assert.That(result, Is.LessThan(0));
+            Assert.That(~result, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void BinarySearchSingleElement()
+        {
+            int[] single = { 42 };
+            Assert.That(single.BinarySearch(42), Is.EqualTo(0));
+            Assert.That(single.BinarySearch(41), Is.LessThan(0));
+            Assert.That(single.BinarySearch(43), Is.LessThan(0));
+        }
+
+        [Test]
+        public void FillValue()
+        {
+            int[] arr = new int[10];
+            arr.Fill(42);
+            Assert.That(arr, Is.All.EqualTo(42));
+        }
+
+        [Test]
+        public void FillFactory()
+        {
+            int[] arr = new int[10];
+            arr.Fill(i => i * 2);
+            Assert.That(arr, Is.EqualTo(Enumerable.Range(0, 10).Select(i => i * 2)));
+        }
+
+        [Test]
+        public void FillFactoryNull()
+        {
+            int[] arr = new int[10];
+            Assert.Throws<ArgumentNullException>(() => arr.Fill(null));
+        }
+
+        [Test]
+        public void IndexOfFound()
+        {
+            int[] arr = { 1, 2, 3, 4, 5 };
+            Assert.That(arr.IndexOf(x => x > 3), Is.EqualTo(3));
+            Assert.That(arr.IndexOf(x => x == 1), Is.EqualTo(0));
+        }
+
+        [Test]
+        public void IndexOfNotFound()
+        {
+            int[] arr = { 1, 2, 3 };
+            Assert.That(arr.IndexOf(x => x > 10), Is.EqualTo(-1));
+        }
+
+        [Test]
+        public void IndexOfNullPredicate()
+        {
+            int[] arr = { 1, 2, 3 };
+            Assert.Throws<ArgumentNullException>(() => arr.IndexOf(null));
+        }
+
+        [Test]
+        public void LastIndexOfFound()
+        {
+            int[] arr = { 1, 2, 3, 2, 1 };
+            Assert.That(arr.LastIndexOf(x => x == 2), Is.EqualTo(3));
+            Assert.That(arr.LastIndexOf(x => x == 1), Is.EqualTo(4));
+        }
+
+        [Test]
+        public void LastIndexOfNotFound()
+        {
+            int[] arr = { 1, 2, 3 };
+            Assert.That(arr.LastIndexOf(x => x > 10), Is.EqualTo(-1));
+        }
+
+        [Test]
+        public void FindAllFound()
+        {
+            int[] arr = { 1, 2, 3, 4, 5, 6 };
+            List<int> result = arr.FindAll(x => x % 2 == 0);
+            Assert.That(result, Is.EqualTo(new[] { 2, 4, 6 }));
+        }
+
+        [Test]
+        public void FindAllNoneFound()
+        {
+            int[] arr = { 1, 3, 5 };
+            List<int> result = arr.FindAll(x => x % 2 == 0);
+            Assert.That(result, Is.Empty);
+        }
+
+        [Test]
+        public void FindAllNullPredicate()
+        {
+            int[] arr = { 1, 2, 3 };
+            Assert.Throws<ArgumentNullException>(() => arr.FindAll(null));
+        }
+
+        [Test]
+        public void AddRangeToList()
+        {
+            List<int> list = new() { 1, 2, 3 };
+            list.AddRange(new[] { 4, 5, 6 });
+            Assert.That(list, Is.EqualTo(new[] { 1, 2, 3, 4, 5, 6 }));
+        }
+
+        [Test]
+        public void AddRangeNullItems()
+        {
+            List<int> list = new() { 1, 2, 3 };
+            Assert.Throws<ArgumentNullException>(() => list.AddRange(null));
+        }
+
+        [Test]
+        public void RemoveAllSomeRemoved()
+        {
+            List<int> list = new() { 1, 2, 3, 4, 5, 6 };
+            int removed = list.RemoveAll(x => x % 2 == 0);
+            Assert.That(removed, Is.EqualTo(3));
+            Assert.That(list, Is.EqualTo(new[] { 1, 3, 5 }));
+        }
+
+        [Test]
+        public void RemoveAllNoneRemoved()
+        {
+            List<int> list = new() { 1, 3, 5 };
+            int removed = list.RemoveAll(x => x % 2 == 0);
+            Assert.That(removed, Is.EqualTo(0));
+            Assert.That(list, Is.EqualTo(new[] { 1, 3, 5 }));
+        }
+
+        [Test]
+        public void RemoveAllAllRemoved()
+        {
+            List<int> list = new() { 2, 4, 6 };
+            int removed = list.RemoveAll(x => x % 2 == 0);
+            Assert.That(removed, Is.EqualTo(3));
+            Assert.That(list, Is.Empty);
+        }
+
+        [Test]
+        public void RemoveAllNullPredicate()
+        {
+            List<int> list = new() { 1, 2, 3 };
+            Assert.Throws<ArgumentNullException>(() => list.RemoveAll(null));
+        }
+
+        [Test]
+        public void RotateLeftBasic()
+        {
+            int[] arr = { 1, 2, 3, 4, 5 };
+            arr.RotateLeft(2);
+            Assert.That(arr, Is.EqualTo(new[] { 3, 4, 5, 1, 2 }));
+        }
+
+        [Test]
+        public void RotateRightBasic()
+        {
+            int[] arr = { 1, 2, 3, 4, 5 };
+            arr.RotateRight(2);
+            Assert.That(arr, Is.EqualTo(new[] { 4, 5, 1, 2, 3 }));
+        }
+
+        [Test]
+        public void PartitionBasic()
+        {
+            int[] arr = { 1, 2, 3, 4, 5, 6 };
+            var (even, odd) = arr.Partition(x => x % 2 == 0);
+            Assert.That(even, Is.EqualTo(new[] { 2, 4, 6 }));
+            Assert.That(odd, Is.EqualTo(new[] { 1, 3, 5 }));
+        }
+
+        [Test]
+        public void PartitionAllMatch()
+        {
+            int[] arr = { 2, 4, 6 };
+            var (matching, notMatching) = arr.Partition(x => x % 2 == 0);
+            Assert.That(matching, Is.EqualTo(new[] { 2, 4, 6 }));
+            Assert.That(notMatching, Is.Empty);
+        }
+
+        [Test]
+        public void PartitionNoneMatch()
+        {
+            int[] arr = { 1, 3, 5 };
+            var (matching, notMatching) = arr.Partition(x => x % 2 == 0);
+            Assert.That(matching, Is.Empty);
+            Assert.That(notMatching, Is.EqualTo(new[] { 1, 3, 5 }));
+        }
+
+        [Test]
+        public void PartitionNullPredicate()
+        {
+            int[] arr = { 1, 2, 3 };
+            Assert.Throws<ArgumentNullException>(() => arr.Partition(null));
+        }
+
+        [Test]
+        public void ContainsWithComparerFound()
+        {
+            int[] arr = { 1, 2, 3, 4, 5 };
+            Assert.That(arr.Contains(3, new IntEqualityComparer()), Is.True);
+        }
+
+        [Test]
+        public void ContainsWithComparerNotFound()
+        {
+            int[] arr = { 1, 2, 3 };
+            Assert.That(arr.Contains(10, new IntEqualityComparer()), Is.False);
+        }
+
+        [Test]
+        public void ContainsNullComparer()
+        {
+            int[] arr = { 1, 2, 3 };
+            Assert.Throws<ArgumentNullException>(() => arr.Contains(1, null));
+        }
+
+        [Test]
+        public void PopBackSuccess()
+        {
+            List<int> list = new() { 1, 2, 3, 4, 5 };
+            int popped = list.PopBack();
+            Assert.That(popped, Is.EqualTo(5));
+            Assert.That(list, Is.EqualTo(new[] { 1, 2, 3, 4 }));
+        }
+
+        [Test]
+        public void PopBackEmptyList()
+        {
+            List<int> list = new();
+            Assert.Throws<InvalidOperationException>(() => list.PopBack());
+        }
+
+        [Test]
+        public void PopFrontSuccess()
+        {
+            List<int> list = new() { 1, 2, 3, 4, 5 };
+            int popped = list.PopFront();
+            Assert.That(popped, Is.EqualTo(1));
+            Assert.That(list, Is.EqualTo(new[] { 2, 3, 4, 5 }));
+        }
+
+        [Test]
+        public void PopFrontEmptyList()
+        {
+            List<int> list = new();
+            Assert.Throws<InvalidOperationException>(() => list.PopFront());
+        }
+
+        [Test]
+        public void GetRandomElementSuccess()
+        {
+            int[] arr = { 1, 2, 3, 4, 5 };
+            int element = arr.GetRandomElement(new SystemRandom(42));
+            Assert.That(arr, Does.Contain(element));
+        }
+
+        [Test]
+        public void GetRandomElementEmptyList()
+        {
+            int[] arr = Array.Empty<int>();
+            Assert.Throws<InvalidOperationException>(() => arr.GetRandomElement());
+        }
+
+        [Test]
+        public void GetRandomElementSingleElement()
+        {
+            int[] arr = { 42 };
+            Assert.That(arr.GetRandomElement(), Is.EqualTo(42));
+        }
+
+        // ===== Edge Case Combination Tests =====
+
+        [Test]
+        public void SortEmptyList()
+        {
+            int[] empty = Array.Empty<int>();
+            empty.Sort(new IntComparer());
+            Assert.That(empty, Is.Empty);
+        }
+
+        [Test]
+        public void SortSingleElement()
+        {
+            int[] single = { 42 };
+            single.Sort(new IntComparer());
+            Assert.That(single, Is.EqualTo(new[] { 42 }));
+        }
+
+        [Test]
+        public void SortAllDuplicates()
+        {
+            int[] duplicates = { 5, 5, 5, 5, 5 };
+            duplicates.Sort(new IntComparer());
+            Assert.That(duplicates, Is.EqualTo(new[] { 5, 5, 5, 5, 5 }));
+        }
+
+        [Test]
+        public void SortAlreadySorted()
+        {
+            int[] sorted = { 1, 2, 3, 4, 5 };
+            sorted.Sort(new IntComparer());
+            Assert.That(sorted, Is.EqualTo(new[] { 1, 2, 3, 4, 5 }));
+        }
+
+        [Test]
+        public void SortReverseSorted()
+        {
+            int[] reversed = { 5, 4, 3, 2, 1 };
+            reversed.Sort(new IntComparer());
+            Assert.That(reversed, Is.EqualTo(new[] { 1, 2, 3, 4, 5 }));
+        }
+
+        [Test]
+        public void InsertionSortEmptyList()
+        {
+            int[] empty = Array.Empty<int>();
+            empty.InsertionSort(new IntComparer());
+            Assert.That(empty, Is.Empty);
+        }
+
+        [Test]
+        public void InsertionSortSingleElement()
+        {
+            int[] single = { 42 };
+            single.InsertionSort(new IntComparer());
+            Assert.That(single, Is.EqualTo(new[] { 42 }));
+        }
+
+        [Test]
+        public void GhostSortEmptyList()
+        {
+            int[] empty = Array.Empty<int>();
+            empty.GhostSort(new IntComparer());
+            Assert.That(empty, Is.Empty);
+        }
+
+        [Test]
+        public void GhostSortSingleElement()
+        {
+            int[] single = { 42 };
+            single.GhostSort(new IntComparer());
+            Assert.That(single, Is.EqualTo(new[] { 42 }));
+        }
+
+        [Test]
+        public void CombinedOperationsShuffleThenSort()
+        {
+            int[] arr = Enumerable.Range(0, 100).ToArray();
+            arr.Shuffle(new SystemRandom(42));
+            arr.Sort(new IntComparer());
+            Assert.That(arr.IsSorted(), Is.True);
+            Assert.That(arr, Is.EqualTo(Enumerable.Range(0, 100)));
+        }
+
+        [Test]
+        public void CombinedOperationsShiftThenReverse()
+        {
+            int[] arr = { 1, 2, 3, 4, 5 };
+            arr.Shift(2);
+            arr.Reverse(0, arr.Length - 1);
+            Assert.That(arr, Is.EqualTo(new[] { 3, 2, 1, 5, 4 }));
+        }
+
+        [Test]
+        public void CombinedOperationsFillThenPartition()
+        {
+            int[] arr = new int[10];
+            arr.Fill(i => i);
+            var (even, odd) = arr.Partition(x => x % 2 == 0);
+            Assert.That(even, Is.EqualTo(new[] { 0, 2, 4, 6, 8 }));
+            Assert.That(odd, Is.EqualTo(new[] { 1, 3, 5, 7, 9 }));
+        }
+
+        [Test]
+        public void CombinedOperationsRemoveAllThenIsSorted()
+        {
+            List<int> list = new() { 5, 2, 8, 1, 9, 3, 7, 4, 6 };
+            list.RemoveAll(x => x > 5);
+            list.Sort(new IntComparer());
+            Assert.That(list.IsSorted(), Is.True);
+            Assert.That(list, Is.EqualTo(new[] { 1, 2, 3, 4, 5 }));
+        }
+
+        [Test]
+        public void StressTestMultipleOperations()
+        {
+            for (int i = 0; i < 100; ++i)
+            {
+                List<int> list = Enumerable.Range(0, 50).ToList();
+
+                // Shuffle
+                list.Shuffle(new SystemRandom(i));
+
+                // Remove some elements
+                list.RemoveAll(x => x % 7 == 0);
+
+                // Rotate
+                list.RotateLeft(3);
+
+                // Sort
+                list.Sort(new IntComparer());
+
+                // Verify sorted
+                Assert.That(list.IsSorted(), Is.True);
+
+                // Verify no duplicates and all elements in valid range
+                HashSet<int> seen = new();
+                foreach (int val in list)
+                {
+                    Assert.That(seen.Add(val), Is.True, "No duplicates should exist");
+                    Assert.That(val % 7, Is.Not.EqualTo(0), "Multiples of 7 should be removed");
                 }
             }
         }
