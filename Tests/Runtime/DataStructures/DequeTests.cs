@@ -121,7 +121,7 @@
 
         // Constructor Tests
         [Test]
-        public void Constructor_WithCapacity_CreatesEmptyDeque()
+        public void ConstructorWithCapacityCreatesEmptyDeque()
         {
             Deque<int> deque = new(10);
             Assert.AreEqual(0, deque.Count);
@@ -130,20 +130,20 @@
         }
 
         [Test]
-        public void Constructor_WithZeroOrNegativeCapacity_ThrowsException()
+        public void ConstructorWithZeroOrNegativeCapacityThrowsException()
         {
             Assert.Throws<ArgumentOutOfRangeException>(() => new Deque<int>(0));
             Assert.Throws<ArgumentOutOfRangeException>(() => new Deque<int>(-1));
         }
 
         [Test]
-        public void Constructor_WithNullCollection_ThrowsException()
+        public void ConstructorWithNullCollectionThrowsException()
         {
             Assert.Throws<ArgumentNullException>(() => new Deque<int>((IEnumerable<int>)null));
         }
 
         [Test]
-        public void Constructor_WithIReadOnlyList_CreatesDequeWithCorrectElements()
+        public void ConstructorWithIReadOnlyListCreatesDequeWithCorrectElements()
         {
             IReadOnlyList<int> list = new List<int> { 1, 2, 3, 4, 5 };
             Deque<int> deque = new(list);
@@ -156,7 +156,7 @@
         }
 
         [Test]
-        public void Constructor_WithICollection_CreatesDequeWithCorrectElements()
+        public void ConstructorWithICollectionCreatesDequeWithCorrectElements()
         {
             ICollection<int> collection = new HashSet<int> { 1, 2, 3 };
             Deque<int> deque = new(collection);
@@ -168,7 +168,7 @@
         }
 
         [Test]
-        public void Constructor_WithIEnumerable_CreatesDequeWithCorrectElements()
+        public void ConstructorWithIEnumerableCreatesDequeWithCorrectElements()
         {
             IEnumerable<int> enumerable = Enumerable.Range(1, 5);
             Deque<int> deque = new(enumerable);
@@ -182,7 +182,7 @@
 
         // Indexer Tests
         [Test]
-        public void Indexer_Get_ReturnsCorrectElements()
+        public void IndexerGetReturnsCorrectElements()
         {
             Deque<int> deque = new(10);
             deque.PushBack(10);
@@ -195,7 +195,7 @@
         }
 
         [Test]
-        public void Indexer_Set_UpdatesElements()
+        public void IndexerSetUpdatesElements()
         {
             Deque<int> deque = new(10);
             deque.PushBack(1);
@@ -210,7 +210,7 @@
         }
 
         [Test]
-        public void Indexer_Get_WithNegativeIndex_ThrowsException()
+        public void IndexerGetWithNegativeIndexThrowsException()
         {
             Deque<int> deque = new(10);
             deque.PushBack(1);
@@ -222,7 +222,7 @@
         }
 
         [Test]
-        public void Indexer_Get_WithIndexEqualToCount_ThrowsException()
+        public void IndexerGetWithIndexEqualToCountThrowsException()
         {
             Deque<int> deque = new(10);
             deque.PushBack(1);
@@ -234,7 +234,7 @@
         }
 
         [Test]
-        public void Indexer_Set_WithNegativeIndex_ThrowsException()
+        public void IndexerSetWithNegativeIndexThrowsException()
         {
             Deque<int> deque = new(10);
             deque.PushBack(1);
@@ -246,7 +246,7 @@
         }
 
         [Test]
-        public void Indexer_Set_WithIndexEqualToCount_ThrowsException()
+        public void IndexerSetWithIndexEqualToCountThrowsException()
         {
             Deque<int> deque = new(10);
             deque.PushBack(1);
@@ -259,7 +259,7 @@
 
         // TryPeek Tests
         [Test]
-        public void TryPeekFront_OnEmptyDeque_ReturnsFalse()
+        public void TryPeekFrontOnEmptyDequeReturnsFalse()
         {
             Deque<int> deque = new(10);
             Assert.IsFalse(deque.TryPeekFront(out int result));
@@ -267,7 +267,7 @@
         }
 
         [Test]
-        public void TryPeekBack_OnEmptyDeque_ReturnsFalse()
+        public void TryPeekBackOnEmptyDequeReturnsFalse()
         {
             Deque<int> deque = new(10);
             Assert.IsFalse(deque.TryPeekBack(out int result));
@@ -276,7 +276,7 @@
 
         // Clear Tests
         [Test]
-        public void Clear_RemovesAllElements()
+        public void ClearRemovesAllElements()
         {
             Deque<int> deque = new(10);
             deque.PushBack(1);
@@ -291,14 +291,14 @@
         }
 
         [Test]
-        public void Clear_OnEmptyDeque_DoesNotThrow()
+        public void ClearOnEmptyDequeDoesNotThrow()
         {
             Deque<int> deque = new(10);
             Assert.DoesNotThrow(() => deque.Clear());
         }
 
         [Test]
-        public void Clear_WithWrappedBuffer_ClearsCorrectly()
+        public void ClearWithWrappedBufferClearsCorrectly()
         {
             Deque<int> deque = new(4);
             deque.PushBack(1);
@@ -316,7 +316,7 @@
 
         // Contains Tests
         [Test]
-        public void Contains_WithExistingElement_ReturnsTrue()
+        public void ContainsWithExistingElementReturnsTrue()
         {
             Deque<int> deque = new(10);
             deque.PushBack(1);
@@ -327,7 +327,7 @@
         }
 
         [Test]
-        public void Contains_WithNonExistingElement_ReturnsFalse()
+        public void ContainsWithNonExistingElementReturnsFalse()
         {
             Deque<int> deque = new(10);
             deque.PushBack(1);
@@ -337,14 +337,14 @@
         }
 
         [Test]
-        public void Contains_OnEmptyDeque_ReturnsFalse()
+        public void ContainsOnEmptyDequeReturnsFalse()
         {
             Deque<int> deque = new(10);
             Assert.IsFalse(deque.Contains(1));
         }
 
         [Test]
-        public void Contains_WithNullElement_WorksCorrectly()
+        public void ContainsWithNullElementWorksCorrectly()
         {
             Deque<string> deque = new(10);
             deque.PushBack("a");
@@ -356,7 +356,7 @@
 
         // CopyTo Tests
         [Test]
-        public void CopyTo_CopiesAllElements()
+        public void CopyToCopiesAllElements()
         {
             Deque<int> deque = new(10);
             deque.PushBack(1);
@@ -374,7 +374,7 @@
         }
 
         [Test]
-        public void CopyTo_WithNullArray_ThrowsException()
+        public void CopyToWithNullArrayThrowsException()
         {
             Deque<int> deque = new(10);
             deque.PushBack(1);
@@ -383,7 +383,7 @@
         }
 
         [Test]
-        public void CopyTo_WithNegativeArrayIndex_ThrowsException()
+        public void CopyToWithNegativeArrayIndexThrowsException()
         {
             Deque<int> deque = new(10);
             deque.PushBack(1);
@@ -393,7 +393,7 @@
         }
 
         [Test]
-        public void CopyTo_WithArrayIndexBeyondLength_ThrowsException()
+        public void CopyToWithArrayIndexBeyondLengthThrowsException()
         {
             Deque<int> deque = new(10);
             deque.PushBack(1);
@@ -403,7 +403,7 @@
         }
 
         [Test]
-        public void CopyTo_WithInsufficientSpace_ThrowsException()
+        public void CopyToWithInsufficientSpaceThrowsException()
         {
             Deque<int> deque = new(10);
             deque.PushBack(1);
@@ -416,7 +416,7 @@
 
         // ToArray Tests
         [Test]
-        public void ToArray_ReturnsCorrectArray()
+        public void ToArrayReturnsCorrectArray()
         {
             Deque<int> deque = new(10);
             deque.PushBack(1);
@@ -432,7 +432,7 @@
         }
 
         [Test]
-        public void ToArray_OnEmptyDeque_ReturnsEmptyArray()
+        public void ToArrayOnEmptyDequeReturnsEmptyArray()
         {
             Deque<int> deque = new(10);
             int[] array = deque.ToArray();
@@ -441,7 +441,7 @@
         }
 
         [Test]
-        public void ToArray_WithRefParameter_ReusesArray()
+        public void ToArrayWithRefParameterReusesArray()
         {
             Deque<int> deque = new(10);
             deque.PushBack(1);
@@ -456,7 +456,7 @@
         }
 
         [Test]
-        public void ToArray_WithRefParameter_AllocatesIfNull()
+        public void ToArrayWithRefParameterAllocatesIfNull()
         {
             Deque<int> deque = new(10);
             deque.PushBack(1);
@@ -471,7 +471,7 @@
         }
 
         [Test]
-        public void ToArray_WithRefParameter_AllocatesIfTooSmall()
+        public void ToArrayWithRefParameterAllocatesIfTooSmall()
         {
             Deque<int> deque = new(10);
             deque.PushBack(1);
@@ -487,7 +487,7 @@
 
         // TrimExcess Tests
         [Test]
-        public void TrimExcess_ReducesCapacity()
+        public void TrimExcessReducesCapacity()
         {
             Deque<int> deque = new(100);
             deque.PushBack(1);
@@ -500,7 +500,7 @@
         }
 
         [Test]
-        public void TrimExcess_DoesNotReduceBelowDefaultCapacity()
+        public void TrimExcessDoesNotReduceBelowDefaultCapacity()
         {
             Deque<int> deque = new(100);
             deque.PushBack(1);
@@ -511,7 +511,7 @@
         }
 
         [Test]
-        public void TrimExcess_DoesNotTrimIfAboveThreshold()
+        public void TrimExcessDoesNotTrimIfAboveThreshold()
         {
             Deque<int> deque = new(10);
             for (int i = 0; i < 10; i++)
@@ -527,7 +527,7 @@
 
         // Enumerator Tests
         [Test]
-        public void GetEnumerator_IteratesInCorrectOrder()
+        public void GetEnumeratorIteratesInCorrectOrder()
         {
             Deque<int> deque = new(10);
             deque.PushBack(1);
@@ -546,7 +546,7 @@
         }
 
         [Test]
-        public void GetEnumerator_OnEmptyDeque_DoesNotIterate()
+        public void GetEnumeratorOnEmptyDequeDoesNotIterate()
         {
             Deque<int> deque = new(10);
             int count = 0;
@@ -560,7 +560,7 @@
         }
 
         [Test]
-        public void GetEnumerator_WithWrappedBuffer_IteratesCorrectly()
+        public void GetEnumeratorWithWrappedBufferIteratesCorrectly()
         {
             Deque<int> deque = new(4);
             deque.PushBack(1);
@@ -581,7 +581,7 @@
         }
 
         [Test]
-        public void GetEnumerator_Reset_RestartsEnumeration()
+        public void GetEnumeratorResetRestartsEnumeration()
         {
             Deque<int> deque = new(10);
             deque.PushBack(1);
@@ -599,7 +599,7 @@
 
         // PushFront Growth Tests
         [Test]
-        public void PushFront_TriggersGrowth()
+        public void PushFrontTriggersGrowth()
         {
             Deque<int> deque = new(2);
             deque.PushFront(1);
@@ -617,7 +617,7 @@
 
         // Mixed Operations Tests
         [Test]
-        public void MixedPushOperations_MaintainCorrectOrder()
+        public void MixedPushOperationsMaintainCorrectOrder()
         {
             Deque<int> deque = new(10);
             deque.PushBack(3);
@@ -634,7 +634,7 @@
         }
 
         [Test]
-        public void MixedPopOperations_WorkCorrectly()
+        public void MixedPopOperationsWorkCorrectly()
         {
             Deque<int> deque = new(10);
             deque.PushBack(1);
@@ -654,7 +654,7 @@
         }
 
         [Test]
-        public void AlternatingPushPopOperations_MaintainCorrectState()
+        public void AlternatingPushPopOperationsMaintainCorrectState()
         {
             Deque<int> deque = new(10);
 
@@ -673,7 +673,7 @@
 
         // Large Scale Tests
         [Test]
-        public void LargeNumberOfPushBackOperations_WorksCorrectly()
+        public void LargeNumberOfPushBackOperationsWorksCorrectly()
         {
             Deque<int> deque = new(10);
 
@@ -690,7 +690,7 @@
         }
 
         [Test]
-        public void LargeNumberOfPushFrontOperations_WorksCorrectly()
+        public void LargeNumberOfPushFrontOperationsWorksCorrectly()
         {
             Deque<int> deque = new(10);
 
@@ -708,7 +708,7 @@
 
         // Edge Case: Single Element
         [Test]
-        public void SingleElement_AllOperations_WorkCorrectly()
+        public void SingleElementAllOperationsWorkCorrectly()
         {
             Deque<int> deque = new(10);
             deque.PushBack(42);
@@ -728,7 +728,7 @@
 
         // Edge Case: Capacity 1
         [Test]
-        public void Capacity1_GrowsWhenNeeded()
+        public void Capacity1GrowsWhenNeeded()
         {
             Deque<int> deque = new(1);
             deque.PushBack(1);
@@ -759,7 +759,7 @@
 
         // Stress Test: Circular Buffer Wrapping
         [Test]
-        public void ExtensiveWrapping_MaintainsCorrectState()
+        public void ExtensiveWrappingMaintainsCorrectState()
         {
             Deque<int> deque = new(8);
 
