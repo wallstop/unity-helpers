@@ -1,14 +1,24 @@
 namespace WallstopStudios.UnityHelpers.Core.DataStructure
 {
+    using System;
     using System.Runtime.CompilerServices;
+    using Helper;
     using UnityEngine;
 
-    public readonly struct Sphere
+    /// <summary>
+    /// Represents a sphere in 3D space defined by a center point and radius.
+    /// </summary>
+    public readonly struct Sphere : IEquatable<Sphere>
     {
         public readonly Vector3 center;
         public readonly float radius;
         private readonly float _radiusSquared;
 
+        /// <summary>
+        /// Initializes a new sphere with the specified center and radius.
+        /// </summary>
+        /// <param name="center">The center point of the sphere.</param>
+        /// <param name="radius">The radius of the sphere.</param>
         public Sphere(Vector3 center, float radius)
         {
             this.center = center;
@@ -16,6 +26,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             _radiusSquared = radius * radius;
         }
 
+        /// <summary>
+        /// Determines whether the sphere contains the specified point.
+        /// Points on the surface are considered contained.
+        /// </summary>
+        /// <param name="point">The point to test.</param>
+        /// <returns>True if the point is inside or on the sphere's surface.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Contains(Vector3 point)
         {
@@ -25,6 +41,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             return dx * dx + dy * dy + dz * dz <= _radiusSquared;
         }
 
+        /// <summary>
+        /// Determines whether this sphere intersects with the specified bounding box.
+        /// Returns true if there is any overlap between the sphere and bounds.
+        /// </summary>
+        /// <param name="bounds">The bounding box to test for intersection.</param>
+        /// <returns>True if the sphere and bounds intersect.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Intersects(BoundingBox3D bounds)
         {
@@ -38,6 +60,29 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             return distanceSquared <= (_radiusSquared + Tolerance);
         }
 
+        /// <summary>
+        /// Determines whether this sphere intersects with another sphere.
+        /// Returns true if there is any overlap between the two spheres.
+        /// </summary>
+        /// <param name="other">The other sphere to test for intersection.</param>
+        /// <returns>True if the spheres intersect.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool Intersects(Sphere other)
+        {
+            float combinedRadius = radius + other.radius;
+            float combinedRadiusSquared = combinedRadius * combinedRadius;
+            float dx = center.x - other.center.x;
+            float dy = center.y - other.center.y;
+            float dz = center.z - other.center.z;
+            return dx * dx + dy * dy + dz * dz <= combinedRadiusSquared;
+        }
+
+        /// <summary>
+        /// Determines whether the specified bounding box is completely contained within this sphere.
+        /// All corners of the bounding box must be inside the sphere.
+        /// </summary>
+        /// <param name="bounds">The bounding box to test for containment.</param>
+        /// <returns>True if the bounding box is completely contained within the sphere.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Overlaps(BoundingBox3D bounds)
         {
@@ -98,6 +143,60 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             float farthestDistanceSquared =
                 farthestX * farthestX + farthestY * farthestY + farthestZ * farthestZ;
             return farthestDistanceSquared <= _radiusSquared;
+        }
+
+        /// <summary>
+        /// Determines whether this sphere equals another sphere.
+        /// </summary>
+        /// <param name="other">The other sphere to compare.</param>
+        /// <returns>True if the spheres have the same center and radius.</returns>
+        public bool Equals(Sphere other)
+        {
+            return center.Equals(other.center) && Mathf.Approximately(radius, other.radius);
+        }
+
+        /// <summary>
+        /// Determines whether this sphere equals another object.
+        /// </summary>
+        /// <param name="obj">The object to compare.</param>
+        /// <returns>True if the object is a Sphere with the same center and radius.</returns>
+        public override bool Equals(object obj)
+        {
+            return obj is Sphere other && Equals(other);
+        }
+
+        /// <summary>
+        /// Gets the hash code for this sphere.
+        /// </summary>
+        /// <returns>A hash code for the current sphere.</returns>
+        public override int GetHashCode()
+        {
+            return Objects.ValueTypeHashCode(center, radius);
+        }
+
+        /// <summary>
+        /// Determines whether two spheres are equal.
+        /// </summary>
+        public static bool operator ==(Sphere left, Sphere right)
+        {
+            return left.Equals(right);
+        }
+
+        /// <summary>
+        /// Determines whether two spheres are not equal.
+        /// </summary>
+        public static bool operator !=(Sphere left, Sphere right)
+        {
+            return !left.Equals(right);
+        }
+
+        /// <summary>
+        /// Returns a string representation of this sphere.
+        /// </summary>
+        /// <returns>A string describing the sphere's center and radius.</returns>
+        public override string ToString()
+        {
+            return $"Sphere(center: {center}, radius: {radius})";
         }
     }
 }

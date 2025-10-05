@@ -443,15 +443,28 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return Enumerable.Empty<T>();
             }
 
-            using PooledResource<HashSet<int>> hashSetBuffer = Buffers<int>.HashSet.Get(
-                out HashSet<int> selectedIndices
-            );
-            while (selectedIndices.Count < count)
+            using PooledResource<T[]> arrayBuffer = WallstopArrayPool<T>.Get(count, out T[] result);
+
+            // Fill the reservoir with the first count elements
+            for (int i = 0; i < count; ++i)
             {
-                selectedIndices.Add(random.Next(0, itemsList.Count));
+                result[i] = itemsList[i];
             }
 
-            return selectedIndices.Select(index => itemsList[index]);
+            // Process remaining elements
+            for (int i = count; i < itemsList.Count; ++i)
+            {
+                // Generate a random index from 0 to i (inclusive)
+                int j = random.Next(0, i + 1);
+
+                // If the random index is within the reservoir, replace it
+                if (j < count)
+                {
+                    result[j] = itemsList[i];
+                }
+            }
+
+            return result;
         }
     }
 }

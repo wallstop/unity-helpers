@@ -324,6 +324,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return elementsInRange;
             }
 
+            Sphere querySphere = new(position, range);
             BoundingBox3D queryBounds = BoundingBox3D.FromCenterAndSize(
                 position,
                 new Vector3(range * 2f, range * 2f, range * 2f)
@@ -344,6 +345,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             float rangeSquared = range * range;
             bool hasMinimumRange = 0f < minimumRange;
             float minimumRangeSquared = minimumRange * minimumRange;
+            Sphere minimumSphere = hasMinimumRange ? new Sphere(position, minimumRange) : default;
 
             while (nodesToVisit.TryPop(out OctTreeNode currentNode))
             {
@@ -357,25 +359,73 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     continue;
                 }
 
-                if (currentNode.isTerminal || queryBounds.Contains(currentNode.boundary))
+                // Use Sphere.Overlaps to check if the sphere fully contains the node's boundary
+                // This is more accurate than using a bounding box approximation
+                bool nodeFullyContained = querySphere.Overlaps(currentNode.boundary);
+
+                if (currentNode.isTerminal || nodeFullyContained)
                 {
                     int start = currentNode._startIndex;
                     int end = start + currentNode._count;
-                    for (int i = start; i < end; ++i)
+
+                    // If the node is fully contained, we can skip distance checks for points
+                    // but still need to check minimum range
+                    if (nodeFullyContained && !hasMinimumRange)
                     {
-                        Entry entry = entries[indices[i]];
-                        float squareDistance = (entry.position - position).sqrMagnitude;
-                        if (squareDistance > rangeSquared)
+                        // Fast path: all points in this node are within range
+                        for (int i = start; i < end; ++i)
                         {
-                            continue;
+                            elementsInRange.Add(entries[indices[i]].value);
                         }
-
-                        if (hasMinimumRange && squareDistance <= minimumRangeSquared)
+                    }
+                    else if (nodeFullyContained && hasMinimumRange)
+                    {
+                        // Node is fully in outer sphere, but need to check minimum range
+                        // Check if node is fully outside minimum sphere
+                        bool nodeFullyOutsideMinimum = !minimumSphere.Intersects(
+                            currentNode.boundary
+                        );
+                        if (nodeFullyOutsideMinimum)
                         {
-                            continue;
+                            // Fast path: all points are in the annulus
+                            for (int i = start; i < end; ++i)
+                            {
+                                elementsInRange.Add(entries[indices[i]].value);
+                            }
                         }
+                        else
+                        {
+                            // Need to check each point against minimum range
+                            for (int i = start; i < end; ++i)
+                            {
+                                Entry entry = entries[indices[i]];
+                                float squareDistance = (entry.position - position).sqrMagnitude;
+                                if (squareDistance > minimumRangeSquared)
+                                {
+                                    elementsInRange.Add(entry.value);
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // Terminal node but not fully contained: check each point
+                        for (int i = start; i < end; ++i)
+                        {
+                            Entry entry = entries[indices[i]];
+                            float squareDistance = (entry.position - position).sqrMagnitude;
+                            if (squareDistance > rangeSquared)
+                            {
+                                continue;
+                            }
 
-                        elementsInRange.Add(entry.value);
+                            if (hasMinimumRange && squareDistance <= minimumRangeSquared)
+                            {
+                                continue;
+                            }
+
+                            elementsInRange.Add(entry.value);
+                        }
                     }
 
                     continue;

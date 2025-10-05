@@ -535,8 +535,8 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             where T : struct, Enum
         {
             Type enumType = typeof(T);
-            object enumArrays = EnumTypeCache.GetOrAdd(enumType, type => Enum.GetValues(type));
-            T[] enumValues = Unsafe.As<object, T[]>(ref enumArrays);
+            Array enumArrays = EnumTypeCache.GetOrAdd(enumType, type => Enum.GetValues(type));
+            T[] enumValues = Unsafe.As<Array, T[]>(ref enumArrays);
             return RandomOf(enumValues);
         }
 

@@ -7,10 +7,12 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
     using DataStructure.Adapters;
     using Helper;
     using Random;
-    using UnityEditor;
     using UnityEngine;
     using UnityEngine.UI;
     using Utils;
+#if UNITY_EDITOR
+    using UnityEditor;
+#endif
 
     public static class UnityExtensions
     {
@@ -57,28 +59,43 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
         public static Bounds OrthographicBounds(this Camera camera)
         {
-            float screenAspect = (float)Screen.width / Screen.height;
+            if (camera == null)
+            {
+                throw new ArgumentNullException(nameof(camera));
+            }
+
+            int screenHeight = Screen.height;
+            if (screenHeight == 0)
+            {
+                screenHeight = 1;
+            }
+
+            float screenAspect = (float)Screen.width / screenHeight;
             float cameraHeight = camera.orthographicSize * 2;
-            Bounds bounds = new(
-                (Vector2)camera.transform.position,
-                new Vector3(cameraHeight * screenAspect, cameraHeight, 1)
-            );
-            return bounds;
+            float depth = camera.farClipPlane - camera.nearClipPlane;
+            if (depth <= 0f)
+            {
+                depth = 1f;
+            }
+
+            Vector3 size = new(cameraHeight * screenAspect, cameraHeight, depth);
+            return new Bounds(camera.transform.position, size);
         }
 
         public static string ToJsonString(this Vector3 vector)
         {
-            return $"{{{vector.x}, {vector.y}, {vector.z}}}";
+            return FormattableString.Invariant($"{{{vector.x}, {vector.y}, {vector.z}}}");
         }
 
         public static string ToJsonString(this Vector2 vector)
         {
-            return $"{{{vector.x}, {vector.y}}}";
+            return FormattableString.Invariant($"{{{vector.x}, {vector.y}}}");
         }
 
-        public static bool IsNoise(this Vector2 inputVector)
+        public static bool IsNoise(this Vector2 inputVector, float threshold = 0.2f)
         {
-            return Mathf.Abs(inputVector.x) <= 0.2f && Mathf.Abs(inputVector.y) <= 0.2f;
+            float limit = Mathf.Abs(threshold);
+            return Mathf.Abs(inputVector.x) <= limit && Mathf.Abs(inputVector.y) <= limit;
         }
 
         public static void Stop(this Rigidbody2D rigidBody)
@@ -1704,10 +1721,24 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return;
             }
 
-            Vector2[][] originals = new Vector2[originalCount][];
+            using PooledResource<Vector2[][]> originalBuffer = WallstopArrayPool<Vector2[]>.Get(
+                originalCount,
+                out Vector2[][] originals
+            );
+            using PooledResource<List<PooledResource<Vector2[]>>> pathBuffer = Buffers<
+                PooledResource<Vector2[]>
+            >.List.Get(out List<PooledResource<Vector2[]>> paths);
+
             for (int i = 0; i < originalCount; i++)
             {
-                originals[i] = col.GetPath(i).ToArray();
+                Vector2[] path = col.GetPath(i);
+                PooledResource<Vector2[]> buffer = WallstopArrayPool<Vector2>.Get(
+                    path.Length,
+                    out Vector2[] points
+                );
+                paths.Add(buffer);
+                Array.Copy(path, points, path.Length);
+                originals[i] = points;
             }
 
             Vector2[] outerPath =
@@ -1726,6 +1757,11 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 Vector2[] hole = originals[i];
                 Array.Reverse(hole);
                 col.SetPath(i + 1, hole);
+            }
+
+            foreach (PooledResource<Vector2[]> path in paths)
+            {
+                path.Dispose();
             }
         }
     }
