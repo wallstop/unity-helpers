@@ -74,7 +74,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             HashSet = 3,
         }
 
-        private readonly struct FilterParameters
+        internal readonly struct FilterParameters
         {
             internal readonly bool CheckHierarchy;
             internal readonly bool CheckTag;
@@ -550,6 +550,27 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             bool filterDisabledComponents = true
         )
         {
+            FilterParameters filters = new(attribute);
+            return FilterComponentsInPlace(
+                components,
+                filters,
+                attribute,
+                elementType,
+                isInterface,
+                filterDisabledComponents
+            );
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static int FilterComponentsInPlace(
+            List<Component> components,
+            FilterParameters filters,
+            BaseRelationalComponentAttribute attribute,
+            Type elementType,
+            bool isInterface,
+            bool filterDisabledComponents = true
+        )
+        {
             int componentCount = components.Count;
             if (componentCount == 0)
             {
@@ -561,8 +582,6 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 components.Clear();
                 return 0;
             }
-
-            FilterParameters filters = new(attribute);
 
             if (!filters.RequiresPostProcessing)
             {
@@ -670,6 +689,29 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         )
         {
             FilterParameters filters = new(attribute);
+            return TryResolveSingleComponent(
+                gameObject,
+                filters,
+                attribute,
+                elementType,
+                isInterface,
+                allowInterfaces,
+                scratch,
+                filterDisabledComponents
+            );
+        }
+
+        internal static Component TryResolveSingleComponent(
+            GameObject gameObject,
+            FilterParameters filters,
+            BaseRelationalComponentAttribute attribute,
+            Type elementType,
+            bool isInterface,
+            bool allowInterfaces,
+            List<Component> scratch,
+            bool filterDisabledComponents = true
+        )
+        {
             bool requiresPostProcessing = filters.RequiresPostProcessing;
 
             if (!isInterface)

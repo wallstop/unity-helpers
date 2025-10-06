@@ -60,6 +60,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 }
 
                 bool foundParent;
+                FilterParameters filters = new(field.attribute);
                 Transform root = component.transform;
                 if (field.attribute.OnlyAncestors)
                 {
@@ -89,6 +90,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
                             int filteredCount = FilterComponentsInPlace(
                                 parentComponents,
+                                filters,
                                 field.attribute,
                                 field.elementType,
                                 field.isInterface,
@@ -119,6 +121,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
                             int filteredCount = FilterComponentsInPlace(
                                 parentComponents,
+                                filters,
                                 field.attribute,
                                 field.elementType,
                                 field.isInterface,
@@ -149,6 +152,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
                             int filteredCount = FilterComponentsInPlace(
                                 parentComponents,
+                                filters,
                                 field.attribute,
                                 field.elementType,
                                 field.isInterface,
@@ -267,6 +271,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             bool isInterface
         )
         {
+            FilterParameters filters = new(attribute);
             Transform current = root;
             int depth = 0;
             int maxDepth = attribute.MaxDepth > 0 ? attribute.MaxDepth : int.MaxValue;
@@ -278,6 +283,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             {
                 Component resolved = TryResolveSingleComponent(
                     current.gameObject,
+                    filters,
                     attribute,
                     elementType,
                     isInterface,

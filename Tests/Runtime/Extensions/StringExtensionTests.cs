@@ -2478,11 +2478,25 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 { StringCase.UpperCase, "TESTVALUE" },
                 { StringCase.LowerInvariant, "testvalue" },
                 { StringCase.UpperInvariant, "TESTVALUE" },
+#pragma warning disable CS0618 // Type or member is obsolete
                 { StringCase.None, "testValue" },
+#pragma warning restore CS0618 // Type or member is obsolete
             };
 
-            foreach (StringCase stringCase in Enum.GetValues(typeof(StringCase)))
+            StringCase[] enumValues = Enum.GetValues(typeof(StringCase))
+                .Cast<StringCase>()
+                .ToArray();
+
+            CollectionAssert.AreEquivalent(
+                enumValues,
+                expectations.Keys,
+                "Update ToCaseAllEnumValues test expectations when new StringCase values are added."
+            );
+
+            foreach (StringCase stringCase in enumValues)
             {
+                string actual = input.ToCase(stringCase);
+
                 if (!expectations.TryGetValue(stringCase, out string expected))
                 {
                     Assert.Fail(
@@ -2490,12 +2504,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                     );
                 }
 
-                string actual = input.ToCase(stringCase);
-
                 Assert.That(
                     actual,
                     Is.EqualTo(expected),
-                    $"StringCase.{stringCase} produced \"{actual}\" instead of \"{expected}\"."
+                    $"StringCase.{stringCase} on \"{input}\" produced \"{actual}\" instead of \"{expected}\"."
                 );
             }
         }

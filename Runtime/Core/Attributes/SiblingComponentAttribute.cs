@@ -45,6 +45,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 }
 
                 bool foundSibling;
+                FilterParameters filters = new(metadata.attribute);
 
                 switch (metadata.kind)
                 {
@@ -62,6 +63,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
                         int filteredCount = FilterComponentsInPlace(
                             components,
+                            filters,
                             metadata.attribute,
                             metadata.elementType,
                             metadata.isInterface
@@ -91,6 +93,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
                         int filteredCount = FilterComponentsInPlace(
                             components,
+                            filters,
                             metadata.attribute,
                             metadata.elementType,
                             metadata.isInterface
@@ -120,6 +123,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
                         int filteredCount = FilterComponentsInPlace(
                             components,
+                            filters,
                             metadata.attribute,
                             metadata.elementType,
                             metadata.isInterface
@@ -140,6 +144,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     {
                         Component siblingComponent = TryResolveSingleComponent(
                             component.gameObject,
+                            filters,
                             metadata.attribute,
                             metadata.elementType,
                             metadata.isInterface,

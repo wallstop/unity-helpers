@@ -42,6 +42,9 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             '"',
         }.ToImmutableHashSet();
 
+        private const char CombiningDotAbove = '\u0307';
+        private static readonly string CombiningDotAboveString = CombiningDotAbove.ToString();
+
         public static string Center(this string input, int length)
         {
             if (input == null || length <= input.Length)
@@ -803,6 +806,18 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 + input.Substring(index + oldValue.Length);
         }
 
+        private static string RemoveCombiningDotAboveIfPresent(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                return value;
+            }
+
+            return value.IndexOf(CombiningDotAbove) >= 0
+                ? value.Replace(CombiningDotAboveString, string.Empty)
+                : value;
+        }
+
         public static string ToCase(this string value, StringCase stringCase)
         {
             switch (stringCase)
@@ -818,11 +833,15 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 case StringCase.TitleCase:
                     return value.ToTitleCase();
                 case StringCase.LowerCase:
-                    return value?.ToLower() ?? string.Empty;
+                    return value == null
+                        ? string.Empty
+                        : RemoveCombiningDotAboveIfPresent(value.ToLower());
                 case StringCase.UpperCase:
                     return value?.ToUpper() ?? string.Empty;
                 case StringCase.LowerInvariant:
-                    return value?.ToLowerInvariant() ?? string.Empty;
+                    return value == null
+                        ? string.Empty
+                        : RemoveCombiningDotAboveIfPresent(value.ToLowerInvariant());
                 case StringCase.UpperInvariant:
                     return value?.ToUpperInvariant() ?? string.Empty;
                 case StringCase.None:

@@ -2,6 +2,7 @@
 namespace WallstopStudios.UnityHelpers.Core.Extension
 {
     using System;
+    using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Linq;
     using System.Reflection;
@@ -13,14 +14,14 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
     internal sealed class EnumNameCacheData
     {
         public readonly string[] NamesArray;
-        public readonly Dictionary<ulong, string> NamesDict;
+        public readonly ConcurrentDictionary<ulong, string> NamesDict;
         public readonly bool UseArray;
         public readonly ulong MinValue;
         public readonly int ArrayLength;
 
         public EnumNameCacheData(
             string[] namesArray,
-            Dictionary<ulong, string> namesDict,
+            ConcurrentDictionary<ulong, string> namesDict,
             bool useArray,
             ulong minValue,
             int arrayLength
@@ -77,7 +78,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             bool useArray = hasValidRange && range <= 256 && range > 0;
 
             string[] namesArray;
-            Dictionary<ulong, string> namesDict;
+            ConcurrentDictionary<ulong, string> namesDict;
             ulong minValue;
             int arrayLength;
 
@@ -103,12 +104,18 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                         }
                     }
                 }
-                namesDict = new Dictionary<ulong, string>();
+                namesDict = new ConcurrentDictionary<ulong, string>(
+                    Environment.ProcessorCount,
+                    fields.Length
+                );
             }
             else
             {
                 // Fall back to dictionary
-                namesDict = new Dictionary<ulong, string>(values.Length);
+                namesDict = new ConcurrentDictionary<ulong, string>(
+                    Environment.ProcessorCount,
+                    fields.Length
+                );
 
                 for (int i = 0; i < values.Length; i++)
                 {
@@ -159,7 +166,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 }
             }
 
-            Dictionary<ulong, string> namesDict = cache.NamesDict;
+            ConcurrentDictionary<ulong, string> namesDict = cache.NamesDict;
             if (namesDict != null)
             {
                 CacheLock.EnterReadLock();
@@ -213,14 +220,14 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
     internal sealed class EnumDisplayNameCacheData
     {
         public readonly string[] NamesArray;
-        public readonly Dictionary<ulong, string> NamesDict;
+        public readonly ConcurrentDictionary<ulong, string> NamesDict;
         public readonly bool UseArray;
         public readonly ulong MinValue;
         public readonly int ArrayLength;
 
         public EnumDisplayNameCacheData(
             string[] namesArray,
-            Dictionary<ulong, string> namesDict,
+            ConcurrentDictionary<ulong, string> namesDict,
             bool useArray,
             ulong minValue,
             int arrayLength
@@ -278,7 +285,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             bool useArray = hasValidRange && range <= 256 && range > 0;
 
             string[] namesArray;
-            Dictionary<ulong, string> namesDict;
+            ConcurrentDictionary<ulong, string> namesDict;
             ulong minValue;
             int arrayLength;
 
@@ -308,12 +315,18 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                         }
                     }
                 }
-                namesDict = new Dictionary<ulong, string>();
+                namesDict = new ConcurrentDictionary<ulong, string>(
+                    Environment.ProcessorCount,
+                    fields.Length
+                );
             }
             else
             {
                 // Fall back to dictionary
-                namesDict = new Dictionary<ulong, string>(fields.Length);
+                namesDict = new ConcurrentDictionary<ulong, string>(
+                    Environment.ProcessorCount,
+                    fields.Length
+                );
 
                 for (int i = 0; i < fields.Length; i++)
                 {
@@ -377,7 +390,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 }
             }
 
-            Dictionary<ulong, string> namesDict = cache.NamesDict;
+            ConcurrentDictionary<ulong, string> namesDict = cache.NamesDict;
             if (namesDict != null)
             {
                 CacheLock.EnterReadLock();

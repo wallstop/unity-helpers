@@ -668,13 +668,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void HasFlagNoAllocAllUnsignedTypesDoNotAlloc()
         {
+            _ = UnsignedShortEnum.First.HasFlagNoAlloc(UnsignedShortEnum.First);
+            _ = UnsignedIntEnum.First.HasFlagNoAlloc(UnsignedIntEnum.First);
+            _ = UnsignedLongEnum.First.HasFlagNoAlloc(UnsignedLongEnum.First);
+            _ = SignedByteEnum.Zero.HasFlagNoAlloc(SignedByteEnum.Zero);
             Assert.That(
                 () =>
                 {
-                    UnsignedShortEnum.First.HasFlagNoAlloc(UnsignedShortEnum.First);
-                    UnsignedIntEnum.First.HasFlagNoAlloc(UnsignedIntEnum.First);
-                    UnsignedLongEnum.First.HasFlagNoAlloc(UnsignedLongEnum.First);
-                    SignedByteEnum.Zero.HasFlagNoAlloc(SignedByteEnum.Zero);
+                    _ = UnsignedShortEnum.First.HasFlagNoAlloc(UnsignedShortEnum.First);
+                    _ = UnsignedIntEnum.First.HasFlagNoAlloc(UnsignedIntEnum.First);
+                    _ = UnsignedLongEnum.First.HasFlagNoAlloc(UnsignedLongEnum.First);
+                    _ = SignedByteEnum.Zero.HasFlagNoAlloc(SignedByteEnum.Zero);
                 },
                 Is.Not.AllocatingGCMemory()
             );

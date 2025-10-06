@@ -5,6 +5,13 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
     using Model;
     using UnityEngine;
 
+    /// <summary>
+    /// Extension methods for Direction enum, providing conversions to vectors, direction combining, and directional operations.
+    /// </summary>
+    /// <remarks>
+    /// Thread Safety: All methods are thread-safe as they operate on value types without shared mutable state.
+    /// Performance: Most operations are O(1) constant time. Split operations are O(8) for iterating all directions.
+    /// </remarks>
     public static class DirectionExtensions
     {
         private static readonly Direction[] Directions =

@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using System.Linq;
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Core.Random;
 
     public sealed class IListExtensionTests
@@ -176,6 +177,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         {
             SortAlgorithm[] sortAlgorithms = Enum.GetValues(typeof(SortAlgorithm))
                 .OfType<SortAlgorithm>()
+#pragma warning disable CS0618 // Type or member is obsolete
+                .Except(Enumerables.Of(SortAlgorithm.None))
+#pragma warning restore CS0618 // Type or member is obsolete
                 .ToArray();
             Assert.That(sortAlgorithms.Length, Is.GreaterThan(0));
 

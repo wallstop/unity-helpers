@@ -61,6 +61,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 }
 
                 bool foundChild;
+                FilterParameters filters = new(metadata.attribute);
 
                 using PooledResource<List<Transform>> childBufferResource =
                     Buffers<Transform>.List.Get();
@@ -78,6 +79,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
                         int filteredCount = FilterComponentsInPlace(
                             cache,
+                            filters,
                             metadata.attribute,
                             metadata.elementType,
                             metadata.isInterface
@@ -103,6 +105,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
                         int filteredCount = FilterComponentsInPlace(
                             cache,
+                            filters,
                             metadata.attribute,
                             metadata.elementType,
                             metadata.isInterface
@@ -128,6 +131,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
                         int filteredCount = FilterComponentsInPlace(
                             cache,
+                            filters,
                             metadata.attribute,
                             metadata.elementType,
                             metadata.isInterface
@@ -162,6 +166,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                         {
                             Component resolved = TryResolveSingleComponent(
                                 child.gameObject,
+                                filters,
                                 metadata.attribute,
                                 metadata.elementType,
                                 metadata.isInterface,
