@@ -6,10 +6,29 @@ namespace WallstopStudios.UnityHelpers.Tags
     using Core.Helper;
     using UnityEngine;
 
+    /// <summary>
+    /// Container component for CosmeticEffectComponents.
+    /// Manages a collection of cosmetic components and determines if the GameObject requires instancing.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// CosmeticEffectData serves as a prefab-like container for cosmetic effects. It:
+    /// - Groups multiple CosmeticEffectComponent instances
+    /// - Determines if instancing is needed based on child components
+    /// - Provides equality comparison based on component types
+    /// </para>
+    /// <para>
+    /// Attached to a GameObject with one or more CosmeticEffectComponent children.
+    /// Referenced by AttributeEffect to define visual/audio feedback.
+    /// </para>
+    /// </remarks>
     [DisallowMultipleComponent]
     public sealed class CosmeticEffectData : MonoBehaviour, IEquatable<CosmeticEffectData>
     {
-        // Is an instanced version of this gameObject created when applied.
+        /// <summary>
+        /// Indicates whether this cosmetic effect requires a new instance for each application.
+        /// Returns true if any child CosmeticEffectComponent requires instancing.
+        /// </summary>
         public bool RequiresInstancing =>
             _cosmetics.Value.Any(cosmeticEffect => cosmeticEffect.RequiresInstance);
 

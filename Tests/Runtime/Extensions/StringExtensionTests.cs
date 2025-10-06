@@ -1,6 +1,7 @@
 namespace WallstopStudios.UnityHelpers.Tests.Extensions
 {
     using System;
+    using System.Collections.Generic;
     using System.Linq;
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Extension;
@@ -2465,16 +2466,38 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         public void ToCaseAllEnumValues()
         {
             string input = "testValue";
-            Assert.AreEqual("TestValue", input.ToCase(StringCase.PascalCase));
-            Assert.AreEqual("testValue", input.ToCase(StringCase.CamelCase));
-            Assert.AreEqual("test_value", input.ToCase(StringCase.SnakeCase));
-            Assert.AreEqual("test-value", input.ToCase(StringCase.KebabCase));
-            Assert.AreEqual("TestValue", input.ToCase(StringCase.TitleCase));
-            Assert.AreEqual("testvalue", input.ToCase(StringCase.LowerCase));
-            Assert.AreEqual("TESTVALUE", input.ToCase(StringCase.UpperCase));
-            Assert.AreEqual("testvalue", input.ToCase(StringCase.LowerInvariant));
-            Assert.AreEqual("TESTVALUE", input.ToCase(StringCase.UpperInvariant));
-            Assert.AreEqual("testValue", input.ToCase(StringCase.None));
+
+            Dictionary<StringCase, string> expectations = new Dictionary<StringCase, string>
+            {
+                { StringCase.PascalCase, "TestValue" },
+                { StringCase.CamelCase, "testValue" },
+                { StringCase.SnakeCase, "test_value" },
+                { StringCase.KebabCase, "test-value" },
+                { StringCase.TitleCase, "TestValue" },
+                { StringCase.LowerCase, "testvalue" },
+                { StringCase.UpperCase, "TESTVALUE" },
+                { StringCase.LowerInvariant, "testvalue" },
+                { StringCase.UpperInvariant, "TESTVALUE" },
+                { StringCase.None, "testValue" },
+            };
+
+            foreach (StringCase stringCase in Enum.GetValues(typeof(StringCase)))
+            {
+                if (!expectations.TryGetValue(stringCase, out string expected))
+                {
+                    Assert.Fail(
+                        $"Missing expectation for StringCase.{stringCase}. Update ToCaseAllEnumValues test."
+                    );
+                }
+
+                string actual = input.ToCase(stringCase);
+
+                Assert.That(
+                    actual,
+                    Is.EqualTo(expected),
+                    $"StringCase.{stringCase} produced \"{actual}\" instead of \"{expected}\"."
+                );
+            }
         }
 
         [Test]

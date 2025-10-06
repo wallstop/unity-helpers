@@ -74,6 +74,26 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             HashSet = 3,
         }
 
+        private readonly struct FilterParameters
+        {
+            internal readonly bool CheckHierarchy;
+            internal readonly bool CheckTag;
+            internal readonly bool CheckName;
+            internal readonly string Tag;
+            internal readonly string NameSubstring;
+
+            internal FilterParameters(BaseRelationalComponentAttribute attribute)
+            {
+                CheckHierarchy = !attribute.IncludeInactive;
+                Tag = attribute.TagFilter;
+                NameSubstring = attribute.NameFilter;
+                CheckTag = Tag != null;
+                CheckName = NameSubstring != null;
+            }
+
+            internal bool RequiresPostProcessing => CheckHierarchy || CheckTag || CheckName;
+        }
+
         // Map from cache enum to processor enum
 
         private static FieldKind MapFieldKind(AttributeMetadataCache.FieldKind cacheKind)
@@ -470,7 +490,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool PassesStateAndFilters(
             Component candidate,
-            BaseRelationalComponentAttribute attribute,
+            FilterParameters filters,
             bool filterDisabledComponents = true
         )
         {
@@ -479,18 +499,14 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 return false;
             }
 
-            bool mustCheckHierarchy = !attribute.IncludeInactive;
-            bool mustCheckTag = attribute.TagFilter != null;
-            bool mustCheckName = attribute.NameFilter != null;
-
-            if (!mustCheckHierarchy && !mustCheckTag && !mustCheckName)
+            if (!filters.RequiresPostProcessing)
             {
                 return true;
             }
 
             GameObject candidateGameObject = null;
 
-            if (mustCheckHierarchy)
+            if (filters.CheckHierarchy)
             {
                 candidateGameObject = candidate.gameObject;
 
@@ -505,19 +521,19 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 }
             }
 
-            if (!mustCheckTag && !mustCheckName)
+            if (!filters.CheckTag && !filters.CheckName)
             {
                 return true;
             }
 
             candidateGameObject ??= candidate.gameObject;
 
-            if (mustCheckTag && !candidateGameObject.CompareTag(attribute.TagFilter))
+            if (filters.CheckTag && !candidateGameObject.CompareTag(filters.Tag))
             {
                 return false;
             }
 
-            if (mustCheckName && !candidateGameObject.name.Contains(attribute.NameFilter))
+            if (filters.CheckName && !candidateGameObject.name.Contains(filters.NameSubstring))
             {
                 return false;
             }
@@ -546,13 +562,11 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 return 0;
             }
 
-            int maxCount = attribute.MaxCount > 0 ? attribute.MaxCount : int.MaxValue;
-            bool mustCheckHierarchy = !attribute.IncludeInactive;
-            bool mustCheckTag = attribute.TagFilter != null;
-            bool mustCheckName = attribute.NameFilter != null;
+            FilterParameters filters = new(attribute);
 
-            if (!mustCheckHierarchy && !mustCheckTag && !mustCheckName)
+            if (!filters.RequiresPostProcessing)
             {
+                int maxCount = attribute.MaxCount > 0 ? attribute.MaxCount : int.MaxValue;
                 if (componentCount > maxCount)
                 {
                     components.RemoveRange(maxCount, componentCount - maxCount);
@@ -563,6 +577,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             }
 
             int writeIndex = 0;
+            int maxAssignments = attribute.MaxCount > 0 ? attribute.MaxCount : int.MaxValue;
 
             if (isInterface)
             {
@@ -575,11 +590,11 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                         continue;
                     }
 
-                    if (PassesStateAndFilters(candidate, attribute, filterDisabledComponents))
+                    if (PassesStateAndFilters(candidate, filters, filterDisabledComponents))
                     {
                         components[writeIndex++] = candidate;
 
-                        if (writeIndex >= maxCount)
+                        if (writeIndex >= maxAssignments)
                         {
                             break;
                         }
@@ -592,11 +607,11 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 {
                     Component candidate = components[readIndex];
 
-                    if (PassesStateAndFilters(candidate, attribute, filterDisabledComponents))
+                    if (PassesStateAndFilters(candidate, filters, filterDisabledComponents))
                     {
                         components[writeIndex++] = candidate;
 
-                        if (writeIndex >= maxCount)
+                        if (writeIndex >= maxAssignments)
                         {
                             break;
                         }
@@ -615,7 +630,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static Component FirstMatchingComponent(
             List<Component> components,
-            BaseRelationalComponentAttribute attribute,
+            FilterParameters filters,
             Type elementType,
             bool isInterface,
             bool filterDisabledComponents
@@ -635,7 +650,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     continue;
                 }
 
-                if (PassesStateAndFilters(candidate, attribute, filterDisabledComponents))
+                if (PassesStateAndFilters(candidate, filters, filterDisabledComponents))
                 {
                     return candidate;
                 }
@@ -654,10 +669,8 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             bool filterDisabledComponents = true
         )
         {
-            bool mustCheckHierarchy = !attribute.IncludeInactive;
-            bool mustCheckTag = attribute.TagFilter != null;
-            bool mustCheckName = attribute.NameFilter != null;
-            bool requiresPostProcessing = mustCheckHierarchy || mustCheckTag || mustCheckName;
+            FilterParameters filters = new(attribute);
+            bool requiresPostProcessing = filters.RequiresPostProcessing;
 
             if (!isInterface)
             {
@@ -670,7 +683,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
                 if (
                     gameObject.TryGetComponent(elementType, out Component candidate)
-                    && PassesStateAndFilters(candidate, attribute, filterDisabledComponents)
+                    && PassesStateAndFilters(candidate, filters, filterDisabledComponents)
                 )
                 {
                     return candidate;
@@ -682,7 +695,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     gameObject.GetComponents(elementType, scratch);
                     return FirstMatchingComponent(
                         scratch,
-                        attribute,
+                        filters,
                         elementType,
                         isInterface: false,
                         filterDisabledComponents
@@ -695,7 +708,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 gameObject.GetComponents(elementType, components);
                 return FirstMatchingComponent(
                     components,
-                    attribute,
+                    filters,
                     elementType,
                     isInterface: false,
                     filterDisabledComponents
@@ -711,11 +724,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 gameObject.TryGetComponent(elementType, out Component interfaceCandidate)
                 && (
                     !requiresPostProcessing
-                    || PassesStateAndFilters(
-                        interfaceCandidate,
-                        attribute,
-                        filterDisabledComponents
-                    )
+                    || PassesStateAndFilters(interfaceCandidate, filters, filterDisabledComponents)
                 )
             )
             {
@@ -734,7 +743,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
                 return FirstMatchingComponent(
                     scratch,
-                    attribute,
+                    filters,
                     elementType,
                     isInterface: true,
                     filterDisabledComponents
@@ -756,7 +765,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
                 return FirstMatchingComponent(
                     components,
-                    attribute,
+                    filters,
                     elementType,
                     isInterface: true,
                     filterDisabledComponents

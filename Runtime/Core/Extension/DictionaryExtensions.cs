@@ -602,26 +602,5 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
             return true;
         }
-
-        /// <summary>
-        /// Deconstructs a KeyValuePair into separate key and value variables.
-        /// </summary>
-        /// <typeparam name="K">The type of the key.</typeparam>
-        /// <typeparam name="V">The type of the value.</typeparam>
-        /// <param name="kvp">The KeyValuePair to deconstruct.</param>
-        /// <param name="key">The output variable for the key.</param>
-        /// <param name="value">The output variable for the value.</param>
-        /// <remarks>
-        /// Enables pattern matching and tuple syntax for KeyValuePairs.
-        /// Example: var (key, value) = dictionary.First();
-        /// Null handling: No special handling; will work with null keys or values if V/K are nullable.
-        /// Thread-safe: Yes.
-        /// Performance: O(1), no allocations.
-        /// </remarks>
-        public static void Deconstruct<K, V>(this KeyValuePair<K, V> kvp, out K key, out V value)
-        {
-            key = kvp.Key;
-            value = kvp.Value;
-        }
     }
 }

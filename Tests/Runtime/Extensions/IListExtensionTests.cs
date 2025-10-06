@@ -773,22 +773,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             {
                 List<int> list = Enumerable.Range(0, 50).ToList();
 
-                // Shuffle
                 list.Shuffle(new SystemRandom(i));
 
-                // Remove some elements
                 list.RemoveAll(x => x % 7 == 0);
 
-                // Rotate
                 list.RotateLeft(3);
 
-                // Sort
                 list.Sort(new IntComparer());
 
-                // Verify sorted
                 Assert.That(list.IsSorted(), Is.True);
 
-                // Verify no duplicates and all elements in valid range
                 HashSet<int> seen = new();
                 foreach (int val in list)
                 {
@@ -796,6 +790,162 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                     Assert.That(val % 7, Is.Not.EqualTo(0), "Multiples of 7 should be removed");
                 }
             }
+        }
+
+        [Test]
+        public void SortByNameEmptyList()
+        {
+            List<UnityEngine.GameObject> list = new();
+            list.SortByName();
+            Assert.That(list, Is.Empty);
+        }
+
+        [Test]
+        public void SortByNameSingleElement()
+        {
+            UnityEngine.GameObject obj = new UnityEngine.GameObject("SingleObject");
+            try
+            {
+                List<UnityEngine.GameObject> list = new() { obj };
+                list.SortByName();
+                Assert.That(list, Has.Count.EqualTo(1));
+                Assert.That(list[0].name, Is.EqualTo("SingleObject"));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(obj);
+            }
+        }
+
+        [Test]
+        public void SortByNameArray()
+        {
+            UnityEngine.GameObject obj1 = new UnityEngine.GameObject("Zebra");
+            UnityEngine.GameObject obj2 = new UnityEngine.GameObject("Alpha");
+            UnityEngine.GameObject obj3 = new UnityEngine.GameObject("Bravo");
+            try
+            {
+                UnityEngine.GameObject[] array = { obj1, obj2, obj3 };
+                array.SortByName();
+                Assert.That(array[0].name, Is.EqualTo("Alpha"));
+                Assert.That(array[1].name, Is.EqualTo("Bravo"));
+                Assert.That(array[2].name, Is.EqualTo("Zebra"));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(obj1);
+                UnityEngine.Object.DestroyImmediate(obj2);
+                UnityEngine.Object.DestroyImmediate(obj3);
+            }
+        }
+
+        [Test]
+        public void SortByNameList()
+        {
+            UnityEngine.GameObject obj1 = new UnityEngine.GameObject("Zebra");
+            UnityEngine.GameObject obj2 = new UnityEngine.GameObject("Alpha");
+            UnityEngine.GameObject obj3 = new UnityEngine.GameObject("Bravo");
+            UnityEngine.GameObject obj4 = new UnityEngine.GameObject("Charlie");
+            try
+            {
+                List<UnityEngine.GameObject> list = new() { obj1, obj2, obj3, obj4 };
+                list.SortByName();
+                Assert.That(list[0].name, Is.EqualTo("Alpha"));
+                Assert.That(list[1].name, Is.EqualTo("Bravo"));
+                Assert.That(list[2].name, Is.EqualTo("Charlie"));
+                Assert.That(list[3].name, Is.EqualTo("Zebra"));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(obj1);
+                UnityEngine.Object.DestroyImmediate(obj2);
+                UnityEngine.Object.DestroyImmediate(obj3);
+                UnityEngine.Object.DestroyImmediate(obj4);
+            }
+        }
+
+        [Test]
+        public void SortByNameCustomIList()
+        {
+            UnityEngine.GameObject obj1 = new UnityEngine.GameObject("Zebra");
+            UnityEngine.GameObject obj2 = new UnityEngine.GameObject("Alpha");
+            UnityEngine.GameObject obj3 = new UnityEngine.GameObject("Bravo");
+            try
+            {
+                IList<UnityEngine.GameObject> list = new CustomList<UnityEngine.GameObject>
+                {
+                    obj1,
+                    obj2,
+                    obj3,
+                };
+                list.SortByName();
+                Assert.That(list[0].name, Is.EqualTo("Alpha"));
+                Assert.That(list[1].name, Is.EqualTo("Bravo"));
+                Assert.That(list[2].name, Is.EqualTo("Zebra"));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(obj1);
+                UnityEngine.Object.DestroyImmediate(obj2);
+                UnityEngine.Object.DestroyImmediate(obj3);
+            }
+        }
+
+        [Test]
+        public void SortByNameDuplicateNames()
+        {
+            UnityEngine.GameObject obj1 = new UnityEngine.GameObject("Same");
+            UnityEngine.GameObject obj2 = new UnityEngine.GameObject("Same");
+            UnityEngine.GameObject obj3 = new UnityEngine.GameObject("Alpha");
+            try
+            {
+                List<UnityEngine.GameObject> list = new() { obj1, obj2, obj3 };
+                list.SortByName();
+                Assert.That(list[0].name, Is.EqualTo("Alpha"));
+                Assert.That(list[1].name, Is.EqualTo("Same"));
+                Assert.That(list[2].name, Is.EqualTo("Same"));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(obj1);
+                UnityEngine.Object.DestroyImmediate(obj2);
+                UnityEngine.Object.DestroyImmediate(obj3);
+            }
+        }
+
+        private sealed class CustomList<T> : IList<T>
+        {
+            private readonly List<T> _inner = new();
+
+            public T this[int index]
+            {
+                get => _inner[index];
+                set => _inner[index] = value;
+            }
+
+            public int Count => _inner.Count;
+            public bool IsReadOnly => false;
+
+            public void Add(T item) => _inner.Add(item);
+
+            public void Clear() => _inner.Clear();
+
+            public bool Contains(T item) => _inner.Contains(item);
+
+            public void CopyTo(T[] array, int arrayIndex) => _inner.CopyTo(array, arrayIndex);
+
+            public IEnumerator<T> GetEnumerator() => _inner.GetEnumerator();
+
+            public int IndexOf(T item) => _inner.IndexOf(item);
+
+            public void Insert(int index, T item) => _inner.Insert(index, item);
+
+            public bool Remove(T item) => _inner.Remove(item);
+
+            public void RemoveAt(int index) => _inner.RemoveAt(index);
+
+            System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() =>
+                _inner.GetEnumerator();
         }
     }
 }

@@ -1,5 +1,6 @@
 namespace WallstopStudios.UnityHelpers.Tests.Extensions
 {
+    using System;
     using System.Collections.Generic;
     using System.Linq;
     using NUnit.Framework;
@@ -433,6 +434,291 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             new KeyValuePair<string, int>("one", 1).Deconstruct(out string key, out int value);
             Assert.AreEqual("one", key);
             Assert.AreEqual(1, value);
+        }
+
+        [Test]
+        public void TryRemoveFromDictionary()
+        {
+            Dictionary<string, int> dictionary = new()
+            {
+                ["one"] = 1,
+                ["two"] = 2,
+                ["three"] = 3,
+            };
+
+            bool removed = dictionary.TryRemove("two", out int value);
+            Assert.IsTrue(removed);
+            Assert.AreEqual(2, value);
+            Assert.AreEqual(2, dictionary.Count);
+            Assert.IsFalse(dictionary.ContainsKey("two"));
+
+            removed = dictionary.TryRemove("nonexistent", out value);
+            Assert.IsFalse(removed);
+            Assert.AreEqual(default(int), value);
+            Assert.AreEqual(2, dictionary.Count);
+        }
+
+        [Test]
+        public void TryRemoveFromConcurrentDictionary()
+        {
+            System.Collections.Concurrent.ConcurrentDictionary<string, int> dictionary = new();
+            dictionary["one"] = 1;
+            dictionary["two"] = 2;
+            dictionary["three"] = 3;
+
+            bool removed = dictionary.TryRemove("two", out int value);
+            Assert.IsTrue(removed);
+            Assert.AreEqual(2, value);
+            Assert.AreEqual(2, dictionary.Count);
+            Assert.IsFalse(dictionary.ContainsKey("two"));
+
+            removed = dictionary.TryRemove("nonexistent", out value);
+            Assert.IsFalse(removed);
+            Assert.AreEqual(default(int), value);
+            Assert.AreEqual(2, dictionary.Count);
+        }
+
+        [Test]
+        public void TryRemoveEmptyDictionary()
+        {
+            Dictionary<string, int> dictionary = new();
+            bool removed = dictionary.TryRemove("key", out int value);
+            Assert.IsFalse(removed);
+            Assert.AreEqual(default(int), value);
+        }
+
+        [Test]
+        public void ToDictionaryFromReadOnlyDictionaryWithComparer()
+        {
+            IReadOnlyDictionary<string, int> initial = new Dictionary<string, int>()
+            {
+                ["Test"] = 1,
+                ["test2"] = 2,
+            };
+
+            Dictionary<string, int> copy = initial.ToDictionary(StringComparer.OrdinalIgnoreCase);
+            Assert.AreEqual(2, copy.Count);
+            Assert.AreEqual(1, copy["test"]);
+            Assert.AreEqual(2, copy["TEST2"]);
+            Assert.IsTrue(copy.ContainsKey("TEST"));
+            Assert.IsTrue(copy.ContainsKey("Test2"));
+        }
+
+        [Test]
+        public void ToDictionaryFromEnumerableKeyValuePairWithComparer()
+        {
+            IEnumerable<KeyValuePair<string, int>> initial = new Dictionary<string, int>()
+            {
+                ["Test"] = 1,
+                ["test2"] = 2,
+            };
+
+            Dictionary<string, int> copy = initial.ToDictionary(StringComparer.OrdinalIgnoreCase);
+            Assert.AreEqual(2, copy.Count);
+            Assert.AreEqual(1, copy["test"]);
+            Assert.AreEqual(2, copy["TEST2"]);
+            Assert.IsTrue(copy.ContainsKey("TEST"));
+            Assert.IsTrue(copy.ContainsKey("Test2"));
+        }
+
+        [Test]
+        public void ToDictionaryFromEnumerableValueTupleWithComparer()
+        {
+            IEnumerable<(string, int)> initial = new Dictionary<string, int>()
+            {
+                ["Test"] = 1,
+                ["test2"] = 2,
+            }.Select(kvp => (kvp.Key, kvp.Value));
+
+            Dictionary<string, int> copy = initial.ToDictionary(StringComparer.OrdinalIgnoreCase);
+            Assert.AreEqual(2, copy.Count);
+            Assert.AreEqual(1, copy["test"]);
+            Assert.AreEqual(2, copy["TEST2"]);
+            Assert.IsTrue(copy.ContainsKey("TEST"));
+            Assert.IsTrue(copy.ContainsKey("Test2"));
+        }
+
+        [Test]
+        public void ToDictionaryComparerPreservesEqualityBehavior()
+        {
+            IReadOnlyDictionary<string, int> initial = new Dictionary<string, int>()
+            {
+                ["key1"] = 1,
+                ["key2"] = 2,
+            };
+
+            Dictionary<string, int> withDefault = initial.ToDictionary();
+            Assert.IsFalse(withDefault.ContainsKey("KEY1"));
+
+            Dictionary<string, int> withIgnoreCase = initial.ToDictionary(
+                StringComparer.OrdinalIgnoreCase
+            );
+            Assert.IsTrue(withIgnoreCase.ContainsKey("KEY1"));
+            Assert.IsTrue(withIgnoreCase.ContainsKey("KEY2"));
+        }
+
+        [Test]
+        public void MergeEmptyDictionaries()
+        {
+            IReadOnlyDictionary<string, int> empty1 = new Dictionary<string, int>();
+            IReadOnlyDictionary<string, int> empty2 = new Dictionary<string, int>();
+
+            Dictionary<string, int> merged = empty1.Merge(empty2);
+            Assert.AreEqual(0, merged.Count);
+        }
+
+        [Test]
+        public void MergeWithCustomCreator()
+        {
+            IReadOnlyDictionary<string, int> left = new Dictionary<string, int>() { ["a"] = 1 };
+            IReadOnlyDictionary<string, int> right = new Dictionary<string, int>() { ["b"] = 2 };
+
+            Dictionary<string, int> merged = left.Merge(
+                right,
+                () => new Dictionary<string, int>(10)
+            );
+            Assert.AreEqual(2, merged.Count);
+            Assert.AreEqual(1, merged["a"]);
+            Assert.AreEqual(2, merged["b"]);
+        }
+
+        [Test]
+        public void DifferenceEmptyDictionaries()
+        {
+            IReadOnlyDictionary<string, int> empty1 = new Dictionary<string, int>();
+            IReadOnlyDictionary<string, int> empty2 = new Dictionary<string, int>();
+
+            Dictionary<string, int> diff = empty1.Difference(empty2);
+            Assert.AreEqual(0, diff.Count);
+        }
+
+        [Test]
+        public void DifferenceWithCustomCreator()
+        {
+            IReadOnlyDictionary<string, int> left = new Dictionary<string, int>() { ["a"] = 1 };
+            IReadOnlyDictionary<string, int> right = new Dictionary<string, int>()
+            {
+                ["a"] = 2,
+                ["b"] = 3,
+            };
+
+            Dictionary<string, int> diff = left.Difference(
+                right,
+                () => new Dictionary<string, int>(10)
+            );
+            Assert.AreEqual(2, diff.Count);
+            Assert.AreEqual(2, diff["a"]);
+            Assert.AreEqual(3, diff["b"]);
+        }
+
+        [Test]
+        public void ReverseEmptyDictionary()
+        {
+            IReadOnlyDictionary<string, int> empty = new Dictionary<string, int>();
+            Dictionary<int, string> reversed = empty.Reverse();
+            Assert.AreEqual(0, reversed.Count);
+        }
+
+        [Test]
+        public void ReverseWithCustomCreator()
+        {
+            IReadOnlyDictionary<string, int> initial = new Dictionary<string, int>()
+            {
+                ["one"] = 1,
+                ["two"] = 2,
+            };
+
+            Dictionary<int, string> reversed = initial.Reverse(() =>
+                new Dictionary<int, string>(10)
+            );
+            Assert.AreEqual(2, reversed.Count);
+            Assert.AreEqual("one", reversed[1]);
+            Assert.AreEqual("two", reversed[2]);
+        }
+
+        [Test]
+        public void ContentEqualsEmptyDictionaries()
+        {
+            IReadOnlyDictionary<string, int> empty1 = new Dictionary<string, int>();
+            IReadOnlyDictionary<string, int> empty2 = new Dictionary<string, int>();
+
+            Assert.IsTrue(empty1.ContentEquals(empty2));
+        }
+
+        [Test]
+        public void ContentEqualsNullDictionaries()
+        {
+            IReadOnlyDictionary<string, int> dict = new Dictionary<string, int>() { ["a"] = 1 };
+
+            Assert.IsFalse(dict.ContentEquals(null));
+            Assert.IsFalse(((IReadOnlyDictionary<string, int>)null).ContentEquals(dict));
+            Assert.IsTrue(((IReadOnlyDictionary<string, int>)null).ContentEquals(null));
+        }
+
+        [Test]
+        public void GetOrAddConcurrentDictionary()
+        {
+            System.Collections.Concurrent.ConcurrentDictionary<string, int> dict = new();
+
+            int value = dict.GetOrAdd("test", () => 100);
+            Assert.AreEqual(100, value);
+            Assert.AreEqual(100, dict["test"]);
+
+            int existing = dict.GetOrAdd("test", () => 200);
+            Assert.AreEqual(100, existing);
+        }
+
+        [Test]
+        public void GetOrAddKeyConcurrentDictionary()
+        {
+            System.Collections.Concurrent.ConcurrentDictionary<string, int> dict = new();
+
+            int value = dict.GetOrAdd("test", key => key.Length);
+            Assert.AreEqual(4, value);
+            Assert.AreEqual(4, dict["test"]);
+
+            int existing = dict.GetOrAdd("test", key => key.Length * 2);
+            Assert.AreEqual(4, existing);
+        }
+
+        [Test]
+        public void GetOrAddNewConcurrentDictionary()
+        {
+            System.Collections.Concurrent.ConcurrentDictionary<string, List<int>> dict = new();
+
+            List<int> value = dict.GetOrAdd("test");
+            Assert.IsNotNull(value);
+            Assert.AreEqual(0, value.Count);
+            value.Add(42);
+
+            List<int> existing = dict.GetOrAdd("test");
+            Assert.AreSame(value, existing);
+            Assert.AreEqual(1, existing.Count);
+            Assert.AreEqual(42, existing[0]);
+        }
+
+        [Test]
+        public void AddOrUpdateConcurrentDictionary()
+        {
+            System.Collections.Concurrent.ConcurrentDictionary<string, int> dict = new();
+
+            int value = dict.AddOrUpdate("test", key => 100, (key, existing) => existing + 1);
+            Assert.AreEqual(100, value);
+
+            int updated = dict.AddOrUpdate("test", key => 200, (key, existing) => existing + 1);
+            Assert.AreEqual(101, updated);
+        }
+
+        [Test]
+        public void TryAddConcurrentDictionary()
+        {
+            System.Collections.Concurrent.ConcurrentDictionary<string, int> dict = new();
+
+            int value = dict.TryAdd("test", key => 100);
+            Assert.AreEqual(100, value);
+
+            int existing = dict.TryAdd("test", key => 200);
+            Assert.AreEqual(100, existing);
         }
     }
 }

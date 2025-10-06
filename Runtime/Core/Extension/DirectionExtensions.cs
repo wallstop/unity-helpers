@@ -19,6 +19,19 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             Direction.NorthWest,
         };
 
+        /// <summary>
+        /// Returns the opposite direction of the given direction.
+        /// </summary>
+        /// <param name="direction">The direction to get the opposite of.</param>
+        /// <returns>The opposite direction (e.g., North returns South, NorthEast returns SouthWest).</returns>
+        /// <remarks>
+        /// <para>Null handling: Direction is a value type, cannot be null.</para>
+        /// <para>Thread safety: Thread-safe. No Unity main thread requirement.</para>
+        /// <para>Performance: O(1) - simple switch statement.</para>
+        /// <para>Allocations: No allocations.</para>
+        /// <para>Edge cases: Direction.None returns Direction.None. Unknown direction values throw ArgumentException.</para>
+        /// </remarks>
+        /// <exception cref="ArgumentException">Thrown when direction is not a recognized Direction value.</exception>
         public static Direction Opposite(this Direction direction)
         {
             switch (direction)
@@ -46,6 +59,19 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
         }
 
+        /// <summary>
+        /// Converts a Direction to its corresponding Vector2Int representation.
+        /// </summary>
+        /// <param name="direction">The direction to convert.</param>
+        /// <returns>A Vector2Int representing the direction (e.g., North = (0,1), East = (1,0)).</returns>
+        /// <remarks>
+        /// <para>Null handling: Direction is a value type, cannot be null.</para>
+        /// <para>Thread safety: Thread-safe. No Unity main thread requirement.</para>
+        /// <para>Performance: O(1) - simple switch statement.</para>
+        /// <para>Allocations: Allocates a Vector2Int struct (stack allocation).</para>
+        /// <para>Edge cases: Direction.None returns Vector2Int.zero. Diagonal directions return unit diagonals (not normalized). Unknown direction values throw ArgumentException.</para>
+        /// </remarks>
+        /// <exception cref="ArgumentException">Thrown when direction is not a recognized Direction value.</exception>
         public static Vector2Int AsVector2Int(this Direction direction)
         {
             switch (direction)
@@ -73,16 +99,53 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
         }
 
+        /// <summary>
+        /// Converts a Direction to its corresponding Vector2 representation.
+        /// </summary>
+        /// <param name="direction">The direction to convert.</param>
+        /// <returns>A Vector2 representing the direction via implicit conversion from Vector2Int.</returns>
+        /// <remarks>
+        /// <para>Null handling: Direction is a value type, cannot be null.</para>
+        /// <para>Thread safety: Thread-safe. No Unity main thread requirement.</para>
+        /// <para>Performance: O(1) - delegates to AsVector2Int.</para>
+        /// <para>Allocations: Allocates a Vector2 struct (stack allocation).</para>
+        /// <para>Edge cases: Same behavior as AsVector2Int. Diagonal directions have magnitude ~1.41 (not normalized).</para>
+        /// </remarks>
+        /// <exception cref="ArgumentException">Thrown when direction is not a recognized Direction value.</exception>
         public static Vector2 AsVector2(this Direction direction)
         {
             return direction.AsVector2Int();
         }
 
+        /// <summary>
+        /// Converts a Vector3 to its closest Direction by treating it as a Vector2 (ignoring z-component).
+        /// </summary>
+        /// <param name="vector3">The vector to convert to a direction.</param>
+        /// <returns>The closest cardinal or diagonal Direction based on the vector's angle.</returns>
+        /// <remarks>
+        /// <para>Null handling: Vector3 is a value type, cannot be null.</para>
+        /// <para>Thread safety: Thread-safe. No Unity main thread requirement.</para>
+        /// <para>Performance: O(1) - delegates to Vector2 overload which performs angle calculations.</para>
+        /// <para>Allocations: Minimal stack allocations for Vector2 cast.</para>
+        /// <para>Edge cases: Z-component is ignored. Zero vector returns Direction.None.</para>
+        /// </remarks>
         public static Direction AsDirection(this Vector3 vector3)
         {
             return AsDirection((Vector2)vector3);
         }
 
+        /// <summary>
+        /// Splits a combined Direction flags value into individual Direction values.
+        /// </summary>
+        /// <param name="direction">The direction flags to split.</param>
+        /// <returns>An enumerable of individual Direction values that are set in the flags.</returns>
+        /// <remarks>
+        /// <para>Null handling: Direction is a value type, cannot be null.</para>
+        /// <para>Thread safety: Thread-safe. No Unity main thread requirement.</para>
+        /// <para>Performance: O(8) - iterates through all 8 possible directions.</para>
+        /// <para>Allocations: Allocates iterator state machine for yield return.</para>
+        /// <para>Edge cases: If no flags are set, yields Direction.None. Multiple flags yield multiple directions.</para>
+        /// </remarks>
         public static IEnumerable<Direction> Split(this Direction direction)
         {
             bool foundAny = false;
@@ -101,6 +164,19 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
         }
 
+        /// <summary>
+        /// Splits a combined Direction flags value into individual Direction values, storing them in a provided buffer.
+        /// </summary>
+        /// <param name="direction">The direction flags to split.</param>
+        /// <param name="buffer">The list to clear and populate with individual directions.</param>
+        /// <returns>The same buffer list passed in, now populated with individual Direction values.</returns>
+        /// <remarks>
+        /// <para>Null handling: Throws NullReferenceException if buffer is null.</para>
+        /// <para>Thread safety: Not thread-safe. No Unity main thread requirement.</para>
+        /// <para>Performance: O(8) - iterates through all 8 possible directions.</para>
+        /// <para>Allocations: No allocations if buffer has sufficient capacity. May allocate if buffer needs to grow.</para>
+        /// <para>Edge cases: If no flags are set, buffer contains only Direction.None. Buffer is cleared before populating.</para>
+        /// </remarks>
         public static List<Direction> Split(this Direction direction, List<Direction> buffer)
         {
             buffer.Clear();
@@ -120,6 +196,19 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return buffer;
         }
 
+        /// <summary>
+        /// Combines multiple Direction values into a single Direction flags value using bitwise OR.
+        /// </summary>
+        /// <param name="directions">The enumerable of directions to combine.</param>
+        /// <returns>A Direction value with all input direction flags set.</returns>
+        /// <remarks>
+        /// <para>Null handling: Throws ArgumentNullException if directions is null.</para>
+        /// <para>Thread safety: Thread-safe for read-only collections. Not thread-safe if collection is modified during enumeration. No Unity main thread requirement.</para>
+        /// <para>Performance: O(n) where n is the number of directions. Optimized for IReadOnlyList and HashSet.</para>
+        /// <para>Allocations: No allocations.</para>
+        /// <para>Edge cases: Empty enumerable returns Direction.None. Duplicate directions have no additional effect due to bitwise OR.</para>
+        /// </remarks>
+        /// <exception cref="ArgumentNullException">Thrown when directions is null.</exception>
         public static Direction Combine(this IEnumerable<Direction> directions)
         {
             if (directions == null)
@@ -162,6 +251,19 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return combined;
         }
 
+        /// <summary>
+        /// Converts a Vector2 to its closest Direction based on angle.
+        /// </summary>
+        /// <param name="vector">The vector to convert to a direction.</param>
+        /// <param name="preferAngles">If true, uses wider angle ranges (60 degrees) favoring diagonal directions. If false, uses equal ranges (45 degrees).</param>
+        /// <returns>The closest Direction based on the vector's angle from north (up).</returns>
+        /// <remarks>
+        /// <para>Null handling: Vector2 is a value type, cannot be null.</para>
+        /// <para>Thread safety: Thread-safe. No Unity main thread requirement.</para>
+        /// <para>Performance: O(1) - calculates angle once using Atan2, then performs range checks.</para>
+        /// <para>Allocations: No allocations.</para>
+        /// <para>Edge cases: Zero vector returns Direction.None. preferAngles=true uses 60-degree ranges for diagonals and 30-degree for cardinals. preferAngles=false uses equal 45-degree ranges.</para>
+        /// </remarks>
         public static Direction AsDirection(this Vector2 vector, bool preferAngles = false)
         {
             if (vector == Vector2.zero)

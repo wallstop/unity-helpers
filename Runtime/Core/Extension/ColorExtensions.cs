@@ -9,17 +9,53 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Utils;
 
+    /// <summary>
+    /// Defines the method used for averaging colors from multiple pixels or sources.
+    /// </summary>
+    /// <remarks>
+    /// Different averaging methods produce different perceptual results:
+    /// - LAB provides the most perceptually accurate averaging
+    /// - HSV preserves color vibrancy
+    /// - Weighted accounts for human luminance perception
+    /// - Dominant finds the most common color cluster
+    /// </remarks>
     public enum ColorAveragingMethod
     {
-        LAB = 0, // CIE L*a*b* space averaging
-        HSV = 1, // HSV space averaging
-        Weighted = 2, // Weighted RGB averaging using perceived luminance
-        Dominant = 3, // Find most dominant color cluster
+        /// <summary>CIE L*a*b* space averaging - most perceptually accurate for human vision.</summary>
+        LAB = 0,
+
+        /// <summary>HSV space averaging - preserves vibrant colors better.</summary>
+        HSV = 1,
+
+        /// <summary>Weighted RGB averaging using perceived luminance coefficients.</summary>
+        Weighted = 2,
+
+        /// <summary>Find most dominant color cluster using bucket-based analysis.</summary>
+        Dominant = 3,
     }
 
-    // https://sharpsnippets.wordpress.com/2014/03/11/c-extension-complementary-color/
+    /// <summary>
+    /// Provides extension methods for Unity's Color type, including color averaging, hex conversion, and complementary color generation.
+    /// </summary>
+    /// <remarks>
+    /// Thread Safety: All methods are thread-safe as they operate on value types and use no shared state.
+    /// Reference: https://sharpsnippets.wordpress.com/2014/03/11/c-extension-complementary-color/
+    /// </remarks>
     public static class ColorExtensions
     {
+        /// <summary>
+        /// Converts a Unity Color to a hexadecimal color string representation.
+        /// </summary>
+        /// <param name="color">The color to convert.</param>
+        /// <param name="includeAlpha">If true, includes the alpha channel in the output (RGBA). If false, only RGB is included.</param>
+        /// <returns>A hexadecimal color string starting with '#' (e.g., "#FF00FF" or "#FF00FFAA").</returns>
+        /// <remarks>
+        /// Null Handling: N/A - operates on value types.
+        /// Thread Safety: Thread-safe, no shared state.
+        /// Performance: O(1) - simple arithmetic and string formatting.
+        /// Allocations: Allocates one string for the result.
+        /// Edge Cases: Color component values outside [0,1] are clamped to valid range.
+        /// </remarks>
         public static string ToHex(this Color color, bool includeAlpha = true)
         {
             int r = (int)(Mathf.Clamp01(color.r) * 255f);
@@ -35,6 +71,20 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return $"#{r:X2}{g:X2}{b:X2}{a:X2}";
         }
 
+        /// <summary>
+        /// Calculates the average color of a sprite's texture pixels using the specified averaging method.
+        /// </summary>
+        /// <param name="sprite">The sprite whose average color to calculate.</param>
+        /// <param name="method">The color averaging method to use (default: LAB for perceptually accurate results).</param>
+        /// <param name="alphaCutoff">Pixels with alpha below this threshold are excluded from calculation (default: 0.01).</param>
+        /// <returns>The calculated average color with full alpha (1.0) for most methods.</returns>
+        /// <remarks>
+        /// Null Handling: Returns black (0,0,0,1) if sprite is null.
+        /// Thread Safety: NOT thread-safe - calls MakeReadable() which modifies texture import settings.
+        /// Performance: O(n) where n is the number of pixels. Can be expensive for large textures.
+        /// Allocations: Allocates Color[] array from texture.GetPixels().
+        /// Edge Cases: Empty sprites or sprites with all transparent pixels may return black.
+        /// </remarks>
         public static Color GetAverageColor(
             this Sprite sprite,
             ColorAveragingMethod method = ColorAveragingMethod.LAB,
@@ -44,6 +94,20 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return GetAverageColor(Enumerables.Of(sprite), method, alphaCutoff);
         }
 
+        /// <summary>
+        /// Calculates the average color across all pixels in multiple sprites using the specified averaging method.
+        /// </summary>
+        /// <param name="sprites">The collection of sprites to analyze.</param>
+        /// <param name="method">The color averaging method to use (default: LAB for perceptually accurate results).</param>
+        /// <param name="alphaCutoff">Pixels with alpha below this threshold are excluded from calculation (default: 0.01).</param>
+        /// <returns>The calculated average color across all sprite pixels with full alpha (1.0) for most methods.</returns>
+        /// <remarks>
+        /// Null Handling: Null sprites and textures are filtered out automatically.
+        /// Thread Safety: NOT thread-safe - calls MakeReadable() which modifies texture import settings.
+        /// Performance: O(n*m) where n is the number of sprites and m is pixels per sprite. Can be very expensive.
+        /// Allocations: Allocates Color[] array for each texture via GetPixels(), plus LINQ enumerators.
+        /// Edge Cases: Empty collection or all transparent pixels returns black. Duplicate textures are processed multiple times.
+        /// </remarks>
         public static Color GetAverageColor(
             this IEnumerable<Sprite> sprites,
             ColorAveragingMethod method = ColorAveragingMethod.LAB,
@@ -66,6 +130,21 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             );
         }
 
+        /// <summary>
+        /// Calculates the average color of a collection of pixels using the specified averaging method.
+        /// </summary>
+        /// <param name="pixels">The collection of color values to average.</param>
+        /// <param name="method">The color averaging method to use (default: LAB for perceptually accurate results).</param>
+        /// <param name="alphaCutoff">Pixels with alpha below this threshold are excluded from calculation (default: 0.01).</param>
+        /// <returns>The calculated average color. Alpha is 1.0 for LAB/HSV methods, weighted average for Weighted method.</returns>
+        /// <exception cref="InvalidEnumArgumentException">Thrown when an invalid ColorAveragingMethod is provided.</exception>
+        /// <remarks>
+        /// Null Handling: Individual null colors are not handled; ensure the collection doesn't contain null.
+        /// Thread Safety: Thread-safe when pixels collection is not modified during execution.
+        /// Performance: O(n) where n is pixel count. LAB/HSV involve color space conversions. Dominant uses bucket clustering.
+        /// Allocations: Optimized for IReadOnlyList and HashSet. LAB/HSV use stack allocations. Dominant uses pooled dictionary.
+        /// Edge Cases: Empty collection or all transparent pixels returns black (0,0,0,1) for LAB/HSV/Dominant, (0,0,0,0) for Weighted.
+        /// </remarks>
         public static Color GetAverageColor(
             this IEnumerable<Color> pixels,
             ColorAveragingMethod method = ColorAveragingMethod.LAB,
@@ -505,6 +584,26 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             );
         }
 
+        /// <summary>
+        /// Generates a complementary color by rotating the hue by 180 degrees in HSV space.
+        /// Handles grayscale colors specially and supports optional randomization.
+        /// </summary>
+        /// <param name="source">The source color to find the complement of.</param>
+        /// <param name="random">Optional random number generator for adding variance (default: null for no randomization).</param>
+        /// <param name="variance">
+        /// The amount of random variance to apply (default: 0 for none).
+        /// If non-zero, variance is applied as +/- range to each RGB component.
+        /// If zero with random provided, multiplies each component by random value.
+        /// </param>
+        /// <returns>The complementary color with the same alpha as the source.</returns>
+        /// <remarks>
+        /// Null Handling: random can be null (no randomization applied).
+        /// Thread Safety: Thread-safe if the provided IRandom is thread-safe.
+        /// Performance: O(1) - constant time color space conversion and arithmetic.
+        /// Allocations: No heap allocations.
+        /// Edge Cases: Grayscale colors (RGB values within 20/255 of each other) are converted to contrasting colors
+        /// rather than complementary - dark grays become cyan-ish, light grays become yellow.
+        /// </remarks>
         public static Color GetComplement(
             this Color source,
             IRandom random = null,

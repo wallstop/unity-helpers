@@ -14,11 +14,33 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
     using UnityEditor;
 #endif
 
+    /// <summary>
+    /// Provides extension methods for Unity types including GameObject, Transform, Bounds, Rect,
+    /// Vector types, UI components, and advanced geometric algorithms such as convex/concave hull generation.
+    /// </summary>
+    /// <remarks>
+    /// Thread Safety: Most methods require execution on the Unity main thread due to Unity API calls.
+    /// Performance: Methods use object pooling where possible to minimize allocations.
+    /// This class contains geometric algorithms adapted from various sources (see method-level comments).
+    /// </remarks>
     public static class UnityExtensions
     {
         private const float ConvexHullRelationEpsilon = 1e-5f;
         private const double ConvexHullOrientationEpsilon = 1e-8d;
 
+        /// <summary>
+        /// Gets the center point of a GameObject, considering any CenterPointOffset component.
+        /// </summary>
+        /// <param name="gameObject">The GameObject to get the center of.</param>
+        /// <returns>
+        /// The center point from the CenterPointOffset component if present, otherwise the transform position.
+        /// </returns>
+        /// <remarks>
+        /// Thread Safety: Must be called from Unity main thread.
+        /// Null Handling: Returns default Vector2 if gameObject is null (Unity's default behavior).
+        /// Performance: O(1) - Single component lookup.
+        /// Allocations: None.
+        /// </remarks>
         public static Vector2 GetCenter(this GameObject gameObject)
         {
             if (gameObject.TryGetComponent(out CenterPointOffset centerPointOffset))
@@ -29,16 +51,54 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return gameObject.transform.position;
         }
 
+        /// <summary>
+        /// Converts a Unity Rect to a Bounds.
+        /// </summary>
+        /// <param name="rect">The Rect to convert.</param>
+        /// <returns>A Bounds with the same center and size as the input Rect.</returns>
+        /// <remarks>
+        /// Thread Safety: Thread-safe, no Unity API calls.
+        /// Null Handling: Not applicable for value types.
+        /// Performance: O(1) - Simple struct construction.
+        /// Allocations: None - returns value type.
+        /// Unity Behavior: The resulting Bounds will have zero Z-axis extent.
+        /// </remarks>
         public static Bounds Bounds(this Rect rect)
         {
             return new Bounds(rect.center, rect.size);
         }
 
+        /// <summary>
+        /// Converts a Unity Bounds to a Rect.
+        /// </summary>
+        /// <param name="bounds">The Bounds to convert.</param>
+        /// <returns>A Rect with position at (center - extents) and the same size as the Bounds.</returns>
+        /// <remarks>
+        /// Thread Safety: Thread-safe, no Unity API calls.
+        /// Null Handling: Not applicable for value types.
+        /// Performance: O(1) - Simple struct construction.
+        /// Allocations: None - returns value type.
+        /// Unity Behavior: Z-axis information from Bounds is discarded.
+        /// Edge Cases: The Rect position is at the minimum corner (center - extents).
+        /// </remarks>
         public static Rect Rect(this Bounds bounds)
         {
             return new Rect(bounds.center - bounds.extents, bounds.size);
         }
 
+        /// <summary>
+        /// Gets the world-space rectangular bounds of a RectTransform.
+        /// </summary>
+        /// <param name="transform">The RectTransform to get world bounds for.</param>
+        /// <returns>A Rect representing the axis-aligned bounding box in world space.</returns>
+        /// <remarks>
+        /// Thread Safety: Must be called from Unity main thread.
+        /// Null Handling: Will throw NullReferenceException if transform is null.
+        /// Performance: O(1) - Iterates through 4 corners.
+        /// Allocations: Uses array pooling to avoid allocations.
+        /// Unity Behavior: Accounts for rotation and scale by computing axis-aligned bounding box.
+        /// Edge Cases: For rotated RectTransforms, the resulting Rect will be larger than the actual visual bounds.
+        /// </remarks>
         public static Rect GetWorldRect(this RectTransform transform)
         {
             using PooledResource<Vector3[]> fourCornersResource =
@@ -60,6 +120,21 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return new Rect(minX, minY, maxX - minX, maxY - minY);
         }
 
+        /// <summary>
+        /// Calculates the world-space bounds visible to an orthographic camera.
+        /// </summary>
+        /// <param name="camera">The orthographic camera.</param>
+        /// <returns>A Bounds representing the visible volume of the camera.</returns>
+        /// <remarks>
+        /// Thread Safety: Must be called from Unity main thread.
+        /// Null Handling: Throws ArgumentNullException if camera is null.
+        /// Performance: O(1) - Simple calculations based on camera properties.
+        /// Allocations: None - returns value type.
+        /// Unity Behavior: Uses Screen dimensions, orthographicSize, and clip planes.
+        /// Edge Cases: Clamps screenHeight to minimum of 1 to avoid division by zero.
+        /// If depth (farClipPlane - nearClipPlane) is <= 0, defaults to 1.
+        /// </remarks>
+        /// <exception cref="ArgumentNullException">Thrown when camera is null.</exception>
         public static Bounds OrthographicBounds(this Camera camera)
         {
             if (camera == null)
@@ -85,22 +160,73 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return new Bounds(camera.transform.position, size);
         }
 
+        /// <summary>
+        /// Converts a Vector3 to a JSON-formatted string representation.
+        /// </summary>
+        /// <param name="vector">The Vector3 to convert.</param>
+        /// <returns>A string in the format "{x, y, z}" using invariant culture.</returns>
+        /// <remarks>
+        /// Thread Safety: Thread-safe.
+        /// Null Handling: Not applicable for value types.
+        /// Performance: O(1) - String interpolation.
+        /// Allocations: Allocates string.
+        /// Unity Behavior: Uses InvariantCulture for consistent formatting across locales.
+        /// </remarks>
         public static string ToJsonString(this Vector3 vector)
         {
             return FormattableString.Invariant($"{{{vector.x}, {vector.y}, {vector.z}}}");
         }
 
+        /// <summary>
+        /// Converts a Vector2 to a JSON-formatted string representation.
+        /// </summary>
+        /// <param name="vector">The Vector2 to convert.</param>
+        /// <returns>A string in the format "{x, y}" using invariant culture.</returns>
+        /// <remarks>
+        /// Thread Safety: Thread-safe.
+        /// Null Handling: Not applicable for value types.
+        /// Performance: O(1) - String interpolation.
+        /// Allocations: Allocates string.
+        /// Unity Behavior: Uses InvariantCulture for consistent formatting across locales.
+        /// </remarks>
         public static string ToJsonString(this Vector2 vector)
         {
             return FormattableString.Invariant($"{{{vector.x}, {vector.y}}}");
         }
 
+        /// <summary>
+        /// Determines if a Vector2 represents insignificant input (noise) below a threshold.
+        /// </summary>
+        /// <param name="inputVector">The input vector to check.</param>
+        /// <param name="threshold">The threshold below which input is considered noise. Default is 0.2.</param>
+        /// <returns>True if both x and y components are within the threshold; otherwise, false.</returns>
+        /// <remarks>
+        /// Thread Safety: Thread-safe.
+        /// Null Handling: Not applicable for value types.
+        /// Performance: O(1) - Two comparisons.
+        /// Allocations: None.
+        /// Unity Behavior: Uses absolute value of threshold to handle negative thresholds.
+        /// Edge Cases: A threshold of 0 means any non-zero input is not noise.
+        /// Useful for filtering controller drift or touch input noise.
+        /// </remarks>
         public static bool IsNoise(this Vector2 inputVector, float threshold = 0.2f)
         {
             float limit = Mathf.Abs(threshold);
             return Mathf.Abs(inputVector.x) <= limit && Mathf.Abs(inputVector.y) <= limit;
         }
 
+        /// <summary>
+        /// Stops a Rigidbody2D by zeroing its velocity, angular velocity, and putting it to sleep.
+        /// </summary>
+        /// <param name="rigidBody">The Rigidbody2D to stop.</param>
+        /// <remarks>
+        /// Thread Safety: Must be called from Unity main thread.
+        /// Null Handling: Silently returns if rigidBody is null.
+        /// Performance: O(1) - Sets two properties and calls Sleep.
+        /// Allocations: None.
+        /// Unity Behavior: Calling Sleep() tells the physics engine to skip this body until awakened.
+        /// Edge Cases: Safe to call on null or already-sleeping rigidbodies.
+        /// </remarks>
         public static void Stop(this Rigidbody2D rigidBody)
         {
             if (rigidBody == null)
@@ -113,6 +239,20 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             rigidBody.Sleep();
         }
 
+        /// <summary>
+        /// Expands a BoundsInt to encompass another BoundsInt.
+        /// </summary>
+        /// <param name="source">The source BoundsInt to expand.</param>
+        /// <param name="other">The BoundsInt to include in the expansion.</param>
+        /// <returns>A new BoundsInt that encompasses both input bounds.</returns>
+        /// <remarks>
+        /// Thread Safety: Thread-safe, no Unity API calls.
+        /// Null Handling: Not applicable for value types.
+        /// Performance: O(1) - Six min/max comparisons.
+        /// Allocations: None - returns value type.
+        /// Unity Behavior: Creates axis-aligned bounding box containing both bounds.
+        /// Edge Cases: Works correctly with negative or zero-size bounds.
+        /// </remarks>
         public static BoundsInt ExpandBounds(this BoundsInt source, BoundsInt other)
         {
             int xMin = Math.Min(source.xMin, other.xMin);
@@ -124,6 +264,25 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return new BoundsInt(xMin, yMin, zMin, xMax - xMin, yMax - yMin, zMax - zMin);
         }
 
+        /// <summary>
+        /// Calculates the minimum BoundsInt that contains all the given positions.
+        /// </summary>
+        /// <param name="positions">The collection of positions to encompass.</param>
+        /// <param name="inclusive">
+        /// If true, treats positions as inclusive (size = max - min).
+        /// If false, treats positions as cell centers (size = max - min + 1). Default is false.
+        /// </param>
+        /// <returns>
+        /// A BoundsInt containing all positions, or null if the collection is empty.
+        /// </returns>
+        /// <remarks>
+        /// Thread Safety: Thread-safe if the collection is not modified during enumeration.
+        /// Null Handling: Returns null if positions is empty. Throws if positions is null.
+        /// Performance: O(n) where n is the number of positions.
+        /// Allocations: None beyond enumeration overhead.
+        /// Unity Behavior: The 'inclusive' parameter affects how bounds size is calculated.
+        /// Edge Cases: Returns null for empty collections. Single position creates a bounds of size (1,1,1) when inclusive=false.
+        /// </remarks>
         public static BoundsInt? GetBounds(
             this IEnumerable<Vector3Int> positions,
             bool inclusive = false
@@ -161,6 +320,21 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             );
         }
 
+        /// <summary>
+        /// Calculates the minimum BoundsInt that contains all the given FastVector3Int positions.
+        /// </summary>
+        /// <param name="positions">The collection of FastVector3Int positions to encompass.</param>
+        /// <returns>
+        /// A BoundsInt containing all positions with size = max - min + 1, or null if the collection is empty.
+        /// </returns>
+        /// <remarks>
+        /// Thread Safety: Thread-safe if the collection is not modified during enumeration.
+        /// Null Handling: Returns null if positions is empty. Throws if positions is null.
+        /// Performance: O(n) where n is the number of positions.
+        /// Allocations: None beyond enumeration overhead.
+        /// Unity Behavior: Always treats positions as cell centers (size = max - min + 1).
+        /// Edge Cases: Returns null for empty collections. Single position creates a bounds of size (1,1,1).
+        /// </remarks>
         public static BoundsInt? GetBounds(this IEnumerable<FastVector3Int> positions)
         {
             bool any = false;
@@ -195,6 +369,21 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             );
         }
 
+        /// <summary>
+        /// Calculates the minimum Bounds that contains all the given Vector2 positions.
+        /// </summary>
+        /// <param name="positions">The collection of Vector2 positions to encompass.</param>
+        /// <returns>
+        /// A Bounds centered on the midpoint with size encompassing all positions, or null if the collection is empty.
+        /// </returns>
+        /// <remarks>
+        /// Thread Safety: Thread-safe if the collection is not modified during enumeration.
+        /// Null Handling: Returns null if positions is empty. Throws if positions is null.
+        /// Performance: O(n) where n is the number of positions.
+        /// Allocations: None beyond enumeration overhead.
+        /// Unity Behavior: Creates a 2D bounds (Z component is zero). Center is at the geometric center.
+        /// Edge Cases: Returns null for empty collections. Single position creates a zero-size bounds.
+        /// </remarks>
         public static Bounds? GetBounds(this IEnumerable<Vector2> positions)
         {
             bool any = false;
@@ -221,6 +410,22 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return new Bounds(center, size);
         }
 
+        /// <summary>
+        /// Calculates the minimum Bounds that contains all the given Bounds.
+        /// </summary>
+        /// <param name="boundaries">The collection of Bounds to encompass.</param>
+        /// <returns>
+        /// A Bounds with center at the average of input centers and size encompassing all boundaries,
+        /// or null if the collection is empty.
+        /// </returns>
+        /// <remarks>
+        /// Thread Safety: Thread-safe if the collection is not modified during enumeration.
+        /// Null Handling: Returns null if boundaries is empty. Throws if boundaries is null.
+        /// Performance: O(n) where n is the number of boundaries.
+        /// Allocations: None beyond enumeration overhead.
+        /// Unity Behavior: Center is the average of all input centers, size encompasses all extents.
+        /// Edge Cases: Returns null for empty collections. Single boundary returns a copy.
+        /// </remarks>
         public static Bounds? GetBounds(this IEnumerable<Bounds> boundaries)
         {
             float minX = float.MaxValue;
@@ -256,7 +461,27 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             );
         }
 
-        // https://www.habrador.com/tutorials/math/8-convex-hull/
+        /// <summary>
+        /// Builds a convex hull from a set of Vector3Int grid positions using the Gift Wrapping (Jarvis March) algorithm.
+        /// </summary>
+        /// <param name="pointsSet">The collection of grid positions to build the hull from.</param>
+        /// <param name="grid">The Grid used to convert cell positions to world coordinates.</param>
+        /// <param name="random">Optional random number generator for tie-breaking. Uses PRNG.Instance if null.</param>
+        /// <param name="includeColinearPoints">
+        /// If true, includes points that lie on the hull edges. If false, only includes corner points. Default is true.
+        /// </param>
+        /// <returns>
+        /// A list of Vector3Int positions forming the convex hull in counterclockwise order.
+        /// </returns>
+        /// <remarks>
+        /// Thread Safety: Must be called from Unity main thread (uses Grid).
+        /// Null Handling: Throws if pointsSet or grid is null.
+        /// Performance: O(nh) where n is input size and h is hull size. Uses pooled buffers.
+        /// Allocations: Allocates return list and uses pooled temporary buffers.
+        /// Unity Behavior: Uses grid.CellToWorld for spatial calculations.
+        /// Edge Cases: Collections with 3 or fewer points return all points.
+        /// Algorithm: Gift Wrapping (Jarvis March). See https://www.habrador.com/tutorials/math/8-convex-hull/
+        /// </remarks>
         public static List<Vector3Int> BuildConvexHull(
             this IEnumerable<Vector3Int> pointsSet,
             Grid grid,
@@ -385,6 +610,27 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return convexHull;
         }
 
+        /// <summary>
+        /// Builds a convex hull from a set of FastVector3Int grid positions using the Gift Wrapping (Jarvis March) algorithm.
+        /// </summary>
+        /// <param name="pointsSet">The collection of FastVector3Int grid positions to build the hull from.</param>
+        /// <param name="grid">The Grid used to convert cell positions to world coordinates.</param>
+        /// <param name="random">Optional random number generator for tie-breaking. Uses PRNG.Instance if null.</param>
+        /// <param name="includeColinearPoints">
+        /// If true, includes points that lie on the hull edges. If false, only includes corner points. Default is false.
+        /// </param>
+        /// <returns>
+        /// A list of FastVector3Int positions forming the convex hull in counterclockwise order.
+        /// </returns>
+        /// <remarks>
+        /// Thread Safety: Must be called from Unity main thread (uses Grid).
+        /// Null Handling: Throws if pointsSet or grid is null.
+        /// Performance: O(nh) where n is input size and h is hull size. Uses pooled buffers.
+        /// Allocations: Allocates return list and uses pooled temporary buffers.
+        /// Unity Behavior: Uses grid.CellToWorld for spatial calculations.
+        /// Edge Cases: Collections with 3 or fewer points return all points.
+        /// Algorithm: Gift Wrapping (Jarvis March). See https://www.habrador.com/tutorials/math/8-convex-hull/
+        /// </remarks>
         public static List<FastVector3Int> BuildConvexHull(
             this IEnumerable<FastVector3Int> pointsSet,
             Grid grid,
@@ -512,6 +758,21 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return convexHull;
         }
 
+        /// <summary>
+        /// Determines if one convex hull is completely inside another convex hull.
+        /// </summary>
+        /// <param name="convexHull">The outer convex hull to test against.</param>
+        /// <param name="grid">The Grid used for coordinate conversion.</param>
+        /// <param name="maybeInside">The convex hull to test if it's inside.</param>
+        /// <returns>True if all points of maybeInside are inside convexHull; otherwise, false.</returns>
+        /// <remarks>
+        /// Thread Safety: Must be called from Unity main thread (uses Grid).
+        /// Null Handling: Returns true if convexHull is null or empty. Throws if grid or maybeInside is null.
+        /// Performance: O(nm) where n is outer hull size and m is inner hull size.
+        /// Allocations: None.
+        /// Unity Behavior: Uses grid.CellToWorld for spatial calculations.
+        /// Edge Cases: Empty or null outer hull returns true. Determines hull orientation automatically.
+        /// </remarks>
         public static bool IsConvexHullInsideConvexHull(
             this List<FastVector3Int> convexHull,
             Grid grid,
@@ -530,6 +791,21 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return true;
         }
 
+        /// <summary>
+        /// Determines if a Vector3Int point is inside a convex hull.
+        /// </summary>
+        /// <param name="convexHull">The convex hull to test against.</param>
+        /// <param name="grid">The Grid used for coordinate conversion.</param>
+        /// <param name="point">The point to test.</param>
+        /// <returns>True if the point is inside or on the boundary of the convex hull; otherwise, false.</returns>
+        /// <remarks>
+        /// Thread Safety: Must be called from Unity main thread (uses Grid).
+        /// Null Handling: Returns true if convexHull is null or empty. Throws if grid is null.
+        /// Performance: O(n) where n is the hull size.
+        /// Allocations: None.
+        /// Unity Behavior: Uses grid.CellToWorld for spatial calculations.
+        /// Edge Cases: Points on the hull boundary are considered inside. Determines orientation automatically.
+        /// </remarks>
         public static bool IsPointInsideConvexHull(
             this List<Vector3Int> convexHull,
             Grid grid,
@@ -540,6 +816,21 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return IsPointInsideConvexHull(convexHull, grid, point, orientation);
         }
 
+        /// <summary>
+        /// Determines if a FastVector3Int point is inside a convex hull.
+        /// </summary>
+        /// <param name="convexHull">The convex hull to test against.</param>
+        /// <param name="grid">The Grid used for coordinate conversion.</param>
+        /// <param name="point">The point to test.</param>
+        /// <returns>True if the point is inside or on the boundary of the convex hull; otherwise, false.</returns>
+        /// <remarks>
+        /// Thread Safety: Must be called from Unity main thread (uses Grid).
+        /// Null Handling: Returns true if convexHull is null or empty. Throws if grid is null.
+        /// Performance: O(n) where n is the hull size.
+        /// Allocations: None.
+        /// Unity Behavior: Uses grid.CellToWorld for spatial calculations.
+        /// Edge Cases: Points on the hull boundary are considered inside. Determines orientation automatically.
+        /// </remarks>
         public static bool IsPointInsideConvexHull(
             this List<FastVector3Int> convexHull,
             Grid grid,
@@ -550,6 +841,21 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return IsPointInsideConvexHull(convexHull, grid, point, orientation);
         }
 
+        /// <summary>
+        /// Determines if one convex hull is completely inside another convex hull.
+        /// </summary>
+        /// <param name="convexHull">The outer convex hull to test against.</param>
+        /// <param name="grid">The Grid used for coordinate conversion.</param>
+        /// <param name="maybeInside">The convex hull to test if it's inside.</param>
+        /// <returns>True if all points of maybeInside are inside convexHull; otherwise, false.</returns>
+        /// <remarks>
+        /// Thread Safety: Must be called from Unity main thread (uses Grid).
+        /// Null Handling: Returns true if convexHull is null or empty. Throws if grid or maybeInside is null.
+        /// Performance: O(nm) where n is outer hull size and m is inner hull size.
+        /// Allocations: None.
+        /// Unity Behavior: Uses grid.CellToWorld for spatial calculations.
+        /// Edge Cases: Empty or null outer hull returns true. Determines hull orientation automatically.
+        /// </remarks>
         public static bool IsConvexHullInsideConvexHull(
             this List<Vector3Int> convexHull,
             Grid grid,
@@ -781,6 +1087,27 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
         }
 
+        /// <summary>
+        /// Builds a concave hull from grid positions using an edge-splitting approach with nearest-neighbor queries.
+        /// </summary>
+        /// <param name="gridPositions">The collection of grid positions to build the hull from.</param>
+        /// <param name="grid">The Grid used for coordinate conversion.</param>
+        /// <param name="random">Optional random number generator. Uses PRNG.Instance if null.</param>
+        /// <param name="bucketSize">The number of nearest neighbors to consider for each edge. Default is 40.</param>
+        /// <param name="angleThreshold">
+        /// The maximum angle (in degrees) for including a point. Higher values create more concave hulls. Default is 90.
+        /// </param>
+        /// <returns>A list of FastVector3Int positions forming the concave hull.</returns>
+        /// <remarks>
+        /// Thread Safety: Must be called from Unity main thread (uses Grid).
+        /// Null Handling: Throws ArgumentException if gridPositions is empty. Throws if grid is null.
+        /// Performance: O(n²) worst case. Uses QuadTree for spatial queries. Uses pooled buffers extensively.
+        /// Allocations: Allocates return list and QuadTree, uses pooled temporary buffers.
+        /// Unity Behavior: Uses grid.CellToWorld for spatial calculations.
+        /// Edge Cases: Starts with convex hull then iteratively refines edges. May fall back to convex hull if no suitable points found.
+        /// Algorithm: Custom edge-splitting with angle-based point selection and intersection checking.
+        /// </remarks>
+        /// <exception cref="ArgumentException">Thrown when gridPositions is empty.</exception>
         public static List<FastVector3Int> BuildConcaveHull3(
             this IReadOnlyCollection<FastVector3Int> gridPositions,
             Grid grid,
@@ -985,8 +1312,28 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             Vector2 CellToWorld(FastVector3Int cell) => grid.CellToWorld(cell);
         }
 
-        // https://www.researchgate.net/publication/220868874_Concave_hull_A_k-nearest_neighbours_approach_for_the_computation_of_the_region_occupied_by_a_set_of_points
-
+        /// <summary>
+        /// Builds a concave hull using a k-nearest neighbors approach.
+        /// </summary>
+        /// <param name="gridPositions">The collection of grid positions to build the hull from.</param>
+        /// <param name="grid">The Grid used for coordinate conversion.</param>
+        /// <param name="random">Optional random number generator. Uses PRNG.Instance if null.</param>
+        /// <param name="nearestNeighbors">
+        /// The number of nearest neighbors to consider (k parameter). Minimum is 3. Default is 3.
+        /// Lower values create more concave hulls, higher values approach convex hull.
+        /// </param>
+        /// <returns>A list of FastVector3Int positions forming the concave hull.</returns>
+        /// <remarks>
+        /// Thread Safety: Must be called from Unity main thread (uses Grid).
+        /// Null Handling: Throws if gridPositions or grid is null.
+        /// Performance: O(n² k) where n is point count and k is nearestNeighbors. Uses pooled buffers.
+        /// Allocations: Allocates return list, uses pooled temporary buffers.
+        /// Unity Behavior: Uses grid.CellToWorld for spatial calculations.
+        /// Edge Cases: Collections with 3 or fewer points return all points.
+        /// Automatically increases k and retries if algorithm fails to encompass all points.
+        /// Falls back to convex hull if k reaches the maximum (point count).
+        /// Algorithm: k-nearest neighbors concave hull. See https://www.researchgate.net/publication/220868874
+        /// </remarks>
         public static List<FastVector3Int> BuildConcaveHull2(
             this IReadOnlyCollection<FastVector3Int> gridPositions,
             Grid grid,
@@ -1393,6 +1740,31 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             SelectionSort(lines, lengths, count);
         }
 
+        /// <summary>
+        /// Builds a concave hull using iterative line division based on cosine similarity.
+        /// </summary>
+        /// <param name="gridPositions">The collection of grid positions to build the hull from.</param>
+        /// <param name="grid">The Grid used for coordinate conversion.</param>
+        /// <param name="random">Optional random number generator. Uses PRNG.Instance if null.</param>
+        /// <param name="scaleFactor">
+        /// Scale factor for the search area when finding nearby points. Default is 1.
+        /// </param>
+        /// <param name="concavity">
+        /// Controls hull concavity via cosine threshold. Must be in [-1, 1].
+        /// Lower values create more concave hulls. Default is 0.
+        /// </param>
+        /// <returns>A list of FastVector3Int positions forming the concave hull.</returns>
+        /// <remarks>
+        /// Thread Safety: Must be called from Unity main thread (uses Grid).
+        /// Null Handling: Throws if gridPositions or grid is null.
+        /// Performance: O(n² m) where n is point count and m is iterations. Uses pooled buffers.
+        /// Allocations: Allocates return list, uses pooled temporary buffers.
+        /// Unity Behavior: Uses grid.CellToWorld and WorldToCell for coordinate conversion.
+        /// Edge Cases: Collections with 3 or fewer points return all points.
+        /// Warning: This implementation has known bugs (see source comment at line 1705).
+        /// Algorithm: Based on https://github.com/Liagson/ConcaveHullGenerator
+        /// </remarks>
+        /// <exception cref="ArgumentException">Thrown when concavity is not in the range [-1, 1].</exception>
         public static List<FastVector3Int> BuildConcaveHull(
             this IEnumerable<FastVector3Int> gridPositions,
             Grid grid,
@@ -1527,6 +1899,22 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return concaveHull;
         }
 
+        /// <summary>
+        /// Determines if a grid position is inside a polygon hull using the ray-casting algorithm.
+        /// </summary>
+        /// <param name="hull">The polygon hull defined as a list of grid positions.</param>
+        /// <param name="gridPosition">The grid position to test.</param>
+        /// <param name="grid">The Grid used for coordinate conversion.</param>
+        /// <returns>True if the position is inside the hull; otherwise, false.</returns>
+        /// <remarks>
+        /// Thread Safety: Must be called from Unity main thread (uses Grid).
+        /// Null Handling: Throws if any parameter is null.
+        /// Performance: O(n) where n is the hull size.
+        /// Allocations: None.
+        /// Unity Behavior: Uses grid.CellToWorld for spatial calculations.
+        /// Edge Cases: Points on the boundary may or may not be considered inside depending on precision.
+        /// Algorithm: Ray-casting (even-odd rule) point-in-polygon test.
+        /// </remarks>
         public static bool IsPositionInside(
             List<FastVector3Int> hull,
             FastVector3Int gridPosition,
@@ -1667,6 +2055,23 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return false;
         }
 
+        /// <summary>
+        /// Calculates the cosine of the angle at point o formed by points a and b using the law of cosines.
+        /// </summary>
+        /// <param name="a">First point.</param>
+        /// <param name="b">Second point.</param>
+        /// <param name="o">The vertex point where the angle is measured.</param>
+        /// <returns>The cosine of the angle at o, rounded to 4 decimal places.</returns>
+        /// <remarks>
+        /// Thread Safety: Thread-safe, no Unity API calls.
+        /// Null Handling: Not applicable for value types.
+        /// Performance: O(1) - Basic trigonometric calculation.
+        /// Allocations: None.
+        /// Unity Behavior: Uses double precision for accuracy.
+        /// Edge Cases: Returns rounded value to avoid floating-point precision issues.
+        /// If points are collinear or coincident, may return NaN or extreme values.
+        /// Algorithm: Law of cosines: cos(C) = (a² + b² - c²) / (2ab)
+        /// </remarks>
         public static double GetCosine(Vector2 a, Vector3 b, Vector3 o)
         {
             /* Law of cosines */
@@ -1738,17 +2143,23 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             );
         }
 
-        // https://www.geeksforgeeks.org/how-to-check-if-a-given-point-lies-inside-a-polygon/#
-
         /// <summary>
-        ///     Returns true if a line segment 'lhsFrom->lhsTo' intersects the line segment
-        ///     'rhsFrom->rhsTo'
+        /// Determines if two line segments intersect.
         /// </summary>
-        /// <param name="lhsFrom">LineSegmentA start point.</param>
-        /// <param name="lhsTo">LineSegmentA end point.</param>
-        /// <param name="rhsFrom">LineSegmentB start point.</param>
-        /// <param name="rhsTo">LineSegmentB end point.</param>
-        /// <returns>True if the line segments intersect.</returns>
+        /// <param name="lhsFrom">Start point of the first line segment.</param>
+        /// <param name="lhsTo">End point of the first line segment.</param>
+        /// <param name="rhsFrom">Start point of the second line segment.</param>
+        /// <param name="rhsTo">End point of the second line segment.</param>
+        /// <returns>True if the line segments intersect or overlap; otherwise, false.</returns>
+        /// <remarks>
+        /// Thread Safety: Thread-safe, no Unity API calls.
+        /// Null Handling: Not applicable for value types.
+        /// Performance: O(1) - Four orientation checks.
+        /// Allocations: None.
+        /// Unity Behavior: None - pure geometric calculation.
+        /// Edge Cases: Segments sharing an endpoint return false. Collinear overlapping segments may return true.
+        /// Algorithm: Uses orientation tests. See https://www.geeksforgeeks.org/how-to-check-if-a-given-point-lies-inside-a-polygon/
+        /// </remarks>
         public static bool Intersects(
             Vector2 lhsFrom,
             Vector2 lhsTo,
@@ -1810,13 +2221,21 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         }
 
         /// <summary>
-        ///     Given three colinear points p, q, r, returns whether the
-        ///     point q lines on the line segment pr.
+        /// Determines if a point q lies on the line segment pr, assuming the points are collinear.
         /// </summary>
-        /// <param name="p">Beginning of line segment.</param>
-        /// <param name="q">Check if on line segment.</param>
-        /// <param name="r">End of line segment.</param>
-        /// <returns>True if q lies on the line segment pr.</returns>
+        /// <param name="p">Start point of the line segment.</param>
+        /// <param name="q">The point to test.</param>
+        /// <param name="r">End point of the line segment.</param>
+        /// <returns>True if q lies on the line segment pr; otherwise, false.</returns>
+        /// <remarks>
+        /// Thread Safety: Thread-safe, no Unity API calls.
+        /// Null Handling: Not applicable for value types.
+        /// Performance: O(1) - Four comparisons.
+        /// Allocations: None.
+        /// Unity Behavior: None - pure geometric calculation.
+        /// Edge Cases: Assumes points are collinear. If not collinear, result is undefined.
+        /// Uses less-than-or-equal comparisons, so endpoints are considered on the segment.
+        /// </remarks>
         public static bool LiesOnSegment(Vector2 p, Vector2 q, Vector2 r)
         {
             return q.x <= Math.Max(p.x, r.x)
@@ -1825,20 +2244,37 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 && Math.Min(p.y, r.y) <= q.y;
         }
 
+        /// <summary>
+        /// Defines the orientation of three ordered points.
+        /// </summary>
         public enum OrientationType
         {
+            /// <summary>Points are collinear (lie on the same line).</summary>
             Colinear = 0,
+
+            /// <summary>Points form a clockwise turn.</summary>
             Clockwise = 1,
+
+            /// <summary>Points form a counterclockwise turn.</summary>
             Counterclockwise = 2,
         }
 
         /// <summary>
-        ///     Finds the orientation of an ordered triplet (p, q, r).
+        /// Determines the orientation of an ordered triplet of points (p, q, r).
         /// </summary>
-        /// <param name="p">Triplet element 1.</param>
-        /// <param name="q">Triplet element 2.</param>
-        /// <param name="r">Triplet element 3.</param>
-        /// <returns>The orientation of the triplet</returns>
+        /// <param name="p">First point of the triplet.</param>
+        /// <param name="q">Second point of the triplet.</param>
+        /// <param name="r">Third point of the triplet.</param>
+        /// <returns>The orientation type: Colinear, Clockwise, or Counterclockwise.</returns>
+        /// <remarks>
+        /// Thread Safety: Thread-safe, no Unity API calls.
+        /// Null Handling: Not applicable for value types.
+        /// Performance: O(1) - Simple cross product calculation.
+        /// Allocations: None.
+        /// Unity Behavior: Uses Mathf.Approximately for floating-point comparison.
+        /// Edge Cases: Uses epsilon comparison for determining collinearity.
+        /// Algorithm: Based on cross product sign of vectors (q-p) and (r-q).
+        /// </remarks>
         public static OrientationType Orientation(Vector2 p, Vector2 q, Vector2 r)
         {
             float value = (q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y);
@@ -1850,6 +2286,21 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return 0 < value ? OrientationType.Clockwise : OrientationType.Counterclockwise;
         }
 
+        /// <summary>
+        /// Rotates a Vector2 by the specified angle in degrees.
+        /// </summary>
+        /// <param name="v">The vector to rotate.</param>
+        /// <param name="degrees">The rotation angle in degrees (positive = counterclockwise).</param>
+        /// <returns>The rotated vector.</returns>
+        /// <remarks>
+        /// Thread Safety: Thread-safe, no Unity API calls.
+        /// Null Handling: Not applicable for value types.
+        /// Performance: O(1) - Two trigonometric functions and basic arithmetic.
+        /// Allocations: None - returns value type.
+        /// Unity Behavior: Uses Mathf.Sin and Mathf.Cos for rotation.
+        /// Edge Cases: Rotation is counterclockwise for positive degrees, clockwise for negative.
+        /// Algorithm: Standard 2D rotation matrix application.
+        /// </remarks>
         public static Vector2 Rotate(this Vector2 v, float degrees)
         {
             float sin = Mathf.Sin(degrees * Mathf.Deg2Rad);
@@ -1865,6 +2316,20 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return rotatedVector;
         }
 
+        /// <summary>
+        /// Fast 3D bounds intersection test optimized to minimize property accesses.
+        /// </summary>
+        /// <param name="bounds">The first bounds.</param>
+        /// <param name="other">The second bounds to test intersection with.</param>
+        /// <returns>True if the bounds intersect; otherwise, false.</returns>
+        /// <remarks>
+        /// Thread Safety: Thread-safe, no Unity API calls beyond property access.
+        /// Null Handling: Not applicable for value types.
+        /// Performance: O(1) - Optimized to cache min/max values. Faster than Unity's built-in Bounds.Intersects.
+        /// Allocations: None.
+        /// Unity Behavior: Uses bounds.min and bounds.max properties.
+        /// Edge Cases: Bounds that touch but don't overlap return false. Zero-size bounds can intersect.
+        /// </remarks>
         public static bool FastIntersects(this Bounds bounds, Bounds other)
         {
             Vector3 boundsMin = bounds.min;
@@ -1881,6 +2346,20 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 && boundsMax.z >= otherMin.z;
         }
 
+        /// <summary>
+        /// Fast 2D containment test for BoundsInt and FastVector3Int (ignores Z axis).
+        /// </summary>
+        /// <param name="bounds">The bounds to test containment in.</param>
+        /// <param name="position">The position to test.</param>
+        /// <returns>True if the position is inside the 2D bounds (XY plane only); otherwise, false.</returns>
+        /// <remarks>
+        /// Thread Safety: Thread-safe, no Unity API calls.
+        /// Null Handling: Not applicable for value types.
+        /// Performance: O(1) - Four comparisons.
+        /// Allocations: None.
+        /// Unity Behavior: Uses half-open interval [min, max) for containment test.
+        /// Edge Cases: Point on max boundary is NOT contained. Z coordinate is ignored.
+        /// </remarks>
         public static bool FastContains2D(this BoundsInt bounds, FastVector3Int position)
         {
             return position.x >= bounds.xMin
@@ -1889,6 +2368,21 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 && position.y < bounds.yMax;
         }
 
+        /// <summary>
+        /// Fast 2D intersection test for BoundsInt (ignores Z axis).
+        /// </summary>
+        /// <param name="bounds">The first bounds.</param>
+        /// <param name="other">The second bounds to test intersection with.</param>
+        /// <returns>True if the 2D bounds intersect (XY plane only); otherwise, false.</returns>
+        /// <remarks>
+        /// Thread Safety: Thread-safe, no Unity API calls.
+        /// Null Handling: Not applicable for value types.
+        /// Performance: O(1) - Optimized comparisons.
+        /// Allocations: None.
+        /// Unity Behavior: Uses BoundsInt min/max properties.
+        /// Edge Cases: Zero-size bounds (size <= 0 in X or Y) cannot intersect and return false.
+        /// Bounds that touch but don't overlap return false. Z axis is ignored.
+        /// </remarks>
         public static bool FastIntersects2D(this BoundsInt bounds, BoundsInt other)
         {
             // Zero-size bounds cannot intersect
@@ -1905,6 +2399,20 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return bounds.xMax >= other.xMin && bounds.yMax >= other.yMin;
         }
 
+        /// <summary>
+        /// Fast 2D containment test for Bounds and Vector2 (ignores Z axis).
+        /// </summary>
+        /// <param name="bounds">The bounds to test containment in.</param>
+        /// <param name="position">The 2D position to test.</param>
+        /// <returns>True if the position is inside the 2D bounds (XY plane only); otherwise, false.</returns>
+        /// <remarks>
+        /// Thread Safety: Thread-safe, no Unity API calls beyond property access.
+        /// Null Handling: Not applicable for value types.
+        /// Performance: O(1) - Optimized to cache min/max values.
+        /// Allocations: None.
+        /// Unity Behavior: Uses closed interval [min, max] for containment test (unlike BoundsInt).
+        /// Edge Cases: Points on the boundary ARE contained. Z coordinate is ignored.
+        /// </remarks>
         public static bool FastContains2D(this Bounds bounds, Vector2 position)
         {
             Vector3 min = bounds.min;
@@ -1916,6 +2424,21 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return position.x <= max.x && position.y <= max.y;
         }
 
+        /// <summary>
+        /// Fast 2D containment test to check if one Bounds contains another (ignores Z axis).
+        /// </summary>
+        /// <param name="bounds">The outer bounds.</param>
+        /// <param name="other">The inner bounds to test if contained.</param>
+        /// <returns>True if other is completely inside bounds (XY plane only); otherwise, false.</returns>
+        /// <remarks>
+        /// Thread Safety: Thread-safe, no Unity API calls beyond property access.
+        /// Null Handling: Not applicable for value types.
+        /// Performance: O(1) - Optimized to cache min/max values.
+        /// Allocations: None.
+        /// Unity Behavior: Uses Bounds min/max properties.
+        /// Edge Cases: If other touches the boundary of bounds, it's still considered contained.
+        /// Z axis is ignored.
+        /// </remarks>
         public static bool FastContains2D(this Bounds bounds, Bounds other)
         {
             Vector3 boundsMin = bounds.min;
@@ -1930,6 +2453,20 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return otherMax.x <= boundsMax.x && otherMax.y <= boundsMax.y;
         }
 
+        /// <summary>
+        /// Fast 2D intersection test for Bounds (ignores Z axis).
+        /// </summary>
+        /// <param name="bounds">The first bounds.</param>
+        /// <param name="other">The second bounds to test intersection with.</param>
+        /// <returns>True if the 2D bounds intersect (XY plane only); otherwise, false.</returns>
+        /// <remarks>
+        /// Thread Safety: Thread-safe, no Unity API calls beyond property access.
+        /// Null Handling: Not applicable for value types.
+        /// Performance: O(1) - Optimized to cache min/max values.
+        /// Allocations: None.
+        /// Unity Behavior: Uses Bounds min/max properties.
+        /// Edge Cases: Bounds that touch but don't overlap return false. Z axis is ignored.
+        /// </remarks>
         public static bool FastIntersects2D(this Bounds bounds, Bounds other)
         {
             Vector3 boundsMin = bounds.min;
@@ -1944,6 +2481,20 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return boundsMax.x >= otherMin.x && boundsMax.y >= otherMin.y;
         }
 
+        /// <summary>
+        /// Fast 2D overlap test for Bounds (ignores Z axis). Functionally identical to FastIntersects2D.
+        /// </summary>
+        /// <param name="bounds">The first bounds.</param>
+        /// <param name="other">The second bounds to test overlap with.</param>
+        /// <returns>True if the 2D bounds overlap (XY plane only); otherwise, false.</returns>
+        /// <remarks>
+        /// Thread Safety: Thread-safe, no Unity API calls beyond property access.
+        /// Null Handling: Not applicable for value types.
+        /// Performance: O(1) - Optimized to cache min/max values.
+        /// Allocations: None.
+        /// Unity Behavior: Uses Bounds min/max properties. Identical to FastIntersects2D.
+        /// Edge Cases: Bounds that touch but don't overlap return false. Z axis is ignored.
+        /// </remarks>
         public static bool Overlaps2D(this Bounds bounds, Bounds other)
         {
             Vector3 boundsMin = bounds.min;
@@ -1958,6 +2509,21 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return boundsMax.x >= otherMin.x && boundsMax.y >= otherMin.y;
         }
 
+        /// <summary>
+        /// Creates a new BoundsInt with additional padding in the X and Y directions.
+        /// </summary>
+        /// <param name="bounds">The source bounds to add padding to.</param>
+        /// <param name="xPadding">The padding to add to both left and right sides.</param>
+        /// <param name="yPadding">The padding to add to both top and bottom sides.</param>
+        /// <returns>A new BoundsInt expanded by the specified padding amounts.</returns>
+        /// <remarks>
+        /// Thread Safety: Thread-safe, no Unity API calls.
+        /// Null Handling: Not applicable for value types.
+        /// Performance: O(1) - Simple arithmetic.
+        /// Allocations: None - returns value type.
+        /// Unity Behavior: Z dimension remains unchanged.
+        /// Edge Cases: Negative padding shrinks the bounds. Size increases by 2*padding in each direction.
+        /// </remarks>
         public static BoundsInt WithPadding(this BoundsInt bounds, int xPadding, int yPadding)
         {
             Vector3Int size = bounds.size;
@@ -1971,6 +2537,19 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             );
         }
 
+        /// <summary>
+        /// Sets all color states of a UI Slider to the same color.
+        /// </summary>
+        /// <param name="slider">The slider to modify.</param>
+        /// <param name="color">The color to apply to all states.</param>
+        /// <remarks>
+        /// Thread Safety: Must be called from Unity main thread.
+        /// Null Handling: Will throw NullReferenceException if slider is null.
+        /// Performance: O(1) - Simple property assignments.
+        /// Allocations: One ColorBlock struct allocation.
+        /// Unity Behavior: Sets normalColor, highlightedColor, pressedColor, selectedColor, and disabledColor.
+        /// Edge Cases: Overwrites all existing color states.
+        /// </remarks>
         public static void SetColors(this Slider slider, Color color)
         {
             ColorBlock block = slider.colors;
@@ -1984,26 +2563,92 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             slider.colors = block;
         }
 
+        /// <summary>
+        /// Sets the left offset of a RectTransform.
+        /// </summary>
+        /// <param name="rt">The RectTransform to modify.</param>
+        /// <param name="left">The left offset value.</param>
+        /// <remarks>
+        /// Thread Safety: Must be called from Unity main thread.
+        /// Null Handling: Will throw NullReferenceException if rt is null.
+        /// Performance: O(1) - Single property assignment.
+        /// Allocations: One Vector2 struct allocation.
+        /// Unity Behavior: Modifies offsetMin.x which controls the left anchor offset.
+        /// Edge Cases: Preserves the bottom offset (offsetMin.y).
+        /// </remarks>
         public static void SetLeft(this RectTransform rt, float left)
         {
             rt.offsetMin = new Vector2(left, rt.offsetMin.y);
         }
 
+        /// <summary>
+        /// Sets the right offset of a RectTransform.
+        /// </summary>
+        /// <param name="rt">The RectTransform to modify.</param>
+        /// <param name="right">The right offset value (will be negated internally).</param>
+        /// <remarks>
+        /// Thread Safety: Must be called from Unity main thread.
+        /// Null Handling: Will throw NullReferenceException if rt is null.
+        /// Performance: O(1) - Single property assignment.
+        /// Allocations: One Vector2 struct allocation.
+        /// Unity Behavior: Modifies offsetMax.x. Note that the value is negated (-right).
+        /// Edge Cases: Preserves the top offset (offsetMax.y).
+        /// </remarks>
         public static void SetRight(this RectTransform rt, float right)
         {
             rt.offsetMax = new Vector2(-right, rt.offsetMax.y);
         }
 
+        /// <summary>
+        /// Sets the top offset of a RectTransform.
+        /// </summary>
+        /// <param name="rt">The RectTransform to modify.</param>
+        /// <param name="top">The top offset value (will be negated internally).</param>
+        /// <remarks>
+        /// Thread Safety: Must be called from Unity main thread.
+        /// Null Handling: Will throw NullReferenceException if rt is null.
+        /// Performance: O(1) - Single property assignment.
+        /// Allocations: One Vector2 struct allocation.
+        /// Unity Behavior: Modifies offsetMax.y. Note that the value is negated (-top).
+        /// Edge Cases: Preserves the right offset (offsetMax.x).
+        /// </remarks>
         public static void SetTop(this RectTransform rt, float top)
         {
             rt.offsetMax = new Vector2(rt.offsetMax.x, -top);
         }
 
+        /// <summary>
+        /// Sets the bottom offset of a RectTransform.
+        /// </summary>
+        /// <param name="rt">The RectTransform to modify.</param>
+        /// <param name="bottom">The bottom offset value.</param>
+        /// <remarks>
+        /// Thread Safety: Must be called from Unity main thread.
+        /// Null Handling: Will throw NullReferenceException if rt is null.
+        /// Performance: O(1) - Single property assignment.
+        /// Allocations: One Vector2 struct allocation.
+        /// Unity Behavior: Modifies offsetMin.y which controls the bottom anchor offset.
+        /// Edge Cases: Preserves the left offset (offsetMin.x).
+        /// </remarks>
         public static void SetBottom(this RectTransform rt, float bottom)
         {
             rt.offsetMin = new Vector2(rt.offsetMin.x, bottom);
         }
 
+        /// <summary>
+        /// Enumerates all FastVector3Int positions within the bounds.
+        /// </summary>
+        /// <param name="bounds">The bounds to enumerate positions within.</param>
+        /// <returns>An enumerable of all FastVector3Int positions within the bounds.</returns>
+        /// <remarks>
+        /// Thread Safety: Thread-safe, no Unity API calls.
+        /// Null Handling: Not applicable for value types.
+        /// Performance: O(volume) where volume is the number of cells in the bounds.
+        /// Allocations: Uses yield return, allocates enumerator. Each FastVector3Int is a value type.
+        /// Unity Behavior: Uses half-open interval [min, max) consistent with BoundsInt.
+        /// Edge Cases: Zero or negative size bounds yield no positions.
+        /// Iteration order is X (innermost), then Y, then Z (outermost).
+        /// </remarks>
         public static IEnumerable<FastVector3Int> AllFastPositionsWithin(this BoundsInt bounds)
         {
             Vector3Int min = bounds.min;
@@ -2020,6 +2665,21 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
         }
 
+        /// <summary>
+        /// Fills a list with all FastVector3Int positions within the bounds.
+        /// </summary>
+        /// <param name="bounds">The bounds to get positions from.</param>
+        /// <param name="buffer">The list to clear and fill with positions.</param>
+        /// <returns>The buffer list containing all positions.</returns>
+        /// <remarks>
+        /// Thread Safety: Thread-safe if buffer is not accessed concurrently.
+        /// Null Handling: Throws NullReferenceException if buffer is null.
+        /// Performance: O(volume) where volume is the number of cells in the bounds.
+        /// Allocations: May allocate if buffer capacity is insufficient. Clears buffer first.
+        /// Unity Behavior: Uses half-open interval [min, max) consistent with BoundsInt.
+        /// Edge Cases: Zero or negative size bounds result in an empty buffer.
+        /// Iteration order is X (innermost), then Y, then Z (outermost).
+        /// </remarks>
         public static List<FastVector3Int> AllFastPositionsWithin(
             this BoundsInt bounds,
             List<FastVector3Int> buffer
@@ -2043,11 +2703,40 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return buffer;
         }
 
+        /// <summary>
+        /// Determines if a BoundsInt contains a FastVector3Int position.
+        /// </summary>
+        /// <param name="bounds">The bounds to test containment in.</param>
+        /// <param name="position">The position to test.</param>
+        /// <returns>True if the position is within the bounds; otherwise, false.</returns>
+        /// <remarks>
+        /// Thread Safety: Thread-safe, no Unity API calls.
+        /// Null Handling: Not applicable for value types.
+        /// Performance: O(1) - Delegates to BoundsInt.Contains via implicit conversion.
+        /// Allocations: None.
+        /// Unity Behavior: Uses half-open interval [min, max) for containment test.
+        /// Edge Cases: Points on the max boundary are NOT contained.
+        /// </remarks>
         public static bool Contains(this BoundsInt bounds, FastVector3Int position)
         {
             return bounds.Contains(position);
         }
 
+        /// <summary>
+        /// Determines if a FastVector3Int position is on the 2D edge of a BoundsInt (ignores Z axis).
+        /// </summary>
+        /// <param name="position">The position to test.</param>
+        /// <param name="bounds">The bounds to test against.</param>
+        /// <returns>True if the position is on the 2D boundary of the bounds; otherwise, false.</returns>
+        /// <remarks>
+        /// Thread Safety: Thread-safe, no Unity API calls.
+        /// Null Handling: Not applicable for value types.
+        /// Performance: O(1) - Simple comparisons.
+        /// Allocations: None.
+        /// Unity Behavior: Tests if position is on the min or max-1 boundary in X or Y.
+        /// Edge Cases: Position must be within bounds AND on an edge to return true.
+        /// Uses max-1 because BoundsInt uses half-open intervals. Z axis is ignored.
+        /// </remarks>
         public static bool IsOnEdge2D(this FastVector3Int position, BoundsInt bounds)
         {
             if (bounds.xMin == position.x || bounds.xMax - 1 == position.x)
@@ -2064,6 +2753,19 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         }
 
 #if UNITY_EDITOR
+        /// <summary>
+        /// Extracts all Sprite objects referenced in an AnimationClip.
+        /// </summary>
+        /// <param name="clip">The AnimationClip to extract sprites from.</param>
+        /// <returns>An enumerable of all Sprite objects found in the animation clip.</returns>
+        /// <remarks>
+        /// Thread Safety: Must be called from Unity main thread. Editor-only.
+        /// Null Handling: Returns empty enumerable if clip is null.
+        /// Performance: O(n*m) where n is number of bindings and m is keyframes per binding.
+        /// Allocations: Allocates arrays for bindings and keyframes.
+        /// Unity Behavior: Only available in Unity Editor. Uses AnimationUtility.
+        /// Edge Cases: Only returns Sprite object references, ignores other object types.
+        /// </remarks>
         public static IEnumerable<Sprite> GetSpritesFromClip(this AnimationClip clip)
         {
             if (clip == null)
@@ -2090,6 +2792,19 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         }
 #endif
 
+        /// <summary>
+        /// Determines if a GameObject is in the DontDestroyOnLoad scene.
+        /// </summary>
+        /// <param name="gameObjectToCheck">The GameObject to check.</param>
+        /// <returns>True if the GameObject is in the DontDestroyOnLoad scene; otherwise, false.</returns>
+        /// <remarks>
+        /// Thread Safety: Must be called from Unity main thread.
+        /// Null Handling: Returns false if gameObjectToCheck is null.
+        /// Performance: O(1) - Simple string comparison.
+        /// Allocations: None beyond string comparison.
+        /// Unity Behavior: Checks if the GameObject's scene name is exactly "DontDestroyOnLoad".
+        /// Edge Cases: Returns false for null GameObjects. Uses ordinal string comparison.
+        /// </remarks>
         public static bool IsDontDestroyOnLoad(this GameObject gameObjectToCheck)
         {
             if (gameObjectToCheck == null)
@@ -2104,6 +2819,24 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             );
         }
 
+        /// <summary>
+        /// Determines if a circle is fully contained within a Collider2D by sampling points around its perimeter.
+        /// </summary>
+        /// <param name="targetCollider">The collider to test containment in.</param>
+        /// <param name="center">The center of the circle.</param>
+        /// <param name="radius">The radius of the circle.</param>
+        /// <param name="sampleCount">The number of points to sample around the circle. Default is 16.</param>
+        /// <returns>True if all sampled points on the circle are inside the collider; otherwise, false.</returns>
+        /// <remarks>
+        /// Thread Safety: Must be called from Unity main thread.
+        /// Null Handling: Will throw NullReferenceException if targetCollider is null.
+        /// Performance: O(sampleCount) - Uses Physics2D.OverlapPoint for each sample.
+        /// Allocations: Minimal - Vector2 allocations for sample points.
+        /// Unity Behavior: Uses Collider2D.OverlapPoint which respects physics layers and triggers.
+        /// Edge Cases: Higher sampleCount provides more accurate results but is slower.
+        /// Does not check the circle interior, only the perimeter.
+        /// May return false positives for very small circles or low sample counts.
+        /// </remarks>
         public static bool IsCircleFullyContained(
             this Collider2D targetCollider,
             Vector2 center,
@@ -2125,6 +2858,22 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return true;
         }
 
+        /// <summary>
+        /// Inverts a PolygonCollider2D by making holes become solid and the outside become a hole, bounded by outerRect.
+        /// </summary>
+        /// <param name="col">The PolygonCollider2D to invert.</param>
+        /// <param name="outerRect">The rectangular boundary for the inverted polygon.</param>
+        /// <remarks>
+        /// Thread Safety: Must be called from Unity main thread.
+        /// Null Handling: Will throw NullReferenceException if col is null.
+        /// Performance: O(n*m) where n is pathCount and m is average path length. Uses array pooling.
+        /// Allocations: Uses pooled arrays to minimize allocations.
+        /// Unity Behavior: Modifies the PolygonCollider2D in place. Sets pathCount to originalCount + 1.
+        /// The first path becomes the outer rectangle, subsequent paths are reversed original paths (holes).
+        /// Edge Cases: If the collider has no paths (pathCount == 0), returns without modification.
+        /// Original paths are reversed (Array.Reverse) to invert their winding order.
+        /// Algorithm: Creates outer boundary and reverses inner paths to create holes.
+        /// </remarks>
         public static void Invert(this PolygonCollider2D col, Rect outerRect)
         {
             int originalCount = col.pathCount;

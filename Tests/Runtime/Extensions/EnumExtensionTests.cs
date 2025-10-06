@@ -389,6 +389,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             SmallTestEnum combined = SmallTestEnum.First | SmallTestEnum.Second;
             string displayName = combined.ToDisplayName();
             Assert.IsNotEmpty(displayName);
+            string secondCall = combined.ToDisplayName();
+            Assert.AreSame(displayName, secondCall);
         }
 
         [Test]
@@ -460,6 +462,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             TestEnum combined = TestEnum.First | TestEnum.Second;
             string cachedName = combined.ToCachedName();
             Assert.IsNotEmpty(cachedName);
+            string secondCall = combined.ToCachedName();
+            Assert.AreSame(cachedName, secondCall);
         }
 
         [Test]
@@ -682,19 +686,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             // Pre-warm
             for (int i = 0; i < 100; i++)
             {
-                TestEnum.First.ToCachedName();
-                TinyTestEnum.First.ToCachedName();
-                SmallTestEnum.First.ToCachedName();
-                BigTestEnum.First.ToCachedName();
+                _ = TestEnum.First.ToCachedName();
+                _ = TinyTestEnum.First.ToCachedName();
+                _ = SmallTestEnum.First.ToCachedName();
+                _ = BigTestEnum.First.ToCachedName();
             }
 
             Assert.That(
                 () =>
                 {
-                    TestEnum.First.ToCachedName();
-                    TinyTestEnum.First.ToCachedName();
-                    SmallTestEnum.First.ToCachedName();
-                    BigTestEnum.First.ToCachedName();
+                    _ = TestEnum.First.ToCachedName();
+                    _ = TinyTestEnum.First.ToCachedName();
+                    _ = SmallTestEnum.First.ToCachedName();
+                    _ = BigTestEnum.First.ToCachedName();
                 },
                 Is.Not.AllocatingGCMemory()
             );

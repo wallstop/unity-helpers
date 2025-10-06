@@ -45,7 +45,6 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 }
 
                 bool foundSibling;
-                bool isGameObjectActive = component.gameObject.activeInHierarchy;
 
                 switch (metadata.kind)
                 {
@@ -139,18 +138,14 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     }
                     default:
                     {
-                        Component siblingComponent = null;
-                        if (metadata.attribute.IncludeInactive || isGameObjectActive)
-                        {
-                            siblingComponent = TryResolveSingleComponent(
-                                component.gameObject,
-                                metadata.attribute,
-                                metadata.elementType,
-                                metadata.isInterface,
-                                metadata.attribute.AllowInterfaces,
-                                null
-                            );
-                        }
+                        Component siblingComponent = TryResolveSingleComponent(
+                            component.gameObject,
+                            metadata.attribute,
+                            metadata.elementType,
+                            metadata.isInterface,
+                            metadata.attribute.AllowInterfaces,
+                            null
+                        );
 
                         if (siblingComponent != null)
                         {

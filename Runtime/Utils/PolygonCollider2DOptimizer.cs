@@ -5,6 +5,9 @@ namespace WallstopStudios.UnityHelpers.Utils
     using Core.Attributes;
     using Core.Helper;
     using UnityEngine;
+#if UNITY_EDITOR
+    using UnityEditor;
+#endif
 
     /// <summary>
     /// Polygon collider optimizer. Removes points from the collider polygon with
@@ -78,6 +81,12 @@ namespace WallstopStudios.UnityHelpers.Utils
                 List<Vector2> updatedPath = LineHelper.SimplifyPrecise(path, tolerance);
                 _collider.SetPath(i, updatedPath.ToArray());
             }
+#if UNITY_EDITOR
+            if (!Application.isPlaying)
+            {
+                EditorUtility.SetDirty(this);
+            }
+#endif
         }
     }
 }

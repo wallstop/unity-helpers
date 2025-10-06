@@ -6,6 +6,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
     using System.Linq;
     using System.Reflection;
     using System.Runtime.CompilerServices;
+    using System.Threading;
     using Attributes;
     using Helper;
 
@@ -38,10 +39,14 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
     {
         // Use instance holder to avoid static field access overhead on Mono
         private static readonly EnumNameCacheData Cache;
+        private static readonly ReaderWriterLockSlim CacheLock = new ReaderWriterLockSlim(
+            LockRecursionPolicy.NoRecursion
+        );
 
         static EnumNameCache()
         {
             T[] values = (T[])Enum.GetValues(typeof(T));
+            string[] names = Enum.GetNames(typeof(T));
 
             // Try to determine if we can use array-based lookup
             ulong minVal = ulong.MaxValue;
@@ -90,11 +95,15 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                         int index = (int)(key - minValue);
                         if (index >= 0 && index < arrayLength)
                         {
-                            namesArray[index] = value.ToString("G");
+                            string name = names[i];
+                            if (namesArray[index] == null)
+                            {
+                                namesArray[index] = name;
+                            }
                         }
                     }
                 }
-                namesDict = null;
+                namesDict = new Dictionary<ulong, string>();
             }
             else
             {
@@ -129,21 +138,72 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
 
             EnumNameCacheData cache = Cache;
-            if (cache.UseArray)
+            if (cache.UseArray && cache.NamesArray != null)
             {
                 ulong index = key - cache.MinValue;
                 if (index < (ulong)cache.ArrayLength)
                 {
-                    string name = cache.NamesArray[index];
-                    if (name != null)
+                    string existing = cache.NamesArray[index];
+                    if (existing != null)
                     {
-                        return name;
+                        return existing;
                     }
+
+                    string generated = value.ToString("G");
+                    string prior = Interlocked.CompareExchange(
+                        ref cache.NamesArray[index],
+                        generated,
+                        null
+                    );
+                    return prior ?? generated;
                 }
             }
-            else if (cache.NamesDict != null && cache.NamesDict.TryGetValue(key, out string name))
+
+            Dictionary<ulong, string> namesDict = cache.NamesDict;
+            if (namesDict != null)
             {
-                return name;
+                CacheLock.EnterReadLock();
+                try
+                {
+                    if (namesDict.TryGetValue(key, out string cached))
+                    {
+                        return cached;
+                    }
+                }
+                finally
+                {
+                    CacheLock.ExitReadLock();
+                }
+
+                CacheLock.EnterUpgradeableReadLock();
+                try
+                {
+                    if (namesDict.TryGetValue(key, out string cached))
+                    {
+                        return cached;
+                    }
+
+                    string generated = value.ToString("G");
+                    CacheLock.EnterWriteLock();
+                    try
+                    {
+                        if (!namesDict.TryGetValue(key, out cached))
+                        {
+                            namesDict[key] = generated;
+                            cached = generated;
+                        }
+                    }
+                    finally
+                    {
+                        CacheLock.ExitWriteLock();
+                    }
+
+                    return cached;
+                }
+                finally
+                {
+                    CacheLock.ExitUpgradeableReadLock();
+                }
             }
 
             return value.ToString("G");
@@ -179,6 +239,9 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
     {
         // Use instance holder to avoid static field access overhead on Mono
         private static readonly EnumDisplayNameCacheData Cache;
+        private static readonly ReaderWriterLockSlim CacheLock = new ReaderWriterLockSlim(
+            LockRecursionPolicy.NoRecursion
+        );
 
         static EnumDisplayNameCache()
         {
@@ -245,7 +308,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                         }
                     }
                 }
-                namesDict = null;
+                namesDict = new Dictionary<ulong, string>();
             }
             else
             {
@@ -293,21 +356,72 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
 
             EnumDisplayNameCacheData cache = Cache;
-            if (cache.UseArray)
+            if (cache.UseArray && cache.NamesArray != null)
             {
                 ulong index = key - cache.MinValue;
                 if (index < (ulong)cache.ArrayLength)
                 {
-                    string name = cache.NamesArray[index];
-                    if (name != null)
+                    string existing = cache.NamesArray[index];
+                    if (existing != null)
                     {
-                        return name;
+                        return existing;
                     }
+
+                    string generated = value.ToString();
+                    string prior = Interlocked.CompareExchange(
+                        ref cache.NamesArray[index],
+                        generated,
+                        null
+                    );
+                    return prior ?? generated;
                 }
             }
-            else if (cache.NamesDict != null && cache.NamesDict.TryGetValue(key, out string name))
+
+            Dictionary<ulong, string> namesDict = cache.NamesDict;
+            if (namesDict != null)
             {
-                return name;
+                CacheLock.EnterReadLock();
+                try
+                {
+                    if (namesDict.TryGetValue(key, out string cached))
+                    {
+                        return cached;
+                    }
+                }
+                finally
+                {
+                    CacheLock.ExitReadLock();
+                }
+
+                CacheLock.EnterUpgradeableReadLock();
+                try
+                {
+                    if (namesDict.TryGetValue(key, out string cached))
+                    {
+                        return cached;
+                    }
+
+                    string generated = value.ToString();
+                    CacheLock.EnterWriteLock();
+                    try
+                    {
+                        if (!namesDict.TryGetValue(key, out cached))
+                        {
+                            namesDict[key] = generated;
+                            cached = generated;
+                        }
+                    }
+                    finally
+                    {
+                        CacheLock.ExitWriteLock();
+                    }
+
+                    return cached;
+                }
+                finally
+                {
+                    CacheLock.ExitUpgradeableReadLock();
+                }
             }
 
             return value.ToString();
