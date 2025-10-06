@@ -424,24 +424,6 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             return ValueHelpers.IsAssigned(currentValue);
         }
 
-        private static bool MatchesFilters(
-            GameObject gameObject,
-            BaseRelationalComponentAttribute attribute
-        )
-        {
-            if (attribute.TagFilter != null && !gameObject.CompareTag(attribute.TagFilter))
-            {
-                return false;
-            }
-
-            if (attribute.NameFilter != null && !gameObject.name.Contains(attribute.NameFilter))
-            {
-                return false;
-            }
-
-            return true;
-        }
-
         internal static void LogMissingComponentError<TAttribute>(
             Component component,
             FieldMetadata<TAttribute> metadata,
@@ -497,10 +479,21 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 return false;
             }
 
-            GameObject candidateGameObject = candidate.gameObject;
+            bool mustCheckHierarchy = !attribute.IncludeInactive;
+            bool mustCheckTag = attribute.TagFilter != null;
+            bool mustCheckName = attribute.NameFilter != null;
 
-            if (!attribute.IncludeInactive)
+            if (!mustCheckHierarchy && !mustCheckTag && !mustCheckName)
             {
+                return true;
+            }
+
+            GameObject candidateGameObject = null;
+
+            if (mustCheckHierarchy)
+            {
+                candidateGameObject = candidate.gameObject;
+
                 if (!candidateGameObject.activeInHierarchy)
                 {
                     return false;
@@ -512,40 +505,27 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 }
             }
 
-            return MatchesFilters(candidateGameObject, attribute);
-        }
+            if (!mustCheckTag && !mustCheckName)
+            {
+                return true;
+            }
 
-        private static bool ComponentMatches(
-            Component candidate,
-            BaseRelationalComponentAttribute attribute,
-            Type elementType,
-            bool isInterface,
-            bool filterDisabledComponents = true
-        )
-        {
-            if (candidate == null)
+            candidateGameObject ??= candidate.gameObject;
+
+            if (mustCheckTag && !candidateGameObject.CompareTag(attribute.TagFilter))
             {
                 return false;
             }
 
-            Type candidateType = candidate.GetType();
-
-            if (isInterface)
-            {
-                if (!attribute.AllowInterfaces)
-                {
-                    return false;
-                }
-            }
-
-            if (!elementType.IsAssignableFrom(candidateType))
+            if (mustCheckName && !candidateGameObject.name.Contains(attribute.NameFilter))
             {
                 return false;
             }
 
-            return PassesStateAndFilters(candidate, attribute, filterDisabledComponents);
+            return true;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static int FilterComponentsInPlace(
             List<Component> components,
             BaseRelationalComponentAttribute attribute,
@@ -554,21 +534,50 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             bool filterDisabledComponents = true
         )
         {
+            int componentCount = components.Count;
+            if (componentCount == 0)
+            {
+                return 0;
+            }
+
+            if (isInterface && !attribute.AllowInterfaces)
+            {
+                components.Clear();
+                return 0;
+            }
+
             int maxCount = attribute.MaxCount > 0 ? attribute.MaxCount : int.MaxValue;
+            bool mustCheckHierarchy = !attribute.IncludeInactive;
+            bool mustCheckTag = attribute.TagFilter != null;
+            bool mustCheckName = attribute.NameFilter != null;
+
+            if (!mustCheckHierarchy && !mustCheckTag && !mustCheckName)
+            {
+                if (componentCount > maxCount)
+                {
+                    components.RemoveRange(maxCount, componentCount - maxCount);
+                    return maxCount;
+                }
+
+                return componentCount;
+            }
 
             int writeIndex = 0;
 
-            int count = components.Count;
-
-            if (!isInterface)
+            if (isInterface)
             {
-                for (int readIndex = 0; readIndex < count; readIndex++)
+                for (int readIndex = 0; readIndex < componentCount; readIndex++)
                 {
-                    Component comp = components[readIndex];
+                    Component candidate = components[readIndex];
 
-                    if (PassesStateAndFilters(comp, attribute, filterDisabledComponents))
+                    if (candidate == null || !elementType.IsAssignableFrom(candidate.GetType()))
                     {
-                        components[writeIndex++] = comp;
+                        continue;
+                    }
+
+                    if (PassesStateAndFilters(candidate, attribute, filterDisabledComponents))
+                    {
+                        components[writeIndex++] = candidate;
 
                         if (writeIndex >= maxCount)
                         {
@@ -579,21 +588,13 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             }
             else
             {
-                for (int readIndex = 0; readIndex < count; readIndex++)
+                for (int readIndex = 0; readIndex < componentCount; readIndex++)
                 {
-                    Component comp = components[readIndex];
+                    Component candidate = components[readIndex];
 
-                    if (
-                        ComponentMatches(
-                            comp,
-                            attribute,
-                            elementType,
-                            isInterface,
-                            filterDisabledComponents
-                        )
-                    )
+                    if (PassesStateAndFilters(candidate, attribute, filterDisabledComponents))
                     {
-                        components[writeIndex++] = comp;
+                        components[writeIndex++] = candidate;
 
                         if (writeIndex >= maxCount)
                         {
@@ -611,6 +612,38 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             return writeIndex;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static Component FirstMatchingComponent(
+            List<Component> components,
+            BaseRelationalComponentAttribute attribute,
+            Type elementType,
+            bool isInterface,
+            bool filterDisabledComponents
+        )
+        {
+            for (int i = 0; i < components.Count; i++)
+            {
+                Component candidate = components[i];
+
+                if (candidate == null)
+                {
+                    continue;
+                }
+
+                if (isInterface && !elementType.IsAssignableFrom(candidate.GetType()))
+                {
+                    continue;
+                }
+
+                if (PassesStateAndFilters(candidate, attribute, filterDisabledComponents))
+                {
+                    return candidate;
+                }
+            }
+
+            return null;
+        }
+
         internal static Component TryResolveSingleComponent(
             GameObject gameObject,
             BaseRelationalComponentAttribute attribute,
@@ -621,8 +654,20 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             bool filterDisabledComponents = true
         )
         {
+            bool mustCheckHierarchy = !attribute.IncludeInactive;
+            bool mustCheckTag = attribute.TagFilter != null;
+            bool mustCheckName = attribute.NameFilter != null;
+            bool requiresPostProcessing = mustCheckHierarchy || mustCheckTag || mustCheckName;
+
             if (!isInterface)
             {
+                if (!requiresPostProcessing)
+                {
+                    return gameObject.TryGetComponent(elementType, out Component directMatch)
+                        ? directMatch
+                        : null;
+                }
+
                 if (
                     gameObject.TryGetComponent(elementType, out Component candidate)
                     && PassesStateAndFilters(candidate, attribute, filterDisabledComponents)
@@ -634,39 +679,27 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 if (scratch != null)
                 {
                     scratch.Clear();
-
                     gameObject.GetComponents(elementType, scratch);
-
-                    for (int i = 0; i < scratch.Count; i++)
-                    {
-                        candidate = scratch[i];
-
-                        if (PassesStateAndFilters(candidate, attribute, filterDisabledComponents))
-                        {
-                            return candidate;
-                        }
-                    }
-
-                    return null;
+                    return FirstMatchingComponent(
+                        scratch,
+                        attribute,
+                        elementType,
+                        isInterface: false,
+                        filterDisabledComponents
+                    );
                 }
 
                 using PooledResource<List<Component>> pooled = Buffers<Component>.List.Get(
                     out List<Component> components
                 );
-
                 gameObject.GetComponents(elementType, components);
-
-                for (int i = 0; i < components.Count; i++)
-                {
-                    candidate = components[i];
-
-                    if (PassesStateAndFilters(candidate, attribute, filterDisabledComponents))
-                    {
-                        return candidate;
-                    }
-                }
-
-                return null;
+                return FirstMatchingComponent(
+                    components,
+                    attribute,
+                    elementType,
+                    isInterface: false,
+                    filterDisabledComponents
+                );
             }
 
             if (!allowInterfaces)
@@ -674,51 +707,60 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 return null;
             }
 
+            if (
+                gameObject.TryGetComponent(elementType, out Component interfaceCandidate)
+                && (
+                    !requiresPostProcessing
+                    || PassesStateAndFilters(
+                        interfaceCandidate,
+                        attribute,
+                        filterDisabledComponents
+                    )
+                )
+            )
+            {
+                return interfaceCandidate;
+            }
+
             if (scratch != null)
             {
                 scratch.Clear();
+                gameObject.GetComponents(elementType, scratch);
 
-                gameObject.GetComponents(typeof(Component), scratch);
-
-                for (int i = 0; i < scratch.Count; i++)
+                if (scratch.Count == 0)
                 {
-                    Component candidate = scratch[i];
-
-                    if (
-                        candidate != null
-                        && elementType.IsAssignableFrom(candidate.GetType())
-                        && PassesStateAndFilters(candidate, attribute, filterDisabledComponents)
-                    )
-                    {
-                        return candidate;
-                    }
+                    gameObject.GetComponents(typeof(Component), scratch);
                 }
 
-                return null;
-            }
-            else
-            {
-                using PooledResource<List<Component>> pooled = Buffers<Component>.List.Get(
-                    out List<Component> components
+                return FirstMatchingComponent(
+                    scratch,
+                    attribute,
+                    elementType,
+                    isInterface: true,
+                    filterDisabledComponents
                 );
+            }
 
-                gameObject.GetComponents(typeof(Component), components);
+            using (
+                PooledResource<List<Component>> pooled = Buffers<Component>.List.Get(
+                    out List<Component> components
+                )
+            )
+            {
+                gameObject.GetComponents(elementType, components);
 
-                for (int i = 0; i < components.Count; i++)
+                if (components.Count == 0)
                 {
-                    Component candidate = components[i];
-
-                    if (
-                        candidate != null
-                        && elementType.IsAssignableFrom(candidate.GetType())
-                        && PassesStateAndFilters(candidate, attribute, filterDisabledComponents)
-                    )
-                    {
-                        return candidate;
-                    }
+                    gameObject.GetComponents(typeof(Component), components);
                 }
 
-                return null;
+                return FirstMatchingComponent(
+                    components,
+                    attribute,
+                    elementType,
+                    isInterface: true,
+                    filterDisabledComponents
+                );
             }
         }
 
