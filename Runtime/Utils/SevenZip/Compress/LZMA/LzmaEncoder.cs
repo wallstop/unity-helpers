@@ -839,8 +839,7 @@ namespace SevenZip.Compression.LZMA
                     return Backward(out backRes, cur);
                 }
 
-                UInt32 newLen;
-                ReadMatchDistances(out newLen, out numDistancePairs);
+                ReadMatchDistances(out UInt32 newLen, out numDistancePairs);
                 if (newLen >= _numFastBytes)
                 {
                     _numDistancePairs = numDistancePairs;
@@ -1383,8 +1382,7 @@ namespace SevenZip.Compression.LZMA
             }
             while (true)
             {
-                UInt32 pos;
-                UInt32 len = GetOptimum((UInt32)nowPos64, out pos);
+                UInt32 len = GetOptimum((UInt32)nowPos64, out UInt32 pos);
 
                 UInt32 posState = ((UInt32)nowPos64) & _posStateMask;
                 UInt32 complexState = (_state.Index << Base.kNumPosStatesBitsMax) + posState;
@@ -1615,10 +1613,11 @@ namespace SevenZip.Compression.LZMA
                 SetStreams(inStream, outStream, inSize, outSize);
                 while (true)
                 {
-                    Int64 processedInSize;
-                    Int64 processedOutSize;
-                    bool finished;
-                    CodeOneBlock(out processedInSize, out processedOutSize, out finished);
+                    CodeOneBlock(
+                        out Int64 processedInSize,
+                        out Int64 processedOutSize,
+                        out bool finished
+                    );
                     if (finished)
                     {
                         return;

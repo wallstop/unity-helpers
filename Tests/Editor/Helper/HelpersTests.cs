@@ -9,6 +9,7 @@
     using UnityEditorInternal;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Utils;
 
     public sealed class HelpersTests
     {
@@ -88,6 +89,11 @@
         public void GetAllLayerNamesMatch()
         {
             Assert.That(Helpers.GetAllLayerNames(), Is.EqualTo(InternalEditorUtility.layers));
+
+            using PooledResource<List<string>> bufferResource = Buffers<string>.List.Get();
+            List<string> buffer = bufferResource.resource;
+            Helpers.GetAllLayerNames(buffer);
+            Assert.That(buffer, Is.EqualTo(InternalEditorUtility.layers));
         }
     }
 }

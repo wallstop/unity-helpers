@@ -210,6 +210,52 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             return removedCount;
         }
 
+        public void RemoveAt(int index)
+        {
+            BoundsCheck(index);
+            int capacity = Capacity;
+            int physicalIndex = AdjustedIndexFor(index);
+            int leftCount = index;
+            int rightCount = Count - index - 1;
+            if (leftCount <= rightCount)
+            {
+                int headIndex = GetHeadIndex();
+                int current = physicalIndex;
+                for (int i = 0; i < leftCount; ++i)
+                {
+                    int previous = current - 1;
+                    if (previous < 0)
+                    {
+                        previous += capacity;
+                    }
+                    _buffer[current] = _buffer[previous];
+                    current = previous;
+                }
+                _buffer[headIndex] = default;
+            }
+            else
+            {
+                int current = physicalIndex;
+                for (int i = 0; i < rightCount; ++i)
+                {
+                    int next = current + 1;
+                    if (next >= capacity)
+                    {
+                        next -= capacity;
+                    }
+                    _buffer[current] = _buffer[next];
+                    current = next;
+                }
+                _buffer[current] = default;
+                _position = current;
+            }
+            --Count;
+            if (Count == 0)
+            {
+                _position = 0;
+            }
+        }
+
         private void RebuildFromCache(List<T> temp)
         {
             _buffer.Clear();

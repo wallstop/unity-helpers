@@ -22,9 +22,15 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
     {
         private static readonly WaitForEndOfFrame WaitForEndOfFrame = new();
 #if SINGLE_THREADED
-        private static readonly Dictionary<Type, MethodInfo> AwakeMethodsByType = new();
+        private static readonly Dictionary<
+            Type,
+            Func<object, object[], object>
+        > AwakeMethodsByType = new();
 #else
-        private static readonly ConcurrentDictionary<Type, MethodInfo> AwakeMethodsByType = new();
+        private static readonly ConcurrentDictionary<
+            Type,
+            Func<object, object[], object>
+        > AwakeMethodsByType = new();
 #endif
         private static readonly Object LogObject = new();
         private static readonly Dictionary<string, Object> ObjectsByTag = new(
@@ -35,12 +41,29 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             StringComparer.OrdinalIgnoreCase
         );
 
-        private static string[] CachedLayerNames;
+        private static string[] CachedLayerNames = Array.Empty<string>();
+        private static bool LayerCacheInitialized;
+
+#if UNITY_EDITOR
+        private static readonly string[] DefaultPrefabSearchFolders =
+        {
+            "Assets/Prefabs",
+            "Assets/Resources",
+        };
+
+        private static readonly string[] DefaultScriptableObjectSearchFolders =
+        {
+            "Assets/Prefabs",
+            "Assets/Resources",
+            "Assets/TileMaps",
+        };
+#endif
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void CLearLayerNames()
         {
-            CachedLayerNames = null;
+            CachedLayerNames = Array.Empty<string>();
+            LayerCacheInitialized = false;
         }
 
         public static bool IsRunningInBatchMode => Application.isBatchMode;
@@ -75,7 +98,8 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
         }
 
-        internal static string[] AllSpriteLabels;
+        internal static string[] AllSpriteLabels { get; private set; } = Array.Empty<string>();
+        private static bool SpriteLabelCacheInitialized;
 
         public static string[] GetAllSpriteLabelNames()
         {
@@ -85,39 +109,46 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
 
 #if UNITY_EDITOR
-            if (AllSpriteLabels != null)
+            if (SpriteLabelCacheInitialized)
             {
                 return AllSpriteLabels;
             }
 
-            HashSet<string> allLabels = new(StringComparer.Ordinal);
-            string[] guids = AssetDatabase.FindAssets("t:Sprite");
-            foreach (string guid in guids)
-            {
-                string path = AssetDatabase.GUIDToAssetPath(guid);
-                if (!path.StartsWith("Assets", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-                Object asset = AssetDatabase.LoadMainAssetAtPath(path);
-                if (asset == null)
-                {
-                    continue;
-                }
-
-                string[] labels = AssetDatabase.GetLabels(asset);
-                if (labels.Length != 0)
-                {
-                    CachedLabels[path] = labels;
-                    allLabels.UnionWith(labels);
-                }
-            }
-
-            AllSpriteLabels = allLabels.ToArray();
-            Array.Sort(AllSpriteLabels);
+            using PooledResource<List<string>> labelBuffer = Buffers<string>.List.Get();
+            CollectSpriteLabels(labelBuffer.resource);
             return AllSpriteLabels;
 #else
             return Array.Empty<string>();
+#endif
+        }
+
+        public static void GetAllSpriteLabelNames(List<string> destination)
+        {
+            if (destination == null)
+            {
+                throw new ArgumentNullException(nameof(destination));
+            }
+
+            destination.Clear();
+
+            if (IsRunningInContinuousIntegration || IsRunningInBatchMode)
+            {
+                return;
+            }
+
+#if UNITY_EDITOR
+            string[] cached = SpriteLabelCacheInitialized
+                ? AllSpriteLabels
+                : GetAllSpriteLabelNames();
+
+            if (cached.Length == 0)
+            {
+                return;
+            }
+
+            destination.AddRange(cached);
+#else
+            _ = destination;
 #endif
         }
 
@@ -130,6 +161,8 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 string[] editorLayers = InternalEditorUtility.layers;
                 if (editorLayers is { Length: > 0 })
                 {
+                    LayerCacheInitialized = true;
+                    CachedLayerNames = editorLayers;
                     return editorLayers;
                 }
             }
@@ -138,7 +171,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 // Fall through to runtime-safe fallback below
             }
 #endif
-            if (!Application.isEditor && Application.isPlaying && CachedLayerNames != null)
+            if (!Application.isEditor && Application.isPlaying && LayerCacheInitialized)
             {
                 return CachedLayerNames;
             }
@@ -154,8 +187,134 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 }
             }
 
-            CachedLayerNames = layers.ToArray();
+            LayerCacheInitialized = true;
+            int layerCount = layers.Count;
+            if (layerCount == 0)
+            {
+                CachedLayerNames = Array.Empty<string>();
+                return CachedLayerNames;
+            }
+
+            if (CachedLayerNames == null || CachedLayerNames.Length != layerCount)
+            {
+                CachedLayerNames = new string[layerCount];
+            }
+
+            for (int i = 0; i < layerCount; ++i)
+            {
+                CachedLayerNames[i] = layers[i];
+            }
+
             return CachedLayerNames;
+        }
+
+        public static void GetAllLayerNames(List<string> destination)
+        {
+            if (destination == null)
+            {
+                throw new ArgumentNullException(nameof(destination));
+            }
+
+            destination.Clear();
+
+            string[] layers = GetAllLayerNames();
+            if (layers.Length == 0)
+            {
+                return;
+            }
+
+            destination.AddRange(layers);
+        }
+
+#if UNITY_EDITOR
+        private static void CollectSpriteLabels(List<string> destination)
+        {
+            destination.Clear();
+
+            using PooledResource<HashSet<string>> labelSetResource = Buffers<string>.HashSet.Get();
+            HashSet<string> labelSet = labelSetResource.resource;
+
+            string[] guids = AssetDatabase.FindAssets("t:Sprite");
+            foreach (string guid in guids)
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                if (!path.StartsWith("Assets", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                Object asset = AssetDatabase.LoadMainAssetAtPath(path);
+                if (asset == null)
+                {
+                    continue;
+                }
+
+                string[] labels = AssetDatabase.GetLabels(asset);
+                if (labels.Length == 0)
+                {
+                    continue;
+                }
+
+                CachedLabels[path] = labels;
+                labelSet.UnionWith(labels);
+            }
+
+            if (labelSet.Count == 0)
+            {
+                SetSpriteLabelCache(Array.Empty<string>(), alreadySorted: true);
+                return;
+            }
+
+            destination.AddRange(labelSet);
+            destination.Sort(StringComparer.Ordinal);
+            SetSpriteLabelCache(destination, alreadySorted: true);
+        }
+#endif
+
+        internal static void SetSpriteLabelCache(
+            IReadOnlyCollection<string> labels,
+            bool alreadySorted = false
+        )
+        {
+            if (labels == null || labels.Count == 0)
+            {
+                AllSpriteLabels = Array.Empty<string>();
+                SpriteLabelCacheInitialized = true;
+                return;
+            }
+
+            string[] cache =
+                AllSpriteLabels.Length == labels.Count ? AllSpriteLabels : new string[labels.Count];
+
+            if (labels is IReadOnlyList<string> list)
+            {
+                for (int i = 0; i < list.Count; ++i)
+                {
+                    cache[i] = list[i];
+                }
+            }
+            else
+            {
+                int index = 0;
+                foreach (string label in labels)
+                {
+                    cache[index++] = label;
+                }
+            }
+
+            if (!alreadySorted)
+            {
+                Array.Sort(cache, StringComparer.Ordinal);
+            }
+
+            AllSpriteLabels = cache;
+            SpriteLabelCacheInitialized = true;
+        }
+
+        internal static void ResetSpriteLabelCache()
+        {
+            SpriteLabelCacheInitialized = false;
+            AllSpriteLabels = Array.Empty<string>();
         }
 
         // https://gamedevelopment.tutsplus.com/tutorials/unity-solution-for-hitting-moving-targets--cms-29633
@@ -239,6 +398,28 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 Component c => c != null ? c.GetComponents<T>() : Array.Empty<T>(),
                 _ => default,
             };
+        }
+
+        public static List<T> GetComponents<T>(this Object target, List<T> buffer)
+        {
+            if (buffer == null)
+            {
+                throw new ArgumentNullException(nameof(buffer));
+            }
+
+            buffer.Clear();
+
+            switch (target)
+            {
+                case GameObject go when go != null:
+                    go.GetComponents(buffer);
+                    break;
+                case Component component when component != null:
+                    component.GetComponents(buffer);
+                    break;
+            }
+
+            return buffer;
         }
 
         public static GameObject GetGameObject(this object target)
@@ -434,12 +615,14 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
         private static IEnumerator FunctionAfterFrame(Action action)
         {
-            yield return WaitForEndOfFrame;
+            yield return Buffers.WaitForEndOfFrame;
             action();
         }
 
-        public static bool HasEnoughTimePassed(float timestamp, float desiredDuration) =>
-            timestamp + desiredDuration < Time.time;
+        public static bool HasEnoughTimePassed(float timestamp, float desiredDuration)
+        {
+            return timestamp + desiredDuration < Time.time;
+        }
 
         public static Vector2 Opposite(this Vector2 vector)
         {
@@ -461,9 +644,14 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
         public static IEnumerable<Vector3Int> IterateBounds(this BoundsInt bounds, int padding = 1)
         {
-            for (int x = bounds.xMin - padding; x <= bounds.xMax + padding; ++x)
+            int xStart = bounds.xMin - padding;
+            int xEnd = bounds.xMax + padding;
+            int yStart = bounds.yMin - padding;
+            int yEnd = bounds.yMax + padding;
+
+            for (int x = xStart; x <= xEnd; ++x)
             {
-                for (int y = bounds.yMin; y <= bounds.yMax + padding; ++y)
+                for (int y = yStart; y <= yEnd; ++y)
                 {
                     yield return new Vector3Int(x, y, 0);
                 }
@@ -647,38 +835,116 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         }
 
 #if UNITY_EDITOR
+        private static string[] PrepareSearchFolders(
+            IEnumerable<string> assetPaths,
+            string[] defaultFolders,
+            out PooledResource<List<string>> listResource,
+            out PooledResource<string[]> arrayResource
+        )
+        {
+            listResource = default;
+            arrayResource = default;
+
+            if (assetPaths == null)
+            {
+                return defaultFolders;
+            }
+
+            if (assetPaths is string[] array)
+            {
+                return array;
+            }
+
+            if (assetPaths is ICollection<string> collection)
+            {
+                arrayResource = WallstopFastArrayPool<string>.Get(
+                    collection.Count,
+                    out string[] buffer
+                );
+                int index = 0;
+                foreach (string path in collection)
+                {
+                    buffer[index++] = path;
+                }
+
+                return buffer;
+            }
+
+            listResource = Buffers<string>.List.Get();
+            List<string> list = listResource.resource;
+            foreach (string path in assetPaths)
+            {
+                list.Add(path);
+            }
+
+            arrayResource = WallstopFastArrayPool<string>.Get(list.Count, out string[] temp);
+            list.CopyTo(temp);
+            return temp;
+        }
+
         public static IEnumerable<GameObject> EnumeratePrefabs(
             IEnumerable<string> assetPaths = null
         )
         {
-            assetPaths ??= new[] { "Assets/Prefabs", "Assets/Resources" };
+            string[] searchFolders = PrepareSearchFolders(
+                assetPaths,
+                DefaultPrefabSearchFolders,
+                out PooledResource<List<string>> pathListResource,
+                out PooledResource<string[]> pathArrayResource
+            );
 
-            foreach (string assetGuid in AssetDatabase.FindAssets("t:prefab", assetPaths.ToArray()))
+            try
             {
-                string path = AssetDatabase.GUIDToAssetPath(assetGuid);
-                GameObject go = AssetDatabase.LoadAssetAtPath<GameObject>(path);
-                if (go != null)
+                foreach (string assetGuid in AssetDatabase.FindAssets("t:prefab", searchFolders))
                 {
-                    yield return go;
+                    string path = AssetDatabase.GUIDToAssetPath(assetGuid);
+                    GameObject go = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                    if (go != null)
+                    {
+                        yield return go;
+                    }
                 }
+            }
+            finally
+            {
+                pathArrayResource.Dispose();
+                pathListResource.Dispose();
             }
         }
 
-        public static IEnumerable<T> EnumerateScriptableObjects<T>(string[] assetPaths = null)
+        public static IEnumerable<T> EnumerateScriptableObjects<T>(
+            IEnumerable<string> assetPaths = null
+        )
             where T : ScriptableObject
         {
-            assetPaths ??= new[] { "Assets/Prefabs", "Assets/Resources", "Assets/TileMaps" };
+            string[] searchFolders = PrepareSearchFolders(
+                assetPaths,
+                DefaultScriptableObjectSearchFolders,
+                out PooledResource<List<string>> pathListResource,
+                out PooledResource<string[]> pathArrayResource
+            );
 
-            foreach (
-                string assetGuid in AssetDatabase.FindAssets("t:" + typeof(T).Name, assetPaths)
-            )
+            try
             {
-                string path = AssetDatabase.GUIDToAssetPath(assetGuid);
-                T so = AssetDatabase.LoadAssetAtPath<T>(path);
-                if (so != null)
+                foreach (
+                    string assetGuid in AssetDatabase.FindAssets(
+                        "t:" + typeof(T).Name,
+                        searchFolders
+                    )
+                )
                 {
-                    yield return so;
+                    string path = AssetDatabase.GUIDToAssetPath(assetGuid);
+                    T so = AssetDatabase.LoadAssetAtPath<T>(path);
+                    if (so != null)
+                    {
+                        yield return so;
+                    }
                 }
+            }
+            finally
+            {
+                pathArrayResource.Dispose();
+                pathListResource.Dispose();
             }
         }
 #endif
@@ -750,7 +1016,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             gameObject.GetComponentsInChildren(false, components);
             foreach (MonoBehaviour script in components)
             {
-                MethodInfo awakeInfo = AwakeMethodsByType.GetOrAdd(
+                Func<object, object[], object> awakeInfo = AwakeMethodsByType.GetOrAdd(
                     script.GetType(),
                     type =>
                     {
@@ -764,17 +1030,14 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                                 && method.GetParameters().Length == 0
                             )
                             {
-                                return method;
+                                return ReflectionHelpers.GetMethodInvoker(method);
                             }
                         }
 
                         return null;
                     }
                 );
-                if (awakeInfo != null)
-                {
-                    _ = awakeInfo.Invoke(script, null);
-                }
+                _ = awakeInfo?.Invoke(script, null);
             }
         }
 

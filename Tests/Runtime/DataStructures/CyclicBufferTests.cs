@@ -577,6 +577,147 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
+        public void RemoveAtEmptyBufferThrows()
+        {
+            CyclicBuffer<int> buffer = new(5);
+
+            Assert.Throws<IndexOutOfRangeException>(() => buffer.RemoveAt(0));
+            Assert.Throws<IndexOutOfRangeException>(() => buffer.RemoveAt(-1));
+        }
+
+        [Test]
+        public void RemoveAtOutOfRangeIndices()
+        {
+            CyclicBuffer<int> buffer = new(4) { 1, 2, 3 };
+
+            Assert.Throws<IndexOutOfRangeException>(() => buffer.RemoveAt(-1));
+            Assert.Throws<IndexOutOfRangeException>(() => buffer.RemoveAt(3));
+            Assert.Throws<IndexOutOfRangeException>(() => buffer.RemoveAt(int.MaxValue));
+        }
+
+        [Test]
+        public void RemoveAtSingleElementClearsBuffer()
+        {
+            CyclicBuffer<int> buffer = new(5) { 42 };
+
+            buffer.RemoveAt(0);
+
+            Assert.AreEqual(0, buffer.Count);
+            Assert.That(buffer.ToArray(), Is.EqualTo(Array.Empty<int>()));
+            Assert.Throws<IndexOutOfRangeException>(() => buffer.RemoveAt(0));
+        }
+
+        [Test]
+        public void RemoveAtRemovesFrontElement()
+        {
+            CyclicBuffer<int> buffer = new(5) { 1, 2, 3, 4 };
+
+            buffer.RemoveAt(0);
+
+            Assert.AreEqual(3, buffer.Count);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 2, 3, 4 }));
+        }
+
+        [Test]
+        public void RemoveAtRemovesBackElement()
+        {
+            CyclicBuffer<int> buffer = new(5) { 1, 2, 3, 4 };
+
+            buffer.RemoveAt(buffer.Count - 1);
+
+            Assert.AreEqual(3, buffer.Count);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 1, 2, 3 }));
+        }
+
+        [Test]
+        public void RemoveAtRemovesMiddleElement()
+        {
+            CyclicBuffer<int> buffer = new(5) { 1, 2, 3, 4, 5 };
+
+            buffer.RemoveAt(2);
+
+            Assert.AreEqual(4, buffer.Count);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 1, 2, 4, 5 }));
+        }
+
+        [Test]
+        public void RemoveAtWrappedBufferLeftShiftPreservesOrder()
+        {
+            CyclicBuffer<int> buffer = new(5);
+            for (int i = 1; i <= 8; ++i)
+            {
+                buffer.Add(i);
+            }
+
+            buffer.RemoveAt(2);
+
+            Assert.AreEqual(4, buffer.Count);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 4, 5, 7, 8 }));
+
+            buffer.Add(9);
+
+            Assert.AreEqual(5, buffer.Count);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 4, 5, 7, 8, 9 }));
+        }
+
+        [Test]
+        public void RemoveAtWrappedBufferRightShiftPreservesOrder()
+        {
+            CyclicBuffer<int> buffer = new(5);
+            for (int i = 1; i <= 6; ++i)
+            {
+                buffer.Add(i);
+            }
+
+            buffer.RemoveAt(3);
+
+            Assert.AreEqual(4, buffer.Count);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 2, 3, 4, 6 }));
+
+            buffer.Add(7);
+
+            Assert.AreEqual(5, buffer.Count);
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 2, 3, 4, 6, 7 }));
+        }
+
+        [Test]
+        public void RemoveAtRandomizedOperationsMatchList()
+        {
+            const int capacity = 8;
+            CyclicBuffer<int> buffer = new(capacity);
+            List<int> expected = new(capacity);
+
+            for (int i = 0; i < 256; ++i)
+            {
+                bool shouldRemove =
+                    expected.Count > 0 && (expected.Count == capacity || PRNG.Instance.NextBool());
+
+                if (shouldRemove)
+                {
+                    int index = PRNG.Instance.Next(0, expected.Count);
+                    buffer.RemoveAt(index);
+                    expected.RemoveAt(index);
+                }
+                else
+                {
+                    int value = PRNG.Instance.Next();
+                    buffer.Add(value);
+                    if (capacity > 0)
+                    {
+                        if (expected.Count == capacity)
+                        {
+                            expected.RemoveAt(0);
+                        }
+                        expected.Add(value);
+                    }
+                }
+
+                Assert.AreEqual(expected.Count, buffer.Count);
+                Assert.That(buffer.ToArray(), Is.EqualTo(expected));
+            }
+        }
+
+        [Test]
         public void RemoveAllMatchingElements()
         {
             CyclicBuffer<int> buffer = new(10) { 1, 2, 3, 2, 4, 2 };

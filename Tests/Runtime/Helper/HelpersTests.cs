@@ -85,21 +85,25 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public void GetAllSpriteLabelNamesReturnsEmptyWhenBatchOrCi()
         {
             string originalCi = Environment.GetEnvironmentVariable("CI");
-            string[] cached = Helpers.AllSpriteLabels;
+            string[] cached = Helpers.AllSpriteLabels.ToArray();
 
             try
             {
                 Environment.SetEnvironmentVariable("CI", "true");
-                Helpers.AllSpriteLabels = null;
+                Helpers.ResetSpriteLabelCache();
 
                 string[] labels = Helpers.GetAllSpriteLabelNames();
                 Assert.IsNotNull(labels);
                 Assert.IsEmpty(labels);
+
+                List<string> buffer = new();
+                Helpers.GetAllSpriteLabelNames(buffer);
+                Assert.IsEmpty(buffer);
             }
             finally
             {
                 Environment.SetEnvironmentVariable("CI", originalCi);
-                Helpers.AllSpriteLabels = cached;
+                Helpers.SetSpriteLabelCache(cached, alreadySorted: false);
             }
         }
 
@@ -108,6 +112,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             string[] layerNames = Helpers.GetAllLayerNames();
             Assert.AreNotEqual(0, layerNames.Length, string.Join(", ", layerNames));
+        }
+
+        [Test]
+        public void GetAllLayerNamesBufferOverloadMatchesArray()
+        {
+            List<string> buffer = new() { "placeholder" };
+            Helpers.GetAllLayerNames(buffer);
+            string[] layerNames = Helpers.GetAllLayerNames();
+            Assert.That(buffer, Is.EquivalentTo(layerNames));
         }
 
         [UnityTest]
@@ -199,6 +212,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
             Assert.That(fromGo, Is.EquivalentTo(expected));
             Assert.That(fromRenderer, Is.EquivalentTo(expected));
+
+            List<Component> buffer = new() { null };
+            Helpers.GetComponents(go, buffer);
+            Assert.That(buffer, Is.EquivalentTo(expected));
+
+            buffer.Add(null);
+            Helpers.GetComponents(go.GetComponent<SpriteRenderer>(), buffer);
+            Assert.That(buffer, Is.EquivalentTo(expected));
             yield break;
         }
 
