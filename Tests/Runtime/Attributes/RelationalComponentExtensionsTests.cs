@@ -60,13 +60,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
     internal sealed class RelationalComponentTester : MonoBehaviour
     {
-        [ParentComponent(onlyAncestors = true)]
+        [ParentComponent(OnlyAncestors = true)]
         public Rigidbody parentBody;
 
         [SiblingComponent]
         public BoxCollider siblingCollider;
 
-        [ChildComponent(onlyDescendents = true)]
+        [ChildComponent(OnlyDescendants = true)]
         public CapsuleCollider childCollider;
     }
 }

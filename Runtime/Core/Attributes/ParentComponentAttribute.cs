@@ -3,216 +3,153 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     using System;
     using System.Collections;
     using System.Collections.Generic;
-    using System.Linq;
-    using System.Reflection;
     using Extension;
-    using Helper;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Utils;
+    using static RelationalComponentProcessor;
 
+    /// <summary>
+    /// Automatically assigns parent components (components up the transform hierarchy) to the decorated field.
+    /// Supports single components, arrays, and List&lt;T&gt; collection types.
+    /// </summary>
+    /// <remarks>
+    /// Call <see cref="ParentComponentExtensions.AssignParentComponents"/> to populate the field.
+    /// This is typically done in Awake() or OnEnable().
+    /// By default, searches include the current GameObject. Use <see cref="OnlyAncestors"/> to exclude it.
+    ///
+    /// IMPORTANT: This attribute populates fields at runtime, not during Unity serialization in Edit mode.
+    /// Fields populated by this attribute will not be serialized by Unity.
+    /// </remarks>
     [AttributeUsage(AttributeTargets.Field)]
-    public sealed class ParentComponentAttribute : Attribute
+    public sealed class ParentComponentAttribute : BaseRelationalComponentAttribute
     {
-        public bool optional = false;
-        public bool includeInactive = true;
-        public bool onlyAncestors = false;
-        public bool skipIfAssigned = false;
+        /// <summary>
+        /// If true, excludes components on the current GameObject and only searches parent transforms.
+        /// If false, includes components on the current GameObject in the search. Default: true.
+        /// </summary>
+        public bool OnlyAncestors { get; set; } = false;
+
+        /// <summary>
+        /// Maximum depth to search up the hierarchy. 0 means unlimited. Default: 0.
+        /// Depth 1 = immediate parent only, depth 2 = parent and grandparent, etc.
+        /// </summary>
+        public int MaxDepth { get; set; } = 0;
     }
 
     public static class ParentComponentExtensions
     {
-        private enum FieldKind : byte
-        {
-            Single = 0,
-            Array = 1,
-            List = 2,
-        }
-
         private static readonly Dictionary<
             Type,
-            (
-                FieldInfo field,
-                ParentComponentAttribute attribute,
-                Action<object, object> setter,
-                Func<object, object> getter,
-                FieldKind kind,
-                Type elementType,
-                Func<int, Array> arrayCreator,
-                Func<int, IList> listCreator
-            )[]
+            FieldMetadata<ParentComponentAttribute>[]
         > FieldsByType = new();
 
         public static void AssignParentComponents(this Component component)
         {
             Type componentType = component.GetType();
-            (
-                FieldInfo field,
-                ParentComponentAttribute attribute,
-                Action<object, object> setter,
-                Func<object, object> getter,
-                FieldKind kind,
-                Type elementType,
-                Func<int, Array> arrayCreator,
-                Func<int, IList> listCreator
-            )[] fields = FieldsByType.GetOrAdd(
+            FieldMetadata<ParentComponentAttribute>[] fields = FieldsByType.GetOrAdd(
                 componentType,
-                type =>
-                {
-                    FieldInfo[] fields = type.GetFields(
-                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
-                    );
-                    return fields
-                        .Select(field =>
-                        {
-                            if (
-                                !field.IsAttributeDefined(
-                                    out ParentComponentAttribute attribute,
-                                    inherit: false
-                                )
-                            )
-                            {
-                                return (null, null, null, null, default, null, null, null);
-                            }
-
-                            Type fieldType = field.FieldType;
-                            FieldKind kind;
-                            Type elementType;
-                            Func<int, Array> arrayCreator = null;
-                            Func<int, IList> listCreator = null;
-
-                            if (fieldType.IsArray)
-                            {
-                                kind = FieldKind.Array;
-                                elementType = fieldType.GetElementType();
-                                arrayCreator = ReflectionHelpers.GetArrayCreator(elementType);
-                            }
-                            else if (
-                                fieldType.IsGenericType
-                                && fieldType.GetGenericTypeDefinition() == typeof(List<>)
-                            )
-                            {
-                                kind = FieldKind.List;
-                                elementType = fieldType.GenericTypeArguments[0];
-                                listCreator = ReflectionHelpers.GetListWithCapacityCreator(
-                                    elementType
-                                );
-                            }
-                            else
-                            {
-                                kind = FieldKind.Single;
-                                elementType = fieldType;
-                            }
-
-                            return (
-                                field,
-                                attribute,
-                                ReflectionHelpers.GetFieldSetter(field),
-                                ReflectionHelpers.GetFieldGetter(field),
-                                kind,
-                                elementType,
-                                arrayCreator,
-                                listCreator
-                            );
-                        })
-                        .Where(tuple => tuple.attribute != null)
-                        .ToArray();
-                }
+                type => GetFieldMetadata<ParentComponentAttribute>(type)
             );
 
-            foreach (
-                (
-                    FieldInfo field,
-                    ParentComponentAttribute attribute,
-                    Action<object, object> setter,
-                    Func<object, object> getter,
-                    FieldKind kind,
-                    Type elementType,
-                    Func<int, Array> arrayCreator,
-                    Func<int, IList> listCreator
-                ) in fields
-            )
+            foreach (FieldMetadata<ParentComponentAttribute> field in fields)
             {
-                if (attribute.skipIfAssigned)
+                if (ShouldSkipAssignment(field, component))
                 {
-                    object currentValue = getter(component);
-                    if (ValueHelpers.IsAssigned(currentValue))
-                    {
-                        continue;
-                    }
+                    continue;
                 }
 
                 bool foundParent;
                 Transform root = component.transform;
-                if (attribute.onlyAncestors)
+                if (field.attribute.OnlyAncestors)
                 {
                     root = root.parent;
                 }
 
                 if (root == null)
                 {
-                    switch (kind)
-                    {
-                        case FieldKind.Array:
-                        {
-                            setter(component, arrayCreator(0));
-                            break;
-                        }
-                        case FieldKind.List:
-                        {
-                            setter(component, listCreator(0));
-                            break;
-                        }
-                    }
-
+                    SetEmptyCollection(component, field);
                     foundParent = false;
                 }
                 else
                 {
-                    switch (kind)
+                    switch (field.kind)
                     {
                         case FieldKind.Array:
                         {
-                            Component[] parentComponents = root.GetComponentsInParent(
-                                elementType,
-                                attribute.includeInactive
+                            using PooledResource<List<Component>> parentComponentBuffer =
+                                Buffers<Component>.List.Get(out List<Component> parentComponents);
+                            GetParentComponents(
+                                root,
+                                field.elementType,
+                                field.attribute,
+                                field.isInterface,
+                                parentComponents
                             );
 
-                            Array correctTypedArray = arrayCreator(parentComponents.Length);
-                            Array.Copy(
+                            using PooledResource<List<Component>> filteredBuffer =
+                                Buffers<Component>.List.Get(out List<Component> filtered);
+                            FilterComponents(
                                 parentComponents,
-                                correctTypedArray,
-                                parentComponents.Length
+                                field.attribute,
+                                field.elementType,
+                                field.isInterface,
+                                filtered
                             );
-                            setter(component, correctTypedArray);
-                            foundParent = parentComponents.Length > 0;
+
+                            Array correctTypedArray = field.arrayCreator(filtered.Count);
+                            for (int i = 0; i < filtered.Count; ++i)
+                            {
+                                correctTypedArray.SetValue(filtered[i], i);
+                            }
+                            field.setter(component, correctTypedArray);
+                            foundParent = filtered.Count > 0;
                             break;
                         }
                         case FieldKind.List:
                         {
-                            Component[] parents = root.GetComponentsInParent(
-                                elementType,
-                                attribute.includeInactive
+                            using PooledResource<List<Component>> parentComponentBuffer =
+                                Buffers<Component>.List.Get(out List<Component> parentComponents);
+                            GetParentComponents(
+                                root,
+                                field.elementType,
+                                field.attribute,
+                                field.isInterface,
+                                parentComponents
                             );
 
-                            IList instance = listCreator(parents.Length);
-                            for (int i = 0; i < parents.Length; ++i)
+                            using PooledResource<List<Component>> filteredBuffer =
+                                Buffers<Component>.List.Get(out List<Component> filtered);
+                            FilterComponents(
+                                parentComponents,
+                                field.attribute,
+                                field.elementType,
+                                field.isInterface,
+                                filtered
+                            );
+
+                            IList instance = field.listCreator(filtered.Count);
+                            for (int i = 0; i < filtered.Count; ++i)
                             {
-                                instance.Add(parents[i]);
+                                instance.Add(filtered[i]);
                             }
 
-                            setter(component, instance);
-                            foundParent = parents.Length > 0;
+                            field.setter(component, instance);
+                            foundParent = filtered.Count > 0;
                             break;
                         }
                         default:
                         {
-                            Component parentComponent = root.GetComponentInParent(
-                                elementType,
-                                attribute.includeInactive
+                            Component parentComponent = GetFirstParentComponent(
+                                root,
+                                field.elementType,
+                                field.attribute,
+                                field.isInterface
                             );
 
                             if (parentComponent != null)
                             {
-                                setter(component, parentComponent);
+                                field.setter(component, parentComponent);
                                 foundParent = true;
                             }
                             else
@@ -225,13 +162,175 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     }
                 }
 
-                if (!foundParent && !attribute.optional)
+                if (!foundParent)
                 {
-                    component.LogError(
-                        $"Unable to find parent component of type {field.FieldType}"
-                    );
+                    LogMissingComponentError(component, field, "parent");
                 }
             }
+        }
+
+        private static List<Component> GetParentComponents(
+            Transform root,
+            Type elementType,
+            ParentComponentAttribute attribute,
+            bool isInterface,
+            List<Component> buffer
+        )
+        {
+            buffer.Clear();
+            if (isInterface && attribute.AllowInterfaces)
+            {
+                // For interfaces, we need to manually traverse the hierarchy
+                Transform current = root;
+                int depth = 0;
+                int maxDepth = attribute.MaxDepth > 0 ? attribute.MaxDepth : int.MaxValue;
+
+                using PooledResource<List<Component>> parentComponentBuffer =
+                    Buffers<Component>.List.Get(out List<Component> components);
+                while (current != null && depth < maxDepth)
+                {
+                    components.Clear();
+                    GetComponentsOfType(
+                        current.gameObject,
+                        elementType,
+                        isInterface,
+                        attribute.AllowInterfaces,
+                        components
+                    );
+                    buffer.AddRange(components);
+
+                    current = current.parent;
+                    depth++;
+                }
+
+                return buffer;
+            }
+
+            // Use Unity's built-in method for concrete types
+            Component[] allParents = root.GetComponentsInParent(
+                elementType,
+                includeInactive: attribute.IncludeInactive
+            );
+
+            // Filter by depth if needed
+            if (attribute.MaxDepth > 0)
+            {
+                foreach (Component comp in allParents)
+                {
+                    int depth = GetDepthFromTransform(root, comp.transform);
+                    // depth is steps from root: 0 = root itself, 1 = root.parent, etc.
+                    // MaxDepth is how many levels to search, so depth should be < MaxDepth
+                    if (depth < attribute.MaxDepth)
+                    {
+                        buffer.Add(comp);
+                    }
+                }
+            }
+            else
+            {
+                buffer.AddRange(allParents);
+            }
+
+            return buffer;
+        }
+
+        private static Component GetFirstParentComponent(
+            Transform root,
+            Type elementType,
+            ParentComponentAttribute attribute,
+            bool isInterface
+        )
+        {
+            if (isInterface && attribute.AllowInterfaces)
+            {
+                Transform current = root;
+                int depth = 0;
+                int maxDepth = attribute.MaxDepth > 0 ? attribute.MaxDepth : int.MaxValue;
+
+                using PooledResource<List<Component>> parentComponentBuffer =
+                    Buffers<Component>.List.Get(out List<Component> components);
+                while (current != null && depth < maxDepth)
+                {
+                    components.Clear();
+                    GetComponentsOfType(
+                        current.gameObject,
+                        elementType,
+                        isInterface,
+                        attribute.AllowInterfaces,
+                        components
+                    );
+
+                    // Apply filters
+                    foreach (Component comp in components)
+                    {
+                        if (MatchesFilters(comp.gameObject, attribute))
+                        {
+                            return comp;
+                        }
+                    }
+
+                    current = current.parent;
+                    depth++;
+                }
+
+                return null;
+            }
+
+            // For concrete types, search manually to apply filters
+            Transform current2 = root;
+            int currentDepth = 0;
+            int maxDepth2 = attribute.MaxDepth > 0 ? attribute.MaxDepth : int.MaxValue;
+
+            using PooledResource<List<Component>> buffer = Buffers<Component>.List.Get(
+                out List<Component> components2
+            );
+            while (current2 != null && currentDepth < maxDepth2)
+            {
+                components2.Clear();
+                current2.GetComponents(elementType, components2);
+
+                foreach (Component comp in components2)
+                {
+                    if (comp == null)
+                    {
+                        continue;
+                    }
+
+                    // Check active state
+                    if (!attribute.IncludeInactive)
+                    {
+                        if (!comp.gameObject.activeInHierarchy || !comp.IsComponentEnabled())
+                        {
+                            continue;
+                        }
+                    }
+
+                    // Apply filters
+                    if (MatchesFilters(comp.gameObject, attribute))
+                    {
+                        return comp;
+                    }
+                }
+
+                current2 = current2.parent;
+                currentDepth++;
+            }
+
+            return null;
+        }
+
+        private static int GetDepthFromTransform(Transform start, Transform target)
+        {
+            int depth = 0;
+            Transform current = start;
+
+            while (current != null && current != target)
+            {
+                current = current.parent;
+                depth++;
+            }
+
+            return current == target ? depth : int.MaxValue;
         }
     }
 }

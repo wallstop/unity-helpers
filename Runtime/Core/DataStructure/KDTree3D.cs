@@ -23,6 +23,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
         }
 
+        private struct Neighbor
+        {
+            public T value;
+            public float sqrDistance;
+        }
+
         [Serializable]
         public sealed class KdTreeNode
         {
@@ -750,8 +756,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return nearestNeighbors;
             }
 
-            KdTreeNode current = _head;
-
             using PooledResource<Stack<KdTreeNode>> nodeBufferResource =
                 Buffers<KdTreeNode>.Stack.Get();
             Stack<KdTreeNode> nodeBuffer = nodeBufferResource.resource;
@@ -759,13 +763,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             using PooledResource<HashSet<T>> nearestNeighborBufferResource =
                 Buffers<T>.HashSet.Get();
             HashSet<T> nearestNeighborBuffer = nearestNeighborBufferResource.resource;
-            using PooledResource<List<Entry>> nearestNeighborsCacheResource =
-                Buffers<Entry>.List.Get();
-            List<Entry> nearestNeighborsCache = nearestNeighborsCacheResource.resource;
-            nearestNeighborsCache.Clear();
+            using PooledResource<List<Neighbor>> neighborCandidatesResource =
+                Buffers<Neighbor>.List.Get();
+            List<Neighbor> neighborCandidates = neighborCandidatesResource.resource;
+            neighborCandidates.Clear();
 
             Entry[] entries = _entries;
             int[] indices = _indices;
+            Vector3 searchPosition = position;
+
+            KdTreeNode current = _head;
 
             while (!current.isTerminal)
             {
@@ -800,11 +807,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     continue;
                 }
 
-                float leftDistance = (left.boundary.center - position).sqrMagnitude;
-                float rightDistance = (right.boundary.center - position).sqrMagnitude;
+                float leftDistance = (left.boundary.center - searchPosition).sqrMagnitude;
+                float rightDistance = (right.boundary.center - searchPosition).sqrMagnitude;
                 if (leftDistance < rightDistance)
                 {
-                    // Push the sibling as well to widen candidate pool
                     if (right is not null && right._count > 0)
                     {
                         nodeBuffer.Push(right);
@@ -819,7 +825,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 }
                 else
                 {
-                    // Push the sibling as well to widen candidate pool
                     if (left is not null && left._count > 0)
                     {
                         nodeBuffer.Push(left);
@@ -843,37 +848,45 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     continue;
                 }
 
-                int start = selected._startIndex;
-                int end = start + selected._count;
-                for (int i = start; i < end; ++i)
+                int startIndex = selected._startIndex;
+                int endIndex = startIndex + selected._count;
+                for (int i = startIndex; i < endIndex; ++i)
                 {
                     Entry entry = entries[indices[i]];
-                    if (nearestNeighborBuffer.Add(entry.value))
+                    if (!nearestNeighborBuffer.Add(entry.value))
                     {
-                        nearestNeighborsCache.Add(entry);
+                        continue;
                     }
+
+                    float sqrDistance = (entry.position - searchPosition).sqrMagnitude;
+                    neighborCandidates.Add(
+                        new Neighbor { value = entry.value, sqrDistance = sqrDistance }
+                    );
                 }
             }
 
-            // Always sort by proximity to ensure closest candidates are selected
+            if (neighborCandidates.Count > 1)
             {
-                Vector3 localPosition = position;
-                nearestNeighborsCache.Sort(NearestComparison);
-
-                int NearestComparison(Entry lhs, Entry rhs) =>
-                    (lhs.position - localPosition).sqrMagnitude.CompareTo(
-                        (rhs.position - localPosition).sqrMagnitude
-                    );
+                neighborCandidates.Sort(NeighborComparer.Instance);
             }
 
-            // Trim to requested count
             nearestNeighbors.Clear();
-            for (int i = 0; i < nearestNeighborsCache.Count && i < count; ++i)
+            for (int i = 0; i < neighborCandidates.Count && i < count; ++i)
             {
-                nearestNeighbors.Add(nearestNeighborsCache[i].value);
+                nearestNeighbors.Add(neighborCandidates[i].value);
             }
 
             return nearestNeighbors;
+        }
+
+        private sealed class NeighborComparer : IComparer<Neighbor>
+        {
+            internal static readonly NeighborComparer Instance = new();
+
+            public int Compare(Neighbor x, Neighbor y)
+            {
+                return x.sqrDistance.CompareTo(y.sqrDistance);
+            }
         }
     }
 }

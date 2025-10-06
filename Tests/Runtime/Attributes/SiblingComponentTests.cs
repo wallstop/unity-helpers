@@ -59,7 +59,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             LogAssert.Expect(
                 LogType.Error,
                 new System.Text.RegularExpressions.Regex(
-                    @"^\d+(\.\d+)?\|SiblingMissing\[SiblingMissingComponent\]\|Unable to find sibling component of type UnityEngine\.Rigidbody$"
+                    @"^\d+(\.\d+)?\|SiblingMissing\[SiblingMissingComponent\]\|Unable to find sibling component of type UnityEngine\.Rigidbody for field 'required'$"
                 )
             );
 
@@ -86,7 +86,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             // Call assignment
             tester.AssignSiblingComponents();
 
-            // Verify pre-assigned values were preserved (skipIfAssigned = true)
+            // Verify pre-assigned values were preserved (SkipIfAssigned = true)
             Assert.AreSame(second, tester.preAssignedSibling);
             Assert.AreEqual(1, tester.preAssignedSiblingArray.Length);
             Assert.AreSame(second, tester.preAssignedSiblingArray[0]);
@@ -331,21 +331,21 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             LogAssert.Expect(
                 LogType.Error,
                 new System.Text.RegularExpressions.Regex(
-                    @"^\d+(\.\d+)?\|SiblingNoMatch\[SiblingNoMatchTester\]\|Unable to find sibling component of type UnityEngine\.BoxCollider$"
+                    @"^\d+(\.\d+)?\|SiblingNoMatch\[SiblingNoMatchTester\]\|Unable to find sibling component of type UnityEngine\.BoxCollider for field 'siblingCollider'$"
                 )
             );
 
             LogAssert.Expect(
                 LogType.Error,
                 new System.Text.RegularExpressions.Regex(
-                    @"^\d+(\.\d+)?\|SiblingNoMatch\[SiblingNoMatchTester\]\|Unable to find sibling component of type UnityEngine\.BoxCollider\[\]$"
+                    @"^\d+(\.\d+)?\|SiblingNoMatch\[SiblingNoMatchTester\]\|Unable to find sibling component of type UnityEngine\.BoxCollider\[\] for field 'colliderArray'$"
                 )
             );
 
             LogAssert.Expect(
                 LogType.Error,
                 new System.Text.RegularExpressions.Regex(
-                    @"^\d+(\.\d+)?\|SiblingNoMatch\[SiblingNoMatchTester\]\|Unable to find sibling component of type System\.Collections\.Generic\.List`1\[UnityEngine\.BoxCollider\]$"
+                    @"^\d+(\.\d+)?\|SiblingNoMatch\[SiblingNoMatchTester\]\|Unable to find sibling component of type System\.Collections\.Generic\.List`1\[UnityEngine\.BoxCollider\] for field 'colliderList'$"
                 )
             );
 
@@ -439,19 +439,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             LogAssert.Expect(
                 LogType.Error,
                 new System.Text.RegularExpressions.Regex(
-                    @"^\d+(\.\d+)?\|SiblingInactiveGameObject\[SiblingExcludeInactiveTester\]\|Unable to find sibling component of type UnityEngine\.BoxCollider$"
+                    @"^\d+(\.\d+)?\|SiblingInactiveGameObject\[SiblingExcludeInactiveTester\]\|Unable to find sibling component of type UnityEngine\.BoxCollider for field 'activeOnlySingle'$"
                 )
             );
             LogAssert.Expect(
                 LogType.Error,
                 new System.Text.RegularExpressions.Regex(
-                    @"^\d+(\.\d+)?\|SiblingInactiveGameObject\[SiblingExcludeInactiveTester\]\|Unable to find sibling component of type UnityEngine\.BoxCollider\[\]$"
+                    @"^\d+(\.\d+)?\|SiblingInactiveGameObject\[SiblingExcludeInactiveTester\]\|Unable to find sibling component of type UnityEngine\.BoxCollider\[\] for field 'activeOnlyArray'$"
                 )
             );
             LogAssert.Expect(
                 LogType.Error,
                 new System.Text.RegularExpressions.Regex(
-                    @"^\d+(\.\d+)?\|SiblingInactiveGameObject\[SiblingExcludeInactiveTester\]\|Unable to find sibling component of type System\.Collections\.Generic\.List`1\[UnityEngine\.BoxCollider\]$"
+                    @"^\d+(\.\d+)?\|SiblingInactiveGameObject\[SiblingExcludeInactiveTester\]\|Unable to find sibling component of type System\.Collections\.Generic\.List`1\[UnityEngine\.BoxCollider\] for field 'activeOnlyList'$"
                 )
             );
 
@@ -577,7 +577,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [SiblingComponent]
         public List<BoxCollider> list;
 
-        [SiblingComponent(optional = true)]
+        [SiblingComponent(Optional = true)]
         public Rigidbody optional;
     }
 
@@ -589,13 +589,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
     internal sealed class SiblingSkipIfAssignedTester : MonoBehaviour
     {
-        [SiblingComponent(skipIfAssigned = true)]
+        [SiblingComponent(SkipIfAssigned = true)]
         public BoxCollider preAssignedSibling;
 
-        [SiblingComponent(skipIfAssigned = true)]
+        [SiblingComponent(SkipIfAssigned = true)]
         public BoxCollider[] preAssignedSiblingArray;
 
-        [SiblingComponent(skipIfAssigned = true)]
+        [SiblingComponent(SkipIfAssigned = true)]
         public List<BoxCollider> preAssignedSiblingList;
 
         [SiblingComponent]
@@ -604,7 +604,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
     internal sealed class SiblingOptionalTester : MonoBehaviour
     {
-        [SiblingComponent(optional = true)]
+        [SiblingComponent(Optional = true)]
         public BoxCollider optionalCollider;
     }
 
@@ -700,34 +700,34 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
     internal sealed class SiblingIncludeInactiveTester : MonoBehaviour
     {
-        [SiblingComponent(includeInactive = true)]
+        [SiblingComponent(IncludeInactive = true)]
         public BoxCollider includeInactiveSingle;
 
-        [SiblingComponent(includeInactive = true)]
+        [SiblingComponent(IncludeInactive = true)]
         public BoxCollider[] includeInactiveArray;
 
-        [SiblingComponent(includeInactive = true)]
+        [SiblingComponent(IncludeInactive = true)]
         public List<BoxCollider> includeInactiveList;
     }
 
     internal sealed class SiblingExcludeInactiveTester : MonoBehaviour
     {
-        [SiblingComponent(includeInactive = false)]
+        [SiblingComponent(IncludeInactive = false)]
         public BoxCollider activeOnlySingle;
 
-        [SiblingComponent(includeInactive = false)]
+        [SiblingComponent(IncludeInactive = false)]
         public BoxCollider[] activeOnlyArray;
 
-        [SiblingComponent(includeInactive = false)]
+        [SiblingComponent(IncludeInactive = false)]
         public List<BoxCollider> activeOnlyList;
     }
 
     internal sealed class SiblingMixedActiveTester : MonoBehaviour
     {
-        [SiblingComponent(includeInactive = false)]
+        [SiblingComponent(IncludeInactive = false)]
         public BoxCollider[] activeOnly;
 
-        [SiblingComponent(includeInactive = true)]
+        [SiblingComponent(IncludeInactive = true)]
         public BoxCollider[] includeInactive;
     }
 
@@ -735,13 +735,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
     internal sealed class SiblingBehaviourTester : MonoBehaviour
     {
-        [SiblingComponent(includeInactive = true)]
+        [SiblingComponent(IncludeInactive = true)]
         public SiblingTestBehaviour[] allBehaviours;
     }
 
     internal sealed class SiblingBehaviourFilterTester : MonoBehaviour
     {
-        [SiblingComponent(includeInactive = false)]
+        [SiblingComponent(IncludeInactive = false)]
         public SiblingTestBehaviour[] activeBehaviours;
     }
 }

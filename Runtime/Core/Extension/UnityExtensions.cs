@@ -264,10 +264,17 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             bool includeColinearPoints = true
         )
         {
-            List<Vector3Int> points = pointsSet.ToList();
+            using PooledResource<List<Vector3Int>> pointsResource = Buffers<Vector3Int>.List.Get(
+                out List<Vector3Int> points
+            );
+            foreach (Vector3Int point in pointsSet)
+            {
+                points.Add(point);
+            }
+
             if (points.Count <= 3)
             {
-                return points;
+                return new List<Vector3Int>(points);
             }
 
             random ??= PRNG.Instance;
@@ -294,10 +301,12 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 }
             }
 
-            List<Vector3Int> convexHull = new() { startPoint };
+            List<Vector3Int> convexHull = new(points.Count);
+            convexHull.Add(startPoint);
             _ = points.Remove(startPoint);
             Vector3Int currentPoint = convexHull[0];
-            List<Vector3Int> colinearPoints = new();
+            using PooledResource<List<Vector3Int>> colinearPointsResource =
+                Buffers<Vector3Int>.List.Get(out List<Vector3Int> colinearPoints);
             int counter = 0;
             while (true)
             {
@@ -341,12 +350,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 if (0 < colinearPoints.Count)
                 {
                     colinearPoints.Add(nextPoint);
-                    colinearPoints.Sort(
-                        (lhs, rhs) =>
-                            (CellToWorld(lhs) - currentPointWorldPosition).sqrMagnitude.CompareTo(
-                                (CellToWorld(rhs) - currentPointWorldPosition).sqrMagnitude
-                            )
-                    );
+                    SortByDistanceAscending(colinearPoints, grid, currentPointWorldPosition);
 
                     if (includeColinearPoints)
                     {
@@ -359,7 +363,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     }
 
                     currentPoint = colinearPoints[^1];
-                    _ = points.RemoveAll(colinearPoints.Contains);
+                    RemovePoints(points, colinearPoints);
                     colinearPoints.Clear();
                 }
                 else
@@ -388,10 +392,16 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             bool includeColinearPoints = false
         )
         {
-            List<FastVector3Int> points = pointsSet.ToList();
+            using PooledResource<List<FastVector3Int>> pointsResource =
+                Buffers<FastVector3Int>.List.Get(out List<FastVector3Int> points);
+            foreach (FastVector3Int point in pointsSet)
+            {
+                points.Add(point);
+            }
+
             if (points.Count <= 3)
             {
-                return points;
+                return new List<FastVector3Int>(points);
             }
 
             random ??= PRNG.Instance;
@@ -417,7 +427,8 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 }
             }
 
-            List<FastVector3Int> convexHull = new() { startPoint };
+            List<FastVector3Int> convexHull = new(points.Count);
+            convexHull.Add(startPoint);
             _ = points.Remove(startPoint);
             FastVector3Int currentPoint = convexHull[0];
             using PooledResource<List<FastVector3Int>> colinearPointsResource =
@@ -466,12 +477,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 if (0 < colinearPoints.Count)
                 {
                     colinearPoints.Add(nextPoint);
-                    colinearPoints.Sort(
-                        (lhs, rhs) =>
-                            (CellToWorld(lhs) - currentPointWorldPosition).sqrMagnitude.CompareTo(
-                                (CellToWorld(rhs) - currentPointWorldPosition).sqrMagnitude
-                            )
-                    );
+                    SortByDistanceAscending(colinearPoints, grid, currentPointWorldPosition);
 
                     if (includeColinearPoints)
                     {
@@ -484,7 +490,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     }
 
                     currentPoint = colinearPoints[^1];
-                    _ = points.RemoveAll(colinearPoints.Contains);
+                    RemovePoints(points, colinearPoints);
                     colinearPoints.Clear();
                 }
                 else
@@ -783,10 +789,18 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             float angleThreshold = 90f
         )
         {
+            using PooledResource<List<FastVector3Int>> originalGridPositionsBuffer =
+                Buffers<FastVector3Int>.List.Get(out List<FastVector3Int> originalGridPositions);
+            originalGridPositions.AddRange(gridPositions);
+
             List<FastVector3Int> convexHull = gridPositions.BuildConvexHull(grid, random);
             using PooledResource<List<HullEdge>> concaveHullEdgesResource =
                 Buffers<HullEdge>.List.Get();
             List<HullEdge> concaveHullEdges = concaveHullEdgesResource.resource;
+            if (concaveHullEdges.Capacity < convexHull.Count)
+            {
+                concaveHullEdges.Capacity = convexHull.Count;
+            }
 
             using PooledResource<SortedSet<HullEdge>> sortedSetBuffer = SetBuffers<HullEdge>
                 .GetSortedSetPool(ConcaveHullComparer.Instance)
@@ -802,30 +816,43 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
             using PooledResource<HashSet<FastVector3Int>> remainingPointsBuffer =
                 Buffers<FastVector3Int>.HashSet.Get(out HashSet<FastVector3Int> remainingPoints);
-            foreach (FastVector3Int gridPosition in gridPositions)
+            foreach (FastVector3Int gridPosition in originalGridPositions)
             {
                 remainingPoints.Add(gridPosition);
             }
 
             remainingPoints.ExceptWith(convexHull);
 
-            Func<FastVector3Int, Vector2> cellToWorld = CellToWorld;
-
-            Bounds? maybeBounds = gridPositions.Select(cellToWorld).GetBounds();
+            Bounds? maybeBounds = CalculateWorldBounds(originalGridPositions, grid);
             if (maybeBounds == null)
             {
                 throw new ArgumentException(nameof(gridPositions));
             }
 
+            using PooledResource<List<QuadTree2D<FastVector3Int>.Entry>> quadTreeEntriesResource =
+                Buffers<QuadTree2D<FastVector3Int>.Entry>.List.Get(
+                    out List<QuadTree2D<FastVector3Int>.Entry> quadTreeEntries
+                );
+            foreach (FastVector3Int gridPosition in originalGridPositions)
+            {
+                Vector2 worldPosition = grid.CellToWorld(gridPosition);
+                quadTreeEntries.Add(
+                    new QuadTree2D<FastVector3Int>.Entry(gridPosition, worldPosition)
+                );
+            }
+
             QuadTree2D<FastVector3Int> quadTree = new(
-                gridPositions,
-                cellToWorld,
+                quadTreeEntries,
                 maybeBounds.Value,
                 bucketSize: bucketSize
             );
             using PooledResource<List<FastVector3Int>> neighborsBuffer =
                 Buffers<FastVector3Int>.List.Get();
             List<FastVector3Int> neighbors = neighborsBuffer.resource;
+            if (neighbors.Capacity < bucketSize)
+            {
+                neighbors.Capacity = bucketSize;
+            }
             while (0 < data.Count)
             {
                 HullEdge edge = data.Max;
@@ -969,31 +996,45 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         {
             const int minimumNearestNeighbors = 3;
             nearestNeighbors = Math.Max(minimumNearestNeighbors, nearestNeighbors);
-            List<FastVector3Int> dataSet = gridPositions.Distinct().ToList();
+            using PooledResource<List<FastVector3Int>> dataSetResource =
+                Buffers<FastVector3Int>.List.Get(out List<FastVector3Int> dataSet);
+            using PooledResource<HashSet<FastVector3Int>> uniquePositionsResource =
+                Buffers<FastVector3Int>.HashSet.Get(out HashSet<FastVector3Int> uniquePositions);
+
+            using PooledResource<List<FastVector3Int>> originalGridPositionsBuffer =
+                Buffers<FastVector3Int>.List.Get(out List<FastVector3Int> originalGridPositions);
+            originalGridPositions.AddRange(gridPositions);
+
+            foreach (FastVector3Int gridPosition in originalGridPositions)
+            {
+                if (uniquePositions.Add(gridPosition))
+                {
+                    dataSet.Add(gridPosition);
+                }
+            }
             int maximumNearestNeighbors = dataSet.Count;
             if (dataSet.Count <= 3)
             {
-                return dataSet;
+                return new List<FastVector3Int>(dataSet);
             }
 
             nearestNeighbors = Math.Min(dataSet.Count, nearestNeighbors);
 
-            IComparer<FastVector3Int> comparison = Comparer<FastVector3Int>.Create(
-                (lhs, rhs) => grid.CellToWorld(lhs).y.CompareTo(grid.CellToWorld(rhs).y)
-            );
-
             FastVector3Int? maybeFirst = null;
+            float lowestY = float.MaxValue;
             foreach (FastVector3Int gridPosition in dataSet)
             {
-                if (maybeFirst == null || comparison.Compare(gridPosition, maybeFirst.Value) < 0)
+                float candidateY = grid.CellToWorld(gridPosition).y;
+                if (maybeFirst == null || candidateY < lowestY)
                 {
                     maybeFirst = gridPosition;
+                    lowestY = candidateY;
                 }
             }
 
             if (maybeFirst == null)
             {
-                return dataSet;
+                return new List<FastVector3Int>(dataSet);
             }
 
             FastVector3Int first = maybeFirst.Value;
@@ -1002,47 +1043,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             float previousAngle = 0f;
             FastVector3Int current = first;
             _ = dataSet.Remove(current);
-
-            float CalculateAngle(Vector2 lhs, Vector2 rhs)
-            {
-                return Mathf.Atan2(rhs.y - lhs.y, rhs.x - lhs.x);
-            }
-
-            // https://github.com/merowech/java-concave-hull/blob/master/ConcaveHull.java
-            float AngleDifference(float lhsAngle, float rhsAngle)
-            {
-                if (0 < lhsAngle && 0 <= rhsAngle && rhsAngle < lhsAngle)
-                {
-                    return Math.Abs(lhsAngle - rhsAngle);
-                }
-
-                if (0 <= lhsAngle && 0 < rhsAngle && lhsAngle < rhsAngle)
-                {
-                    return 2 * Mathf.PI + lhsAngle - rhsAngle;
-                }
-
-                if (lhsAngle < 0 && rhsAngle <= 0 && lhsAngle < rhsAngle)
-                {
-                    return 2 * Mathf.PI + lhsAngle + Math.Abs(rhsAngle);
-                }
-
-                if (lhsAngle <= 0 && rhsAngle < 0 && rhsAngle < lhsAngle)
-                {
-                    return Math.Abs(lhsAngle - rhsAngle);
-                }
-
-                if (lhsAngle <= 0 && 0 < rhsAngle)
-                {
-                    return 2 * Mathf.PI + lhsAngle - rhsAngle;
-                }
-
-                if (0 <= lhsAngle && rhsAngle <= 0)
-                {
-                    return lhsAngle + Math.Abs(rhsAngle);
-                }
-
-                return 0f;
-            }
 
             using PooledResource<List<FastVector3Int>> clockwisePointsResource =
                 Buffers<FastVector3Int>.List.Get();
@@ -1056,7 +1056,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 }
 
                 FindNearestNeighborsAndPutInClockwisePoints();
-                clockwisePoints.Sort(RightHandTurnComparison);
+                SortByRightHandTurn(clockwisePoints, grid, current, previousAngle);
 
                 bool intersects = true;
                 int i = -1;
@@ -1145,17 +1145,8 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             {
                 clockwisePoints.Clear();
                 clockwisePoints.AddRange(dataSet);
-                Vector2 currentPoint = grid.CellToWorld(current);
-                clockwisePoints.Sort(
-                    (lhs, rhs) =>
-                    {
-                        Vector2 lhsPoint = grid.CellToWorld(lhs);
-                        Vector2 rhsPoint = grid.CellToWorld(rhs);
-                        return (lhsPoint - currentPoint).sqrMagnitude.CompareTo(
-                            (rhsPoint - currentPoint).sqrMagnitude
-                        );
-                    }
-                );
+                Vector2 currentPointWorld = grid.CellToWorld(current);
+                SortByDistanceAscending(clockwisePoints, grid, currentPointWorld);
                 if (nearestNeighbors < clockwisePoints.Count)
                 {
                     clockwisePoints.RemoveRange(
@@ -1164,24 +1155,204 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     );
                 }
             }
+        }
 
-            // Order by descending right hand turns
-            int RightHandTurnComparison(FastVector3Int lhs, FastVector3Int rhs)
+        private static Bounds? CalculateWorldBounds(
+            IEnumerable<FastVector3Int> positions,
+            Grid grid
+        )
+        {
+            bool any = false;
+            float minX = float.MaxValue;
+            float maxX = float.MinValue;
+            float minY = float.MaxValue;
+            float maxY = float.MinValue;
+            foreach (FastVector3Int position in positions)
             {
-                Vector2 currentPoint = grid.CellToWorld(current);
-                Vector2 lhsPoint = grid.CellToWorld(lhs);
-                Vector2 rhsPoint = grid.CellToWorld(rhs);
+                Vector3 world = grid.CellToWorld(position);
+                float x = world.x;
+                float y = world.y;
+                if (x < minX)
+                {
+                    minX = x;
+                }
 
-                float lhsAngle = AngleDifference(
-                    previousAngle,
-                    CalculateAngle(currentPoint, lhsPoint)
-                );
-                float rhsAngle = AngleDifference(
-                    previousAngle,
-                    CalculateAngle(currentPoint, rhsPoint)
-                );
-                return rhsAngle.CompareTo(lhsAngle);
+                if (x > maxX)
+                {
+                    maxX = x;
+                }
+
+                if (y < minY)
+                {
+                    minY = y;
+                }
+
+                if (y > maxY)
+                {
+                    maxY = y;
+                }
+
+                any = true;
             }
+
+            if (!any)
+            {
+                return null;
+            }
+
+            Vector3 center = new((minX + maxX) / 2f, (minY + maxY) / 2f, 0f);
+            Vector3 size = new(maxX - minX, maxY - minY, 1f);
+            return new Bounds(center, size);
+        }
+
+        private static void SortByDistanceAscending(
+            List<Vector3Int> points,
+            Grid grid,
+            Vector2 origin
+        )
+        {
+            int count = points.Count;
+            if (count <= 1)
+            {
+                return;
+            }
+
+            using PooledResource<float[]> distancesResource = WallstopFastArrayPool<float>.Get(
+                count
+            );
+            float[] distances = distancesResource.resource;
+            for (int i = 0; i < count; ++i)
+            {
+                Vector2 worldPosition = grid.CellToWorld(points[i]);
+                distances[i] = (worldPosition - origin).sqrMagnitude;
+            }
+
+            SelectionSort(points, distances, count);
+        }
+
+        private static void SortByDistanceAscending(
+            List<FastVector3Int> points,
+            Grid grid,
+            Vector2 origin
+        )
+        {
+            int count = points.Count;
+            if (count <= 1)
+            {
+                return;
+            }
+
+            using PooledResource<float[]> distancesResource = WallstopFastArrayPool<float>.Get(
+                count
+            );
+            float[] distances = distancesResource.resource;
+            for (int i = 0; i < count; ++i)
+            {
+                Vector2 worldPosition = grid.CellToWorld(points[i]);
+                distances[i] = (worldPosition - origin).sqrMagnitude;
+            }
+
+            SelectionSort(points, distances, count);
+        }
+
+        private static void SortByRightHandTurn(
+            List<FastVector3Int> points,
+            Grid grid,
+            FastVector3Int current,
+            float previousAngle
+        )
+        {
+            int count = points.Count;
+            if (count <= 1)
+            {
+                return;
+            }
+
+            using PooledResource<float[]> angleBufferResource = WallstopFastArrayPool<float>.Get(
+                count
+            );
+            float[] angles = angleBufferResource.resource;
+            Vector2 currentPoint = grid.CellToWorld(current);
+            for (int i = 0; i < count; ++i)
+            {
+                Vector2 candidatePoint = grid.CellToWorld(points[i]);
+                float candidateAngle = CalculateAngle(currentPoint, candidatePoint);
+                angles[i] = -AngleDifference(previousAngle, candidateAngle);
+            }
+
+            SelectionSort(points, angles, count);
+        }
+
+        private static void SelectionSort<T>(List<T> points, float[] distances, int count)
+        {
+            for (int i = 0; i < count - 1; ++i)
+            {
+                int minIndex = i;
+                float minDistance = distances[i];
+                for (int j = i + 1; j < count; ++j)
+                {
+                    float candidateDistance = distances[j];
+                    if (candidateDistance < minDistance)
+                    {
+                        minDistance = candidateDistance;
+                        minIndex = j;
+                    }
+                }
+
+                if (minIndex != i)
+                {
+                    (points[i], points[minIndex]) = (points[minIndex], points[i]);
+                    (distances[i], distances[minIndex]) = (distances[minIndex], distances[i]);
+                }
+            }
+        }
+
+        private static void RemovePoints<T>(List<T> source, List<T> toRemove)
+        {
+            for (int i = toRemove.Count - 1; i >= 0; --i)
+            {
+                _ = source.Remove(toRemove[i]);
+            }
+        }
+
+        private static float CalculateAngle(Vector2 lhs, Vector2 rhs)
+        {
+            return Mathf.Atan2(rhs.y - lhs.y, rhs.x - lhs.x);
+        }
+
+        private static float AngleDifference(float lhsAngle, float rhsAngle)
+        {
+            if (0 < lhsAngle && 0 <= rhsAngle && rhsAngle < lhsAngle)
+            {
+                return Math.Abs(lhsAngle - rhsAngle);
+            }
+
+            if (0 <= lhsAngle && 0 < rhsAngle && lhsAngle < rhsAngle)
+            {
+                return 2 * Mathf.PI + lhsAngle - rhsAngle;
+            }
+
+            if (lhsAngle < 0 && rhsAngle <= 0 && lhsAngle < rhsAngle)
+            {
+                return 2 * Mathf.PI + lhsAngle + Math.Abs(rhsAngle);
+            }
+
+            if (lhsAngle <= 0 && rhsAngle < 0 && rhsAngle < lhsAngle)
+            {
+                return Math.Abs(lhsAngle - rhsAngle);
+            }
+
+            if (lhsAngle <= 0 && 0 < rhsAngle)
+            {
+                return 2 * Mathf.PI + lhsAngle - rhsAngle;
+            }
+
+            if (0 <= lhsAngle && rhsAngle <= 0)
+            {
+                return lhsAngle + Math.Abs(rhsAngle);
+            }
+
+            return 0f;
         }
 
         // This one has bugs, user beware
@@ -1202,6 +1373,26 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
         }
 
+        private static void SortLinesByLengthDescending(List<Line> lines)
+        {
+            int count = lines.Count;
+            if (count <= 1)
+            {
+                return;
+            }
+
+            using PooledResource<float[]> lengthBufferResource = WallstopFastArrayPool<float>.Get(
+                count
+            );
+            float[] lengths = lengthBufferResource.resource;
+            for (int i = 0; i < count; ++i)
+            {
+                lengths[i] = -(float)lines[i].sqrMagnitude;
+            }
+
+            SelectionSort(lines, lengths, count);
+        }
+
         public static List<FastVector3Int> BuildConcaveHull(
             this IEnumerable<FastVector3Int> gridPositions,
             Grid grid,
@@ -1215,16 +1406,28 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 throw new ArgumentException($"Concavity must be between [-1, 1], was {concavity}");
             }
 
-            List<FastVector3Int> originalGridPositions = gridPositions.ToList();
+            using PooledResource<List<FastVector3Int>> originalPositionsResource =
+                Buffers<FastVector3Int>.List.Get(out List<FastVector3Int> originalGridPositions);
+            originalGridPositions.AddRange(gridPositions);
+
             if (originalGridPositions.Count <= 3)
             {
-                return originalGridPositions;
+                return new List<FastVector3Int>(originalGridPositions);
             }
 
             List<FastVector3Int> convexHull = originalGridPositions.BuildConvexHull(grid, random);
-            HashSet<FastVector3Int> unusedNodes = originalGridPositions.ToHashSet();
+            using PooledResource<HashSet<FastVector3Int>> unusedNodesResource =
+                Buffers<FastVector3Int>.HashSet.Get(out HashSet<FastVector3Int> unusedNodes);
+            unusedNodes.UnionWith(originalGridPositions);
             unusedNodes.ExceptWith(convexHull);
-            List<Line> concaveHullLines = new(convexHull.Count);
+
+            using PooledResource<List<Line>> concaveHullLinesResource = Buffers<Line>.List.Get(
+                out List<Line> concaveHullLines
+            );
+            if (concaveHullLines.Capacity < convexHull.Count)
+            {
+                concaveHullLines.Capacity = convexHull.Count;
+            }
             for (int i = 0; i < convexHull.Count; ++i)
             {
                 FastVector3Int lhsGridPoint = convexHull[i];
@@ -1236,29 +1439,40 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
 
             bool aLineWasDividedInTheIteration;
+            using PooledResource<List<Line>> dividedLineResource = Buffers<Line>.List.Get(
+                out List<Line> dividedLine
+            );
+            if (dividedLine.Capacity < 2)
+            {
+                dividedLine.Capacity = 2;
+            }
+            using PooledResource<List<FastVector3Int>> nearbyPointsResource =
+                Buffers<FastVector3Int>.List.Get(out List<FastVector3Int> nearbyPoints);
+            using PooledResource<Dictionary<Vector2, double>> okMiddlePointsResource =
+                DictionaryBuffer<Vector2, double>.Dictionary.Get(
+                    out Dictionary<Vector2, double> okMiddlePoints
+                );
             do
             {
-                // Order by descending
-                concaveHullLines.Sort((lhs, rhs) => rhs.sqrMagnitude.CompareTo(lhs.sqrMagnitude));
+                // Order by descending length to evaluate the longest edges first
+                SortLinesByLengthDescending(concaveHullLines);
 
                 aLineWasDividedInTheIteration = false;
                 for (int i = 0; i < concaveHullLines.Count; ++i)
                 {
                     Line line = concaveHullLines[i];
-                    IEnumerable<FastVector3Int> nearbyPoints = GetNearbyPoints(
-                        line,
-                        unusedNodes,
-                        grid,
-                        scaleFactor
-                    );
-                    List<Line> dividedLine = GetDividedLine(
-                        line,
-                        nearbyPoints,
-                        concaveHullLines,
-                        grid,
-                        concavity
-                    );
-                    if (0 < dividedLine.Count)
+                    GetNearbyPoints(line, unusedNodes, grid, scaleFactor, nearbyPoints);
+                    if (
+                        TryDivideLine(
+                            line,
+                            nearbyPoints,
+                            concaveHullLines,
+                            grid,
+                            concavity,
+                            dividedLine,
+                            okMiddlePoints
+                        )
+                    )
                     {
                         aLineWasDividedInTheIteration = true;
                         FastVector3Int toRemove = grid.WorldToCell(dividedLine[0].to);
@@ -1277,18 +1491,28 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
 
             Line currentlyConsideredLine = concaveHullLines[0];
-            FastVector3Int from = grid.WorldToCell(currentlyConsideredLine.from);
-            FastVector3Int to = grid.WorldToCell(currentlyConsideredLine.to);
+            Vector3Int from = grid.WorldToCell(currentlyConsideredLine.from);
+            Vector3Int to = grid.WorldToCell(currentlyConsideredLine.to);
             concaveHull.Add(from);
             concaveHull.Add(to);
             concaveHullLines.RemoveAtSwapBack(0);
             while (0 < concaveHullLines.Count)
             {
-                int index = concaveHullLines.FindIndex(line =>
+                int index = -1;
+                for (int i = 0; i < concaveHullLines.Count; ++i)
                 {
-                    FastVector3Int lineFrom = grid.WorldToCell(line.from);
-                    return lineFrom == to;
-                });
+                    Line candidate = concaveHullLines[i];
+                    if (grid.WorldToCell(candidate.from) == to)
+                    {
+                        index = i;
+                        break;
+                    }
+                }
+
+                if (index < 0)
+                {
+                    break;
+                }
 
                 currentlyConsideredLine = concaveHullLines[index];
                 to = grid.WorldToCell(currentlyConsideredLine.to);
@@ -1343,30 +1567,44 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return isPositionInside;
         }
 
-        private static List<Line> GetDividedLine(
+        private static bool TryDivideLine(
             Line line,
-            IEnumerable<FastVector3Int> nearbyPoints,
+            IReadOnlyList<FastVector3Int> nearbyPoints,
             List<Line> concaveHull,
             Grid grid,
-            float concavity
+            float concavity,
+            List<Line> dividedLine,
+            Dictionary<Vector2, double> okMiddlePoints
         )
         {
-            return GetDividedLine(line.from, line.to, nearbyPoints, concaveHull, grid, concavity);
+            return TryDivideLine(
+                line.from,
+                line.to,
+                nearbyPoints,
+                concaveHull,
+                grid,
+                concavity,
+                dividedLine,
+                okMiddlePoints
+            );
         }
 
-        private static List<Line> GetDividedLine(
+        private static bool TryDivideLine(
             Vector2 from,
             Vector2 to,
-            IEnumerable<FastVector3Int> nearbyPoints,
+            IReadOnlyList<FastVector3Int> nearbyPoints,
             List<Line> concaveHull,
             Grid grid,
-            float concavity
+            float concavity,
+            List<Line> dividedLine,
+            Dictionary<Vector2, double> okMiddlePoints
         )
         {
-            List<Line> dividedLine = new(2);
-            Dictionary<Vector2, double> okMiddlePoints = new();
-            foreach (FastVector3Int gridPoint in nearbyPoints)
+            dividedLine.Clear();
+            okMiddlePoints.Clear();
+            for (int i = 0; i < nearbyPoints.Count; ++i)
             {
+                FastVector3Int gridPoint = nearbyPoints[i];
                 Vector2 point = grid.CellToWorld(gridPoint);
                 double cosine = GetCosine(from, to, point);
                 if (cosine < concavity)
@@ -1383,25 +1621,26 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 }
             }
 
-            if (0 < okMiddlePoints.Count)
+            if (okMiddlePoints.Count == 0)
             {
-                Vector2 middlePoint = new();
-                double minCosine = double.MaxValue;
-                foreach (KeyValuePair<Vector2, double> entry in okMiddlePoints)
-                {
-                    double cosine = entry.Value;
-                    if (cosine < minCosine)
-                    {
-                        minCosine = cosine;
-                        middlePoint = entry.Key;
-                    }
-                }
-
-                dividedLine.Add(new Line(from, middlePoint));
-                dividedLine.Add(new Line(middlePoint, to));
+                return false;
             }
 
-            return dividedLine;
+            Vector2 middlePoint = default;
+            double minCosine = double.MaxValue;
+            foreach (KeyValuePair<Vector2, double> entry in okMiddlePoints)
+            {
+                double cosine = entry.Value;
+                if (cosine < minCosine)
+                {
+                    minCosine = cosine;
+                    middlePoint = entry.Key;
+                }
+            }
+
+            dividedLine.Add(new Line(from, middlePoint));
+            dividedLine.Add(new Line(middlePoint, to));
+            return true;
         }
 
         private static bool LineCollidesWithHull(Line line, List<Line> concaveHull)
@@ -1438,48 +1677,49 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return Math.Round(cos, 4);
         }
 
-        private static IEnumerable<FastVector3Int> GetNearbyPoints(
+        private static void GetNearbyPoints(
             Line line,
             ICollection<FastVector3Int> points,
             Grid grid,
-            float scaleFactor
+            float scaleFactor,
+            List<FastVector3Int> buffer
         )
         {
-            return GetNearbyPoints(line.from, line.to, points, grid, scaleFactor);
+            GetNearbyPoints(line.from, line.to, points, grid, scaleFactor, buffer);
         }
 
-        private static IEnumerable<FastVector3Int> GetNearbyPoints(
+        private static void GetNearbyPoints(
             Vector2 from,
             Vector2 to,
             ICollection<FastVector3Int> points,
             Grid grid,
-            float scaleFactor
+            float scaleFactor,
+            List<FastVector3Int> buffer
         )
         {
+            buffer.Clear();
             const int maxTries = 2;
             for (int tries = 0; tries < maxTries; ++tries)
             {
-                bool foundAnyPoints = false;
                 Bounds boundary = GetBoundary(from, to, scaleFactor);
+                bool foundAnyPoints = false;
                 foreach (FastVector3Int gridPoint in points)
                 {
                     Vector2 point = grid.CellToWorld(gridPoint);
-                    if (point != from && point != to)
+                    if (point != from && point != to && boundary.FastContains2D(point))
                     {
-                        if (boundary.FastContains2D(point))
-                        {
-                            foundAnyPoints = true;
-                            yield return gridPoint;
-                        }
+                        buffer.Add(gridPoint);
+                        foundAnyPoints = true;
                     }
                 }
 
                 if (foundAnyPoints)
                 {
-                    yield break;
+                    return;
                 }
 
-                scaleFactor *= 4 / 3f;
+                buffer.Clear();
+                scaleFactor *= 4f / 3f;
             }
         }
 

@@ -90,6 +90,19 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
         }
 
+        private sealed class CandidateComparer : IComparer<(int index, float distanceSquared)>
+        {
+            internal static readonly CandidateComparer Instance = new();
+
+            public int Compare(
+                (int index, float distanceSquared) x,
+                (int index, float distanceSquared) y
+            )
+            {
+                return x.distanceSquared.CompareTo(y.distanceSquared);
+            }
+        }
+
         public const int DefaultBucketSize = 10;
         public const int DefaultBranchFactor = 4;
 
@@ -516,7 +529,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return nearestNeighbors;
             }
 
-            candidates.Sort((lhs, rhs) => lhs.distanceSquared.CompareTo(rhs.distanceSquared));
+            candidates.Sort(CandidateComparer.Instance);
 
             int resultCount = Math.Min(count, candidates.Count);
             for (int i = 0; i < resultCount; ++i)
@@ -529,100 +542,100 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             candidates.Clear();
 
             return nearestNeighbors;
+        }
 
-            static void PushNode(List<NodeDistance> heap, RTreeNode node, Vector3 point)
+        static void PushNode(List<NodeDistance> heap, RTreeNode node, Vector3 point)
+        {
+            NodeDistance entry = new NodeDistance(node, node.boundary.DistanceSquaredTo(point));
+            heap.Add(entry);
+            int index = heap.Count - 1;
+
+            while (index > 0)
             {
-                NodeDistance entry = new NodeDistance(node, node.boundary.DistanceSquaredTo(point));
-                heap.Add(entry);
-                int index = heap.Count - 1;
-
-                while (index > 0)
+                int parent = (index - 1) >> 1;
+                NodeDistance parentEntry = heap[parent];
+                if (parentEntry._distanceSquared <= entry._distanceSquared)
                 {
-                    int parent = (index - 1) >> 1;
-                    NodeDistance parentEntry = heap[parent];
-                    if (parentEntry._distanceSquared <= entry._distanceSquared)
-                    {
-                        break;
-                    }
-
-                    heap[index] = parentEntry;
-                    index = parent;
+                    break;
                 }
 
-                heap[index] = entry;
+                heap[index] = parentEntry;
+                index = parent;
             }
 
-            static NodeDistance PopNode(List<NodeDistance> heap)
+            heap[index] = entry;
+        }
+
+        static NodeDistance PopNode(List<NodeDistance> heap)
+        {
+            int lastIndex = heap.Count - 1;
+            NodeDistance result = heap[0];
+            NodeDistance last = heap[lastIndex];
+            heap.RemoveAt(lastIndex);
+
+            int index = 0;
+            int count = heap.Count;
+            while (true)
             {
-                int lastIndex = heap.Count - 1;
-                NodeDistance result = heap[0];
-                NodeDistance last = heap[lastIndex];
-                heap.RemoveAt(lastIndex);
-
-                int index = 0;
-                int count = heap.Count;
-                while (true)
+                int left = (index << 1) + 1;
+                if (left >= count)
                 {
-                    int left = (index << 1) + 1;
-                    if (left >= count)
-                    {
-                        break;
-                    }
-
-                    int right = left + 1;
-                    int smallest =
-                        right < count && heap[right]._distanceSquared < heap[left]._distanceSquared
-                            ? right
-                            : left;
-
-                    if (last._distanceSquared <= heap[smallest]._distanceSquared)
-                    {
-                        break;
-                    }
-
-                    heap[index] = heap[smallest];
-                    index = smallest;
+                    break;
                 }
 
-                if (count > 0)
+                int right = left + 1;
+                int smallest =
+                    right < count && heap[right]._distanceSquared < heap[left]._distanceSquared
+                        ? right
+                        : left;
+
+                if (last._distanceSquared <= heap[smallest]._distanceSquared)
                 {
-                    heap[index] = last;
+                    break;
                 }
 
-                return result;
+                heap[index] = heap[smallest];
+                index = smallest;
             }
 
-            static float FindWorstDistance(List<(int index, float distanceSquared)> list)
+            if (count > 0)
             {
-                float worst = 0f;
-                for (int i = 0; i < list.Count; ++i)
-                {
-                    float distance = list[i].distanceSquared;
-                    if (distance > worst)
-                    {
-                        worst = distance;
-                    }
-                }
-
-                return worst;
+                heap[index] = last;
             }
 
-            static int FindIndexOfWorstCandidate(List<(int index, float distanceSquared)> list)
-            {
-                int worstIndex = 0;
-                float worstDistance = list[0].distanceSquared;
-                for (int i = 1; i < list.Count; ++i)
-                {
-                    float distance = list[i].distanceSquared;
-                    if (distance > worstDistance)
-                    {
-                        worstDistance = distance;
-                        worstIndex = i;
-                    }
-                }
+            return result;
+        }
 
-                return worstIndex;
+        static float FindWorstDistance(List<(int index, float distanceSquared)> list)
+        {
+            float worst = 0f;
+            for (int i = 0; i < list.Count; ++i)
+            {
+                float distance = list[i].distanceSquared;
+                if (distance > worst)
+                {
+                    worst = distance;
+                }
             }
+
+            return worst;
+        }
+
+        static int FindIndexOfWorstCandidate(List<(int index, float distanceSquared)> list)
+        {
+            int worstIndex = 0;
+            float worstDistance = list[0].distanceSquared;
+            for (int i = 1; i < list.Count; ++i)
+            {
+                float distance = list[i].distanceSquared;
+                if (distance > worstDistance)
+                {
+                    worstDistance = distance;
+                    worstIndex = i;
+                }
+            }
+
+            return worstIndex;
         }
 
         private static void RadixSort(ElementData[] elements, int length)

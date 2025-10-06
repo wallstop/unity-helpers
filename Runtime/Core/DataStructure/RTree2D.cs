@@ -377,8 +377,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return nearestNeighbors;
             }
 
-            RTreeNode current = _head;
-
             using PooledResource<List<RTreeNode>> childrenBufferResource =
                 Buffers<RTreeNode>.List.Get();
             using PooledResource<HashSet<T>> nearestNeighborBufferResource =
@@ -392,15 +390,22 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             HashSet<T> nearestNeighborsSet = nearestNeighborBufferResource.resource;
             List<int> nearestIndices = nearestIndexBufferResource.resource;
 
-            Vector2 comparisonPosition = position;
-            Comparison<RTreeNode> comparison = Comparison;
+            ElementData[] elementData = _elementData;
+            Vector2 searchPosition = position;
+
+            RTreeNode current = _head;
+
             while (!current.isTerminal)
             {
                 childrenCopy.Clear();
                 RTreeNode[] childNodes = current._children;
                 for (int i = 0; i < childNodes.Length; ++i)
                 {
-                    childrenCopy.Add(childNodes[i]);
+                    RTreeNode child = childNodes[i];
+                    if (child is not null && child._count > 0)
+                    {
+                        childrenCopy.Add(child);
+                    }
                 }
 
                 if (childrenCopy.Count == 0)
@@ -408,7 +413,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     break;
                 }
 
-                childrenCopy.Sort(comparison);
+                SortChildrenByDistance(childrenCopy, searchPosition);
                 for (int i = childrenCopy.Count - 1; i >= 0; --i)
                 {
                     stack.Push(childrenCopy[i]);
@@ -427,8 +432,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 int endIndex = startIndex + selected._count;
                 for (int i = startIndex; i < endIndex; ++i)
                 {
-                    ElementData elementData = _elementData[i];
-                    if (!nearestNeighborsSet.Add(elementData._value))
+                    ElementData data = elementData[i];
+                    if (!nearestNeighborsSet.Add(data._value))
                     {
                         continue;
                     }
@@ -448,31 +453,76 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             if (count < nearestIndices.Count)
             {
-                Vector2 localPosition = position;
-                nearestIndices.Sort(IndexComparison);
+                SortIndicesByDistance(nearestIndices, elementData, searchPosition);
                 nearestIndices.RemoveRange(count, nearestIndices.Count - count);
-
-                int IndexComparison(int lhsIndex, int rhsIndex)
-                {
-                    Vector2 lhsCenter = _elementData[lhsIndex]._center;
-                    Vector2 rhsCenter = _elementData[rhsIndex]._center;
-                    return (lhsCenter - localPosition).sqrMagnitude.CompareTo(
-                        (rhsCenter - localPosition).sqrMagnitude
-                    );
-                }
             }
 
             foreach (int index in nearestIndices)
             {
-                nearestNeighbors.Add(_elementData[index]._value);
+                nearestNeighbors.Add(elementData[index]._value);
             }
 
             return nearestNeighbors;
+        }
 
-            int Comparison(RTreeNode lhs, RTreeNode rhs) =>
-                ((Vector2)lhs.boundary.center - comparisonPosition).sqrMagnitude.CompareTo(
-                    ((Vector2)rhs.boundary.center - comparisonPosition).sqrMagnitude
-                );
+        private static void SortChildrenByDistance(List<RTreeNode> nodes, Vector2 searchPosition)
+        {
+            for (int i = 1; i < nodes.Count; ++i)
+            {
+                RTreeNode value = nodes[i];
+                float valueDistance = GetNodeSqrDistance(value, searchPosition);
+                int j = i - 1;
+                while (j >= 0)
+                {
+                    RTreeNode previous = nodes[j];
+                    if (valueDistance >= GetNodeSqrDistance(previous, searchPosition))
+                    {
+                        break;
+                    }
+
+                    nodes[j + 1] = previous;
+                    --j;
+                }
+
+                nodes[j + 1] = value;
+            }
+        }
+
+        private static float GetNodeSqrDistance(RTreeNode node, Vector2 position)
+        {
+            return ((Vector2)node.boundary.center - position).sqrMagnitude;
+        }
+
+        private static void SortIndicesByDistance(
+            List<int> indices,
+            ElementData[] elements,
+            Vector2 position
+        )
+        {
+            for (int i = 1; i < indices.Count; ++i)
+            {
+                int currentIndex = indices[i];
+                float currentDistance = GetElementSqrDistance(elements[currentIndex], position);
+                int j = i - 1;
+                while (j >= 0)
+                {
+                    int previousIndex = indices[j];
+                    if (currentDistance >= GetElementSqrDistance(elements[previousIndex], position))
+                    {
+                        break;
+                    }
+
+                    indices[j + 1] = previousIndex;
+                    --j;
+                }
+
+                indices[j + 1] = currentIndex;
+            }
+        }
+
+        private static float GetElementSqrDistance(ElementData element, Vector2 position)
+        {
+            return (element._center - position).sqrMagnitude;
         }
 
         private static void RadixSort(ElementData[] elements, int length)

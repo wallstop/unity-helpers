@@ -26,6 +26,18 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
         }
 
+        private readonly struct Neighbor
+        {
+            public readonly T value;
+            public readonly float sqrDistance;
+
+            public Neighbor(T value, float sqrDistance)
+            {
+                this.value = value;
+                this.sqrDistance = sqrDistance;
+            }
+        }
+
         [Serializable]
         public sealed class QuadTreeNode
         {
@@ -146,6 +158,92 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return;
             }
 
+            bucketSize = Math.Max(1, bucketSize);
+            int[] scratch = ArrayPool<int>.Shared.Rent(elementCount);
+            try
+            {
+                _head = BuildNode(_bounds, 0, elementCount, bucketSize, scratch);
+            }
+            finally
+            {
+                ArrayPool<int>.Shared.Return(scratch, clearArray: true);
+            }
+        }
+
+        public QuadTree2D(
+            IEnumerable<Entry> entries,
+            Bounds? boundary = null,
+            int bucketSize = DefaultBucketSize
+        )
+        {
+            if (entries is null)
+            {
+                throw new ArgumentNullException(nameof(entries));
+            }
+
+            using PooledResource<List<Entry>> entryListResource = Buffers<Entry>.List.Get(
+                out List<Entry> entryList
+            );
+            foreach (Entry entry in entries)
+            {
+                entryList.Add(entry);
+            }
+
+            int elementCount = entryList.Count;
+            if (elementCount == 0)
+            {
+                elements = ImmutableArray<T>.Empty;
+                _entries = Array.Empty<Entry>();
+                _indices = Array.Empty<int>();
+                _bounds = boundary ?? default;
+                _head = QuadTreeNode.CreateLeaf(_bounds, 0, 0);
+                return;
+            }
+
+            _entries = new Entry[elementCount];
+            _indices = new int[elementCount];
+            ImmutableArray<T>.Builder builder = ImmutableArray.CreateBuilder<T>(elementCount);
+            Bounds bounds = boundary ?? default;
+            bool anyPoints = boundary.HasValue;
+            for (int i = 0; i < elementCount; ++i)
+            {
+                Entry entry = entryList[i];
+                _entries[i] = entry;
+                builder.Add(entry.value);
+                Vector2 position = entry.position;
+                if (anyPoints)
+                {
+                    bounds.Encapsulate(position);
+                }
+                else
+                {
+                    bounds = new Bounds(position, new Vector3(0f, 0f, 1f));
+                    anyPoints = true;
+                }
+
+                _indices[i] = i;
+            }
+
+            if (anyPoints)
+            {
+                Vector3 size = bounds.size;
+                const float minSize = 0.001f;
+                if (size.x < minSize)
+                {
+                    size.x = minSize;
+                }
+
+                if (size.y < minSize)
+                {
+                    size.y = minSize;
+                }
+
+                size.z = 1f;
+                bounds.size = size;
+            }
+
+            elements = builder.MoveToImmutable();
+            _bounds = bounds;
             bucketSize = Math.Max(1, bucketSize);
             int[] scratch = ArrayPool<int>.Shared.Rent(elementCount);
             try
@@ -433,8 +531,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return nearestNeighbors;
             }
 
-            QuadTreeNode current = _head;
-
             using PooledResource<Stack<QuadTreeNode>> nodeBufferResource =
                 Buffers<QuadTreeNode>.Stack.Get();
             Stack<QuadTreeNode> nodeBuffer = nodeBufferResource.resource;
@@ -445,15 +541,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             using PooledResource<HashSet<T>> nearestNeighborBufferResource =
                 Buffers<T>.HashSet.Get();
             HashSet<T> nearestNeighborBuffer = nearestNeighborBufferResource.resource;
-            using PooledResource<List<Entry>> nearestNeighborsCacheResource =
-                Buffers<Entry>.List.Get();
-            List<Entry> nearestNeighborsCache = nearestNeighborsCacheResource.resource;
+            using PooledResource<List<Neighbor>> neighborCandidatesResource =
+                Buffers<Neighbor>.List.Get();
+            List<Neighbor> neighborCandidates = neighborCandidatesResource.resource;
 
             Entry[] entries = _entries;
             int[] indices = _indices;
+            Vector2 searchPosition = position;
 
-            Vector2 comparisonPosition = position;
-            Comparison<QuadTreeNode> comparison = Comparison;
+            QuadTreeNode current = _head;
+
             while (!current.isTerminal)
             {
                 childrenBuffer.Clear();
@@ -472,7 +569,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     break;
                 }
 
-                childrenBuffer.Sort(comparison);
+                SortChildrenByDistance(childrenBuffer, searchPosition);
                 for (int i = childrenBuffer.Count - 1; i >= 0; --i)
                 {
                     nodeBuffer.Push(childrenBuffer[i]);
@@ -494,41 +591,66 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     continue;
                 }
 
-                int start = selected._startIndex;
-                int end = start + selected._count;
-                for (int i = start; i < end; ++i)
+                int startIndex = selected._startIndex;
+                int endIndex = startIndex + selected._count;
+                for (int i = startIndex; i < endIndex; ++i)
                 {
                     Entry entry = entries[indices[i]];
-                    if (nearestNeighborBuffer.Add(entry.value))
+                    if (!nearestNeighborBuffer.Add(entry.value))
                     {
-                        nearestNeighborsCache.Add(entry);
+                        continue;
                     }
+
+                    float sqrDistance = (entry.position - searchPosition).sqrMagnitude;
+                    neighborCandidates.Add(new Neighbor(entry.value, sqrDistance));
                 }
             }
 
-            if (count < nearestNeighborsCache.Count)
+            if (count < neighborCandidates.Count)
             {
-                Vector2 localPosition = position;
-                nearestNeighborsCache.Sort(NearestComparison);
-
-                int NearestComparison(Entry lhs, Entry rhs) =>
-                    (lhs.position - localPosition).sqrMagnitude.CompareTo(
-                        (rhs.position - localPosition).sqrMagnitude
-                    );
+                neighborCandidates.Sort(NeighborComparer.Instance);
+                neighborCandidates.RemoveRange(count, neighborCandidates.Count - count);
             }
 
             nearestNeighbors.Clear();
-            for (int i = 0; i < nearestNeighborsCache.Count && i < count; ++i)
+            for (int i = 0; i < neighborCandidates.Count && i < count; ++i)
             {
-                nearestNeighbors.Add(nearestNeighborsCache[i].value);
+                nearestNeighbors.Add(neighborCandidates[i].value);
             }
 
             return nearestNeighbors;
+        }
 
-            int Comparison(QuadTreeNode lhs, QuadTreeNode rhs) =>
-                ((Vector2)lhs.boundary.center - comparisonPosition).sqrMagnitude.CompareTo(
-                    ((Vector2)rhs.boundary.center - comparisonPosition).sqrMagnitude
-                );
+        private static void SortChildrenByDistance(List<QuadTreeNode> nodes, Vector2 searchPosition)
+        {
+            for (int i = 1; i < nodes.Count; ++i)
+            {
+                QuadTreeNode value = nodes[i];
+                float valueDistance = GetSqrDistance(value, searchPosition);
+                int j = i - 1;
+                while (j >= 0 && valueDistance < GetSqrDistance(nodes[j], searchPosition))
+                {
+                    nodes[j + 1] = nodes[j];
+                    --j;
+                }
+
+                nodes[j + 1] = value;
+            }
+        }
+
+        private static float GetSqrDistance(QuadTreeNode node, Vector2 position)
+        {
+            return ((Vector2)node.boundary.center - position).sqrMagnitude;
+        }
+
+        private sealed class NeighborComparer : IComparer<Neighbor>
+        {
+            internal static readonly NeighborComparer Instance = new();
+
+            public int Compare(Neighbor x, Neighbor y)
+            {
+                return x.sqrDistance.CompareTo(y.sqrDistance);
+            }
         }
     }
 }

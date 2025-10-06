@@ -18,7 +18,7 @@ namespace WallstopStudios.UnityHelpers.Tags
         [SiblingComponent]
         private TagHandler _tagHandler;
 
-        [SiblingComponent(optional = true)]
+        [SiblingComponent(Optional = true)]
         private List<AttributesComponent> _attributes;
 
         private readonly HashSet<AttributesComponent> _uniqueAttributesComponents = new();

@@ -162,7 +162,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             LogAssert.Expect(
                 LogType.Error,
                 new System.Text.RegularExpressions.Regex(
-                    @"^\d+(\.\d+)?\|Child-Missing\[ChildMissingTester\]\|Unable to find child component of type UnityEngine\.SpriteRenderer$"
+                    @"^\d+(\.\d+)?\|Child-Missing\[ChildMissingTester\]\|Unable to find child component of type UnityEngine\.SpriteRenderer for field 'requiredRenderer'$"
                 )
             );
 
@@ -194,7 +194,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             // Call assignment
             tester.AssignChildComponents();
 
-            // Verify pre-assigned values were preserved (skipIfAssigned = true)
+            // Verify pre-assigned values were preserved (SkipIfAssigned = true)
             Assert.AreSame(rootRenderer, tester.preAssignedChild);
             Assert.AreEqual(1, tester.preAssignedChildArray.Length);
             Assert.AreSame(rootRenderer, tester.preAssignedChildArray[0]);
@@ -280,11 +280,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
             tester.AssignChildComponents();
 
-            // onlyDescendents=true should exclude self
+            // onlyDescendants=true should exclude self
             Assert.AreSame(childRenderer, tester.descendentOnly);
             CollectionAssert.AreEquivalent(new[] { childRenderer }, tester.descendentOnlyArray);
 
-            // onlyDescendents=false should include self
+            // onlyDescendants=false should include self
             Assert.AreSame(rootRenderer, tester.includeSelf);
             CollectionAssert.AreEquivalent(
                 new[] { rootRenderer, childRenderer },
@@ -305,7 +305,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             LogAssert.Expect(
                 LogType.Error,
                 new System.Text.RegularExpressions.Regex(
-                    @"^\d+(\.\d+)?\|ChildNoDescendents\[ChildOnlyDescendentsTester\]\|Unable to find child component of type UnityEngine\.SpriteRenderer$"
+                    @"^\d+(\.\d+)?\|ChildNoDescendents\[ChildOnlyDescendentsTester\]\|Unable to find child component of type UnityEngine\.SpriteRenderer for field 'descendentOnly'$"
                 )
             );
 
@@ -313,7 +313,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             LogAssert.Expect(
                 LogType.Error,
                 new System.Text.RegularExpressions.Regex(
-                    @"^\d+(\.\d+)?\|ChildNoDescendents\[ChildOnlyDescendentsTester\]\|Unable to find child component of type UnityEngine\.SpriteRenderer\[\]$"
+                    @"^\d+(\.\d+)?\|ChildNoDescendents\[ChildOnlyDescendentsTester\]\|Unable to find child component of type UnityEngine\.SpriteRenderer\[\] for field 'descendentOnlyArray'$"
                 )
             );
 
@@ -321,7 +321,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             LogAssert.Expect(
                 LogType.Error,
                 new System.Text.RegularExpressions.Regex(
-                    @"^\d+(\.\d+)?\|ChildNoDescendents\[ChildOnlyDescendentsTester\]\|Unable to find child component of type UnityEngine\.SpriteRenderer$"
+                    @"^\d+(\.\d+)?\|ChildNoDescendents\[ChildOnlyDescendentsTester\]\|Unable to find child component of type UnityEngine\.SpriteRenderer for field 'includeSelf'$"
                 )
             );
 
@@ -329,7 +329,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             LogAssert.Expect(
                 LogType.Error,
                 new System.Text.RegularExpressions.Regex(
-                    @"^\d+(\.\d+)?\|ChildNoDescendents\[ChildOnlyDescendentsTester\]\|Unable to find child component of type UnityEngine\.SpriteRenderer\[\]$"
+                    @"^\d+(\.\d+)?\|ChildNoDescendents\[ChildOnlyDescendentsTester\]\|Unable to find child component of type UnityEngine\.SpriteRenderer\[\] for field 'includeSelfArray'$"
                 )
             );
 
@@ -454,13 +454,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             LogAssert.Expect(
                 LogType.Error,
                 new System.Text.RegularExpressions.Regex(
-                    "Unable to find child component of type UnityEngine.BoxCollider$"
+                    "Unable to find child component of type UnityEngine.BoxCollider for field 'activeOnly'$"
                 )
             );
             LogAssert.Expect(
                 LogType.Error,
                 new System.Text.RegularExpressions.Regex(
-                    "Unable to find child component of type UnityEngine.BoxCollider\\[\\]$"
+                    "Unable to find child component of type UnityEngine.BoxCollider\\[\\] for field 'activeOnlyArray'$"
                 )
             );
 
@@ -658,40 +658,40 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
     internal sealed class ChildAssignmentTester : MonoBehaviour
     {
-        [ChildComponent(onlyDescendents = true, includeInactive = false)]
+        [ChildComponent(OnlyDescendants = true, IncludeInactive = false)]
         public SpriteRenderer activeOnly;
 
-        [ChildComponent(onlyDescendents = true, includeInactive = true)]
+        [ChildComponent(OnlyDescendants = true, IncludeInactive = true)]
         public SpriteRenderer inactive;
 
-        [ChildComponent(onlyDescendents = true, includeInactive = false)]
+        [ChildComponent(OnlyDescendants = true, IncludeInactive = false)]
         public List<SpriteRenderer> descendentsActiveOnlyList;
 
-        [ChildComponent(onlyDescendents = true, includeInactive = true)]
+        [ChildComponent(OnlyDescendants = true, IncludeInactive = true)]
         public List<SpriteRenderer> descendentsAllList;
 
-        [ChildComponent(onlyDescendents = true, includeInactive = false)]
+        [ChildComponent(OnlyDescendants = true, IncludeInactive = false)]
         public SpriteRenderer[] descendentsActiveOnlyArray;
 
-        [ChildComponent(onlyDescendents = true, includeInactive = true)]
+        [ChildComponent(OnlyDescendants = true, IncludeInactive = true)]
         public SpriteRenderer[] descendentsAllArray;
     }
 
     internal sealed class ChildMissingTester : MonoBehaviour
     {
-        [ChildComponent(onlyDescendents = true)]
+        [ChildComponent(OnlyDescendants = true)]
         public SpriteRenderer requiredRenderer;
     }
 
     internal sealed class ChildSkipIfAssignedTester : MonoBehaviour
     {
-        [ChildComponent(skipIfAssigned = true)]
+        [ChildComponent(SkipIfAssigned = true)]
         public SpriteRenderer preAssignedChild;
 
-        [ChildComponent(skipIfAssigned = true)]
+        [ChildComponent(SkipIfAssigned = true)]
         public SpriteRenderer[] preAssignedChildArray;
 
-        [ChildComponent(skipIfAssigned = true)]
+        [ChildComponent(SkipIfAssigned = true)]
         public List<SpriteRenderer> preAssignedChildList;
 
         [ChildComponent]
@@ -700,64 +700,64 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
     internal sealed class ChildOptionalTester : MonoBehaviour
     {
-        [ChildComponent(optional = true)]
+        [ChildComponent(Optional = true)]
         public SpriteRenderer optionalRenderer;
     }
 
     internal sealed class ChildOnlyDescendentsTester : MonoBehaviour
     {
-        [ChildComponent(onlyDescendents = true)]
+        [ChildComponent(OnlyDescendants = true)]
         public SpriteRenderer descendentOnly;
 
-        [ChildComponent(onlyDescendents = true)]
+        [ChildComponent(OnlyDescendants = true)]
         public SpriteRenderer[] descendentOnlyArray;
 
-        [ChildComponent(onlyDescendents = false)]
+        [ChildComponent(OnlyDescendants = false)]
         public SpriteRenderer includeSelf;
 
-        [ChildComponent(onlyDescendents = false)]
+        [ChildComponent(OnlyDescendants = false)]
         public SpriteRenderer[] includeSelfArray;
     }
 
     internal sealed class ChildMultipleTester : MonoBehaviour
     {
-        [ChildComponent(includeInactive = true)]
+        [ChildComponent(IncludeInactive = true)]
         public SpriteRenderer[] allChildren;
 
-        [ChildComponent(includeInactive = true)]
+        [ChildComponent(IncludeInactive = true)]
         public List<SpriteRenderer> allChildrenList;
     }
 
     internal sealed class ChildInactiveTester : MonoBehaviour
     {
-        [ChildComponent(onlyDescendents = true, includeInactive = false)]
+        [ChildComponent(OnlyDescendants = true, IncludeInactive = false)]
         public SpriteRenderer activeOnly;
 
-        [ChildComponent(onlyDescendents = true, includeInactive = false)]
+        [ChildComponent(OnlyDescendants = true, IncludeInactive = false)]
         public SpriteRenderer[] activeOnlyArray;
 
-        [ChildComponent(onlyDescendents = true, includeInactive = true)]
+        [ChildComponent(OnlyDescendants = true, IncludeInactive = true)]
         public SpriteRenderer[] includeInactiveArray;
     }
 
     internal sealed class ChildDisabledBehaviourTester : MonoBehaviour
     {
-        [ChildComponent(onlyDescendents = true, includeInactive = false)]
+        [ChildComponent(OnlyDescendants = true, IncludeInactive = false)]
         public BoxCollider activeOnly;
 
-        [ChildComponent(onlyDescendents = true, includeInactive = false)]
+        [ChildComponent(OnlyDescendants = true, IncludeInactive = false)]
         public BoxCollider[] activeOnlyArray;
 
-        [ChildComponent(onlyDescendents = true, includeInactive = true)]
+        [ChildComponent(OnlyDescendants = true, IncludeInactive = true)]
         public BoxCollider includeInactive;
 
-        [ChildComponent(onlyDescendents = true, includeInactive = true)]
+        [ChildComponent(OnlyDescendants = true, IncludeInactive = true)]
         public BoxCollider[] includeInactiveArray;
     }
 
     internal sealed class ChildMultiComponentTester : MonoBehaviour
     {
-        [ChildComponent(onlyDescendents = true)]
+        [ChildComponent(OnlyDescendants = true)]
         public BoxCollider[] colliders;
     }
 

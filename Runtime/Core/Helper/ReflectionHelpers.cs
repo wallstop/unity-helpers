@@ -13,6 +13,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
     using System.Reflection;
     using System.Reflection.Emit;
     using System.Runtime.CompilerServices;
+    using UnityEditor;
 #if !SINGLE_THREADED
     using System.Collections.Concurrent;
 #else

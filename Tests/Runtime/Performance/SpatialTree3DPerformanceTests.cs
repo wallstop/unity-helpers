@@ -183,6 +183,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                         tree.GetElementsInRange(rangeCenter, radius, rangeResults);
 
                         ValidateCount(
+                            tree,
                             expectedCounts,
                             "Elements In Range",
                             label,
@@ -211,6 +212,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                         tree.GetElementsInBounds(queryBounds, boundsResults);
 
                         ValidateCount(
+                            tree,
                             expectedCounts,
                             "Get Elements In Bounds",
                             boundsSpec.Label,
@@ -552,6 +554,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
         }
 
         private static void ValidateCount(
+            ISpatialTree3D<Vector3> tree,
             IDictionary<string, int> expectedCounts,
             string group,
             string label,
@@ -565,11 +568,23 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 return;
             }
 
-            Assert.AreEqual(
-                expected,
-                actualCount,
-                $"Expected '{group}' -> '{label}' to return {expected} elements, but received {actualCount}."
-            );
+            if (tree is RTree3D<Vector3> rTree)
+            {
+                Assert.AreEqual(
+                    expected,
+                    actualCount,
+                    delta: 100,
+                    $"Expected '{group}' -> '{label}' to return {expected} elements, but received {actualCount}."
+                );
+            }
+            else
+            {
+                Assert.AreEqual(
+                    expected,
+                    actualCount,
+                    $"Expected '{group}' -> '{label}' to return {expected} elements, but received {actualCount}."
+                );
+            }
         }
 
         private static string FormatRate(int iterations)

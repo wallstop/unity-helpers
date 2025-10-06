@@ -20,12 +20,24 @@ namespace WallstopStudios.UnityHelpers.Tags
             Dictionary<string, Func<object, Attribute>>
         > OptimizedAttributeFields = new();
 
-        // TODO: Use TypeCache + serialize
         public static string[] GetAllAttributeNames()
         {
-            return AllAttributeNames ??= AppDomain
-                .CurrentDomain.GetAssemblies()
-                .SelectMany(assembly => assembly.GetTypes())
+            if (AllAttributeNames != null)
+            {
+                return AllAttributeNames;
+            }
+
+            // Try to load from cache first
+            AttributeMetadataCache cache = AttributeMetadataCache.Instance;
+            if (cache != null && cache.AllAttributeNames.Length > 0)
+            {
+                AllAttributeNames = cache.AllAttributeNames;
+                return AllAttributeNames;
+            }
+
+            // Fallback to runtime reflection if cache is not available
+            AllAttributeNames = ReflectionHelpers
+                .GetAllLoadedTypes()
                 .Where(type => !type.IsAbstract)
                 .Where(type => type.IsSubclassOf(typeof(AttributesComponent)))
                 .SelectMany(type =>
@@ -38,6 +50,8 @@ namespace WallstopStudios.UnityHelpers.Tags
                 .Distinct()
                 .Ordered()
                 .ToArray();
+
+            return AllAttributeNames;
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -210,6 +224,30 @@ namespace WallstopStudios.UnityHelpers.Tags
                 type,
                 inputType =>
                 {
+                    // Try to use cached field names first
+                    AttributeMetadataCache cache = AttributeMetadataCache.Instance;
+                    if (cache != null && cache.TryGetFieldNames(inputType, out string[] fieldNames))
+                    {
+                        // Build dictionary from cached field names
+                        Dictionary<string, FieldInfo> result = new Dictionary<string, FieldInfo>(
+                            fieldNames.Length,
+                            StringComparer.Ordinal
+                        );
+                        foreach (string fieldName in fieldNames)
+                        {
+                            FieldInfo field = inputType.GetField(
+                                fieldName,
+                                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+                            );
+                            if (field != null && field.FieldType == typeof(Attribute))
+                            {
+                                result[fieldName] = field;
+                            }
+                        }
+                        return result;
+                    }
+
+                    // Fallback to runtime reflection
                     return inputType
                         .GetFields(
                             BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
@@ -228,6 +266,33 @@ namespace WallstopStudios.UnityHelpers.Tags
                 type,
                 inputType =>
                 {
+                    // Try to use cached field names first
+                    AttributeMetadataCache cache = AttributeMetadataCache.Instance;
+                    if (cache != null && cache.TryGetFieldNames(inputType, out string[] fieldNames))
+                    {
+                        // Build dictionary from cached field names
+                        Dictionary<string, Func<object, Attribute>> result = new Dictionary<
+                            string,
+                            Func<object, Attribute>
+                        >(fieldNames.Length, StringComparer.Ordinal);
+                        foreach (string fieldName in fieldNames)
+                        {
+                            FieldInfo field = inputType.GetField(
+                                fieldName,
+                                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+                            );
+                            if (field != null && field.FieldType == typeof(Attribute))
+                            {
+                                result[fieldName] = ReflectionHelpers.GetFieldGetter<
+                                    object,
+                                    Attribute
+                                >(field);
+                            }
+                        }
+                        return result;
+                    }
+
+                    // Fallback to runtime reflection
                     return inputType
                         .GetFields(
                             BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic

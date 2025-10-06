@@ -7,22 +7,22 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes.Components
     [DisallowMultipleComponent]
     public sealed class ExpectChildSpriteRenderers : MonoBehaviour
     {
-        [ChildComponent(onlyDescendents = true)]
+        [ChildComponent(OnlyDescendants = true)]
         public List<SpriteRenderer> inclusiveChildrenList;
 
-        [ChildComponent(onlyDescendents = false)]
+        [ChildComponent(OnlyDescendants = false)]
         public List<SpriteRenderer> exclusiveChildrenList;
 
-        [ChildComponent(onlyDescendents = true)]
+        [ChildComponent(OnlyDescendants = true)]
         public SpriteRenderer[] inclusiveChildrenArray;
 
-        [ChildComponent(onlyDescendents = false)]
+        [ChildComponent(OnlyDescendants = false)]
         public SpriteRenderer[] exclusiveChildrenArray;
 
-        [ChildComponent(onlyDescendents = true)]
+        [ChildComponent(OnlyDescendants = true)]
         public SpriteRenderer inclusiveChild;
 
-        [ChildComponent(onlyDescendents = false)]
+        [ChildComponent(OnlyDescendants = false)]
         public SpriteRenderer exclusiveChild;
     }
 }

@@ -3,142 +3,61 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     using System;
     using System.Collections;
     using System.Collections.Generic;
-    using System.Linq;
-    using System.Reflection;
     using Extension;
-    using Helper;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Utils;
+    using static RelationalComponentProcessor;
 
+    /// <summary>
+    /// Automatically assigns child components (components down the transform hierarchy) to the decorated field.
+    /// Supports single components, arrays, and List&lt;T&gt; collection types.
+    /// </summary>
+    /// <remarks>
+    /// Call <see cref="ChildComponentExtensions.AssignChildComponents"/> to populate the field.
+    /// This is typically done in Awake() or OnEnable().
+    /// By default, searches include the current GameObject. Use <see cref="OnlyDescendants"/> to exclude it.
+    /// Children are searched in breadth-first order.
+    ///
+    /// IMPORTANT: This attribute populates fields at runtime, not during Unity serialization in Edit mode.
+    /// Fields populated by this attribute will not be serialized by Unity.
+    /// </remarks>
     [AttributeUsage(AttributeTargets.Field)]
-    public sealed class ChildComponentAttribute : Attribute
+    public sealed class ChildComponentAttribute : BaseRelationalComponentAttribute
     {
-        public bool optional = false;
-        public bool includeInactive = true;
-        public bool onlyDescendents = false;
-        public bool skipIfAssigned = false;
+        /// <summary>
+        /// If true, excludes components on the current GameObject and only searches descendant transforms.
+        /// If false, includes components on the current GameObject in the search. Default: true.
+        /// </summary>
+        public bool OnlyDescendants { get; set; } = false;
+
+        /// <summary>
+        /// Maximum depth to search down the hierarchy. 0 means unlimited. Default: 0.
+        /// Depth 1 = immediate children only, depth 2 = children and grandchildren, etc.
+        /// </summary>
+        public int MaxDepth { get; set; } = 0;
     }
 
     public static class ChildComponentExtensions
     {
-        private enum FieldKind : byte
-        {
-            Single = 0,
-            Array = 1,
-            List = 2,
-        }
-
         private static readonly Dictionary<
             Type,
-            (
-                FieldInfo field,
-                ChildComponentAttribute attribute,
-                Action<object, object> setter,
-                Func<object, object> getter,
-                FieldKind kind,
-                Type elementType,
-                Func<int, Array> arrayCreator,
-                Func<int, IList> listCreator
-            )[]
+            FieldMetadata<ChildComponentAttribute>[]
         > FieldsByType = new();
 
         public static void AssignChildComponents(this Component component)
         {
             Type componentType = component.GetType();
-            (
-                FieldInfo field,
-                ChildComponentAttribute attribute,
-                Action<object, object> setter,
-                Func<object, object> getter,
-                FieldKind kind,
-                Type elementType,
-                Func<int, Array> arrayCreator,
-                Func<int, IList> listCreator
-            )[] fields = FieldsByType.GetOrAdd(
+            FieldMetadata<ChildComponentAttribute>[] fields = FieldsByType.GetOrAdd(
                 componentType,
-                type =>
-                {
-                    FieldInfo[] fields = type.GetFields(
-                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
-                    );
-                    return fields
-                        .Select(field =>
-                        {
-                            if (
-                                !field.IsAttributeDefined(
-                                    out ChildComponentAttribute attribute,
-                                    inherit: false
-                                )
-                            )
-                            {
-                                return (null, null, null, null, default, null, null, null);
-                            }
-
-                            Type fieldType = field.FieldType;
-                            FieldKind kind;
-                            Type elementType;
-                            Func<int, Array> arrayCreator = null;
-                            Func<int, IList> listCreator = null;
-
-                            if (fieldType.IsArray)
-                            {
-                                kind = FieldKind.Array;
-                                elementType = fieldType.GetElementType();
-                                arrayCreator = ReflectionHelpers.GetArrayCreator(elementType);
-                            }
-                            else if (
-                                fieldType.IsGenericType
-                                && fieldType.GetGenericTypeDefinition() == typeof(List<>)
-                            )
-                            {
-                                kind = FieldKind.List;
-                                elementType = fieldType.GenericTypeArguments[0];
-                                listCreator = ReflectionHelpers.GetListWithCapacityCreator(
-                                    elementType
-                                );
-                            }
-                            else
-                            {
-                                kind = FieldKind.Single;
-                                elementType = fieldType;
-                            }
-
-                            return (
-                                field,
-                                attribute,
-                                ReflectionHelpers.GetFieldSetter(field),
-                                ReflectionHelpers.GetFieldGetter(field),
-                                kind,
-                                elementType,
-                                arrayCreator,
-                                listCreator
-                            );
-                        })
-                        .Where(tuple => tuple.attribute != null)
-                        .ToArray();
-                }
+                type => GetFieldMetadata<ChildComponentAttribute>(type)
             );
 
-            foreach (
-                (
-                    FieldInfo field,
-                    ChildComponentAttribute attribute,
-                    Action<object, object> setter,
-                    Func<object, object> getter,
-                    FieldKind kind,
-                    Type elementType,
-                    Func<int, Array> arrayCreator,
-                    Func<int, IList> listCreator
-                ) in fields
-            )
+            foreach (FieldMetadata<ChildComponentAttribute> metadata in fields)
             {
-                if (attribute.skipIfAssigned)
+                if (ShouldSkipAssignment(metadata, component))
                 {
-                    object currentValue = getter(component);
-                    if (ValueHelpers.IsAssigned(currentValue))
-                    {
-                        continue;
-                    }
+                    continue;
                 }
 
                 bool foundChild;
@@ -146,64 +65,35 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 using PooledResource<List<Transform>> childBufferResource =
                     Buffers<Transform>.List.Get();
                 List<Transform> childBuffer = childBufferResource.resource;
-                switch (kind)
+
+                switch (metadata.kind)
                 {
                     case FieldKind.Array:
                     {
-                        using PooledResource<List<Component>> componentResource =
+                        using PooledResource<List<Component>> cacheResource =
                             Buffers<Component>.List.Get();
-                        List<Component> cache = componentResource.resource;
+                        List<Component> cache = cacheResource.resource;
 
-                        using PooledResource<List<Component>> childComponentBuffer =
-                            Buffers<Component>.List.Get();
-                        List<Component> childComponents = childComponentBuffer.resource;
-                        if (attribute.includeInactive)
-                        {
-                            foreach (
-                                Transform child in component.IterateOverAllChildrenRecursivelyBreadthFirst(
-                                    childBuffer,
-                                    includeSelf: !attribute.onlyDescendents
-                                )
-                            )
-                            {
-                                child.GetComponents(elementType, childComponents);
-                                cache.AddRange(childComponents);
-                            }
-                        }
-                        else
-                        {
-                            foreach (
-                                Transform child in component.IterateOverAllChildrenRecursivelyBreadthFirst(
-                                    childBuffer,
-                                    includeSelf: !attribute.onlyDescendents
-                                )
-                            )
-                            {
-                                if (!child.gameObject.activeInHierarchy)
-                                {
-                                    continue;
-                                }
-                                child.GetComponents(elementType, childComponents);
-                                foreach (Component childComponent in childComponents)
-                                {
-                                    if (!childComponent.IsComponentEnabled())
-                                    {
-                                        continue;
-                                    }
+                        using PooledResource<List<Component>> filteredBuffer =
+                            Buffers<Component>.List.Get(out List<Component> filtered);
+                        CollectChildComponents(component, metadata, childBuffer, cache);
 
-                                    cache.Add(childComponent);
-                                }
-                            }
+                        FilterComponents(
+                            cache,
+                            metadata.attribute,
+                            metadata.elementType,
+                            metadata.isInterface,
+                            filtered
+                        );
+
+                        Array correctTypedArray = metadata.arrayCreator(filtered.Count);
+                        for (int i = 0; i < filtered.Count; ++i)
+                        {
+                            correctTypedArray.SetValue(filtered[i], i);
                         }
 
-                        Array correctTypedArray = arrayCreator(cache.Count);
-                        for (int i = 0; i < cache.Count; ++i)
-                        {
-                            correctTypedArray.SetValue(cache[i], i);
-                        }
-
-                        setter(component, correctTypedArray);
-                        foundChild = cache.Count > 0;
+                        metadata.setter(component, correctTypedArray);
+                        foundChild = filtered.Count > 0;
                         break;
                     }
                     case FieldKind.List:
@@ -212,137 +102,127 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                             Buffers<Component>.List.Get();
                         List<Component> cache = cacheResource.resource;
 
-                        using PooledResource<List<Component>> childComponentBuffer =
-                            Buffers<Component>.List.Get();
-                        List<Component> childComponents = childComponentBuffer.resource;
-                        if (attribute.includeInactive)
-                        {
-                            foreach (
-                                Transform child in component.IterateOverAllChildrenRecursivelyBreadthFirst(
-                                    childBuffer,
-                                    includeSelf: !attribute.onlyDescendents
-                                )
-                            )
-                            {
-                                child.GetComponents(elementType, childComponents);
-                                cache.AddRange(childComponents);
-                            }
-                        }
-                        else
-                        {
-                            foreach (
-                                Transform child in component.IterateOverAllChildrenRecursivelyBreadthFirst(
-                                    childBuffer,
-                                    includeSelf: !attribute.onlyDescendents
-                                )
-                            )
-                            {
-                                if (!child.gameObject.activeInHierarchy)
-                                {
-                                    continue;
-                                }
+                        CollectChildComponents(component, metadata, childBuffer, cache);
 
-                                child.GetComponents(elementType, childComponents);
-                                foreach (Component childComponent in childComponents)
-                                {
-                                    if (!childComponent.IsComponentEnabled())
-                                    {
-                                        continue;
-                                    }
+                        using PooledResource<List<Component>> filteredBuffer =
+                            Buffers<Component>.List.Get(out List<Component> filtered);
+                        FilterComponents(
+                            cache,
+                            metadata.attribute,
+                            metadata.elementType,
+                            metadata.isInterface,
+                            filtered
+                        );
 
-                                    cache.Add(childComponent);
-                                }
-                            }
+                        IList instance = metadata.listCreator(filtered.Count);
+                        for (int i = 0; i < filtered.Count; ++i)
+                        {
+                            instance.Add(filtered[i]);
                         }
 
-                        IList instance = listCreator(cache.Count);
-                        for (int i = 0; i < cache.Count; ++i)
-                        {
-                            instance.Add(cache[i]);
-                        }
-
-                        foundChild = cache.Count > 0;
-                        setter(component, instance);
+                        foundChild = filtered.Count > 0;
+                        metadata.setter(component, instance);
                         break;
                     }
                     default:
                     {
                         foundChild = false;
                         Component childComponent = null;
+
                         using PooledResource<List<Component>> childComponentBuffer =
                             Buffers<Component>.List.Get();
                         List<Component> childComponents = childComponentBuffer.resource;
-                        if (attribute.includeInactive)
-                        {
-                            foreach (
-                                Transform child in component.IterateOverAllChildrenRecursivelyBreadthFirst(
-                                    childBuffer,
-                                    includeSelf: !attribute.onlyDescendents
-                                )
+
+                        foreach (
+                            Transform child in component.IterateOverAllChildrenRecursivelyBreadthFirst(
+                                childBuffer,
+                                includeSelf: !metadata.attribute.OnlyDescendants,
+                                maxDepth: metadata.attribute.MaxDepth
                             )
-                            {
-                                child.GetComponents(elementType, childComponents);
-                                foreach (Component entry in childComponents)
-                                {
-                                    childComponent = entry;
-                                    foundChild = true;
-                                    break;
-                                }
-
-                                if (foundChild)
-                                {
-                                    break;
-                                }
-                            }
-                        }
-                        else
+                        )
                         {
-                            foreach (
-                                Transform child in component.IterateOverAllChildrenRecursivelyBreadthFirst(
-                                    childBuffer,
-                                    includeSelf: !attribute.onlyDescendents
-                                )
-                            )
+                            childComponents.Clear();
+                            using PooledResource<List<Component>> componentBuffer =
+                                Buffers<Component>.List.Get(out List<Component> components);
+                            GetComponentsOfType(
+                                child.gameObject,
+                                metadata.elementType,
+                                metadata.isInterface,
+                                metadata.attribute.AllowInterfaces,
+                                components
+                            );
+
+                            childComponents.AddRange(components);
+                            using PooledResource<List<Component>> filteredBuffer =
+                                Buffers<Component>.List.Get(out List<Component> filtered);
+
+                            FilterComponents(
+                                childComponents,
+                                metadata.attribute,
+                                metadata.elementType,
+                                metadata.isInterface,
+                                filtered
+                            );
+
+                            if (filtered.Count > 0)
                             {
-                                if (!child.gameObject.activeInHierarchy)
-                                {
-                                    continue;
-                                }
-
-                                child.GetComponents(elementType, childComponents);
-                                foreach (Component entry in childComponents)
-                                {
-                                    if (!entry.IsComponentEnabled())
-                                    {
-                                        continue;
-                                    }
-
-                                    childComponent = entry;
-                                    foundChild = true;
-                                    break;
-                                }
-
-                                if (foundChild)
-                                {
-                                    break;
-                                }
+                                childComponent = filtered[0];
+                                foundChild = true;
+                                break;
                             }
                         }
 
                         if (foundChild)
                         {
-                            setter(component, childComponent);
+                            metadata.setter(component, childComponent);
                         }
 
                         break;
                     }
                 }
 
-                if (!foundChild && !attribute.optional)
+                if (!foundChild)
                 {
-                    component.LogError($"Unable to find child component of type {field.FieldType}");
+                    LogMissingComponentError(component, metadata, "child");
                 }
             }
+        }
+
+        private static List<Component> CollectChildComponents(
+            Component component,
+            FieldMetadata<ChildComponentAttribute> metadata,
+            List<Transform> childBuffer,
+            List<Component> cache
+        )
+        {
+            using PooledResource<List<Component>> childComponentBuffer =
+                Buffers<Component>.List.Get();
+            List<Component> childComponents = childComponentBuffer.resource;
+
+            using PooledResource<List<Component>> componentBuffer = Buffers<Component>.List.Get(
+                out List<Component> components
+            );
+            foreach (
+                Transform child in component.IterateOverAllChildrenRecursivelyBreadthFirst(
+                    childBuffer,
+                    includeSelf: !metadata.attribute.OnlyDescendants,
+                    maxDepth: metadata.attribute.MaxDepth
+                )
+            )
+            {
+                childComponents.Clear();
+                GetComponentsOfType(
+                    child.gameObject,
+                    metadata.elementType,
+                    metadata.isInterface,
+                    metadata.attribute.AllowInterfaces,
+                    components
+                );
+                childComponents.AddRange(components);
+                cache.AddRange(childComponents);
+            }
+
+            return cache;
         }
     }
 }

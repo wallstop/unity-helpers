@@ -99,6 +99,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
         }
 
+        private sealed class EntryDistanceComparer : IComparer<EntryDistance>
+        {
+            internal static readonly EntryDistanceComparer Instance = new();
+
+            public int Compare(EntryDistance x, EntryDistance y)
+            {
+                return x.distanceSquared.CompareTo(y.distanceSquared);
+            }
+        }
+
         public const int DefaultBucketSize = 12;
 
         public readonly ImmutableArray<T> elements;
@@ -642,9 +652,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             if (bestNeighbors.Count > 1)
             {
-                bestNeighbors.Sort(
-                    (lhs, rhs) => lhs.distanceSquared.CompareTo(rhs.distanceSquared)
-                );
+                bestNeighbors.Sort(EntryDistanceComparer.Instance);
             }
 
             nearestNeighbors.Clear();
