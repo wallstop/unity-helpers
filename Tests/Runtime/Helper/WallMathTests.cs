@@ -909,5 +909,502 @@
             Vector2 clamped = rect.Clamp(outside);
             Assert.IsTrue(Mathf.Approximately(clamped.x, rect.min.x) || rect.Contains(clamped));
         }
+
+        [Test]
+        public void BoundedDoubleWithVerySmallValues()
+        {
+            double value = 0.000001;
+            double max = 0.00001;
+            double result = WallMath.BoundedDouble(max, value);
+            Assert.AreEqual(value, result);
+        }
+
+        [Test]
+        public void BoundedFloatWithVerySmallValues()
+        {
+            float value = 0.000001f;
+            float max = 0.00001f;
+            float result = WallMath.BoundedFloat(max, value);
+            Assert.AreEqual(value, result);
+        }
+
+        [Test]
+        public void BoundedDoubleWithMaxAsNaN()
+        {
+            double value = 5.0;
+            double max = double.NaN;
+            double result = WallMath.BoundedDouble(max, value);
+            Assert.IsTrue(double.IsNaN(result));
+        }
+
+        [Test]
+        public void BoundedFloatWithMaxAsNaN()
+        {
+            float value = 5.0f;
+            float max = float.NaN;
+            float result = WallMath.BoundedFloat(max, value);
+            Assert.IsTrue(float.IsNaN(result));
+        }
+
+        [Test]
+        public void BoundedDoubleWithMaxAsInfinity()
+        {
+            double value = 100.0;
+            double max = double.PositiveInfinity;
+            double result = WallMath.BoundedDouble(max, value);
+            Assert.AreEqual(value, result);
+        }
+
+        [Test]
+        public void BoundedFloatWithMaxAsInfinity()
+        {
+            float value = 100.0f;
+            float max = float.PositiveInfinity;
+            float result = WallMath.BoundedFloat(max, value);
+            Assert.AreEqual(value, result);
+        }
+
+        [Test]
+        public void PositiveModIntWithOne()
+        {
+            Assert.AreEqual(0, 5.PositiveMod(1));
+            Assert.AreEqual(0, (-5).PositiveMod(1));
+        }
+
+        [Test]
+        public void PositiveModLongWithOne()
+        {
+            Assert.AreEqual(0L, 5L.PositiveMod(1L));
+            Assert.AreEqual(0L, (-5L).PositiveMod(1L));
+        }
+
+        [Test]
+        public void PositiveModFloatWithOne()
+        {
+            Assert.AreEqual(0f, 5.5f.PositiveMod(1f), Epsilon);
+            Assert.AreEqual(0f, (-5.5f).PositiveMod(1f), Epsilon);
+        }
+
+        [Test]
+        public void PositiveModDoubleWithOne()
+        {
+            Assert.AreEqual(0.0, 5.5.PositiveMod(1.0), Epsilon);
+            Assert.AreEqual(0.0, (-5.5).PositiveMod(1.0), Epsilon);
+        }
+
+        [Test]
+        public void PositiveModIntWithMaxValue()
+        {
+            int result = int.MaxValue.PositiveMod(100);
+            Assert.GreaterOrEqual(result, 0);
+            Assert.Less(result, 100);
+        }
+
+        [Test]
+        public void PositiveModLongWithMaxValue()
+        {
+            long result = long.MaxValue.PositiveMod(100L);
+            Assert.GreaterOrEqual(result, 0L);
+            Assert.Less(result, 100L);
+        }
+
+        [Test]
+        public void PositiveModIntWithMinValue()
+        {
+            int result = int.MinValue.PositiveMod(100);
+            Assert.GreaterOrEqual(result, 0);
+            Assert.Less(result, 100);
+        }
+
+        [Test]
+        public void PositiveModLongWithMinValue()
+        {
+            long result = long.MinValue.PositiveMod(100L);
+            Assert.GreaterOrEqual(result, 0L);
+            Assert.Less(result, 100L);
+        }
+
+        [Test]
+        public void WrappedAddWithNegativeMax()
+        {
+            int value = 5;
+            int result = value.WrappedAdd(3, -10);
+            Assert.GreaterOrEqual(result, -10);
+            Assert.Less(result, 0);
+        }
+
+        [Test]
+        public void WrappedAddWithVeryLargeIncrement()
+        {
+            int value = 5;
+            int result = value.WrappedAdd(int.MaxValue - 10, 100);
+            Assert.GreaterOrEqual(result, 0);
+            Assert.Less(result, 100);
+        }
+
+        [Test]
+        public void WrappedAddWithVeryLargeNegativeIncrement()
+        {
+            int value = 50;
+            int result = value.WrappedAdd(int.MinValue + 100, 100);
+            Assert.GreaterOrEqual(result, 0);
+            Assert.Less(result, 100);
+        }
+
+        [Test]
+        public void WrappedAddNegativeValuePositiveIncrement()
+        {
+            int value = 5;
+            int result = value.WrappedAdd(-10, 20);
+            Assert.AreEqual(15, result);
+        }
+
+        [Test]
+        public void WrappedIncrementFromZero()
+        {
+            int value = 0;
+            int result = WallMath.WrappedIncrement(ref value, 5);
+            Assert.AreEqual(1, result);
+            Assert.AreEqual(1, value);
+        }
+
+        [Test]
+        public void WrappedIncrementWrapToZero()
+        {
+            int value = 4;
+            int result = WallMath.WrappedIncrement(ref value, 5);
+            Assert.AreEqual(0, result);
+            Assert.AreEqual(0, value);
+        }
+
+        [Test]
+        public void ClampGenericWithReversedMinMax()
+        {
+            float value = 5f;
+            float clamped = value.Clamp(10f, 0f);
+            Assert.AreEqual(10f, clamped);
+        }
+
+        [Test]
+        public void ClampGenericNegativeRange()
+        {
+            int value = -5;
+            int clamped = value.Clamp(-10, -1);
+            Assert.AreEqual(-5, clamped);
+
+            value = -15;
+            clamped = value.Clamp(-10, -1);
+            Assert.AreEqual(-10, clamped);
+
+            value = 0;
+            clamped = value.Clamp(-10, -1);
+            Assert.AreEqual(-1, clamped);
+        }
+
+        [Test]
+        public void ClampRectPointOnEdge()
+        {
+            Rect rect = new(Vector2.zero, Vector2.one);
+            Vector2 leftEdge = new(0f, 0.5f);
+            Vector2 clamped = rect.Clamp(leftEdge);
+            Assert.AreEqual(leftEdge, clamped);
+
+            Vector2 rightEdge = new(1f, 0.5f);
+            clamped = rect.Clamp(rightEdge);
+            Assert.AreEqual(rightEdge, clamped);
+
+            Vector2 topEdge = new(0.5f, 1f);
+            clamped = rect.Clamp(topEdge);
+            Assert.AreEqual(topEdge, clamped);
+
+            Vector2 bottomEdge = new(0.5f, 0f);
+            clamped = rect.Clamp(bottomEdge);
+            Assert.AreEqual(bottomEdge, clamped);
+        }
+
+        [Test]
+        public void ClampRectAllCorners()
+        {
+            Rect rect = new(Vector2.zero, new Vector2(10f, 10f));
+
+            Vector2 bottomLeft = rect.min;
+            Assert.AreEqual(bottomLeft, rect.Clamp(bottomLeft));
+
+            Vector2 bottomRight = new(rect.max.x, rect.min.y);
+            Assert.AreEqual(bottomRight, rect.Clamp(bottomRight));
+
+            Vector2 topLeft = new(rect.min.x, rect.max.y);
+            Assert.AreEqual(topLeft, rect.Clamp(topLeft));
+
+            Vector2 topRight = rect.max;
+            Assert.AreEqual(topRight, rect.Clamp(topRight));
+        }
+
+        [Test]
+        public void ClampRectDiagonalAllDirections()
+        {
+            Rect rect = new(Vector2.zero, Vector2.one);
+
+            Vector2 topRightOutside = new(10f, 10f);
+            Vector2 clamped = rect.Clamp(topRightOutside);
+            Assert.LessOrEqual(clamped.x, rect.max.x);
+            Assert.LessOrEqual(clamped.y, rect.max.y);
+
+            Vector2 topLeftOutside = new(-10f, 10f);
+            clamped = rect.Clamp(topLeftOutside);
+            Assert.GreaterOrEqual(clamped.x, rect.min.x);
+            Assert.LessOrEqual(clamped.y, rect.max.y);
+
+            Vector2 bottomRightOutside = new(10f, -10f);
+            clamped = rect.Clamp(bottomRightOutside);
+            Assert.LessOrEqual(clamped.x, rect.max.x);
+            Assert.GreaterOrEqual(clamped.y, rect.min.y);
+
+            Vector2 bottomLeftOutside = new(-10f, -10f);
+            clamped = rect.Clamp(bottomLeftOutside);
+            Assert.GreaterOrEqual(clamped.x, rect.min.x);
+            Assert.GreaterOrEqual(clamped.y, rect.min.y);
+        }
+
+        [Test]
+        public void ClampRectWithZeroSize()
+        {
+            Rect rect = new(Vector2.one, Vector2.zero);
+            Vector2 outside = new(10f, 10f);
+            Vector2 clamped = rect.Clamp(outside);
+            Assert.AreEqual(rect.center, clamped);
+        }
+
+        [Test]
+        public void ClampRectWithNegativeSize()
+        {
+            Rect rect = new(Vector2.zero, new Vector2(-5f, -5f));
+            Vector2 outside = new(10f, 10f);
+            Vector2 clamped = rect.Clamp(outside);
+            Assert.LessOrEqual(clamped.x, rect.max.x);
+            Assert.LessOrEqual(clamped.y, rect.max.y);
+        }
+
+        [Test]
+        public void ApproximatelyExactMatch()
+        {
+            Assert.IsTrue(5f.Approximately(5f, 0f));
+            Assert.IsTrue(0f.Approximately(0f, 0f));
+            Assert.IsTrue((-5f).Approximately(-5f, 0f));
+        }
+
+        [Test]
+        public void ApproximatelyExactBoundary()
+        {
+            Assert.IsTrue(0f.Approximately(1f, 1f));
+            Assert.IsTrue(1f.Approximately(0f, 1f));
+            Assert.IsFalse(0f.Approximately(1.001f, 1f));
+            Assert.IsFalse(1.001f.Approximately(0f, 1f));
+        }
+
+        [Test]
+        public void ApproximatelyVeryLargeValues()
+        {
+            Assert.IsTrue(1000000f.Approximately(1000001f, 2f));
+            Assert.IsFalse(1000000f.Approximately(1000010f, 2f));
+        }
+
+        [Test]
+        public void ApproximatelyVerySmallDifferences()
+        {
+            Assert.IsTrue(0.0001f.Approximately(0.0002f, 0.0001f));
+            Assert.IsFalse(0.0001f.Approximately(0.0003f, 0.0001f));
+        }
+
+        [Test]
+        public void ApproximatelyMixedSigns()
+        {
+            Assert.IsTrue(1f.Approximately(-1f, 2.5f));
+            Assert.IsFalse(1f.Approximately(-1f, 1.5f));
+        }
+
+        [Test]
+        public void ApproximatelyDoubleWithinTolerance()
+        {
+            Assert.IsTrue(0.0.Approximately(0.0, 0.0));
+            Assert.IsTrue(0.0.Approximately(0.5, 1.0));
+            Assert.IsTrue(5.0.Approximately(5.5, 1.0));
+            Assert.IsTrue(10.0.Approximately(10.04));
+        }
+
+        [Test]
+        public void ApproximatelyDoubleOutsideTolerance()
+        {
+            Assert.IsFalse(0.001.Approximately(0.0, 0.0));
+            Assert.IsFalse(100.0.Approximately(5.0, 2.4));
+            Assert.IsFalse(0.0.Approximately(1.0, 0.5));
+        }
+
+        [Test]
+        public void ApproximatelyDoubleDefaultTolerance()
+        {
+            Assert.IsTrue(0.001.Approximately(0.0001));
+            Assert.IsTrue(1.0.Approximately(1.04));
+            Assert.IsFalse(1.0.Approximately(1.5));
+        }
+
+        [Test]
+        public void ApproximatelyDoubleWithNegativeValues()
+        {
+            Assert.IsTrue((-5.0).Approximately(-5.04));
+            Assert.IsFalse((-5.0).Approximately(-10.0));
+        }
+
+        [Test]
+        public void ApproximatelyDoubleWithInfinity()
+        {
+            Assert.IsFalse(double.PositiveInfinity.Approximately(double.PositiveInfinity, 1.0));
+            Assert.IsFalse(double.PositiveInfinity.Approximately(100.0, 1000.0));
+            Assert.IsFalse(100.0.Approximately(double.PositiveInfinity, 1000.0));
+            Assert.IsFalse(double.NegativeInfinity.Approximately(double.NegativeInfinity, 1.0));
+        }
+
+        [Test]
+        public void ApproximatelyDoubleWithNaN()
+        {
+            Assert.IsFalse(double.NaN.Approximately(0.0, 1.0));
+            Assert.IsFalse(0.0.Approximately(double.NaN, 1.0));
+        }
+
+        [Test]
+        public void BoundedDoubleWithSameValue()
+        {
+            for (int i = 0; i < 100; ++i)
+            {
+                double value = PRNG.Instance.NextDouble(-1000.0, 1000.0);
+                double result = WallMath.BoundedDouble(value, value);
+                Assert.Less(result, value);
+            }
+        }
+
+        [Test]
+        public void BoundedFloatWithSameValue()
+        {
+            for (int i = 0; i < 100; ++i)
+            {
+                float value = PRNG.Instance.NextFloat(-1000f, 1000f);
+                float result = WallMath.BoundedFloat(value, value);
+                Assert.Less(result, value);
+            }
+        }
+
+        [Test]
+        public void WrappedAddRefConsistentWithNonRef()
+        {
+            for (int i = 0; i < 100; ++i)
+            {
+                int value = PRNG.Instance.Next(0, 100);
+                int increment = PRNG.Instance.Next(-200, 200);
+                int max = PRNG.Instance.Next(10, 50);
+
+                int nonRefResult = value.WrappedAdd(increment, max);
+
+                int refValue = value;
+                int refResult = WallMath.WrappedAdd(ref refValue, increment, max);
+
+                Assert.AreEqual(nonRefResult, refResult);
+                Assert.AreEqual(refResult, refValue);
+            }
+        }
+
+        [Test]
+        public void WrappedIncrementRefConsistentWithNonRef()
+        {
+            for (int i = 0; i < 100; ++i)
+            {
+                int value = PRNG.Instance.Next(0, 100);
+                int max = PRNG.Instance.Next(10, 50);
+
+                int nonRefResult = value.WrappedIncrement(max);
+
+                int refValue = value;
+                int refResult = WallMath.WrappedIncrement(ref refValue, max);
+
+                Assert.AreEqual(nonRefResult, refResult);
+                Assert.AreEqual(refResult, refValue);
+            }
+        }
+
+        [Test]
+        public void ClampGenericWithMultipleTypes()
+        {
+            byte byteVal = 200;
+            Assert.AreEqual((byte)200, byteVal.Clamp((byte)0, (byte)255));
+            Assert.AreEqual((byte)100, byteVal.Clamp((byte)0, (byte)100));
+
+            long longVal = 1000000000000L;
+            Assert.AreEqual(1000000000000L, longVal.Clamp(0L, long.MaxValue));
+            Assert.AreEqual(100L, longVal.Clamp(0L, 100L));
+
+            decimal decimalVal = 5.5m;
+            Assert.AreEqual(5.5m, decimalVal.Clamp(0m, 10m));
+            Assert.AreEqual(10m, decimalVal.Clamp(10m, 20m));
+        }
+
+        [Test]
+        public void ClampRectRefModifiesParameter()
+        {
+            Rect rect = new(Vector2.zero, Vector2.one);
+            Vector2 outside = new(10f, 10f);
+            Vector2 original = outside;
+
+            Vector2 result = rect.Clamp(ref outside);
+
+            Assert.AreNotEqual(original, outside);
+            Assert.AreEqual(result, outside);
+            Assert.LessOrEqual(outside.x, rect.max.x);
+            Assert.LessOrEqual(outside.y, rect.max.y);
+        }
+
+        [Test]
+        public void ClampRectNonRefDoesNotModifyParameter()
+        {
+            Rect rect = new(Vector2.zero, Vector2.one);
+            Vector2 outside = new(10f, 10f);
+            Vector2 original = outside;
+
+            Vector2 result = rect.Clamp(outside);
+
+            Assert.AreEqual(original, outside);
+            Assert.AreNotEqual(result, outside);
+        }
+
+        [Test]
+        public void PositiveModSymmetryCheck()
+        {
+            for (int i = 1; i < 50; ++i)
+            {
+                int positiveResult = i.PositiveMod(10);
+                int negativeResult = (-i).PositiveMod(10);
+
+                Assert.GreaterOrEqual(positiveResult, 0);
+                Assert.Less(positiveResult, 10);
+                Assert.GreaterOrEqual(negativeResult, 0);
+                Assert.Less(negativeResult, 10);
+
+                Assert.AreEqual((positiveResult + negativeResult) % 10, 0);
+            }
+        }
+
+        [Test]
+        public void WrappedAddCommutativeWithPositiveMod()
+        {
+            for (int i = 0; i < 100; ++i)
+            {
+                int value = PRNG.Instance.Next(-1000, 1000);
+                int increment = PRNG.Instance.Next(-1000, 1000);
+                int max = PRNG.Instance.Next(10, 100);
+
+                int wrappedResult = value.WrappedAdd(increment, max);
+                int manualResult = (value + increment).PositiveMod(max);
+
+                Assert.AreEqual(manualResult, wrappedResult);
+            }
+        }
     }
 }

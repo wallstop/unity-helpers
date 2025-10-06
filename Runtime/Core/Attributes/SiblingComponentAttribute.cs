@@ -10,7 +10,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
     /// <summary>
     /// Automatically assigns sibling components (components on the same GameObject) to the decorated field.
-    /// Supports single components, arrays, and List&lt;T&gt; collection types.
+    /// Supports single components, arrays, List&lt;T&gt;, and HashSet&lt;T&gt; collection types.
     /// </summary>
     /// <remarks>
     /// Call <see cref="SiblingComponentExtensions.AssignSiblingComponents"/> to populate the field.
@@ -51,10 +51,6 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 {
                     case FieldKind.Array:
                     {
-                        using PooledResource<List<Component>> componentBufferResource =
-                            Buffers<Component>.List.Get();
-                        List<Component> siblingComponents = componentBufferResource.resource;
-
                         using PooledResource<List<Component>> componentBuffer =
                             Buffers<Component>.List.Get(out List<Component> components);
                         GetComponentsOfType(
@@ -64,35 +60,26 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                             metadata.attribute.AllowInterfaces,
                             components
                         );
-                        siblingComponents.AddRange(components);
 
-                        using PooledResource<List<Component>> filteredBuffer =
-                            Buffers<Component>.List.Get(out List<Component> filtered);
-                        FilterComponents(
-                            siblingComponents,
+                        int filteredCount = FilterComponentsInPlace(
+                            components,
                             metadata.attribute,
                             metadata.elementType,
-                            metadata.isInterface,
-                            filtered
+                            metadata.isInterface
                         );
 
-                        foundSibling = filtered.Count > 0;
-
-                        Array correctTypedArray = metadata.arrayCreator(filtered.Count);
-                        for (int i = 0; i < filtered.Count; ++i)
+                        Array correctTypedArray = metadata.arrayCreator(filteredCount);
+                        for (int i = 0; i < filteredCount; ++i)
                         {
-                            correctTypedArray.SetValue(filtered[i], i);
+                            correctTypedArray.SetValue(components[i], i);
                         }
 
                         metadata.setter(component, correctTypedArray);
+                        foundSibling = filteredCount > 0;
                         break;
                     }
                     case FieldKind.List:
                     {
-                        using PooledResource<List<Component>> componentBufferResource =
-                            Buffers<Component>.List.Get();
-                        List<Component> siblingComponents = componentBufferResource.resource;
-
                         using PooledResource<List<Component>> componentBuffer =
                             Buffers<Component>.List.Get(out List<Component> components);
                         GetComponentsOfType(
@@ -102,64 +89,67 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                             metadata.attribute.AllowInterfaces,
                             components
                         );
-                        siblingComponents.AddRange(components);
 
-                        using PooledResource<List<Component>> filteredBuffer =
-                            Buffers<Component>.List.Get(out List<Component> filtered);
-                        FilterComponents(
-                            siblingComponents,
+                        int filteredCount = FilterComponentsInPlace(
+                            components,
                             metadata.attribute,
                             metadata.elementType,
-                            metadata.isInterface,
-                            filtered
+                            metadata.isInterface
                         );
 
-                        IList instance = metadata.listCreator(filtered.Count);
-                        for (int i = 0; i < filtered.Count; ++i)
+                        IList instance = metadata.listCreator(filteredCount);
+                        for (int i = 0; i < filteredCount; ++i)
                         {
-                            instance.Add(filtered[i]);
+                            instance.Add(components[i]);
                         }
 
                         metadata.setter(component, instance);
-                        foundSibling = instance.Count > 0;
+                        foundSibling = filteredCount > 0;
+                        break;
+                    }
+                    case FieldKind.HashSet:
+                    {
+                        using PooledResource<List<Component>> componentBuffer =
+                            Buffers<Component>.List.Get(out List<Component> components);
+                        GetComponentsOfType(
+                            component.gameObject,
+                            metadata.elementType,
+                            metadata.isInterface,
+                            metadata.attribute.AllowInterfaces,
+                            components
+                        );
+
+                        int filteredCount = FilterComponentsInPlace(
+                            components,
+                            metadata.attribute,
+                            metadata.elementType,
+                            metadata.isInterface
+                        );
+
+                        object instance = metadata.hashSetCreator(filteredCount);
+                        for (int i = 0; i < filteredCount; ++i)
+                        {
+                            metadata.hashSetAdder(instance, components[i]);
+                        }
+
+                        metadata.setter(component, instance);
+
+                        foundSibling = filteredCount > 0;
                         break;
                     }
                     default:
                     {
                         Component siblingComponent = null;
-
                         if (metadata.attribute.IncludeInactive || isGameObjectActive)
                         {
-                            using PooledResource<List<Component>> componentBufferResource =
-                                Buffers<Component>.List.Get();
-                            List<Component> siblingComponents = componentBufferResource.resource;
-
-                            using PooledResource<List<Component>> componentBuffer =
-                                Buffers<Component>.List.Get(out List<Component> components);
-
-                            GetComponentsOfType(
+                            siblingComponent = TryResolveSingleComponent(
                                 component.gameObject,
-                                metadata.elementType,
-                                metadata.isInterface,
-                                metadata.attribute.AllowInterfaces,
-                                components
-                            );
-                            siblingComponents.AddRange(components);
-
-                            using PooledResource<List<Component>> filteredBuffer =
-                                Buffers<Component>.List.Get(out List<Component> filtered);
-                            FilterComponents(
-                                siblingComponents,
                                 metadata.attribute,
                                 metadata.elementType,
                                 metadata.isInterface,
-                                filtered
+                                metadata.attribute.AllowInterfaces,
+                                null
                             );
-
-                            if (filtered.Count > 0)
-                            {
-                                siblingComponent = filtered[0];
-                            }
                         }
 
                         if (siblingComponent != null)

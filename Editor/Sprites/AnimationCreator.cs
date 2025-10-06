@@ -8,9 +8,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     using System.Text.RegularExpressions;
     using UnityEditor;
     using UnityEngine;
-    using Core.Extension;
-    using Core.Helper;
     using CustomEditors;
+    using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using Object = UnityEngine.Object;
 
     [Serializable]
@@ -92,7 +92,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             else if (
                 _animationSourcesProp.arraySize == 0
                 || _animationSourcesProp.FindPropertyRelative("Array.size").intValue == 0
-                || animationSources.TrueForAll(Objects.Null)
+                || animationSources.TrueForAll(val => Objects.Null(val))
             )
             {
                 EditorGUILayout.HelpBox(

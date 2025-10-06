@@ -2,6 +2,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 {
     using System;
     using Extension;
+    using Math;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
 
@@ -78,6 +79,38 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             float combinedRadius = radius + other.radius;
             float combinedRadiusSquared = combinedRadius * combinedRadius;
             return (center - other.center).sqrMagnitude <= combinedRadiusSquared;
+        }
+
+        /// <summary>
+        /// Determines whether this circle intersects with a line segment.
+        /// Returns true if the line segment intersects or touches the circle.
+        /// </summary>
+        /// <param name="line">The line segment to test for intersection.</param>
+        /// <returns>True if the line segment intersects the circle.</returns>
+        public bool Intersects(Line2D line)
+        {
+            return line.Intersects(this);
+        }
+
+        /// <summary>
+        /// Calculates the shortest distance from this circle to a line segment.
+        /// Returns 0 if the line intersects the circle.
+        /// </summary>
+        /// <param name="line">The line segment to measure distance from.</param>
+        /// <returns>The shortest distance from the circle's edge to the line segment.</returns>
+        public float DistanceToLine(Line2D line)
+        {
+            return line.DistanceToCircle(this);
+        }
+
+        /// <summary>
+        /// Finds the closest point on a line segment to this circle's center.
+        /// </summary>
+        /// <param name="line">The line segment.</param>
+        /// <returns>The closest point on the line segment to the circle's center.</returns>
+        public Vector2 ClosestPointOnLine(Line2D line)
+        {
+            return line.ClosestPointOnLine(center);
         }
 
         /// <summary>

@@ -6,8 +6,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
     using UnityEngine;
     using UnityEditor;
     using System.Collections.Generic;
-    using Core.Extension;
-    using Core.Helper;
+    using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Core.Helper;
 
     [CustomPropertyDrawer(typeof(SourceFolderEntry))]
     public sealed class SourceFolderEntryDrawer : PropertyDrawer

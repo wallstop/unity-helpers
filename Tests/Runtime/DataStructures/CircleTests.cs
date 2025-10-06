@@ -4,6 +4,7 @@
     using NUnit.Framework;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure;
+    using WallstopStudios.UnityHelpers.Core.Math;
     using WallstopStudios.UnityHelpers.Core.Random;
 
     public sealed class CircleTests
@@ -736,6 +737,229 @@
             Rect outsideRect = new(3f, 3f, 5f, 5f); // Corners at (3,3), (8,3), (3,8), (8,8)
             // Distance from (5,5) to (8,8) = sqrt(18) ≈ 4.24, which is > 3
             Assert.IsFalse(circle.Overlaps(outsideRect));
+        }
+
+        [Test]
+        public void IntersectsLineReturnsTrueForLineThroughCircle()
+        {
+            Circle circle = new(Vector2.zero, 5f);
+            Line2D line = new(new Vector2(-10f, 0f), new Vector2(10f, 0f));
+            Assert.IsTrue(circle.Intersects(line));
+        }
+
+        [Test]
+        public void IntersectsLineReturnsTrueForLineTouchingCircle()
+        {
+            Circle circle = new(Vector2.zero, 5f);
+            Line2D line = new(new Vector2(-10f, 5f), new Vector2(10f, 5f));
+            Assert.IsTrue(circle.Intersects(line));
+        }
+
+        [Test]
+        public void IntersectsLineReturnsFalseForLineNotIntersectingCircle()
+        {
+            Circle circle = new(Vector2.zero, 5f);
+            Line2D line = new(new Vector2(-10f, 10f), new Vector2(10f, 10f));
+            Assert.IsFalse(circle.Intersects(line));
+        }
+
+        [Test]
+        public void IntersectsLineReturnsTrueForLineEndpointInsideCircle()
+        {
+            Circle circle = new(Vector2.zero, 5f);
+            Line2D line = new(new Vector2(0f, 0f), new Vector2(10f, 10f));
+            Assert.IsTrue(circle.Intersects(line));
+        }
+
+        [Test]
+        public void IntersectsLineReturnsFalseForLineSegmentNotReachingCircle()
+        {
+            Circle circle = new(Vector2.zero, 2f);
+            Line2D line = new(new Vector2(10f, 0f), new Vector2(20f, 0f));
+            Assert.IsFalse(circle.Intersects(line));
+        }
+
+        [Test]
+        public void IntersectsLineHandlesVerticalLine()
+        {
+            Circle circle = new(new Vector2(5f, 5f), 3f);
+            Line2D verticalIntersecting = new(new Vector2(5f, 0f), new Vector2(5f, 10f));
+            Line2D verticalNotIntersecting = new(new Vector2(10f, 0f), new Vector2(10f, 10f));
+            Assert.IsTrue(circle.Intersects(verticalIntersecting));
+            Assert.IsFalse(circle.Intersects(verticalNotIntersecting));
+        }
+
+        [Test]
+        public void IntersectsLineHandlesDiagonalLine()
+        {
+            Circle circle = new(new Vector2(5f, 5f), 3f);
+            Line2D diagonal = new(new Vector2(0f, 0f), new Vector2(10f, 10f));
+            Assert.IsTrue(circle.Intersects(diagonal));
+        }
+
+        [Test]
+        public void IntersectsLineHandlesSmallCircle()
+        {
+            Circle circle = new(new Vector2(5f, 0f), 0.1f);
+            Line2D line = new(new Vector2(0f, 0f), new Vector2(10f, 0f));
+            Assert.IsTrue(circle.Intersects(line));
+        }
+
+        [Test]
+        public void DistanceToLineReturnsZeroForIntersectingLine()
+        {
+            Circle circle = new(Vector2.zero, 5f);
+            Line2D line = new(new Vector2(-10f, 0f), new Vector2(10f, 0f));
+            Assert.AreEqual(0f, circle.DistanceToLine(line), Epsilon);
+        }
+
+        [Test]
+        public void DistanceToLineReturnsCorrectDistanceForNonIntersectingLine()
+        {
+            Circle circle = new(Vector2.zero, 2f);
+            Line2D line = new(new Vector2(-10f, 5f), new Vector2(10f, 5f));
+            Assert.AreEqual(3f, circle.DistanceToLine(line), Epsilon);
+        }
+
+        [Test]
+        public void DistanceToLineReturnsZeroForTouchingLine()
+        {
+            Circle circle = new(Vector2.zero, 5f);
+            Line2D line = new(new Vector2(-10f, 5f), new Vector2(10f, 5f));
+            Assert.AreEqual(0f, circle.DistanceToLine(line), Epsilon);
+        }
+
+        [Test]
+        public void DistanceToLineHandlesLineSegmentNearCircle()
+        {
+            Circle circle = new(Vector2.zero, 2f);
+            Line2D line = new(new Vector2(5f, 0f), new Vector2(10f, 0f));
+            Assert.AreEqual(3f, circle.DistanceToLine(line), Epsilon);
+        }
+
+        [Test]
+        public void ClosestPointOnLineReturnsPointOnLineSegment()
+        {
+            Circle circle = new(new Vector2(5f, 5f), 2f);
+            Line2D line = new(new Vector2(0f, 0f), new Vector2(10f, 0f));
+            Vector2 closest = circle.ClosestPointOnLine(line);
+            Assert.AreEqual(5f, closest.x, Epsilon);
+            Assert.AreEqual(0f, closest.y, Epsilon);
+        }
+
+        [Test]
+        public void ClosestPointOnLineReturnsCenterProjection()
+        {
+            Circle circle = new(new Vector2(5f, 3f), 1f);
+            Line2D line = new(new Vector2(0f, 0f), new Vector2(10f, 0f));
+            Vector2 closest = circle.ClosestPointOnLine(line);
+            Assert.AreEqual(5f, closest.x, Epsilon);
+            Assert.AreEqual(0f, closest.y, Epsilon);
+        }
+
+        [Test]
+        public void ClosestPointOnLineHandlesEndpointClamping()
+        {
+            Circle circle = new(new Vector2(15f, 5f), 2f);
+            Line2D line = new(new Vector2(0f, 0f), new Vector2(10f, 0f));
+            Vector2 closest = circle.ClosestPointOnLine(line);
+            Assert.AreEqual(10f, closest.x, Epsilon);
+            Assert.AreEqual(0f, closest.y, Epsilon);
+        }
+
+        [Test]
+        public void ClosestPointOnLineHandlesVerticalLine()
+        {
+            Circle circle = new(new Vector2(5f, 5f), 2f);
+            Line2D line = new(new Vector2(8f, 0f), new Vector2(8f, 10f));
+            Vector2 closest = circle.ClosestPointOnLine(line);
+            Assert.AreEqual(8f, closest.x, Epsilon);
+            Assert.AreEqual(5f, closest.y, Epsilon);
+        }
+
+        [Test]
+        public void ClosestPointOnLineHandlesDiagonalLine()
+        {
+            Circle circle = new(new Vector2(0f, 5f), 1f);
+            Line2D line = new(new Vector2(0f, 0f), new Vector2(10f, 10f));
+            Vector2 closest = circle.ClosestPointOnLine(line);
+            Assert.AreEqual(2.5f, closest.x, Epsilon);
+            Assert.AreEqual(2.5f, closest.y, Epsilon);
+        }
+
+        [Test]
+        public void LineIntersectionHandlesZeroRadiusCircle()
+        {
+            Circle circle = new(new Vector2(5f, 0f), 0f);
+            Line2D line = new(new Vector2(0f, 0f), new Vector2(10f, 0f));
+            Assert.IsTrue(circle.Intersects(line));
+        }
+
+        [Test]
+        public void LineIntersectionHandlesZeroLengthLine()
+        {
+            Circle circle = new(new Vector2(5f, 5f), 3f);
+            Line2D pointInsideCircle = new(new Vector2(5f, 5f), new Vector2(5f, 5f));
+            Line2D pointOutsideCircle = new(new Vector2(10f, 10f), new Vector2(10f, 10f));
+            Assert.IsTrue(circle.Intersects(pointInsideCircle));
+            Assert.IsFalse(circle.Intersects(pointOutsideCircle));
+        }
+
+        [Test]
+        public void LineDistanceHandlesParallelLineSegment()
+        {
+            Circle circle = new(new Vector2(5f, 5f), 2f);
+            Line2D line = new(new Vector2(0f, 0f), new Vector2(2f, 0f));
+            float distance = circle.DistanceToLine(line);
+            Vector2 closestOnLine = new(2f, 0f);
+            float expectedDistance = Vector2.Distance(circle.center, closestOnLine) - circle.radius;
+            Assert.AreEqual(expectedDistance, distance, 0.01f);
+        }
+
+        [Test]
+        public void LineIntersectionHandlesCircleAtOrigin()
+        {
+            Circle circle = new(Vector2.zero, 5f);
+            Line2D horizontal = new(new Vector2(-10f, 3f), new Vector2(10f, 3f));
+            Line2D vertical = new(new Vector2(3f, -10f), new Vector2(3f, 10f));
+            Line2D diagonal = new(new Vector2(-10f, -10f), new Vector2(10f, 10f));
+            Assert.IsTrue(circle.Intersects(horizontal));
+            Assert.IsTrue(circle.Intersects(vertical));
+            Assert.IsTrue(circle.Intersects(diagonal));
+        }
+
+        [Test]
+        public void LineDistanceHandlesNegativeCoordinates()
+        {
+            Circle circle = new(new Vector2(-5f, -5f), 2f);
+            Line2D line = new(new Vector2(-10f, 0f), new Vector2(0f, 0f));
+            float distance = circle.DistanceToLine(line);
+            Assert.Greater(distance, 0f);
+        }
+
+        [Test]
+        public void ClosestPointOnLineHandlesCircleCenterOnLine()
+        {
+            Circle circle = new(new Vector2(5f, 0f), 3f);
+            Line2D line = new(new Vector2(0f, 0f), new Vector2(10f, 0f));
+            Vector2 closest = circle.ClosestPointOnLine(line);
+            Assert.AreEqual(circle.center, closest);
+        }
+
+        [Test]
+        public void LineIntersectionConsistentWithLineCircleIntersection()
+        {
+            Circle circle = new(new Vector2(5f, 5f), 3f);
+            Line2D line = new(new Vector2(0f, 5f), new Vector2(10f, 5f));
+            Assert.AreEqual(line.Intersects(circle), circle.Intersects(line));
+        }
+
+        [Test]
+        public void LineDistanceConsistentWithLineCircleDistance()
+        {
+            Circle circle = new(new Vector2(5f, 5f), 3f);
+            Line2D line = new(new Vector2(0f, 0f), new Vector2(10f, 0f));
+            Assert.AreEqual(line.DistanceToCircle(circle), circle.DistanceToLine(line), Epsilon);
         }
     }
 }

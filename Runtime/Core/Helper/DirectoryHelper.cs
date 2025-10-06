@@ -160,10 +160,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return string.Empty;
             }
 
-            absolutePath = absolutePath.Replace('\\', '/');
-            string projectRoot = Application.dataPath.Replace('\\', '/');
+            absolutePath = absolutePath.SanitizePath();
+            string projectRoot = Application.dataPath.SanitizePath();
 
-            projectRoot = Path.GetDirectoryName(projectRoot)?.Replace('\\', '/');
+            projectRoot = Path.GetDirectoryName(projectRoot)?.SanitizePath();
             if (string.IsNullOrWhiteSpace(projectRoot))
             {
                 return string.Empty;

@@ -8,12 +8,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     using System.IO;
     using System.Linq;
     using System.Runtime.Serialization;
-    using Core.Extension;
-    using Core.Helper;
     using UnityEditor;
     using UnityEditor.UIElements;
     using UnityEngine;
     using UnityEngine.UIElements;
+    using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using Object = UnityEngine.Object;
 
     public sealed class SpriteSheetAnimationCreator : EditorWindow

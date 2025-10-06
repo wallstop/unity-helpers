@@ -3,6 +3,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using NUnit.Framework;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure;
+    using WallstopStudios.UnityHelpers.Core.Math;
 
     [TestFixture]
     public sealed class BoundingBox3DTests
@@ -854,6 +855,294 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             Assert.IsNotNull(str);
             Assert.IsTrue(str.Contains("BoundingBox3D"));
+        }
+
+        [Test]
+        public void IntersectsLineReturnsTrueForLineThroughBox()
+        {
+            BoundingBox3D box = new(Vector3.zero, new Vector3(10f, 10f, 10f));
+            Line3D line = new(new Vector3(-5f, 5f, 5f), new Vector3(15f, 5f, 5f));
+            Assert.IsTrue(box.Intersects(line));
+        }
+
+        [Test]
+        public void IntersectsLineReturnsTrueForLineEndpointInsideBox()
+        {
+            BoundingBox3D box = new(Vector3.zero, new Vector3(10f, 10f, 10f));
+            Line3D line = new(new Vector3(5f, 5f, 5f), new Vector3(15f, 15f, 15f));
+            Assert.IsTrue(box.Intersects(line));
+        }
+
+        [Test]
+        public void IntersectsLineReturnsFalseForLineNotIntersectingBox()
+        {
+            BoundingBox3D box = new(Vector3.zero, new Vector3(10f, 10f, 10f));
+            Line3D line = new(new Vector3(15f, 15f, 15f), new Vector3(20f, 20f, 20f));
+            Assert.IsFalse(box.Intersects(line));
+        }
+
+        [Test]
+        public void IntersectsLineReturnsFalseForLineSegmentNotReachingBox()
+        {
+            BoundingBox3D box = new(Vector3.zero, new Vector3(5f, 5f, 5f));
+            Line3D line = new(new Vector3(10f, 0f, 0f), new Vector3(20f, 0f, 0f));
+            Assert.IsFalse(box.Intersects(line));
+        }
+
+        [Test]
+        public void IntersectsLineHandlesLineThroughBoxCenter()
+        {
+            BoundingBox3D box = new(Vector3.zero, new Vector3(10f, 10f, 10f));
+            Line3D diagonal = new(Vector3.zero, new Vector3(10f, 10f, 10f));
+            Assert.IsTrue(box.Intersects(diagonal));
+        }
+
+        [Test]
+        public void IntersectsLineHandlesLineAlongBoxEdge()
+        {
+            BoundingBox3D box = new(Vector3.zero, new Vector3(10f, 10f, 10f));
+            Line3D edgeLine = new(Vector3.zero, new Vector3(10f, 0f, 0f));
+            Assert.IsTrue(box.Intersects(edgeLine));
+        }
+
+        [Test]
+        public void IntersectsLineHandlesLineOnBoxFace()
+        {
+            BoundingBox3D box = new(Vector3.zero, new Vector3(10f, 10f, 10f));
+            Line3D faceLine = new(new Vector3(5f, 5f, 0f), new Vector3(8f, 8f, 0f));
+            Assert.IsTrue(box.Intersects(faceLine));
+        }
+
+        [Test]
+        public void IntersectsLineHandlesVerticalLine()
+        {
+            BoundingBox3D box = new(Vector3.zero, new Vector3(10f, 10f, 10f));
+            Line3D verticalInside = new(new Vector3(5f, -5f, 5f), new Vector3(5f, 15f, 5f));
+            Line3D verticalOutside = new(new Vector3(15f, -5f, 5f), new Vector3(15f, 15f, 5f));
+            Assert.IsTrue(box.Intersects(verticalInside));
+            Assert.IsFalse(box.Intersects(verticalOutside));
+        }
+
+        [Test]
+        public void IntersectsLineHandlesEmptyBox()
+        {
+            BoundingBox3D emptyBox = BoundingBox3D.Empty;
+            Line3D line = new(Vector3.zero, new Vector3(10f, 10f, 10f));
+            Assert.IsFalse(emptyBox.Intersects(line));
+        }
+
+        [Test]
+        public void IntersectsLineHandlesZeroLengthLine()
+        {
+            BoundingBox3D box = new(Vector3.zero, new Vector3(10f, 10f, 10f));
+            Line3D pointInside = new(new Vector3(5f, 5f, 5f), new Vector3(5f, 5f, 5f));
+            Line3D pointOutside = new(new Vector3(15f, 15f, 15f), new Vector3(15f, 15f, 15f));
+            Assert.IsTrue(box.Intersects(pointInside));
+            Assert.IsFalse(box.Intersects(pointOutside));
+        }
+
+        [Test]
+        public void DistanceToLineReturnsZeroForIntersectingLine()
+        {
+            BoundingBox3D box = new(Vector3.zero, new Vector3(10f, 10f, 10f));
+            Line3D line = new(new Vector3(-5f, 5f, 5f), new Vector3(15f, 5f, 5f));
+            Assert.AreEqual(0f, box.DistanceToLine(line), 0.0001f);
+        }
+
+        [Test]
+        public void DistanceToLineReturnsCorrectDistanceForNonIntersectingLine()
+        {
+            BoundingBox3D box = new(Vector3.zero, new Vector3(5f, 5f, 5f));
+            Line3D line = new(new Vector3(10f, 0f, 0f), new Vector3(20f, 0f, 0f));
+            Assert.AreEqual(5f, box.DistanceToLine(line), 0.0001f);
+        }
+
+        [Test]
+        public void DistanceToLineHandlesLineParallelToBoxFace()
+        {
+            BoundingBox3D box = new(Vector3.zero, new Vector3(5f, 5f, 5f));
+            Line3D line = new(new Vector3(10f, 2f, 2f), new Vector3(10f, 3f, 3f));
+            Assert.Greater(box.DistanceToLine(line), 0f);
+        }
+
+        [Test]
+        public void DistanceToLineReturnsZeroForLineEndpointInBox()
+        {
+            BoundingBox3D box = new(Vector3.zero, new Vector3(10f, 10f, 10f));
+            Line3D line = new(new Vector3(5f, 5f, 5f), new Vector3(20f, 20f, 20f));
+            Assert.AreEqual(0f, box.DistanceToLine(line), 0.0001f);
+        }
+
+        [Test]
+        public void DistanceToLineHandlesEmptyBox()
+        {
+            BoundingBox3D emptyBox = BoundingBox3D.Empty;
+            Line3D line = new(Vector3.zero, new Vector3(10f, 10f, 10f));
+            Assert.AreEqual(float.PositiveInfinity, emptyBox.DistanceToLine(line), 0.0001f);
+        }
+
+        [Test]
+        public void ClosestPointOnLineReturnsPointOnLineSegment()
+        {
+            BoundingBox3D box = new(Vector3.zero, new Vector3(10f, 10f, 10f));
+            Line3D line = new(new Vector3(15f, 5f, 5f), new Vector3(20f, 5f, 5f));
+            Vector3 closest = box.ClosestPointOnLine(line);
+            Assert.AreEqual(15f, closest.x, 0.01f);
+            Assert.AreEqual(5f, closest.y, 0.01f);
+            Assert.AreEqual(5f, closest.z, 0.01f);
+        }
+
+        [Test]
+        public void ClosestPointOnLineHandlesLineThroughBox()
+        {
+            BoundingBox3D box = new(Vector3.zero, new Vector3(10f, 10f, 10f));
+            Line3D line = new(new Vector3(-5f, 5f, 5f), new Vector3(15f, 5f, 5f));
+            Vector3 closest = box.ClosestPointOnLine(line);
+            Assert.IsTrue(
+                box.Contains(closest)
+                    || Vector3.Distance(closest, box.ClosestPoint(closest)) < 0.01f
+            );
+        }
+
+        [Test]
+        public void ClosestPointOnLineHandlesEndpointClamping()
+        {
+            BoundingBox3D box = new(new Vector3(20f, 20f, 20f), new Vector3(30f, 30f, 30f));
+            Line3D line = new(Vector3.zero, new Vector3(10f, 10f, 10f));
+            Vector3 closest = box.ClosestPointOnLine(line);
+            Assert.AreEqual(10f, closest.x, 0.01f);
+            Assert.AreEqual(10f, closest.y, 0.01f);
+            Assert.AreEqual(10f, closest.z, 0.01f);
+        }
+
+        [Test]
+        public void ClosestPointOnLineHandlesEmptyBox()
+        {
+            BoundingBox3D emptyBox = BoundingBox3D.Empty;
+            Line3D line = new(Vector3.zero, new Vector3(10f, 10f, 10f));
+            Vector3 closest = emptyBox.ClosestPointOnLine(line);
+            Assert.AreEqual(Vector3.zero, closest);
+        }
+
+        [Test]
+        public void LineIntersectionConsistentWithLineBoundsIntersection()
+        {
+            BoundingBox3D box = new(Vector3.zero, new Vector3(10f, 10f, 10f));
+            Line3D line = new(new Vector3(-5f, 5f, 5f), new Vector3(15f, 5f, 5f));
+            Assert.AreEqual(line.Intersects(box), box.Intersects(line));
+        }
+
+        [Test]
+        public void LineDistanceConsistentWithLineBoundsDistance()
+        {
+            BoundingBox3D box = new(Vector3.zero, new Vector3(10f, 10f, 10f));
+            Line3D line = new(new Vector3(15f, 5f, 5f), new Vector3(20f, 5f, 5f));
+            Assert.AreEqual(line.DistanceToBounds(box), box.DistanceToLine(line), 0.0001f);
+        }
+
+        [Test]
+        public void IntersectsLineHandlesBoxAtOrigin()
+        {
+            BoundingBox3D box = new(Vector3.zero, new Vector3(5f, 5f, 5f));
+            Line3D lineX = new(new Vector3(-10f, 2f, 2f), new Vector3(10f, 2f, 2f));
+            Line3D lineY = new(new Vector3(2f, -10f, 2f), new Vector3(2f, 10f, 2f));
+            Line3D lineZ = new(new Vector3(2f, 2f, -10f), new Vector3(2f, 2f, 10f));
+            Assert.IsTrue(box.Intersects(lineX));
+            Assert.IsTrue(box.Intersects(lineY));
+            Assert.IsTrue(box.Intersects(lineZ));
+        }
+
+        [Test]
+        public void IntersectsLineHandlesNegativeCoordinates()
+        {
+            BoundingBox3D box = new(new Vector3(-10f, -10f, -10f), Vector3.zero);
+            Line3D line = new(new Vector3(-15f, -5f, -5f), new Vector3(-3f, -5f, -5f));
+            Assert.IsTrue(box.Intersects(line));
+        }
+
+        [Test]
+        public void DistanceToLineHandlesNegativeCoordinates()
+        {
+            BoundingBox3D box = new(new Vector3(-10f, -10f, -10f), new Vector3(-5f, -5f, -5f));
+            Line3D line = new(Vector3.zero, new Vector3(10f, 10f, 10f));
+            float distance = box.DistanceToLine(line);
+            Assert.Greater(distance, 0f);
+        }
+
+        [Test]
+        public void IntersectsLineHandlesVerySmallBox()
+        {
+            BoundingBox3D box = new(Vector3.zero, new Vector3(0.1f, 0.1f, 0.1f));
+            Line3D lineThroughBox = new(
+                new Vector3(-1f, 0.05f, 0.05f),
+                new Vector3(1f, 0.05f, 0.05f)
+            );
+            Line3D lineMissingBox = new(new Vector3(-1f, 1f, 1f), new Vector3(1f, 1f, 1f));
+            Assert.IsTrue(box.Intersects(lineThroughBox));
+            Assert.IsFalse(box.Intersects(lineMissingBox));
+        }
+
+        [Test]
+        public void IntersectsLineHandlesVeryLargeBox()
+        {
+            BoundingBox3D box = new(Vector3.zero, new Vector3(1000f, 1000f, 1000f));
+            Line3D lineInsideBox = new(
+                new Vector3(100f, 100f, 100f),
+                new Vector3(200f, 200f, 200f)
+            );
+            Assert.IsTrue(box.Intersects(lineInsideBox));
+        }
+
+        [Test]
+        public void DistanceToLineHandlesLineCloseToCorner()
+        {
+            BoundingBox3D box = new(Vector3.zero, new Vector3(10f, 10f, 10f));
+            Line3D line = new(new Vector3(11f, 11f, 11f), new Vector3(20f, 20f, 20f));
+            float distance = box.DistanceToLine(line);
+            Vector3 boxCorner = new(10f, 10f, 10f);
+            Vector3 lineStart = new(11f, 11f, 11f);
+            float expectedDistance = Vector3.Distance(boxCorner, lineStart);
+            Assert.AreEqual(expectedDistance, distance, 0.1f);
+        }
+
+        [Test]
+        public void ClosestPointOnLineHandlesDiagonalLine()
+        {
+            BoundingBox3D box = new(new Vector3(10f, 10f, 10f), new Vector3(20f, 20f, 20f));
+            Line3D line = new(Vector3.zero, new Vector3(5f, 5f, 5f));
+            Vector3 closest = box.ClosestPointOnLine(line);
+            Assert.AreEqual(new Vector3(5f, 5f, 5f), closest);
+        }
+
+        [Test]
+        public void IntersectsLineHandlesLineGrazingBoxCorner()
+        {
+            BoundingBox3D box = new(Vector3.zero, new Vector3(10f, 10f, 10f));
+            Line3D line = new(Vector3.zero, new Vector3(1f, 1f, 1f));
+            Assert.IsTrue(box.Intersects(line));
+        }
+
+        [Test]
+        public void DistanceToLineHandlesParallelLines()
+        {
+            BoundingBox3D box = new(Vector3.zero, new Vector3(5f, 5f, 5f));
+            Line3D parallelToX = new(new Vector3(10f, 2f, 2f), new Vector3(20f, 2f, 2f));
+            Line3D parallelToY = new(new Vector3(2f, 10f, 2f), new Vector3(2f, 20f, 2f));
+            Line3D parallelToZ = new(new Vector3(2f, 2f, 10f), new Vector3(2f, 2f, 20f));
+            Assert.Greater(box.DistanceToLine(parallelToX), 0f);
+            Assert.Greater(box.DistanceToLine(parallelToY), 0f);
+            Assert.Greater(box.DistanceToLine(parallelToZ), 0f);
+        }
+
+        [Test]
+        public void ClosestPointOnLineHandlesMultipleBoxes()
+        {
+            BoundingBox3D box1 = new(Vector3.zero, new Vector3(5f, 5f, 5f));
+            BoundingBox3D box2 = new(new Vector3(10f, 10f, 10f), new Vector3(15f, 15f, 15f));
+            Line3D line = new(new Vector3(0f, 0f, 20f), new Vector3(20f, 20f, 20f));
+            Vector3 closest1 = box1.ClosestPointOnLine(line);
+            Vector3 closest2 = box2.ClosestPointOnLine(line);
+            Assert.AreNotEqual(closest1, closest2);
         }
     }
 }

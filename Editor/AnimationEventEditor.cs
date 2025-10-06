@@ -7,8 +7,9 @@ namespace WallstopStudios.UnityHelpers.Editor
     using System.Reflection;
     using UnityEditor;
     using UnityEngine;
-    using Core.Attributes;
-    using Core.Helper;
+    using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Editor.Core.Helper;
     using WallstopStudios.UnityHelpers.Utils;
 
     // https://gist.githubusercontent.com/yujen/5e1cd78e2a341260b38029de08a449da/raw/ac60c1002e0e14375de5b2b0a167af00df3f74b4/SeniaAnimationEventEditor.cs
@@ -25,7 +26,9 @@ namespace WallstopStudios.UnityHelpers.Editor
                 .Where(type => typeof(MonoBehaviour).IsAssignableFrom(type))
                 .ToDictionary(
                     type => type,
-                    type => (IReadOnlyList<MethodInfo>)type.GetPossibleAnimatorEventsForType()
+                    type =>
+                        (IReadOnlyList<MethodInfo>)
+                            AnimationEventHelpers.GetPossibleAnimatorEventsForType(type)
                 );
             foreach (KeyValuePair<Type, IReadOnlyList<MethodInfo>> entry in typesToMethods.ToList())
             {

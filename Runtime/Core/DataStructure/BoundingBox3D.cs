@@ -2,6 +2,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 {
     using System;
     using Helper;
+    using Math;
     using UnityEngine;
 
     /// <summary>
@@ -237,6 +238,38 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 && max.y > other.min.y
                 && min.z < other.max.z
                 && max.z > other.min.z;
+        }
+
+        /// <summary>
+        /// Determines whether this bounding box intersects with a line segment.
+        /// Returns true if the line segment intersects the bounding box.
+        /// </summary>
+        /// <param name="line">The line segment to test for intersection.</param>
+        /// <returns>True if the line segment intersects the bounding box.</returns>
+        public bool Intersects(Line3D line)
+        {
+            return line.Intersects(this);
+        }
+
+        /// <summary>
+        /// Calculates the shortest distance from this bounding box to a line segment.
+        /// Returns 0 if the line intersects the bounding box.
+        /// </summary>
+        /// <param name="line">The line segment to measure distance from.</param>
+        /// <returns>The shortest distance from the bounding box to the line segment.</returns>
+        public float DistanceToLine(Line3D line)
+        {
+            return line.DistanceToBounds(this);
+        }
+
+        /// <summary>
+        /// Finds the closest point on a line segment to this bounding box.
+        /// </summary>
+        /// <param name="line">The line segment.</param>
+        /// <returns>The closest point on the line segment to this bounding box.</returns>
+        public Vector3 ClosestPointOnLine(Line3D line)
+        {
+            return line.ClosestPointOnBounds(this);
         }
 
         public Vector3 ClosestPoint(Vector3 point)

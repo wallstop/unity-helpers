@@ -123,7 +123,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             } while (lengthSquared > 1f || lengthSquared < 0.0001f);
 
             float invLength = radius / Mathf.Sqrt(lengthSquared);
-            Vector3 result = new Vector3(x * invLength, y * invLength, z * invLength);
+            Vector3 result = new(x * invLength, y * invLength, z * invLength);
             return center.HasValue ? result + center.Value : result;
         }
 

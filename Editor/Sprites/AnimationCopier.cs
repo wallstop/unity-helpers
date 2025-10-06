@@ -8,9 +8,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     using System.Security.Cryptography;
     using UnityEditor;
     using UnityEngine;
-    using Core.Extension;
-    using Core.Helper;
     using CustomEditors;
+    using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Core.Helper;
 
     public sealed class AnimationCopierWindow : EditorWindow
     {

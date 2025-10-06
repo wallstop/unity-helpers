@@ -2,9 +2,14 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 {
     using System;
 
-    internal static class PathHelper
+    public static class PathHelper
     {
-        public static string SanitizePath(this string path)
+        public static string Sanitize(string path)
+        {
+            return SanitizePath(path);
+        }
+
+        internal static string SanitizePath(this string path)
         {
             if (path == null)
             {

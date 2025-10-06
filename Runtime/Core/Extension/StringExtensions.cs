@@ -8,6 +8,21 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Utils;
 
+    public enum StringCase
+    {
+        [Obsolete("Please use a valid StringCase enum value.")]
+        None = 0,
+        PascalCase = 1,
+        CamelCase = 2,
+        SnakeCase = 3,
+        KebabCase = 4,
+        TitleCase = 5,
+        LowerCase = 6,
+        UpperCase = 7,
+        LowerInvariant = 8,
+        UpperInvariant = 9,
+    }
+
     public static class StringExtensions
     {
         private static readonly ImmutableHashSet<char> WordSeparators = new HashSet<char>
@@ -786,6 +801,34 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return input.Substring(0, index)
                 + (newValue ?? string.Empty)
                 + input.Substring(index + oldValue.Length);
+        }
+
+        public static string ToCase(this string value, StringCase stringCase)
+        {
+            switch (stringCase)
+            {
+                case StringCase.PascalCase:
+                    return value.ToPascalCase();
+                case StringCase.CamelCase:
+                    return value.ToCamelCase();
+                case StringCase.SnakeCase:
+                    return value.ToSnakeCase();
+                case StringCase.KebabCase:
+                    return value.ToKebabCase();
+                case StringCase.TitleCase:
+                    return value.ToTitleCase();
+                case StringCase.LowerCase:
+                    return value?.ToLower() ?? string.Empty;
+                case StringCase.UpperCase:
+                    return value?.ToUpper() ?? string.Empty;
+                case StringCase.LowerInvariant:
+                    return value?.ToLowerInvariant() ?? string.Empty;
+                case StringCase.UpperInvariant:
+                    return value?.ToUpperInvariant() ?? string.Empty;
+                case StringCase.None:
+                default:
+                    return value ?? string.Empty;
+            }
         }
     }
 }

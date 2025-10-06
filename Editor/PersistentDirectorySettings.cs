@@ -7,8 +7,8 @@ namespace WallstopStudios.UnityHelpers.Editor
     using System.Collections.Generic;
     using System.Linq;
     using System.IO;
-    using Core.Helper;
     using UnityEngine.Serialization;
+    using WallstopStudios.UnityHelpers.Core.Helper;
 
     [Serializable]
     public sealed class DirectoryUsageData
@@ -189,7 +189,7 @@ namespace WallstopStudios.UnityHelpers.Editor
                 return;
             }
 
-            string sanitizedPath = path.SanitizePath();
+            string sanitizedPath = PathHelper.Sanitize(path);
             if (
                 !sanitizedPath.StartsWith("Assets/", StringComparison.Ordinal)
                 || !AssetDatabase.IsValidFolder(sanitizedPath)

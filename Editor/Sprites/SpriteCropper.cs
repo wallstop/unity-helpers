@@ -9,9 +9,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     using System.Threading.Tasks;
     using UnityEditor;
     using UnityEngine;
-    using Core.Extension;
     using CustomEditors;
-    using Microsoft.CodeAnalysis.CSharp.Syntax;
+    using WallstopStudios.UnityHelpers.Core.Extension;
     using Object = UnityEngine.Object;
 
     public sealed class SpriteCropper : EditorWindow

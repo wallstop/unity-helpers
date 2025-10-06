@@ -9,27 +9,139 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
     using Attributes;
     using Helper;
 
-    public static class EnumNameCache<T>
-        where T : struct, Enum
+    internal sealed class EnumNameCacheData
     {
-        private static readonly Dictionary<T, string> Names;
+        public readonly string[] NamesArray;
+        public readonly Dictionary<ulong, string> NamesDict;
+        public readonly bool UseArray;
+        public readonly ulong MinValue;
+        public readonly int ArrayLength;
+
+        public EnumNameCacheData(
+            string[] namesArray,
+            Dictionary<ulong, string> namesDict,
+            bool useArray,
+            ulong minValue,
+            int arrayLength
+        )
+        {
+            NamesArray = namesArray;
+            NamesDict = namesDict;
+            UseArray = useArray;
+            MinValue = minValue;
+            ArrayLength = arrayLength;
+        }
+    }
+
+    public static class EnumNameCache<T>
+        where T : unmanaged, Enum
+    {
+        // Use instance holder to avoid static field access overhead on Mono
+        private static readonly EnumNameCacheData Cache;
 
         static EnumNameCache()
         {
-            T[] values = Enum.GetValues(typeof(T)).OfType<T>().ToArray();
-            Names = new Dictionary<T, string>(values.Length);
+            T[] values = (T[])Enum.GetValues(typeof(T));
+
+            // Try to determine if we can use array-based lookup
+            ulong minVal = ulong.MaxValue;
+            ulong maxVal = 0;
+            bool hasValidRange = true;
+
             for (int i = 0; i < values.Length; i++)
             {
-                T value = values[i];
-                string name = value.ToString("G");
-                Names.TryAdd(value, name);
+                if (!EnumNumericHelper<T>.TryConvertToUInt64(values[i], out ulong val))
+                {
+                    hasValidRange = false;
+                    break;
+                }
+
+                if (val < minVal)
+                {
+                    minVal = val;
+                }
+
+                if (val > maxVal)
+                {
+                    maxVal = val;
+                }
             }
+
+            // Use array if the range is reasonable (< 256 elements)
+            ulong range = hasValidRange && maxVal >= minVal ? maxVal - minVal + 1 : 0;
+            bool useArray = hasValidRange && range <= 256 && range > 0;
+
+            string[] namesArray;
+            Dictionary<ulong, string> namesDict;
+            ulong minValue;
+            int arrayLength;
+
+            if (useArray)
+            {
+                minValue = minVal;
+                arrayLength = (int)range;
+                namesArray = new string[arrayLength];
+
+                for (int i = 0; i < values.Length; i++)
+                {
+                    T value = values[i];
+                    if (EnumNumericHelper<T>.TryConvertToUInt64(value, out ulong key))
+                    {
+                        int index = (int)(key - minValue);
+                        if (index >= 0 && index < arrayLength)
+                        {
+                            namesArray[index] = value.ToString("G");
+                        }
+                    }
+                }
+                namesDict = null;
+            }
+            else
+            {
+                // Fall back to dictionary
+                namesDict = new Dictionary<ulong, string>(values.Length);
+
+                for (int i = 0; i < values.Length; i++)
+                {
+                    T value = values[i];
+                    if (!EnumNumericHelper<T>.TryConvertToUInt64(value, out ulong key))
+                    {
+                        continue;
+                    }
+
+                    string name = value.ToString("G");
+                    namesDict.TryAdd(key, name);
+                }
+                namesArray = null;
+                minValue = 0;
+                arrayLength = 0;
+            }
+
+            Cache = new EnumNameCacheData(namesArray, namesDict, useArray, minValue, arrayLength);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static string ToCachedName(T value)
         {
-            if (Names.TryGetValue(value, out string name))
+            if (!EnumNumericHelper<T>.TryConvertToUInt64(value, out ulong key))
+            {
+                return value.ToString("G");
+            }
+
+            EnumNameCacheData cache = Cache;
+            if (cache.UseArray)
+            {
+                ulong index = key - cache.MinValue;
+                if (index < (ulong)cache.ArrayLength)
+                {
+                    string name = cache.NamesArray[index];
+                    if (name != null)
+                    {
+                        return name;
+                    }
+                }
+            }
+            else if (cache.NamesDict != null && cache.NamesDict.TryGetValue(key, out string name))
             {
                 return name;
             }
@@ -38,35 +150,162 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         }
     }
 
-    public static class EnumDisplayNameCache<T>
-        where T : struct, Enum
+    internal sealed class EnumDisplayNameCacheData
     {
-        private static readonly Dictionary<T, string> Names;
+        public readonly string[] NamesArray;
+        public readonly Dictionary<ulong, string> NamesDict;
+        public readonly bool UseArray;
+        public readonly ulong MinValue;
+        public readonly int ArrayLength;
+
+        public EnumDisplayNameCacheData(
+            string[] namesArray,
+            Dictionary<ulong, string> namesDict,
+            bool useArray,
+            ulong minValue,
+            int arrayLength
+        )
+        {
+            NamesArray = namesArray;
+            NamesDict = namesDict;
+            UseArray = useArray;
+            MinValue = minValue;
+            ArrayLength = arrayLength;
+        }
+    }
+
+    public static class EnumDisplayNameCache<T>
+        where T : unmanaged, Enum
+    {
+        // Use instance holder to avoid static field access overhead on Mono
+        private static readonly EnumDisplayNameCacheData Cache;
 
         static EnumDisplayNameCache()
         {
             Type type = typeof(T);
             FieldInfo[] fields = type.GetFields(BindingFlags.Public | BindingFlags.Static);
-            Names = new Dictionary<T, string>(fields.Length);
+
+            // First pass: determine range
+            ulong minVal = ulong.MaxValue;
+            ulong maxVal = 0;
+            bool hasValidRange = true;
 
             for (int i = 0; i < fields.Length; i++)
             {
-                FieldInfo field = fields[i];
-                string name = field.IsAttributeDefined(
-                    out EnumDisplayNameAttribute displayName,
-                    inherit: false
-                )
-                    ? displayName.DisplayName
-                    : field.Name;
-                T value = (T)field.GetValue(null);
-                Names.TryAdd(value, name);
+                T value = (T)fields[i].GetValue(null);
+                if (!EnumNumericHelper<T>.TryConvertToUInt64(value, out ulong val))
+                {
+                    hasValidRange = false;
+                    break;
+                }
+
+                if (val < minVal)
+                {
+                    minVal = val;
+                }
+
+                if (val > maxVal)
+                {
+                    maxVal = val;
+                }
             }
+
+            // Use array if the range is reasonable (< 256 elements)
+            ulong range = hasValidRange && maxVal >= minVal ? maxVal - minVal + 1 : 0;
+            bool useArray = hasValidRange && range <= 256 && range > 0;
+
+            string[] namesArray;
+            Dictionary<ulong, string> namesDict;
+            ulong minValue;
+            int arrayLength;
+
+            if (useArray)
+            {
+                minValue = minVal;
+                arrayLength = (int)range;
+                namesArray = new string[arrayLength];
+
+                for (int i = 0; i < fields.Length; i++)
+                {
+                    FieldInfo field = fields[i];
+                    string name = field.IsAttributeDefined(
+                        out EnumDisplayNameAttribute displayName,
+                        inherit: false
+                    )
+                        ? displayName.DisplayName
+                        : field.Name;
+                    T value = (T)field.GetValue(null);
+
+                    if (EnumNumericHelper<T>.TryConvertToUInt64(value, out ulong key))
+                    {
+                        int index = (int)(key - minValue);
+                        if (index >= 0 && index < arrayLength)
+                        {
+                            namesArray[index] = name;
+                        }
+                    }
+                }
+                namesDict = null;
+            }
+            else
+            {
+                // Fall back to dictionary
+                namesDict = new Dictionary<ulong, string>(fields.Length);
+
+                for (int i = 0; i < fields.Length; i++)
+                {
+                    FieldInfo field = fields[i];
+                    string name = field.IsAttributeDefined(
+                        out EnumDisplayNameAttribute displayName,
+                        inherit: false
+                    )
+                        ? displayName.DisplayName
+                        : field.Name;
+                    T value = (T)field.GetValue(null);
+
+                    if (!EnumNumericHelper<T>.TryConvertToUInt64(value, out ulong key))
+                    {
+                        continue;
+                    }
+
+                    namesDict.TryAdd(key, name);
+                }
+                namesArray = null;
+                minValue = 0;
+                arrayLength = 0;
+            }
+
+            Cache = new EnumDisplayNameCacheData(
+                namesArray,
+                namesDict,
+                useArray,
+                minValue,
+                arrayLength
+            );
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static string ToDisplayName(T value)
         {
-            if (Names.TryGetValue(value, out string name))
+            if (!EnumNumericHelper<T>.TryConvertToUInt64(value, out ulong key))
+            {
+                return value.ToString();
+            }
+
+            EnumDisplayNameCacheData cache = Cache;
+            if (cache.UseArray)
+            {
+                ulong index = key - cache.MinValue;
+                if (index < (ulong)cache.ArrayLength)
+                {
+                    string name = cache.NamesArray[index];
+                    if (name != null)
+                    {
+                        return name;
+                    }
+                }
+            }
+            else if (cache.NamesDict != null && cache.NamesDict.TryGetValue(key, out string name))
             {
                 return name;
             }
@@ -81,15 +320,16 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         public static bool HasFlagNoAlloc<T>(this T value, T flag)
             where T : unmanaged, Enum
         {
-            ulong? valueUnderlying = GetUInt64(value);
-            ulong? flagUnderlying = GetUInt64(flag);
-            if (valueUnderlying == null || flagUnderlying == null)
+            if (
+                !EnumNumericHelper<T>.TryConvertToUInt64(value, out ulong valueUnderlying)
+                || !EnumNumericHelper<T>.TryConvertToUInt64(flag, out ulong flagUnderlying)
+            )
             {
                 // Fallback for unsupported enum sizes
                 return value.HasFlag(flag);
             }
 
-            return (valueUnderlying.Value & flagUnderlying.Value) == flagUnderlying.Value;
+            return (valueUnderlying & flagUnderlying) == flagUnderlying;
         }
 
         public static string ToDisplayName<T>(this T value)
@@ -115,25 +355,35 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         {
             return enumerable.Select(value => value.ToCachedName());
         }
+    }
+
+    internal static class EnumNumericHelper<T>
+        where T : unmanaged, Enum
+    {
+        private static readonly int Size = Unsafe.SizeOf<T>();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static ulong? GetUInt64<T>(T value)
-            where T : unmanaged
+        public static bool TryConvertToUInt64(T value, out ulong result)
         {
-            try
+            ref T valueRef = ref Unsafe.AsRef(in value);
+
+            switch (Size)
             {
-                return Unsafe.SizeOf<T>() switch
-                {
-                    1 => Unsafe.As<T, byte>(ref value),
-                    2 => Unsafe.As<T, ushort>(ref value),
-                    4 => Unsafe.As<T, uint>(ref value),
-                    8 => Unsafe.As<T, ulong>(ref value),
-                    _ => null,
-                };
-            }
-            catch
-            {
-                return null;
+                case 1:
+                    result = Unsafe.As<T, byte>(ref valueRef);
+                    return true;
+                case 2:
+                    result = Unsafe.As<T, ushort>(ref valueRef);
+                    return true;
+                case 4:
+                    result = Unsafe.As<T, uint>(ref valueRef);
+                    return true;
+                case 8:
+                    result = Unsafe.As<T, ulong>(ref valueRef);
+                    return true;
+                default:
+                    result = default;
+                    return false;
             }
         }
     }

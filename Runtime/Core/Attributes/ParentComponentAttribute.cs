@@ -11,7 +11,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
     /// <summary>
     /// Automatically assigns parent components (components up the transform hierarchy) to the decorated field.
-    /// Supports single components, arrays, and List&lt;T&gt; collection types.
+    /// Supports single components, arrays, List&lt;T&gt;, and HashSet&lt;T&gt; collection types.
     /// </summary>
     /// <remarks>
     /// Call <see cref="ParentComponentExtensions.AssignParentComponents"/> to populate the field.
@@ -87,23 +87,22 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                                 parentComponents
                             );
 
-                            using PooledResource<List<Component>> filteredBuffer =
-                                Buffers<Component>.List.Get(out List<Component> filtered);
-                            FilterComponents(
+                            int filteredCount = FilterComponentsInPlace(
                                 parentComponents,
                                 field.attribute,
                                 field.elementType,
                                 field.isInterface,
-                                filtered
+                                filterDisabledComponents: false
                             );
 
-                            Array correctTypedArray = field.arrayCreator(filtered.Count);
-                            for (int i = 0; i < filtered.Count; ++i)
+                            Array correctTypedArray = field.arrayCreator(filteredCount);
+                            for (int i = 0; i < filteredCount; ++i)
                             {
-                                correctTypedArray.SetValue(filtered[i], i);
+                                correctTypedArray.SetValue(parentComponents[i], i);
                             }
+
                             field.setter(component, correctTypedArray);
-                            foundParent = filtered.Count > 0;
+                            foundParent = filteredCount > 0;
                             break;
                         }
                         case FieldKind.List:
@@ -118,24 +117,52 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                                 parentComponents
                             );
 
-                            using PooledResource<List<Component>> filteredBuffer =
-                                Buffers<Component>.List.Get(out List<Component> filtered);
-                            FilterComponents(
+                            int filteredCount = FilterComponentsInPlace(
                                 parentComponents,
                                 field.attribute,
                                 field.elementType,
                                 field.isInterface,
-                                filtered
+                                filterDisabledComponents: false
                             );
 
-                            IList instance = field.listCreator(filtered.Count);
-                            for (int i = 0; i < filtered.Count; ++i)
+                            IList instance = field.listCreator(filteredCount);
+                            for (int i = 0; i < filteredCount; ++i)
                             {
-                                instance.Add(filtered[i]);
+                                instance.Add(parentComponents[i]);
                             }
 
                             field.setter(component, instance);
-                            foundParent = filtered.Count > 0;
+                            foundParent = filteredCount > 0;
+                            break;
+                        }
+                        case FieldKind.HashSet:
+                        {
+                            using PooledResource<List<Component>> parentComponentBuffer =
+                                Buffers<Component>.List.Get(out List<Component> parentComponents);
+                            GetParentComponents(
+                                root,
+                                field.elementType,
+                                field.attribute,
+                                field.isInterface,
+                                parentComponents
+                            );
+
+                            int filteredCount = FilterComponentsInPlace(
+                                parentComponents,
+                                field.attribute,
+                                field.elementType,
+                                field.isInterface,
+                                filterDisabledComponents: false
+                            );
+
+                            object instance = field.hashSetCreator(filteredCount);
+                            for (int i = 0; i < filteredCount; ++i)
+                            {
+                                field.hashSetAdder(instance, parentComponents[i]);
+                            }
+
+                            field.setter(component, instance);
+                            foundParent = filteredCount > 0;
                             break;
                         }
                         default:
@@ -189,7 +216,6 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     Buffers<Component>.List.Get(out List<Component> components);
                 while (current != null && depth < maxDepth)
                 {
-                    components.Clear();
                     GetComponentsOfType(
                         current.gameObject,
                         elementType,
@@ -241,79 +267,32 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             bool isInterface
         )
         {
-            if (isInterface && attribute.AllowInterfaces)
-            {
-                Transform current = root;
-                int depth = 0;
-                int maxDepth = attribute.MaxDepth > 0 ? attribute.MaxDepth : int.MaxValue;
+            Transform current = root;
+            int depth = 0;
+            int maxDepth = attribute.MaxDepth > 0 ? attribute.MaxDepth : int.MaxValue;
 
-                using PooledResource<List<Component>> parentComponentBuffer =
-                    Buffers<Component>.List.Get(out List<Component> components);
-                while (current != null && depth < maxDepth)
-                {
-                    components.Clear();
-                    GetComponentsOfType(
-                        current.gameObject,
-                        elementType,
-                        isInterface,
-                        attribute.AllowInterfaces,
-                        components
-                    );
-
-                    // Apply filters
-                    foreach (Component comp in components)
-                    {
-                        if (MatchesFilters(comp.gameObject, attribute))
-                        {
-                            return comp;
-                        }
-                    }
-
-                    current = current.parent;
-                    depth++;
-                }
-
-                return null;
-            }
-
-            // For concrete types, search manually to apply filters
-            Transform current2 = root;
-            int currentDepth = 0;
-            int maxDepth2 = attribute.MaxDepth > 0 ? attribute.MaxDepth : int.MaxValue;
-
-            using PooledResource<List<Component>> buffer = Buffers<Component>.List.Get(
-                out List<Component> components2
+            using PooledResource<List<Component>> scratch = Buffers<Component>.List.Get(
+                out List<Component> components
             );
-            while (current2 != null && currentDepth < maxDepth2)
+            while (current != null && depth < maxDepth)
             {
-                components2.Clear();
-                current2.GetComponents(elementType, components2);
+                Component resolved = TryResolveSingleComponent(
+                    current.gameObject,
+                    attribute,
+                    elementType,
+                    isInterface,
+                    attribute.AllowInterfaces,
+                    components,
+                    filterDisabledComponents: false
+                );
 
-                foreach (Component comp in components2)
+                if (resolved != null)
                 {
-                    if (comp == null)
-                    {
-                        continue;
-                    }
-
-                    // Check active state
-                    if (!attribute.IncludeInactive)
-                    {
-                        if (!comp.gameObject.activeInHierarchy || !comp.IsComponentEnabled())
-                        {
-                            continue;
-                        }
-                    }
-
-                    // Apply filters
-                    if (MatchesFilters(comp.gameObject, attribute))
-                    {
-                        return comp;
-                    }
+                    return resolved;
                 }
 
-                current2 = current2.parent;
-                currentDepth++;
+                current = current.parent;
+                depth++;
             }
 
             return null;

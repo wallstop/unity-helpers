@@ -5,10 +5,12 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     using System.Collections.Generic;
     using System.Linq;
     using System.Reflection;
+    using System.Runtime.CompilerServices;
     using Extension;
     using Helper;
     using Tags;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Utils;
 
     /// <summary>
     /// Base class for relational component attributes that provides common functionality
@@ -64,36 +66,93 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         internal enum FieldKind : byte
         {
             Single = 0,
+
             Array = 1,
+
             List = 2,
+
+            HashSet = 3,
         }
 
         // Map from cache enum to processor enum
+
         private static FieldKind MapFieldKind(AttributeMetadataCache.FieldKind cacheKind)
         {
             return cacheKind switch
             {
 #pragma warning disable CS0618 // Type or member is obsolete
+
                 AttributeMetadataCache.FieldKind.None => FieldKind.Single,
+
 #pragma warning restore CS0618
+
                 AttributeMetadataCache.FieldKind.Single => FieldKind.Single,
+
                 AttributeMetadataCache.FieldKind.Array => FieldKind.Array,
+
                 AttributeMetadataCache.FieldKind.List => FieldKind.List,
+                AttributeMetadataCache.FieldKind.HashSet => FieldKind.HashSet,
                 _ => FieldKind.Single,
             };
+        }
+
+        private static FieldKind GetFieldKind(Type fieldType, out Type elementType)
+        {
+            if (fieldType == null)
+            {
+                elementType = null;
+                return FieldKind.Single;
+            }
+
+            if (fieldType.IsArray)
+            {
+                elementType = fieldType.GetElementType();
+                return FieldKind.Array;
+            }
+
+            if (fieldType.IsGenericType)
+            {
+                Type genericType = fieldType.GetGenericTypeDefinition();
+                if (genericType == typeof(List<>))
+                {
+                    elementType = fieldType.GenericTypeArguments[0];
+                    return FieldKind.List;
+                }
+
+                if (genericType == typeof(HashSet<>))
+                {
+                    elementType = fieldType.GenericTypeArguments[0];
+                    return FieldKind.HashSet;
+                }
+            }
+
+            elementType = fieldType;
+            return FieldKind.Single;
         }
 
         internal readonly struct FieldMetadata<TAttribute>
             where TAttribute : BaseRelationalComponentAttribute
         {
             public readonly FieldInfo field;
+
             public readonly TAttribute attribute;
+
             public readonly Action<object, object> setter;
+
             public readonly Func<object, object> getter;
+
             public readonly FieldKind kind;
+
             public readonly Type elementType;
+
             public readonly Func<int, Array> arrayCreator;
+
             public readonly Func<int, IList> listCreator;
+
+            public readonly Func<int, object> hashSetCreator;
+
+            public readonly Action<object, object> hashSetAdder;
+
             public readonly bool isInterface;
 
             public FieldMetadata(
@@ -105,17 +164,31 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 Type elementType,
                 Func<int, Array> arrayCreator,
                 Func<int, IList> listCreator,
+                Func<int, object> hashSetCreator,
+                Action<object, object> hashSetAdder,
                 bool isInterface
             )
             {
                 this.field = field;
+
                 this.attribute = attribute;
+
                 this.setter = setter;
+
                 this.getter = getter;
+
                 this.kind = kind;
+
                 this.elementType = elementType;
+
                 this.arrayCreator = arrayCreator;
+
                 this.listCreator = listCreator;
+
+                this.hashSetCreator = hashSetCreator;
+
+                this.hashSetAdder = hashSetAdder;
+
                 this.isInterface = isInterface;
             }
         }
@@ -123,8 +196,8 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         internal static FieldMetadata<TAttribute>[] GetFieldMetadata<TAttribute>(Type componentType)
             where TAttribute : BaseRelationalComponentAttribute
         {
-            // Try to use cached metadata first
             AttributeMetadataCache cache = AttributeMetadataCache.Instance;
+
             AttributeMetadataCache.RelationalAttributeKind targetKind =
                 GetRelationalKind<TAttribute>();
 
@@ -136,7 +209,6 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 )
             )
             {
-                // Filter cached fields by attribute type
                 List<FieldMetadata<TAttribute>> result = new List<FieldMetadata<TAttribute>>();
 
                 foreach (AttributeMetadataCache.RelationalFieldMetadata cachedField in cachedFields)
@@ -146,7 +218,6 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                         continue;
                     }
 
-                    // Get the field info
                     FieldInfo field = componentType.GetField(
                         cachedField.fieldName,
                         BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
@@ -157,13 +228,11 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                         continue;
                     }
 
-                    // Get the attribute
                     if (!field.IsAttributeDefined(out TAttribute attribute, inherit: false))
                     {
                         continue;
                     }
 
-                    // Get pre-resolved element type from cache
                     if (
                         !cache.TryGetElementType(
                             componentType,
@@ -176,17 +245,60 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     }
 
                     FieldKind kind = MapFieldKind(cachedField.fieldKind);
+                    FieldKind actualKind = GetFieldKind(
+                        field.FieldType,
+                        out Type actualElementType
+                    );
+
+                    if (kind != actualKind)
+                    {
+                        kind = actualKind;
+                    }
+
+                    Type resolvedElementType = elementType ?? actualElementType ?? field.FieldType;
+
+                    if (
+                        kind == FieldKind.HashSet
+                        && field.FieldType.IsGenericType
+                        && field.FieldType.GetGenericTypeDefinition() == typeof(HashSet<>)
+                        && resolvedElementType == field.FieldType
+                    )
+                    {
+                        resolvedElementType = field.FieldType.GenericTypeArguments[0];
+                    }
+
                     Func<int, Array> arrayCreator = null;
                     Func<int, IList> listCreator = null;
+                    Func<int, object> hashSetCreator = null;
+                    Action<object, object> hashSetAdder = null;
 
-                    if (kind == FieldKind.Array)
+                    switch (kind)
                     {
-                        arrayCreator = ReflectionHelpers.GetArrayCreator(elementType);
+                        case FieldKind.Array:
+                            arrayCreator = ReflectionHelpers.GetArrayCreator(resolvedElementType);
+                            break;
+                        case FieldKind.List:
+                            listCreator = ReflectionHelpers.GetListWithCapacityCreator(
+                                resolvedElementType
+                            );
+                            break;
+                        case FieldKind.HashSet:
+                            hashSetCreator = ReflectionHelpers.GetHashSetWithCapacityCreator(
+                                resolvedElementType
+                            );
+                            hashSetAdder = ReflectionHelpers.GetHashSetAdder(resolvedElementType);
+                            break;
                     }
-                    else if (kind == FieldKind.List)
-                    {
-                        listCreator = ReflectionHelpers.GetListWithCapacityCreator(elementType);
-                    }
+
+                    bool isInterface =
+                        resolvedElementType != null
+                        && (
+                            resolvedElementType.IsInterface
+                            || (
+                                !resolvedElementType.IsSealed
+                                && resolvedElementType != typeof(Component)
+                            )
+                        );
 
                     result.Add(
                         new FieldMetadata<TAttribute>(
@@ -195,10 +307,12 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                             ReflectionHelpers.GetFieldSetter(field),
                             ReflectionHelpers.GetFieldGetter(field),
                             kind,
-                            elementType,
+                            resolvedElementType,
                             arrayCreator,
                             listCreator,
-                            cachedField.isInterface
+                            hashSetCreator,
+                            hashSetAdder,
+                            isInterface
                         )
                     );
                 }
@@ -206,7 +320,6 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 return result.ToArray();
             }
 
-            // Fallback to runtime reflection
             FieldInfo[] fields = componentType.GetFields(
                 BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
             );
@@ -220,35 +333,35 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     }
 
                     Type fieldType = field.FieldType;
-                    FieldKind kind;
-                    Type elementType;
+                    FieldKind kind = GetFieldKind(fieldType, out Type elementType);
+
                     Func<int, Array> arrayCreator = null;
                     Func<int, IList> listCreator = null;
+                    Func<int, object> hashSetCreator = null;
+                    Action<object, object> hashSetAdder = null;
 
-                    if (fieldType.IsArray)
+                    switch (kind)
                     {
-                        kind = FieldKind.Array;
-                        elementType = fieldType.GetElementType();
-                        arrayCreator = ReflectionHelpers.GetArrayCreator(elementType);
-                    }
-                    else if (
-                        fieldType.IsGenericType
-                        && fieldType.GetGenericTypeDefinition() == typeof(List<>)
-                    )
-                    {
-                        kind = FieldKind.List;
-                        elementType = fieldType.GenericTypeArguments[0];
-                        listCreator = ReflectionHelpers.GetListWithCapacityCreator(elementType);
-                    }
-                    else
-                    {
-                        kind = FieldKind.Single;
-                        elementType = fieldType;
+                        case FieldKind.Array:
+                            arrayCreator = ReflectionHelpers.GetArrayCreator(elementType);
+                            break;
+                        case FieldKind.List:
+                            listCreator = ReflectionHelpers.GetListWithCapacityCreator(elementType);
+                            break;
+                        case FieldKind.HashSet:
+                            hashSetCreator = ReflectionHelpers.GetHashSetWithCapacityCreator(
+                                elementType
+                            );
+                            hashSetAdder = ReflectionHelpers.GetHashSetAdder(elementType);
+                            break;
                     }
 
                     bool isInterface =
-                        elementType.IsInterface
-                        || (!elementType.IsSealed && elementType != typeof(Component));
+                        elementType != null
+                        && (
+                            elementType.IsInterface
+                            || (!elementType.IsSealed && elementType != typeof(Component))
+                        );
 
                     return (FieldMetadata<TAttribute>?)
                         new FieldMetadata<TAttribute>(
@@ -260,6 +373,8 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                             elementType,
                             arrayCreator,
                             listCreator,
+                            hashSetCreator,
+                            hashSetAdder,
                             isInterface
                         );
                 })
@@ -287,7 +402,9 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             }
 
 #pragma warning disable CS0618 // Type or member is obsolete
+
             return AttributeMetadataCache.RelationalAttributeKind.Unknown;
+
 #pragma warning restore CS0618
         }
 
@@ -303,10 +420,11 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             }
 
             object currentValue = metadata.getter(component);
+
             return ValueHelpers.IsAssigned(currentValue);
         }
 
-        internal static bool MatchesFilters(
+        private static bool MatchesFilters(
             GameObject gameObject,
             BaseRelationalComponentAttribute attribute
         )
@@ -348,85 +466,260 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             switch (metadata.kind)
             {
                 case FieldKind.Array:
+
                     metadata.setter(component, metadata.arrayCreator(0));
+
                     break;
+
                 case FieldKind.List:
+
                     metadata.setter(component, metadata.listCreator(0));
+
+                    break;
+
+                case FieldKind.HashSet:
+
+                    metadata.setter(component, metadata.hashSetCreator(0));
+
                     break;
             }
         }
 
-        internal static List<Component> FilterComponents(
-            IReadOnlyList<Component> components,
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool PassesStateAndFilters(
+            Component candidate,
+            BaseRelationalComponentAttribute attribute,
+            bool filterDisabledComponents = true
+        )
+        {
+            if (candidate == null)
+            {
+                return false;
+            }
+
+            GameObject candidateGameObject = candidate.gameObject;
+
+            if (!attribute.IncludeInactive)
+            {
+                if (!candidateGameObject.activeInHierarchy)
+                {
+                    return false;
+                }
+
+                if (filterDisabledComponents && !candidate.IsComponentEnabled())
+                {
+                    return false;
+                }
+            }
+
+            return MatchesFilters(candidateGameObject, attribute);
+        }
+
+        private static bool ComponentMatches(
+            Component candidate,
             BaseRelationalComponentAttribute attribute,
             Type elementType,
             bool isInterface,
-            List<Component> filtered
+            bool filterDisabledComponents = true
         )
         {
-            filtered.Clear();
-            int maxCount = attribute.MaxCount > 0 ? attribute.MaxCount : int.MaxValue;
-
-            for (int i = 0; i < components.Count; i++)
+            if (candidate == null)
             {
-                Component comp = components[i];
-                if (filtered.Count >= maxCount)
-                {
-                    break;
-                }
-
-                if (comp == null)
-                {
-                    continue;
-                }
-
-                // Check if component matches the type (handle interfaces/base types)
-                if (isInterface)
-                {
-                    if (!attribute.AllowInterfaces)
-                    {
-                        // Skip interfaces/base types when not allowed
-                        continue;
-                    }
-
-                    if (!elementType.IsAssignableFrom(comp.GetType()))
-                    {
-                        continue;
-                    }
-                }
-                else
-                {
-                    // For concrete types, ensure exact type match
-                    if (!elementType.IsAssignableFrom(comp.GetType()))
-                    {
-                        continue;
-                    }
-                }
-
-                // Check active state
-                if (!attribute.IncludeInactive)
-                {
-                    if (!comp.gameObject.activeInHierarchy)
-                    {
-                        continue;
-                    }
-
-                    if (!comp.IsComponentEnabled())
-                    {
-                        continue;
-                    }
-                }
-
-                // Check filters
-                if (!MatchesFilters(comp.gameObject, attribute))
-                {
-                    continue;
-                }
-
-                filtered.Add(comp);
+                return false;
             }
 
-            return filtered;
+            Type candidateType = candidate.GetType();
+
+            if (isInterface)
+            {
+                if (!attribute.AllowInterfaces)
+                {
+                    return false;
+                }
+            }
+
+            if (!elementType.IsAssignableFrom(candidateType))
+            {
+                return false;
+            }
+
+            return PassesStateAndFilters(candidate, attribute, filterDisabledComponents);
+        }
+
+        internal static int FilterComponentsInPlace(
+            List<Component> components,
+            BaseRelationalComponentAttribute attribute,
+            Type elementType,
+            bool isInterface,
+            bool filterDisabledComponents = true
+        )
+        {
+            int maxCount = attribute.MaxCount > 0 ? attribute.MaxCount : int.MaxValue;
+
+            int writeIndex = 0;
+
+            int count = components.Count;
+
+            if (!isInterface)
+            {
+                for (int readIndex = 0; readIndex < count; readIndex++)
+                {
+                    Component comp = components[readIndex];
+
+                    if (PassesStateAndFilters(comp, attribute, filterDisabledComponents))
+                    {
+                        components[writeIndex++] = comp;
+
+                        if (writeIndex >= maxCount)
+                        {
+                            break;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                for (int readIndex = 0; readIndex < count; readIndex++)
+                {
+                    Component comp = components[readIndex];
+
+                    if (
+                        ComponentMatches(
+                            comp,
+                            attribute,
+                            elementType,
+                            isInterface,
+                            filterDisabledComponents
+                        )
+                    )
+                    {
+                        components[writeIndex++] = comp;
+
+                        if (writeIndex >= maxCount)
+                        {
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (writeIndex < components.Count)
+            {
+                components.RemoveRange(writeIndex, components.Count - writeIndex);
+            }
+
+            return writeIndex;
+        }
+
+        internal static Component TryResolveSingleComponent(
+            GameObject gameObject,
+            BaseRelationalComponentAttribute attribute,
+            Type elementType,
+            bool isInterface,
+            bool allowInterfaces,
+            List<Component> scratch,
+            bool filterDisabledComponents = true
+        )
+        {
+            if (!isInterface)
+            {
+                if (
+                    gameObject.TryGetComponent(elementType, out Component candidate)
+                    && PassesStateAndFilters(candidate, attribute, filterDisabledComponents)
+                )
+                {
+                    return candidate;
+                }
+
+                if (scratch != null)
+                {
+                    scratch.Clear();
+
+                    gameObject.GetComponents(elementType, scratch);
+
+                    for (int i = 0; i < scratch.Count; i++)
+                    {
+                        candidate = scratch[i];
+
+                        if (PassesStateAndFilters(candidate, attribute, filterDisabledComponents))
+                        {
+                            return candidate;
+                        }
+                    }
+
+                    return null;
+                }
+
+                using PooledResource<List<Component>> pooled = Buffers<Component>.List.Get(
+                    out List<Component> components
+                );
+
+                gameObject.GetComponents(elementType, components);
+
+                for (int i = 0; i < components.Count; i++)
+                {
+                    candidate = components[i];
+
+                    if (PassesStateAndFilters(candidate, attribute, filterDisabledComponents))
+                    {
+                        return candidate;
+                    }
+                }
+
+                return null;
+            }
+
+            if (!allowInterfaces)
+            {
+                return null;
+            }
+
+            if (scratch != null)
+            {
+                scratch.Clear();
+
+                gameObject.GetComponents(typeof(Component), scratch);
+
+                for (int i = 0; i < scratch.Count; i++)
+                {
+                    Component candidate = scratch[i];
+
+                    if (
+                        candidate != null
+                        && elementType.IsAssignableFrom(candidate.GetType())
+                        && PassesStateAndFilters(candidate, attribute, filterDisabledComponents)
+                    )
+                    {
+                        return candidate;
+                    }
+                }
+
+                return null;
+            }
+            else
+            {
+                using PooledResource<List<Component>> pooled = Buffers<Component>.List.Get(
+                    out List<Component> components
+                );
+
+                gameObject.GetComponents(typeof(Component), components);
+
+                for (int i = 0; i < components.Count; i++)
+                {
+                    Component candidate = components[i];
+
+                    if (
+                        candidate != null
+                        && elementType.IsAssignableFrom(candidate.GetType())
+                        && PassesStateAndFilters(candidate, attribute, filterDisabledComponents)
+                    )
+                    {
+                        return candidate;
+                    }
+                }
+
+                return null;
+            }
         }
 
         internal static List<Component> GetComponentsOfType(
@@ -438,22 +731,39 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         )
         {
             buffer.Clear();
-            if (isInterface && allowInterfaces)
+
+            if (isInterface)
             {
-                // For interfaces and base types, we need to get all components and filter
-                Component[] allComponents = gameObject.GetComponents<Component>();
-                foreach (Component comp in allComponents)
+                if (!allowInterfaces)
                 {
-                    if (elementType.IsAssignableFrom(comp.GetType()))
+                    return buffer;
+                }
+
+                gameObject.GetComponents(typeof(Component), buffer);
+
+                int writeIndex = 0;
+
+                int count = buffer.Count;
+
+                for (int i = 0; i < count; i++)
+                {
+                    Component comp = buffer[i];
+
+                    if (comp != null && elementType.IsAssignableFrom(comp.GetType()))
                     {
-                        buffer.Add(comp);
+                        buffer[writeIndex++] = comp;
                     }
                 }
+
+                if (writeIndex < buffer.Count)
+                {
+                    buffer.RemoveRange(writeIndex, buffer.Count - writeIndex);
+                }
+
+                return buffer;
             }
-            else
-            {
-                buffer.AddRange(gameObject.GetComponents(elementType));
-            }
+
+            gameObject.GetComponents(elementType, buffer);
 
             return buffer;
         }

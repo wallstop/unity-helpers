@@ -68,7 +68,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
                     if (fieldNames.Count > 0)
                     {
                         typeMetadataList.Add(
-                            new TypeFieldMetadata(type.FullName, fieldNames.ToArray())
+                            new TypeFieldMetadata(
+                                GetAssemblyQualifiedTypeName(type),
+                                fieldNames.ToArray()
+                            )
                         );
                     }
                 }
@@ -156,6 +159,14 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
                         fieldKind = FieldKind.List;
                         elementType = fieldType.GenericTypeArguments[0];
                     }
+                    else if (
+                        fieldType.IsGenericType
+                        && fieldType.GetGenericTypeDefinition() == typeof(HashSet<>)
+                    )
+                    {
+                        fieldKind = FieldKind.HashSet;
+                        elementType = fieldType.GenericTypeArguments[0];
+                    }
                     else
                     {
                         fieldKind = FieldKind.Single;
@@ -172,7 +183,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
                             field.Name,
                             attributeKind.Value,
                             fieldKind,
-                            elementType.FullName,
+                            GetAssemblyQualifiedTypeName(elementType),
                             isInterface
                         )
                     );
@@ -181,12 +192,25 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
                 if (fieldMetadataList.Count > 0)
                 {
                     result.Add(
-                        new RelationalTypeMetadata(type.FullName, fieldMetadataList.ToArray())
+                        new RelationalTypeMetadata(
+                            GetAssemblyQualifiedTypeName(type),
+                            fieldMetadataList.ToArray()
+                        )
                     );
                 }
             }
 
             return result;
+        }
+
+        private static string GetAssemblyQualifiedTypeName(Type type)
+        {
+            if (type == null)
+            {
+                return string.Empty;
+            }
+
+            return type.AssemblyQualifiedName ?? type.FullName ?? string.Empty;
         }
 
         private static AttributeMetadataCache GetOrCreateCache()

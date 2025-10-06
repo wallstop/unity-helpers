@@ -7,12 +7,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     using System.IO;
     using System.Linq;
     using System.Text.RegularExpressions;
-    using Core.Extension;
-    using Core.Helper;
     using UnityEditor;
     using UnityEditor.U2D;
     using UnityEngine;
     using UnityEngine.U2D;
+    using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 

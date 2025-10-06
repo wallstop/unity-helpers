@@ -5,8 +5,28 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
     using System.Collections.Generic;
     using System.Linq;
 
+    /// <summary>
+    /// Extension methods for dictionary types providing additional functionality for retrieving, adding, and manipulating dictionary entries.
+    /// </summary>
     public static class DictionaryExtensions
     {
+        /// <summary>
+        /// Gets an existing value from the dictionary or adds a new value if the key doesn't exist.
+        /// </summary>
+        /// <typeparam name="K">The type of keys in the dictionary.</typeparam>
+        /// <typeparam name="V">The type of values in the dictionary.</typeparam>
+        /// <param name="dictionary">The dictionary to query or modify.</param>
+        /// <param name="key">The key to look up or add.</param>
+        /// <param name="valueProducer">A function that produces a new value if the key is not found.</param>
+        /// <returns>The existing value if the key exists, otherwise the newly added value.</returns>
+        /// <remarks>
+        /// Optimized for ConcurrentDictionary using thread-safe operations.
+        /// For non-concurrent dictionaries, uses TryGetValue followed by direct assignment.
+        /// Null handling: Throws if dictionary or valueProducer is null.
+        /// Thread-safe: Yes, if using ConcurrentDictionary. No, for other dictionary types.
+        /// Performance: O(1) average case for hash-based dictionaries.
+        /// </remarks>
+        /// <exception cref="ArgumentNullException">Thrown if dictionary or valueProducer is null.</exception>
         public static V GetOrAdd<K, V>(
             this IDictionary<K, V> dictionary,
             K key,
@@ -30,6 +50,23 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return dictionary[key] = valueProducer();
         }
 
+        /// <summary>
+        /// Gets an existing value from the dictionary or adds a new value if the key doesn't exist.
+        /// </summary>
+        /// <typeparam name="K">The type of keys in the dictionary.</typeparam>
+        /// <typeparam name="V">The type of values in the dictionary.</typeparam>
+        /// <param name="dictionary">The dictionary to query or modify.</param>
+        /// <param name="key">The key to look up or add.</param>
+        /// <param name="valueProducer">A function that takes the key and produces a new value if the key is not found.</param>
+        /// <returns>The existing value if the key exists, otherwise the newly added value.</returns>
+        /// <remarks>
+        /// This overload allows the value producer to use the key when creating a new value.
+        /// Optimized for ConcurrentDictionary using thread-safe operations.
+        /// Null handling: Throws if dictionary or valueProducer is null.
+        /// Thread-safe: Yes, if using ConcurrentDictionary. No, for other dictionary types.
+        /// Performance: O(1) average case for hash-based dictionaries.
+        /// </remarks>
+        /// <exception cref="ArgumentNullException">Thrown if dictionary or valueProducer is null.</exception>
         public static V GetOrAdd<K, V>(
             this IDictionary<K, V> dictionary,
             K key,
@@ -49,6 +86,22 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return dictionary[key] = valueProducer(key);
         }
 
+        /// <summary>
+        /// Gets an existing value from a read-only dictionary or returns a default value if the key doesn't exist.
+        /// </summary>
+        /// <typeparam name="K">The type of keys in the dictionary.</typeparam>
+        /// <typeparam name="V">The type of values in the dictionary.</typeparam>
+        /// <param name="dictionary">The read-only dictionary to query.</param>
+        /// <param name="key">The key to look up.</param>
+        /// <param name="valueProducer">A function that produces a default value if the key is not found.</param>
+        /// <returns>The existing value if the key exists, otherwise the value produced by valueProducer.</returns>
+        /// <remarks>
+        /// Does not modify the dictionary.
+        /// Null handling: Throws if dictionary or valueProducer is null.
+        /// Thread-safe: Yes, as it only reads from the dictionary.
+        /// Performance: O(1) average case for hash-based dictionaries.
+        /// </remarks>
+        /// <exception cref="ArgumentNullException">Thrown if dictionary or valueProducer is null.</exception>
         public static V GetOrElse<K, V>(
             this IReadOnlyDictionary<K, V> dictionary,
             K key,
@@ -63,6 +116,23 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return valueProducer.Invoke();
         }
 
+        /// <summary>
+        /// Gets an existing value from a read-only dictionary or returns a default value if the key doesn't exist.
+        /// </summary>
+        /// <typeparam name="K">The type of keys in the dictionary.</typeparam>
+        /// <typeparam name="V">The type of values in the dictionary.</typeparam>
+        /// <param name="dictionary">The read-only dictionary to query.</param>
+        /// <param name="key">The key to look up.</param>
+        /// <param name="valueProducer">A function that takes the key and produces a default value if the key is not found.</param>
+        /// <returns>The existing value if the key exists, otherwise the value produced by valueProducer.</returns>
+        /// <remarks>
+        /// This overload allows the value producer to use the key when creating a default value.
+        /// Does not modify the dictionary.
+        /// Null handling: Throws if dictionary or valueProducer is null.
+        /// Thread-safe: Yes, as it only reads from the dictionary.
+        /// Performance: O(1) average case for hash-based dictionaries.
+        /// </remarks>
+        /// <exception cref="ArgumentNullException">Thrown if dictionary or valueProducer is null.</exception>
         public static V GetOrElse<K, V>(
             this IReadOnlyDictionary<K, V> dictionary,
             K key,
@@ -77,6 +147,22 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return valueProducer.Invoke(key);
         }
 
+        /// <summary>
+        /// Gets an existing value from the dictionary or adds a new instance if the key doesn't exist.
+        /// </summary>
+        /// <typeparam name="K">The type of keys in the dictionary.</typeparam>
+        /// <typeparam name="V">The type of values in the dictionary. Must have a parameterless constructor.</typeparam>
+        /// <param name="dictionary">The dictionary to query or modify.</param>
+        /// <param name="key">The key to look up or add.</param>
+        /// <returns>The existing value if the key exists, otherwise a newly created instance of V.</returns>
+        /// <remarks>
+        /// Requires that V has a parameterless constructor.
+        /// Optimized for ConcurrentDictionary using thread-safe operations.
+        /// Null handling: Throws if dictionary is null.
+        /// Thread-safe: Yes, if using ConcurrentDictionary. No, for other dictionary types.
+        /// Performance: O(1) average case for hash-based dictionaries. Adds object allocation overhead for new instances.
+        /// </remarks>
+        /// <exception cref="ArgumentNullException">Thrown if dictionary is null.</exception>
         public static V GetOrAdd<K, V>(this IDictionary<K, V> dictionary, K key)
             where V : new()
         {
@@ -97,11 +183,44 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return dictionary[key] = new V();
         }
 
+        /// <summary>
+        /// Gets an existing value from a read-only dictionary or returns the specified default value if the key doesn't exist.
+        /// </summary>
+        /// <typeparam name="K">The type of keys in the dictionary.</typeparam>
+        /// <typeparam name="V">The type of values in the dictionary.</typeparam>
+        /// <param name="dictionary">The read-only dictionary to query.</param>
+        /// <param name="key">The key to look up.</param>
+        /// <param name="value">The default value to return if the key is not found.</param>
+        /// <returns>The existing value if the key exists, otherwise the specified default value.</returns>
+        /// <remarks>
+        /// Does not modify the dictionary.
+        /// Null handling: Returns the default value if dictionary is null or key doesn't exist.
+        /// Thread-safe: Yes, as it only reads from the dictionary.
+        /// Performance: O(1) average case for hash-based dictionaries.
+        /// </remarks>
         public static V GetOrElse<K, V>(this IReadOnlyDictionary<K, V> dictionary, K key, V value)
         {
             return dictionary.GetValueOrDefault(key, value);
         }
 
+        /// <summary>
+        /// Adds a new key-value pair or updates an existing value in the dictionary.
+        /// </summary>
+        /// <typeparam name="K">The type of keys in the dictionary.</typeparam>
+        /// <typeparam name="V">The type of values in the dictionary.</typeparam>
+        /// <param name="dictionary">The dictionary to modify.</param>
+        /// <param name="key">The key to add or update.</param>
+        /// <param name="creator">A function that creates a value if the key doesn't exist.</param>
+        /// <param name="updater">A function that updates the value if the key exists.</param>
+        /// <returns>The final value that was added or updated.</returns>
+        /// <remarks>
+        /// Optimized for ConcurrentDictionary using thread-safe AddOrUpdate.
+        /// For non-concurrent dictionaries, uses TryGetValue followed by direct assignment.
+        /// Null handling: Throws if dictionary, creator, or updater is null.
+        /// Thread-safe: Yes, if using ConcurrentDictionary. No, for other dictionary types.
+        /// Performance: O(1) average case for hash-based dictionaries.
+        /// </remarks>
+        /// <exception cref="ArgumentNullException">Thrown if dictionary, creator, or updater is null.</exception>
         public static V AddOrUpdate<K, V>(
             this IDictionary<K, V> dictionary,
             K key,
@@ -121,6 +240,23 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return latest;
         }
 
+        /// <summary>
+        /// Tries to add a new key-value pair to the dictionary, or returns the existing value if the key already exists.
+        /// </summary>
+        /// <typeparam name="K">The type of keys in the dictionary.</typeparam>
+        /// <typeparam name="V">The type of values in the dictionary.</typeparam>
+        /// <param name="dictionary">The dictionary to modify.</param>
+        /// <param name="key">The key to add.</param>
+        /// <param name="creator">A function that creates a value if the key doesn't exist.</param>
+        /// <returns>The existing value if the key exists, otherwise the newly created value.</returns>
+        /// <remarks>
+        /// Unlike GetOrAdd, this always returns the value that was in the dictionary after the operation.
+        /// Optimized for ConcurrentDictionary using thread-safe AddOrUpdate.
+        /// Null handling: Throws if dictionary or creator is null.
+        /// Thread-safe: Yes, if using ConcurrentDictionary. No, for other dictionary types.
+        /// Performance: O(1) average case for hash-based dictionaries.
+        /// </remarks>
+        /// <exception cref="ArgumentNullException">Thrown if dictionary or creator is null.</exception>
         public static V TryAdd<K, V>(this IDictionary<K, V> dictionary, K key, Func<K, V> creator)
         {
             if (dictionary is ConcurrentDictionary<K, V> concurrentDictionary)
@@ -142,6 +278,23 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return value;
         }
 
+        /// <summary>
+        /// Merges two read-only dictionaries into a new dictionary, with values from the right-hand side overwriting values from the left-hand side for duplicate keys.
+        /// </summary>
+        /// <typeparam name="K">The type of keys in the dictionaries.</typeparam>
+        /// <typeparam name="V">The type of values in the dictionaries.</typeparam>
+        /// <param name="lhs">The left-hand side dictionary (lower priority).</param>
+        /// <param name="rhs">The right-hand side dictionary (higher priority, overwrites lhs).</param>
+        /// <param name="creator">Optional function to create the result dictionary. If null, a new Dictionary is created.</param>
+        /// <returns>A new dictionary containing all entries from both dictionaries, with rhs values taking precedence.</returns>
+        /// <remarks>
+        /// Values from rhs overwrite values from lhs for any duplicate keys.
+        /// Does not modify the input dictionaries.
+        /// Null handling: Handles null or empty dictionaries gracefully.
+        /// Thread-safe: No. The returned dictionary is not thread-safe unless created with a concurrent type.
+        /// Performance: O(n+m) where n and m are the sizes of the input dictionaries.
+        /// Allocations: Creates a new dictionary. Use the creator parameter for custom capacity or implementation.
+        /// </remarks>
         public static Dictionary<K, V> Merge<K, V>(
             this IReadOnlyDictionary<K, V> lhs,
             IReadOnlyDictionary<K, V> rhs,
@@ -168,6 +321,21 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return result;
         }
 
+        /// <summary>
+        /// Attempts to remove a key-value pair from the dictionary and returns the removed value.
+        /// </summary>
+        /// <typeparam name="K">The type of keys in the dictionary.</typeparam>
+        /// <typeparam name="V">The type of values in the dictionary.</typeparam>
+        /// <param name="dictionary">The dictionary to modify.</param>
+        /// <param name="key">The key to remove.</param>
+        /// <param name="value">The value that was removed, or default if the key wasn't found.</param>
+        /// <returns>True if the key was found and removed, false otherwise.</returns>
+        /// <remarks>
+        /// Optimized for ConcurrentDictionary using thread-safe TryRemove.
+        /// Null handling: Returns false if dictionary is null.
+        /// Thread-safe: Yes, if using ConcurrentDictionary. No, for other dictionary types.
+        /// Performance: O(1) average case for hash-based dictionaries.
+        /// </remarks>
         public static bool TryRemove<K, V>(this IDictionary<K, V> dictionary, K key, out V value)
         {
             if (dictionary is ConcurrentDictionary<K, V> concurrentDictionary)
@@ -179,12 +347,22 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         }
 
         /// <summary>
-        ///  </summary>
-        /// <typeparam name="K">Key type.</typeparam>
-        /// <typeparam name="V">Value type.</typeparam>
-        /// <param name="lhs">Basis dictionary.</param>
-        /// <param name="rhs">Changed dictionary.</param>
-        /// <returns>All elements of rhs that either don't exist in or are different from lhs</returns>
+        /// Computes the difference between two dictionaries, returning entries from rhs that differ from or don't exist in lhs.
+        /// </summary>
+        /// <typeparam name="K">The type of keys in the dictionaries.</typeparam>
+        /// <typeparam name="V">The type of values in the dictionaries.</typeparam>
+        /// <param name="lhs">The basis dictionary for comparison.</param>
+        /// <param name="rhs">The changed dictionary to compare against.</param>
+        /// <param name="creator">Optional function to create the result dictionary. If null, a new Dictionary is created with capacity of rhs.Count.</param>
+        /// <returns>A dictionary containing all entries from rhs that either don't exist in lhs or have different values.</returns>
+        /// <remarks>
+        /// Uses Equals to compare values.
+        /// Does not modify the input dictionaries.
+        /// Null handling: Handles null or empty dictionaries gracefully.
+        /// Thread-safe: No.
+        /// Performance: O(m) where m is the size of rhs.
+        /// Allocations: Creates a new dictionary. Use the creator parameter for custom capacity.
+        /// </remarks>
         public static Dictionary<K, V> Difference<K, V>(
             this IReadOnlyDictionary<K, V> lhs,
             IReadOnlyDictionary<K, V> rhs,
@@ -206,6 +384,22 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return result;
         }
 
+        /// <summary>
+        /// Creates a reversed dictionary where values become keys and keys become values.
+        /// </summary>
+        /// <typeparam name="K">The type of keys in the input dictionary.</typeparam>
+        /// <typeparam name="V">The type of values in the input dictionary.</typeparam>
+        /// <param name="dictionary">The dictionary to reverse.</param>
+        /// <param name="creator">Optional function to create the result dictionary. If null, a new Dictionary is created with capacity of dictionary.Count.</param>
+        /// <returns>A new dictionary where values from the input become keys and keys become values.</returns>
+        /// <remarks>
+        /// If multiple keys map to the same value in the input, only the last encountered key will be retained.
+        /// Does not modify the input dictionary.
+        /// Null handling: Handles null or empty dictionaries gracefully.
+        /// Thread-safe: No.
+        /// Performance: O(n) where n is the size of the input dictionary.
+        /// Allocations: Creates a new dictionary. Duplicate values will cause overwriting.
+        /// </remarks>
         public static Dictionary<V, K> Reverse<K, V>(
             this IReadOnlyDictionary<K, V> dictionary,
             Func<Dictionary<V, K>> creator = null
@@ -220,11 +414,42 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return output;
         }
 
+        /// <summary>
+        /// Converts a read-only dictionary to a mutable Dictionary.
+        /// </summary>
+        /// <typeparam name="K">The type of keys in the dictionary.</typeparam>
+        /// <typeparam name="V">The type of values in the dictionary.</typeparam>
+        /// <param name="dictionary">The read-only dictionary to convert.</param>
+        /// <returns>A new mutable Dictionary containing all entries from the input.</returns>
+        /// <remarks>
+        /// Creates a new Dictionary instance; modifications won't affect the original.
+        /// Null handling: Throws ArgumentNullException if dictionary is null.
+        /// Thread-safe: No.
+        /// Performance: O(n) where n is the size of the dictionary.
+        /// Allocations: Creates a new dictionary with the same size as the input.
+        /// </remarks>
+        /// <exception cref="ArgumentNullException">Thrown if dictionary is null.</exception>
         public static Dictionary<K, V> ToDictionary<K, V>(this IReadOnlyDictionary<K, V> dictionary)
         {
             return new Dictionary<K, V>(dictionary);
         }
 
+        /// <summary>
+        /// Converts a read-only dictionary to a mutable Dictionary with a custom equality comparer.
+        /// </summary>
+        /// <typeparam name="K">The type of keys in the dictionary.</typeparam>
+        /// <typeparam name="V">The type of values in the dictionary.</typeparam>
+        /// <param name="dictionary">The read-only dictionary to convert.</param>
+        /// <param name="comparer">The equality comparer to use for keys.</param>
+        /// <returns>A new mutable Dictionary containing all entries from the input, using the specified comparer.</returns>
+        /// <remarks>
+        /// Creates a new Dictionary instance; modifications won't affect the original.
+        /// Null handling: Throws ArgumentNullException if dictionary is null.
+        /// Thread-safe: No.
+        /// Performance: O(n) where n is the size of the dictionary.
+        /// Allocations: Creates a new dictionary with the same size as the input.
+        /// </remarks>
+        /// <exception cref="ArgumentNullException">Thrown if dictionary is null.</exception>
         public static Dictionary<K, V> ToDictionary<K, V>(
             this IReadOnlyDictionary<K, V> dictionary,
             IEqualityComparer<K> comparer
@@ -233,6 +458,21 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return new Dictionary<K, V>(dictionary, comparer);
         }
 
+        /// <summary>
+        /// Converts an enumerable of key-value pairs to a Dictionary.
+        /// </summary>
+        /// <typeparam name="K">The type of keys in the dictionary.</typeparam>
+        /// <typeparam name="V">The type of values in the dictionary.</typeparam>
+        /// <param name="prettyMuchADictionary">An enumerable of key-value pairs.</param>
+        /// <returns>A new Dictionary containing all entries from the input enumerable.</returns>
+        /// <remarks>
+        /// Null handling: Throws ArgumentNullException if prettyMuchADictionary is null or contains null keys.
+        /// Thread-safe: No.
+        /// Performance: O(n) where n is the number of key-value pairs.
+        /// Allocations: Creates a new dictionary.
+        /// </remarks>
+        /// <exception cref="ArgumentNullException">Thrown if prettyMuchADictionary is null or contains null keys.</exception>
+        /// <exception cref="ArgumentException">Thrown if duplicate keys are encountered.</exception>
         public static Dictionary<K, V> ToDictionary<K, V>(
             this IEnumerable<KeyValuePair<K, V>> prettyMuchADictionary
         )
@@ -240,6 +480,22 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return prettyMuchADictionary.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
         }
 
+        /// <summary>
+        /// Converts an enumerable of key-value pairs to a Dictionary with a custom equality comparer.
+        /// </summary>
+        /// <typeparam name="K">The type of keys in the dictionary.</typeparam>
+        /// <typeparam name="V">The type of values in the dictionary.</typeparam>
+        /// <param name="prettyMuchADictionary">An enumerable of key-value pairs.</param>
+        /// <param name="comparer">The equality comparer to use for keys.</param>
+        /// <returns>A new Dictionary containing all entries from the input enumerable, using the specified comparer.</returns>
+        /// <remarks>
+        /// Null handling: Throws ArgumentNullException if prettyMuchADictionary is null or contains null keys.
+        /// Thread-safe: No.
+        /// Performance: O(n) where n is the number of key-value pairs.
+        /// Allocations: Creates a new dictionary.
+        /// </remarks>
+        /// <exception cref="ArgumentNullException">Thrown if prettyMuchADictionary is null or contains null keys.</exception>
+        /// <exception cref="ArgumentException">Thrown if duplicate keys are encountered.</exception>
         public static Dictionary<K, V> ToDictionary<K, V>(
             this IEnumerable<KeyValuePair<K, V>> prettyMuchADictionary,
             IEqualityComparer<K> comparer
@@ -248,6 +504,21 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return prettyMuchADictionary.ToDictionary(kvp => kvp.Key, kvp => kvp.Value, comparer);
         }
 
+        /// <summary>
+        /// Converts an enumerable of tuples to a Dictionary.
+        /// </summary>
+        /// <typeparam name="K">The type of keys in the dictionary.</typeparam>
+        /// <typeparam name="V">The type of values in the dictionary.</typeparam>
+        /// <param name="prettyMuchADictionary">An enumerable of (key, value) tuples.</param>
+        /// <returns>A new Dictionary containing all entries from the input enumerable.</returns>
+        /// <remarks>
+        /// Null handling: Throws ArgumentNullException if prettyMuchADictionary is null or contains null keys.
+        /// Thread-safe: No.
+        /// Performance: O(n) where n is the number of tuples.
+        /// Allocations: Creates a new dictionary.
+        /// </remarks>
+        /// <exception cref="ArgumentNullException">Thrown if prettyMuchADictionary is null or contains null keys.</exception>
+        /// <exception cref="ArgumentException">Thrown if duplicate keys are encountered.</exception>
         public static Dictionary<K, V> ToDictionary<K, V>(
             this IEnumerable<(K, V)> prettyMuchADictionary
         )
@@ -255,6 +526,22 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return prettyMuchADictionary.ToDictionary(kvp => kvp.Item1, kvp => kvp.Item2);
         }
 
+        /// <summary>
+        /// Converts an enumerable of tuples to a Dictionary with a custom equality comparer.
+        /// </summary>
+        /// <typeparam name="K">The type of keys in the dictionary.</typeparam>
+        /// <typeparam name="V">The type of values in the dictionary.</typeparam>
+        /// <param name="prettyMuchADictionary">An enumerable of (key, value) tuples.</param>
+        /// <param name="comparer">The equality comparer to use for keys.</param>
+        /// <returns>A new Dictionary containing all entries from the input enumerable, using the specified comparer.</returns>
+        /// <remarks>
+        /// Null handling: Throws ArgumentNullException if prettyMuchADictionary is null or contains null keys.
+        /// Thread-safe: No.
+        /// Performance: O(n) where n is the number of tuples.
+        /// Allocations: Creates a new dictionary.
+        /// </remarks>
+        /// <exception cref="ArgumentNullException">Thrown if prettyMuchADictionary is null or contains null keys.</exception>
+        /// <exception cref="ArgumentException">Thrown if duplicate keys are encountered.</exception>
         public static Dictionary<K, V> ToDictionary<K, V>(
             this IEnumerable<(K, V)> prettyMuchADictionary,
             IEqualityComparer<K> comparer
@@ -263,6 +550,22 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return prettyMuchADictionary.ToDictionary(kvp => kvp.Item1, kvp => kvp.Item2, comparer);
         }
 
+        /// <summary>
+        /// Compares two read-only dictionaries for content equality using IEquatable comparison for values.
+        /// </summary>
+        /// <typeparam name="K">The type of keys in the dictionaries.</typeparam>
+        /// <typeparam name="V">The type of values in the dictionaries, must implement IEquatable.</typeparam>
+        /// <param name="dictionary">The first dictionary to compare.</param>
+        /// <param name="other">The second dictionary to compare.</param>
+        /// <returns>True if both dictionaries have the same keys with equal values, false otherwise.</returns>
+        /// <remarks>
+        /// Returns true if both dictionaries are the same reference or both are null.
+        /// Returns false if only one is null or if they have different counts.
+        /// Returns true for empty dictionaries with matching counts.
+        /// Null handling: Handles null dictionaries gracefully, returning true only if both are null.
+        /// Thread-safe: Yes, as it only reads from the dictionaries.
+        /// Performance: O(n) where n is the size of the dictionaries.
+        /// </remarks>
         public static bool ContentEquals<K, V>(
             this IReadOnlyDictionary<K, V> dictionary,
             IReadOnlyDictionary<K, V> other
@@ -300,6 +603,21 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return true;
         }
 
+        /// <summary>
+        /// Deconstructs a KeyValuePair into separate key and value variables.
+        /// </summary>
+        /// <typeparam name="K">The type of the key.</typeparam>
+        /// <typeparam name="V">The type of the value.</typeparam>
+        /// <param name="kvp">The KeyValuePair to deconstruct.</param>
+        /// <param name="key">The output variable for the key.</param>
+        /// <param name="value">The output variable for the value.</param>
+        /// <remarks>
+        /// Enables pattern matching and tuple syntax for KeyValuePairs.
+        /// Example: var (key, value) = dictionary.First();
+        /// Null handling: No special handling; will work with null keys or values if V/K are nullable.
+        /// Thread-safe: Yes.
+        /// Performance: O(1), no allocations.
+        /// </remarks>
         public static void Deconstruct<K, V>(this KeyValuePair<K, V> kvp, out K key, out V value)
         {
             key = kvp.Key;

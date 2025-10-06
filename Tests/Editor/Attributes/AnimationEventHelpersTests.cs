@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Tests.Attributes
+﻿namespace WallstopStudios.UnityHelpers.Tests.Editor.Attributes
 {
     using System;
     using System.Collections.Generic;
@@ -7,6 +7,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
     using NUnit.Framework;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Editor.Core.Helper;
 
     [TestFixture]
     public sealed class AnimationEventHelpersTests
@@ -74,8 +75,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [Test]
         public void GetPossibleAnimatorEventsReturnsOnlySupportedSignaturesFromDeclaringType()
         {
-            List<MethodInfo> methods = typeof(AnimationEventSignatureHost)
-                .GetPossibleAnimatorEventsForType()
+            List<MethodInfo> methods = AnimationEventHelpers
+                .GetPossibleAnimatorEventsForType(typeof(AnimationEventSignatureHost))
                 .Where(method => method.DeclaringType == typeof(AnimationEventSignatureHost))
                 .ToList();
 

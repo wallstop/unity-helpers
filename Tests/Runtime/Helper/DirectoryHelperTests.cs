@@ -200,7 +200,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void AbsoluteToUnityRelativePathWithDataPathReturnsAssets()
         {
-            string dataPath = Application.dataPath.Replace('\\', '/');
+            string dataPath = Application.dataPath.SanitizePath();
             string result = DirectoryHelper.AbsoluteToUnityRelativePath(dataPath);
             Assert.That(result, Does.Contain("Assets").Or.EqualTo(string.Empty));
         }

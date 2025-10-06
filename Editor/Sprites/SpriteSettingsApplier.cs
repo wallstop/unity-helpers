@@ -8,9 +8,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     using System.Linq;
     using UnityEditor;
     using UnityEngine;
-    using Core.Attributes;
-    using Core.Extension;
     using CustomEditors;
+    using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Core.Extension;
     using Object = UnityEngine.Object;
 
     [Serializable]

@@ -11,7 +11,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
     /// <summary>
     /// Automatically assigns child components (components down the transform hierarchy) to the decorated field.
-    /// Supports single components, arrays, and List&lt;T&gt; collection types.
+    /// Supports single components, arrays, List<T>, and HashSet<T> collection types.
     /// </summary>
     /// <remarks>
     /// Call <see cref="ChildComponentExtensions.AssignChildComponents"/> to populate the field.
@@ -74,26 +74,23 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                             Buffers<Component>.List.Get();
                         List<Component> cache = cacheResource.resource;
 
-                        using PooledResource<List<Component>> filteredBuffer =
-                            Buffers<Component>.List.Get(out List<Component> filtered);
                         CollectChildComponents(component, metadata, childBuffer, cache);
 
-                        FilterComponents(
+                        int filteredCount = FilterComponentsInPlace(
                             cache,
                             metadata.attribute,
                             metadata.elementType,
-                            metadata.isInterface,
-                            filtered
+                            metadata.isInterface
                         );
 
-                        Array correctTypedArray = metadata.arrayCreator(filtered.Count);
-                        for (int i = 0; i < filtered.Count; ++i)
+                        Array correctTypedArray = metadata.arrayCreator(filteredCount);
+                        for (int i = 0; i < filteredCount; ++i)
                         {
-                            correctTypedArray.SetValue(filtered[i], i);
+                            correctTypedArray.SetValue(cache[i], i);
                         }
 
                         metadata.setter(component, correctTypedArray);
-                        foundChild = filtered.Count > 0;
+                        foundChild = filteredCount > 0;
                         break;
                     }
                     case FieldKind.List:
@@ -104,24 +101,46 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
                         CollectChildComponents(component, metadata, childBuffer, cache);
 
-                        using PooledResource<List<Component>> filteredBuffer =
-                            Buffers<Component>.List.Get(out List<Component> filtered);
-                        FilterComponents(
+                        int filteredCount = FilterComponentsInPlace(
                             cache,
                             metadata.attribute,
                             metadata.elementType,
-                            metadata.isInterface,
-                            filtered
+                            metadata.isInterface
                         );
 
-                        IList instance = metadata.listCreator(filtered.Count);
-                        for (int i = 0; i < filtered.Count; ++i)
+                        IList instance = metadata.listCreator(filteredCount);
+                        for (int i = 0; i < filteredCount; ++i)
                         {
-                            instance.Add(filtered[i]);
+                            instance.Add(cache[i]);
                         }
 
-                        foundChild = filtered.Count > 0;
                         metadata.setter(component, instance);
+                        foundChild = filteredCount > 0;
+                        break;
+                    }
+                    case FieldKind.HashSet:
+                    {
+                        using PooledResource<List<Component>> cacheResource =
+                            Buffers<Component>.List.Get();
+                        List<Component> cache = cacheResource.resource;
+
+                        CollectChildComponents(component, metadata, childBuffer, cache);
+
+                        int filteredCount = FilterComponentsInPlace(
+                            cache,
+                            metadata.attribute,
+                            metadata.elementType,
+                            metadata.isInterface
+                        );
+
+                        object instance = metadata.hashSetCreator(filteredCount);
+                        for (int i = 0; i < filteredCount; ++i)
+                        {
+                            metadata.hashSetAdder(instance, cache[i]);
+                        }
+
+                        metadata.setter(component, instance);
+                        foundChild = filteredCount > 0;
                         break;
                     }
                     default:
@@ -129,9 +148,9 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                         foundChild = false;
                         Component childComponent = null;
 
-                        using PooledResource<List<Component>> childComponentBuffer =
-                            Buffers<Component>.List.Get();
-                        List<Component> childComponents = childComponentBuffer.resource;
+                        using PooledResource<List<Component>> scratch = Buffers<Component>.List.Get(
+                            out List<Component> components
+                        );
 
                         foreach (
                             Transform child in component.IterateOverAllChildrenRecursivelyBreadthFirst(
@@ -141,32 +160,18 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                             )
                         )
                         {
-                            childComponents.Clear();
-                            using PooledResource<List<Component>> componentBuffer =
-                                Buffers<Component>.List.Get(out List<Component> components);
-                            GetComponentsOfType(
+                            Component resolved = TryResolveSingleComponent(
                                 child.gameObject,
+                                metadata.attribute,
                                 metadata.elementType,
                                 metadata.isInterface,
                                 metadata.attribute.AllowInterfaces,
                                 components
                             );
 
-                            childComponents.AddRange(components);
-                            using PooledResource<List<Component>> filteredBuffer =
-                                Buffers<Component>.List.Get(out List<Component> filtered);
-
-                            FilterComponents(
-                                childComponents,
-                                metadata.attribute,
-                                metadata.elementType,
-                                metadata.isInterface,
-                                filtered
-                            );
-
-                            if (filtered.Count > 0)
+                            if (resolved != null)
                             {
-                                childComponent = filtered[0];
+                                childComponent = resolved;
                                 foundChild = true;
                                 break;
                             }
@@ -195,9 +200,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             List<Component> cache
         )
         {
-            using PooledResource<List<Component>> childComponentBuffer =
-                Buffers<Component>.List.Get();
-            List<Component> childComponents = childComponentBuffer.resource;
+            cache.Clear();
 
             using PooledResource<List<Component>> componentBuffer = Buffers<Component>.List.Get(
                 out List<Component> components
@@ -210,7 +213,6 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 )
             )
             {
-                childComponents.Clear();
                 GetComponentsOfType(
                     child.gameObject,
                     metadata.elementType,
@@ -218,8 +220,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     metadata.attribute.AllowInterfaces,
                     components
                 );
-                childComponents.AddRange(components);
-                cache.AddRange(childComponents);
+                cache.AddRange(components);
             }
 
             return cache;

@@ -3,6 +3,7 @@
     using NUnit.Framework;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure;
+    using WallstopStudios.UnityHelpers.Core.Math;
 
     [TestFixture]
     public sealed class SphereTests
@@ -527,6 +528,291 @@
             bool boundingBox3DResult = sphere.Overlaps(BoundingBox3D.FromClosedBounds(bounds));
 
             Assert.AreEqual(boundingBox3DResult, boundsResult);
+        }
+
+        [Test]
+        public void IntersectsLineReturnsTrueForLineThroughSphere()
+        {
+            Sphere sphere = new(Vector3.zero, 5f);
+            Line3D line = new(new Vector3(-10f, 0f, 0f), new Vector3(10f, 0f, 0f));
+            Assert.IsTrue(sphere.Intersects(line));
+        }
+
+        [Test]
+        public void IntersectsLineReturnsTrueForLineTouchingSphere()
+        {
+            Sphere sphere = new(Vector3.zero, 5f);
+            Line3D line = new(new Vector3(-10f, 5f, 0f), new Vector3(10f, 5f, 0f));
+            Assert.IsTrue(sphere.Intersects(line));
+        }
+
+        [Test]
+        public void IntersectsLineReturnsFalseForLineNotIntersectingSphere()
+        {
+            Sphere sphere = new(Vector3.zero, 5f);
+            Line3D line = new(new Vector3(-10f, 10f, 0f), new Vector3(10f, 10f, 0f));
+            Assert.IsFalse(sphere.Intersects(line));
+        }
+
+        [Test]
+        public void IntersectsLineReturnsTrueForLineEndpointInsideSphere()
+        {
+            Sphere sphere = new(Vector3.zero, 5f);
+            Line3D line = new(Vector3.zero, new Vector3(10f, 10f, 10f));
+            Assert.IsTrue(sphere.Intersects(line));
+        }
+
+        [Test]
+        public void IntersectsLineReturnsFalseForLineSegmentNotReachingSphere()
+        {
+            Sphere sphere = new(Vector3.zero, 2f);
+            Line3D line = new(new Vector3(10f, 0f, 0f), new Vector3(20f, 0f, 0f));
+            Assert.IsFalse(sphere.Intersects(line));
+        }
+
+        [Test]
+        public void IntersectsLineHandlesVerticalLine()
+        {
+            Sphere sphere = new(new Vector3(5f, 5f, 5f), 3f);
+            Line3D verticalIntersecting = new(new Vector3(5f, 0f, 5f), new Vector3(5f, 10f, 5f));
+            Line3D verticalNotIntersecting = new(
+                new Vector3(10f, 0f, 5f),
+                new Vector3(10f, 10f, 5f)
+            );
+            Assert.IsTrue(sphere.Intersects(verticalIntersecting));
+            Assert.IsFalse(sphere.Intersects(verticalNotIntersecting));
+        }
+
+        [Test]
+        public void IntersectsLineHandlesDiagonalLine3D()
+        {
+            Sphere sphere = new(new Vector3(5f, 5f, 5f), 3f);
+            Line3D diagonal = new(Vector3.zero, new Vector3(10f, 10f, 10f));
+            Assert.IsTrue(sphere.Intersects(diagonal));
+        }
+
+        [Test]
+        public void IntersectsLineHandlesSmallSphere()
+        {
+            Sphere sphere = new(new Vector3(5f, 0f, 0f), 0.1f);
+            Line3D line = new(Vector3.zero, new Vector3(10f, 0f, 0f));
+            Assert.IsTrue(sphere.Intersects(line));
+        }
+
+        [Test]
+        public void IntersectsLineHandlesLineInAllThreePlanes()
+        {
+            Sphere sphere = new(Vector3.zero, 5f);
+            Line3D lineXY = new(new Vector3(-10f, 3f, 0f), new Vector3(10f, 3f, 0f));
+            Line3D lineYZ = new(new Vector3(0f, -10f, 3f), new Vector3(0f, 10f, 3f));
+            Line3D lineXZ = new(new Vector3(3f, 0f, -10f), new Vector3(3f, 0f, 10f));
+            Assert.IsTrue(sphere.Intersects(lineXY));
+            Assert.IsTrue(sphere.Intersects(lineYZ));
+            Assert.IsTrue(sphere.Intersects(lineXZ));
+        }
+
+        [Test]
+        public void DistanceToLineReturnsZeroForIntersectingLine()
+        {
+            Sphere sphere = new(Vector3.zero, 5f);
+            Line3D line = new(new Vector3(-10f, 0f, 0f), new Vector3(10f, 0f, 0f));
+            Assert.AreEqual(0f, sphere.DistanceToLine(line), 0.0001f);
+        }
+
+        [Test]
+        public void DistanceToLineReturnsCorrectDistanceForNonIntersectingLine()
+        {
+            Sphere sphere = new(Vector3.zero, 2f);
+            Line3D line = new(new Vector3(-10f, 5f, 0f), new Vector3(10f, 5f, 0f));
+            Assert.AreEqual(3f, sphere.DistanceToLine(line), 0.0001f);
+        }
+
+        [Test]
+        public void DistanceToLineReturnsZeroForTouchingLine()
+        {
+            Sphere sphere = new(Vector3.zero, 5f);
+            Line3D line = new(new Vector3(-10f, 5f, 0f), new Vector3(10f, 5f, 0f));
+            Assert.AreEqual(0f, sphere.DistanceToLine(line), 0.0001f);
+        }
+
+        [Test]
+        public void DistanceToLineHandlesLineSegmentNearSphere()
+        {
+            Sphere sphere = new(Vector3.zero, 2f);
+            Line3D line = new(new Vector3(5f, 0f, 0f), new Vector3(10f, 0f, 0f));
+            Assert.AreEqual(3f, sphere.DistanceToLine(line), 0.0001f);
+        }
+
+        [Test]
+        public void ClosestPointOnLineReturnsPointOnLineSegment()
+        {
+            Sphere sphere = new(new Vector3(5f, 5f, 5f), 2f);
+            Line3D line = new(Vector3.zero, new Vector3(10f, 0f, 0f));
+            Vector3 closest = sphere.ClosestPointOnLine(line);
+            Assert.AreEqual(5f, closest.x, 0.0001f);
+            Assert.AreEqual(0f, closest.y, 0.0001f);
+            Assert.AreEqual(0f, closest.z, 0.0001f);
+        }
+
+        [Test]
+        public void ClosestPointOnLineReturnsCenterProjection()
+        {
+            Sphere sphere = new(new Vector3(5f, 3f, 2f), 1f);
+            Line3D line = new(Vector3.zero, new Vector3(10f, 0f, 0f));
+            Vector3 closest = sphere.ClosestPointOnLine(line);
+            Assert.AreEqual(5f, closest.x, 0.0001f);
+            Assert.AreEqual(0f, closest.y, 0.0001f);
+            Assert.AreEqual(0f, closest.z, 0.0001f);
+        }
+
+        [Test]
+        public void ClosestPointOnLineHandlesEndpointClamping()
+        {
+            Sphere sphere = new(new Vector3(15f, 5f, 5f), 2f);
+            Line3D line = new(Vector3.zero, new Vector3(10f, 0f, 0f));
+            Vector3 closest = sphere.ClosestPointOnLine(line);
+            Assert.AreEqual(10f, closest.x, 0.0001f);
+            Assert.AreEqual(0f, closest.y, 0.0001f);
+            Assert.AreEqual(0f, closest.z, 0.0001f);
+        }
+
+        [Test]
+        public void ClosestPointOnLineHandlesVerticalLine3D()
+        {
+            Sphere sphere = new(new Vector3(5f, 5f, 8f), 2f);
+            Line3D line = new(new Vector3(8f, 0f, 8f), new Vector3(8f, 10f, 8f));
+            Vector3 closest = sphere.ClosestPointOnLine(line);
+            Assert.AreEqual(8f, closest.x, 0.0001f);
+            Assert.AreEqual(5f, closest.y, 0.0001f);
+            Assert.AreEqual(8f, closest.z, 0.0001f);
+        }
+
+        [Test]
+        public void ClosestPointOnLineHandlesDiagonalLine3D()
+        {
+            Sphere sphere = new(new Vector3(0f, 5f, 0f), 1f);
+            Line3D line = new(Vector3.zero, new Vector3(10f, 10f, 10f));
+            Vector3 closest = sphere.ClosestPointOnLine(line);
+            float expectedCoord = 5f / 3f;
+            Assert.AreEqual(expectedCoord, closest.x, 0.01f);
+            Assert.AreEqual(expectedCoord, closest.y, 0.01f);
+            Assert.AreEqual(expectedCoord, closest.z, 0.01f);
+        }
+
+        [Test]
+        public void LineIntersectionHandlesZeroRadiusSphere()
+        {
+            Sphere sphere = new(new Vector3(5f, 0f, 0f), 0f);
+            Line3D line = new(Vector3.zero, new Vector3(10f, 0f, 0f));
+            Assert.IsTrue(sphere.Intersects(line));
+        }
+
+        [Test]
+        public void LineIntersectionHandlesZeroLengthLine()
+        {
+            Sphere sphere = new(new Vector3(5f, 5f, 5f), 3f);
+            Line3D pointInsideSphere = new(new Vector3(5f, 5f, 5f), new Vector3(5f, 5f, 5f));
+            Line3D pointOutsideSphere = new(new Vector3(10f, 10f, 10f), new Vector3(10f, 10f, 10f));
+            Assert.IsTrue(sphere.Intersects(pointInsideSphere));
+            Assert.IsFalse(sphere.Intersects(pointOutsideSphere));
+        }
+
+        [Test]
+        public void LineDistanceHandlesParallelLineSegment3D()
+        {
+            Sphere sphere = new(new Vector3(5f, 5f, 5f), 2f);
+            Line3D line = new(Vector3.zero, new Vector3(2f, 0f, 0f));
+            float distance = sphere.DistanceToLine(line);
+            Vector3 closestOnLine = new(2f, 0f, 0f);
+            float expectedDistance = Vector3.Distance(sphere.center, closestOnLine) - sphere.radius;
+            Assert.AreEqual(expectedDistance, distance, 0.01f);
+        }
+
+        [Test]
+        public void LineIntersectionHandlesSphereAtOrigin()
+        {
+            Sphere sphere = new(Vector3.zero, 5f);
+            Line3D lineX = new(new Vector3(-10f, 0f, 0f), new Vector3(10f, 0f, 0f));
+            Line3D lineY = new(new Vector3(0f, -10f, 0f), new Vector3(0f, 10f, 0f));
+            Line3D lineZ = new(new Vector3(0f, 0f, -10f), new Vector3(0f, 0f, 10f));
+            Line3D diagonal = new(new Vector3(-10f, -10f, -10f), new Vector3(10f, 10f, 10f));
+            Assert.IsTrue(sphere.Intersects(lineX));
+            Assert.IsTrue(sphere.Intersects(lineY));
+            Assert.IsTrue(sphere.Intersects(lineZ));
+            Assert.IsTrue(sphere.Intersects(diagonal));
+        }
+
+        [Test]
+        public void LineDistanceHandlesNegativeCoordinates3D()
+        {
+            Sphere sphere = new(new Vector3(-5f, -5f, -5f), 2f);
+            Line3D line = new(new Vector3(-10f, 0f, 0f), new Vector3(0f, 0f, 0f));
+            float distance = sphere.DistanceToLine(line);
+            Assert.Greater(distance, 0f);
+        }
+
+        [Test]
+        public void ClosestPointOnLineHandlesSphereCenterOnLine()
+        {
+            Sphere sphere = new(new Vector3(5f, 0f, 0f), 3f);
+            Line3D line = new(Vector3.zero, new Vector3(10f, 0f, 0f));
+            Vector3 closest = sphere.ClosestPointOnLine(line);
+            Assert.AreEqual(sphere.center, closest);
+        }
+
+        [Test]
+        public void LineIntersectionConsistentWithLineSphereIntersection()
+        {
+            Sphere sphere = new(new Vector3(5f, 5f, 5f), 3f);
+            Line3D line = new(new Vector3(0f, 5f, 5f), new Vector3(10f, 5f, 5f));
+            Assert.AreEqual(line.Intersects(sphere), sphere.Intersects(line));
+        }
+
+        [Test]
+        public void LineDistanceConsistentWithLineSphereDistance()
+        {
+            Sphere sphere = new(new Vector3(5f, 5f, 5f), 3f);
+            Line3D line = new(Vector3.zero, new Vector3(10f, 0f, 0f));
+            Assert.AreEqual(line.DistanceToSphere(sphere), sphere.DistanceToLine(line), 0.0001f);
+        }
+
+        [Test]
+        public void IntersectsLineHandlesSkewLines()
+        {
+            Sphere sphere = new(new Vector3(5f, 5f, 5f), 3f);
+            Line3D skewLine = new(new Vector3(0f, 0f, 10f), new Vector3(10f, 0f, 10f));
+            bool intersects = sphere.Intersects(skewLine);
+            float distanceToCenter = skewLine.DistanceToPoint(sphere.center);
+            Assert.AreEqual(distanceToCenter <= sphere.radius, intersects);
+        }
+
+        [Test]
+        public void ClosestPointOnLineHandlesLineInAllOctants()
+        {
+            Sphere sphere = new(new Vector3(5f, 5f, 5f), 2f);
+            Line3D line1 = new(new Vector3(-10f, -10f, -10f), new Vector3(-5f, -5f, -5f));
+            Line3D line2 = new(new Vector3(15f, 15f, 15f), new Vector3(20f, 20f, 20f));
+            Vector3 closest1 = sphere.ClosestPointOnLine(line1);
+            Vector3 closest2 = sphere.ClosestPointOnLine(line2);
+            Assert.AreEqual(new Vector3(-5f, -5f, -5f), closest1);
+            Assert.AreEqual(new Vector3(15f, 15f, 15f), closest2);
+        }
+
+        [Test]
+        public void LineDistanceHandlesVerySmallSphere()
+        {
+            Sphere sphere = new(new Vector3(5f, 5f, 5f), 0.001f);
+            Line3D line = new(Vector3.zero, new Vector3(10f, 0f, 0f));
+            float distance = sphere.DistanceToLine(line);
+            Assert.Greater(distance, 0f);
+        }
+
+        [Test]
+        public void LineDistanceHandlesVeryLargeSphere()
+        {
+            Sphere sphere = new(Vector3.zero, 1000f);
+            Line3D line = new(new Vector3(500f, 500f, 500f), new Vector3(600f, 600f, 600f));
+            Assert.AreEqual(0f, sphere.DistanceToLine(line), 0.01f);
         }
     }
 }

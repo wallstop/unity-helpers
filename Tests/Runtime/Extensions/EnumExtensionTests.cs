@@ -1,5 +1,6 @@
 namespace WallstopStudios.UnityHelpers.Tests.Extensions
 {
+    using System;
     using System.Collections.Generic;
     using System.Linq;
     using NUnit.Framework;
@@ -679,18 +680,21 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         public void CachedNameDoesNotAllocate()
         {
             // Pre-warm
-            _ = TestEnum.First.ToCachedName();
-            _ = TinyTestEnum.First.ToCachedName();
-            _ = SmallTestEnum.First.ToCachedName();
-            _ = BigTestEnum.First.ToCachedName();
+            for (int i = 0; i < 100; i++)
+            {
+                TestEnum.First.ToCachedName();
+                TinyTestEnum.First.ToCachedName();
+                SmallTestEnum.First.ToCachedName();
+                BigTestEnum.First.ToCachedName();
+            }
 
             Assert.That(
                 () =>
                 {
-                    _ = TestEnum.First.ToCachedName();
-                    _ = TinyTestEnum.First.ToCachedName();
-                    _ = SmallTestEnum.First.ToCachedName();
-                    _ = BigTestEnum.First.ToCachedName();
+                    TestEnum.First.ToCachedName();
+                    TinyTestEnum.First.ToCachedName();
+                    SmallTestEnum.First.ToCachedName();
+                    BigTestEnum.First.ToCachedName();
                 },
                 Is.Not.AllocatingGCMemory()
             );

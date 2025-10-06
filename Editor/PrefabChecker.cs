@@ -9,9 +9,9 @@ namespace WallstopStudios.UnityHelpers.Editor
     using System.Reflection;
     using UnityEditor;
     using UnityEngine;
-    using Core.Attributes;
-    using Core.Extension;
-    using Core.Helper;
+    using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 

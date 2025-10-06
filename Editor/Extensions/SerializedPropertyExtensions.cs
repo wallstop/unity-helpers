@@ -5,14 +5,27 @@ namespace WallstopStudios.UnityHelpers.Editor.Extensions
     using System.Reflection;
     using UnityEditor;
 
+    /// <summary>
+    /// Editor-only extension methods for working with SerializedProperty objects.
+    /// </summary>
     public static class SerializedPropertyExtensions
     {
         /// <summary>
-        /// Gets the instance object that contains the given SerializedProperty.
+        /// Gets the instance object that contains (encloses) the given SerializedProperty, along with the field's metadata.
         /// </summary>
-        /// <param name="property">The SerializedProperty.</param>
-        /// <param name="fieldInfo">Outputs the FieldInfo of the referenced field.</param>
-        /// <returns>The instance object that owns the field.</returns>
+        /// <param name="property">The SerializedProperty to reflect upon.</param>
+        /// <param name="fieldInfo">Outputs the FieldInfo of the field represented by this property.</param>
+        /// <returns>The instance object that owns the field, or null if the property or its target is null.</returns>
+        /// <remarks>
+        /// This method walks the property path to find the parent object that contains the field.
+        /// It handles nested objects, arrays, and collections properly.
+        /// Useful for implementing custom property drawers that need access to the containing object.
+        /// Null handling: Returns null if the property or its target object is null.
+        /// Thread-safe: No. Must be called from the main Unity thread.
+        /// Performance: Uses reflection to traverse the property path. Cache results if called frequently.
+        /// Array handling: Properly handles "Array.data[index]" patterns in property paths.
+        /// </remarks>
+        /// <exception cref="ArgumentNullException">Never thrown explicitly, but may occur if property is null.</exception>
         public static object GetEnclosingObject(
             this SerializedProperty property,
             out FieldInfo fieldInfo
@@ -113,11 +126,21 @@ namespace WallstopStudios.UnityHelpers.Editor.Extensions
         }
 
         /// <summary>
-        /// Gets the FieldInfo and the instance object that owns the field for a given SerializedProperty.
+        /// Gets the final target object and its FieldInfo for a given SerializedProperty.
         /// </summary>
         /// <param name="property">The SerializedProperty to reflect upon.</param>
-        /// <param name="fieldInfo">Outputs the FieldInfo of the referenced field.</param>
-        /// <returns>The instance object that owns the field.</returns>
+        /// <param name="fieldInfo">Outputs the FieldInfo of the field represented by this property.</param>
+        /// <returns>The instance value of the field itself, or null if the property or its target is null.</returns>
+        /// <remarks>
+        /// Unlike GetEnclosingObject, this method returns the value of the field itself, not its parent.
+        /// This walks the full property path including the final field, retrieving the actual value.
+        /// Handles arrays and nested objects properly.
+        /// Null handling: Returns null if the property, its target object, or any intermediate field is null.
+        /// Thread-safe: No. Must be called from the main Unity thread.
+        /// Performance: Uses reflection to traverse the property path. Cache results if called frequently.
+        /// Array handling: Properly handles "Array.data[index]" patterns in property paths.
+        /// </remarks>
+        /// <exception cref="ArgumentNullException">Never thrown explicitly, but may occur if property is null.</exception>
         public static object GetTargetObjectWithField(
             this SerializedProperty property,
             out FieldInfo fieldInfo

@@ -8,10 +8,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     using System.Text.RegularExpressions;
     using System.Threading;
     using System.Threading.Tasks;
-    using Core.Extension;
     using CustomEditors;
     using UnityEditor;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Extension;
     using Object = UnityEngine.Object;
 
     public class SpritePivotAdjuster : EditorWindow

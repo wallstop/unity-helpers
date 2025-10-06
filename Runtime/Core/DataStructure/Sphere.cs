@@ -3,6 +3,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     using System;
     using System.Runtime.CompilerServices;
     using Helper;
+    using Math;
     using UnityEngine;
 
     /// <summary>
@@ -87,6 +88,41 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             float dy = center.y - other.center.y;
             float dz = center.z - other.center.z;
             return dx * dx + dy * dy + dz * dz <= combinedRadiusSquared;
+        }
+
+        /// <summary>
+        /// Determines whether this sphere intersects with a line segment.
+        /// Returns true if the line segment intersects or touches the sphere.
+        /// </summary>
+        /// <param name="line">The line segment to test for intersection.</param>
+        /// <returns>True if the line segment intersects the sphere.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool Intersects(Line3D line)
+        {
+            return line.Intersects(this);
+        }
+
+        /// <summary>
+        /// Calculates the shortest distance from this sphere to a line segment.
+        /// Returns 0 if the line intersects the sphere.
+        /// </summary>
+        /// <param name="line">The line segment to measure distance from.</param>
+        /// <returns>The shortest distance from the sphere's surface to the line segment.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public float DistanceToLine(Line3D line)
+        {
+            return line.DistanceToSphere(this);
+        }
+
+        /// <summary>
+        /// Finds the closest point on a line segment to this sphere's center.
+        /// </summary>
+        /// <param name="line">The line segment.</param>
+        /// <returns>The closest point on the line segment to the sphere's center.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Vector3 ClosestPointOnLine(Line3D line)
+        {
+            return line.ClosestPointOnLine(center);
         }
 
         /// <summary>

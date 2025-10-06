@@ -128,7 +128,7 @@ namespace WallstopStudios.UnityHelpers.Core.Math
 
             // Verify that x=Length is an intercept: A*Length^2 + B*Length = 0
             float valueAtLength = a * length * length + b * length;
-            if (System.Math.Abs(valueAtLength) > 1e-5f)
+            if (Math.Abs(valueAtLength) > 1e-5f)
             {
                 throw new ArgumentException(
                     $"Coefficients do not produce a parabola with intercept at x={length:0.00}. "

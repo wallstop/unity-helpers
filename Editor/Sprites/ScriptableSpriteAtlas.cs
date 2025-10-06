@@ -4,9 +4,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     using System;
     using UnityEngine;
     using System.Collections.Generic;
-    using Core.Attributes;
-    using Core.Helper;
     using UnityEditor;
+    using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Core.Helper;
 
     [Flags]
     public enum SpriteSelectionMode

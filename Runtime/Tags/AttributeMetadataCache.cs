@@ -29,6 +29,7 @@ namespace WallstopStudios.UnityHelpers.Tags
             Single = 1,
             Array = 2,
             List = 3,
+            HashSet = 4,
         }
 
         [Serializable]
@@ -67,6 +68,34 @@ namespace WallstopStudios.UnityHelpers.Tags
                 this.elementTypeName = elementTypeName;
                 this.isInterface = isInterface;
             }
+        }
+
+        public readonly struct ResolvedRelationalFieldMetadata
+        {
+            public ResolvedRelationalFieldMetadata(
+                string fieldName,
+                RelationalAttributeKind attributeKind,
+                FieldKind fieldKind,
+                Type elementType,
+                bool isInterface
+            )
+            {
+                FieldName = fieldName;
+                AttributeKind = attributeKind;
+                FieldKind = fieldKind;
+                ElementType = elementType;
+                IsInterface = isInterface;
+            }
+
+            public string FieldName { get; }
+
+            public RelationalAttributeKind AttributeKind { get; }
+
+            public FieldKind FieldKind { get; }
+
+            public Type ElementType { get; }
+
+            public bool IsInterface { get; }
         }
 
         [Serializable]
@@ -124,10 +153,22 @@ namespace WallstopStudios.UnityHelpers.Tags
             }
         }
 
+        private readonly object _lookupLock = new();
+
         // Runtime lookups using Type as key (much faster than string comparison)
         private Dictionary<Type, string[]> _typeFieldsLookup;
         private Dictionary<Type, RelationalFieldMetadata[]> _relationalFieldsLookup;
+        private Dictionary<Type, ResolvedRelationalFieldMetadata[]> _resolvedRelationalFieldsLookup;
         private Dictionary<ElementTypeKey, Type> _elementTypeLookup; // Cache resolved element types
+
+        private static readonly object _typeResolutionLock = new();
+        private static readonly Dictionary<string, Type> _resolvedTypeCache = new(
+            StringComparer.Ordinal
+        );
+        private static readonly object _missingTypeLock = new();
+        private static readonly HashSet<string> _loggedMissingTypeKeys = new(
+            StringComparer.Ordinal
+        );
 
         public string[] AllAttributeNames => _allAttributeNames;
 
@@ -138,43 +179,97 @@ namespace WallstopStudios.UnityHelpers.Tags
 
         private void BuildLookup()
         {
-            // Build Type-based lookups for fast runtime access
-            _typeFieldsLookup = new Dictionary<Type, string[]>(_typeMetadata.Length);
-            foreach (TypeFieldMetadata metadata in _typeMetadata)
+            lock (_lookupLock)
             {
-                Type type = Type.GetType(metadata.typeName);
-                if (type != null)
+                if (
+                    _typeFieldsLookup != null
+                    && _relationalFieldsLookup != null
+                    && _resolvedRelationalFieldsLookup != null
+                    && _elementTypeLookup != null
+                )
                 {
-                    _typeFieldsLookup[type] = metadata.fieldNames;
+                    return;
                 }
-            }
 
-            _relationalFieldsLookup = new Dictionary<Type, RelationalFieldMetadata[]>(
-                _relationalTypeMetadata.Length
-            );
-            _elementTypeLookup = new Dictionary<ElementTypeKey, Type>();
+                Dictionary<Type, string[]> typeFieldsLookup = new(_typeMetadata?.Length ?? 0);
+                Dictionary<Type, RelationalFieldMetadata[]> relationalFieldsLookup = new(
+                    _relationalTypeMetadata?.Length ?? 0
+                );
+                Dictionary<Type, ResolvedRelationalFieldMetadata[]> resolvedRelationalFieldsLookup =
+                    new(_relationalTypeMetadata?.Length ?? 0);
+                Dictionary<ElementTypeKey, Type> elementTypeLookup = new(
+                    _relationalTypeMetadata?.Length ?? 0
+                );
 
-            foreach (RelationalTypeMetadata metadata in _relationalTypeMetadata)
-            {
-                Type type = Type.GetType(metadata.typeName);
-                if (type != null)
+                if (_typeMetadata != null)
                 {
-                    _relationalFieldsLookup[type] = metadata.fields;
-
-                    // Pre-resolve element types
-                    foreach (RelationalFieldMetadata field in metadata.fields)
+                    foreach (TypeFieldMetadata metadata in _typeMetadata)
                     {
-                        if (!string.IsNullOrEmpty(field.elementTypeName))
+                        if (!TryResolveType(metadata?.typeName, out Type componentType))
                         {
-                            Type elementType = Type.GetType(field.elementTypeName);
-                            if (elementType != null)
-                            {
-                                _elementTypeLookup[new ElementTypeKey(type, field.fieldName)] =
-                                    elementType;
-                            }
+                            LogMissingType(metadata?.typeName, "attribute component");
+                            continue;
                         }
+
+                        string[] fieldNames = metadata.fieldNames ?? Array.Empty<string>();
+                        typeFieldsLookup[componentType] = fieldNames;
                     }
                 }
+
+                if (_relationalTypeMetadata != null)
+                {
+                    foreach (RelationalTypeMetadata metadata in _relationalTypeMetadata)
+                    {
+                        if (!TryResolveType(metadata?.typeName, out Type relationalType))
+                        {
+                            LogMissingType(metadata?.typeName, "relational component");
+                            continue;
+                        }
+
+                        RelationalFieldMetadata[] fields =
+                            metadata.fields ?? Array.Empty<RelationalFieldMetadata>();
+
+                        relationalFieldsLookup[relationalType] = fields;
+
+                        ResolvedRelationalFieldMetadata[] resolvedFields =
+                            new ResolvedRelationalFieldMetadata[fields.Length];
+
+                        for (int i = 0; i < fields.Length; i++)
+                        {
+                            RelationalFieldMetadata field = fields[i];
+                            Type elementType = null;
+
+                            if (!string.IsNullOrWhiteSpace(field.elementTypeName))
+                            {
+                                if (TryResolveType(field.elementTypeName, out elementType))
+                                {
+                                    elementTypeLookup[
+                                        new ElementTypeKey(relationalType, field.fieldName)
+                                    ] = elementType;
+                                }
+                                else
+                                {
+                                    LogMissingType(field.elementTypeName, "relational element");
+                                }
+                            }
+
+                            resolvedFields[i] = new ResolvedRelationalFieldMetadata(
+                                field.fieldName,
+                                field.attributeKind,
+                                field.fieldKind,
+                                elementType,
+                                field.isInterface
+                            );
+                        }
+
+                        resolvedRelationalFieldsLookup[relationalType] = resolvedFields;
+                    }
+                }
+
+                _typeFieldsLookup = typeFieldsLookup;
+                _relationalFieldsLookup = relationalFieldsLookup;
+                _resolvedRelationalFieldsLookup = resolvedRelationalFieldsLookup;
+                _elementTypeLookup = elementTypeLookup;
             }
         }
 
@@ -199,6 +294,18 @@ namespace WallstopStudios.UnityHelpers.Tags
             return _relationalFieldsLookup.TryGetValue(type, out relationalFields);
         }
 
+        public bool TryGetResolvedRelationalFields(
+            Type type,
+            out ResolvedRelationalFieldMetadata[] relationalFields
+        )
+        {
+            if (_resolvedRelationalFieldsLookup == null)
+            {
+                BuildLookup();
+            }
+            return _resolvedRelationalFieldsLookup.TryGetValue(type, out relationalFields);
+        }
+
         public bool TryGetElementType(Type componentType, string fieldName, out Type elementType)
         {
             if (_elementTypeLookup == null)
@@ -208,6 +315,67 @@ namespace WallstopStudios.UnityHelpers.Tags
             return _elementTypeLookup.TryGetValue(
                 new ElementTypeKey(componentType, fieldName),
                 out elementType
+            );
+        }
+
+        private static bool TryResolveType(string typeName, out Type type)
+        {
+            if (string.IsNullOrWhiteSpace(typeName))
+            {
+                type = null;
+                return false;
+            }
+
+            lock (_typeResolutionLock)
+            {
+                if (_resolvedTypeCache.TryGetValue(typeName, out type))
+                {
+                    return type != null;
+                }
+
+                type = Type.GetType(typeName, throwOnError: false, ignoreCase: false);
+
+                if (type == null && !typeName.Contains(','))
+                {
+                    foreach (
+                        System.Reflection.Assembly assembly in AppDomain.CurrentDomain.GetAssemblies()
+                    )
+                    {
+                        type = assembly.GetType(typeName, throwOnError: false, ignoreCase: false);
+                        if (type != null)
+                        {
+                            break;
+                        }
+                    }
+                }
+
+                _resolvedTypeCache[typeName] = type;
+                return type != null;
+            }
+        }
+
+        private static void LogMissingType(string typeName, string context)
+        {
+            if (string.IsNullOrWhiteSpace(typeName) || string.IsNullOrWhiteSpace(context))
+            {
+                return;
+            }
+
+            string key = string.Concat(context, ":", typeName);
+            lock (_missingTypeLock)
+            {
+                if (!_loggedMissingTypeKeys.Add(key))
+                {
+                    return;
+                }
+            }
+
+            Debug.LogWarning(
+                string.Format(
+                    "AttributeMetadataCache: Unable to resolve {0} type '{1}'. The cached entry will be ignored. Regenerate the cache to refresh the metadata.",
+                    context,
+                    typeName
+                )
             );
         }
 

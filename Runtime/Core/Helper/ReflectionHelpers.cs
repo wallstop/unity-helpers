@@ -28,6 +28,8 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         private static readonly Dictionary<Type, Func<int, Array>> ArrayCreators = new();
         private static readonly Dictionary<Type, Func<IList>> ListCreators = new();
         private static readonly Dictionary<Type, Func<int, IList>> ListWithCapacityCreators = new();
+        private static readonly Dictionary<Type, Func<int, object>> HashSetWithCapacityCreators =
+            new();
         private static readonly Dictionary<
             MethodInfo,
             Func<object, object[], object>
@@ -45,6 +47,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             Type,
             Func<int, IList>
         > ListWithCapacityCreators = new();
+        private static readonly ConcurrentDictionary<
+            Type,
+            Func<int, object>
+        > HashSetWithCapacityCreators = new();
         private static readonly ConcurrentDictionary<
             MethodInfo,
             Func<object, object[], object>
@@ -726,6 +732,98 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             il.Emit(OpCodes.Newobj, constructor); // Call List<T>(int capacity) constructor
             il.Emit(OpCodes.Ret); // Return the instance
             return (Func<int, IList>)dynamicMethod.CreateDelegate(typeof(Func<int, IList>));
+#endif
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static object CreateHashSet(Type elementType, int capacity)
+        {
+            return HashSetWithCapacityCreators
+                // ReSharper disable once ConvertClosureToMethodGroup
+                .GetOrAdd(elementType, type => GetHashSetWithCapacityCreator(type))
+                .Invoke(capacity);
+        }
+
+        public static Func<int, object> GetHashSetWithCapacityCreator(Type elementType)
+        {
+            Type hashSetType = typeof(HashSet<>).MakeGenericType(elementType);
+#if !EMIT_DYNAMIC_IL
+            return capacity => Activator.CreateInstance(hashSetType, capacity);
+#else
+            DynamicMethod dynamicMethod = new(
+                $"CreateHashSetWithCapacity{hashSetType.Name}",
+                typeof(object), // Return type: object
+                new[] { typeof(int) }, // Parameter: int (capacity)
+                true
+            );
+
+            ILGenerator il = dynamicMethod.GetILGenerator();
+            ConstructorInfo constructor = hashSetType.GetConstructor(new[] { typeof(int) });
+            if (constructor == null)
+            {
+                throw new ArgumentException(
+                    $"Type {hashSetType} does not have a constructor accepting an int."
+                );
+            }
+
+            il.Emit(OpCodes.Ldarg_0); // Load capacity argument
+            il.Emit(OpCodes.Newobj, constructor); // Call HashSet<T>(int capacity) constructor
+            il.Emit(OpCodes.Ret); // Return the instance
+            return (Func<int, object>)dynamicMethod.CreateDelegate(typeof(Func<int, object>));
+#endif
+        }
+
+        public static Action<object, object> GetHashSetAdder(Type elementType)
+        {
+            if (elementType == null)
+            {
+                throw new ArgumentNullException(nameof(elementType));
+            }
+
+            Type hashSetType = typeof(HashSet<>).MakeGenericType(elementType);
+            MethodInfo addMethod = hashSetType.GetMethod("Add", new[] { elementType });
+            if (addMethod == null)
+            {
+                throw new ArgumentException(
+                    $"Type {hashSetType} does not have an Add method accepting {elementType}.",
+                    nameof(elementType)
+                );
+            }
+
+#if !EMIT_DYNAMIC_IL
+            return CreateCompiledHashSetAdder(hashSetType, elementType, addMethod)
+                ?? ((set, value) => addMethod.Invoke(set, new[] { value }));
+#else
+            try
+            {
+                DynamicMethod dynamicMethod = new(
+                    $"AddToHashSet{hashSetType.Name}",
+                    typeof(void),
+                    new[] { typeof(object), typeof(object) },
+                    hashSetType.Module,
+                    true
+                );
+
+                ILGenerator il = dynamicMethod.GetILGenerator();
+                il.Emit(OpCodes.Ldarg_0);
+                il.Emit(OpCodes.Castclass, hashSetType);
+                il.Emit(OpCodes.Ldarg_1);
+                il.Emit(
+                    elementType.IsValueType ? OpCodes.Unbox_Any : OpCodes.Castclass,
+                    elementType
+                );
+                il.EmitCall(OpCodes.Callvirt, addMethod, null);
+                il.Emit(OpCodes.Pop);
+                il.Emit(OpCodes.Ret);
+
+                return (Action<object, object>)
+                    dynamicMethod.CreateDelegate(typeof(Action<object, object>));
+            }
+            catch
+            {
+                return CreateCompiledHashSetAdder(hashSetType, elementType, addMethod)
+                    ?? ((set, value) => addMethod.Invoke(set, new[] { value }));
+            }
 #endif
         }
 
@@ -1589,6 +1687,43 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return false;
             }
 #endif
+        }
+
+        private static Action<object, object> CreateCompiledHashSetAdder(
+            Type hashSetType,
+            Type elementType,
+            MethodInfo addMethod
+        )
+        {
+            if (!CanCompileExpressions)
+            {
+                return null;
+            }
+
+            try
+            {
+                ParameterExpression setParam = Expression.Parameter(typeof(object), "hashSet");
+                ParameterExpression valueParam = Expression.Parameter(typeof(object), "value");
+
+                Expression castSet = Expression.Convert(setParam, hashSetType);
+                Expression castValue = elementType.IsValueType
+                    ? Expression.Convert(valueParam, elementType)
+                    : Expression.Convert(valueParam, elementType);
+
+                MethodCallExpression call = Expression.Call(castSet, addMethod, castValue);
+                Expression body =
+                    addMethod.ReturnType == typeof(void)
+                        ? (Expression)call
+                        : Expression.Block(call, Expression.Empty());
+
+                return Expression
+                    .Lambda<Action<object, object>>(body, setParam, valueParam)
+                    .Compile();
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         private static Func<object, object[], object> CreateCompiledMethodInvoker(MethodInfo method)

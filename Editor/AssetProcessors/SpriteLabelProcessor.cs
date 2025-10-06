@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
     using System.Collections.Generic;
     using Core.Helper;
     using UnityEditor;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 

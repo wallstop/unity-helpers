@@ -6,8 +6,8 @@ namespace WallstopStudios.UnityHelpers.Editor
     using System.Linq;
     using UnityEditor;
     using UnityEngine;
-    using Core.Extension;
     using CustomEditors;
+    using WallstopStudios.UnityHelpers.Core.Extension;
     using Object = UnityEngine.Object;
 
     public enum FitMode

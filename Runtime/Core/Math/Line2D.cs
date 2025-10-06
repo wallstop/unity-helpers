@@ -2,18 +2,18 @@ namespace WallstopStudios.UnityHelpers.Core.Math
 {
     using System;
     using System.Runtime.Serialization;
+    using DataStructure;
     using Extension;
     using ProtoBuf;
     using UnityEngine;
 
-    // https://pastebin.com/iQDhQTFN
     /// <summary>
     /// Represents a line segment defined by two endpoints in 2D space.
     /// </summary>
     [Serializable]
     [DataContract]
     [ProtoContract]
-    public readonly struct Line : IEquatable<Line>
+    public readonly struct Line2D : IEquatable<Line2D>
     {
         /// <summary>
         /// The starting point of the line segment.
@@ -34,7 +34,7 @@ namespace WallstopStudios.UnityHelpers.Core.Math
         /// </summary>
         /// <param name="from">The starting point.</param>
         /// <param name="to">The ending point.</param>
-        public Line(Vector2 from, Vector2 to)
+        public Line2D(Vector2 from, Vector2 to)
         {
             this.from = from;
             this.to = to;
@@ -73,9 +73,21 @@ namespace WallstopStudios.UnityHelpers.Core.Math
         /// </summary>
         /// <param name="other">The other line segment to test.</param>
         /// <returns>True if the segments intersect, false otherwise.</returns>
-        public bool Intersects(Line other)
+        public bool Intersects(Line2D other)
         {
             return UnityExtensions.Intersects(from, to, other.from, other.to);
+        }
+
+        /// <summary>
+        /// Checks if this line segment intersects with a circle.
+        /// </summary>
+        /// <param name="circle">The circle to test for intersection.</param>
+        /// <returns>True if the line segment intersects or touches the circle.</returns>
+        public bool Intersects(Circle circle)
+        {
+            float distanceSquared = DistanceSquaredToPoint(circle.center);
+            float radiusSquared = circle.radius * circle.radius;
+            return distanceSquared <= radiusSquared;
         }
 
         /// <summary>
@@ -84,30 +96,24 @@ namespace WallstopStudios.UnityHelpers.Core.Math
         /// <param name="other">The other line segment to test.</param>
         /// <param name="intersection">The intersection point if found.</param>
         /// <returns>True if an intersection point exists, false otherwise (including parallel/collinear cases).</returns>
-        public bool TryGetIntersectionPoint(Line other, out Vector2 intersection)
+        public bool TryGetIntersectionPoint(Line2D other, out Vector2 intersection)
         {
-            // Direction vectors
             Vector2 d1 = to - from;
             Vector2 d2 = other.to - other.from;
 
-            // Cross product (determinant)
             float determinant = d1.x * d2.y - d1.y * d2.x;
 
-            // Parallel or collinear lines
             if (Mathf.Approximately(determinant, 0))
             {
                 intersection = default;
                 return false;
             }
 
-            // Vector from this.from to other.from
             Vector2 diff = other.from - from;
 
-            // Parametric t values for both line segments
             float t1 = (diff.x * d2.y - diff.y * d2.x) / determinant;
             float t2 = (diff.x * d1.y - diff.y * d1.x) / determinant;
 
-            // Check if intersection point lies on both segments (t in [0, 1])
             if (t1 >= 0 && t1 <= 1 && t2 >= 0 && t2 <= 1)
             {
                 intersection = from + t1 * d1;
@@ -130,6 +136,30 @@ namespace WallstopStudios.UnityHelpers.Core.Math
         }
 
         /// <summary>
+        /// Calculates the squared distance from a point to this line segment.
+        /// More performant than DistanceToPoint when only comparing distances.
+        /// </summary>
+        /// <param name="point">The point to measure distance from.</param>
+        /// <returns>The squared distance from the point to the line segment.</returns>
+        public float DistanceSquaredToPoint(Vector2 point)
+        {
+            Vector2 closestPoint = ClosestPointOnLine(point);
+            return (point - closestPoint).sqrMagnitude;
+        }
+
+        /// <summary>
+        /// Calculates the shortest distance from a circle to this line segment.
+        /// Returns 0 if the line intersects the circle.
+        /// </summary>
+        /// <param name="circle">The circle to measure distance from.</param>
+        /// <returns>The shortest distance from the circle's edge to the line segment.</returns>
+        public float DistanceToCircle(Circle circle)
+        {
+            float distanceToCenter = DistanceToPoint(circle.center);
+            return Mathf.Max(0f, distanceToCenter - circle.radius);
+        }
+
+        /// <summary>
         /// Finds the closest point on this line segment to the given point.
         /// </summary>
         /// <param name="point">The point to project onto the line.</param>
@@ -139,16 +169,12 @@ namespace WallstopStudios.UnityHelpers.Core.Math
             Vector2 dir = to - from;
             float lengthSq = dir.sqrMagnitude;
 
-            // If the line segment has zero length, return 'from'
             if (Mathf.Approximately(lengthSq, 0))
             {
                 return from;
             }
 
-            // Calculate projection parameter t
             float t = Vector2.Dot(point - from, dir) / lengthSq;
-
-            // Clamp t to [0, 1] to stay on the segment
             t = Mathf.Clamp01(t);
 
             return from + t * dir;
@@ -161,7 +187,6 @@ namespace WallstopStudios.UnityHelpers.Core.Math
         /// <returns>True if the point lies on the line segment, false otherwise.</returns>
         public bool Contains(Vector2 point)
         {
-            // Check if point is collinear using cross product
             Vector2 toPoint = point - from;
             Vector2 toEnd = to - from;
             float cross = toPoint.x * toEnd.y - toPoint.y * toEnd.x;
@@ -171,7 +196,6 @@ namespace WallstopStudios.UnityHelpers.Core.Math
                 return false;
             }
 
-            // Check if point is within segment bounds
             return UnityExtensions.LiesOnSegment(from, point, to);
         }
 
@@ -179,7 +203,7 @@ namespace WallstopStudios.UnityHelpers.Core.Math
         /// Checks if this line is equal to another line.
         /// Two lines are equal if they have the same endpoints (in the same order).
         /// </summary>
-        public bool Equals(Line other)
+        public bool Equals(Line2D other)
         {
             return from == other.from && to == other.to;
         }
@@ -189,7 +213,7 @@ namespace WallstopStudios.UnityHelpers.Core.Math
         /// </summary>
         public override bool Equals(object obj)
         {
-            return obj is Line other && Equals(other);
+            return obj is Line2D other && Equals(other);
         }
 
         /// <summary>
@@ -208,13 +232,13 @@ namespace WallstopStudios.UnityHelpers.Core.Math
         /// </summary>
         public override string ToString()
         {
-            return $"Line(from: {from}, to: {to})";
+            return $"Line2D(from: {from}, to: {to})";
         }
 
         /// <summary>
         /// Equality operator.
         /// </summary>
-        public static bool operator ==(Line left, Line right)
+        public static bool operator ==(Line2D left, Line2D right)
         {
             return left.Equals(right);
         }
@@ -222,7 +246,7 @@ namespace WallstopStudios.UnityHelpers.Core.Math
         /// <summary>
         /// Inequality operator.
         /// </summary>
-        public static bool operator !=(Line left, Line right)
+        public static bool operator !=(Line2D left, Line2D right)
         {
             return !left.Equals(right);
         }
