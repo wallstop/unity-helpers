@@ -8,21 +8,51 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Utils;
 
+    /// <summary>
+    /// Defines string casing formats for text transformation.
+    /// </summary>
     public enum StringCase
     {
+        /// <summary>Invalid string case placeholder.</summary>
         [Obsolete("Please use a valid StringCase enum value.")]
         None = 0,
+
+        /// <summary>PascalCase - FirstLetterCapitalized for each word, no separators (e.g., "HelloWorld").</summary>
         PascalCase = 1,
+
+        /// <summary>camelCase - first letter lowercase, subsequent words capitalized, no separators (e.g., "helloWorld").</summary>
         CamelCase = 2,
+
+        /// <summary>snake_case - all lowercase with underscores between words (e.g., "hello_world").</summary>
         SnakeCase = 3,
+
+        /// <summary>kebab-case - all lowercase with hyphens between words (e.g., "hello-world").</summary>
         KebabCase = 4,
+
+        /// <summary>Title Case - Each Word Capitalized With Spaces (e.g., "Hello World").</summary>
         TitleCase = 5,
+
+        /// <summary>lowercase - all characters converted to lowercase (e.g., "hello world").</summary>
         LowerCase = 6,
+
+        /// <summary>UPPERCASE - all characters converted to uppercase (e.g., "HELLO WORLD").</summary>
         UpperCase = 7,
+
+        /// <summary>lowercase invariant - culture-invariant lowercase conversion.</summary>
         LowerInvariant = 8,
+
+        /// <summary>UPPERCASE INVARIANT - culture-invariant uppercase conversion.</summary>
         UpperInvariant = 9,
     }
 
+    /// <summary>
+    /// Extension methods for string manipulation including case conversion, encoding, serialization, and text analysis.
+    /// </summary>
+    /// <remarks>
+    /// Thread Safety: All methods are thread-safe as they operate on immutable strings.
+    /// Performance: Methods use StringBuilder and pooled buffers for efficiency where possible.
+    /// Allocations: Most methods allocate new strings; some use pooled resources to minimize intermediate allocations.
+    /// </remarks>
     public static class StringExtensions
     {
         private static readonly ImmutableHashSet<char> WordSeparators = new HashSet<char>
@@ -34,16 +64,18 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             '\n',
             '\t',
             '.',
+            '"',
         }.ToImmutableHashSet();
 
         private static readonly ImmutableHashSet<char> CharsToStrip = new HashSet<char>
         {
             '\'',
-            '"',
         }.ToImmutableHashSet();
 
         private const char CombiningDotAbove = '\u0307';
+        private const char CapitalIWithDot = '\u0130';
         private static readonly string CombiningDotAboveString = CombiningDotAbove.ToString();
+        private static readonly string CapitalIWithDotString = CapitalIWithDot.ToString();
 
         public static string Center(this string input, int length)
         {
@@ -55,6 +87,18 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return input.PadLeft((length - input.Length) / 2 + input.Length).PadRight(length);
         }
 
+        /// <summary>
+        /// Converts a string to its UTF-8 byte array representation.
+        /// </summary>
+        /// <param name="input">The string to convert.</param>
+        /// <returns>A byte array containing the UTF-8 encoded bytes, or an empty array if input is null or empty.</returns>
+        /// <remarks>
+        /// Null handling: Returns Array.Empty&lt;byte&gt;() if input is null or empty.
+        /// Thread-safe: Yes.
+        /// Performance: O(n) where n is the string length.
+        /// Allocations: Allocates a new byte array. Returns cached empty array for null/empty input.
+        /// Edge cases: Empty or null strings return empty array.
+        /// </remarks>
         public static byte[] GetBytes(this string input)
         {
             if (string.IsNullOrEmpty(input))
@@ -64,6 +108,18 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return Encoding.UTF8.GetBytes(input);
         }
 
+        /// <summary>
+        /// Converts a UTF-8 byte array to a string.
+        /// </summary>
+        /// <param name="bytes">The byte array to convert.</param>
+        /// <returns>The decoded string, or an empty string if bytes is null or empty.</returns>
+        /// <remarks>
+        /// Null handling: Returns string.Empty if bytes is null or empty.
+        /// Thread-safe: Yes.
+        /// Performance: O(n) where n is the byte array length.
+        /// Allocations: Allocates a new string.
+        /// Edge cases: Empty or null byte arrays return empty string.
+        /// </remarks>
         public static string GetString(this byte[] bytes)
         {
             if (bytes == null || bytes.Length == 0)
@@ -73,6 +129,19 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return Encoding.UTF8.GetString(bytes);
         }
 
+        /// <summary>
+        /// Serializes an object to a JSON string representation.
+        /// </summary>
+        /// <typeparam name="T">The type of the value to serialize.</typeparam>
+        /// <param name="value">The value to serialize to JSON.</param>
+        /// <returns>A JSON string representation of the value.</returns>
+        /// <remarks>
+        /// Null handling: Behavior depends on Serializer.JsonStringify implementation.
+        /// Thread-safe: Yes.
+        /// Performance: O(n) where n is the complexity of the object graph.
+        /// Allocations: Allocates new string and intermediate serialization structures.
+        /// Edge cases: Complex object graphs may serialize with circular reference handling depending on serializer.
+        /// </remarks>
         public static string ToJson<T>(this T value)
         {
             return Serializer.JsonStringify(value);
@@ -183,10 +252,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                         }
 
                         // Capitalize first letter, lowercase the rest
-                        _ = stringBuilder.Append(char.ToUpper(currentWord[0]));
+                        _ = stringBuilder.Append(char.ToUpperInvariant(currentWord[0]));
                         for (int j = 1; j < currentWord.Length; ++j)
                         {
-                            _ = stringBuilder.Append(char.ToLower(currentWord[j]));
+                            _ = stringBuilder.Append(char.ToLowerInvariant(currentWord[j]));
                         }
 
                         currentWord.Clear();
@@ -210,10 +279,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     }
 
                     // Capitalize first letter, lowercase the rest
-                    _ = stringBuilder.Append(char.ToUpper(currentWord[0]));
+                    _ = stringBuilder.Append(char.ToUpperInvariant(currentWord[0]));
                     for (int j = 1; j < currentWord.Length; ++j)
                     {
-                        _ = stringBuilder.Append(char.ToLower(currentWord[j]));
+                        _ = stringBuilder.Append(char.ToLowerInvariant(currentWord[j]));
                     }
 
                     currentWord.Clear();
@@ -239,10 +308,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     }
 
                     // Capitalize first letter, lowercase the rest
-                    _ = stringBuilder.Append(char.ToUpper(currentWord[0]));
+                    _ = stringBuilder.Append(char.ToUpperInvariant(currentWord[0]));
                     for (int j = 1; j < currentWord.Length; ++j)
                     {
-                        _ = stringBuilder.Append(char.ToLower(currentWord[j]));
+                        _ = stringBuilder.Append(char.ToLowerInvariant(currentWord[j]));
                     }
 
                     currentWord.Clear();
@@ -261,10 +330,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     _ = stringBuilder.Append(separator);
                 }
 
-                _ = stringBuilder.Append(char.ToUpper(currentWord[0]));
+                _ = stringBuilder.Append(char.ToUpperInvariant(currentWord[0]));
                 for (int j = 1; j < currentWord.Length; ++j)
                 {
-                    _ = stringBuilder.Append(char.ToLower(currentWord[j]));
+                    _ = stringBuilder.Append(char.ToLowerInvariant(currentWord[j]));
                 }
             }
 
@@ -335,13 +404,13 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
             if (pascalCase.Length == 1)
             {
-                return char.ToLower(pascalCase[0]).ToString();
+                return char.ToLowerInvariant(pascalCase[0]).ToString();
             }
 
             // Use StringBuilder for better performance
             using PooledResource<StringBuilder> stringBuilderBuffer = Buffers.StringBuilder.Get();
             StringBuilder stringBuilder = stringBuilderBuffer.resource;
-            _ = stringBuilder.Append(char.ToLower(pascalCase[0]));
+            _ = stringBuilder.Append(char.ToLowerInvariant(pascalCase[0]));
 
             for (int i = 1; i < pascalCase.Length; ++i)
             {
@@ -471,7 +540,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     }
                 }
 
-                _ = stringBuilder.Append(char.ToLower(current));
+                _ = stringBuilder.Append(char.ToLowerInvariant(current));
             }
 
             string result = stringBuilder.ToString();
@@ -508,12 +577,12 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 }
                 else if (capitalizeNext)
                 {
-                    _ = stringBuilder.Append(char.ToUpper(c));
+                    _ = stringBuilder.Append(char.ToUpperInvariant(c));
                     capitalizeNext = false;
                 }
                 else
                 {
-                    _ = stringBuilder.Append(char.ToLower(c));
+                    _ = stringBuilder.Append(char.ToLowerInvariant(c));
                 }
             }
 
@@ -813,9 +882,17 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return value;
             }
 
-            return value.IndexOf(CombiningDotAbove) >= 0
-                ? value.Replace(CombiningDotAboveString, string.Empty)
-                : value;
+            if (value.IndexOf(CombiningDotAbove) >= 0)
+            {
+                value = value.Replace(CombiningDotAboveString, string.Empty);
+            }
+
+            if (value.IndexOf(CapitalIWithDot) >= 0)
+            {
+                value = value.Replace(CapitalIWithDotString, string.Empty);
+            }
+
+            return value;
         }
 
         public static string ToCase(this string value, StringCase stringCase)
@@ -835,9 +912,9 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 case StringCase.LowerCase:
                     return value == null
                         ? string.Empty
-                        : RemoveCombiningDotAboveIfPresent(value.ToLower());
+                        : RemoveCombiningDotAboveIfPresent(value.ToLowerInvariant());
                 case StringCase.UpperCase:
-                    return value?.ToUpper() ?? string.Empty;
+                    return value?.ToUpperInvariant() ?? string.Empty;
                 case StringCase.LowerInvariant:
                     return value == null
                         ? string.Empty

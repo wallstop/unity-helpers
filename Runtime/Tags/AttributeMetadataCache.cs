@@ -114,6 +114,12 @@ namespace WallstopStudios.UnityHelpers.Tags
         [SerializeField]
         private string[] _allAttributeNames = Array.Empty<string>();
 
+        [NonSerialized]
+        private string[] _computedAllAttributeNames;
+
+        [NonSerialized]
+        private bool _computedAllAttributeNamesIncludesTests;
+
         [SerializeField]
         private TypeFieldMetadata[] _typeMetadata = Array.Empty<TypeFieldMetadata>();
 
@@ -170,10 +176,35 @@ namespace WallstopStudios.UnityHelpers.Tags
             StringComparer.Ordinal
         );
 
-        public string[] AllAttributeNames => _allAttributeNames;
+        public string[] AllAttributeNames
+        {
+            get
+            {
+                bool hasTestAssemblies = AttributeMetadataFilters.HasTestAssembliesLoaded();
+
+                if (
+                    _computedAllAttributeNames == null
+                    || (hasTestAssemblies && !_computedAllAttributeNamesIncludesTests)
+                    || (!hasTestAssemblies && _computedAllAttributeNamesIncludesTests)
+                )
+                {
+                    string[] baseNames = _allAttributeNames ?? Array.Empty<string>();
+
+                    _computedAllAttributeNames = hasTestAssemblies
+                        ? AttributeMetadataFilters.MergeWithExcludedAttributeNames(baseNames)
+                        : baseNames;
+
+                    _computedAllAttributeNamesIncludesTests = hasTestAssemblies;
+                }
+
+                return _computedAllAttributeNames;
+            }
+        }
 
         private void OnEnable()
         {
+            _computedAllAttributeNames = null;
+            _computedAllAttributeNamesIncludesTests = false;
             BuildLookup();
         }
 
@@ -389,6 +420,8 @@ namespace WallstopStudios.UnityHelpers.Tags
             _allAttributeNames = allAttributeNames;
             _typeMetadata = typeMetadata;
             _relationalTypeMetadata = relationalTypeMetadata;
+            _computedAllAttributeNames = null;
+            _computedAllAttributeNamesIncludesTests = false;
             _typeFieldsLookup = null;
             _relationalFieldsLookup = null;
             UnityEditor.EditorUtility.SetDirty(this);

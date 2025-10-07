@@ -3,6 +3,14 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
     using System;
     using System.Collections.Generic;
 
+    /// <summary>
+    /// Extension methods for IReadOnlyList providing search, slice, and utility operations.
+    /// </summary>
+    /// <remarks>
+    /// Thread Safety: All methods are thread-safe for read-only access when the underlying collection is not modified.
+    /// Performance: Methods are optimized for common list types (T[], List&lt;T&gt;) with specialized implementations.
+    /// Allocations: Most methods avoid allocations; slice operations create new arrays.
+    /// </remarks>
     public static class IReadonlyListExtensions
     {
         /// <summary>

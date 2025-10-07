@@ -1,6 +1,5 @@
 namespace WallstopStudios.UnityHelpers.Tests.Extensions
 {
-    using System;
     using System.Collections.Generic;
     using System.Linq;
     using NUnit.Framework;
@@ -690,18 +689,42 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             // Pre-warm
             for (int i = 0; i < 100; i++)
             {
-                _ = TestEnum.First.ToCachedName();
-                _ = TinyTestEnum.First.ToCachedName();
-                _ = SmallTestEnum.First.ToCachedName();
-                _ = BigTestEnum.First.ToCachedName();
+                Assert.AreEqual(TestEnum.First.ToString("G"), TestEnum.First.ToCachedName());
+                Assert.AreEqual(
+                    TinyTestEnum.First.ToString("G"),
+                    TinyTestEnum.First.ToCachedName()
+                );
+                Assert.AreEqual(
+                    SmallTestEnum.First.ToString("G"),
+                    SmallTestEnum.First.ToCachedName()
+                );
+                Assert.AreEqual(BigTestEnum.First.ToString("G"), BigTestEnum.First.ToCachedName());
             }
 
             Assert.That(
                 () =>
                 {
                     _ = TestEnum.First.ToCachedName();
+                },
+                Is.Not.AllocatingGCMemory()
+            );
+            Assert.That(
+                () =>
+                {
                     _ = TinyTestEnum.First.ToCachedName();
+                },
+                Is.Not.AllocatingGCMemory()
+            );
+            Assert.That(
+                () =>
+                {
                     _ = SmallTestEnum.First.ToCachedName();
+                },
+                Is.Not.AllocatingGCMemory()
+            );
+            Assert.That(
+                () =>
+                {
                     _ = BigTestEnum.First.ToCachedName();
                 },
                 Is.Not.AllocatingGCMemory()
@@ -712,17 +735,38 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         public void DisplayNameDoesNotAllocate()
         {
             // Pre-warm
-            _ = TestEnum.First.ToDisplayName();
-            _ = TinyTestEnum.First.ToDisplayName();
-            _ = SmallTestEnum.First.ToDisplayName();
-            _ = BigTestEnum.First.ToDisplayName();
+            for (int i = 0; i < 100; i++)
+            {
+                _ = TestEnum.First.ToDisplayName();
+                _ = TinyTestEnum.First.ToDisplayName();
+                _ = SmallTestEnum.First.ToDisplayName();
+                _ = BigTestEnum.First.ToDisplayName();
+            }
 
             Assert.That(
                 () =>
                 {
                     _ = TestEnum.First.ToDisplayName();
+                },
+                Is.Not.AllocatingGCMemory()
+            );
+            Assert.That(
+                () =>
+                {
                     _ = TinyTestEnum.First.ToDisplayName();
+                },
+                Is.Not.AllocatingGCMemory()
+            );
+            Assert.That(
+                () =>
+                {
                     _ = SmallTestEnum.First.ToDisplayName();
+                },
+                Is.Not.AllocatingGCMemory()
+            );
+            Assert.That(
+                () =>
+                {
                     _ = BigTestEnum.First.ToDisplayName();
                 },
                 Is.Not.AllocatingGCMemory()

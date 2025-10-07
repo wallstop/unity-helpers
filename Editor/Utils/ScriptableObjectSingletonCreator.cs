@@ -18,13 +18,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 
         internal static bool IncludeTestAssemblies { get; set; }
 
-        private static bool IsTestAssembly(Type type)
-        {
-            string assemblyName = type.Assembly.GetName().Name;
-            return !string.IsNullOrWhiteSpace(assemblyName)
-                && assemblyName.Contains("Test", StringComparison.OrdinalIgnoreCase);
-        }
-
         static ScriptableObjectSingletonCreator()
         {
             EnsureSingletonAssets();
@@ -42,7 +35,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 if (
                     !derivedType.IsAbstract
                     && !derivedType.IsGenericType
-                    && (IncludeTestAssemblies || !IsTestAssembly(derivedType))
+                    && (IncludeTestAssemblies || !TestAssemblyHelper.IsTestType(derivedType))
                 )
                 {
                     EnsureFolderExists(ResourcesRoot);

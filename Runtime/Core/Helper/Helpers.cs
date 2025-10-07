@@ -855,23 +855,31 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return array;
             }
 
+            if (assetPaths is IReadOnlyList<string> readonlyList)
+            {
+                arrayResource = WallstopFastArrayPool<string>.Get(
+                    readonlyList.Count,
+                    out string[] buffer
+                );
+                for (int i = 0; i < readonlyList.Count; i++)
+                {
+                    string path = readonlyList[i];
+                    buffer[i] = path;
+                }
+
+                return buffer;
+            }
             if (assetPaths is ICollection<string> collection)
             {
                 arrayResource = WallstopFastArrayPool<string>.Get(
                     collection.Count,
                     out string[] buffer
                 );
-                int index = 0;
-                foreach (string path in collection)
-                {
-                    buffer[index++] = path;
-                }
-
+                collection.CopyTo(buffer, 0);
                 return buffer;
             }
 
-            listResource = Buffers<string>.List.Get();
-            List<string> list = listResource.resource;
+            listResource = Buffers<string>.List.Get(out List<string> list);
             foreach (string path in assetPaths)
             {
                 list.Add(path);

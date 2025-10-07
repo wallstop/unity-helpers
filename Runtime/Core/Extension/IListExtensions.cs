@@ -8,14 +8,30 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
     using Random;
     using Utils;
 
+    /// <summary>
+    /// Defines sorting algorithms available for list operations.
+    /// </summary>
     public enum SortAlgorithm
     {
+        /// <summary>Invalid sorting algorithm placeholder.</summary>
         [Obsolete("Please use a valid SortAlgorithm")]
         None = 0,
+
+        /// <summary>Ghost sort algorithm - adaptive sorting with caching optimizations.</summary>
         Ghost = 1,
+
+        /// <summary>Insertion sort algorithm - efficient for small or nearly-sorted lists.</summary>
         Insertion = 2,
     }
 
+    /// <summary>
+    /// Extension methods for IList providing shuffling, shifting, sorting, searching, and element manipulation.
+    /// </summary>
+    /// <remarks>
+    /// Thread Safety: Methods are not thread-safe and modify lists in-place unless noted otherwise.
+    /// Performance: Methods are optimized for performance with minimal allocations.
+    /// Most operations work directly on the list without creating copies.
+    /// </remarks>
     public static class IListExtensions
     {
         /// <summary>

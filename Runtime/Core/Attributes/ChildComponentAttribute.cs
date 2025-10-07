@@ -164,17 +164,17 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                             )
                         )
                         {
-                            Component resolved = TryResolveSingleComponent(
-                                child.gameObject,
-                                filters,
-                                metadata.attribute,
-                                metadata.elementType,
-                                metadata.isInterface,
-                                metadata.attribute.AllowInterfaces,
-                                components
-                            );
-
-                            if (resolved != null)
+                            if (
+                                TryResolveSingleComponent(
+                                    child,
+                                    filters,
+                                    metadata.elementType,
+                                    metadata.isInterface,
+                                    metadata.attribute.AllowInterfaces,
+                                    components,
+                                    out Component resolved
+                                )
+                            )
                             {
                                 childComponent = resolved;
                                 foundChild = true;
@@ -186,7 +186,6 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                         {
                             metadata.setter(component, childComponent);
                         }
-
                         break;
                     }
                 }
@@ -206,7 +205,6 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         )
         {
             cache.Clear();
-
             using PooledResource<List<Component>> componentBuffer = Buffers<Component>.List.Get(
                 out List<Component> components
             );
@@ -219,7 +217,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             )
             {
                 GetComponentsOfType(
-                    child.gameObject,
+                    child,
                     metadata.elementType,
                     metadata.isInterface,
                     metadata.attribute.AllowInterfaces,
@@ -227,7 +225,6 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 );
                 cache.AddRange(components);
             }
-
             return cache;
         }
     }

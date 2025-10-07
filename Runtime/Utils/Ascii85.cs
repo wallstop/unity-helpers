@@ -5,6 +5,11 @@ namespace WallstopStudios.UnityHelpers.Utils
     using System.Text;
     using System.Threading;
 
+    /// <summary>
+    /// Provides <see href="https://en.wikipedia.org/wiki/Ascii85">Ascii85</see> encoding and decoding
+    /// helpers backed by thread-local buffers to minimize allocations when converting binary data to
+    /// printable ASCII representations.
+    /// </summary>
     public static class Ascii85
     {
         private static readonly ThreadLocal<StringBuilder> StringBuilderCache = new(() =>
@@ -17,6 +22,13 @@ namespace WallstopStudios.UnityHelpers.Utils
 
         private static readonly uint[] Pow85 = { 85 * 85 * 85 * 85, 85 * 85 * 85, 85 * 85, 85, 1 };
 
+        /// <summary>
+        /// Encodes the supplied binary <paramref name="data"/> into its Ascii85 string
+        /// representation. The method reuses thread-local buffers to avoid GC spikes during
+        /// frequent conversions.
+        /// </summary>
+        /// <param name="data">Binary payload to convert.</param>
+        /// <returns>Ascii85 encoded string or <c>null</c> when <paramref name="data"/> is null.</returns>
         public static string Encode(byte[] data)
         {
             if (data == null)
@@ -68,6 +80,11 @@ namespace WallstopStudios.UnityHelpers.Utils
             return stringBuilder.ToString();
         }
 
+        /// <summary>
+        /// Decodes Ascii85 <paramref name="encoded"/> text back into its binary representation.
+        /// </summary>
+        /// <param name="encoded">Ascii85 encoded text. Blank strings yield an empty byte array.</param>
+        /// <returns>The decoded byte array. Returns an empty array when the input is null or empty.</returns>
         public static byte[] Decode(string encoded)
         {
             if (string.IsNullOrEmpty(encoded))

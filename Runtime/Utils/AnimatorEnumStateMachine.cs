@@ -10,12 +10,13 @@ namespace WallstopStudios.UnityHelpers.Utils
     using UnityEngine;
 
     /// <summary>
-    ///     Maps & manages an enum parameter to bool Animator parameters.
+    /// Maps an enum value to a set of <see cref="Animator"/> boolean parameters so that only one
+    /// state flag is enabled at a time. Helps drive complex state machines with strongly typed enums.
     /// </summary>
-    /// <typeparam name="T">Specific Enum being managed.</typeparam>
+    /// <typeparam name="T">Specific enum type used to drive the animator parameters.</typeparam>
     [DataContract]
     public sealed class AnimatorEnumStateMachine<T>
-        where T : struct, IConvertible, IComparable, IFormattable // This is as close as we can get to saying where T : Enum (https://stackoverflow.com/questions/79126/create-generic-method-constraining-t-to-an-enum)
+        where T : struct, IConvertible, IComparable, IFormattable
     {
         private static readonly T[] Values = Enum.GetValues(typeof(T)).OfType<T>().ToArray();
 
@@ -23,6 +24,9 @@ namespace WallstopStudios.UnityHelpers.Utils
         [IgnoreDataMember]
         private readonly HashSet<string> _availableBools = new();
 
+        /// <summary>
+        /// Backing animator that exposes the boolean parameters backing the enum state.
+        /// </summary>
         [JsonIgnore]
         [IgnoreDataMember]
         public readonly Animator Animator;
@@ -31,6 +35,10 @@ namespace WallstopStudios.UnityHelpers.Utils
         [IgnoreDataMember]
         private T _value;
 
+        /// <summary>
+        /// Gets or sets the currently active enum value. Setting the value toggles the underlying
+        /// boolean parameters so that only the matching state remains true.
+        /// </summary>
         [DataMember]
         [JsonInclude]
         public T Value
@@ -51,10 +59,20 @@ namespace WallstopStudios.UnityHelpers.Utils
             }
         }
 
+        /// <summary>
+        /// Serialized helper used to record the enum name for persistence.
+        /// </summary>
         [DataMember]
         [JsonInclude]
         private string Type => typeof(T).Name;
 
+        /// <summary>
+        /// Creates a state machine wrapper around the provided <see cref="Animator"/> and optionally
+        /// initializes it with a default enum value.
+        /// </summary>
+        /// <param name="animator">Animator whose boolean parameters correspond to the enum entries.</param>
+        /// <param name="defaultValue">Initial enum value to apply to the animator.</param>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="animator"/> is null.</exception>
         public AnimatorEnumStateMachine(Animator animator, T defaultValue = default(T))
         {
             if (animator == null)
@@ -80,6 +98,10 @@ namespace WallstopStudios.UnityHelpers.Utils
             _value = defaultValue;
         }
 
+        /// <summary>
+        /// Serializes the state machine into JSON format for debugging and tooling scenarios.
+        /// </summary>
+        /// <returns>JSON representation of the current state.</returns>
         public override string ToString()
         {
             return this.ToJson();

@@ -7,6 +7,14 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Utils;
 
+    /// <summary>
+    /// Extension methods for IEnumerable providing collection operations, conversions, shuffling, and iteration utilities.
+    /// </summary>
+    /// <remarks>
+    /// Thread Safety: Most methods are not thread-safe unless noted otherwise. Concurrent enumeration requires external synchronization.
+    /// Performance: Methods are optimized for common collection types (IList, IReadOnlyList, HashSet) with pattern matching.
+    /// Allocations: Documented per method. Many methods use pooled buffers to minimize allocations.
+    /// </remarks>
     public static class IEnumerableExtensions
     {
         /// <summary>

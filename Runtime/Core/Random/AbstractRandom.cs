@@ -731,9 +731,9 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             int width = noiseMap.GetLength(0);
             int height = noiseMap.GetLength(1);
             using PooledResource<Vector2[]> octaveOffsetBuffer = WallstopFastArrayPool<Vector2>.Get(
-                octaves
+                octaves,
+                out Vector2[] octaveOffsets
             );
-            Vector2[] octaveOffsets = octaveOffsetBuffer.resource;
             for (int i = 0; i < octaves; i++)
             {
                 float offsetX = Next(-100000, 100000);

@@ -66,32 +66,29 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         internal enum FieldKind : byte
         {
             Single = 0,
-
             Array = 1,
-
             List = 2,
-
             HashSet = 3,
         }
 
         internal readonly struct FilterParameters
         {
-            internal readonly bool CheckHierarchy;
-            internal readonly bool CheckTag;
-            internal readonly bool CheckName;
-            internal readonly string Tag;
-            internal readonly string NameSubstring;
+            internal readonly bool _checkHierarchy;
+            internal readonly bool _checkTag;
+            internal readonly bool _checkName;
+            internal readonly string _tag;
+            internal readonly string _nameSubstring;
 
             internal FilterParameters(BaseRelationalComponentAttribute attribute)
             {
-                CheckHierarchy = !attribute.IncludeInactive;
-                Tag = attribute.TagFilter;
-                NameSubstring = attribute.NameFilter;
-                CheckTag = Tag != null;
-                CheckName = NameSubstring != null;
+                _checkHierarchy = !attribute.IncludeInactive;
+                _tag = attribute.TagFilter;
+                _nameSubstring = attribute.NameFilter;
+                _checkTag = _tag != null;
+                _checkName = _nameSubstring != null;
             }
 
-            internal bool RequiresPostProcessing => CheckHierarchy || CheckTag || CheckName;
+            internal bool RequiresPostProcessing => _checkHierarchy || _checkTag || _checkName;
         }
 
         // Map from cache enum to processor enum
@@ -101,15 +98,10 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             return cacheKind switch
             {
 #pragma warning disable CS0618 // Type or member is obsolete
-
                 AttributeMetadataCache.FieldKind.None => FieldKind.Single,
-
 #pragma warning restore CS0618
-
                 AttributeMetadataCache.FieldKind.Single => FieldKind.Single,
-
                 AttributeMetadataCache.FieldKind.Array => FieldKind.Array,
-
                 AttributeMetadataCache.FieldKind.List => FieldKind.List,
                 AttributeMetadataCache.FieldKind.HashSet => FieldKind.HashSet,
                 _ => FieldKind.Single,
@@ -154,25 +146,15 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             where TAttribute : BaseRelationalComponentAttribute
         {
             public readonly FieldInfo field;
-
             public readonly TAttribute attribute;
-
             public readonly Action<object, object> setter;
-
             public readonly Func<object, object> getter;
-
             public readonly FieldKind kind;
-
             public readonly Type elementType;
-
             public readonly Func<int, Array> arrayCreator;
-
             public readonly Func<int, IList> listCreator;
-
             public readonly Func<int, object> hashSetCreator;
-
             public readonly Action<object, object> hashSetAdder;
-
             public readonly bool isInterface;
 
             public FieldMetadata(
@@ -190,25 +172,15 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             )
             {
                 this.field = field;
-
                 this.attribute = attribute;
-
                 this.setter = setter;
-
                 this.getter = getter;
-
                 this.kind = kind;
-
                 this.elementType = elementType;
-
                 this.arrayCreator = arrayCreator;
-
                 this.listCreator = listCreator;
-
                 this.hashSetCreator = hashSetCreator;
-
                 this.hashSetAdder = hashSetAdder;
-
                 this.isInterface = isInterface;
             }
         }
@@ -217,7 +189,6 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             where TAttribute : BaseRelationalComponentAttribute
         {
             AttributeMetadataCache cache = AttributeMetadataCache.Instance;
-
             AttributeMetadataCache.RelationalAttributeKind targetKind =
                 GetRelationalKind<TAttribute>();
 
@@ -229,8 +200,9 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 )
             )
             {
-                List<FieldMetadata<TAttribute>> result = new List<FieldMetadata<TAttribute>>();
-
+                using var resultBuffer = Buffers<FieldMetadata<TAttribute>>.List.Get(
+                    out List<FieldMetadata<TAttribute>> result
+                );
                 foreach (AttributeMetadataCache.RelationalFieldMetadata cachedField in cachedFields)
                 {
                     if (cachedField.attributeKind != targetKind)
@@ -264,16 +236,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                         continue;
                     }
 
-                    FieldKind kind = MapFieldKind(cachedField.fieldKind);
-                    FieldKind actualKind = GetFieldKind(
-                        field.FieldType,
-                        out Type actualElementType
-                    );
-
-                    if (kind != actualKind)
-                    {
-                        kind = actualKind;
-                    }
+                    FieldKind kind = GetFieldKind(field.FieldType, out Type actualElementType);
 
                     Type resolvedElementType = elementType ?? actualElementType ?? field.FieldType;
 
@@ -506,7 +469,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
             GameObject candidateGameObject = null;
 
-            if (filters.CheckHierarchy)
+            if (filters._checkHierarchy)
             {
                 candidateGameObject = candidate.gameObject;
 
@@ -521,19 +484,19 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 }
             }
 
-            if (!filters.CheckTag && !filters.CheckName)
+            if (!filters._checkTag && !filters._checkName)
             {
                 return true;
             }
 
             candidateGameObject ??= candidate.gameObject;
 
-            if (filters.CheckTag && !candidateGameObject.CompareTag(filters.Tag))
+            if (filters._checkTag && !candidateGameObject.CompareTag(filters._tag))
             {
                 return false;
             }
 
-            if (filters.CheckName && !candidateGameObject.name.Contains(filters.NameSubstring))
+            if (filters._checkName && !candidateGameObject.name.Contains(filters._nameSubstring))
             {
                 return false;
             }
@@ -678,37 +641,36 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             return null;
         }
 
-        internal static Component TryResolveSingleComponent(
-            GameObject gameObject,
-            BaseRelationalComponentAttribute attribute,
-            Type elementType,
-            bool isInterface,
-            bool allowInterfaces,
-            List<Component> scratch,
-            bool filterDisabledComponents = true
-        )
-        {
-            FilterParameters filters = new(attribute);
-            return TryResolveSingleComponent(
-                gameObject,
-                filters,
-                attribute,
-                elementType,
-                isInterface,
-                allowInterfaces,
-                scratch,
-                filterDisabledComponents
-            );
-        }
+        // internal static Component TryResolveSingleComponent(
+        //     Component component,
+        //     BaseRelationalComponentAttribute attribute,
+        //     Type elementType,
+        //     bool isInterface,
+        //     bool allowInterfaces,
+        //     List<Component> scratch,
+        //     bool filterDisabledComponents = true
+        // )
+        // {
+        //     FilterParameters filters = new(attribute);
+        //     return TryResolveSingleComponent(
+        //         component,
+        //         filters,
+        //         elementType,
+        //         isInterface,
+        //         allowInterfaces,
+        //         scratch,
+        //         filterDisabledComponents
+        //     );
+        // }
 
-        internal static Component TryResolveSingleComponent(
-            GameObject gameObject,
+        internal static bool TryResolveSingleComponent(
+            Component component,
             FilterParameters filters,
-            BaseRelationalComponentAttribute attribute,
             Type elementType,
             bool isInterface,
             bool allowInterfaces,
             List<Component> scratch,
+            out Component singleComponent,
             bool filterDisabledComponents = true
         )
         {
@@ -718,23 +680,21 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             {
                 if (!requiresPostProcessing)
                 {
-                    return gameObject.TryGetComponent(elementType, out Component directMatch)
-                        ? directMatch
-                        : null;
+                    return component.TryGetComponent(elementType, out singleComponent);
                 }
 
                 if (
-                    gameObject.TryGetComponent(elementType, out Component candidate)
-                    && PassesStateAndFilters(candidate, filters, filterDisabledComponents)
+                    component.TryGetComponent(elementType, out singleComponent)
+                    && PassesStateAndFilters(singleComponent, filters, filterDisabledComponents)
                 )
                 {
-                    return candidate;
+                    return true;
                 }
 
                 if (scratch != null)
                 {
                     scratch.Clear();
-                    gameObject.GetComponents(elementType, scratch);
+                    component.GetComponents(elementType, scratch);
                     return FirstMatchingComponent(
                         scratch,
                         filters,
@@ -747,7 +707,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 using PooledResource<List<Component>> pooled = Buffers<Component>.List.Get(
                     out List<Component> components
                 );
-                gameObject.GetComponents(elementType, components);
+                component.GetComponents(elementType, components);
                 return FirstMatchingComponent(
                     components,
                     filters,
@@ -759,28 +719,29 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
             if (!allowInterfaces)
             {
-                return null;
+                singleComponent = default;
+                return false;
             }
 
             if (
-                gameObject.TryGetComponent(elementType, out Component interfaceCandidate)
+                component.TryGetComponent(elementType, out singleComponent)
                 && (
                     !requiresPostProcessing
-                    || PassesStateAndFilters(interfaceCandidate, filters, filterDisabledComponents)
+                    || PassesStateAndFilters(singleComponent, filters, filterDisabledComponents)
                 )
             )
             {
-                return interfaceCandidate;
+                return true;
             }
 
             if (scratch != null)
             {
                 scratch.Clear();
-                gameObject.GetComponents(elementType, scratch);
+                component.GetComponents(elementType, scratch);
 
                 if (scratch.Count == 0)
                 {
-                    gameObject.GetComponents(typeof(Component), scratch);
+                    component.GetComponents(typeof(Component), scratch);
                 }
 
                 return FirstMatchingComponent(
@@ -792,17 +753,15 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 );
             }
 
-            using (
-                PooledResource<List<Component>> pooled = Buffers<Component>.List.Get(
-                    out List<Component> components
-                )
-            )
             {
-                gameObject.GetComponents(elementType, components);
+                using PooledResource<List<Component>> pooled = Buffers<Component>.List.Get(
+                    out List<Component> components
+                );
 
+                component.GetComponents(elementType, components);
                 if (components.Count == 0)
                 {
-                    gameObject.GetComponents(typeof(Component), components);
+                    component.GetComponents(typeof(Component), components);
                 }
 
                 return FirstMatchingComponent(
@@ -816,7 +775,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         }
 
         internal static List<Component> GetComponentsOfType(
-            GameObject gameObject,
+            Component component,
             Type elementType,
             bool isInterface,
             bool allowInterfaces,
@@ -832,17 +791,13 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     return buffer;
                 }
 
-                gameObject.GetComponents(typeof(Component), buffer);
-
+                component.GetComponents(typeof(Component), buffer);
                 int writeIndex = 0;
-
                 int count = buffer.Count;
-
                 for (int i = 0; i < count; i++)
                 {
                     Component comp = buffer[i];
-
-                    if (comp != null && elementType.IsAssignableFrom(comp.GetType()))
+                    if (elementType.IsAssignableFrom(comp.GetType()))
                     {
                         buffer[writeIndex++] = comp;
                     }
@@ -852,12 +807,10 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 {
                     buffer.RemoveRange(writeIndex, buffer.Count - writeIndex);
                 }
-
                 return buffer;
             }
 
-            gameObject.GetComponents(elementType, buffer);
-
+            component.GetComponents(elementType, buffer);
             return buffer;
         }
     }

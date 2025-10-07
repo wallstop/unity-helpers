@@ -29,14 +29,14 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
             Debug.Log("Attribute Metadata Cache regenerated successfully.");
         }
 
-        private static void GenerateCache()
+        internal static void GenerateCache()
         {
             try
             {
                 // Use TypeCache to get all types derived from AttributesComponent at compile-time
                 List<Type> attributeComponentTypes = TypeCache
                     .GetTypesDerivedFrom<AttributesComponent>()
-                    .Where(type => !type.IsAbstract)
+                    .Where(AttributeMetadataFilters.ShouldSerialize)
                     .ToList();
 
                 if (attributeComponentTypes.Count == 0)
@@ -108,7 +108,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
             // Get all Component types using TypeCache
             List<Type> componentTypes = TypeCache
                 .GetTypesDerivedFrom<Component>()
-                .Where(type => !type.IsAbstract && !type.IsGenericType)
+                .Where(type => !type.IsGenericType)
+                .Where(AttributeMetadataFilters.ShouldSerialize)
                 .ToList();
 
             foreach (Type type in componentTypes)
@@ -122,7 +123,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
                 foreach (FieldInfo field in fields)
                 {
                     RelationalAttributeKind? attributeKind = null;
-
                     if (field.IsDefined(typeof(ParentComponentAttribute), false))
                     {
                         attributeKind = RelationalAttributeKind.Parent;
@@ -151,27 +151,23 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
                         fieldKind = FieldKind.Array;
                         elementType = fieldType.GetElementType();
                     }
-                    else if (
-                        fieldType.IsGenericType
-                        && fieldType.GetGenericTypeDefinition() == typeof(List<>)
-                    )
-                    {
-                        fieldKind = FieldKind.List;
-                        elementType = fieldType.GenericTypeArguments[0];
-                    }
-                    else if (
-                        fieldType.IsGenericType
-                        && fieldType.GetGenericTypeDefinition() == typeof(HashSet<>)
-                    )
-                    {
-                        fieldKind = FieldKind.HashSet;
-                        elementType = fieldType.GenericTypeArguments[0];
-                    }
                     else
-                    {
-                        fieldKind = FieldKind.Single;
-                        elementType = fieldType;
-                    }
+                        switch (fieldType.IsGenericType)
+                        {
+                            case true when fieldType.GetGenericTypeDefinition() == typeof(List<>):
+                                fieldKind = FieldKind.List;
+                                elementType = fieldType.GenericTypeArguments[0];
+                                break;
+                            case true
+                                when fieldType.GetGenericTypeDefinition() == typeof(HashSet<>):
+                                fieldKind = FieldKind.HashSet;
+                                elementType = fieldType.GenericTypeArguments[0];
+                                break;
+                            default:
+                                fieldKind = FieldKind.Single;
+                                elementType = fieldType;
+                                break;
+                        }
 
                     // Determine if element type is an interface or base type
                     bool isInterface =
@@ -215,14 +211,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
 
         private static AttributeMetadataCache GetOrCreateCache()
         {
-            // The ScriptableObjectSingletonCreator will automatically create the instance
-            // if it doesn't exist, so we can just access it directly
-            if (!AttributeMetadataCache.HasInstance)
-            {
-                // Force initialization by accessing Instance
-                _ = AttributeMetadataCache.Instance;
-            }
-
             return AttributeMetadataCache.Instance;
         }
     }

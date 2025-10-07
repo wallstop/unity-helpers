@@ -5,7 +5,6 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     using System.Collections.Generic;
     using Extension;
     using UnityEngine;
-    using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Utils;
     using static RelationalComponentProcessor;
 
@@ -171,21 +170,17 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                         }
                         default:
                         {
-                            Component parentComponent = GetFirstParentComponent(
+                            foundParent = TryGetFirstParentComponent(
                                 root,
                                 field.elementType,
                                 field.attribute,
-                                field.isInterface
+                                field.isInterface,
+                                out Component parentComponent
                             );
 
-                            if (parentComponent != null)
+                            if (foundParent)
                             {
                                 field.setter(component, parentComponent);
-                                foundParent = true;
-                            }
-                            else
-                            {
-                                foundParent = false;
                             }
 
                             break;
@@ -221,7 +216,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 while (current != null && depth < maxDepth)
                 {
                     GetComponentsOfType(
-                        current.gameObject,
+                        current,
                         elementType,
                         isInterface,
                         attribute.AllowInterfaces,
@@ -264,11 +259,12 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             return buffer;
         }
 
-        private static Component GetFirstParentComponent(
+        private static bool TryGetFirstParentComponent(
             Transform root,
             Type elementType,
             ParentComponentAttribute attribute,
-            bool isInterface
+            bool isInterface,
+            out Component result
         )
         {
             FilterParameters filters = new(attribute);
@@ -281,40 +277,40 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             );
             while (current != null && depth < maxDepth)
             {
-                Component resolved = TryResolveSingleComponent(
-                    current.gameObject,
-                    filters,
-                    attribute,
-                    elementType,
-                    isInterface,
-                    attribute.AllowInterfaces,
-                    components,
-                    filterDisabledComponents: false
-                );
-
-                if (resolved != null)
+                if (
+                    TryResolveSingleComponent(
+                        current,
+                        filters,
+                        elementType,
+                        isInterface,
+                        attribute.AllowInterfaces,
+                        components,
+                        out Component resolved,
+                        filterDisabledComponents: false
+                    )
+                )
                 {
-                    return resolved;
+                    result = resolved;
+                    return true;
                 }
 
                 current = current.parent;
                 depth++;
             }
 
-            return null;
+            result = null;
+            return false;
         }
 
         private static int GetDepthFromTransform(Transform start, Transform target)
         {
             int depth = 0;
             Transform current = start;
-
             while (current != null && current != target)
             {
                 current = current.parent;
                 depth++;
             }
-
             return current == target ? depth : int.MaxValue;
         }
     }

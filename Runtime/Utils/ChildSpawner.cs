@@ -7,16 +7,38 @@ namespace WallstopStudios.UnityHelpers.Utils
     using UnityEngine;
     using UnityEngine.Serialization;
 
+    /// <summary>
+    /// Selects the MonoBehaviour lifecycle events that should trigger prefab instantiation.
+    /// </summary>
     [Flags]
     public enum ChildSpawnMethod
     {
+        /// <summary>
+        /// No child creation will occur. Mainly retained for serialization compatibility.
+        /// </summary>
         [Obsolete]
         None = 0,
+
+        /// <summary>
+        /// Spawn children during <see cref="MonoBehaviour.Awake"/>.
+        /// </summary>
         Awake = 1 << 0,
+
+        /// <summary>
+        /// Spawn children when the component is enabled.
+        /// </summary>
         OnEnabled = 1 << 1,
+
+        /// <summary>
+        /// Spawn children during <see cref="MonoBehaviour.Start"/>.
+        /// </summary>
         Start = 1 << 2,
     }
 
+    /// <summary>
+    /// Instantiates a curated list of prefabs as children of the current GameObject while ensuring
+    /// duplicates across scenes are avoided and optional DontDestroyOnLoad behaviour is applied.
+    /// </summary>
     [DisallowMultipleComponent]
     public sealed class ChildSpawner : MonoBehaviour
     {
@@ -29,12 +51,21 @@ namespace WallstopStudios.UnityHelpers.Utils
         [SerializeField]
         internal ChildSpawnMethod _spawnMethod = ChildSpawnMethod.Start;
 
+        /// <summary>
+        /// Prefabs that are spawned in all environments where the component executes.
+        /// </summary>
         [SerializeField]
         internal GameObject[] _prefabs = Array.Empty<GameObject>();
 
+        /// <summary>
+        /// Prefabs spawned when running inside the Unity editor only.
+        /// </summary>
         [SerializeField]
         internal GameObject[] _editorOnlyPrefabs = Array.Empty<GameObject>();
 
+        /// <summary>
+        /// Prefabs spawned when running in the editor or a development build.
+        /// </summary>
         [SerializeField]
         internal GameObject[] _developmentOnlyPrefabs = Array.Empty<GameObject>();
 
@@ -70,6 +101,10 @@ namespace WallstopStudios.UnityHelpers.Utils
             }
         }
 
+        /// <summary>
+        /// Performs the spawning process for all configured prefab collections, applying naming
+        /// suffixes and duplicate checks for each group.
+        /// </summary>
         private void Spawn()
         {
             TrySetDontDestroyOnLoad();
@@ -154,11 +189,21 @@ namespace WallstopStudios.UnityHelpers.Utils
             }
         }
 
+        /// <summary>
+        /// Removes Unity's default "(Clone)" suffix from instantiated prefab names.
+        /// </summary>
+        /// <param name="child">The instantiated child whose name should be cleaned.</param>
         private static void CleanName(GameObject child)
         {
             child.name = child.name.Replace("(Clone)", string.Empty);
         }
 
+        /// <summary>
+        /// Instantiates <paramref name="prefab"/> as a child of this component if it has not been
+        /// spawned previously, guarding against duplicate DontDestroyOnLoad instances.
+        /// </summary>
+        /// <param name="prefab">Prefab to spawn.</param>
+        /// <returns>The instantiated child instance, or <c>null</c> if the spawn is skipped.</returns>
         private GameObject Spawn(GameObject prefab)
         {
             if (prefab == null)
@@ -190,6 +235,10 @@ namespace WallstopStudios.UnityHelpers.Utils
             return child;
         }
 
+        /// <summary>
+        /// Applies <see cref="Object.DontDestroyOnLoad(UnityEngine.Object)"/> when configured to
+        /// keep the spawner alive between scene loads.
+        /// </summary>
         private void TrySetDontDestroyOnLoad()
         {
             if (_dontDestroyOnLoad && Application.isPlaying && !gameObject.IsDontDestroyOnLoad())
