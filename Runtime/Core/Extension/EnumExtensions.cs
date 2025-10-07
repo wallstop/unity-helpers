@@ -13,11 +13,11 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
     internal sealed class EnumNameCacheData
     {
-        public readonly string[] NamesArray;
-        public readonly ConcurrentDictionary<ulong, string> NamesDict;
-        public readonly bool UseArray;
-        public readonly ulong MinValue;
-        public readonly int ArrayLength;
+        public readonly string[] namesArray;
+        public readonly ConcurrentDictionary<ulong, string> namesDict;
+        public readonly bool useArray;
+        public readonly ulong minValue;
+        public readonly int arrayLength;
 
         public EnumNameCacheData(
             string[] namesArray,
@@ -27,11 +27,11 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             int arrayLength
         )
         {
-            NamesArray = namesArray;
-            NamesDict = namesDict;
-            UseArray = useArray;
-            MinValue = minValue;
-            ArrayLength = arrayLength;
+            this.namesArray = namesArray;
+            this.namesDict = namesDict;
+            this.useArray = useArray;
+            this.minValue = minValue;
+            this.arrayLength = arrayLength;
         }
     }
 
@@ -104,18 +104,12 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                         }
                     }
                 }
-                namesDict = new ConcurrentDictionary<ulong, string>(
-                    Environment.ProcessorCount,
-                    fields.Length
-                );
+                namesDict = new ConcurrentDictionary<ulong, string>();
             }
             else
             {
                 // Fall back to dictionary
-                namesDict = new ConcurrentDictionary<ulong, string>(
-                    Environment.ProcessorCount,
-                    fields.Length
-                );
+                namesDict = new ConcurrentDictionary<ulong, string>();
 
                 for (int i = 0; i < values.Length; i++)
                 {
@@ -145,12 +139,12 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
 
             EnumNameCacheData cache = Cache;
-            if (cache.UseArray && cache.NamesArray != null)
+            if (cache.useArray && cache.namesArray != null)
             {
-                ulong index = key - cache.MinValue;
-                if (index < (ulong)cache.ArrayLength)
+                ulong index = key - cache.minValue;
+                if (index < (ulong)cache.arrayLength)
                 {
-                    string existing = cache.NamesArray[index];
+                    string existing = cache.namesArray[index];
                     if (existing != null)
                     {
                         return existing;
@@ -158,7 +152,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
                     string generated = value.ToString("G");
                     string prior = Interlocked.CompareExchange(
-                        ref cache.NamesArray[index],
+                        ref cache.namesArray[index],
                         generated,
                         null
                     );
@@ -166,7 +160,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 }
             }
 
-            ConcurrentDictionary<ulong, string> namesDict = cache.NamesDict;
+            ConcurrentDictionary<ulong, string> namesDict = cache.namesDict;
             if (namesDict != null)
             {
                 CacheLock.EnterReadLock();
@@ -219,11 +213,11 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
     internal sealed class EnumDisplayNameCacheData
     {
-        public readonly string[] NamesArray;
-        public readonly ConcurrentDictionary<ulong, string> NamesDict;
-        public readonly bool UseArray;
-        public readonly ulong MinValue;
-        public readonly int ArrayLength;
+        public readonly string[] namesArray;
+        public readonly ConcurrentDictionary<ulong, string> namesDict;
+        public readonly bool useArray;
+        public readonly ulong minValue;
+        public readonly int arrayLength;
 
         public EnumDisplayNameCacheData(
             string[] namesArray,
@@ -233,11 +227,11 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             int arrayLength
         )
         {
-            NamesArray = namesArray;
-            NamesDict = namesDict;
-            UseArray = useArray;
-            MinValue = minValue;
-            ArrayLength = arrayLength;
+            this.namesArray = namesArray;
+            this.namesDict = namesDict;
+            this.useArray = useArray;
+            this.minValue = minValue;
+            this.arrayLength = arrayLength;
         }
     }
 
@@ -246,9 +240,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
     {
         // Use instance holder to avoid static field access overhead on Mono
         private static readonly EnumDisplayNameCacheData Cache;
-        private static readonly ReaderWriterLockSlim CacheLock = new ReaderWriterLockSlim(
-            LockRecursionPolicy.NoRecursion
-        );
 
         static EnumDisplayNameCache()
         {
@@ -365,24 +356,24 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         {
             if (!EnumNumericHelper<T>.TryConvertToUInt64(value, out ulong key))
             {
-                return value.ToString();
+                return value.ToString("G");
             }
 
             EnumDisplayNameCacheData cache = Cache;
-            if (cache.UseArray && cache.NamesArray != null)
+            if (cache.useArray && cache.namesArray != null)
             {
-                ulong index = key - cache.MinValue;
-                if (index < (ulong)cache.ArrayLength)
+                ulong index = key - cache.minValue;
+                if (index < (ulong)cache.arrayLength)
                 {
-                    string existing = cache.NamesArray[index];
+                    string existing = cache.namesArray[index];
                     if (existing != null)
                     {
                         return existing;
                     }
 
-                    string generated = value.ToString();
+                    string generated = value.ToString("G");
                     string prior = Interlocked.CompareExchange(
-                        ref cache.NamesArray[index],
+                        ref cache.namesArray[index],
                         generated,
                         null
                     );
@@ -390,54 +381,18 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 }
             }
 
-            ConcurrentDictionary<ulong, string> namesDict = cache.NamesDict;
+            ConcurrentDictionary<ulong, string> namesDict = cache.namesDict;
             if (namesDict != null)
             {
-                CacheLock.EnterReadLock();
-                try
+                if (namesDict.TryGetValue(key, out string cached))
                 {
-                    if (namesDict.TryGetValue(key, out string cached))
-                    {
-                        return cached;
-                    }
-                }
-                finally
-                {
-                    CacheLock.ExitReadLock();
-                }
-
-                CacheLock.EnterUpgradeableReadLock();
-                try
-                {
-                    if (namesDict.TryGetValue(key, out string cached))
-                    {
-                        return cached;
-                    }
-
-                    string generated = value.ToString();
-                    CacheLock.EnterWriteLock();
-                    try
-                    {
-                        if (!namesDict.TryGetValue(key, out cached))
-                        {
-                            namesDict[key] = generated;
-                            cached = generated;
-                        }
-                    }
-                    finally
-                    {
-                        CacheLock.ExitWriteLock();
-                    }
-
                     return cached;
                 }
-                finally
-                {
-                    CacheLock.ExitUpgradeableReadLock();
-                }
+
+                return namesDict.GetOrAdd(key, enumValue => enumValue.ToString("G"));
             }
 
-            return value.ToString();
+            return value.ToString("G");
         }
     }
 
