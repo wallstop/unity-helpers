@@ -10,47 +10,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
     using Attribute = WallstopStudios.UnityHelpers.Tags.Attribute;
     using Object = UnityEngine.Object;
 
-    public abstract class AttributeTagsTestBase
+    public abstract class AttributeTagsTestBase : WallstopStudios.UnityHelpers.Tests.CommonTestBase
     {
-        protected readonly List<Object> _spawnedObjects = new();
-
-        protected T Track<T>(T instance)
-            where T : Object
-        {
-            _spawnedObjects.Add(instance);
-            return instance;
-        }
-
-        [TearDown]
-        public void TearDownScriptableObjects()
-        {
-            foreach (Object element in _spawnedObjects.ToArray())
-            {
-                if (element != null)
-                {
-                    Object.DestroyImmediate(element);
-                }
-            }
-            _spawnedObjects.Clear();
-        }
-
-        [UnityTearDown]
-        public IEnumerator TearDownUnityObjects()
-        {
-            foreach (Object tracked in _spawnedObjects.ToArray())
-            {
-                if (tracked == null)
-                {
-                    continue;
-                }
-
-                Object.Destroy(tracked);
-                yield return null;
-            }
-
-            _spawnedObjects.Clear();
-        }
-
         protected static void ResetEffectHandleId(long value = 0)
         {
             EffectHandle.Id = value;
