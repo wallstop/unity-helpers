@@ -735,11 +735,72 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
                     if (allMatch)
                     {
-                        foreach (Object asset in AssetDatabase.LoadAllAssetsAtPath(assetPath))
+                        bool excluded = false;
+                        // Exclude by regex (OR semantics)
+                        if (entry.excludeRegexes is { Count: > 0 })
                         {
-                            if (asset is Sprite spriteAsset && spriteAsset != null)
+                            foreach (string pattern in entry.excludeRegexes)
                             {
-                                foundSpritesInFolders.Add(spriteAsset);
+                                if (string.IsNullOrWhiteSpace(pattern))
+                                {
+                                    continue;
+                                }
+                                try
+                                {
+                                    if (Regex.IsMatch(fileName, pattern, RegexOptions.IgnoreCase))
+                                    {
+                                        excluded = true;
+                                        break;
+                                    }
+                                }
+                                catch (ArgumentException ex)
+                                {
+                                    this.LogError(
+                                        $"'{config.name}', Folder '{entry.folderPath}': Invalid Exclude Regex pattern '{pattern}': {ex.Message}. This pattern will be ignored."
+                                    );
+                                }
+                            }
+                        }
+
+                        // Exclude by labels
+                        if (!excluded && entry.excludeLabels is { Count: > 0 })
+                        {
+                            Object mainAsset2 = AssetDatabase.LoadMainAssetAtPath(assetPath);
+                            if (mainAsset2 != null)
+                            {
+                                string[] labels2 = AssetDatabase.GetLabels(mainAsset2);
+                                using PooledResource<HashSet<string>> exEntryLabelsRes =
+                                    Buffers<string>.HashSet.Get();
+                                HashSet<string> exEntryLabels = exEntryLabelsRes.resource;
+                                exEntryLabels.Clear();
+                                exEntryLabels.UnionWith(entry.excludeLabels);
+
+                                using PooledResource<HashSet<string>> assetLabelsRes2 =
+                                    Buffers<string>.HashSet.Get();
+                                HashSet<string> assetLabels2 = assetLabelsRes2.resource;
+                                assetLabels2.Clear();
+                                assetLabels2.UnionWith(labels2);
+
+                                switch (entry.excludeLabelSelectionMode)
+                                {
+                                    case LabelSelectionMode.All:
+                                        excluded = exEntryLabels.All(assetLabels2.Contains);
+                                        break;
+                                    case LabelSelectionMode.AnyOf:
+                                        excluded = assetLabels2.Any(exEntryLabels.Contains);
+                                        break;
+                                }
+                            }
+                        }
+
+                        if (!excluded)
+                        {
+                            foreach (Object asset in AssetDatabase.LoadAllAssetsAtPath(assetPath))
+                            {
+                                if (asset is Sprite spriteAsset && spriteAsset != null)
+                                {
+                                    foundSpritesInFolders.Add(spriteAsset);
+                                }
                             }
                         }
                     }
@@ -973,6 +1034,41 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             platformSettings.textureCompression = config.compression;
             atlas.SetPlatformSettings(platformSettings);
 
+            // Apply per-platform overrides if configured
+            if (config.overrideStandalone)
+            {
+                ApplyPlatformSettings(
+                    atlas,
+                    "Standalone",
+                    config.standaloneMaxTextureSize,
+                    config.standaloneCompression,
+                    config.standaloneUseCrunchCompression,
+                    config.standaloneCrunchCompressionLevel
+                );
+            }
+            if (config.overrideIPhone)
+            {
+                ApplyPlatformSettings(
+                    atlas,
+                    "iPhone",
+                    config.iPhoneMaxTextureSize,
+                    config.iPhoneCompression,
+                    config.iPhoneUseCrunchCompression,
+                    config.iPhoneCrunchCompressionLevel
+                );
+            }
+            if (config.overrideAndroid)
+            {
+                ApplyPlatformSettings(
+                    atlas,
+                    "Android",
+                    config.androidMaxTextureSize,
+                    config.androidCompression,
+                    config.androidUseCrunchCompression,
+                    config.androidCrunchCompressionLevel
+                );
+            }
+
             // No need to remove null sprites from atlas contents here; we control packables below.
 
             int removed = config.spritesToPack.RemoveAll(sprite => sprite == null);
@@ -1010,6 +1106,28 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             this.Log(
                 $"'{config.name}': Successfully generated/updated at {outputPath}. Sprites included: {config.spritesToPack.Count}."
             );
+        }
+
+        private static void ApplyPlatformSettings(
+            SpriteAtlas atlas,
+            string platformName,
+            int maxTextureSize,
+            TextureImporterCompression compression,
+            bool useCrunch,
+            int crunchLevel
+        )
+        {
+            TextureImporterPlatformSettings ps = atlas.GetPlatformSettings(platformName);
+            if (string.IsNullOrWhiteSpace(ps.name))
+            {
+                ps.name = platformName;
+            }
+            ps.overridden = true;
+            ps.maxTextureSize = maxTextureSize;
+            ps.textureCompression = compression;
+            ps.crunchedCompression = useCrunch;
+            ps.compressionQuality = Mathf.Clamp(crunchLevel, 0, 100);
+            atlas.SetPlatformSettings(ps);
         }
 
         private void PackAllProjectAtlases()

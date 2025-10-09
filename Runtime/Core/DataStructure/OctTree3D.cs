@@ -112,9 +112,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         public const int DefaultBucketSize = 12;
 
         public readonly ImmutableArray<T> elements;
-        public Bounds Boundary => _bounds.ToBounds();
+        public Bounds Boundary => _boundary;
 
         private readonly BoundingBox3D _bounds;
+        private readonly Bounds _boundary;
         private readonly Entry[] _entries;
         private readonly int[] _indices;
         private readonly OctTreeNode _head;
@@ -143,11 +144,30 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 : BoundingBox3D.Empty;
             bool anyPoints = boundary.HasValue;
 
+            float minX = float.PositiveInfinity;
+            float minY = float.PositiveInfinity;
+            float minZ = float.PositiveInfinity;
+            float maxX = float.NegativeInfinity;
+            float maxY = float.NegativeInfinity;
+            float maxZ = float.NegativeInfinity;
+
             for (int i = 0; i < elementCount; ++i)
             {
                 T element = elements[i];
                 Vector3 position = elementTransformer(element);
                 _entries[i] = new Entry(element, position);
+                if (position.x < minX)
+                    minX = position.x;
+                if (position.y < minY)
+                    minY = position.y;
+                if (position.z < minZ)
+                    minZ = position.z;
+                if (position.x > maxX)
+                    maxX = position.x;
+                if (position.y > maxY)
+                    maxY = position.y;
+                if (position.z > maxZ)
+                    maxZ = position.z;
                 if (anyPoints)
                 {
                     bounds = bounds.ExpandToInclude(position);
@@ -167,6 +187,19 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
 
             _bounds = bounds;
+
+            if (elementCount == 0)
+            {
+                _boundary = new Bounds();
+            }
+            else
+            {
+                Vector3 closedMin = new(minX, minY, minZ);
+                Vector3 closedMax = new(maxX, maxY, maxZ);
+                Vector3 center = (closedMin + closedMax) * 0.5f;
+                Vector3 size = closedMax - closedMin;
+                _boundary = new Bounds(center, size);
+            }
 
             if (elementCount == 0)
             {
@@ -450,7 +483,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                         continue;
                     }
 
-                    if (queryBounds.Intersects(child.boundary))
+                    if (IntersectsOrTouches(queryBounds, child.boundary))
                     {
                         nodesToVisit.Push(child);
                     }
@@ -464,11 +497,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         {
             using PooledResource<Stack<OctTreeNode>> stackResource =
                 Buffers<OctTreeNode>.Stack.Get();
-            return GetElementsInBounds(
-                BoundingBox3D.FromClosedBounds(bounds),
-                elementsInBounds,
-                stackResource.resource
-            );
+            // Use inclusive-max conversion to match Unity Bounds.Contains semantics
+            BoundingBox3D query = BoundingBox3D.FromClosedBoundsInclusiveMax(bounds);
+            return GetElementsInBounds(query, elementsInBounds, stackResource.resource);
         }
 
         public List<T> GetElementsInBounds(
@@ -478,7 +509,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         )
         {
             elementsInBounds.Clear();
-            if (_head._count <= 0 || !queryBounds.Intersects(_bounds))
+            if (_head._count <= 0 || !IntersectsOrTouches(queryBounds, _bounds))
             {
                 return elementsInBounds;
             }
@@ -533,7 +564,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                         continue;
                     }
 
-                    if (queryBounds.Intersects(child.boundary))
+                    if (IntersectsOrTouches(queryBounds, child.boundary))
                     {
                         nodesToVisit.Push(child);
                     }
@@ -541,6 +572,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
 
             return elementsInBounds;
+        }
+
+        private static bool IntersectsOrTouches(BoundingBox3D a, BoundingBox3D b)
+        {
+            return a.min.x <= b.max.x
+                && a.max.x >= b.min.x
+                && a.min.y <= b.max.y
+                && a.max.y >= b.min.y
+                && a.min.z <= b.max.z
+                && a.max.z >= b.min.z;
         }
 
         public List<T> GetApproximateNearestNeighbors(

@@ -90,6 +90,23 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         [Tooltip("Asset labels to include in the folders.")]
         [StringInList(typeof(Helpers), nameof(Helpers.GetAllSpriteLabelNames))]
         public List<string> labels = new();
+
+        [Header("Exclusions")]
+        [Tooltip(
+            "Regex patterns to exclude by file name (any match will exclude). Applies when Regex selection is active."
+        )]
+        public List<string> excludeRegexes = new();
+
+        [Tooltip(
+            "Label selection mode for exclusions (asset labels that match here will be excluded). Applies when Label selection is active."
+        )]
+        public LabelSelectionMode excludeLabelSelectionMode = LabelSelectionMode.AnyOf;
+
+        [Tooltip(
+            "Asset labels to exclude in the folders (matching assets will be excluded). Applies when Label selection is active."
+        )]
+        [StringInList(typeof(Helpers), nameof(Helpers.GetAllSpriteLabelNames))]
+        public List<string> excludeLabels = new();
     }
 
     [CreateAssetMenu(
@@ -161,6 +178,57 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         public int crunchCompressionLevel = 50;
 
         public TextureImporterCompression compression = TextureImporterCompression.Compressed;
+
+        [Header("Platform Overrides")]
+        [Tooltip("Override Standalone platform settings (Windows/Mac/Linux)")]
+        public bool overrideStandalone;
+
+        [WShowIf(nameof(overrideStandalone))]
+        public int standaloneMaxTextureSize = 8192;
+
+        [WShowIf(nameof(overrideStandalone))]
+        public TextureImporterCompression standaloneCompression =
+            TextureImporterCompression.Compressed;
+
+        [WShowIf(nameof(overrideStandalone))]
+        public bool standaloneUseCrunchCompression = true;
+
+        [WShowIf(nameof(overrideStandalone))]
+        [Range(0, 100)]
+        public int standaloneCrunchCompressionLevel = 50;
+
+        [Tooltip("Override iOS platform settings")]
+        public bool overrideIPhone;
+
+        [WShowIf(nameof(overrideIPhone))]
+        public int iPhoneMaxTextureSize = 4096;
+
+        [WShowIf(nameof(overrideIPhone))]
+        public TextureImporterCompression iPhoneCompression = TextureImporterCompression.Compressed;
+
+        [WShowIf(nameof(overrideIPhone))]
+        public bool iPhoneUseCrunchCompression = true;
+
+        [WShowIf(nameof(overrideIPhone))]
+        [Range(0, 100)]
+        public int iPhoneCrunchCompressionLevel = 50;
+
+        [Tooltip("Override Android platform settings")]
+        public bool overrideAndroid;
+
+        [WShowIf(nameof(overrideAndroid))]
+        public int androidMaxTextureSize = 8192;
+
+        [WShowIf(nameof(overrideAndroid))]
+        public TextureImporterCompression androidCompression =
+            TextureImporterCompression.Compressed;
+
+        [WShowIf(nameof(overrideAndroid))]
+        public bool androidUseCrunchCompression = true;
+
+        [WShowIf(nameof(overrideAndroid))]
+        [Range(0, 100)]
+        public int androidCrunchCompressionLevel = 50;
 
         private void OnValidate()
         {

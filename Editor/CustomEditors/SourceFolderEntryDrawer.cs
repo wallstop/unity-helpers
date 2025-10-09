@@ -16,6 +16,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
         private static readonly Dictionary<string, bool> RegexesFoldoutState = new(
             StringComparer.Ordinal
         );
+        private static readonly Dictionary<string, bool> ExcludeRegexesFoldoutState = new(
+            StringComparer.Ordinal
+        );
 
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
@@ -236,6 +239,88 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
                             property.serializedObject.ApplyModifiedProperties();
                         }
                     }
+
+                    // Exclude Regexes
+                    Rect excludeRegexFoldoutLabelRect = new(
+                        startX,
+                        currentY,
+                        availableWidth,
+                        EditorGUIUtility.singleLineHeight
+                    );
+                    string excludeRegexesFoldoutKey = GetExcludeRegexFoldoutKey(property);
+                    ExcludeRegexesFoldoutState.TryAdd(excludeRegexesFoldoutKey, false);
+                    ExcludeRegexesFoldoutState[excludeRegexesFoldoutKey] = EditorGUI.Foldout(
+                        excludeRegexFoldoutLabelRect,
+                        ExcludeRegexesFoldoutState[excludeRegexesFoldoutKey],
+                        "Exclude Regexes (OR logic)",
+                        true
+                    );
+                    currentY +=
+                        excludeRegexFoldoutLabelRect.height
+                        + EditorGUIUtility.standardVerticalSpacing;
+
+                    if (ExcludeRegexesFoldoutState[excludeRegexesFoldoutKey])
+                    {
+                        SerializedProperty excludeRegexesProp = property.FindPropertyRelative(
+                            nameof(SourceFolderEntry.excludeRegexes)
+                        );
+                        float exRegexStartX = startX + 15f;
+                        float exRegexWidth = availableWidth - 15f;
+                        for (int i = 0; i < excludeRegexesProp.arraySize; i++)
+                        {
+                            SerializedProperty elemProp = excludeRegexesProp.GetArrayElementAtIndex(
+                                i
+                            );
+                            Rect fieldRect = new(
+                                exRegexStartX,
+                                currentY,
+                                exRegexWidth - 25f,
+                                EditorGUIUtility.singleLineHeight
+                            );
+                            EditorGUI.BeginChangeCheck();
+                            string newVal = EditorGUI.TextField(
+                                fieldRect,
+                                $"Exclude Regex {i}:",
+                                elemProp.stringValue
+                            );
+                            if (EditorGUI.EndChangeCheck())
+                            {
+                                elemProp.stringValue = newVal;
+                            }
+                            Rect remRect = new(
+                                fieldRect.xMax + 4f,
+                                currentY,
+                                25f,
+                                EditorGUIUtility.singleLineHeight
+                            );
+                            if (GUI.Button(remRect, "–"))
+                            {
+                                excludeRegexesProp.DeleteArrayElementAtIndex(i);
+                                property.serializedObject.ApplyModifiedProperties();
+                            }
+                            currentY +=
+                                EditorGUIUtility.singleLineHeight
+                                + EditorGUIUtility.standardVerticalSpacing;
+                        }
+
+                        Rect addExRect = new(
+                            exRegexStartX,
+                            currentY,
+                            exRegexWidth,
+                            EditorGUIUtility.singleLineHeight
+                        );
+                        if (GUI.Button(addExRect, "+ Add Exclude Regex"))
+                        {
+                            int idx = excludeRegexesProp.arraySize;
+                            excludeRegexesProp.InsertArrayElementAtIndex(idx);
+                            excludeRegexesProp.GetArrayElementAtIndex(idx).stringValue =
+                                string.Empty;
+                            property.serializedObject.ApplyModifiedProperties();
+                        }
+                        currentY +=
+                            EditorGUIUtility.singleLineHeight
+                            + EditorGUIUtility.standardVerticalSpacing;
+                    }
                 }
 
                 if (useRegex && useLabels)
@@ -289,6 +374,38 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
                     Rect rectLabels = new(startX, currentY, availableWidth, labelsHeight);
                     EditorGUI.PropertyField(rectLabels, labelsProp, new GUIContent("Labels"), true);
                     currentY += labelsHeight + EditorGUIUtility.standardVerticalSpacing;
+
+                    // Exclude labels
+                    SerializedProperty exLabelModeProp = property.FindPropertyRelative(
+                        nameof(SourceFolderEntry.excludeLabelSelectionMode)
+                    );
+                    Rect exLabelModeRect = new(
+                        startX,
+                        currentY,
+                        availableWidth,
+                        EditorGUIUtility.singleLineHeight
+                    );
+                    EditorGUI.PropertyField(
+                        exLabelModeRect,
+                        exLabelModeProp,
+                        new GUIContent("Exclude Label Mode")
+                    );
+                    currentY +=
+                        EditorGUIUtility.singleLineHeight
+                        + EditorGUIUtility.standardVerticalSpacing;
+
+                    SerializedProperty exLabelsProp = property.FindPropertyRelative(
+                        nameof(SourceFolderEntry.excludeLabels)
+                    );
+                    float exLabelsHeight = EditorGUI.GetPropertyHeight(exLabelsProp, true);
+                    Rect exLabelsRect = new(startX, currentY, availableWidth, exLabelsHeight);
+                    EditorGUI.PropertyField(
+                        exLabelsRect,
+                        exLabelsProp,
+                        new GUIContent("Exclude Labels"),
+                        true
+                    );
+                    currentY += exLabelsHeight + EditorGUIUtility.standardVerticalSpacing;
                 }
 
                 EditorGUI.indentLevel = originalIndent;
@@ -350,6 +467,27 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
 
                 height +=
                     EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
+
+                // Exclude regexes foldout
+                string exRegexFoldoutKey = GetExcludeRegexFoldoutKey(property);
+                bool isExRegexExpanded = ExcludeRegexesFoldoutState.GetValueOrDefault(
+                    exRegexFoldoutKey,
+                    false
+                );
+                if (isExRegexExpanded)
+                {
+                    SerializedProperty exRegexesProp = property.FindPropertyRelative(
+                        nameof(SourceFolderEntry.excludeRegexes)
+                    );
+                    height +=
+                        (1 + exRegexesProp.arraySize)
+                        * (
+                            EditorGUIUtility.singleLineHeight
+                            + EditorGUIUtility.standardVerticalSpacing
+                        );
+                }
+                height +=
+                    EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
             }
 
             if (useRegex && useLabels)
@@ -373,6 +511,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
                 float labelsFullHeight = EditorGUI.GetPropertyHeight(labelsProp, true);
 
                 height += labelsFullHeight;
+                height += EditorGUIUtility.standardVerticalSpacing;
+
+                // Exclude label section (mode + list)
+                height += EditorGUIUtility.singleLineHeight; // exclude mode
+                height += EditorGUIUtility.standardVerticalSpacing;
+                SerializedProperty exLabelsProp = property.FindPropertyRelative(
+                    nameof(SourceFolderEntry.excludeLabels)
+                );
+                height += EditorGUI.GetPropertyHeight(exLabelsProp, true);
                 height += EditorGUIUtility.standardVerticalSpacing;
             }
 
@@ -407,6 +554,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
                 )
                 + property.propertyPath
                 + ".regexesList";
+        }
+
+        private static string GetExcludeRegexFoldoutKey(SerializedProperty property)
+        {
+            return (
+                    property.serializedObject.targetObject != null
+                        ? property.serializedObject.targetObject.name
+                        : "NULL"
+                )
+                + property.propertyPath
+                + ".excludeRegexesList";
         }
     }
 #endif

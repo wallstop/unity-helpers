@@ -64,6 +64,25 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             return new BoundingBox3D(bounds.min, bounds.max);
         }
 
+        /// <summary>
+        /// Creates a BoundingBox3D from a Unity Bounds treating the Bounds' max as inclusive
+        /// by converting the closed interval [min, max] to a half-open interval [min, max)
+        /// with an exclusive max that is the next representable float past the provided max.
+        /// This makes point-in-box tests consistent with Unity's Bounds.Contains semantics.
+        /// </summary>
+        public static BoundingBox3D FromClosedBoundsInclusiveMax(Bounds bounds)
+        {
+            Vector3 min = bounds.min;
+            Vector3 max = bounds.max;
+            // Convert Unity's closed max to half-open by nudging max strictly past the provided value
+            Vector3 exclusiveMax = new Vector3(
+                NextFloat(max.x),
+                NextFloat(max.y),
+                NextFloat(max.z)
+            );
+            return new BoundingBox3D(min, exclusiveMax);
+        }
+
         public static BoundingBox3D FromPoint(Vector3 point)
         {
             Vector3 exclusiveMax = new Vector3(
