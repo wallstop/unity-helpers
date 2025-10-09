@@ -4,13 +4,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.TestTools;
+    using WallstopStudios.UnityHelpers.Tests;
     using WallstopStudios.UnityHelpers.Utils;
 
-    public sealed class SpriteRendererSyncTests
+    public sealed class SpriteRendererSyncTests : CommonTestBase
     {
         private Texture2D CreateTexture(int w, int h)
         {
-            Texture2D t = new Texture2D(w, h, TextureFormat.RGBA32, false, false);
+            Texture2D t = Track(new Texture2D(w, h, TextureFormat.RGBA32, false, false));
             t.SetPixels(new Color[w * h]);
             t.Apply(false, false);
             return t;
@@ -19,17 +20,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         private Sprite CreateSprite(int w = 4, int h = 4)
         {
             Texture2D t = CreateTexture(w, h);
-            return Sprite.Create(t, new Rect(0, 0, w, h), new Vector2(0.5f, 0.5f), 100f);
+            return Track(Sprite.Create(t, new Rect(0, 0, w, h), new Vector2(0.5f, 0.5f), 100f));
         }
 
         [UnityTest]
         public IEnumerator MirrorsPropertiesFromTarget()
         {
-            GameObject targetGo = new("Target", typeof(SpriteRenderer));
-            GameObject followerGo = new(
-                "Follower",
-                typeof(SpriteRenderer),
-                typeof(SpriteRendererSync)
+            GameObject targetGo = Track(new GameObject("Target", typeof(SpriteRenderer)));
+            GameObject followerGo = Track(
+                new GameObject("Follower", typeof(SpriteRenderer), typeof(SpriteRendererSync))
             );
             SpriteRenderer target = targetGo.GetComponent<SpriteRenderer>();
             SpriteRenderer follower = followerGo.GetComponent<SpriteRenderer>();
@@ -65,10 +64,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator NullTargetClearsSprite()
         {
-            GameObject followerGo = new(
-                "Follower",
-                typeof(SpriteRenderer),
-                typeof(SpriteRendererSync)
+            GameObject followerGo = Track(
+                new GameObject("Follower", typeof(SpriteRenderer), typeof(SpriteRendererSync))
             );
             SpriteRenderer follower = followerGo.GetComponent<SpriteRenderer>();
             SpriteRendererSync sync = followerGo.GetComponent<SpriteRendererSync>();
@@ -86,12 +83,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator DynamicToMatchOverridesAndCaches()
         {
-            GameObject aGo = new("A", typeof(SpriteRenderer));
-            GameObject bGo = new("B", typeof(SpriteRenderer));
-            GameObject followerGo = new(
-                "Follower",
-                typeof(SpriteRenderer),
-                typeof(SpriteRendererSync)
+            GameObject aGo = Track(new GameObject("A", typeof(SpriteRenderer)));
+            GameObject bGo = Track(new GameObject("B", typeof(SpriteRenderer)));
+            GameObject followerGo = Track(
+                new GameObject("Follower", typeof(SpriteRenderer), typeof(SpriteRendererSync))
             );
             SpriteRenderer a = aGo.GetComponent<SpriteRenderer>();
             SpriteRenderer b = bGo.GetComponent<SpriteRenderer>();
@@ -116,11 +111,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator SortingOrderCanBeOverridden()
         {
-            GameObject targetGo = new("Target", typeof(SpriteRenderer));
-            GameObject followerGo = new(
-                "Follower",
-                typeof(SpriteRenderer),
-                typeof(SpriteRendererSync)
+            GameObject targetGo = Track(new GameObject("Target", typeof(SpriteRenderer)));
+            GameObject followerGo = Track(
+                new GameObject("Follower", typeof(SpriteRenderer), typeof(SpriteRendererSync))
             );
             SpriteRenderer target = targetGo.GetComponent<SpriteRenderer>();
             SpriteRenderer follower = followerGo.GetComponent<SpriteRenderer>();

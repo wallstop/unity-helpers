@@ -4,18 +4,21 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.TestTools;
+    using WallstopStudios.UnityHelpers.Tests;
     using WallstopStudios.UnityHelpers.Utils;
 
-    public sealed class CircleLineRendererTests
+    public sealed class CircleLineRendererTests : CommonTestBase
     {
         [UnityTest]
         public IEnumerator UpdateSyncsEnabledWithCollider()
         {
-            GameObject go = new(
-                "Circle",
-                typeof(LineRenderer),
-                typeof(CircleCollider2D),
-                typeof(CircleLineRenderer)
+            GameObject go = Track(
+                new GameObject(
+                    "Circle",
+                    typeof(LineRenderer),
+                    typeof(CircleCollider2D),
+                    typeof(CircleLineRenderer)
+                )
             );
             LineRenderer lr = go.GetComponent<LineRenderer>();
             CircleCollider2D col = go.GetComponent<CircleCollider2D>();
@@ -37,11 +40,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator OnValidateWarnsOnInvalidValues()
         {
-            GameObject go = new(
-                "Circle",
-                typeof(LineRenderer),
-                typeof(CircleCollider2D),
-                typeof(CircleLineRenderer)
+            GameObject go = Track(
+                new GameObject(
+                    "Circle",
+                    typeof(LineRenderer),
+                    typeof(CircleCollider2D),
+                    typeof(CircleLineRenderer)
+                )
             );
             CircleLineRenderer clr = go.GetComponent<CircleLineRenderer>();
 

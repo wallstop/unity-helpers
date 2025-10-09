@@ -2,14 +2,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 {
     using NUnit.Framework;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Tests;
     using WallstopStudios.UnityHelpers.Utils;
 
-    public sealed class TextureScaleEdgeTests
+    public sealed class TextureScaleEdgeTests : CommonTestBase
     {
         [Test]
         public void PointScaleToOneByOneSamplesNearest()
         {
-            Texture2D texture = new Texture2D(3, 3, TextureFormat.RGBA32, false, false);
+            Texture2D texture = Track(new Texture2D(3, 3, TextureFormat.RGBA32, false, false));
             texture.filterMode = FilterMode.Point;
             texture.wrapMode = TextureWrapMode.Clamp;
 
@@ -37,13 +38,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             Assert.That(c.g, Is.EqualTo(pixels[0].g).Within(1e-5f));
             Assert.That(c.b, Is.EqualTo(pixels[0].b).Within(1e-5f));
             Assert.That(c.a, Is.EqualTo(pixels[0].a).Within(1e-5f));
-            Object.DestroyImmediate(texture);
         }
 
         [Test]
         public void BilinearScaleToOneRowInterpolatesHorizontally()
         {
-            Texture2D texture = new Texture2D(4, 2, TextureFormat.RGBA32, false, false);
+            Texture2D texture = Track(new Texture2D(4, 2, TextureFormat.RGBA32, false, false));
             texture.filterMode = FilterMode.Point;
             texture.wrapMode = TextureWrapMode.Clamp;
 
@@ -69,13 +69,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             Assert.AreEqual(2, result.Length);
             Assert.That(result[0].a, Is.EqualTo(1f).Within(1e-5f));
             Assert.That(result[1].a, Is.EqualTo(1f).Within(1e-5f));
-            Object.DestroyImmediate(texture);
         }
 
         [Test]
         public void ScalingToSameSizeLeavesPixelsEquivalent()
         {
-            Texture2D texture = new Texture2D(2, 2, TextureFormat.RGBA32, false, false);
+            Texture2D texture = Track(new Texture2D(2, 2, TextureFormat.RGBA32, false, false));
             texture.filterMode = FilterMode.Point;
             texture.wrapMode = TextureWrapMode.Clamp;
             Color[] pixels = new Color[4]
@@ -110,8 +109,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 Assert.That(afterBilinear[i].b, Is.EqualTo(before[i].b).Within(1e-5f));
                 Assert.That(afterBilinear[i].a, Is.EqualTo(before[i].a).Within(1e-5f));
             }
-
-            Object.DestroyImmediate(texture);
         }
     }
 }

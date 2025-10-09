@@ -460,12 +460,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator SecondInstanceLogsError()
         {
-            GameObject firstObject = new("FirstTestRuntimeSingleton");
+            GameObject firstObject = Track(new GameObject("FirstTestRuntimeSingleton"));
             TestRuntimeSingleton first = firstObject.AddComponent<TestRuntimeSingleton>();
 
             yield return null;
 
-            GameObject secondObject = new("SecondTestRuntimeSingleton");
+            GameObject secondObject = Track(new GameObject("SecondTestRuntimeSingleton"));
             TestRuntimeSingleton second = secondObject.AddComponent<TestRuntimeSingleton>();
 
             LogAssert.Expect(
@@ -483,13 +483,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator OnlyFirstInstanceSurvives()
         {
-            GameObject firstObject = new("First");
+            GameObject firstObject = Track(new GameObject("First"));
             TestRuntimeSingleton first = firstObject.AddComponent<TestRuntimeSingleton>();
             first.testValue = 100;
 
             yield return null;
 
-            GameObject secondObject = new("Second");
+            GameObject secondObject = Track(new GameObject("Second"));
             TestRuntimeSingleton second = secondObject.AddComponent<TestRuntimeSingleton>();
             second.testValue = 200;
 
@@ -545,7 +545,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator DestroyingNonInstanceDoesNotAffectInstance()
         {
-            GameObject realObject = new("Real");
+            GameObject realObject = Track(new GameObject("Real"));
             TestRuntimeSingleton real = realObject.AddComponent<TestRuntimeSingleton>();
 
             yield return null;
@@ -553,7 +553,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             TestRuntimeSingleton instance = TestRuntimeSingleton.Instance;
             Assert.AreSame(real, instance);
 
-            GameObject fakeObject = new("Fake");
+            GameObject fakeObject = Track(new GameObject("Fake"));
             TestRuntimeSingleton fake = fakeObject.AddComponent<TestRuntimeSingleton>();
 
             LogAssert.Expect(
@@ -644,7 +644,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator ExistingInactiveInstanceIsNotFound()
         {
-            GameObject inactiveObject = new("InactiveTestRuntimeSingleton");
+            GameObject inactiveObject = Track(new GameObject("InactiveTestRuntimeSingleton"));
             inactiveObject.SetActive(false);
             TestRuntimeSingleton inactive = inactiveObject.AddComponent<TestRuntimeSingleton>();
 

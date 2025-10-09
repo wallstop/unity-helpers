@@ -569,11 +569,11 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                         nextPointWorldPosition,
                         CellToWorld(point)
                     );
-                    if (Mathf.Approximately(relation, 0))
+                    if (Mathf.Abs(relation) <= ConvexHullRelationEpsilon)
                     {
                         colinearPoints.Add(point);
                     }
-                    else if (relation < 0)
+                    else if (relation > 0)
                     {
                         nextPoint = point;
                         nextPointWorldPosition = CellToWorld(nextPoint);
@@ -732,11 +732,11 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                         nextPointWorldPosition,
                         CellToWorld(point)
                     );
-                    if (Mathf.Approximately(relation, 0))
+                    if (Mathf.Abs(relation) <= ConvexHullRelationEpsilon)
                     {
                         colinearPoints.Add(point);
                     }
-                    else if (relation < 0)
+                    else if (relation > 0)
                     {
                         nextPoint = point;
                         nextPointWorldPosition = CellToWorld(nextPoint);

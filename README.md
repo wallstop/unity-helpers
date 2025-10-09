@@ -21,6 +21,7 @@ A comprehensive collection of high-performance utilities, data structures, and e
   - [Component Attributes](#component-attributes)
   - [Relational Components Guide](#relational-components-guide)
   - [Serialization](#serialization)
+  - [Serialization Guide (Full)](SERIALIZATION.md)
   - [Data Structures](#data-structures)
   - [Editor Tools](#editor-tools)
 - [Use Cases & Examples](#use-cases--examples)
@@ -547,12 +548,44 @@ public class PlayerController : MonoBehaviour
 
 ### Serialization
 
-Fast, compact serialization for save systems and networking.
+ [Full guide: SERIALIZATION.md](SERIALIZATION.md)
 
+Fast, compact serialization for save systems, config, and networking.
+
+This package provides three serialization technologies:
+- `Json` — Uses System.Text.Json with built‑in converters for Unity types.
+- `Protobuf` — Uses protobuf-net for compact, fast, schema‑evolvable binary.
+- `SystemBinary` — Uses .NET BinaryFormatter for legacy/ephemeral data only.
+
+All are exposed via `WallstopStudios.UnityHelpers.Core.Serialization.Serializer`.
+
+#### Formats Provided
+- Json
+  - Human‑readable; great for configs, save files you want to inspect or diff.
+  - Includes converters for Unity types (Vector2/3/4, Color, Matrix4x4, GameObject, Type, enums as strings, cycles ignored, case‑insensitive, includes fields).
+- Protobuf (protobuf‑net)
+  - Small, fast, ideal for networking and large save payloads.
+  - Forward/backward compatible when evolving messages (see tips below).
+- SystemBinary (BinaryFormatter)
+  - Only for legacy or trusted, same‑version, local data. Not recommended for long‑term persistence or untrusted input (security + versioning issues).
+
+#### When To Use What
+- Use Json for:
+  - Player or tool settings, human‑readable saves, serverless workflows.
+  - Interop with tooling, debugging, or versioning in Git.
+- Use Protobuf for:
+  - Network payloads, large save files, bandwidth/storage‑sensitive data.
+  - Situations where you expect schema evolution across versions.
+- Use SystemBinary only for:
+  - Transient caches in trusted environments where data and code version match.
+  - Never for untrusted data or long‑term persistence.
+
+#### JSON Examples (Unity‑aware)
 ```csharp
+using System.Collections.Generic;
+using UnityEngine;
 using WallstopStudios.UnityHelpers.Core.Serialization;
 
-// JSON serialization with Unity type support
 public class SaveData
 {
     public Vector3 position;
@@ -560,27 +593,91 @@ public class SaveData
     public List<GameObject> inventory;
 }
 
-SaveData data = new();
-string json = JsonSerializer.Serialize(data);
-SaveData loaded = JsonSerializer.Deserialize<SaveData>(json);
-
-// Binary serialization with Protobuf
-[Serializable]
-public class NetworkMessage
+var data = new SaveData
 {
-    public int playerId;
-    public Vector3 position;
-}
+    position = new Vector3(1, 2, 3),
+    playerColor = Color.cyan,
+    inventory = new List<GameObject>()
+};
 
-byte[] bytes = ProtobufSerializer.Serialize(message);
-NetworkMessage decoded = ProtobufSerializer.Deserialize<NetworkMessage>(bytes);
+// Serialize to UTF‑8 JSON bytes (Unity types supported via built‑in converters)
+byte[] jsonBytes = Serializer.JsonSerialize(data);
+
+// Deserialize from string
+string jsonText = Serializer.JsonStringify(data, pretty: true);
+SaveData fromText = Serializer.JsonDeserialize<SaveData>(jsonText);
+
+// File helpers
+Serializer.WriteToJsonFile(data, path: "save.json", pretty: true);
+SaveData fromFile = Serializer.ReadFromJsonFile<SaveData>("save.json");
+
+// Generic entry points (choose format at runtime)
+byte[] bytes = Serializer.Serialize(data, SerializationType.Json);
+SaveData loaded = Serializer.Deserialize<SaveData>(bytes, SerializationType.Json);
 ```
 
+#### Protobuf Examples (Compact + Evolvable)
+```csharp
+using ProtoBuf; // protobuf-net
+using UnityEngine;
+using WallstopStudios.UnityHelpers.Core.Serialization;
+
+[ProtoContract]
+public class NetworkMessage
+{
+    [ProtoMember(1)] public int playerId;
+    [ProtoMember(2)] public Vector3 position; // Vector3 is supported by our JSON; for Protobuf, prefer serializable surrogates
+}
+
+var message = new NetworkMessage { playerId = 7, position = new Vector3(5, 0, -2) };
+
+// Protobuf bytes (small + fast)
+byte[] bytes = Serializer.ProtoSerialize(message);
+NetworkMessage decoded = Serializer.ProtoDeserialize<NetworkMessage>(bytes);
+
+// Generic entry points
+byte[] bytes2 = Serializer.Serialize(message, SerializationType.Protobuf);
+NetworkMessage decoded2 = Serializer.Deserialize<NetworkMessage>(bytes2, SerializationType.Protobuf);
+
+// Buffer reuse (reduce GC for hot paths)
+byte[] buffer = null;
+int len = Serializer.Serialize(message, SerializationType.Protobuf, ref buffer);
+NetworkMessage again = Serializer.Deserialize<NetworkMessage>(buffer.AsSpan(0, len).ToArray(), SerializationType.Protobuf);
+```
+
+Notes:
+- Protobuf‑net requires stable field numbers. Annotate with `[ProtoMember(n)]` and never reuse or renumber.
+- For Unity types, consider custom DTOs (e.g., `Vector3` → `{ float x, y, z }`) or protobuf‑net surrogates.
+
+#### Protobuf Compatibility Tips
+- Add fields with new numbers; old clients ignore unknown fields, new clients default missing fields.
+- Do not change field numbers or `oneof` layout; reserve removed numbers if needed.
+- Avoid switching scalar types (e.g., `int32` → `string`) on the same number.
+- Prefer optional/repeated over required; required breaks backward compatibility.
+- Use sensible defaults to keep payloads minimal.
+
+#### SystemBinary Examples (Legacy/Trusted Only)
+```csharp
+using WallstopStudios.UnityHelpers.Core.Serialization;
+
+var obj = new SomeSerializableType();
+byte[] bin = Serializer.BinarySerialize(obj);
+SomeSerializableType roundtrip = Serializer.BinaryDeserialize<SomeSerializableType>(bin);
+
+// Generic
+byte[] bin2 = Serializer.Serialize(obj, SerializationType.SystemBinary);
+var round2 = Serializer.Deserialize<SomeSerializableType>(bin2, SerializationType.SystemBinary);
+```
+
+Watch‑outs:
+- BinaryFormatter is obsolete in modern .NET and not secure for untrusted input.
+- Version changes often break binary round‑trips; use only for same‑version caches.
+
 **Features:**
-- Custom converters for Unity types (Vector2/3, Color, GameObject, etc.)
-- Protobuf support for binary serialization
-- LZMA compression utilities
-- Type-safe serialization
+- Custom converters for Unity types (Vector2/3/4, Color, GameObject, Matrix4x4, Type)
+- Protobuf (protobuf‑net) support for compact binary
+- LZMA compression utilities (see `Runtime/Utils/LZMA.cs`)
+- Type‑safe serialization and pooled buffers/writers to reduce GC
 
 ### Data Structures
 

@@ -4,14 +4,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.TestTools;
+    using WallstopStudios.UnityHelpers.Tests;
     using WallstopStudios.UnityHelpers.Utils;
 
-    public sealed class StartTrackerTests
+    public sealed class StartTrackerTests : CommonTestBase
     {
         [UnityTest]
         public IEnumerator StartedBecomesTrueOnStart()
         {
-            GameObject go = new("Tracker", typeof(StartTracker));
+            GameObject go = Track(new GameObject("Tracker", typeof(StartTracker)));
             StartTracker tracker = go.GetComponent<StartTracker>();
             Assert.IsFalse(tracker.Started);
 

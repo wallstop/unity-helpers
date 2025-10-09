@@ -5,17 +5,20 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.TestTools;
+    using WallstopStudios.UnityHelpers.Tests;
     using WallstopStudios.UnityHelpers.Utils;
 
-    public sealed class PolygonCollider2DOptimizerTests
+    public sealed class PolygonCollider2DOptimizerTests : CommonTestBase
     {
         [UnityTest]
         public IEnumerator SimplifiesAndResetsPaths()
         {
-            GameObject go = new(
-                "Poly",
-                typeof(PolygonCollider2D),
-                typeof(PolygonCollider2DOptimizer)
+            GameObject go = Track(
+                new GameObject(
+                    "Poly",
+                    typeof(PolygonCollider2D),
+                    typeof(PolygonCollider2DOptimizer)
+                )
             );
             PolygonCollider2D collider = go.GetComponent<PolygonCollider2D>();
             PolygonCollider2DOptimizer optimizer = go.GetComponent<PolygonCollider2DOptimizer>();

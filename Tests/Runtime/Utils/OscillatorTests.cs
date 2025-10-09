@@ -178,10 +178,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator NegativeWidthWorks()
         {
-            GameObject go = new GameObject("Oscillator", typeof(Oscillator))
-            {
-                transform = { localPosition = Vector3.zero },
-            };
+            GameObject go = Track(
+                new GameObject("Oscillator", typeof(Oscillator))
+                {
+                    transform = { localPosition = Vector3.zero },
+                }
+            );
             Oscillator oscillator = go.GetComponent<Oscillator>();
             oscillator.speed = 1f;
             oscillator.width = -2f;
@@ -197,10 +199,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator NegativeHeightWorks()
         {
-            GameObject go = new GameObject("Oscillator", typeof(Oscillator))
-            {
-                transform = { localPosition = Vector3.zero },
-            };
+            GameObject go = Track(
+                new GameObject("Oscillator", typeof(Oscillator))
+                {
+                    transform = { localPosition = Vector3.zero },
+                }
+            );
             Oscillator oscillator = go.GetComponent<Oscillator>();
             oscillator.speed = 1f;
             oscillator.width = 0f;
@@ -216,10 +220,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator NegativeSpeedWorks()
         {
-            GameObject go = new GameObject("Oscillator", typeof(Oscillator))
-            {
-                transform = { localPosition = Vector3.zero },
-            };
+            GameObject go = Track(
+                new GameObject("Oscillator", typeof(Oscillator))
+                {
+                    transform = { localPosition = Vector3.zero },
+                }
+            );
             Oscillator oscillator = go.GetComponent<Oscillator>();
             oscillator.speed = -1f;
             oscillator.width = 2f;
@@ -244,10 +250,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator LargeSpeedValueWorks()
         {
-            GameObject go = new GameObject("Oscillator", typeof(Oscillator))
-            {
-                transform = { localPosition = Vector3.zero },
-            };
+            GameObject go = Track(
+                new GameObject("Oscillator", typeof(Oscillator))
+                {
+                    transform = { localPosition = Vector3.zero },
+                }
+            );
             Oscillator oscillator = go.GetComponent<Oscillator>();
             oscillator.speed = 100f;
             oscillator.width = 1f;
@@ -263,10 +271,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator LargeWidthAndHeightWork()
         {
-            GameObject go = new GameObject("Oscillator", typeof(Oscillator))
-            {
-                transform = { localPosition = Vector3.zero },
-            };
+            GameObject go = Track(
+                new GameObject("Oscillator", typeof(Oscillator))
+                {
+                    transform = { localPosition = Vector3.zero },
+                }
+            );
             Oscillator oscillator = go.GetComponent<Oscillator>();
             oscillator.speed = 1f;
             oscillator.width = 1000f;
@@ -282,10 +292,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator SmallSpeedValueWorks()
         {
-            GameObject go = new GameObject("Oscillator", typeof(Oscillator))
-            {
-                transform = { localPosition = Vector3.zero },
-            };
+            GameObject go = Track(
+                new GameObject("Oscillator", typeof(Oscillator))
+                {
+                    transform = { localPosition = Vector3.zero },
+                }
+            );
             Oscillator oscillator = go.GetComponent<Oscillator>();
             oscillator.speed = 0.01f;
             oscillator.width = 1f;
@@ -301,10 +313,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator PreservesZAxis()
         {
-            GameObject go = new GameObject("Oscillator", typeof(Oscillator))
-            {
-                transform = { localPosition = new Vector3(0f, 0f, 5f) },
-            };
+            GameObject go = Track(
+                new GameObject("Oscillator", typeof(Oscillator))
+                {
+                    transform = { localPosition = new Vector3(0f, 0f, 5f) },
+                }
+            );
             Oscillator oscillator = go.GetComponent<Oscillator>();
             oscillator.speed = 1f;
             oscillator.width = 2f;
@@ -409,10 +423,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator ChangingSpeedDynamically()
         {
-            GameObject go = new GameObject("Oscillator", typeof(Oscillator))
-            {
-                transform = { localPosition = Vector3.zero },
-            };
+            GameObject go = Track(
+                new GameObject("Oscillator", typeof(Oscillator))
+                {
+                    transform = { localPosition = Vector3.zero },
+                }
+            );
             Oscillator oscillator = go.GetComponent<Oscillator>();
             oscillator.speed = 1f;
             oscillator.width = 2f;
@@ -435,10 +451,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator ChangingDimensionsDynamically()
         {
-            GameObject go = new GameObject("Oscillator", typeof(Oscillator))
-            {
-                transform = { localPosition = Vector3.zero },
-            };
+            GameObject go = Track(
+                new GameObject("Oscillator", typeof(Oscillator))
+                {
+                    transform = { localPosition = Vector3.zero },
+                }
+            );
             Oscillator oscillator = go.GetComponent<Oscillator>();
             oscillator.speed = 1f;
             oscillator.width = 1f;
@@ -463,10 +481,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator UsesTimeBasedCalculation()
         {
-            GameObject go = new GameObject("Oscillator", typeof(Oscillator))
-            {
-                transform = { localPosition = Vector3.zero },
-            };
+            GameObject go = Track(
+                new GameObject("Oscillator", typeof(Oscillator))
+                {
+                    transform = { localPosition = Vector3.zero },
+                }
+            );
             Oscillator oscillator = go.GetComponent<Oscillator>();
             oscillator.speed = 1f;
             oscillator.width = 2f;
@@ -493,10 +513,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator DisablingStopsOscillation()
         {
-            GameObject go = new GameObject("Oscillator", typeof(Oscillator))
-            {
-                transform = { localPosition = Vector3.zero },
-            };
+            GameObject go = Track(
+                new GameObject("Oscillator", typeof(Oscillator))
+                {
+                    transform = { localPosition = Vector3.zero },
+                }
+            );
             Oscillator oscillator = go.GetComponent<Oscillator>();
             oscillator.speed = 1f;
             oscillator.width = 2f;

@@ -326,17 +326,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator MultipleMatchersCanFollowSameTarget()
         {
-            GameObject target = new("Target")
-            {
-                transform = { position = new Vector3(10f, 20f, 0f) },
-            };
+            GameObject target = Track(
+                new GameObject("Target") { transform = { position = new Vector3(10f, 20f, 0f) } }
+            );
 
-            GameObject follower1 = new("Follower1", typeof(MatchTransform));
+            GameObject follower1 = Track(new GameObject("Follower1", typeof(MatchTransform)));
             MatchTransform matcher1 = follower1.GetComponent<MatchTransform>();
             matcher1.toMatch = target.transform;
             matcher1.mode = MatchTransformMode.Update;
 
-            GameObject follower2 = new("Follower2", typeof(MatchTransform));
+            GameObject follower2 = Track(new GameObject("Follower2", typeof(MatchTransform)));
             MatchTransform matcher2 = follower2.GetComponent<MatchTransform>();
             matcher2.toMatch = target.transform;
             matcher2.mode = MatchTransformMode.Update;

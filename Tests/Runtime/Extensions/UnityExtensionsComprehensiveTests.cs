@@ -940,6 +940,57 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         }
 
         [UnityTest]
+        public IEnumerator ConvexHullRectanglePerimeterIncludeColinearKeepsEdgePoints()
+        {
+            Grid grid = CreateGrid(out GameObject owner);
+
+            List<FastVector3Int> rectPerimeter = new();
+            for (int x = 0; x <= 10; ++x)
+            {
+                rectPerimeter.Add(new FastVector3Int(x, 0, 0));
+                rectPerimeter.Add(new FastVector3Int(x, 6, 0));
+            }
+            for (int y = 1; y < 6; ++y)
+            {
+                rectPerimeter.Add(new FastVector3Int(0, y, 0));
+                rectPerimeter.Add(new FastVector3Int(10, y, 0));
+            }
+
+            List<FastVector3Int> hull = rectPerimeter.BuildConvexHull(
+                grid,
+                includeColinearPoints: true
+            );
+
+            // Corners must be present
+            CollectionAssert.IsSubsetOf(
+                new[]
+                {
+                    new FastVector3Int(0, 0, 0),
+                    new FastVector3Int(10, 0, 0),
+                    new FastVector3Int(10, 6, 0),
+                    new FastVector3Int(0, 6, 0),
+                },
+                hull
+            );
+
+            // Edge points included when including colinear points
+            CollectionAssert.IsSubsetOf(
+                new[]
+                {
+                    new FastVector3Int(2, 0, 0),
+                    new FastVector3Int(3, 0, 0),
+                    new FastVector3Int(10, 2, 0),
+                    new FastVector3Int(10, 3, 0),
+                },
+                hull
+            );
+
+            Assert.Greater(hull.Count, 4);
+
+            yield return null;
+        }
+
+        [UnityTest]
         public IEnumerator RandomCloudMultipleSeedsConvexContainsConcaves()
         {
             Grid grid = CreateGrid(out GameObject owner);

@@ -4,21 +4,24 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.TestTools;
+    using WallstopStudios.UnityHelpers.Tests;
     using WallstopStudios.UnityHelpers.Utils;
 
-    public sealed class CenterPointOffsetTests
+    public sealed class CenterPointOffsetTests : CommonTestBase
     {
         [UnityTest]
         public IEnumerator CenterPointIncludesScaleAndPosition()
         {
-            GameObject go = new("Center", typeof(CenterPointOffset))
-            {
-                transform =
+            GameObject go = Track(
+                new GameObject("Center", typeof(CenterPointOffset))
                 {
-                    position = new Vector3(10f, -5f, 0f),
-                    localScale = new Vector3(2f, -3f, 1f),
-                },
-            };
+                    transform =
+                    {
+                        position = new Vector3(10f, -5f, 0f),
+                        localScale = new Vector3(2f, -3f, 1f),
+                    },
+                }
+            );
             CenterPointOffset offset = go.GetComponent<CenterPointOffset>();
             offset.offset = new Vector2(1f, 2f);
 
@@ -31,7 +34,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator CenterPointUnaffectedBySpriteUsesOffsetFlag()
         {
-            GameObject go = new("Center", typeof(CenterPointOffset));
+            GameObject go = Track(new GameObject("Center", typeof(CenterPointOffset)));
             CenterPointOffset offset = go.GetComponent<CenterPointOffset>();
             offset.offset = new Vector2(3f, 4f);
             offset.spriteUsesOffset = false;
@@ -47,10 +50,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator ZeroOffsetReturnsTransformPosition()
         {
-            GameObject go = new("Center", typeof(CenterPointOffset))
-            {
-                transform = { position = new Vector3(1f, 2f, 3f) },
-            };
+            GameObject go = Track(
+                new GameObject("Center", typeof(CenterPointOffset))
+                {
+                    transform = { position = new Vector3(1f, 2f, 3f) },
+                }
+            );
             CenterPointOffset offset = go.GetComponent<CenterPointOffset>();
             offset.offset = Vector2.zero;
 

@@ -5,9 +5,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using UnityEngine;
     using UnityEngine.TestTools;
     using UnityEngine.UI;
+    using WallstopStudios.UnityHelpers.Tests;
     using WallstopStudios.UnityHelpers.Utils;
 
-    public sealed class MatchColliderToSpriteAdditionalTests
+    public sealed class MatchColliderToSpriteAdditionalTests : CommonTestBase
     {
         private Sprite _spriteWithNoShapes;
 
@@ -36,14 +37,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator OverrideProducerNullWinsOverComponents()
         {
-            GameObject go = new(
-                "Test",
-                typeof(PolygonCollider2D),
-                typeof(SpriteRenderer),
-                typeof(RectTransform),
-                typeof(CanvasRenderer),
-                typeof(Image),
-                typeof(MatchColliderToSprite)
+            GameObject go = Track(
+                new GameObject(
+                    "Test",
+                    typeof(PolygonCollider2D),
+                    typeof(SpriteRenderer),
+                    typeof(RectTransform),
+                    typeof(CanvasRenderer),
+                    typeof(Image),
+                    typeof(MatchColliderToSprite)
+                )
             );
             SpriteRenderer renderer = go.GetComponent<SpriteRenderer>();
             Image image = go.GetComponent<Image>();
@@ -63,11 +66,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator SpriteWithNoPhysicsShapesClearsCollider()
         {
-            GameObject go = new(
-                "Test",
-                typeof(PolygonCollider2D),
-                typeof(SpriteRenderer),
-                typeof(MatchColliderToSprite)
+            GameObject go = Track(
+                new GameObject(
+                    "Test",
+                    typeof(PolygonCollider2D),
+                    typeof(SpriteRenderer),
+                    typeof(MatchColliderToSprite)
+                )
             );
             go.GetComponent<SpriteRenderer>().sprite = _spriteWithNoShapes;
             MatchColliderToSprite matcher = go.GetComponent<MatchColliderToSprite>();

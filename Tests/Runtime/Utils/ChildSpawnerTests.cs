@@ -157,8 +157,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator DoesNotSpawnOnWrongMethod()
         {
-            GameObject prefab = new("TestPrefab");
-            GameObject spawner = new("Spawner", typeof(ChildSpawner));
+            GameObject prefab = Track(new GameObject("TestPrefab"));
+            GameObject spawner = Track(new GameObject("Spawner", typeof(ChildSpawner)));
             ChildSpawner childSpawner = spawner.GetComponent<ChildSpawner>();
 
             childSpawner._spawnMethod = ChildSpawnMethod.Start;
@@ -175,7 +175,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator HandlesEmptyPrefabArray()
         {
-            GameObject spawner = new("Spawner", typeof(ChildSpawner));
+            GameObject spawner = Track(new GameObject("Spawner", typeof(ChildSpawner)));
             ChildSpawner childSpawner = spawner.GetComponent<ChildSpawner>();
 
             childSpawner._spawnMethod = ChildSpawnMethod.Start;
@@ -191,8 +191,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator HandlesNullPrefabInArray()
         {
-            GameObject prefab = new("TestPrefab");
-            GameObject spawner = new("Spawner", typeof(ChildSpawner));
+            GameObject prefab = Track(new GameObject("TestPrefab"));
+            GameObject spawner = Track(new GameObject("Spawner", typeof(ChildSpawner)));
             ChildSpawner childSpawner = spawner.GetComponent<ChildSpawner>();
 
             childSpawner._spawnMethod = ChildSpawnMethod.Start;
@@ -209,8 +209,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator SupportsCombinedSpawnMethods()
         {
-            GameObject prefab = new("TestPrefab");
-            GameObject spawner = new("Spawner", typeof(ChildSpawner));
+            GameObject prefab = Track(new GameObject("TestPrefab"));
+            GameObject spawner = Track(new GameObject("Spawner", typeof(ChildSpawner)));
             ChildSpawner childSpawner = spawner.GetComponent<ChildSpawner>();
 
             childSpawner._spawnMethod = ChildSpawnMethod.Awake | ChildSpawnMethod.Start;
@@ -237,8 +237,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 yield break;
             }
 
-            GameObject prefab = new("EditorPrefab");
-            GameObject spawner = new("Spawner", typeof(ChildSpawner));
+            GameObject prefab = Track(new GameObject("EditorPrefab"));
+            GameObject spawner = Track(new GameObject("Spawner", typeof(ChildSpawner)));
             ChildSpawner childSpawner = spawner.GetComponent<ChildSpawner>();
 
             childSpawner._spawnMethod = ChildSpawnMethod.Start;
@@ -261,8 +261,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 yield break;
             }
 
-            GameObject prefab = new("DevPrefab");
-            GameObject spawner = new("Spawner", typeof(ChildSpawner));
+            GameObject prefab = Track(new GameObject("DevPrefab"));
+            GameObject spawner = Track(new GameObject("Spawner", typeof(ChildSpawner)));
             ChildSpawner childSpawner = spawner.GetComponent<ChildSpawner>();
 
             childSpawner._spawnMethod = ChildSpawnMethod.Start;
@@ -277,8 +277,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator DetectsDuplicatePrefabs()
         {
-            GameObject prefab = new("TestPrefab");
-            GameObject spawner = new("Spawner", typeof(ChildSpawner));
+            GameObject prefab = Track(new GameObject("TestPrefab"));
+            GameObject spawner = Track(new GameObject("Spawner", typeof(ChildSpawner)));
             ChildSpawner childSpawner = spawner.GetComponent<ChildSpawner>();
 
             childSpawner._spawnMethod = ChildSpawnMethod.Start;
@@ -316,10 +316,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator SpawnsPrefabsInCorrectOrder()
         {
-            GameObject prefab1 = new("Prefab_A");
-            GameObject prefab2 = new("Prefab_B");
-            GameObject prefab3 = new("Prefab_C");
-            GameObject spawner = new("Spawner", typeof(ChildSpawner));
+            GameObject prefab1 = Track(new GameObject("Prefab_A"));
+            GameObject prefab2 = Track(new GameObject("Prefab_B"));
+            GameObject prefab3 = Track(new GameObject("Prefab_C"));
+            GameObject spawner = Track(new GameObject("Spawner", typeof(ChildSpawner)));
             ChildSpawner childSpawner = spawner.GetComponent<ChildSpawner>();
 
             childSpawner._spawnMethod = ChildSpawnMethod.Start;
@@ -349,8 +349,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator ChildrenAreSpawnedUnderSpawner()
         {
-            GameObject prefab = new("TestPrefab");
-            GameObject spawner = new("Spawner", typeof(ChildSpawner));
+            GameObject prefab = Track(new GameObject("TestPrefab"));
+            GameObject spawner = Track(new GameObject("Spawner", typeof(ChildSpawner)));
             ChildSpawner childSpawner = spawner.GetComponent<ChildSpawner>();
 
             childSpawner._spawnMethod = ChildSpawnMethod.Start;
@@ -373,10 +373,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 yield break;
             }
 
-            GameObject prefab1 = new("Regular");
-            GameObject prefab2 = new("Editor");
-            GameObject prefab3 = new("Dev");
-            GameObject spawner = new("Spawner", typeof(ChildSpawner));
+            GameObject prefab1 = Track(new GameObject("Regular"));
+            GameObject prefab2 = Track(new GameObject("Editor"));
+            GameObject prefab3 = Track(new GameObject("Dev"));
+            GameObject spawner = Track(new GameObject("Spawner", typeof(ChildSpawner)));
             ChildSpawner childSpawner = spawner.GetComponent<ChildSpawner>();
 
             childSpawner._spawnMethod = ChildSpawnMethod.Start;
@@ -411,8 +411,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator DontDestroyOnLoadWhenEnabled()
         {
-            GameObject prefab = new("TestPrefab");
-            GameObject spawner = new("Spawner", typeof(ChildSpawner));
+            GameObject prefab = Track(new GameObject("TestPrefab"));
+            GameObject spawner = Track(new GameObject("Spawner", typeof(ChildSpawner)));
             ChildSpawner childSpawner = spawner.GetComponent<ChildSpawner>();
 
             childSpawner._spawnMethod = ChildSpawnMethod.Start;
@@ -447,19 +447,21 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             GameObject prefabOnEnabled = new("OnEnabledPrefab");
             GameObject prefabStart = new("StartPrefab");
 
-            GameObject spawnerAwake = new("SpawnerAwake", typeof(ChildSpawner));
+            GameObject spawnerAwake = Track(new GameObject("SpawnerAwake", typeof(ChildSpawner)));
             ChildSpawner childSpawnerAwake = spawnerAwake.GetComponent<ChildSpawner>();
             childSpawnerAwake._spawnMethod = ChildSpawnMethod.Awake;
             childSpawnerAwake._prefabs = new[] { prefabAwake };
             childSpawnerAwake._dontDestroyOnLoad = false;
 
-            GameObject spawnerOnEnabled = new("SpawnerOnEnabled", typeof(ChildSpawner));
+            GameObject spawnerOnEnabled = Track(
+                new GameObject("SpawnerOnEnabled", typeof(ChildSpawner))
+            );
             ChildSpawner childSpawnerOnEnabled = spawnerOnEnabled.GetComponent<ChildSpawner>();
             childSpawnerOnEnabled._spawnMethod = ChildSpawnMethod.OnEnabled;
             childSpawnerOnEnabled._prefabs = new[] { prefabOnEnabled };
             childSpawnerOnEnabled._dontDestroyOnLoad = false;
 
-            GameObject spawnerStart = new("SpawnerStart", typeof(ChildSpawner));
+            GameObject spawnerStart = Track(new GameObject("SpawnerStart", typeof(ChildSpawner)));
             ChildSpawner childSpawnerStart = spawnerStart.GetComponent<ChildSpawner>();
             childSpawnerStart._spawnMethod = ChildSpawnMethod.Start;
             childSpawnerStart._prefabs = new[] { prefabStart };

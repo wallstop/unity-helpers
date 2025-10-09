@@ -4,17 +4,20 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.TestTools;
+    using WallstopStudios.UnityHelpers.Tests;
     using WallstopStudios.UnityHelpers.Utils;
 
-    public sealed class MatchTransformEdgeTests
+    public sealed class MatchTransformEdgeTests : CommonTestBase
     {
         [UnityTest]
         public IEnumerator MatchingSelfAppliesOffset()
         {
-            GameObject go = new("Follower", typeof(MatchTransform))
-            {
-                transform = { position = new Vector3(1f, 2f, 3f) },
-            };
+            GameObject go = Track(
+                new GameObject("Follower", typeof(MatchTransform))
+                {
+                    transform = { position = new Vector3(1f, 2f, 3f) },
+                }
+            );
             MatchTransform matcher = go.GetComponent<MatchTransform>();
             matcher.toMatch = go.transform;
             matcher.mode = MatchTransformMode.Update;

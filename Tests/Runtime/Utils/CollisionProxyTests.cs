@@ -164,17 +164,21 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator OnCollisionStayInvokesEvent()
         {
-            GameObject go = new(
-                "TestObject",
-                typeof(BoxCollider2D),
-                typeof(CollisionProxy),
-                typeof(Rigidbody2D)
+            GameObject go = Track(
+                new GameObject(
+                    "TestObject",
+                    typeof(BoxCollider2D),
+                    typeof(CollisionProxy),
+                    typeof(Rigidbody2D)
+                )
             );
             go.GetComponent<BoxCollider2D>().isTrigger = false;
             go.GetComponent<Rigidbody2D>().bodyType = RigidbodyType2D.Kinematic;
             CollisionProxy proxy = go.GetComponent<CollisionProxy>();
 
-            GameObject other = new("OtherObject", typeof(BoxCollider2D), typeof(Rigidbody2D));
+            GameObject other = Track(
+                new GameObject("OtherObject", typeof(BoxCollider2D), typeof(Rigidbody2D))
+            );
             other.GetComponent<BoxCollider2D>().isTrigger = false;
             other.GetComponent<Rigidbody2D>().bodyType = RigidbodyType2D.Dynamic;
             other.transform.position = Vector3.zero;
@@ -200,17 +204,21 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator OnCollisionExitInvokesEvent()
         {
-            GameObject go = new(
-                "TestObject",
-                typeof(BoxCollider2D),
-                typeof(CollisionProxy),
-                typeof(Rigidbody2D)
+            GameObject go = Track(
+                new GameObject(
+                    "TestObject",
+                    typeof(BoxCollider2D),
+                    typeof(CollisionProxy),
+                    typeof(Rigidbody2D)
+                )
             );
             go.GetComponent<BoxCollider2D>().isTrigger = false;
             go.GetComponent<Rigidbody2D>().bodyType = RigidbodyType2D.Kinematic;
             CollisionProxy proxy = go.GetComponent<CollisionProxy>();
 
-            GameObject other = new("OtherObject", typeof(BoxCollider2D), typeof(Rigidbody2D));
+            GameObject other = Track(
+                new GameObject("OtherObject", typeof(BoxCollider2D), typeof(Rigidbody2D))
+            );
             other.GetComponent<BoxCollider2D>().isTrigger = false;
             other.GetComponent<Rigidbody2D>().bodyType = RigidbodyType2D.Dynamic;
             other.transform.position = Vector3.zero;
@@ -240,11 +248,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator MultipleSubscribersAllInvoked()
         {
-            GameObject go = new("TestObject", typeof(BoxCollider2D), typeof(CollisionProxy));
+            GameObject go = Track(
+                new GameObject("TestObject", typeof(BoxCollider2D), typeof(CollisionProxy))
+            );
             go.GetComponent<BoxCollider2D>().isTrigger = true;
             CollisionProxy proxy = go.GetComponent<CollisionProxy>();
 
-            GameObject other = new("OtherObject", typeof(BoxCollider2D), typeof(Rigidbody2D));
+            GameObject other = Track(
+                new GameObject("OtherObject", typeof(BoxCollider2D), typeof(Rigidbody2D))
+            );
             other.GetComponent<BoxCollider2D>().isTrigger = true;
 
             int subscriber1Count = 0;
@@ -280,7 +292,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator EventsDoNotInterfereWithEachOther()
         {
-            GameObject go = new("TestObject", typeof(BoxCollider2D), typeof(CollisionProxy));
+            GameObject go = Track(
+                new GameObject("TestObject", typeof(BoxCollider2D), typeof(CollisionProxy))
+            );
             go.GetComponent<BoxCollider2D>().isTrigger = true;
             CollisionProxy proxy = go.GetComponent<CollisionProxy>();
 
@@ -329,11 +343,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator UnsubscribingPreventsInvocation()
         {
-            GameObject go = new("TestObject", typeof(BoxCollider2D), typeof(CollisionProxy));
+            GameObject go = Track(
+                new GameObject("TestObject", typeof(BoxCollider2D), typeof(CollisionProxy))
+            );
             go.GetComponent<BoxCollider2D>().isTrigger = true;
             CollisionProxy proxy = go.GetComponent<CollisionProxy>();
 
-            GameObject other = new("OtherObject", typeof(BoxCollider2D), typeof(Rigidbody2D));
+            GameObject other = Track(
+                new GameObject("OtherObject", typeof(BoxCollider2D), typeof(Rigidbody2D))
+            );
             other.GetComponent<BoxCollider2D>().isTrigger = true;
 
             int invokeCount = 0;
@@ -358,10 +376,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator NoErrorWithNoSubscribers()
         {
-            GameObject go = new("TestObject", typeof(BoxCollider2D), typeof(CollisionProxy));
+            GameObject go = Track(
+                new GameObject("TestObject", typeof(BoxCollider2D), typeof(CollisionProxy))
+            );
             go.GetComponent<BoxCollider2D>().isTrigger = true;
 
-            GameObject other = new("OtherObject", typeof(BoxCollider2D), typeof(Rigidbody2D));
+            GameObject other = Track(
+                new GameObject("OtherObject", typeof(BoxCollider2D), typeof(Rigidbody2D))
+            );
             other.GetComponent<BoxCollider2D>().isTrigger = true;
 
             go.transform.position = Vector3.zero;
@@ -376,7 +398,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator RequiresCollider2DComponent()
         {
-            GameObject go = new("TestObject");
+            GameObject go = Track(new GameObject("TestObject"));
             go.AddComponent<CollisionProxy>();
             Assert.IsFalse(go.HasComponent<CollisionProxy>());
             yield return null;
@@ -385,11 +407,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator PassesCorrectColliderToEvent()
         {
-            GameObject go = new("TestObject", typeof(BoxCollider2D), typeof(CollisionProxy));
+            GameObject go = Track(
+                new GameObject("TestObject", typeof(BoxCollider2D), typeof(CollisionProxy))
+            );
             go.GetComponent<BoxCollider2D>().isTrigger = true;
             CollisionProxy proxy = go.GetComponent<CollisionProxy>();
 
-            GameObject other = new("OtherObject", typeof(BoxCollider2D), typeof(Rigidbody2D));
+            GameObject other = Track(
+                new GameObject("OtherObject", typeof(BoxCollider2D), typeof(Rigidbody2D))
+            );
             BoxCollider2D otherCollider = other.GetComponent<BoxCollider2D>();
             otherCollider.isTrigger = true;
 
