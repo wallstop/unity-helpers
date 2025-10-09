@@ -191,6 +191,87 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
+        public void EdgeAlignedBoundsOnGridUsesExclusiveUpperBoundary()
+        {
+            List<Vector3> points = new();
+            for (int z = 0; z < 10; ++z)
+            {
+                for (int y = 0; y < 10; ++y)
+                {
+                    for (int x = 0; x < 10; ++x)
+                    {
+                        points.Add(new Vector3(x, y, z));
+                    }
+                }
+            }
+
+            OctTree3D<Vector3> tree = CreateTree(points);
+            Bounds bounds = new(new Vector3(4.5f, 4.5f, 4.5f), new Vector3(9f, 9f, 9f));
+            List<Vector3> results = new();
+            tree.GetElementsInBounds(bounds, results);
+            Assert.AreEqual(729, results.Count);
+        }
+
+        [Test]
+        public void FullBoundsOnGridCenteredAtBoundaryCenterUsesExclusiveUpperBoundary()
+        {
+            List<Vector3> points = new();
+            for (int z = 0; z < 100; ++z)
+            {
+                for (int y = 0; y < 100; ++y)
+                {
+                    for (int x = 0; x < 100; ++x)
+                    {
+                        points.Add(new Vector3(x, y, z));
+                    }
+                }
+            }
+
+            OctTree3D<Vector3> tree = CreateTree(points);
+            Vector3 center = tree.Boundary.center;
+            Vector3 size = new Vector3(99f, 99f, 99f);
+            Bounds bounds = new(center, size);
+            List<Vector3> results = new();
+            tree.GetElementsInBounds(bounds, results);
+            Assert.Greater(results.Count, 900000);
+            Assert.Less(results.Count, 1000000);
+        }
+
+        [Test]
+        public void GetElementsInBoundsTreatsLowerBoundaryAsInclusive()
+        {
+            List<Vector3> points = new() { new Vector3(-1f, 0f, 0f), new Vector3(0f, 0f, 0f) };
+
+            OctTree3D<Vector3> tree = CreateTree(points);
+            Bounds bounds = new(
+                center: new Vector3(-0.5f, 0f, 0f),
+                size: new Vector3(1f, 0.1f, 0.1f)
+            );
+            List<Vector3> results = new();
+
+            tree.GetElementsInBounds(bounds, results);
+
+            CollectionAssert.AreEquivalent(new[] { points[0] }, results);
+        }
+
+        [Test]
+        public void GetElementsInBoundsExcludesPointExactlyAtUpperBoundary()
+        {
+            List<Vector3> points = new() { new Vector3(1f, 0f, 0f) };
+
+            OctTree3D<Vector3> tree = CreateTree(points);
+            Bounds bounds = new(
+                center: new Vector3(0.5f, 0f, 0f),
+                size: new Vector3(1f, 0.1f, 0.1f)
+            );
+            List<Vector3> results = new();
+
+            tree.GetElementsInBounds(bounds, results);
+
+            Assert.IsEmpty(results);
+        }
+
+        [Test]
         public void GetElementsInBoundsWithNoIntersectionReturnsEmptyAdditional()
         {
             List<Vector3> points = new() { new Vector3(-5f, 0f, 0f), new Vector3(5f, 0f, 0f) };

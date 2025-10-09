@@ -229,5 +229,44 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.AreEqual(balancedResults.Count, unbalancedResults.Count);
             CollectionAssert.AreEquivalent(balancedResults, unbalancedResults);
         }
+
+        [Test]
+        public void GetElementsInBoundsIncludesUpperBoundaryPoint()
+        {
+            List<Vector3> points = new() { new Vector3(0f, 0f, 0f), new Vector3(1f, 0f, 0f) };
+            KdTree3D<Vector3> tree = CreateTree(points);
+            var bounds = new UnityEngine.Bounds(
+                new Vector3(0.5f, 0f, 0f),
+                new Vector3(1f, 0.1f, 0.1f)
+            );
+            List<Vector3> results = new();
+            tree.GetElementsInBounds(bounds, results);
+            CollectionAssert.AreEquivalent(points, results);
+        }
+
+        [Test]
+        public void EdgeAlignedBoundsOnGridIncludesMaxIndexPoints()
+        {
+            List<Vector3> points = new();
+            for (int z = 0; z < 10; ++z)
+            {
+                for (int y = 0; y < 10; ++y)
+                {
+                    for (int x = 0; x < 10; ++x)
+                    {
+                        points.Add(new Vector3(x, y, z));
+                    }
+                }
+            }
+
+            KdTree3D<Vector3> tree = CreateTree(points);
+            var bounds = new UnityEngine.Bounds(
+                new Vector3(4.5f, 4.5f, 4.5f),
+                new Vector3(9f, 9f, 9f)
+            );
+            List<Vector3> results = new();
+            tree.GetElementsInBounds(bounds, results);
+            Assert.AreEqual(1000, results.Count);
+        }
     }
 }

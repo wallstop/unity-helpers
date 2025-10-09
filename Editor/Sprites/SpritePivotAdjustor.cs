@@ -12,6 +12,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
     public class SpritePivotAdjuster : EditorWindow
@@ -73,9 +74,21 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             _serializedObject.ApplyModifiedProperties();
             if (GUILayout.Button("Find Sprites To Process"))
             {
-                _regex = !string.IsNullOrWhiteSpace(_spriteNameRegex)
-                    ? new Regex(_spriteNameRegex)
-                    : null;
+                _regex = null;
+                if (!string.IsNullOrWhiteSpace(_spriteNameRegex))
+                {
+                    try
+                    {
+                        _regex = new Regex(
+                            _spriteNameRegex,
+                            RegexOptions.Compiled | RegexOptions.CultureInvariant
+                        );
+                    }
+                    catch (ArgumentException ex)
+                    {
+                        this.LogWarn($"Invalid regex '{_spriteNameRegex}': {ex.Message}");
+                    }
+                }
                 FindFilesToProcess();
             }
 
@@ -109,6 +122,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 return;
             }
 
+            // Use AssetDatabase to find textures in selected folders to ensure asset-relative paths.
+            using PooledResource<HashSet<string>> seenRes = SetBuffers<string>
+                .GetHashSetPool(StringComparer.OrdinalIgnoreCase)
+                .Get(out HashSet<string> seen);
             foreach (Object maybeDirectory in _directoryPaths.Where(d => d != null))
             {
                 string assetPath = AssetDatabase.GetAssetPath(maybeDirectory);
@@ -118,25 +135,35 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     continue;
                 }
 
-                IEnumerable<string> files = Directory
-                    .GetFiles(assetPath, "*.*", SearchOption.AllDirectories)
-                    .Where(file =>
-                        Array.Exists(
-                            ImageFileExtensions,
-                            extension =>
-                                file.EndsWith(extension, StringComparison.OrdinalIgnoreCase)
-                        )
-                    );
-
-                foreach (string file in files)
+                string[] guids = AssetDatabase.FindAssets("t:Texture2D", new[] { assetPath });
+                foreach (string guid in guids)
                 {
+                    string file = AssetDatabase.GUIDToAssetPath(guid);
+                    if (string.IsNullOrEmpty(file))
+                    {
+                        continue;
+                    }
+
+                    // Extension filter
+                    if (
+                        !Array.Exists(
+                            ImageFileExtensions,
+                            ext => file.EndsWith(ext, StringComparison.OrdinalIgnoreCase)
+                        )
+                    )
+                    {
+                        continue;
+                    }
+
                     string fileName = Path.GetFileNameWithoutExtension(file);
                     if (_regex != null && !_regex.IsMatch(fileName))
                     {
                         continue;
                     }
-
-                    _filesToProcess.Add(file);
+                    if (seen.Add(file))
+                    {
+                        _filesToProcess.Add(file);
+                    }
                 }
             }
             Repaint();
@@ -144,8 +171,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
         private void AdjustPivotsInDirectory()
         {
-            HashSet<string> processedFiles = new(StringComparer.OrdinalIgnoreCase);
-            List<TextureImporter> importers = new();
+            using PooledResource<HashSet<string>> processedFilesRes = SetBuffers<string>
+                .GetHashSetPool(StringComparer.OrdinalIgnoreCase)
+                .Get(out HashSet<string> processedFiles);
+            using PooledResource<List<TextureImporter>> importersRes =
+                Buffers<TextureImporter>.List.Get(out List<TextureImporter> importers);
             AssetDatabase.StartAssetEditing();
             try
             {
@@ -161,7 +191,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         is not TextureImporter { textureType: TextureImporterType.Sprite } importer
                     )
                     {
-                        return;
+                        // Not a sprite texture; skip to next file
+                        continue;
                     }
 
                     Sprite sprite = AssetDatabase.LoadAssetAtPath<Sprite>(assetPath);
@@ -171,14 +202,24 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         continue;
                     }
 
-                    EditorUtility.DisplayProgressBar(
-                        "Processing sprites",
-                        $"Processing {sprite.name}",
-                        (float)i / _filesToProcess.Count
-                    );
+                    if (
+                        EditorUtility.DisplayCancelableProgressBar(
+                            "Processing sprites",
+                            $"Processing {sprite.name}",
+                            (float)i / _filesToProcess.Count
+                        )
+                    )
+                    {
+                        break; // user canceled
+                    }
 
                     if (importer.spriteImportMode == SpriteImportMode.Single)
                     {
+                        if (!importer.isReadable)
+                        {
+                            this.LogWarn($"Skipping non-readable texture: {assetPath}");
+                            continue;
+                        }
                         TextureImporterSettings settings = new();
                         importer.ReadTextureSettings(settings);
 
@@ -188,7 +229,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         importer.SetTextureSettings(settings);
 
                         importer.spritePivot = newPivot;
-                        importer.SaveAndReimport();
                         importers.Add(importer);
                     }
                 }
@@ -219,33 +259,68 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             long totalY = 0;
             long pixelCount = 0;
 
-            Color[] pixels = texture.GetPixels(startX, startY, width, height);
+            // Fast path: sprite covers entire texture, use GetPixels32 for lower allocation and faster access
+            if (startX == 0 && startY == 0 && width == texture.width && height == texture.height)
+            {
+                Color32[] pixels32 = texture.GetPixels32();
+                byte alphaThreshold = (byte)Mathf.CeilToInt(AlphaCutoff * 255f);
 
-            Parallel.For(
-                0,
-                height,
-                () => (sumX: 0L, sumY: 0L, count: 0L),
-                (y, _, local) =>
-                {
-                    int rowOffset = y * width;
-                    for (int x = 0; x < width; ++x)
+                Parallel.For(
+                    0,
+                    height,
+                    () => (sumX: 0L, sumY: 0L, count: 0L),
+                    (y, _, local) =>
                     {
-                        if (pixels[rowOffset + x].a > AlphaCutoff)
+                        int rowOffset = y * width;
+                        for (int x = 0; x < width; ++x)
                         {
-                            local.sumX += x;
-                            local.sumY += y;
-                            local.count++;
+                            if (pixels32[rowOffset + x].a > alphaThreshold)
+                            {
+                                local.sumX += x;
+                                local.sumY += y;
+                                local.count++;
+                            }
                         }
+                        return local;
+                    },
+                    local =>
+                    {
+                        Interlocked.Add(ref totalX, local.sumX);
+                        Interlocked.Add(ref totalY, local.sumY);
+                        Interlocked.Add(ref pixelCount, local.count);
                     }
-                    return local;
-                },
-                local =>
-                {
-                    Interlocked.Add(ref totalX, local.sumX);
-                    Interlocked.Add(ref totalY, local.sumY);
-                    Interlocked.Add(ref pixelCount, local.count);
-                }
-            );
+                );
+            }
+            else
+            {
+                Color[] pixels = texture.GetPixels(startX, startY, width, height);
+
+                Parallel.For(
+                    0,
+                    height,
+                    () => (sumX: 0L, sumY: 0L, count: 0L),
+                    (y, _, local) =>
+                    {
+                        int rowOffset = y * width;
+                        for (int x = 0; x < width; ++x)
+                        {
+                            if (pixels[rowOffset + x].a > AlphaCutoff)
+                            {
+                                local.sumX += x;
+                                local.sumY += y;
+                                local.count++;
+                            }
+                        }
+                        return local;
+                    },
+                    local =>
+                    {
+                        Interlocked.Add(ref totalX, local.sumX);
+                        Interlocked.Add(ref totalY, local.sumY);
+                        Interlocked.Add(ref pixelCount, local.count);
+                    }
+                );
+            }
 
             if (pixelCount == 0L)
             {
@@ -258,7 +333,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             double pivotX = averageX / width;
             double pivotY = averageY / height;
 
-            return new Vector2((float)pivotX, (float)pivotY);
+            return new Vector2(Mathf.Clamp01((float)pivotX), Mathf.Clamp01((float)pivotY));
         }
     }
 #endif

@@ -497,9 +497,14 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         {
             using PooledResource<Stack<OctTreeNode>> stackResource =
                 Buffers<OctTreeNode>.Stack.Get();
-            // Use inclusive-max conversion to match Unity Bounds.Contains semantics
-            BoundingBox3D query = BoundingBox3D.FromClosedBoundsInclusiveMax(bounds);
-            return GetElementsInBounds(query, elementsInBounds, stackResource.resource);
+            BoundingBox3D queryInclusive = BoundingBox3D.FromClosedBoundsInclusiveMax(bounds);
+            BoundingBox3D queryExclusive = BoundingBox3D.FromClosedBounds(bounds);
+            return GetElementsInBounds(
+                queryInclusive,
+                queryExclusive,
+                elementsInBounds,
+                stackResource.resource
+            );
         }
 
         public List<T> GetElementsInBounds(
@@ -508,8 +513,19 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             Stack<OctTreeNode> nodeBuffer
         )
         {
+            // Back-compat: use same bounds for inclusive traversal and exclusive point checks
+            return GetElementsInBounds(queryBounds, queryBounds, elementsInBounds, nodeBuffer);
+        }
+
+        public List<T> GetElementsInBounds(
+            BoundingBox3D queryBoundsInclusive,
+            BoundingBox3D queryBoundsExclusive,
+            List<T> elementsInBounds,
+            Stack<OctTreeNode> nodeBuffer
+        )
+        {
             elementsInBounds.Clear();
-            if (_head._count <= 0 || !IntersectsOrTouches(queryBounds, _bounds))
+            if (_head._count <= 0 || !IntersectsOrTouches(queryBoundsInclusive, _bounds))
             {
                 return elementsInBounds;
             }
@@ -527,7 +543,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     continue;
                 }
 
-                if (queryBounds.Contains(currentNode.boundary))
+                if (queryBoundsExclusive.Contains(currentNode.boundary))
                 {
                     int start = currentNode._startIndex;
                     int end = start + currentNode._count;
@@ -546,7 +562,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     for (int i = start; i < end; ++i)
                     {
                         Entry entry = entries[indices[i]];
-                        if (queryBounds.Contains(entry.position))
+                        if (queryBoundsExclusive.Contains(entry.position))
                         {
                             elementsInBounds.Add(entry.value);
                         }
@@ -564,7 +580,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                         continue;
                     }
 
-                    if (IntersectsOrTouches(queryBounds, child.boundary))
+                    if (IntersectsOrTouches(queryBoundsInclusive, child.boundary))
                     {
                         nodesToVisit.Push(child);
                     }
@@ -582,6 +598,21 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 && a.max.y >= b.min.y
                 && a.min.z <= b.max.z
                 && a.max.z >= b.min.z;
+        }
+
+        private static bool ContainsInclusiveMax(BoundingBox3D a, BoundingBox3D b)
+        {
+            if (b.IsEmpty)
+            {
+                return false;
+            }
+
+            return a.min.x <= b.min.x
+                && a.min.y <= b.min.y
+                && a.min.z <= b.min.z
+                && a.max.x >= b.max.x
+                && a.max.y >= b.max.y
+                && a.max.z >= b.max.z;
         }
 
         public List<T> GetApproximateNearestNeighbors(

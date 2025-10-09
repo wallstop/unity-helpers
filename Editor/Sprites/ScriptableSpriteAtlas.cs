@@ -107,6 +107,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         )]
         [StringInList(typeof(Helpers), nameof(Helpers.GetAllSpriteLabelNames))]
         public List<string> excludeLabels = new();
+
+        [Tooltip(
+            "Unity-relative path prefixes to exclude (e.g., 'Assets/ThirdParty/'). Any asset whose path starts with one of these will be excluded."
+        )]
+        public List<string> excludePathPrefixes = new();
     }
 
     [CreateAssetMenu(

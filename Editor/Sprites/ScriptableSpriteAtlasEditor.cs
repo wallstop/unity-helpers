@@ -646,6 +646,37 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     }
                 }
 
+                // Compile exclusion regexes if provided
+                List<Regex> compiledExcludeRegexes = null;
+                if (entry.excludeRegexes is { Count: > 0 })
+                {
+                    compiledExcludeRegexes = new List<Regex>(entry.excludeRegexes.Count);
+                    foreach (string pattern in entry.excludeRegexes)
+                    {
+                        if (string.IsNullOrWhiteSpace(pattern))
+                        {
+                            continue;
+                        }
+                        try
+                        {
+                            compiledExcludeRegexes.Add(
+                                new Regex(
+                                    pattern,
+                                    RegexOptions.IgnoreCase
+                                        | RegexOptions.CultureInvariant
+                                        | RegexOptions.Compiled
+                                )
+                            );
+                        }
+                        catch (ArgumentException ex)
+                        {
+                            this.LogError(
+                                $"'{config.name}', Folder '{entry.folderPath}': Invalid Exclude Regex pattern '{pattern}': {ex.Message}. This pattern will be ignored."
+                            );
+                        }
+                    }
+                }
+
                 foreach (string guid in guidList)
                 {
                     string assetPath = AssetDatabase.GUIDToAssetPath(guid);
@@ -736,28 +767,33 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     if (allMatch)
                     {
                         bool excluded = false;
-                        // Exclude by regex (OR semantics)
-                        if (entry.excludeRegexes is { Count: > 0 })
+                        // Exclude by path prefixes (case-insensitive starts-with)
+                        if (!excluded && entry.excludePathPrefixes is { Count: > 0 })
                         {
-                            foreach (string pattern in entry.excludeRegexes)
+                            string ap = assetPath.SanitizePath();
+                            foreach (string prefix in entry.excludePathPrefixes)
                             {
-                                if (string.IsNullOrWhiteSpace(pattern))
+                                if (string.IsNullOrWhiteSpace(prefix))
                                 {
                                     continue;
                                 }
-                                try
+                                string p = prefix.SanitizePath();
+                                if (ap.StartsWith(p, StringComparison.OrdinalIgnoreCase))
                                 {
-                                    if (Regex.IsMatch(fileName, pattern, RegexOptions.IgnoreCase))
-                                    {
-                                        excluded = true;
-                                        break;
-                                    }
+                                    excluded = true;
+                                    break;
                                 }
-                                catch (ArgumentException ex)
+                            }
+                        }
+                        // Exclude by regex (OR semantics)
+                        if (!excluded && compiledExcludeRegexes is { Count: > 0 })
+                        {
+                            foreach (Regex rx in compiledExcludeRegexes)
+                            {
+                                if (rx.IsMatch(fileName))
                                 {
-                                    this.LogError(
-                                        $"'{config.name}', Folder '{entry.folderPath}': Invalid Exclude Regex pattern '{pattern}': {ex.Message}. This pattern will be ignored."
-                                    );
+                                    excluded = true;
+                                    break;
                                 }
                             }
                         }

@@ -88,6 +88,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
         private Regex _regex;
 
+        // Diagnostics for Multiple-sprite textures detected during search
+        private readonly List<string> _multiSpriteFiles = new();
+
+        // Danger zone acknowledgment for reference replacement
+        private bool _ackDanger;
+
         [MenuItem("Tools/Wallstop Studios/Unity Helpers/" + Name)]
         private static void ShowWindow() => GetWindow<SpriteCropper>(Name);
 
@@ -159,6 +165,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 _regex = !string.IsNullOrWhiteSpace(_spriteNameRegex)
                     ? new Regex(_spriteNameRegex)
                     : null;
+                _multiSpriteFiles.Clear();
                 FindFilesToProcess();
             }
 
@@ -168,6 +175,20 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     $"Found {_filesToProcess.Count} sprites to process.",
                     EditorStyles.boldLabel
                 );
+                if (_multiSpriteFiles.Count > 0)
+                {
+                    EditorGUILayout.HelpBox(
+                        $"Detected {_multiSpriteFiles.Count} textures with Sprite Import Mode = Multiple. SpriteCropper only supports Single sprites. These will be skipped.",
+                        MessageType.Warning
+                    );
+                    if (GUILayout.Button("Log details of Multiple-sprite textures"))
+                    {
+                        foreach (string path in _multiSpriteFiles)
+                        {
+                            this.LogWarn($"Multiple-sprite texture detected (skipped): {path}");
+                        }
+                    }
+                }
                 if (GUILayout.Button($"Process {_filesToProcess.Count} Sprites"))
                 {
                     ProcessFoundSprites();
@@ -180,6 +201,34 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     "No sprites found to process in the selected directories.",
                     EditorStyles.label
                 );
+            }
+
+            EditorGUILayout.Space();
+            // Danger Zone: Reference Replacement
+            using (new GUILayout.VerticalScope("box"))
+            {
+                Color prev = GUI.color;
+                GUI.color = Color.red;
+                GUILayout.Label(
+                    "Danger Zone: Replace references to originals with Cropped_* versions",
+                    EditorStyles.boldLabel
+                );
+                GUI.color = prev;
+                EditorGUILayout.HelpBox(
+                    "This will scan assets and replace Sprite references pointing to original textures with references to their Cropped_* counterparts. This is potentially destructive. Ensure you have backups/version control.",
+                    MessageType.Error
+                );
+                _ackDanger = EditorGUILayout.ToggleLeft(
+                    "I understand the risks and want to proceed.",
+                    _ackDanger
+                );
+                using (new EditorGUI.DisabledScope(!_ackDanger))
+                {
+                    if (GUILayout.Button("Replace Sprite References With Cropped_* Versions"))
+                    {
+                        ReplaceSpriteReferencesWithCropped();
+                    }
+                }
             }
         }
 
@@ -224,10 +273,184 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         continue;
                     }
 
+                    // Skip and record textures with Multiple sprite import mode
+                    if (AssetImporter.GetAtPath(file) is TextureImporter ti)
+                    {
+                        if (
+                            ti.textureType == TextureImporterType.Sprite
+                            && ti.spriteImportMode != SpriteImportMode.Single
+                        )
+                        {
+                            _multiSpriteFiles.Add(file);
+                            continue;
+                        }
+                    }
+
                     _filesToProcess.Add(file);
                 }
             }
             Repaint();
+        }
+
+        private void ReplaceSpriteReferencesWithCropped()
+        {
+            try
+            {
+                // Build mapping from original Sprite to Cropped_* Sprite based on input directories
+                Dictionary<Sprite, Sprite> mapping = new();
+                if (_inputDirectories is not { Count: > 0 })
+                {
+                    this.LogWarn(
+                        $"No input directories selected; cannot build replacement mapping."
+                    );
+                    return;
+                }
+
+                foreach (Object maybeDirectory in _inputDirectories.Where(d => d != null))
+                {
+                    string dirPath = AssetDatabase.GetAssetPath(maybeDirectory);
+                    if (!AssetDatabase.IsValidFolder(dirPath))
+                    {
+                        continue;
+                    }
+
+                    IEnumerable<string> files = Directory
+                        .GetFiles(dirPath, "*.*", SearchOption.AllDirectories)
+                        .Where(file =>
+                            Array.Exists(
+                                ImageFileExtensions,
+                                extension =>
+                                    file.EndsWith(extension, StringComparison.OrdinalIgnoreCase)
+                            )
+                        );
+
+                    foreach (string file in files)
+                    {
+                        if (file.Contains(CroppedPrefix, StringComparison.OrdinalIgnoreCase))
+                        {
+                            continue;
+                        }
+                        string croppedPath = Path.Combine(
+                            Path.GetDirectoryName(file) ?? string.Empty,
+                            CroppedPrefix + Path.GetFileName(file)
+                        );
+                        if (!File.Exists(croppedPath))
+                        {
+                            continue;
+                        }
+
+                        Sprite original = AssetDatabase.LoadAssetAtPath<Sprite>(file);
+                        Sprite cropped = AssetDatabase.LoadAssetAtPath<Sprite>(croppedPath);
+                        if (original != null && cropped != null)
+                        {
+                            mapping[original] = cropped;
+                        }
+                    }
+                }
+
+                if (mapping.Count == 0)
+                {
+                    this.LogWarn(
+                        $"No original→Cropped_* sprite pairs found. Aborting replacement."
+                    );
+                    return;
+                }
+
+                string[] allAssets = AssetDatabase.GetAllAssetPaths();
+                string[] candidateExts = new[]
+                {
+                    ".prefab",
+                    ".unity",
+                    ".asset",
+                    ".mat",
+                    ".anim",
+                    ".overrideController",
+                };
+                int modifiedAssets = 0;
+
+                AssetDatabase.StartAssetEditing();
+                try
+                {
+                    for (int i = 0; i < allAssets.Length; ++i)
+                    {
+                        string path = allAssets[i];
+                        if (!path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))
+                        {
+                            continue;
+                        }
+                        if (
+                            !candidateExts.Any(ext =>
+                                path.EndsWith(ext, StringComparison.OrdinalIgnoreCase)
+                            )
+                        )
+                        {
+                            continue;
+                        }
+
+                        if (
+                            EditorUtility.DisplayCancelableProgressBar(
+                                "Replacing Sprite References",
+                                $"Scanning {i + 1}/{allAssets.Length}: {Path.GetFileName(path)}",
+                                i / (float)allAssets.Length
+                            )
+                        )
+                        {
+                            this.LogWarn($"Reference replacement cancelled by user.");
+                            break;
+                        }
+
+                        bool assetModified = false;
+                        Object[] objs = AssetDatabase.LoadAllAssetsAtPath(path);
+                        foreach (Object o in objs)
+                        {
+                            if (o == null)
+                            {
+                                continue;
+                            }
+                            SerializedObject so = new(o);
+                            SerializedProperty it = so.GetIterator();
+                            bool enter = true;
+                            while (it.NextVisible(enter))
+                            {
+                                enter = false;
+                                if (it.propertyType == SerializedPropertyType.ObjectReference)
+                                {
+                                    Sprite s = it.objectReferenceValue as Sprite;
+                                    if (s != null && mapping.TryGetValue(s, out Sprite replacement))
+                                    {
+                                        it.objectReferenceValue = replacement;
+                                        assetModified = true;
+                                    }
+                                }
+                            }
+                            if (assetModified)
+                            {
+                                so.ApplyModifiedPropertiesWithoutUndo();
+                                EditorUtility.SetDirty(o);
+                            }
+                        }
+                        if (assetModified)
+                        {
+                            modifiedAssets++;
+                        }
+                    }
+                }
+                finally
+                {
+                    AssetDatabase.StopAssetEditing();
+                    AssetDatabase.SaveAssets();
+                    AssetDatabase.Refresh();
+                    EditorUtility.ClearProgressBar();
+                }
+
+                this.Log(
+                    $"Reference replacement complete. Modified assets: {modifiedAssets}. Mapped pairs: {mapping.Count}."
+                );
+            }
+            catch (Exception ex)
+            {
+                this.LogError($"Error during reference replacement.", ex);
+            }
         }
 
         private void ProcessFoundSprites()
@@ -410,7 +633,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
                 if (canceled)
                 {
-                    this.LogWarn("Sprite cropping canceled by user.");
+                    this.LogWarn($"Sprite cropping canceled by user.");
                 }
                 else
                 {
@@ -495,6 +718,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             )
             {
                 outcome = ProcessOutcome.FatalError;
+                return null;
+            }
+
+            if (importer.spriteImportMode != SpriteImportMode.Single)
+            {
+                this.LogWarn($"Skipping texture with Multiple sprite mode: {assetPath}");
+                outcome = ProcessOutcome.SkippedNoChange;
                 return null;
             }
 

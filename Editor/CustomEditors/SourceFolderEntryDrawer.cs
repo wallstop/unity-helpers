@@ -19,6 +19,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
         private static readonly Dictionary<string, bool> ExcludeRegexesFoldoutState = new(
             StringComparer.Ordinal
         );
+        private static readonly Dictionary<string, bool> ExcludePathPrefixesFoldoutState = new(
+            StringComparer.Ordinal
+        );
 
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
@@ -321,6 +324,85 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
                             EditorGUIUtility.singleLineHeight
                             + EditorGUIUtility.standardVerticalSpacing;
                     }
+
+                    // Exclude Path Prefixes
+                    Rect excludePathFoldoutLabelRect = new(
+                        startX,
+                        currentY,
+                        availableWidth,
+                        EditorGUIUtility.singleLineHeight
+                    );
+                    string exPathFoldoutKey = GetExcludePathFoldoutKey(property);
+                    ExcludePathPrefixesFoldoutState.TryAdd(exPathFoldoutKey, false);
+                    ExcludePathPrefixesFoldoutState[exPathFoldoutKey] = EditorGUI.Foldout(
+                        excludePathFoldoutLabelRect,
+                        ExcludePathPrefixesFoldoutState[exPathFoldoutKey],
+                        "Exclude Path Prefixes",
+                        true
+                    );
+                    currentY +=
+                        excludePathFoldoutLabelRect.height
+                        + EditorGUIUtility.standardVerticalSpacing;
+
+                    if (ExcludePathPrefixesFoldoutState[exPathFoldoutKey])
+                    {
+                        SerializedProperty exPathsProp = property.FindPropertyRelative(
+                            nameof(SourceFolderEntry.excludePathPrefixes)
+                        );
+                        float exPathStartX = startX + 15f;
+                        float exPathWidth = availableWidth - 15f;
+                        for (int i = 0; i < exPathsProp.arraySize; i++)
+                        {
+                            SerializedProperty elemProp = exPathsProp.GetArrayElementAtIndex(i);
+                            Rect fieldRect = new(
+                                exPathStartX,
+                                currentY,
+                                exPathWidth - 25f,
+                                EditorGUIUtility.singleLineHeight
+                            );
+                            EditorGUI.BeginChangeCheck();
+                            string newVal = EditorGUI.TextField(
+                                fieldRect,
+                                $"Exclude Path {i}:",
+                                elemProp.stringValue
+                            );
+                            if (EditorGUI.EndChangeCheck())
+                            {
+                                elemProp.stringValue = newVal;
+                            }
+                            Rect remRect = new(
+                                fieldRect.xMax + 4f,
+                                currentY,
+                                25f,
+                                EditorGUIUtility.singleLineHeight
+                            );
+                            if (GUI.Button(remRect, "–"))
+                            {
+                                exPathsProp.DeleteArrayElementAtIndex(i);
+                                property.serializedObject.ApplyModifiedProperties();
+                            }
+                            currentY +=
+                                EditorGUIUtility.singleLineHeight
+                                + EditorGUIUtility.standardVerticalSpacing;
+                        }
+
+                        Rect addExPathRect = new(
+                            exPathStartX,
+                            currentY,
+                            exPathWidth,
+                            EditorGUIUtility.singleLineHeight
+                        );
+                        if (GUI.Button(addExPathRect, "+ Add Exclude Path"))
+                        {
+                            int idx = exPathsProp.arraySize;
+                            exPathsProp.InsertArrayElementAtIndex(idx);
+                            exPathsProp.GetArrayElementAtIndex(idx).stringValue = string.Empty;
+                            property.serializedObject.ApplyModifiedProperties();
+                        }
+                        currentY +=
+                            EditorGUIUtility.singleLineHeight
+                            + EditorGUIUtility.standardVerticalSpacing;
+                    }
                 }
 
                 if (useRegex && useLabels)
@@ -488,6 +570,27 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
                 }
                 height +=
                     EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
+
+                // Exclude path prefixes foldout
+                string exPathFoldoutKey = GetExcludePathFoldoutKey(property);
+                bool isExPathExpanded = ExcludePathPrefixesFoldoutState.GetValueOrDefault(
+                    exPathFoldoutKey,
+                    false
+                );
+                if (isExPathExpanded)
+                {
+                    SerializedProperty exPathsProp = property.FindPropertyRelative(
+                        nameof(SourceFolderEntry.excludePathPrefixes)
+                    );
+                    height +=
+                        (1 + exPathsProp.arraySize)
+                        * (
+                            EditorGUIUtility.singleLineHeight
+                            + EditorGUIUtility.standardVerticalSpacing
+                        );
+                }
+                height +=
+                    EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
             }
 
             if (useRegex && useLabels)
@@ -565,6 +668,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
                 )
                 + property.propertyPath
                 + ".excludeRegexesList";
+        }
+
+        private static string GetExcludePathFoldoutKey(SerializedProperty property)
+        {
+            return (
+                    property.serializedObject.targetObject != null
+                        ? property.serializedObject.targetObject.name
+                        : "NULL"
+                )
+                + property.propertyPath
+                + ".excludePathPrefixesList";
         }
     }
 #endif
