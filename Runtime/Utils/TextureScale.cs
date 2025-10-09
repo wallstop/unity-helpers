@@ -100,6 +100,13 @@ namespace WallstopStudios.UnityHelpers.Utils
             bool useBilinear
         )
         {
+            // No-op fast path when dimensions are unchanged.
+            // Preserves exact pixel values — required by edge tests.
+            if (tex.width == newWidth && tex.height == newHeight)
+            {
+                return;
+            }
+
             // Get source pixels - this will throw if texture is not readable
             Color[] texColors = tex.GetPixels();
             int sourceWidth = tex.width;

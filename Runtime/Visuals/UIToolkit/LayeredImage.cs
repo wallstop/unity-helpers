@@ -255,6 +255,7 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
                 float overallMinY = float.MaxValue;
                 float overallMaxY = float.MinValue;
                 bool hasVisibleSprite = false;
+                bool hasFractionalPlacement = false;
 
                 for (int layerIndex = 0; layerIndex < layerCount; ++layerIndex)
                 {
@@ -284,6 +285,15 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
 
                     float baseX = pixelOffset.x - pivot.x;
                     float baseY = pixelOffset.y - pivot.y;
+
+                    // Track if any layer uses fractional placement (e.g., centered pivot)
+                    if (!hasFractionalPlacement)
+                    {
+                        // Consider values effectively integral within a tiny epsilon
+                        bool baseXIsIntegral = Mathf.Abs(baseX - Mathf.Round(baseX)) <= 1e-5f;
+                        bool baseYIsIntegral = Mathf.Abs(baseY - Mathf.Round(baseY)) <= 1e-5f;
+                        hasFractionalPlacement = !(baseXIsIntegral && baseYIsIntegral);
+                    }
                     float spriteMinX = baseX;
                     float spriteMaxX = baseX + spriteRect.width;
                     float spriteMinY = baseY;
@@ -373,20 +383,28 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
                     );
                 }
 
-                return FinalizeTexture(bufferPixels, compositeWidth, compositeHeight, pixelCutoff);
+                return FinalizeTexture(
+                    bufferPixels,
+                    compositeWidth,
+                    compositeHeight,
+                    pixelCutoff,
+                    hasFractionalPlacement
+                );
             }
 
             private Texture2D FinalizeTexture(
                 Color[] bufferPixels,
                 int compositeWidth,
                 int compositeHeight,
-                float pixelCutoff
+                float pixelCutoff,
+                bool preserveCompositeBounds
             )
             {
                 int minX = compositeWidth;
                 int maxX = -1;
                 int minY = compositeHeight;
                 int maxY = -1;
+                bool anyVisible = false;
 
                 for (int y = 0; y < compositeHeight; ++y)
                 {
@@ -396,11 +414,13 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
 
                     for (int x = 0; x < compositeWidth; ++x)
                     {
-                        if (bufferPixels[rowOffset + x].a < pixelCutoff)
+                        // Treat pixels with alpha equal to cutoff as invisible
+                        if (bufferPixels[rowOffset + x].a <= pixelCutoff)
                         {
                             continue;
                         }
 
+                        anyVisible = true;
                         if (x < rowMin)
                         {
                             rowMin = x;
@@ -438,9 +458,18 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
                     }
                 }
 
-                if (maxX < minX || maxY < minY)
+                if (!anyVisible || maxX < minX || maxY < minY)
                 {
                     return null;
+                }
+
+                if (preserveCompositeBounds)
+                {
+                    // Keep full composite bounds when fractional placement (e.g., centered pivot)
+                    minX = 0;
+                    minY = 0;
+                    maxX = compositeWidth - 1;
+                    maxY = compositeHeight - 1;
                 }
 
                 int finalWidth = maxX - minX + 1;
@@ -463,7 +492,8 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
                     for (int x = 0; x < finalWidth; ++x)
                     {
                         Color pixel = bufferPixels[sourceRow + x];
-                        if (pixel.a >= pixelCutoff)
+                        // Exclude pixels with alpha equal to cutoff
+                        if (pixel.a > pixelCutoff)
                         {
                             finalPixels[destinationRow + x] = pixel;
                         }

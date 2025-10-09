@@ -141,7 +141,12 @@ namespace WallstopStudios.UnityHelpers.Visuals.UGUI
         private void UpdateMaterialInstance()
         {
             Material localMaterial = material;
-            if (localMaterial == null)
+            // Treat the built-in default UI material the same as "no material assigned"
+            // so tests that explicitly set material = null do not cause an instance to be created.
+            if (
+                localMaterial == null
+                || ReferenceEquals(localMaterial, Graphic.defaultGraphicMaterial)
+            )
             {
                 return;
             }

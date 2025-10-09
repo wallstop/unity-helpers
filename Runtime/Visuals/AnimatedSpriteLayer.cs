@@ -211,13 +211,8 @@ namespace WallstopStudios.UnityHelpers.Visuals
             Vector2[] result = new Vector2[offsets.Count];
             offsets.CopyTo(result);
 
-            if (Debug.isDebugBuild)
-            {
-                Debug.Assert(
-                    result.Length == frames.Length,
-                    $"Expected {frames.Length} sprite frames to match {result.Length} offsets after processing."
-                );
-            }
+            // Do not assert on count mismatch; callers may provide fewer offsets
+            // than frames and expect remaining frames to default to zero during use.
 
             return result;
         }

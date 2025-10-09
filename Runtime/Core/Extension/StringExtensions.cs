@@ -1430,7 +1430,9 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                         : RemoveCombiningDotAboveIfPresent(value.ToLowerInvariant());
                 case StringCase.UpperInvariant:
                     return value?.ToUpperInvariant() ?? string.Empty;
+#pragma warning disable CS0618 // Type or member is obsolete
                 case StringCase.None:
+#pragma warning restore CS0618 // Type or member is obsolete
                 default:
                     return value ?? string.Empty;
             }

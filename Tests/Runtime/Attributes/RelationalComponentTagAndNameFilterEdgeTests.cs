@@ -181,7 +181,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             );
 
             tester.AssignSiblingComponents();
-            Assert.IsNull(tester.collider);
+            Assert.IsNull(tester.siblingCollider);
 
             yield break;
         }
@@ -189,9 +189,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [UnityTest]
         public IEnumerator SkipIfAssignedDoesNotOverride()
         {
-            GameObject root = new("SkipRoot", typeof(SkipIfAssignedTester));
+            GameObject root = new("SkipRoot", typeof(SkipIfAssignedTesterEdgeCase));
             _spawned.Add(root);
-            SkipIfAssignedTester tester = root.GetComponent<SkipIfAssignedTester>();
+            SkipIfAssignedTesterEdgeCase tester = root.GetComponent<SkipIfAssignedTesterEdgeCase>();
 
             SpriteRenderer preassigned = root.AddComponent<SpriteRenderer>();
             tester.alreadyAssigned = preassigned;
@@ -248,6 +248,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
     internal sealed class SiblingNoMatchTagTester : MonoBehaviour
     {
         [SiblingComponent(TagFilter = "Player")]
-        public BoxCollider collider;
+        public BoxCollider siblingCollider;
     }
 }
