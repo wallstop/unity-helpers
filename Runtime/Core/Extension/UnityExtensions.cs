@@ -485,13 +485,11 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             bool includeColinearPoints = true
         )
         {
+            return BuildConvexHullMonotoneChain(pointsSet, grid, includeColinearPoints);
             using PooledResource<List<Vector3Int>> pointsResource = Buffers<Vector3Int>.List.Get(
                 out List<Vector3Int> points
             );
-            foreach (Vector3Int point in pointsSet)
-            {
-                points.Add(point);
-            }
+            points.AddRange(pointsSet);
 
             if (points.Count <= 3)
             {
@@ -652,6 +650,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             bool includeColinearPoints = false
         )
         {
+            return BuildConvexHullMonotoneChain(pointsSet, grid, includeColinearPoints);
             using PooledResource<List<FastVector3Int>> pointsResource =
                 Buffers<FastVector3Int>.List.Get(out List<FastVector3Int> points);
             points.AddRange(pointsSet);
@@ -787,6 +786,254 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return convexHull;
 
             Vector2 CellToWorld(FastVector3Int position) => grid.CellToWorld(position);
+        }
+
+        // Disambiguation overload to ensure List<FastVector3Int> resolves here (not via implicit Vector3Int)
+        public static List<FastVector3Int> BuildConvexHull(
+            this List<FastVector3Int> pointsSet,
+            Grid grid,
+            bool includeColinearPoints = false
+        )
+        {
+            return BuildConvexHullMonotoneChain(pointsSet, grid, includeColinearPoints);
+        }
+
+        private static List<Vector3Int> BuildConvexHullMonotoneChain(
+            IEnumerable<Vector3Int> pointsSet,
+            Grid grid,
+            bool includeColinearPoints
+        )
+        {
+            using PooledResource<List<Vector3Int>> pointsResource = Buffers<Vector3Int>.List.Get(
+                out List<Vector3Int> points
+            );
+            points.AddRange(pointsSet);
+
+            // Deduplicate
+            points = new List<Vector3Int>(new HashSet<Vector3Int>(points));
+            if (points.Count <= 1)
+            {
+                return new List<Vector3Int>(points);
+            }
+
+            // Sort by world-space X then Y
+            points.Sort(
+                (lhs, rhs) =>
+                {
+                    Vector2 a = grid.CellToWorld(lhs);
+                    Vector2 b = grid.CellToWorld(rhs);
+                    int cmp = a.x.CompareTo(b.x);
+                    return cmp != 0 ? cmp : a.y.CompareTo(b.y);
+                }
+            );
+
+            using PooledResource<List<Vector3Int>> lowerRes = Buffers<Vector3Int>.List.Get(
+                out List<Vector3Int> lower
+            );
+            using PooledResource<List<Vector3Int>> upperRes = Buffers<Vector3Int>.List.Get(
+                out List<Vector3Int> upper
+            );
+
+            float Turn(Vector3Int a, Vector3Int b, Vector3Int c)
+            {
+                Vector2 aw = grid.CellToWorld(a);
+                Vector2 bw = grid.CellToWorld(b);
+                Vector2 cw = grid.CellToWorld(c);
+                return Geometry.IsAPointLeftOfVectorOrOnTheLine(aw, bw, cw);
+            }
+
+            foreach (Vector3Int p in points)
+            {
+                while (lower.Count >= 2)
+                {
+                    float cross = Turn(lower[^2], lower[^1], p);
+                    // Keep colinear points during construction; prune later if needed
+                    if (cross < -ConvexHullRelationEpsilon)
+                    {
+                        lower.RemoveAt(lower.Count - 1);
+                        continue;
+                    }
+                    break;
+                }
+                lower.Add(p);
+            }
+
+            for (int i = points.Count - 1; i >= 0; --i)
+            {
+                Vector3Int p = points[i];
+                while (upper.Count >= 2)
+                {
+                    float cross = Turn(upper[^2], upper[^1], p);
+                    // Keep colinear points during construction; prune later if needed
+                    if (cross < -ConvexHullRelationEpsilon)
+                    {
+                        upper.RemoveAt(upper.Count - 1);
+                        continue;
+                    }
+                    break;
+                }
+                upper.Add(p);
+            }
+
+            List<Vector3Int> hull = new(lower.Count + upper.Count - 2);
+            for (int i = 0; i < lower.Count; ++i)
+            {
+                hull.Add(lower[i]);
+            }
+            for (int i = 1; i < upper.Count - 1; ++i)
+            {
+                hull.Add(upper[i]);
+            }
+            if (!includeColinearPoints && hull.Count > 2)
+            {
+                PruneColinearOnHull(hull, grid);
+            }
+            return hull;
+        }
+
+        private static List<FastVector3Int> BuildConvexHullMonotoneChain(
+            IEnumerable<FastVector3Int> pointsSet,
+            Grid grid,
+            bool includeColinearPoints
+        )
+        {
+            using PooledResource<List<FastVector3Int>> pointsResource =
+                Buffers<FastVector3Int>.List.Get(out List<FastVector3Int> points);
+            points.AddRange(pointsSet);
+
+            using PooledResource<HashSet<FastVector3Int>> uniqueBuffer =
+                Buffers<FastVector3Int>.HashSet.Get(out HashSet<FastVector3Int> unique);
+            foreach (FastVector3Int p in points)
+            {
+                unique.Add(p);
+            }
+            points = new List<FastVector3Int>(unique);
+            if (points.Count <= 1)
+            {
+                return new List<FastVector3Int>(points);
+            }
+
+            points.Sort(
+                (lhs, rhs) =>
+                {
+                    Vector2 a = grid.CellToWorld(lhs);
+                    Vector2 b = grid.CellToWorld(rhs);
+                    int cmp = a.x.CompareTo(b.x);
+                    return cmp != 0 ? cmp : a.y.CompareTo(b.y);
+                }
+            );
+
+            using PooledResource<List<FastVector3Int>> lowerRes = Buffers<FastVector3Int>.List.Get(
+                out List<FastVector3Int> lower
+            );
+            using PooledResource<List<FastVector3Int>> upperRes = Buffers<FastVector3Int>.List.Get(
+                out List<FastVector3Int> upper
+            );
+
+            float Turn(FastVector3Int a, FastVector3Int b, FastVector3Int c)
+            {
+                Vector2 aw = grid.CellToWorld(a);
+                Vector2 bw = grid.CellToWorld(b);
+                Vector2 cw = grid.CellToWorld(c);
+                return Geometry.IsAPointLeftOfVectorOrOnTheLine(aw, bw, cw);
+            }
+
+            foreach (FastVector3Int p in points)
+            {
+                while (lower.Count >= 2)
+                {
+                    float cross = Turn(lower[^2], lower[^1], p);
+                    // Keep colinear points during construction; prune later if needed
+                    if (cross < -ConvexHullRelationEpsilon)
+                    {
+                        lower.RemoveAt(lower.Count - 1);
+                        continue;
+                    }
+                    break;
+                }
+                lower.Add(p);
+            }
+
+            for (int i = points.Count - 1; i >= 0; --i)
+            {
+                FastVector3Int p = points[i];
+                while (upper.Count >= 2)
+                {
+                    float cross = Turn(upper[^2], upper[^1], p);
+                    // Keep colinear points during construction; prune later if needed
+                    if (cross < -ConvexHullRelationEpsilon)
+                    {
+                        upper.RemoveAt(upper.Count - 1);
+                        continue;
+                    }
+                    break;
+                }
+                upper.Add(p);
+            }
+
+            List<FastVector3Int> hull = new(lower.Count + upper.Count - 2);
+            for (int i = 0; i < lower.Count; ++i)
+            {
+                hull.Add(lower[i]);
+            }
+            for (int i = 1; i < upper.Count - 1; ++i)
+            {
+                hull.Add(upper[i]);
+            }
+            if (!includeColinearPoints && hull.Count > 2)
+            {
+                PruneColinearOnHull(hull, grid);
+            }
+            return hull;
+        }
+
+        private static void PruneColinearOnHull(List<Vector3Int> hull, Grid grid)
+        {
+            int i = 0;
+            while (i < hull.Count)
+            {
+                int prev = (i - 1 + hull.Count) % hull.Count;
+                int next = (i + 1) % hull.Count;
+                Vector2 a = grid.CellToWorld(hull[prev]);
+                Vector2 b = grid.CellToWorld(hull[i]);
+                Vector2 c = grid.CellToWorld(hull[next]);
+                float cross = Geometry.IsAPointLeftOfVectorOrOnTheLine(a, b, c);
+                if (Mathf.Abs(cross) <= ConvexHullRelationEpsilon)
+                {
+                    hull.RemoveAt(i);
+                    if (hull.Count < 3)
+                    {
+                        break;
+                    }
+                    // Stay at same index to re-evaluate after removal
+                    continue;
+                }
+                ++i;
+            }
+        }
+
+        private static void PruneColinearOnHull(List<FastVector3Int> hull, Grid grid)
+        {
+            int i = 0;
+            while (i < hull.Count)
+            {
+                int prev = (i - 1 + hull.Count) % hull.Count;
+                int next = (i + 1) % hull.Count;
+                Vector2 a = grid.CellToWorld(hull[prev]);
+                Vector2 b = grid.CellToWorld(hull[i]);
+                Vector2 c = grid.CellToWorld(hull[next]);
+                float cross = Geometry.IsAPointLeftOfVectorOrOnTheLine(a, b, c);
+                if (Mathf.Abs(cross) <= ConvexHullRelationEpsilon)
+                {
+                    hull.RemoveAt(i);
+                    if (hull.Count < 3)
+                    {
+                        break;
+                    }
+                    continue;
+                }
+                ++i;
+            }
         }
 
         /// <summary>
@@ -1328,10 +1575,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 if (iterations > maxIterations)
                 {
                     // Safety: avoid runaway refinement by flushing remaining edges to concave set
-                    foreach (HullEdge leftover in data)
-                    {
-                        concaveHullEdges.Add(leftover);
-                    }
+                    concaveHullEdges.AddRange(data);
                     break;
                 }
             }

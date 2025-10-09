@@ -255,10 +255,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             using PooledResource<List<Object>> bufferResource = Buffers<Object>.List.Get(
                 out List<Object> buffer
             );
-            foreach (Object disabled in Disabled)
-            {
-                buffer.Add(disabled);
-            }
+            buffer.AddRange(Disabled);
 
             foreach (Object disabled in buffer)
             {

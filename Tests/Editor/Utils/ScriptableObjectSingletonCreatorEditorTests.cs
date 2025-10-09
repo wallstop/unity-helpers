@@ -31,8 +31,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         }
 
         [TearDown]
-        public void TearDown()
+        public override void TearDown()
         {
+            base.TearDown();
             DeleteAssetIfExists(TargetAssetPath);
             DeleteAssetIfExists(WrongAssetPath);
             DeleteFolderHierarchy(TargetFolder);

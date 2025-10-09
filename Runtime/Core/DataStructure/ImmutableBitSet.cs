@@ -16,7 +16,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     [ProtoContract(IgnoreListHandling = true)]
     public readonly struct ImmutableBitSet : IEquatable<ImmutableBitSet>
     {
-        private const int BitsPerLong = 64;
         private const int BitsPerLongShift = 6; // log2(64)
         private const int BitsPerLongMask = 63; // 64 - 1
 
@@ -115,9 +114,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         public List<bool> ToList()
         {
             List<bool> result = new();
-            foreach (bool value in this)
+            foreach (bool bit in this)
             {
-                result.Add(value);
+                result.Add(bit);
             }
 
             return result;
@@ -131,9 +130,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
 
             result.Clear();
-            foreach (bool value in this)
+            foreach (bool bit in this)
             {
-                result.Add(value);
+                result.Add(bit);
             }
 
             return result;

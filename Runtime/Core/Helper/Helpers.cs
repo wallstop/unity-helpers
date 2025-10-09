@@ -1021,10 +1021,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
 
             listResource = Buffers<string>.List.Get(out List<string> list);
-            foreach (string path in assetPaths)
-            {
-                list.Add(path);
-            }
+            list.AddRange(assetPaths);
 
             arrayResource = WallstopFastArrayPool<string>.Get(list.Count, out string[] temp);
             list.CopyTo(temp);

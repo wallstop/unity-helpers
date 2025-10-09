@@ -37,12 +37,6 @@
                 return;
             }
 
-            if (_testTexture != null)
-            {
-                Object.DestroyImmediate(_testTexture, true);
-                _testTexture = null;
-            }
-
             if (!string.IsNullOrEmpty(_testTexturePath) && File.Exists(_testTexturePath))
             {
                 AssetDatabase.DeleteAsset(_testTexturePath);
@@ -142,15 +136,8 @@
                 Assert.Ignore("AssetDatabase access requires edit mode.");
             }
 
-            Texture2D runtimeTexture = new(2, 2);
-            try
-            {
-                Assert.DoesNotThrow(() => runtimeTexture.MakeReadable());
-            }
-            finally
-            {
-                Object.DestroyImmediate(runtimeTexture);
-            }
+            Texture2D runtimeTexture = Track(new Texture2D(2, 2));
+            Assert.DoesNotThrow(() => runtimeTexture.MakeReadable());
         }
 
         [Test]
@@ -226,7 +213,6 @@
                 );
 
                 AssetDatabase.DeleteAsset(_testTexturePath);
-                Object.DestroyImmediate(_testTexture);
                 _testTexture = null;
                 _testTexturePath = null;
             }
@@ -312,7 +298,9 @@
             _testTexturePath = Path.Combine(TestFolder, $"TestTexture_{System.Guid.NewGuid()}.png")
                 .Replace('\\', '/');
 
-            Texture2D tempTexture = new(width, height, TextureFormat.RGBA32, false);
+            Texture2D tempTexture = Track(
+                new Texture2D(width, height, TextureFormat.RGBA32, false)
+            );
             Color[] pixels = new Color[width * height];
             for (int i = 0; i < pixels.Length; i++)
             {
@@ -327,7 +315,6 @@
             tempTexture.Apply();
 
             byte[] pngData = tempTexture.EncodeToPNG();
-            Object.DestroyImmediate(tempTexture);
 
             File.WriteAllBytes(_testTexturePath, pngData);
             AssetDatabase.ImportAsset(_testTexturePath);

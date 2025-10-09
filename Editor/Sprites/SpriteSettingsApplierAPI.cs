@@ -160,6 +160,19 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
 
             bool changed = false;
+            bool anyApplied =
+                spriteData.applyTextureType
+                || spriteData.applySpriteMode
+                || spriteData.applyPixelsPerUnit
+                || spriteData.applyPivot
+                || spriteData.applyGenerateMipMaps
+                || spriteData.applyAlphaIsTransparency
+                || spriteData.applyReadWriteEnabled
+                || spriteData.applyExtrudeEdges
+                || spriteData.applyWrapMode
+                || spriteData.applyFilterMode
+                || spriteData.applyCrunchCompression
+                || spriteData.applyCompression;
             if (spriteData.applyPixelsPerUnit)
             {
                 changed |= textureImporter.spritePixelsPerUnit != spriteData.pixelsPerUnit;
@@ -215,7 +228,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 changed |= buffer.filterMode != spriteData.filterMode;
             }
-            return changed;
+            return changed || anyApplied;
         }
 
         public static bool TryUpdateTextureSettings(

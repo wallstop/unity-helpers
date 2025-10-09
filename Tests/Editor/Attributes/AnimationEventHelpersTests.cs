@@ -11,6 +11,7 @@
 
     [TestFixture]
     public sealed class AnimationEventHelpersTests
+        : WallstopStudios.UnityHelpers.Tests.Utils.CommonTestBase
     {
         [Test]
         public void TypesToMethodsIncludesDeclaringTypeAndFiltersEmptyEntries()

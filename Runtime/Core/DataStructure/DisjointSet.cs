@@ -253,10 +253,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 set.Add(i);
             }
 
-            foreach (List<int> set in setMap.Values)
-            {
-                results.Add(set);
-            }
+            results.AddRange(setMap.Values);
 
             return results;
         }

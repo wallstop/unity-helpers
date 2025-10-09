@@ -105,10 +105,7 @@ namespace WallstopStudios.UnityHelpers.Tags
                 KeyValuePair<EffectHandle, List<AttributeModification>> entry in _modifications
             )
             {
-                foreach (AttributeModification modification in entry.Value)
-                {
-                    modifications.Add(modification);
-                }
+                modifications.AddRange(entry.Value);
             }
 
             modifications.Sort((a, b) => ((int)a.action).CompareTo((int)b.action));

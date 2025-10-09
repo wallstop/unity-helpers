@@ -11,7 +11,7 @@
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Utils;
 
-    public sealed class HelpersTests
+    public sealed class HelpersTests : WallstopStudios.UnityHelpers.Tests.Utils.CommonTestBase
     {
         [Test]
         public void EnumeratePrefabsFindsGeneratedPrefab()
@@ -28,7 +28,7 @@
             }
 
             string assetPath = Path.Combine(folder, "TestPrefab.prefab").Replace('\\', '/');
-            GameObject prefabSource = new("Helpers_PrefabSource");
+            GameObject prefabSource = Track(new GameObject("Helpers_PrefabSource"));
             try
             {
                 GameObject prefab = PrefabUtility.SaveAsPrefabAsset(prefabSource, assetPath);
@@ -42,7 +42,6 @@
             }
             finally
             {
-                UnityEngine.Object.DestroyImmediate(prefabSource);
                 AssetDatabase.DeleteAsset(assetPath);
                 AssetDatabase.DeleteAsset(folder);
                 AssetDatabase.Refresh();
@@ -64,7 +63,9 @@
             }
 
             string assetPath = Path.Combine(folder, "Dummy.asset").Replace('\\', '/');
-            DummyScriptableObject asset = ScriptableObject.CreateInstance<DummyScriptableObject>();
+            DummyScriptableObject asset = Track(
+                ScriptableObject.CreateInstance<DummyScriptableObject>()
+            );
             try
             {
                 AssetDatabase.CreateAsset(asset, assetPath);

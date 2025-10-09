@@ -48,9 +48,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
         private string CreateTempTexture(bool asSprite = false)
         {
-            Texture2D tex = new Texture2D(4, 4, TextureFormat.RGBA32, mipChain: false);
+            Texture2D tex = Track(new Texture2D(4, 4, TextureFormat.RGBA32, mipChain: false));
             byte[] png = tex.EncodeToPNG();
-            Object.DestroyImmediate(tex);
             string path = Path.Combine(TestFolder, "ui_button.png");
             File.WriteAllBytes(path, png);
             AssetDatabase.ImportAsset(path);

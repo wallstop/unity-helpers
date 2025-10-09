@@ -15,6 +15,7 @@
     /// documented behavior of the extension methods.
     /// </summary>
     public sealed class SerializedPropertyExtensionsTests
+        : WallstopStudios.UnityHelpers.Tests.Utils.CommonTestBase
     {
         [Serializable]
         private class Inner
@@ -48,9 +49,9 @@
             public string GetPrivateString() => privateString;
         }
 
-        private static SerializedObject CreateSO(out TestContainer container)
+        private SerializedObject CreateSO(out TestContainer container)
         {
-            container = ScriptableObject.CreateInstance<TestContainer>();
+            container = Track(ScriptableObject.CreateInstance<TestContainer>());
             return new SerializedObject(container);
         }
 

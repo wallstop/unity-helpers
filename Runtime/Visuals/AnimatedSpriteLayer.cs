@@ -126,10 +126,7 @@ namespace WallstopStudios.UnityHelpers.Visuals
                     using PooledResource<List<Sprite>> lease = Buffers<Sprite>.List.Get(
                         out List<Sprite> list
                     );
-                    foreach (Sprite sprite in sprites)
-                    {
-                        list.Add(sprite);
-                    }
+                    list.AddRange(sprites);
 
                     if (list.Count == 0)
                     {

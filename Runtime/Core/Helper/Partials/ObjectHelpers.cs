@@ -286,6 +286,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
         /// <summary>
         /// Destroys an object using DestroyImmediate in editor edit mode, otherwise Destroy (optionally delayed).
+        /// Avoids deleting assets on disk; unloads asset objects instead.
         /// </summary>
         public static void SmartDestroy(this Object obj, float? afterTime = null)
         {
@@ -297,19 +298,27 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #if UNITY_EDITOR
             if (Application.isEditor && !Application.isPlaying)
             {
+                // If this is an asset object, unload it instead of deleting the asset.
+                // Deleting assets in edit mode can cause data loss and error logs.
+                string assetPath = UnityEditor.AssetDatabase.GetAssetPath(obj);
+                if (!string.IsNullOrEmpty(assetPath))
+                {
+                    Resources.UnloadAsset(obj);
+                    return;
+                }
+
                 Object.DestroyImmediate(obj);
+                return;
+            }
+#endif
+
+            if (afterTime.HasValue)
+            {
+                Object.Destroy(obj, afterTime.Value);
             }
             else
-#endif
             {
-                if (afterTime.HasValue)
-                {
-                    Object.Destroy(obj, afterTime.Value);
-                }
-                else
-                {
-                    Object.Destroy(obj);
-                }
+                Object.Destroy(obj);
             }
         }
 
