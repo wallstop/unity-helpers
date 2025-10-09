@@ -177,7 +177,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
             LogAssert.Expect(
                 LogType.Error,
-                new Regex(@"Unable to find sibling component of type .* for field 'collider'")
+                new Regex(
+                    @"Unable to find sibling component of type .* for field 'siblingCollider'"
+                )
             );
 
             tester.AssignSiblingComponents();

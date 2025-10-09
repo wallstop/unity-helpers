@@ -1118,9 +1118,19 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             originalGridPositions.AddRange(gridPositions);
 
             List<FastVector3Int> convexHull = gridPositions.BuildConvexHull(grid);
-            if (originalGridPositions.Count <= 4)
+            using (
+                PooledResource<HashSet<FastVector3Int>> uniqueBuffer =
+                    Buffers<FastVector3Int>.HashSet.Get(out HashSet<FastVector3Int> unique)
+            )
             {
-                return new List<FastVector3Int>(convexHull);
+                foreach (FastVector3Int p in originalGridPositions)
+                {
+                    unique.Add(p);
+                }
+                if (unique.Count <= 4)
+                {
+                    return new List<FastVector3Int>(convexHull);
+                }
             }
             using PooledResource<List<HullEdge>> concaveHullEdgesResource =
                 Buffers<HullEdge>.List.Get();
@@ -1825,9 +1835,19 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
 
             List<FastVector3Int> convexHull = originalGridPositions.BuildConvexHull(grid);
-            if (originalGridPositions.Count <= 4)
+            using (
+                PooledResource<HashSet<FastVector3Int>> uniqueBuffer =
+                    Buffers<FastVector3Int>.HashSet.Get(out HashSet<FastVector3Int> unique)
+            )
             {
-                return new List<FastVector3Int>(convexHull);
+                foreach (FastVector3Int p in originalGridPositions)
+                {
+                    unique.Add(p);
+                }
+                if (unique.Count <= 4)
+                {
+                    return new List<FastVector3Int>(convexHull);
+                }
             }
             using PooledResource<HashSet<FastVector3Int>> unusedNodesResource =
                 Buffers<FastVector3Int>.HashSet.Get(out HashSet<FastVector3Int> unusedNodes);

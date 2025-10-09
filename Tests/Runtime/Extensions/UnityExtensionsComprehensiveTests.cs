@@ -633,6 +633,69 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         }
 
         [UnityTest]
+        public IEnumerator ConvexHullExcludesInteriorColinearPointsFast()
+        {
+            Grid grid = CreateGrid(out GameObject owner);
+            try
+            {
+                List<FastVector3Int> points = new()
+                {
+                    new FastVector3Int(-2, 0, 0),
+                    new FastVector3Int(-1, 0, 0),
+                    new FastVector3Int(0, 0, 0),
+                    new FastVector3Int(1, 0, 0),
+                    new FastVector3Int(2, 0, 0),
+                };
+
+                List<FastVector3Int> hull = points.BuildConvexHull(grid);
+                CollectionAssert.AreEquivalent(
+                    new[] { new FastVector3Int(-2, 0, 0), new FastVector3Int(2, 0, 0) },
+                    hull
+                );
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(owner);
+            }
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator ConvexHullPermutationInvariance()
+        {
+            Grid grid = CreateGrid(out GameObject owner);
+            try
+            {
+                List<FastVector3Int> points = new()
+                {
+                    new FastVector3Int(0, 0, 0),
+                    new FastVector3Int(3, 0, 0),
+                    new FastVector3Int(3, 3, 0),
+                    new FastVector3Int(0, 3, 0),
+                    new FastVector3Int(1, 1, 0), // interior
+                };
+                List<FastVector3Int> expected = new()
+                {
+                    new FastVector3Int(0, 0, 0),
+                    new FastVector3Int(3, 0, 0),
+                    new FastVector3Int(3, 3, 0),
+                    new FastVector3Int(0, 3, 0),
+                };
+
+                List<FastVector3Int> hullA = points.BuildConvexHull(grid);
+                points.Reverse();
+                List<FastVector3Int> hullB = points.BuildConvexHull(grid);
+                CollectionAssert.AreEquivalent(expected, hullA);
+                CollectionAssert.AreEquivalent(expected, hullB);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(owner);
+            }
+            yield return null;
+        }
+
+        [UnityTest]
         public IEnumerator BuildConcaveHullVariantsMatchConvexHullForTriangle()
         {
             Grid grid = CreateGrid(out GameObject owner);
@@ -650,6 +713,103 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                     grid,
                     includeColinearPoints: false
                 );
+                List<FastVector3Int> concave3 = points.BuildConcaveHull3(grid);
+                List<FastVector3Int> concave2 = points.BuildConcaveHull2(grid);
+                List<FastVector3Int> concave = points.BuildConcaveHull(grid);
+
+                CollectionAssert.AreEquivalent(convex, concave3);
+                CollectionAssert.AreEquivalent(convex, concave2);
+                CollectionAssert.AreEquivalent(convex, concave);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(owner);
+            }
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator ConcaveHullTrivialShapesReturnConvexHull()
+        {
+            Grid grid = CreateGrid(out GameObject owner);
+            try
+            {
+                // Two points
+                List<FastVector3Int> twoPoints = new()
+                {
+                    new FastVector3Int(0, 0, 0),
+                    new FastVector3Int(3, 0, 0),
+                };
+
+                List<FastVector3Int> convexTwo = twoPoints.BuildConvexHull(grid);
+                List<FastVector3Int> concave3Two = twoPoints.BuildConcaveHull3(grid);
+                List<FastVector3Int> concave2Two = twoPoints.BuildConcaveHull2(grid);
+                List<FastVector3Int> concaveTwo = twoPoints.BuildConcaveHull(grid);
+                CollectionAssert.AreEquivalent(convexTwo, concave3Two);
+                CollectionAssert.AreEquivalent(convexTwo, concave2Two);
+                CollectionAssert.AreEquivalent(convexTwo, concaveTwo);
+
+                // Three points
+                List<FastVector3Int> threePoints = new()
+                {
+                    new FastVector3Int(0, 0, 0),
+                    new FastVector3Int(2, 0, 0),
+                    new FastVector3Int(1, 1, 0),
+                };
+                List<FastVector3Int> convexThree = threePoints.BuildConvexHull(grid);
+                List<FastVector3Int> concave3Three = threePoints.BuildConcaveHull3(grid);
+                List<FastVector3Int> concave2Three = threePoints.BuildConcaveHull2(grid);
+                List<FastVector3Int> concaveThree = threePoints.BuildConcaveHull(grid);
+                CollectionAssert.AreEquivalent(convexThree, concave3Three);
+                CollectionAssert.AreEquivalent(convexThree, concave2Three);
+                CollectionAssert.AreEquivalent(convexThree, concaveThree);
+
+                // Four points (rectangle)
+                List<FastVector3Int> rectangle = new()
+                {
+                    new FastVector3Int(0, 0, 0),
+                    new FastVector3Int(0, 3, 0),
+                    new FastVector3Int(3, 3, 0),
+                    new FastVector3Int(3, 0, 0),
+                };
+                List<FastVector3Int> convexRect = rectangle.BuildConvexHull(grid);
+                List<FastVector3Int> concave3Rect = rectangle.BuildConcaveHull3(grid);
+                List<FastVector3Int> concave2Rect = rectangle.BuildConcaveHull2(grid);
+                List<FastVector3Int> concaveRect = rectangle.BuildConcaveHull(grid);
+                CollectionAssert.AreEquivalent(convexRect, concave3Rect);
+                CollectionAssert.AreEquivalent(convexRect, concave2Rect);
+                CollectionAssert.AreEquivalent(convexRect, concaveRect);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(owner);
+            }
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator ConcaveHullHandlesDuplicatesAndColinear()
+        {
+            Grid grid = CreateGrid(out GameObject owner);
+            try
+            {
+                // Duplicates and colinear points along X-axis
+                List<FastVector3Int> points = new()
+                {
+                    new FastVector3Int(0, 0, 0),
+                    new FastVector3Int(0, 0, 0),
+                    new FastVector3Int(1, 0, 0),
+                    new FastVector3Int(2, 0, 0),
+                    new FastVector3Int(2, 0, 0),
+                };
+
+                List<FastVector3Int> convex = points.BuildConvexHull(grid);
+                // Expect convex hull to be endpoints only
+                CollectionAssert.AreEquivalent(
+                    new[] { new FastVector3Int(0, 0, 0), new FastVector3Int(2, 0, 0) },
+                    convex
+                );
+
                 List<FastVector3Int> concave3 = points.BuildConcaveHull3(grid);
                 List<FastVector3Int> concave2 = points.BuildConcaveHull2(grid);
                 List<FastVector3Int> concave = points.BuildConcaveHull(grid);
