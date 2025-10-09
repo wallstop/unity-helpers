@@ -3,10 +3,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using System.Collections.Generic;
     using System.Linq;
     using NUnit.Framework;
-    using UnityEngine.TestTools.Constraints;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.Extension;
-    using Is = NUnit.Framework.Is;
 
     public sealed class EnumExtensionTests
     {
@@ -212,19 +210,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void HasFlagsNoAllocDoesNotAlloc()
         {
-            Assert.That(
-                () =>
-                {
-                    TestEnum.First.HasFlagNoAlloc(TestEnum.First);
-                    TinyTestEnum.First.HasFlagNoAlloc(TinyTestEnum.First);
-                    BigTestEnum.First.HasFlagNoAlloc(BigTestEnum.First);
+            GCAssert.DoesNotAllocate(() =>
+            {
+                TestEnum.First.HasFlagNoAlloc(TestEnum.First);
+                TinyTestEnum.First.HasFlagNoAlloc(TinyTestEnum.First);
+                BigTestEnum.First.HasFlagNoAlloc(BigTestEnum.First);
 
-                    TestEnum.First.HasFlagNoAlloc(TestEnum.Second);
-                    TinyTestEnum.First.HasFlagNoAlloc(TinyTestEnum.Second);
-                    BigTestEnum.First.HasFlagNoAlloc(BigTestEnum.Second);
-                },
-                Is.Not.AllocatingGCMemory()
-            );
+                TestEnum.First.HasFlagNoAlloc(TestEnum.Second);
+                TinyTestEnum.First.HasFlagNoAlloc(TinyTestEnum.Second);
+                BigTestEnum.First.HasFlagNoAlloc(BigTestEnum.Second);
+            });
         }
 
         [Test]
@@ -671,16 +666,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             _ = UnsignedIntEnum.First.HasFlagNoAlloc(UnsignedIntEnum.First);
             _ = UnsignedLongEnum.First.HasFlagNoAlloc(UnsignedLongEnum.First);
             _ = SignedByteEnum.Zero.HasFlagNoAlloc(SignedByteEnum.Zero);
-            Assert.That(
-                () =>
-                {
-                    _ = UnsignedShortEnum.First.HasFlagNoAlloc(UnsignedShortEnum.First);
-                    _ = UnsignedIntEnum.First.HasFlagNoAlloc(UnsignedIntEnum.First);
-                    _ = UnsignedLongEnum.First.HasFlagNoAlloc(UnsignedLongEnum.First);
-                    _ = SignedByteEnum.Zero.HasFlagNoAlloc(SignedByteEnum.Zero);
-                },
-                Is.Not.AllocatingGCMemory()
-            );
+            GCAssert.DoesNotAllocate(() =>
+            {
+                _ = UnsignedShortEnum.First.HasFlagNoAlloc(UnsignedShortEnum.First);
+                _ = UnsignedIntEnum.First.HasFlagNoAlloc(UnsignedIntEnum.First);
+                _ = UnsignedLongEnum.First.HasFlagNoAlloc(UnsignedLongEnum.First);
+                _ = SignedByteEnum.Zero.HasFlagNoAlloc(SignedByteEnum.Zero);
+            });
         }
 
         [Test]
@@ -701,34 +693,22 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 Assert.AreEqual(BigTestEnum.First.ToString("G"), BigTestEnum.First.ToCachedName());
             }
 
-            Assert.That(
-                () =>
-                {
-                    _ = TestEnum.First.ToCachedName();
-                },
-                Is.Not.AllocatingGCMemory()
-            );
-            Assert.That(
-                () =>
-                {
-                    _ = TinyTestEnum.First.ToCachedName();
-                },
-                Is.Not.AllocatingGCMemory()
-            );
-            Assert.That(
-                () =>
-                {
-                    _ = SmallTestEnum.First.ToCachedName();
-                },
-                Is.Not.AllocatingGCMemory()
-            );
-            Assert.That(
-                () =>
-                {
-                    _ = BigTestEnum.First.ToCachedName();
-                },
-                Is.Not.AllocatingGCMemory()
-            );
+            GCAssert.DoesNotAllocate(() =>
+            {
+                _ = TestEnum.First.ToCachedName();
+            });
+            GCAssert.DoesNotAllocate(() =>
+            {
+                _ = TinyTestEnum.First.ToCachedName();
+            });
+            GCAssert.DoesNotAllocate(() =>
+            {
+                _ = SmallTestEnum.First.ToCachedName();
+            });
+            GCAssert.DoesNotAllocate(() =>
+            {
+                _ = BigTestEnum.First.ToCachedName();
+            });
         }
 
         [Test]
@@ -743,34 +723,22 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 _ = BigTestEnum.First.ToDisplayName();
             }
 
-            Assert.That(
-                () =>
-                {
-                    _ = TestEnum.First.ToDisplayName();
-                },
-                Is.Not.AllocatingGCMemory()
-            );
-            Assert.That(
-                () =>
-                {
-                    _ = TinyTestEnum.First.ToDisplayName();
-                },
-                Is.Not.AllocatingGCMemory()
-            );
-            Assert.That(
-                () =>
-                {
-                    _ = SmallTestEnum.First.ToDisplayName();
-                },
-                Is.Not.AllocatingGCMemory()
-            );
-            Assert.That(
-                () =>
-                {
-                    _ = BigTestEnum.First.ToDisplayName();
-                },
-                Is.Not.AllocatingGCMemory()
-            );
+            GCAssert.DoesNotAllocate(() =>
+            {
+                _ = TestEnum.First.ToDisplayName();
+            });
+            GCAssert.DoesNotAllocate(() =>
+            {
+                _ = TinyTestEnum.First.ToDisplayName();
+            });
+            GCAssert.DoesNotAllocate(() =>
+            {
+                _ = SmallTestEnum.First.ToDisplayName();
+            });
+            GCAssert.DoesNotAllocate(() =>
+            {
+                _ = BigTestEnum.First.ToDisplayName();
+            });
         }
 
         [Test]

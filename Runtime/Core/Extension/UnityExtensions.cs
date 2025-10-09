@@ -1118,6 +1118,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             originalGridPositions.AddRange(gridPositions);
 
             List<FastVector3Int> convexHull = gridPositions.BuildConvexHull(grid);
+            if (originalGridPositions.Count <= 4)
+            {
+                return new List<FastVector3Int>(convexHull);
+            }
             using PooledResource<List<HullEdge>> concaveHullEdgesResource =
                 Buffers<HullEdge>.List.Get();
             List<HullEdge> concaveHullEdges = concaveHullEdgesResource.resource;
@@ -1394,9 +1398,9 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 }
             }
             int maximumNearestNeighbors = dataSet.Count;
-            if (dataSet.Count <= 3)
+            if (dataSet.Count <= 4)
             {
-                return new List<FastVector3Int>(dataSet);
+                return gridPositions.BuildConvexHull(grid);
             }
 
             nearestNeighbors = Math.Min(dataSet.Count, nearestNeighbors);
@@ -1821,6 +1825,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
 
             List<FastVector3Int> convexHull = originalGridPositions.BuildConvexHull(grid);
+            if (originalGridPositions.Count <= 4)
+            {
+                return new List<FastVector3Int>(convexHull);
+            }
             using PooledResource<HashSet<FastVector3Int>> unusedNodesResource =
                 Buffers<FastVector3Int>.HashSet.Get(out HashSet<FastVector3Int> unusedNodes);
             unusedNodes.UnionWith(originalGridPositions);
