@@ -72,6 +72,10 @@ Unity Helpers was built to solve common game development challenges with **perfo
 - **Automation**: ScriptableObject Singleton Creator
 - [Full Editor Tools Documentation](EDITOR_TOOLS_GUIDE.md)
 
+### Core Math & Extensions
+- Numeric helpers, geometry primitives, Unity extensions, colors, collections, strings, directions.
+- See the guide: `MATH_AND_EXTENSIONS.md`.
+
 ### Singleton Utilities (ODIN‑compatible)
 - `RuntimeSingleton<T>` — Global component singleton with optional cross‑scene persistence. See the guide: `SINGLETONS.md`.
 - `ScriptableObjectSingleton<T>` — Global settings/data singleton loaded from `Resources/`, auto‑created by the editor tool. See the guide: `SINGLETONS.md` and the tool: `EDITOR_TOOLS_GUIDE.md#scriptableobject-singleton-creator`.
@@ -80,6 +84,7 @@ Unity Helpers was built to solve common game development challenges with **perfo
 
 - Serialization Guide — [SERIALIZATION.md](SERIALIZATION.md)
 - Editor Tools Guide — [EDITOR_TOOLS_GUIDE.md](EDITOR_TOOLS_GUIDE.md)
+- Math & Extensions — [MATH_AND_EXTENSIONS.md](MATH_AND_EXTENSIONS.md)
 - Singletons — [SINGLETONS.md](SINGLETONS.md)
 - Relational Components — [RELATIONAL_COMPONENTS.md](RELATIONAL_COMPONENTS.md)
 - Relational Components Improvements — [RELATIONAL_COMPONENTS_IMPROVEMENTS.md](RELATIONAL_COMPONENTS_IMPROVEMENTS.md)
