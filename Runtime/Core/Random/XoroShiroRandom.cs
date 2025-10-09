@@ -27,6 +27,15 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         [ProtoMember(3)]
         internal ulong _s1;
 
+        private void EnsureNonZeroState()
+        {
+            if ((_s0 | _s1) == 0)
+            {
+                _s0 = 0x9E3779B97F4A7C15UL;
+                _s1 = 0xD1B54A32D192ED03UL;
+            }
+        }
+
         public XoroShiroRandom()
             : this(Guid.NewGuid()) { }
 
@@ -35,12 +44,14 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             byte[] bytes = guid.ToByteArray();
             _s0 = BitConverter.ToUInt64(bytes, 0);
             _s1 = BitConverter.ToUInt64(bytes, 8);
+            EnsureNonZeroState();
         }
 
         public XoroShiroRandom(ulong seed1, ulong seed2)
         {
             _s0 = seed1;
             _s1 = seed2;
+            EnsureNonZeroState();
         }
 
         [JsonConstructor]
@@ -49,12 +60,14 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             _s0 = internalState.State1;
             _s1 = internalState.State2;
             _cachedGaussian = internalState.Gaussian;
+            EnsureNonZeroState();
         }
 
         public override uint NextUint()
         {
             unchecked
             {
+                EnsureNonZeroState();
                 ulong s0 = _s0;
                 ulong s1 = _s1;
                 ulong result = s0 + s1;

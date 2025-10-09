@@ -26,6 +26,15 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         [ProtoMember(3)]
         internal ulong _y;
 
+        private void EnsureNonZeroState()
+        {
+            if ((_x | _y) == 0)
+            {
+                _x = 0xD3833E804F4C574BUL;
+                _y = 0x94D049BB133111EBUL;
+            }
+        }
+
         public RomuDuo()
             : this(Guid.NewGuid()) { }
 
@@ -34,12 +43,14 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             byte[] bytes = guid.ToByteArray();
             _x = BitConverter.ToUInt64(bytes, 0);
             _y = BitConverter.ToUInt64(bytes, sizeof(ulong));
+            EnsureNonZeroState();
         }
 
         public RomuDuo(ulong seedX, ulong seedY)
         {
             _x = seedX;
             _y = seedY;
+            EnsureNonZeroState();
         }
 
         [JsonConstructor]
@@ -48,12 +59,14 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             _x = internalState.State1;
             _y = internalState.State2;
             _cachedGaussian = internalState.Gaussian;
+            EnsureNonZeroState();
         }
 
         public override uint NextUint()
         {
             unchecked
             {
+                EnsureNonZeroState();
                 ulong xp = _x;
                 _x = 15241094284759029579UL * _y;
                 _y = Rol64(_y, 27) + xp;

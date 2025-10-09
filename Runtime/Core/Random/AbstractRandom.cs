@@ -40,6 +40,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         protected const uint HalfwayUint = uint.MaxValue / 2;
         protected const float MagicFloat = 5.960465E-008F;
+        private const ulong LongBias = 1UL << 63;
 
         [ProtoMember(1)]
         protected double? _cachedGaussian;
@@ -92,13 +93,20 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                 throw new ArgumentException("Max cannot be zero");
             }
 
-            uint result = (uint)(NextDouble() * max);
-            if (result == max)
+            uint remainder = unchecked((0u - max) % max);
+            if (remainder == 0)
             {
-                return result - 1;
+                return NextUint() % max;
             }
 
-            return result;
+            uint threshold = unchecked(0u - remainder);
+            uint value;
+            do
+            {
+                value = NextUint();
+            } while (value >= threshold);
+
+            return value % max;
         }
 
         public uint NextUint(uint min, uint max)
@@ -160,13 +168,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                 throw new ArgumentException($"Max {max} cannot be less-than or equal-to 0");
             }
 
-            long result = (long)(NextDouble() * max);
-            if (result == max)
-            {
-                return result - 1;
-            }
-
-            return result;
+            return unchecked((long)NextUlong(unchecked((ulong)max)));
         }
 
         public long NextLong(long min, long max)
@@ -178,19 +180,13 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                 );
             }
 
-            ulong range = (ulong)(max - min);
-            if (range == 0)
-            {
-                return unchecked((long)NextUlong());
-            }
+            ulong biasedMin = BiasLong(min);
+            ulong biasedMax = BiasLong(max);
+            ulong range = biasedMax - biasedMin;
 
-            long result = unchecked((long)(NextDouble() * range + min));
-            if (result == max)
-            {
-                return result - 1;
-            }
-
-            return result;
+            ulong sample = NextUlong(range);
+            ulong biasedResult = biasedMin + sample;
+            return UnbiasLong(biasedResult);
         }
 
         public ulong NextUlong()
@@ -202,12 +198,25 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         public ulong NextUlong(ulong max)
         {
-            ulong result = (ulong)(NextDouble() * max);
-            if (result == max)
+            if (max == 0)
             {
-                return result - 1;
+                throw new ArgumentException("Max cannot be zero");
             }
-            return result;
+
+            ulong remainder = unchecked((0UL - max) % max);
+            if (remainder == 0)
+            {
+                return NextUlong() % max;
+            }
+
+            ulong threshold = unchecked(0UL - remainder);
+            ulong value;
+            do
+            {
+                value = NextUlong();
+            } while (value >= threshold);
+
+            return value % max;
         }
 
         public ulong NextUlong(ulong min, ulong max)
@@ -265,13 +274,8 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         public virtual double NextDouble()
         {
-            double value;
-            do
-            {
-                value = NextUint() * (1.0 / uint.MaxValue);
-            } while (1.0 <= value);
-
-            return value;
+            const double scale = 1.0 / 4294967296.0;
+            return NextUint() * scale;
         }
 
         public double NextDouble(double max)
@@ -373,13 +377,8 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         public virtual float NextFloat()
         {
-            float value;
-            do
-            {
-                value = NextUint() / (1f * uint.MaxValue);
-            } while (1f <= value);
-
-            return value;
+            const float scale = 1f / 4294967296f;
+            return NextUint() * scale;
         }
 
         public float NextFloat(float max)
@@ -531,74 +530,250 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             return RandomOf(elements);
         }
 
-        public T NextEnum<T>()
-            where T : struct, Enum
+        private static T[] GetEnumValues<T>()
+            where T : unmanaged, Enum
         {
             Type enumType = typeof(T);
-            Array enumArrays = EnumTypeCache.GetOrAdd(enumType, type => Enum.GetValues(type));
-            T[] enumValues = Unsafe.As<Array, T[]>(ref enumArrays);
+            Array boxedValues = EnumTypeCache.GetOrAdd(enumType, type => Enum.GetValues(type));
+            return Unsafe.As<Array, T[]>(ref boxedValues);
+        }
+
+        private static void EnsureEnumHasAvailableValues<T>(
+            T[] enumValues,
+            ReadOnlySpan<T> exclusions
+        )
+            where T : unmanaged, Enum
+        {
+            if (enumValues.Length == 0)
+            {
+                throw new InvalidOperationException(
+                    $"Enum {typeof(T).Name} does not define any values."
+                );
+            }
+
+            if (exclusions.IsEmpty)
+            {
+                return;
+            }
+
+            int enumCount = enumValues.Length;
+            const int StackThreshold = 8;
+
+            if (exclusions.Length <= StackThreshold)
+            {
+                Span<T> unique = stackalloc T[StackThreshold];
+                int uniqueCount = 0;
+
+                foreach (T exclusion in exclusions)
+                {
+                    if (Array.IndexOf(enumValues, exclusion) < 0)
+                    {
+                        continue;
+                    }
+
+                    bool seen = false;
+                    for (int i = 0; i < uniqueCount; ++i)
+                    {
+                        if (EqualityComparer<T>.Default.Equals(unique[i], exclusion))
+                        {
+                            seen = true;
+                            break;
+                        }
+                    }
+
+                    if (seen)
+                    {
+                        continue;
+                    }
+
+                    unique[uniqueCount++] = exclusion;
+                    if (uniqueCount >= enumCount)
+                    {
+                        ThrowAllEnumValuesExcluded<T>(enumCount);
+                    }
+                }
+
+                return;
+            }
+
+            using PooledResource<HashSet<T>> pooledSet = Buffers<T>.HashSet.Get();
+            HashSet<T> set = pooledSet.resource;
+            foreach (T exclusion in exclusions)
+            {
+                if (Array.IndexOf(enumValues, exclusion) < 0)
+                {
+                    continue;
+                }
+
+                set.Add(exclusion);
+                if (set.Count >= enumCount)
+                {
+                    set.Clear();
+                    ThrowAllEnumValuesExcluded<T>(enumCount);
+                }
+            }
+
+            set.Clear();
+        }
+
+        private static void EnsureEnumHasAvailableValues<T>(T[] enumValues, HashSet<T> exclusions)
+            where T : struct, Enum
+        {
+            if (enumValues.Length == 0)
+            {
+                exclusions.Clear();
+                throw new InvalidOperationException(
+                    $"Enum {typeof(T).Name} does not define any values."
+                );
+            }
+
+            if (exclusions.Count == 0)
+            {
+                return;
+            }
+
+            int excludedCount = 0;
+            foreach (T value in enumValues)
+            {
+                if (exclusions.Contains(value))
+                {
+                    excludedCount++;
+                }
+            }
+
+            if (excludedCount >= enumValues.Length)
+            {
+                exclusions.Clear();
+                ThrowAllEnumValuesExcluded<T>(enumValues.Length);
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void ThrowAllEnumValuesExcluded<T>(int enumCount)
+            where T : struct, Enum
+        {
+            throw new InvalidOperationException(
+                $"Cannot select a value from enum {typeof(T).Name} because all {enumCount} defined values are excluded."
+            );
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static ulong BiasLong(long value)
+        {
+            return unchecked((ulong)value + LongBias);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static long UnbiasLong(ulong value)
+        {
+            return unchecked((long)(value - LongBias));
+        }
+
+        public T NextEnum<T>()
+            where T : unmanaged, Enum
+        {
+            T[] enumValues = GetEnumValues<T>();
+            if (enumValues.Length == 0)
+            {
+                throw new InvalidOperationException(
+                    $"Enum {typeof(T).Name} does not define any values."
+                );
+            }
+
             return RandomOf(enumValues);
         }
 
         public T NextEnumExcept<T>(T exception1)
-            where T : struct, Enum
+            where T : unmanaged, Enum
         {
+            T[] enumValues = GetEnumValues<T>();
+            Span<T> exclusions = stackalloc T[1];
+            exclusions[0] = exception1;
+            EnsureEnumHasAvailableValues(enumValues, exclusions);
+
             using PooledResource<T[]> bufferResource = WallstopFastArrayPool<T>.Get(1);
             T[] array = bufferResource.resource;
             array[0] = exception1;
+
             T random;
             do
             {
-                random = NextEnum<T>();
+                random = RandomOf(enumValues);
             } while (0 <= Array.IndexOf(array, random));
+
             return random;
         }
 
         public T NextEnumExcept<T>(T exception1, T exception2)
-            where T : struct, Enum
+            where T : unmanaged, Enum
         {
+            T[] enumValues = GetEnumValues<T>();
+            Span<T> exclusions = stackalloc T[2];
+            exclusions[0] = exception1;
+            exclusions[1] = exception2;
+            EnsureEnumHasAvailableValues(enumValues, exclusions);
+
             using PooledResource<T[]> bufferResource = WallstopFastArrayPool<T>.Get(2);
             T[] array = bufferResource.resource;
             array[0] = exception1;
             array[1] = exception2;
+
             T random;
             do
             {
-                random = NextEnum<T>();
+                random = RandomOf(enumValues);
             } while (0 <= Array.IndexOf(array, random));
+
             return random;
         }
 
         public T NextEnumExcept<T>(T exception1, T exception2, T exception3)
-            where T : struct, Enum
+            where T : unmanaged, Enum
         {
+            T[] enumValues = GetEnumValues<T>();
+            Span<T> exclusions = stackalloc T[3];
+            exclusions[0] = exception1;
+            exclusions[1] = exception2;
+            exclusions[2] = exception3;
+            EnsureEnumHasAvailableValues(enumValues, exclusions);
+
             using PooledResource<T[]> bufferResource = WallstopFastArrayPool<T>.Get(3);
             T[] array = bufferResource.resource;
             array[0] = exception1;
             array[1] = exception2;
             array[2] = exception3;
+
             T random;
             do
             {
-                random = NextEnum<T>();
+                random = RandomOf(enumValues);
             } while (0 <= Array.IndexOf(array, random));
 
             return random;
         }
 
         public T NextEnumExcept<T>(T exception1, T exception2, T exception3, T exception4)
-            where T : struct, Enum
+            where T : unmanaged, Enum
         {
+            T[] enumValues = GetEnumValues<T>();
+            Span<T> exclusions = stackalloc T[4];
+            exclusions[0] = exception1;
+            exclusions[1] = exception2;
+            exclusions[2] = exception3;
+            exclusions[3] = exception4;
+            EnsureEnumHasAvailableValues(enumValues, exclusions);
+
             using PooledResource<T[]> bufferResource = WallstopFastArrayPool<T>.Get(4);
             T[] array = bufferResource.resource;
             array[0] = exception1;
             array[1] = exception2;
             array[2] = exception3;
             array[3] = exception4;
+
             T random;
             do
             {
-                random = NextEnum<T>();
+                random = RandomOf(enumValues);
             } while (0 <= Array.IndexOf(array, random));
 
             return random;
@@ -611,8 +786,10 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             T exception4,
             params T[] exceptions
         )
-            where T : struct, Enum
+            where T : unmanaged, Enum
         {
+            T[] enumValues = GetEnumValues<T>();
+
             using PooledResource<HashSet<T>> bufferResource = Buffers<T>.HashSet.Get();
             HashSet<T> set = bufferResource.resource;
             set.Add(exception1);
@@ -624,12 +801,15 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                 set.Add(exception);
             }
 
+            EnsureEnumHasAvailableValues(enumValues, set);
+
             T random;
             do
             {
-                random = NextEnum<T>();
+                random = RandomOf(enumValues);
             } while (set.Contains(random));
 
+            set.Clear();
             return random;
         }
 

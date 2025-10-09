@@ -17,6 +17,11 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             IComparable,
             IComparable<PcgRandom>
     {
+        private static ulong NormalizeIncrement(ulong increment)
+        {
+            return (increment & 1UL) == 0 ? increment | 1UL : increment;
+        }
+
         public static PcgRandom Instance => ThreadLocalRandom<PcgRandom>.Instance;
 
         public override RandomState InternalState => new(_state, _increment, _cachedGaussian);
@@ -34,29 +39,29 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         {
             byte[] guidArray = guid.ToByteArray();
             _state = BitConverter.ToUInt64(guidArray, 0);
-            _increment = BitConverter.ToUInt64(guidArray, sizeof(ulong));
+            _increment = NormalizeIncrement(BitConverter.ToUInt64(guidArray, sizeof(ulong)));
         }
 
         [JsonConstructor]
         public PcgRandom(RandomState internalState)
         {
             _state = internalState.State1;
-            _increment = internalState.State2;
+            _increment = NormalizeIncrement(internalState.State2);
             _cachedGaussian = internalState.Gaussian;
         }
 
         public PcgRandom(ulong increment, ulong state)
         {
-            _increment = increment;
+            _increment = NormalizeIncrement(increment);
             _state = state;
         }
 
         public PcgRandom(long seed)
         {
             // Start with a nice prime
-            _increment = 6554638469UL;
+            _increment = NormalizeIncrement(6554638469UL);
             _state = unchecked((ulong)seed);
-            _increment = NextUlong();
+            _increment = NormalizeIncrement(NextUlong());
         }
 
         public override uint NextUint()

@@ -148,19 +148,19 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         T NextOfParams<T>(params T[] elements);
 
         T NextEnum<T>()
-            where T : struct, Enum;
+            where T : unmanaged, Enum;
 
         T NextEnumExcept<T>(T exception1)
-            where T : struct, Enum;
+            where T : unmanaged, Enum;
 
         T NextEnumExcept<T>(T exception1, T exception2)
-            where T : struct, Enum;
+            where T : unmanaged, Enum;
 
         T NextEnumExcept<T>(T exception1, T exception2, T exception3)
-            where T : struct, Enum;
+            where T : unmanaged, Enum;
 
         T NextEnumExcept<T>(T exception1, T exception2, T exception3, T exception4)
-            where T : struct, Enum;
+            where T : unmanaged, Enum;
 
         T NextEnumExcept<T>(
             T exception1,
@@ -169,7 +169,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             T exception4,
             params T[] exceptions
         )
-            where T : struct, Enum;
+            where T : unmanaged, Enum;
 
         float[,] NextNoiseMap(
             int width,
