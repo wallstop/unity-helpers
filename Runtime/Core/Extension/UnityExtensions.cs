@@ -990,7 +990,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     }
                     else if (Mathf.Abs(rel) <= ConvexHullRelationEpsilon)
                     {
-                        // p is collinear, prefer the farther one
+                        // p is collinear with candidate, prefer the farther one
                         float distCandidate = (cW - worldPoint).sqrMagnitude;
                         float distP = (pW - worldPoint).sqrMagnitude;
                         if (distP > distCandidate)
@@ -2441,6 +2441,17 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             {
                 FastVector3Int gridPoint = nearbyPoints[i];
                 Vector2 point = grid.CellToWorld(gridPoint);
+                // Skip strictly colinear points that lie on the current edge to avoid
+                // subdividing edges with mid-edge points (which inflates the hull with
+                // redundant colinear vertices and breaks expected convex equivalence).
+                // This guards against cases like rectangles with extra edge points.
+                if (
+                    Orientation(from, point, to) == OrientationType.Colinear
+                    && LiesOnSegment(from, point, to)
+                )
+                {
+                    continue;
+                }
                 double cosine = GetCosine(from, to, point);
                 if (cosine < concavity)
                 {
