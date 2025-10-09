@@ -54,40 +54,28 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             public DatasetSpec(string label, Vector3Int gridSize)
             {
                 Label = label;
-
                 GridSize = gridSize;
-
                 TotalPoints = gridSize.x * gridSize.y * gridSize.z;
-
                 Span = new Vector3(
                     Mathf.Max(gridSize.x - 1, 1),
                     Mathf.Max(gridSize.y - 1, 1),
                     Mathf.Max(gridSize.z - 1, 1)
                 );
-
                 BoundsCenter = new Vector3(
                     (gridSize.x - 1) * 0.5f,
                     (gridSize.y - 1) * 0.5f,
                     (gridSize.z - 1) * 0.5f
                 );
-
                 BoundsSize = Span;
-
                 MaxSpan = Mathf.Max(Span.x, Mathf.Max(Span.y, Span.z));
             }
 
             public string Label { get; }
-
             public Vector3Int GridSize { get; }
-
             public int TotalPoints { get; }
-
             public Vector3 Span { get; }
-
             public Vector3 BoundsCenter { get; }
-
             public Vector3 BoundsSize { get; }
-
             public float MaxSpan { get; }
         }
 
@@ -103,7 +91,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             }
 
             public string Name { get; }
-
             public Func<IEnumerable<Vector3>, ISpatialTree3D<Vector3>> Factory { get; }
         }
 
@@ -116,7 +103,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             }
 
             public string Label { get; }
-
             public Bounds Bounds { get; }
         }
 
@@ -125,43 +111,27 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
         public IEnumerator Benchmark()
         {
             TreeSpec[] treeSpecs = BuildTreeSpecs();
-
             List<string> treeNames = treeSpecs.Select(spec => spec.Name).ToList();
-
             List<(DatasetSpec Dataset, List<string> Lines)> datasetOutputs = new();
-
             foreach (DatasetSpec dataset in DatasetSpecs)
             {
                 UnityEngine.Debug.Log(string.Empty);
-
                 UnityEngine.Debug.Log($"SpatialTree3D Benchmarks - {dataset.Label}");
-
                 Vector3[] points = CreateGridPoints(dataset);
-
                 BoundsSpec[] boundsSpecs = BuildBoundsSpecs(dataset);
-
                 (string Label, float Radius)[] rangeBenchmarks = BuildRangeBenchmarks(dataset);
-
                 (string Label, int Count)[] neighborBenchmarks = BuildNeighborBenchmarks(dataset);
-
                 List<string> readmeLines = new();
-
                 Dictionary<string, List<string>> groupRows = new();
-
                 Dictionary<string, Dictionary<string, string>> rowValues = new();
-
                 Dictionary<string, (string Group, string Label)> rowMetadata = new();
-
                 Dictionary<string, int> expectedCounts = new();
 
                 foreach (TreeSpec spec in treeSpecs)
                 {
                     Stopwatch timer = Stopwatch.StartNew();
-
                     ISpatialTree3D<Vector3> tree = spec.Factory(points);
-
                     timer.Stop();
-
                     RecordRow(
                         groupRows,
                         rowValues,
@@ -173,15 +143,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                     );
 
                     Vector3 boundaryCenter = tree.Boundary.center;
-
                     Vector3 rangeCenter = boundaryCenter;
-
                     List<Vector3> rangeResults = new();
-
                     foreach ((string label, float radius) in rangeBenchmarks)
                     {
                         tree.GetElementsInRange(rangeCenter, radius, rangeResults);
-
                         ValidateCount(
                             tree,
                             expectedCounts,
@@ -189,7 +155,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                             label,
                             rangeResults.Count
                         );
-
                         int iterations = MeasureRange(tree, rangeCenter, radius, rangeResults);
 
                         RecordRow(
@@ -287,12 +252,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 {
                     readmeLines.RemoveAt(readmeLines.Count - 1);
                 }
-
                 datasetOutputs.Add((dataset, readmeLines));
             }
 
             List<string> finalReadmeLines = BuildTabbedReadmeLines(datasetOutputs);
-
             BenchmarkReadmeUpdater.UpdateSection(
                 "SPATIAL_TREE_3D_BENCHMARKS",
                 finalReadmeLines,
@@ -322,11 +285,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
         private static BoundsSpec[] BuildBoundsSpecs(DatasetSpec dataset)
         {
             Vector3 center = dataset.BoundsCenter;
-
             Vector3 baseSize = dataset.BoundsSize;
-
             List<BoundsSpec> specs = new();
-
             foreach ((string name, float ratio) in BoundsBenchmarkDefinitions)
             {
                 Vector3 size = new(
@@ -340,42 +300,32 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
 
                 specs.Add(new BoundsSpec(label, new Bounds(center, size)));
             }
-
             specs.Add(new BoundsSpec("Unit (size=1)", new Bounds(center, new Vector3(1f, 1f, 1f))));
-
             return specs.ToArray();
         }
 
         private static Vector3[] CreateGridPoints(DatasetSpec dataset)
         {
             Vector3[] points = new Vector3[dataset.TotalPoints];
-
             int width = dataset.GridSize.x;
-
             int height = dataset.GridSize.y;
-
             int depth = dataset.GridSize.z;
-
             Parallel.For(
                 0,
                 depth,
                 z =>
                 {
                     int layerOffset = z * width * height;
-
                     for (int y = 0; y < height; ++y)
                     {
                         int rowOffset = layerOffset + y * width;
-
                         for (int x = 0; x < width; ++x)
                         {
                             int index = rowOffset + x;
-
                             if (index >= points.Length)
                             {
                                 continue;
                             }
-
                             points[index] = new Vector3(x, y, z);
                         }
                     }
@@ -394,9 +344,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             for (int i = 0; i < RangeBenchmarkDefinitions.Length; ++i)
             {
                 (string name, float ratio) = RangeBenchmarkDefinitions[i];
-
                 float radius = Mathf.Max(1f, dataset.MaxSpan * ratio);
-
                 benchmarks[i] = ($"{name} (r={FormatValue(radius)})", radius);
             }
 
@@ -406,9 +354,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
         private static (string Label, int Count)[] BuildNeighborBenchmarks(DatasetSpec dataset)
         {
             List<(string Label, int Count)> benchmarks = new();
-
             HashSet<int> seenCounts = new();
-
             foreach ((string label, int count) in NeighborBenchmarkDefinitions)
             {
                 int effectiveCount = Mathf.Min(count, dataset.TotalPoints);
@@ -432,22 +378,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
         )
         {
             List<string> lines = new();
-
             if (datasetOutputs.Count == 0)
             {
                 return lines;
             }
 
             lines.Add("<!-- tabs:start -->");
-
             lines.Add(string.Empty);
-
             foreach ((DatasetSpec dataset, List<string> datasetLines) in datasetOutputs)
             {
                 lines.Add($"#### **{dataset.Label}**");
-
                 lines.Add(string.Empty);
-
                 if (datasetLines.Count > 0)
                 {
                     lines.AddRange(datasetLines);
@@ -464,9 +405,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             {
                 lines.RemoveAt(lines.Count - 1);
             }
-
             lines.Add("<!-- tabs:end -->");
-
             return lines;
         }
 
@@ -578,7 +517,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                     expected,
                     actualCount,
                     delta: 100,
-                    $"Expected '{group}' -> '{label}' to return {expected} elements, but received {actualCount}."
+                    $"Expected '{group}' ({tree.GetType().Name}) -> '{label}' to return {expected} elements, but received {actualCount}."
                 );
             }
             else
@@ -586,7 +525,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 Assert.AreEqual(
                     expected,
                     actualCount,
-                    $"Expected '{group}' -> '{label}' to return {expected} elements, but received {actualCount}."
+                    $"Expected '{group}' ({tree.GetType().Name}) -> '{label}' to return {expected} elements, but received {actualCount}."
                 );
             }
         }
