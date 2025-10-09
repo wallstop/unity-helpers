@@ -4,6 +4,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
     using System.Reflection;
     using NUnit.Framework;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Visuals.UGUI;
     using Object = UnityEngine.Object;
 
@@ -28,7 +29,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
             Material cached = image.material;
             Assert.That(cached, Is.Not.Null);
             Assert.AreNotSame(baseMaterial, cached);
-            Assert.That(cached.GetColor("_Color"), Is.EqualTo(image.color));
+            Assert.IsTrue(cached.GetColor("_Color").Approximately(image.color));
         }
 
         [Test]
@@ -42,7 +43,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
 
             Material cached = image.material;
             Assert.That(cached, Is.Not.Null);
-            Assert.That(cached.GetColor("_Color"), Is.EqualTo(hdr));
+            Assert.IsTrue(cached.GetColor("_Color").Approximately(hdr));
         }
 
         [Test]

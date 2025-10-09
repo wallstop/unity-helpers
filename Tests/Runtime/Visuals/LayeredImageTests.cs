@@ -4,6 +4,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
     using System.Collections.Generic;
     using NUnit.Framework;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Visuals;
     using WallstopStudios.UnityHelpers.Visuals.UIToolkit;
     using Object = UnityEngine.Object;
@@ -69,9 +70,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
             Texture2D frame = computed[0];
             Assert.That(frame.width, Is.EqualTo(1));
             Assert.That(frame.height, Is.EqualTo(1));
-            VisualsTestHelpers.AssertColor(
-                VisualsTestHelpers.GetPixel(frame, 0, 0),
-                new Color32(255, 0, 0, 255)
+            Assert.IsTrue(
+                VisualsTestHelpers.GetPixel(frame, 0, 0).Approximately(new Color32(255, 0, 0, 255))
             );
         }
 
@@ -108,17 +108,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
             Assert.IsNotNull(frame);
             Assert.That(frame.width, Is.EqualTo(3));
             Assert.That(frame.height, Is.EqualTo(1));
-            VisualsTestHelpers.AssertColor(
-                VisualsTestHelpers.GetPixel(frame, 0, 0),
-                new Color32(0, 255, 0, 255)
+            Assert.IsTrue(
+                VisualsTestHelpers.GetPixel(frame, 0, 0).Approximately(new Color32(0, 255, 0, 255))
             );
-            VisualsTestHelpers.AssertColor(
-                VisualsTestHelpers.GetPixel(frame, 1, 0),
-                new Color32(0, 0, 0, 0)
+            Assert.IsTrue(
+                VisualsTestHelpers.GetPixel(frame, 1, 0).Approximately(new Color32(0, 0, 0, 0))
             );
-            VisualsTestHelpers.AssertColor(
-                VisualsTestHelpers.GetPixel(frame, 2, 0),
-                new Color32(255, 0, 0, 128)
+            Assert.IsTrue(
+                VisualsTestHelpers.GetPixel(frame, 2, 0).Approximately(new Color32(255, 0, 0, 128))
             );
         }
 
@@ -158,13 +155,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
             Texture2D frame1 = computed[1];
             Assert.IsNotNull(frame0);
             Assert.IsNotNull(frame1);
-            VisualsTestHelpers.AssertColor(
-                VisualsTestHelpers.GetPixel(frame0, 0, 0),
-                new Color32(128, 0, 128, 255)
+            Assert.IsTrue(
+                VisualsTestHelpers
+                    .GetPixel(frame0, 0, 0)
+                    .Approximately(new Color32(128, 0, 128, 255))
             );
-            VisualsTestHelpers.AssertColor(
-                VisualsTestHelpers.GetPixel(frame1, 0, 0),
-                new Color32(0, 255, 0, 255)
+            Assert.IsTrue(
+                VisualsTestHelpers.GetPixel(frame1, 0, 0).Approximately(new Color32(0, 255, 0, 255))
             );
         }
 
@@ -199,9 +196,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
             Assert.That(computed, Has.Length.EqualTo(1));
             Texture2D frame = computed[0];
             Assert.IsNotNull(frame);
-            VisualsTestHelpers.AssertColor(
-                VisualsTestHelpers.GetPixel(frame, 0, 0),
-                new Color32(0, 0, 255, 51)
+            Assert.IsTrue(
+                VisualsTestHelpers.GetPixel(frame, 0, 0).Approximately(new Color32(0, 0, 255, 51))
             );
         }
 
@@ -235,9 +231,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
             Assert.That(computed, Has.Length.EqualTo(1));
             Texture2D frame = computed[0];
             Assert.IsNotNull(frame);
-            VisualsTestHelpers.AssertColor(
-                VisualsTestHelpers.GetPixel(frame, 0, 0),
-                new Color32(0, 255, 0, 255)
+            Assert.IsTrue(
+                VisualsTestHelpers.GetPixel(frame, 0, 0).Approximately(new Color32(0, 255, 0, 255))
             );
         }
 
@@ -275,17 +270,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
             Texture2D frame = computed[0];
             Assert.IsNotNull(frame);
             Assert.That(frame.width, Is.EqualTo(3));
-            VisualsTestHelpers.AssertColor(
-                VisualsTestHelpers.GetPixel(frame, 0, 0),
-                new Color32(0, 0, 255, 255)
+            Assert.IsTrue(
+                VisualsTestHelpers.GetPixel(frame, 0, 0).Approximately(new Color32(0, 0, 255, 255))
             );
-            VisualsTestHelpers.AssertColor(
-                VisualsTestHelpers.GetPixel(frame, 1, 0),
-                new Color32(0, 0, 0, 0)
+            Assert.IsTrue(
+                VisualsTestHelpers.GetPixel(frame, 1, 0).Approximately(new Color32(0, 0, 0, 0))
             );
-            VisualsTestHelpers.AssertColor(
-                VisualsTestHelpers.GetPixel(frame, 2, 0),
-                new Color32(0, 255, 255, 255)
+            Assert.IsTrue(
+                VisualsTestHelpers
+                    .GetPixel(frame, 2, 0)
+                    .Approximately(new Color32(0, 255, 255, 255))
             );
         }
 

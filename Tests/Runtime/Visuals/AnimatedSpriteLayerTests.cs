@@ -3,6 +3,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
     using System.Collections.Generic;
     using NUnit.Framework;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Visuals;
 
     public sealed class AnimatedSpriteLayerTests
@@ -67,13 +68,21 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
 
             Assert.That(layer.perFramePixelOffsets, Is.Not.Null);
             Assert.That(layer.perFramePixelOffsets, Has.Length.EqualTo(2));
-            VisualsTestHelpers.AssertVector(
-                layer.perFramePixelOffsets[0],
-                new Vector2(25f, -12.5f)
+            Assert.IsTrue(
+                layer
+                    .perFramePixelOffsets[0]
+                    .Approximately(
+                        new Vector2(25f, -12.5f),
+                        mode: WallMath.VectorApproximationMode.Components
+                    )
             );
-            VisualsTestHelpers.AssertVector(
-                layer.perFramePixelOffsets[1],
-                new Vector2(-25f, 12.5f)
+            Assert.IsTrue(
+                layer
+                    .perFramePixelOffsets[1]
+                    .Approximately(
+                        new Vector2(-25f, 12.5f),
+                        mode: WallMath.VectorApproximationMode.Components
+                    )
             );
         }
 
@@ -96,7 +105,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
 
             Assert.That(layer.perFramePixelOffsets, Is.Not.Null);
             Assert.That(layer.perFramePixelOffsets, Has.Length.EqualTo(1));
-            VisualsTestHelpers.AssertVector(layer.perFramePixelOffsets[0], new Vector2(1f, 0f));
+            Assert.IsTrue(
+                layer
+                    .perFramePixelOffsets[0]
+                    .Approximately(
+                        new Vector2(1f, 0f),
+                        mode: WallMath.VectorApproximationMode.Components
+                    )
+            );
         }
 
         [Test]

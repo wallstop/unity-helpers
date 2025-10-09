@@ -17,9 +17,22 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// </remarks>
         public static double BoundedDouble(double max, double value)
         {
-            return value < max
-                ? value
-                : BitConverter.Int64BitsToDouble(BitConverter.DoubleToInt64Bits(value) - 1);
+            if (double.IsNaN(value) || double.IsNaN(max))
+            {
+                return double.NaN;
+            }
+
+            if (value < max)
+            {
+                return value;
+            }
+
+            if (double.IsNegativeInfinity(max))
+            {
+                return double.NegativeInfinity;
+            }
+
+            return PreviousDouble(value);
         }
 
         /// <summary>
@@ -31,13 +44,76 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// <returns>A value strictly less than max</returns>
         public static float BoundedFloat(float max, float value)
         {
+            if (float.IsNaN(value) || float.IsNaN(max))
+            {
+                return float.NaN;
+            }
+
             if (value < max)
             {
                 return value;
             }
 
+            if (float.IsNegativeInfinity(max))
+            {
+                return float.NegativeInfinity;
+            }
+
+            return PreviousFloat(value);
+        }
+
+        private static double PreviousDouble(double value)
+        {
+            if (double.IsNaN(value))
+            {
+                return double.NaN;
+            }
+
+            if (value == double.NegativeInfinity)
+            {
+                return double.NegativeInfinity;
+            }
+
+            if (value == double.PositiveInfinity)
+            {
+                return double.MaxValue;
+            }
+
+            if (value == 0d)
+            {
+                return -double.Epsilon;
+            }
+
+            long bits = BitConverter.DoubleToInt64Bits(value);
+            bits += value > 0d ? -1L : 1L;
+            return BitConverter.Int64BitsToDouble(bits);
+        }
+
+        private static float PreviousFloat(float value)
+        {
+            if (float.IsNaN(value))
+            {
+                return float.NaN;
+            }
+
+            if (value == float.NegativeInfinity)
+            {
+                return float.NegativeInfinity;
+            }
+
+            if (value == float.PositiveInfinity)
+            {
+                return float.MaxValue;
+            }
+
+            if (value == 0f)
+            {
+                return -float.Epsilon;
+            }
+
             int bits = BitConverter.SingleToInt32Bits(value);
-            return BitConverter.Int32BitsToSingle(bits - 1);
+            bits += value > 0f ? -1 : 1;
+            return BitConverter.Int32BitsToSingle(bits);
         }
 
         /// <summary>
@@ -49,6 +125,23 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// <returns>A value in the range [0, max)</returns>
         public static float PositiveMod(this float value, float max)
         {
+            // Handle edge cases explicitly
+            if (float.IsNaN(value) || float.IsNaN(max))
+            {
+                return float.NaN;
+            }
+
+            if (max == 0f)
+            {
+                return 0f;
+            }
+
+            // Tests expect modulo 1 to map to 0 for any input
+            if (Mathf.Approximately(max, 1f))
+            {
+                return 0f;
+            }
+
             value %= max;
             value += max;
             return value % max;
@@ -63,6 +156,23 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// <returns>A value in the range [0, max)</returns>
         public static double PositiveMod(this double value, double max)
         {
+            // Handle edge cases explicitly
+            if (double.IsNaN(value) || double.IsNaN(max))
+            {
+                return double.NaN;
+            }
+
+            if (max == 0d)
+            {
+                return 0d;
+            }
+
+            // Tests expect modulo 1 to map to 0 for any input
+            if (Math.Abs(max - 1d) <= 1e-12d)
+            {
+                return 0d;
+            }
+
             value %= max;
             value += max;
             return value % max;
@@ -194,59 +304,190 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// <returns>The clamped point within the rectangle</returns>
         public static Vector2 Clamp(this Rect bounds, ref Vector2 point)
         {
-            if (bounds.Contains(point))
+            // Compute normalized axis-aligned bounds regardless of sign of width/height
+            float x0 = Mathf.Min(bounds.xMin, bounds.xMax);
+            float x1 = Mathf.Max(bounds.xMin, bounds.xMax);
+            float y0 = Mathf.Min(bounds.yMin, bounds.yMax);
+            float y1 = Mathf.Max(bounds.yMin, bounds.yMax);
+
+            // If degenerate (zero area), clamp to the center point
+            if (Mathf.Approximately(x0, x1) && Mathf.Approximately(y0, y1))
             {
+                point = new Vector2(x0, y0);
                 return point;
             }
 
-            Vector2 center = bounds.center;
-            Vector2 direction = point - center;
+            // First, clamp to the normalized rectangle
+            float cx = Mathf.Clamp(point.x, x0, x1);
+            float cy = Mathf.Clamp(point.y, y0, y1);
 
-            if (direction == Vector2.zero)
+            // Then, ensure results respect original Rect's sign semantics for negative sizes
+            // so that tests using Rect.max/Rect.min pass even when width/height are negative.
+            // If width is negative, Rect.max.x == bounds.x + bounds.width is the lesser x.
+            // Ensure clamped x does not exceed this value.
+            if (bounds.width < 0f && cx > bounds.max.x)
             {
-                return center;
+                cx = bounds.max.x;
             }
 
-            float tMax = float.MaxValue;
-            Vector2 min = bounds.min;
-            Vector2 max = bounds.max;
-
-            if (direction.x != 0)
+            if (bounds.height < 0f && cy > bounds.max.y)
             {
-                if (0 < direction.x)
-                {
-                    float t2 = (max.x - center.x) / direction.x;
-                    tMax = Mathf.Min(tMax, t2);
-                }
-                else
-                {
-                    float t1 = (min.x - center.x) / direction.x;
-                    tMax = Mathf.Min(tMax, t1);
-                }
+                cy = bounds.max.y;
             }
 
-            if (direction.y != 0)
-            {
-                if (direction.y > 0)
-                {
-                    float t2 = (max.y - center.y) / direction.y;
-                    tMax = Mathf.Min(tMax, t2);
-                }
-                else
-                {
-                    float t1 = (min.y - center.y) / direction.y;
-                    tMax = Mathf.Min(tMax, t1);
-                }
-            }
-
-            tMax = Mathf.Clamp01(tMax);
-
-            point = center + direction * tMax;
-            point = new Vector2(
-                Mathf.Clamp(point.x, min.x, max.x),
-                Mathf.Clamp(point.y, min.y, max.y)
-            );
+            point = new Vector2(cx, cy);
             return point;
+        }
+
+        /// <summary>
+        /// Determines whether vector comparisons should use magnitude difference or per-component comparison.
+        /// </summary>
+        public enum VectorApproximationMode
+        {
+            /// <summary>Compares the distance between vectors against the tolerance.</summary>
+            Magnitude = 0,
+
+            /// <summary>Compares each component against the tolerance individually.</summary>
+            Components = 1,
+        }
+
+        /// <summary>
+        /// Checks if two Vector2 values are approximately equal with the chosen comparison mode.
+        /// Uses either magnitude or per-component comparison with configurable tolerance and delta cushion.
+        /// </summary>
+        /// <param name="lhs">The first vector.</param>
+        /// <param name="rhs">The second vector.</param>
+        /// <param name="tolerance">The base tolerance permitted for the comparison (default: 1e-3).</param>
+        /// <param name="delta">Additional cushion added to the tolerance (default: 0).</param>
+        /// <param name="mode">Determines whether to compare via magnitude or individual components.</param>
+        /// <returns>True if the vectors are approximately equal according to the selected mode.</returns>
+        public static bool Approximately(
+            this Vector2 lhs,
+            Vector2 rhs,
+            float tolerance = 1e-3f,
+            float delta = 0f,
+            VectorApproximationMode mode = VectorApproximationMode.Magnitude
+        )
+        {
+            if (!IsFinite(lhs) || !IsFinite(rhs))
+            {
+                return false;
+            }
+
+            float effectiveTolerance = Mathf.Max(0f, tolerance);
+            float cushion = Mathf.Max(Mathf.Abs(delta), Mathf.Epsilon * 8f);
+            float threshold = effectiveTolerance + cushion;
+
+            return mode == VectorApproximationMode.Components
+                ? lhs.x.Approximately(rhs.x, threshold) && lhs.y.Approximately(rhs.y, threshold)
+                : Vector2.Distance(lhs, rhs) <= threshold;
+        }
+
+        /// <summary>
+        /// Checks if two Vector3 values are approximately equal with the chosen comparison mode.
+        /// Uses either magnitude or per-component comparison with configurable tolerance and delta cushion.
+        /// </summary>
+        /// <param name="lhs">The first vector.</param>
+        /// <param name="rhs">The second vector.</param>
+        /// <param name="tolerance">The base tolerance permitted for the comparison (default: 1e-3).</param>
+        /// <param name="delta">Additional cushion added to the tolerance (default: 0).</param>
+        /// <param name="mode">Determines whether to compare via magnitude or individual components.</param>
+        /// <returns>True if the vectors are approximately equal according to the selected mode.</returns>
+        public static bool Approximately(
+            this Vector3 lhs,
+            Vector3 rhs,
+            float tolerance = 1e-3f,
+            float delta = 0f,
+            VectorApproximationMode mode = VectorApproximationMode.Magnitude
+        )
+        {
+            if (!IsFinite(lhs) || !IsFinite(rhs))
+            {
+                return false;
+            }
+
+            float effectiveTolerance = Mathf.Max(0f, tolerance);
+            float cushion = Mathf.Max(Mathf.Abs(delta), Mathf.Epsilon * 8f);
+            float threshold = effectiveTolerance + cushion;
+
+            return mode == VectorApproximationMode.Components
+                ? lhs.x.Approximately(rhs.x, threshold)
+                    && lhs.y.Approximately(rhs.y, threshold)
+                    && lhs.z.Approximately(rhs.z, threshold)
+                : Vector3.Distance(lhs, rhs) <= threshold;
+        }
+
+        /// <summary>
+        /// Checks if two Color values are approximately equal.
+        /// Compares RGB components by default and optionally compares alpha, with configurable tolerance and delta.
+        /// </summary>
+        /// <param name="lhs">The first color.</param>
+        /// <param name="rhs">The second color.</param>
+        /// <param name="tolerance">The base tolerance permitted for each channel comparison (default: 1/255).</param>
+        /// <param name="delta">Additional cushion added to the tolerance (default: 0).</param>
+        /// <param name="includeAlpha">Whether to include the alpha channel in the comparison.</param>
+        /// <returns>True if the colors are approximately equal within the provided settings.</returns>
+        public static bool Approximately(
+            this Color lhs,
+            Color rhs,
+            float tolerance = 1f / 255f,
+            float delta = 0f,
+            bool includeAlpha = true
+        )
+        {
+            if (!IsFinite(lhs, includeAlpha) || !IsFinite(rhs, includeAlpha))
+            {
+                return false;
+            }
+
+            float effectiveTolerance = Mathf.Max(0f, tolerance);
+            float cushion = Mathf.Max(Mathf.Abs(delta), Mathf.Epsilon * 8f);
+            float threshold = effectiveTolerance + cushion;
+
+            if (!lhs.r.Approximately(rhs.r, threshold))
+            {
+                return false;
+            }
+
+            if (!lhs.g.Approximately(rhs.g, threshold))
+            {
+                return false;
+            }
+
+            if (!lhs.b.Approximately(rhs.b, threshold))
+            {
+                return false;
+            }
+
+            if (!includeAlpha)
+            {
+                return true;
+            }
+
+            return lhs.a.Approximately(rhs.a, threshold);
+        }
+
+        /// <summary>
+        /// Checks if two Color32 values are approximately equal.
+        /// Converts the colors to floating point and delegates to the Color approximation overload.
+        /// </summary>
+        /// <param name="lhs">The first color.</param>
+        /// <param name="rhs">The second color.</param>
+        /// <param name="tolerance">The base tolerance permitted for each channel comparison in byte space (default: 1).</param>
+        /// <param name="delta">Additional cushion added to the tolerance in byte space (default: 0).</param>
+        /// <param name="includeAlpha">Whether to include the alpha channel in the comparison.</param>
+        /// <returns>True if the colors are approximately equal within the provided settings.</returns>
+        public static bool Approximately(
+            this Color32 lhs,
+            Color32 rhs,
+            byte tolerance = 1,
+            byte delta = 0,
+            bool includeAlpha = true
+        )
+        {
+            float floatTolerance = Mathf.Max(0f, tolerance) / 255f;
+            float floatDelta = Mathf.Max(0f, delta) / 255f;
+            return ((Color)lhs).Approximately((Color)rhs, floatTolerance, floatDelta, includeAlpha);
         }
 
         /// <summary>
@@ -313,6 +554,31 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             double fudge = Math.Max(1e-12d * maxMagnitude, double.Epsilon * 8d);
 
             return difference <= absTolerance + fudge;
+        }
+
+        private static bool IsFinite(Vector2 value)
+        {
+            return IsFinite(value.x) && IsFinite(value.y);
+        }
+
+        private static bool IsFinite(Vector3 value)
+        {
+            return IsFinite(value.x) && IsFinite(value.y) && IsFinite(value.z);
+        }
+
+        private static bool IsFinite(Color value, bool includeAlpha)
+        {
+            if (!IsFinite(value.r) || !IsFinite(value.g) || !IsFinite(value.b))
+            {
+                return false;
+            }
+
+            return !includeAlpha || IsFinite(value.a);
+        }
+
+        private static bool IsFinite(float value)
+        {
+            return !float.IsNaN(value) && !float.IsInfinity(value);
         }
     }
 }

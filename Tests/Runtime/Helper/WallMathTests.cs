@@ -1272,6 +1272,145 @@
         }
 
         [Test]
+        public void Vector2ApproximatelyMagnitudeWithinTolerance()
+        {
+            Vector2 lhs = Vector2.zero;
+            Vector2 rhs = new(0.0005f, -0.0004f);
+            Assert.IsTrue(lhs.Approximately(rhs));
+        }
+
+        [Test]
+        public void Vector2ApproximatelyMagnitudeOutsideTolerance()
+        {
+            Vector2 lhs = Vector2.zero;
+            Vector2 rhs = new(0.005f, 0f);
+            Assert.IsFalse(lhs.Approximately(rhs));
+        }
+
+        [Test]
+        public void Vector2ApproximatelyComponentMode()
+        {
+            Vector2 lhs = new(1f, 2f);
+            Vector2 rhs = new(1.0005f, 2.0005f);
+            Assert.IsTrue(
+                lhs.Approximately(
+                    rhs,
+                    tolerance: 0.001f,
+                    mode: WallMath.VectorApproximationMode.Components
+                )
+            );
+
+            Vector2 far = new(1.01f, 2f);
+            Assert.IsFalse(
+                lhs.Approximately(
+                    far,
+                    tolerance: 0.001f,
+                    mode: WallMath.VectorApproximationMode.Components
+                )
+            );
+        }
+
+        [Test]
+        public void Vector2ApproximatelyHonorsDelta()
+        {
+            Vector2 lhs = Vector2.zero;
+            Vector2 rhs = new(0f, 0.002f);
+
+            Assert.IsFalse(lhs.Approximately(rhs, tolerance: 0.001f));
+            Assert.IsTrue(lhs.Approximately(rhs, tolerance: 0.001f, delta: 0.0011f));
+        }
+
+        [Test]
+        public void Vector2ApproximatelyNonFiniteIsFalse()
+        {
+            Vector2 lhs = new(float.NaN, 0f);
+            Assert.IsFalse(lhs.Approximately(Vector2.zero));
+        }
+
+        [Test]
+        public void Vector3ApproximatelyMagnitudeWithinTolerance()
+        {
+            Vector3 lhs = Vector3.zero;
+            Vector3 rhs = new(0.0005f, -0.0004f, 0.0002f);
+            Assert.IsTrue(lhs.Approximately(rhs));
+        }
+
+        [Test]
+        public void Vector3ApproximatelyComponentMode()
+        {
+            Vector3 lhs = new(1f, 2f, 3f);
+            Vector3 rhs = new(1.0005f, 2.0005f, 2.9995f);
+            Assert.IsTrue(
+                lhs.Approximately(
+                    rhs,
+                    tolerance: 0.001f,
+                    mode: WallMath.VectorApproximationMode.Components
+                )
+            );
+
+            Vector3 far = new(1f, 2.01f, 3f);
+            Assert.IsFalse(
+                lhs.Approximately(
+                    far,
+                    tolerance: 0.001f,
+                    mode: WallMath.VectorApproximationMode.Components
+                )
+            );
+        }
+
+        [Test]
+        public void Vector3ApproximatelyNonFiniteIsFalse()
+        {
+            Vector3 lhs = new(float.PositiveInfinity, 0f, 0f);
+            Assert.IsFalse(lhs.Approximately(Vector3.zero));
+        }
+
+        [Test]
+        public void ColorApproximatelyWithinTolerance()
+        {
+            Color lhs = new(0.5f, 0.4f, 0.25f, 0.75f);
+            Color rhs = new(0.502f, 0.398f, 0.249f, 0.749f);
+            Assert.IsTrue(lhs.Approximately(rhs, tolerance: 0.01f));
+        }
+
+        [Test]
+        public void ColorApproximatelyHonorsDelta()
+        {
+            Color lhs = Color.white;
+            Color rhs = new(0.95f, 0.95f, 0.95f, 0.95f);
+
+            Assert.IsFalse(lhs.Approximately(rhs, tolerance: 0.02f));
+            Assert.IsTrue(lhs.Approximately(rhs, tolerance: 0.02f, delta: 0.03f));
+        }
+
+        [Test]
+        public void ColorApproximatelyCanIgnoreAlpha()
+        {
+            Color lhs = new(0.1f, 0.2f, 0.3f, 0f);
+            Color rhs = new(0.1f, 0.2f, 0.3f, 1f);
+
+            Assert.IsFalse(lhs.Approximately(rhs));
+            Assert.IsTrue(lhs.Approximately(rhs, includeAlpha: false));
+        }
+
+        [Test]
+        public void ColorApproximatelyNonFiniteIsFalse()
+        {
+            Color lhs = new(float.NaN, 0f, 0f, 1f);
+            Assert.IsFalse(lhs.Approximately(Color.black));
+        }
+
+        [Test]
+        public void Color32ApproximatelyUsesByteTolerance()
+        {
+            Color32 lhs = new(10, 20, 30, 40);
+            Color32 rhs = new(12, 18, 31, 39);
+
+            Assert.IsFalse(lhs.Approximately(rhs, tolerance: 1));
+            Assert.IsTrue(lhs.Approximately(rhs, tolerance: 3));
+        }
+
+        [Test]
         public void BoundedDoubleWithSameValue()
         {
             for (int i = 0; i < 100; ++i)

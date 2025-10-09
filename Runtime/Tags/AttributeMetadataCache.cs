@@ -10,7 +10,7 @@ namespace WallstopStudios.UnityHelpers.Tags
     /// Serialized cache of attribute metadata to avoid runtime reflection.
     /// This asset is automatically generated in the Editor.
     /// </summary>
-    [ScriptableSingletonPath("WallstopStudios/AttributeMetadataCache")]
+    [ScriptableSingletonPath("Wallstop Studios/AttributeMetadataCache")]
     public sealed class AttributeMetadataCache : ScriptableObjectSingleton<AttributeMetadataCache>
     {
         public enum RelationalAttributeKind : byte

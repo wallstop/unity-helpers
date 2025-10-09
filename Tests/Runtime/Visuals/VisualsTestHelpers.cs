@@ -2,7 +2,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
 {
     using System;
     using System.Collections.Generic;
-    using NUnit.Framework;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Visuals.UIToolkit;
     using Object = UnityEngine.Object;
@@ -118,22 +117,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
             }
 
             tracked.Clear();
-        }
-
-        public static void AssertColor(Color32 actual, Color32 expected, byte tolerance = 1)
-        {
-            Assert.That(Mathf.Abs(actual.r - expected.r), Is.LessThanOrEqualTo(tolerance));
-            Assert.That(Mathf.Abs(actual.g - expected.g), Is.LessThanOrEqualTo(tolerance));
-            Assert.That(Mathf.Abs(actual.b - expected.b), Is.LessThanOrEqualTo(tolerance));
-            Assert.That(Mathf.Abs(actual.a - expected.a), Is.LessThanOrEqualTo(tolerance));
-        }
-
-        public static void AssertVector(Vector2 actual, Vector2 expected, float tolerance = 1e-3f)
-        {
-            Assert.That(
-                (actual - expected).sqrMagnitude,
-                Is.LessThanOrEqualTo(tolerance * tolerance)
-            );
         }
     }
 }
