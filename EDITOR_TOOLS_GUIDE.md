@@ -13,6 +13,7 @@ Comprehensive documentation for all editor wizards, windows, and automation tool
 5. [Custom Component Editors](#custom-component-editors)
 6. [Property Drawers & Attributes](#property-drawers--attributes)
 7. [Automation & Utilities](#automation--utilities)
+   - [ScriptableObject Singleton Creator](#scriptableobject-singleton-creator)
 8. [Quick Reference](#quick-reference)
 
 ---
@@ -1034,6 +1035,7 @@ public class CharacterStats : MonoBehaviour
 <a id="automation-utilities"></a>
 ## Automation & Utilities
 
+<a id="scriptableobject-singleton-creator"></a>
 ### ScriptableObject Singleton Creator
 **Type:** Automatic (runs on editor load)
 **Menu:** N/A (automatic) - Uses `[InitializeOnLoad]`
@@ -1053,6 +1055,9 @@ See the base API guide for details on `ScriptableObjectSingleton<T>` usage, scen
 
 **Usage Example:**
 ```csharp
+using WallstopStudios.UnityHelpers.Utils;
+using WallstopStudios.UnityHelpers.Core.Attributes;
+
 // Define singleton:
 public class GameSettings : ScriptableObjectSingleton<GameSettings>
 {

@@ -7,6 +7,23 @@ This package includes two lightweight, production‑ready singleton helpers that
 
 > ODIN compatibility: When Odin Inspector is present (`ODIN_INSPECTOR` defined), these types derive from `SerializedMonoBehaviour` / `SerializedScriptableObject` for richer serialization. Without Odin, they fall back to Unity base types. No code changes required.
 
+Contents
+- ODIN Compatibility
+- When To Use / Not To Use
+- RuntimeSingleton<T>
+  - Lifecycle diagram, examples, pitfalls
+- ScriptableObjectSingleton<T>
+  - Lookup + auto‑creator diagrams, examples, tips
+- Scenarios & Guidance
+- Troubleshooting
+
+<a id="odin-compatibility"></a>
+## ODIN Compatibility
+
+- With Odin installed (symbol `ODIN_INSPECTOR`), base classes inherit from `SerializedMonoBehaviour` and `SerializedScriptableObject` to enable serialization of complex types (dictionaries, polymorphic fields) with Odin drawers.
+- Without Odin, bases inherit from Unity’s `MonoBehaviour`/`ScriptableObject` with no behavior change.
+
+<a id="when-to-use"></a>
 ## When To Use
 
 - `RuntimeSingleton<T>`
@@ -19,12 +36,14 @@ This package includes two lightweight, production‑ready singleton helpers that
   - Data that should be edited as an asset and loaded via `Resources`.
   - Consistent project setup for teams (auto‑created asset on editor load).
 
+<a id="when-not-to-use"></a>
 ## When Not To Use
 
 - Prefer DI/service locators for heavily decoupled architectures requiring multiple implementations per environment, or for test seams where global state is undesirable.
 - Avoid `RuntimeSingleton<T>` for ephemeral, per‑scene logic or objects that should be duplicated in additive scenes.
 - Avoid `ScriptableObjectSingleton<T>` for save data or level‑specific data that should not live in Resources or should have multiple instances.
 
+<a id="runtime-singleton"></a>
 ## `RuntimeSingleton<T>` Overview
 
 - Access via `T.Instance` (creates a new `GameObject` named `"<Type>-Singleton"` and adds `T` if none exists; otherwise finds an existing active instance).
@@ -60,6 +79,22 @@ Common pitfalls:
 - If two active instances exist, the newer one logs an error and destroys itself.
 - If `Preserve` is `true`, the instance is detached and marked `DontDestroyOnLoad`.
 
+Lifecycle diagram:
+```
+T.Instance ─┬─ Has _instance? ──▶ return
+            │
+            ├─ Find active T in scene? ──▶ set _instance, return
+            │
+            └─ Create GameObject("T-Singleton") + Add T
+                 └─ Awake(): assign _instance, if Preserve: DontDestroyOnLoad
+                         └─ Start(): if duplicate, log + destroy self
+```
+
+Notes:
+- To avoid creation during a sensitive frame, place a pre‑made instance in your bootstrap scene.
+- For scene‑local managers, override `Preserve => false`.
+
+<a id="scriptableobject-singleton"></a>
 ## `ScriptableObjectSingleton<T>` Overview
 
 - Access via `T.Instance` (lazy‑loads from `Resources/` using either a custom path or the type name; warns if multiple assets found and chooses the first by name).
@@ -90,13 +125,59 @@ Asset management tips:
 - Place the asset under `Assets/Resources/` (or under the path from `[ScriptableSingletonPath]`).
 - The Editor’s “ScriptableObject Singleton Creator” runs on load to create missing assets and move misplaced ones. It also supports a test‑assembly toggle used by our test suite.
 
+Lookup order diagram:
+```
+Instance access:
+  [1] Resources.LoadAll<T>(custom path from [ScriptableSingletonPath])
+  [2] if none: Resources.Load<T>(type name)
+  [3] if none: Resources.LoadAll<T>(root)
+  [4] if multiple: warn + pick first by name (sorted)
+```
+
+Auto‑creator flow (Editor):
+```
+On editor load:
+  - Scan all ScriptableObjectSingleton<T> types
+  - For each non-abstract type:
+      - Determine Resources path (attribute or type name)
+      - Ensure folder under Assets/Resources
+      - If asset exists elsewhere: move to target path
+      - Else: create new asset at target path
+  - Save & Refresh if changes
+```
+
+Asset structure diagram:
+```
+Default (no attribute):
+Assets/
+  Resources/
+    AudioSettings.asset         // type name
+
+With [ScriptableSingletonPath("Settings/Audio")]:
+Assets/
+  Resources/
+    Settings/
+      Audio/
+        AudioSettings.asset
+```
+
+<a id="scenarios"></a>
 ## Scenarios & Guidance
 
 - Global dispatcher: See `UnityMainThreadDispatcher` which derives from `RuntimeSingleton<UnityMainThreadDispatcher>`.
 - Global data caches or registries: Use `ScriptableObjectSingleton<T>` so data lives in a single editable asset and loads fast.
 - Cross‑scene managers: Keep `Preserve = true` to avoid duplicates across scene loads.
 
+<a id="troubleshooting"></a>
 ## Troubleshooting
+
+## Best Practices
+
+- Prefer placing a pre-made runtime singleton in a bootstrap scene when construction order matters; avoid first-access implicit creation during critical frames.
+- For scene-local managers, override `Preserve => false` to prevent cross-scene persistence.
+- Keep exactly one singleton asset under `Resources/` for each `ScriptableObjectSingleton<T>`; let the auto-creator relocate any strays.
+- Use `[ScriptableSingletonPath]` to group related settings; avoid deep nesting that hurts discoverability.
+- With ODIN installed, take advantage of `Serialized*` bases for complex serialized fields; without Odin, keep fields Unity-serializable.
 
 - Multiple ScriptableObject assets found: a warning is logged and the first by name is used. Resolve by keeping only one asset in Resources or by letting the auto‑creator relocate the correct one.
 - `Instance` returns null for ScriptableObject: Ensure the asset exists under `Resources/` and the type name or custom path matches.
@@ -104,6 +185,5 @@ Asset management tips:
 
 ## Related Docs
 
-- Editor tool: ScriptableObject Singleton Creator — see `EDITOR_TOOLS_GUIDE.md#scriptableobject-singleton-creator`.
+- Editor tool: [ScriptableObject Singleton Creator](EDITOR_TOOLS_GUIDE.md#scriptableobject-singleton-creator).
 - Tests: `Tests/Runtime/Utils/RuntimeSingletonTests.cs` and `Tests/Editor/Utils/ScriptableObjectSingletonTests.cs`.
-

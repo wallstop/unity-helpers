@@ -7,8 +7,16 @@ namespace WallstopStudios.UnityHelpers.Core.Math
     using ProtoBuf;
 
     /// <summary>
-    ///     Inclusive Range [min,max]
+    /// Inclusive Range [min,max] with configurable endpoint inclusivity.
     /// </summary>
+    /// <example>
+    /// <code>
+    /// var r = Range<int>.Inclusive(0, 10);
+    /// bool yes = r.Contains(10); // true (inclusive end)
+    /// var re = Range<int>.Exclusive(0, 10);
+    /// bool no = re.Contains(10); // false (exclusive end)
+    /// </code>
+    /// </example>
     [Serializable]
     [DataContract]
     [ProtoContract]

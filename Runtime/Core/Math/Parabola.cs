@@ -9,6 +9,12 @@ namespace WallstopStudios.UnityHelpers.Core.Math
     /// Represents a parabola defined by y = A*x^2 + B*x, with x-intercepts at 0 and Length.
     /// The parabola opens downward with its vertex at (Length/2, MaxHeight).
     /// </summary>
+    /// <example>
+    /// <code>
+    /// var p = new Parabola(maxHeight: 5f, length: 10f);
+    /// p.TryGetValueAtNormalized(0.5f, out float peak); // peak == 5
+    /// </code>
+    /// </example>
     [DataContract]
     [Serializable]
     [ProtoContract]

@@ -3,14 +3,16 @@
 This guide summarizes the math primitives and extension helpers in this package and shows how to apply them effectively, with examples, performance notes, and practical scenarios.
 
 Contents
-- Numeric helpers — Positive modulo, wrapped arithmetic, approximate equality, clamping
-- Geometry — Lines, ranges, parabolas, point-in-polygon, polyline simplification
-- Unity extensions — Rect/Bounds conversions, RectTransform bounds, camera bounds, bounds aggregation
-- Color utilities — Averaging (LAB/HSV/Weighted/Dominant), hex conversion
-- Collections — IEnumerable helpers, buffering, infinite sequences
-- Strings — Casing, encoding/decoding, distance
-- Direction helpers — Enum conversions and operations
+- [Numeric helpers](#numeric-helpers) — Positive modulo, wrapped arithmetic, approximate equality, clamping
+- [Geometry](#geometry) — Lines, ranges, parabolas, point-in-polygon, polyline simplification
+- [Unity extensions](#unity-extensions) — Rect/Bounds conversions, RectTransform bounds, camera bounds, bounds aggregation
+- [Color utilities](#color-utilities) — Averaging (LAB/HSV/Weighted/Dominant), hex conversion
+- [Collections](#collections) — IEnumerable helpers, buffering, infinite sequences
+- [Strings](#strings) — Casing, encoding/decoding, distance
+- [Direction helpers](#directions) — Enum conversions and operations
+- [Best Practices](#best-practices)
 
+<a id="numeric-helpers"></a>
 ## Numeric Helpers
 
 - Positive modulo and wrap-around arithmetic
@@ -49,6 +51,7 @@ bool close = 0.1f.Approximately(0.10001f, 0.0001f); // true
 - Generic `Clamp`
   - `Clamp<T>(min, max)` works for any `IComparable<T>`.
 
+<a id="geometry"></a>
 ## Geometry
 
 - `Line2D`/`Line3D` operations
@@ -126,6 +129,9 @@ Simplified:   *-----------*--------*
 Fewer vertices within epsilon of the original polyline.
 ```
 
+Visual:
+![Polyline Simplification](Docs/Images/polyline_simplify.svg)
+
 Convex hull (monotone chain / Jarvis examples used by helpers):
 ```
 Points:     ·  ·   ·
@@ -138,6 +144,10 @@ Hull:     ┌───────────┐
                   └─┐
 ```
 
+Visual:
+![Convex Hull](Docs/Images/convex_hull.svg)
+
+<a id="unity-extensions"></a>
 ## Unity Extensions
 
 - Rect/Bounds conversions, RectTransform world bounds
@@ -171,6 +181,7 @@ Diagrams:
             └────────────────────────────────┘
 ```
 
+<a id="color-utilities"></a>
 ## Color Utilities
 
 - Averaging methods:
@@ -199,6 +210,7 @@ RGB space buckets → counts
           ↑ pick max bucket centroid as dominant
 ```
 
+<a id="collections"></a>
 ## Collections
 
 - Readable helpers: `AsList`, `ToLinkedList`, `OrderBy(Func)`
@@ -223,6 +235,7 @@ Bounds aggregation example:
 Bounds? merged = renderers.Select(r => r.bounds).GetBounds();
 ```
 
+<a id="strings"></a>
 ## Strings
 
 - Casing conversions (Pascal, Camel, Snake, Kebab, Title)
@@ -236,6 +249,7 @@ string s = "hello_world";
 int distance = s.LevenshteinDistance("hello-world");
 ```
 
+<a id="directions"></a>
 ## Directions
 
 - Conversions between enum and vectors; splitting flag sets; combining
@@ -246,9 +260,17 @@ using WallstopStudios.UnityHelpers.Core.Extension;
 Vector2Int v = Direction.NorthWest.AsVector2Int(); // (-1, 1)
 ```
 
+## Best Practices
+
+- Use `PositiveMod` instead of `%` for indices and angles when negatives are possible.
+- Prefer `SimplifyPrecise` for offline tooling; use `Simplify` during gameplay for speed.
+- Choose color averaging method per goal: LAB for perceptual palette, Weighted for speed, Dominant for swatches.
+- Favor IReadOnlyList/HashSet specializations to minimize allocations; pooled buffers are used where applicable.
+- Run Unity-dependent extensions (e.g., `RectTransform`, `Camera`, `Grid`) on the main thread.
+
 ## Related Docs
 
-- Random performance details — RANDOM_PERFORMANCE.md
-- Serialization formats — SERIALIZATION.md
-- Effects system — EFFECTS_SYSTEM.md
-- Relational Components — RELATIONAL_COMPONENTS.md
+- Random performance details — [Random Performance](RANDOM_PERFORMANCE.md)
+- Serialization formats — [Serialization Guide](SERIALIZATION.md)
+- Effects system — [Effects System](EFFECTS_SYSTEM.md)
+- Relational Components — [Relational Components](RELATIONAL_COMPONENTS.md)

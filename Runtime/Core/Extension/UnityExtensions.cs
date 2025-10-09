@@ -2,6 +2,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 {
     using System;
     using System.Collections.Generic;
+    using System.ComponentModel;
     using DataStructure;
     using DataStructure.Adapters;
     using Helper;
@@ -25,6 +26,85 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
     {
         private const float ConvexHullRelationEpsilon = 1e-5f;
         private const double ConvexHullOrientationEpsilon = 1e-8d;
+
+        public enum ConvexHullAlgorithm
+        {
+            [Obsolete("Do not use default value; specify an algorithm explicitly.")]
+            Unknown = 0,
+            MonotoneChain = 1,
+            Jarvis = 2,
+        }
+
+        public enum ConcaveHullStrategy
+        {
+            [Obsolete("Do not use default value; specify a strategy explicitly.")]
+            Unknown = 0,
+            Knn = 1,
+            EdgeSplit = 2,
+        }
+
+        public sealed class ConcaveHullOptions
+        {
+            public ConcaveHullStrategy Strategy = ConcaveHullStrategy.Knn;
+            public int NearestNeighbors = 3;
+            public int BucketSize = 40;
+            public float AngleThreshold = 90f;
+        }
+
+        // Unified concave hull entry point with explicit strategy handling.
+        public static List<FastVector3Int> BuildConcaveHull(
+            this IReadOnlyCollection<FastVector3Int> gridPositions,
+            Grid grid,
+            ConcaveHullOptions options
+        )
+        {
+            options ??= new ConcaveHullOptions();
+            switch (options.Strategy)
+            {
+                case ConcaveHullStrategy.Knn:
+#pragma warning disable CS0618 // Type or member is obsolete
+                    return BuildConcaveHull2(
+                        gridPositions,
+                        grid,
+                        Math.Max(3, options.NearestNeighbors)
+                    );
+#pragma warning restore CS0618 // Type or member is obsolete
+                case ConcaveHullStrategy.EdgeSplit:
+#pragma warning disable CS0618 // Type or member is obsolete
+                    return BuildConcaveHull3(
+                        gridPositions,
+                        grid,
+                        Math.Max(1, options.BucketSize),
+                        options.AngleThreshold
+                    );
+#pragma warning restore CS0618 // Type or member is obsolete
+                default:
+                    throw new InvalidEnumArgumentException(
+                        nameof(options.Strategy),
+                        (int)options.Strategy,
+                        typeof(ConcaveHullStrategy)
+                    );
+            }
+        }
+
+        public static List<FastVector3Int> BuildConcaveHullKnn(
+            this IReadOnlyCollection<FastVector3Int> gridPositions,
+            Grid grid,
+            int nearestNeighbors = 3
+        )
+        {
+            return BuildConcaveHull2(gridPositions, grid, nearestNeighbors);
+        }
+
+        public static List<FastVector3Int> BuildConcaveHullEdgeSplit(
+            this IReadOnlyCollection<FastVector3Int> gridPositions,
+            Grid grid,
+            int bucketSize = 40,
+            float angleThreshold = 90f
+        )
+        {
+            return BuildConcaveHull3(gridPositions, grid, bucketSize, angleThreshold);
+        }
 
         /// <summary>
         /// Gets the center point of a GameObject, considering any CenterPointOffset component.
@@ -514,142 +594,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             bool includeColinearPoints = false
         )
         {
-            return BuildConvexHullJarvis(pointsSet, grid, includeColinearPoints);
-            using PooledResource<List<FastVector3Int>> pointsResource =
-                Buffers<FastVector3Int>.List.Get(out List<FastVector3Int> points);
-            points.AddRange(pointsSet);
-
-            if (points.Count <= 3)
-            {
-                return new List<FastVector3Int>(points);
-            }
-
-            FastVector3Int startPoint = points[0];
-            Vector2 startPointWorldPosition = CellToWorld(startPoint);
-            for (int i = 1; i < points.Count; ++i)
-            {
-                FastVector3Int testPoint = points[i];
-                Vector2 testPointWorldPosition = CellToWorld(testPoint);
-                if (
-                    testPointWorldPosition.x < startPointWorldPosition.x
-                    || (
-                        Mathf.Approximately(testPointWorldPosition.x, startPointWorldPosition.x)
-                        && testPointWorldPosition.y < startPointWorldPosition.y
-                    )
-                )
-                {
-                    startPoint = testPoint;
-                    startPointWorldPosition = testPointWorldPosition;
-                }
-            }
-
-            List<FastVector3Int> convexHull = new(points.Count);
-            convexHull.Add(startPoint);
-            _ = points.Remove(startPoint);
-            FastVector3Int currentPoint = convexHull[0];
-            using PooledResource<List<FastVector3Int>> colinearPointsResource =
-                Buffers<FastVector3Int>.List.Get();
-            List<FastVector3Int> colinearPoints = colinearPointsResource.resource;
-            int counter = 0;
-            int maxIterations = Math.Max(16, points.Count * 4);
-            while (true)
-            {
-                if (counter == 2)
-                {
-                    points.Add(convexHull[0]);
-                }
-
-                if (points.Count <= 0)
-                {
-                    return convexHull;
-                }
-
-                FastVector3Int nextPoint = points[0];
-                if (nextPoint.Equals(currentPoint))
-                {
-                    int idx = 1;
-                    while (idx < points.Count && points[idx].Equals(currentPoint))
-                    {
-                        ++idx;
-                    }
-                    if (idx < points.Count)
-                    {
-                        nextPoint = points[idx];
-                    }
-                    else
-                    {
-                        return convexHull;
-                    }
-                }
-                Vector2 currentPointWorldPosition = CellToWorld(currentPoint);
-                Vector2 nextPointWorldPosition = CellToWorld(nextPoint);
-                foreach (FastVector3Int point in points)
-                {
-                    if (point.Equals(nextPoint))
-                    {
-                        continue;
-                    }
-
-                    float relation = Geometry.IsAPointLeftOfVectorOrOnTheLine(
-                        currentPointWorldPosition,
-                        nextPointWorldPosition,
-                        CellToWorld(point)
-                    );
-                    if (Mathf.Abs(relation) <= ConvexHullRelationEpsilon)
-                    {
-                        colinearPoints.Add(point);
-                    }
-                    else if (relation > 0)
-                    {
-                        nextPoint = point;
-                        nextPointWorldPosition = CellToWorld(nextPoint);
-                        colinearPoints.Clear();
-                    }
-                }
-
-                if (0 < colinearPoints.Count)
-                {
-                    colinearPoints.Add(nextPoint);
-                    SortByDistanceAscending(colinearPoints, grid, currentPointWorldPosition);
-
-                    if (includeColinearPoints)
-                    {
-                        convexHull.AddRange(colinearPoints);
-                    }
-                    else
-                    {
-                        convexHull.Add(colinearPoints[^1]);
-                        _ = points.Remove(colinearPoints[^1]);
-                    }
-
-                    currentPoint = colinearPoints[^1];
-                    RemovePoints(points, colinearPoints);
-                    colinearPoints.Clear();
-                }
-                else
-                {
-                    convexHull.Add(nextPoint);
-                    _ = points.Remove(nextPoint);
-                    currentPoint = nextPoint;
-                }
-
-                if (currentPoint.Equals(convexHull[0]))
-                {
-                    convexHull.RemoveAt(convexHull.Count - 1);
-                    break;
-                }
-
-                ++counter;
-                if (counter > maxIterations)
-                {
-                    // Safety break to avoid potential infinite loop on degenerate inputs
-                    break;
-                }
-            }
-
-            return convexHull;
-
-            Vector2 CellToWorld(FastVector3Int position) => grid.CellToWorld(position);
+            return BuildConvexHullMonotoneChain(pointsSet, grid, includeColinearPoints);
         }
 
         // Disambiguation overload to ensure List<FastVector3Int> resolves here (not via implicit Vector3Int)
@@ -659,7 +604,63 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             bool includeColinearPoints = false
         )
         {
-            return BuildConvexHullJarvis(pointsSet, grid, includeColinearPoints);
+            return BuildConvexHullMonotoneChain(pointsSet, grid, includeColinearPoints);
+        }
+
+        public static List<FastVector3Int> BuildConvexHull(
+            this IEnumerable<FastVector3Int> pointsSet,
+            Grid grid,
+            bool includeColinearPoints,
+            ConvexHullAlgorithm algorithm
+        )
+        {
+            switch (algorithm)
+            {
+                case ConvexHullAlgorithm.MonotoneChain:
+                    return BuildConvexHullMonotoneChain(pointsSet, grid, includeColinearPoints);
+                case ConvexHullAlgorithm.Jarvis:
+                    return BuildConvexHullJarvis(pointsSet, grid, includeColinearPoints);
+                default:
+                    throw new System.ComponentModel.InvalidEnumArgumentException(
+                        nameof(algorithm),
+                        (int)algorithm,
+                        typeof(ConvexHullAlgorithm)
+                    );
+            }
+        }
+
+        public static List<Vector3Int> BuildConvexHull(
+            this IEnumerable<Vector3Int> pointsSet,
+            Grid grid,
+            bool includeColinearPoints,
+            ConvexHullAlgorithm algorithm
+        )
+        {
+            switch (algorithm)
+            {
+                case ConvexHullAlgorithm.MonotoneChain:
+                    return BuildConvexHullMonotoneChain(pointsSet, grid, includeColinearPoints);
+                case ConvexHullAlgorithm.Jarvis:
+                {
+                    List<FastVector3Int> fast = new();
+                    foreach (Vector3Int p in pointsSet)
+                    {
+                        fast.Add(new FastVector3Int(p.x, p.y, p.z));
+                    }
+                    List<FastVector3Int> hullFast = BuildConvexHullJarvis(
+                        fast,
+                        grid,
+                        includeColinearPoints
+                    );
+                    return hullFast.ConvertAll(p => (Vector3Int)p);
+                }
+                default:
+                    throw new System.ComponentModel.InvalidEnumArgumentException(
+                        nameof(algorithm),
+                        (int)algorithm,
+                        typeof(ConvexHullAlgorithm)
+                    );
+            }
         }
 
         private static List<Vector3Int> BuildConvexHullMonotoneChain(
@@ -690,6 +691,35 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     return cmp != 0 ? cmp : a.y.CompareTo(b.y);
                 }
             );
+
+            // Degenerate: all points are colinear → return endpoints (or all if requested)
+            if (points.Count >= 2)
+            {
+                Vector2 firstW = grid.CellToWorld(points[0]);
+                Vector2 lastW = grid.CellToWorld(points[^1]);
+                bool allColinear = true;
+                for (int i = 1; i < points.Count - 1; ++i)
+                {
+                    Vector2 pi = grid.CellToWorld(points[i]);
+                    float cross = Geometry.IsAPointLeftOfVectorOrOnTheLine(firstW, lastW, pi);
+                    if (Mathf.Abs(cross) > ConvexHullRelationEpsilon)
+                    {
+                        allColinear = false;
+                        break;
+                    }
+                }
+                if (allColinear)
+                {
+                    if (includeColinearPoints)
+                    {
+                        return new List<Vector3Int>(points);
+                    }
+                    else
+                    {
+                        return new List<Vector3Int> { points[0], points[^1] };
+                    }
+                }
+            }
 
             using PooledResource<List<Vector3Int>> lowerRes = Buffers<Vector3Int>.List.Get(
                 out List<Vector3Int> lower
@@ -786,6 +816,35 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     return cmp != 0 ? cmp : a.y.CompareTo(b.y);
                 }
             );
+
+            // Degenerate: all points are colinear → return endpoints (or all if requested)
+            if (points.Count >= 2)
+            {
+                Vector2 firstW = grid.CellToWorld(points[0]);
+                Vector2 lastW = grid.CellToWorld(points[^1]);
+                bool allColinear = true;
+                for (int i = 1; i < points.Count - 1; ++i)
+                {
+                    Vector2 pi = grid.CellToWorld(points[i]);
+                    float cross = Geometry.IsAPointLeftOfVectorOrOnTheLine(firstW, lastW, pi);
+                    if (Mathf.Abs(cross) > ConvexHullRelationEpsilon)
+                    {
+                        allColinear = false;
+                        break;
+                    }
+                }
+                if (allColinear)
+                {
+                    if (includeColinearPoints)
+                    {
+                        return new List<FastVector3Int>(points);
+                    }
+                    else
+                    {
+                        return new List<FastVector3Int> { points[0], points[^1] };
+                    }
+                }
+            }
 
             using PooledResource<List<FastVector3Int>> lowerRes = Buffers<FastVector3Int>.List.Get(
                 out List<FastVector3Int> lower
@@ -1482,6 +1541,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// Algorithm: Custom edge-splitting with angle-based point selection and intersection checking.
         /// </remarks>
         /// <exception cref="ArgumentException">Thrown when gridPositions is empty.</exception>
+        [Obsolete("Use BuildConcaveHullEdgeSplit or BuildConcaveHull with options.")]
         public static List<FastVector3Int> BuildConcaveHull3(
             this IReadOnlyCollection<FastVector3Int> gridPositions,
             Grid grid,
@@ -1756,6 +1816,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// Falls back to convex hull if k reaches the maximum (point count).
         /// Algorithm: k-nearest neighbors concave hull. See https://www.researchgate.net/publication/220868874
         /// </remarks>
+        [Obsolete("Use BuildConcaveHullKnn or BuildConcaveHull with options.")]
         public static List<FastVector3Int> BuildConcaveHull2(
             this IReadOnlyCollection<FastVector3Int> gridPositions,
             Grid grid,

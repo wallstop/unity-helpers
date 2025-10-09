@@ -10,6 +10,13 @@ namespace WallstopStudios.UnityHelpers.Core.Math
     /// <summary>
     /// Represents a line segment defined by two endpoints in 2D space.
     /// </summary>
+    /// <example>
+    /// <code>
+    /// var a = new Line2D(new Vector2(0,0), new Vector2(2,0));
+    /// var b = new Line2D(new Vector2(1,-1), new Vector2(1,1));
+    /// bool intersects = a.Intersects(b); // true
+    /// </code>
+    /// </example>
     [Serializable]
     [DataContract]
     [ProtoContract]

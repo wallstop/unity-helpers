@@ -154,6 +154,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             return value % max;
         }
 
+        /// <example>
+        /// <code>
+        /// float angle = -30f;
+        /// float normalized = angle.PositiveMod(360f); // 330
+        /// </code>
+        /// </example>
         /// <summary>
         /// Computes a positive modulo operation that always returns a non-negative result.
         /// Unlike the % operator which can return negative values, this ensures the result is in [0, max).
@@ -185,6 +191,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             return value % max;
         }
 
+        /// <example>
+        /// <code>
+        /// double phase = -0.25;
+        /// double wrapped = phase.PositiveMod(1.0); // 0.75
+        /// </code>
+        /// </example>
         /// <summary>
         /// Computes a positive modulo operation that always returns a non-negative result.
         /// Unlike the % operator which can return negative values, this ensures the result is in [0, max).
@@ -199,6 +211,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             return value % max;
         }
 
+        /// <example>
+        /// <code>
+        /// int i = -1;
+        /// int wrapped = i.PositiveMod(5); // 4
+        /// </code>
+        /// </example>
         /// <summary>
         /// Computes a positive modulo operation that always returns a non-negative result.
         /// Unlike the % operator which can return negative values, this ensures the result is in [0, max).
@@ -227,6 +245,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             return value;
         }
 
+        /// <example>
+        /// <code>
+        /// int index = 4;
+        /// index = index.WrappedAdd(2, 5); // 1
+        /// </code>
+        /// </example>
         /// <summary>
         /// Adds an increment to a value and wraps around using modulo if it exceeds the maximum.
         /// This mutates the value parameter in place.
@@ -530,6 +554,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             return difference <= absTolerance + fudge;
         }
 
+        /// <example>
+        /// <code>
+        /// bool close = 0.1f.Approximately(0.10001f, 0.0001f); // true
+        /// </code>
+        /// </example>
         /// <summary>
         /// Checks if two double values are approximately equal within a specified tolerance.
         /// Uses absolute difference comparison with an epsilon-scaled cushion to handle rounding.

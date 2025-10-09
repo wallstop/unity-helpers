@@ -63,7 +63,7 @@ Unity Helpers was built to solve common game development challenges with **perfo
 - `[DxReadOnly]` - Display calculated values in inspector
 - `[WShowIf]` - Conditional inspector fields
  
- See the in-depth guide: `RELATIONAL_COMPONENTS.md`.
+ See the in-depth guide: [Relational Components](RELATIONAL_COMPONENTS.md).
 
 ### 20+ Editor Tools
 - **Sprite tools**: Cropper, Atlas Generator, Animation Editor
@@ -74,20 +74,29 @@ Unity Helpers was built to solve common game development challenges with **perfo
 
 ### Core Math & Extensions
 - Numeric helpers, geometry primitives, Unity extensions, colors, collections, strings, directions.
-- See the guide: `MATH_AND_EXTENSIONS.md`.
+ - See the guide: [Core Math & Extensions](MATH_AND_EXTENSIONS.md).
+
+#### At a Glance
+- `PositiveMod`, `WrappedAdd` — Safe cyclic arithmetic for indices/angles. See: [Numeric Helpers](MATH_AND_EXTENSIONS.md#numeric-helpers).
+- `LineHelper.Simplify` — Reduce polyline vertices with Douglas–Peucker. See: [Geometry](MATH_AND_EXTENSIONS.md#geometry).
+- `Line2D.Intersects` — Robust 2D segment intersection and closest-point helpers. See: [Geometry](MATH_AND_EXTENSIONS.md#geometry).
+- `RectTransform.GetWorldRect` — Axis-aligned world bounds for rotated UI. See: [Unity Extensions](MATH_AND_EXTENSIONS.md#unity-extensions).
+- `Camera.OrthographicBounds` — Compute visible world bounds for ortho cameras. See: [Unity Extensions](MATH_AND_EXTENSIONS.md#unity-extensions).
+- `Color.GetAverageColor` — LAB/HSV/Weighted/Dominant color averaging. See: [Color Utilities](MATH_AND_EXTENSIONS.md#color-utilities).
+- `IEnumerable.Infinite` — Cycle sequences without extra allocations. See: [Collections](MATH_AND_EXTENSIONS.md#collections).
+- `StringExtensions.LevenshteinDistance` — Edit distance for fuzzy matching. See: [Strings](MATH_AND_EXTENSIONS.md#strings).
 
 ### Singleton Utilities (ODIN‑compatible)
-- `RuntimeSingleton<T>` — Global component singleton with optional cross‑scene persistence. See the guide: `SINGLETONS.md`.
-- `ScriptableObjectSingleton<T>` — Global settings/data singleton loaded from `Resources/`, auto‑created by the editor tool. See the guide: `SINGLETONS.md` and the tool: `EDITOR_TOOLS_GUIDE.md#scriptableobject-singleton-creator`.
+- `RuntimeSingleton<T>` — Global component singleton with optional cross‑scene persistence. See the guide: [Singleton Utilities](SINGLETONS.md).
+- `ScriptableObjectSingleton<T>` — Global settings/data singleton loaded from `Resources/`, auto‑created by the editor tool. See the guide: [Singleton Utilities](SINGLETONS.md) and the tool: [ScriptableObject Singleton Creator](EDITOR_TOOLS_GUIDE.md#scriptableobject-singleton-creator).
 
 ## Docs Index
 
-- Serialization Guide — [SERIALIZATION.md](SERIALIZATION.md)
-- Editor Tools Guide — [EDITOR_TOOLS_GUIDE.md](EDITOR_TOOLS_GUIDE.md)
-- Math & Extensions — [MATH_AND_EXTENSIONS.md](MATH_AND_EXTENSIONS.md)
-- Singletons — [SINGLETONS.md](SINGLETONS.md)
-- Relational Components — [RELATIONAL_COMPONENTS.md](RELATIONAL_COMPONENTS.md)
-- Relational Components Improvements — [RELATIONAL_COMPONENTS_IMPROVEMENTS.md](RELATIONAL_COMPONENTS_IMPROVEMENTS.md)
+- Serialization Guide — [Serialization](SERIALIZATION.md)
+- Editor Tools Guide — [Editor Tools](EDITOR_TOOLS_GUIDE.md)
+- Math & Extensions — [Core Math & Extensions](MATH_AND_EXTENSIONS.md)
+- Singletons — [Singleton Utilities](SINGLETONS.md)
+- Relational Components — [Relational Components](RELATIONAL_COMPONENTS.md)
 - Effects System — [EFFECTS_SYSTEM.md](EFFECTS_SYSTEM.md)
 - Spatial Tree 2D Performance — [SPATIAL_TREE_2D_PERFORMANCE.md](SPATIAL_TREE_2D_PERFORMANCE.md)
 - Spatial Tree 3D Performance — [SPATIAL_TREE_3D_PERFORMANCE.md](SPATIAL_TREE_3D_PERFORMANCE.md)
@@ -149,9 +158,12 @@ Unity Helpers was built to solve common game development challenges with **perfo
 Replace Unity's Random with high-performance alternatives:
 
 ```csharp
+using System;
+using UnityEngine;
 using WallstopStudios.UnityHelpers.Core.Random;
+using WallstopStudios.UnityHelpers.Core.Extension; // extension APIs like NextVector2(), NextWeightedIndex()
 
-// Use the recommended default (currently PCG Random)
+// Use the recommended default (currently IllusionFlow Random)
 IRandom random = PRNG.Instance;
 
 // Basic random values
@@ -160,8 +172,8 @@ int damage = random.Next(10, 20);            // 10 to 19
 bool critical = random.NextBool();           // true or false
 
 // Advanced features
-Vector2 position = random.NextVector2();     // Random 2D position
-Guid playerId = random.NextGuid();          // UUIDv4
+Vector2 position = random.NextVector2();     // Random 2D position (extension method)
+Guid playerId = random.NextGuid();           // UUIDv4
 float gaussian = random.NextGaussian();      // Normal distribution
 
 // Random selection
@@ -170,10 +182,11 @@ string item = random.NextOf(lootTable);
 
 // Weighted random
 float[] weights = { 0.5f, 0.3f, 0.2f };
-int index = random.NextWeightedIndex(weights);
+int index = random.NextWeightedIndex(weights); // extension method
 
 // Noise generation
-float[,] noiseMap = random.NextNoiseMap(256, 256, octaves: 4);
+float[,] noiseMap = new float[256, 256];
+random.NextNoiseMap(noiseMap, octaves: 4);
 ```
 
 **Why use PRNG.Instance?**
@@ -182,7 +195,7 @@ float[,] noiseMap = random.NextNoiseMap(256, 256, octaves: 4);
 - Thread-safe for parallel operations
 - Extensive API for common patterns
 
-[📊 View Performance Benchmarks](RANDOM_PERFORMANCE.md)
+[📊 View Random Performance Benchmarks](RANDOM_PERFORMANCE.md)
 
 ### Auto Component Discovery
 
@@ -202,9 +215,9 @@ public class Player : MonoBehaviour
     [SiblingComponent(Optional = true)]
     private Rigidbody2D rigidbody;
 
-    // Finds PlayerInput in parent hierarchy
+    // Finds Camera in parent hierarchy
     [ParentComponent]
-    private PlayerInput input;
+    private Camera parentCamera;
 
     // Only search ancestors, not siblings
     [ParentComponent(OnlyAncestors = true)]
@@ -237,7 +250,7 @@ public class Player : MonoBehaviour
 - Descriptive error logging for missing required components
 - Honors `IncludeInactive` (include disabled/inactive when true)
 
-For a complete walkthrough with recipes, FAQs, and troubleshooting, see `RELATIONAL_COMPONENTS.md` (Troubleshooting: `RELATIONAL_COMPONENTS.md#troubleshooting`).
+For a complete walkthrough with recipes, FAQs, and troubleshooting, see [Relational Components](RELATIONAL_COMPONENTS.md) (Troubleshooting: [Tips & Troubleshooting](RELATIONAL_COMPONENTS.md#troubleshooting)).
 
 ### Spatial Queries
 

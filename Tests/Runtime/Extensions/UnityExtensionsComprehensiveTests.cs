@@ -588,12 +588,18 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 grid,
                 includeColinearPoints: false
             );
-            List<FastVector3Int> concave3 = points.BuildConcaveHull3(grid);
-            List<FastVector3Int> concave2 = points.BuildConcaveHull2(grid);
-            List<FastVector3Int> concave = points.BuildConcaveHull(grid);
+            List<FastVector3Int> concaveEdgeSplit = points.BuildConcaveHullEdgeSplit(grid);
+            List<FastVector3Int> concaveKnn = points.BuildConcaveHullKnn(grid);
+            List<FastVector3Int> concave = points.BuildConcaveHull(
+                grid,
+                new UnityExtensions.ConcaveHullOptions
+                {
+                    Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
+                }
+            );
 
-            CollectionAssert.AreEquivalent(convex, concave3);
-            CollectionAssert.AreEquivalent(convex, concave2);
+            CollectionAssert.AreEquivalent(convex, concaveEdgeSplit);
+            CollectionAssert.AreEquivalent(convex, concaveKnn);
 
             CollectionAssert.AreEquivalent(convex, concave);
 
@@ -670,12 +676,18 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 grid,
                 includeColinearPoints: false
             );
-            List<FastVector3Int> concave3 = points.BuildConcaveHull3(grid);
-            List<FastVector3Int> concave2 = points.BuildConcaveHull2(grid);
-            List<FastVector3Int> concave = points.BuildConcaveHull(grid);
+            List<FastVector3Int> concaveEdgeSplit = points.BuildConcaveHullEdgeSplit(grid);
+            List<FastVector3Int> concaveKnn = points.BuildConcaveHullKnn(grid);
+            List<FastVector3Int> concave = points.BuildConcaveHull(
+                grid,
+                new UnityExtensions.ConcaveHullOptions
+                {
+                    Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
+                }
+            );
 
-            CollectionAssert.AreEquivalent(convex, concave3);
-            CollectionAssert.AreEquivalent(convex, concave2);
+            CollectionAssert.AreEquivalent(convex, concaveEdgeSplit);
+            CollectionAssert.AreEquivalent(convex, concaveKnn);
             CollectionAssert.AreEquivalent(convex, concave);
 
             yield return null;
@@ -694,11 +706,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             };
 
             List<FastVector3Int> convexTwo = twoPoints.BuildConvexHull(grid);
-            List<FastVector3Int> concave3Two = twoPoints.BuildConcaveHull3(grid);
-            List<FastVector3Int> concave2Two = twoPoints.BuildConcaveHull2(grid);
-            List<FastVector3Int> concaveTwo = twoPoints.BuildConcaveHull(grid);
-            CollectionAssert.AreEquivalent(convexTwo, concave3Two);
-            CollectionAssert.AreEquivalent(convexTwo, concave2Two);
+            List<FastVector3Int> concaveTwoEdgeSplit = twoPoints.BuildConcaveHullEdgeSplit(grid);
+            List<FastVector3Int> concaveTwoKnn = twoPoints.BuildConcaveHullKnn(grid);
+            List<FastVector3Int> concaveTwo = twoPoints.BuildConcaveHull(
+                grid,
+                new UnityExtensions.ConcaveHullOptions
+                {
+                    Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
+                }
+            );
+            CollectionAssert.AreEquivalent(convexTwo, concaveTwoEdgeSplit);
+            CollectionAssert.AreEquivalent(convexTwo, concaveTwoKnn);
             CollectionAssert.AreEquivalent(convexTwo, concaveTwo);
 
             // Three points
@@ -709,11 +727,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 new FastVector3Int(1, 1, 0),
             };
             List<FastVector3Int> convexThree = threePoints.BuildConvexHull(grid);
-            List<FastVector3Int> concave3Three = threePoints.BuildConcaveHull3(grid);
-            List<FastVector3Int> concave2Three = threePoints.BuildConcaveHull2(grid);
-            List<FastVector3Int> concaveThree = threePoints.BuildConcaveHull(grid);
-            CollectionAssert.AreEquivalent(convexThree, concave3Three);
-            CollectionAssert.AreEquivalent(convexThree, concave2Three);
+            List<FastVector3Int> concaveThreeEdgeSplit = threePoints.BuildConcaveHullEdgeSplit(
+                grid
+            );
+            List<FastVector3Int> concaveThreeKnn = threePoints.BuildConcaveHullKnn(grid);
+            List<FastVector3Int> concaveThree = threePoints.BuildConcaveHull(
+                grid,
+                new UnityExtensions.ConcaveHullOptions
+                {
+                    Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
+                }
+            );
+            CollectionAssert.AreEquivalent(convexThree, concaveThreeEdgeSplit);
+            CollectionAssert.AreEquivalent(convexThree, concaveThreeKnn);
             CollectionAssert.AreEquivalent(convexThree, concaveThree);
 
             // Four points (rectangle)
@@ -725,11 +751,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 new FastVector3Int(3, 0, 0),
             };
             List<FastVector3Int> convexRect = rectangle.BuildConvexHull(grid);
-            List<FastVector3Int> concave3Rect = rectangle.BuildConcaveHull3(grid);
-            List<FastVector3Int> concave2Rect = rectangle.BuildConcaveHull2(grid);
-            List<FastVector3Int> concaveRect = rectangle.BuildConcaveHull(grid);
-            CollectionAssert.AreEquivalent(convexRect, concave3Rect);
-            CollectionAssert.AreEquivalent(convexRect, concave2Rect);
+            List<FastVector3Int> concaveRectEdgeSplit = rectangle.BuildConcaveHullEdgeSplit(grid);
+            List<FastVector3Int> concaveRectKnn = rectangle.BuildConcaveHullKnn(grid);
+            List<FastVector3Int> concaveRect = rectangle.BuildConcaveHull(
+                grid,
+                new UnityExtensions.ConcaveHullOptions
+                {
+                    Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
+                }
+            );
+            CollectionAssert.AreEquivalent(convexRect, concaveRectEdgeSplit);
+            CollectionAssert.AreEquivalent(convexRect, concaveRectKnn);
             CollectionAssert.AreEquivalent(convexRect, concaveRect);
 
             yield return null;
@@ -757,12 +789,18 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 convex
             );
 
-            List<FastVector3Int> concave3 = points.BuildConcaveHull3(grid);
-            List<FastVector3Int> concave2 = points.BuildConcaveHull2(grid);
-            List<FastVector3Int> concave = points.BuildConcaveHull(grid);
+            List<FastVector3Int> concaveEdgeSplit = points.BuildConcaveHullEdgeSplit(grid);
+            List<FastVector3Int> concaveKnn = points.BuildConcaveHullKnn(grid);
+            List<FastVector3Int> concave = points.BuildConcaveHull(
+                grid,
+                new UnityExtensions.ConcaveHullOptions
+                {
+                    Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
+                }
+            );
 
-            CollectionAssert.AreEquivalent(convex, concave3);
-            CollectionAssert.AreEquivalent(convex, concave2);
+            CollectionAssert.AreEquivalent(convex, concaveEdgeSplit);
+            CollectionAssert.AreEquivalent(convex, concaveKnn);
             CollectionAssert.AreEquivalent(convex, concave);
 
             yield return null;
@@ -777,13 +815,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 .Repeat(new FastVector3Int(5, 5, 0), 20)
                 .ToList();
             List<FastVector3Int> convex = points.BuildConvexHull(grid);
-            List<FastVector3Int> concave3 = points.BuildConcaveHull3(grid);
-            List<FastVector3Int> concave2 = points.BuildConcaveHull2(grid);
-            List<FastVector3Int> concave = points.BuildConcaveHull(grid);
+            List<FastVector3Int> concaveEdgeSplit = points.BuildConcaveHullEdgeSplit(grid);
+            List<FastVector3Int> concaveKnn = points.BuildConcaveHullKnn(grid);
+            List<FastVector3Int> concave = points.BuildConcaveHull(
+                grid,
+                new UnityExtensions.ConcaveHullOptions
+                {
+                    Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
+                }
+            );
 
             Assert.AreEqual(1, convex.Count);
-            CollectionAssert.AreEquivalent(convex, concave3);
-            CollectionAssert.AreEquivalent(convex, concave2);
+            CollectionAssert.AreEquivalent(convex, concaveEdgeSplit);
+            CollectionAssert.AreEquivalent(convex, concaveKnn);
             CollectionAssert.AreEquivalent(convex, concave);
 
             yield return null;
@@ -822,11 +866,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 convex
             );
 
-            List<FastVector3Int> concave3 = points.BuildConcaveHull3(grid);
-            List<FastVector3Int> concave2 = points.BuildConcaveHull2(grid);
-            List<FastVector3Int> concave = points.BuildConcaveHull(grid);
-            CollectionAssert.AreEquivalent(convex, concave3);
-            CollectionAssert.AreEquivalent(convex, concave2);
+            List<FastVector3Int> concaveEdgeSplit = points.BuildConcaveHullEdgeSplit(grid);
+            List<FastVector3Int> concaveKnn = points.BuildConcaveHullKnn(grid);
+            List<FastVector3Int> concave = points.BuildConcaveHull(
+                grid,
+                new UnityExtensions.ConcaveHullOptions
+                {
+                    Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
+                }
+            );
+            CollectionAssert.AreEquivalent(convex, concaveEdgeSplit);
+            CollectionAssert.AreEquivalent(convex, concaveKnn);
             CollectionAssert.AreEquivalent(convex, concave);
 
             yield return null;
@@ -850,26 +900,32 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             );
 
             List<FastVector3Int> convex = points.BuildConvexHull(grid);
-            List<FastVector3Int> concave3 = points.BuildConcaveHull3(grid);
-            List<FastVector3Int> concave2 = points.BuildConcaveHull2(grid);
-            List<FastVector3Int> concave = points.BuildConcaveHull(grid);
+            List<FastVector3Int> concaveEdgeSplit = points.BuildConcaveHullEdgeSplit(grid);
+            List<FastVector3Int> concaveKnn = points.BuildConcaveHullKnn(grid);
+            List<FastVector3Int> concave = points.BuildConcaveHull(
+                grid,
+                new UnityExtensions.ConcaveHullOptions
+                {
+                    Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
+                }
+            );
 
             // No duplicates in hulls
             Assert.AreEqual(convex.Distinct().Count(), convex.Count);
-            Assert.AreEqual(concave3.Distinct().Count(), concave3.Count);
-            Assert.AreEqual(concave2.Distinct().Count(), concave2.Count);
+            Assert.AreEqual(concaveEdgeSplit.Distinct().Count(), concaveEdgeSplit.Count);
+            Assert.AreEqual(concaveKnn.Distinct().Count(), concaveKnn.Count);
             Assert.AreEqual(concave.Distinct().Count(), concave.Count);
 
             // Hull points must be drawn from input set
             HashSet<FastVector3Int> input = new(points);
             Assert.IsTrue(convex.All(p => input.Contains(p)));
-            Assert.IsTrue(concave3.All(p => input.Contains(p)));
-            Assert.IsTrue(concave2.All(p => input.Contains(p)));
+            Assert.IsTrue(concaveEdgeSplit.All(p => input.Contains(p)));
+            Assert.IsTrue(concaveKnn.All(p => input.Contains(p)));
             Assert.IsTrue(concave.All(p => input.Contains(p)));
 
             // Concave hulls are inside convex hull
-            Assert.IsTrue(convex.IsConvexHullInsideConvexHull(grid, concave3));
-            Assert.IsTrue(convex.IsConvexHullInsideConvexHull(grid, concave2));
+            Assert.IsTrue(convex.IsConvexHullInsideConvexHull(grid, concaveEdgeSplit));
+            Assert.IsTrue(convex.IsConvexHullInsideConvexHull(grid, concaveKnn));
             Assert.IsTrue(convex.IsConvexHullInsideConvexHull(grid, concave));
 
             yield return null;
@@ -1013,25 +1069,31 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             {
                 List<FastVector3Int> points = GenerateRandomPointsSquare(300, 40, seed);
                 List<FastVector3Int> convex = points.BuildConvexHull(grid);
-                List<FastVector3Int> concave3 = points.BuildConcaveHull3(grid);
-                List<FastVector3Int> concave2 = points.BuildConcaveHull2(grid);
-                List<FastVector3Int> concave = points.BuildConcaveHull(grid);
+                List<FastVector3Int> concaveEdgeSplit = points.BuildConcaveHullEdgeSplit(grid);
+                List<FastVector3Int> concaveKnn = points.BuildConcaveHullKnn(grid);
+                List<FastVector3Int> concave = points.BuildConcaveHull(
+                    grid,
+                    new UnityExtensions.ConcaveHullOptions
+                    {
+                        Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
+                    }
+                );
 
                 // Invariants: no duplicates and hull points are from input
                 Assert.AreEqual(convex.Distinct().Count(), convex.Count);
-                Assert.AreEqual(concave3.Distinct().Count(), concave3.Count);
-                Assert.AreEqual(concave2.Distinct().Count(), concave2.Count);
+                Assert.AreEqual(concaveEdgeSplit.Distinct().Count(), concaveEdgeSplit.Count);
+                Assert.AreEqual(concaveKnn.Distinct().Count(), concaveKnn.Count);
                 Assert.AreEqual(concave.Distinct().Count(), concave.Count);
 
                 HashSet<FastVector3Int> input = new(points);
                 Assert.IsTrue(convex.All(input.Contains));
-                Assert.IsTrue(concave3.All(input.Contains));
-                Assert.IsTrue(concave2.All(input.Contains));
+                Assert.IsTrue(concaveEdgeSplit.All(input.Contains));
+                Assert.IsTrue(concaveKnn.All(input.Contains));
                 Assert.IsTrue(concave.All(input.Contains));
 
                 // Concave hulls must be inside convex hull
-                Assert.IsTrue(convex.IsConvexHullInsideConvexHull(grid, concave3));
-                Assert.IsTrue(convex.IsConvexHullInsideConvexHull(grid, concave2));
+                Assert.IsTrue(convex.IsConvexHullInsideConvexHull(grid, concaveEdgeSplit));
+                Assert.IsTrue(convex.IsConvexHullInsideConvexHull(grid, concaveKnn));
                 Assert.IsTrue(convex.IsConvexHullInsideConvexHull(grid, concave));
             }
 
@@ -1056,9 +1118,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             points.Add(new FastVector3Int(0, 6, 0));
 
             List<FastVector3Int> convex = points.BuildConvexHull(grid);
-            List<FastVector3Int> concave3 = points.BuildConcaveHull3(grid);
-            List<FastVector3Int> concave2 = points.BuildConcaveHull2(grid);
-            List<FastVector3Int> concave = points.BuildConcaveHull(grid);
+            List<FastVector3Int> concaveEdgeSplit = points.BuildConcaveHullEdgeSplit(grid);
+            List<FastVector3Int> concaveKnn = points.BuildConcaveHullKnn(grid);
+            List<FastVector3Int> concave = points.BuildConcaveHull(
+                grid,
+                new UnityExtensions.ConcaveHullOptions
+                {
+                    Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
+                }
+            );
 
             // Expected convex corners of cross’s bounding box
             CollectionAssert.AreEquivalent(
@@ -1074,11 +1142,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
 
             // Concave hulls should be subsets of convex; do not assert exact points
             HashSet<FastVector3Int> convexSet = new(convex);
-            Assert.IsTrue(concave3.All(p => convexSet.Contains(p) || points.Contains(p)));
-            Assert.IsTrue(concave2.All(p => convexSet.Contains(p) || points.Contains(p)));
+            Assert.IsTrue(concaveEdgeSplit.All(p => convexSet.Contains(p) || points.Contains(p)));
+            Assert.IsTrue(concaveKnn.All(p => convexSet.Contains(p) || points.Contains(p)));
             Assert.IsTrue(concave.All(p => convexSet.Contains(p) || points.Contains(p)));
-            Assert.IsTrue(convex.IsConvexHullInsideConvexHull(grid, concave3));
-            Assert.IsTrue(convex.IsConvexHullInsideConvexHull(grid, concave2));
+            Assert.IsTrue(convex.IsConvexHullInsideConvexHull(grid, concaveEdgeSplit));
+            Assert.IsTrue(convex.IsConvexHullInsideConvexHull(grid, concaveKnn));
             Assert.IsTrue(convex.IsConvexHullInsideConvexHull(grid, concave));
 
             yield return null;
@@ -1102,16 +1170,22 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             }
 
             List<FastVector3Int> convex = u.BuildConvexHull(grid);
-            List<FastVector3Int> concave3 = u.BuildConcaveHull3(grid);
-            List<FastVector3Int> concave2 = u.BuildConcaveHull2(grid);
-            List<FastVector3Int> concave = u.BuildConcaveHull(grid);
+            List<FastVector3Int> concaveEdgeSplit = u.BuildConcaveHullEdgeSplit(grid);
+            List<FastVector3Int> concaveKnn = u.BuildConcaveHullKnn(grid);
+            List<FastVector3Int> concave = u.BuildConcaveHull(
+                grid,
+                new UnityExtensions.ConcaveHullOptions
+                {
+                    Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
+                }
+            );
 
             // Invariants without over-constraining shape
-            Assert.IsTrue(convex.IsConvexHullInsideConvexHull(grid, concave3));
-            Assert.IsTrue(convex.IsConvexHullInsideConvexHull(grid, concave2));
+            Assert.IsTrue(convex.IsConvexHullInsideConvexHull(grid, concaveEdgeSplit));
+            Assert.IsTrue(convex.IsConvexHullInsideConvexHull(grid, concaveKnn));
             Assert.IsTrue(convex.IsConvexHullInsideConvexHull(grid, concave));
-            Assert.IsTrue(concave3.All(p => u.Contains(p)));
-            Assert.IsTrue(concave2.All(p => u.Contains(p)));
+            Assert.IsTrue(concaveEdgeSplit.All(p => u.Contains(p)));
+            Assert.IsTrue(concaveKnn.All(p => u.Contains(p)));
             Assert.IsTrue(concave.All(p => u.Contains(p)));
 
             yield return null;

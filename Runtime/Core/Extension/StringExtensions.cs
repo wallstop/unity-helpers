@@ -122,6 +122,24 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             public bool IsNumeric => !HasLetter && HasDigit;
         }
 
+        /// <summary>
+        /// Centers a string within a field of the specified total length by padding spaces on both sides.
+        /// </summary>
+        /// <param name="input">The string to center.</param>
+        /// <param name="length">The total width of the resulting string.</param>
+        /// <returns>
+        /// The centered string when <paramref name="length"/> exceeds the input length; otherwise the original string.
+        /// </returns>
+        /// <remarks>
+        /// Returns the original string when <paramref name="length"/> is less than or equal to the input length.
+        /// Uses space characters for padding; does not truncate.
+        /// </remarks>
+        /// <example>
+        /// <code>
+        /// string s = "hi";
+        /// string centered = s.Center(6); // "  hi  "
+        /// </code>
+        /// </example>
         public static string Center(this string input, int length)
         {
             if (input == null || length <= input.Length)

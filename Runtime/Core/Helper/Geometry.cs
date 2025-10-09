@@ -10,8 +10,14 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
     public static class Geometry
     {
         /// <summary>
-        /// Computes the axis-aligned bounding Rect that contains all input rects.
+        /// Computes the axis-aligned bounding <see cref="Rect"/> that contains all input rects.
         /// </summary>
+        /// <param name="rects">A non-empty sequence of rectangles to accumulate.</param>
+        /// <returns>The minimal axis-aligned <see cref="Rect"/> that contains all input rectangles.</returns>
+        /// <remarks>
+        /// Expects a non-empty sequence. Passing an empty sequence throws <see cref="System.InvalidOperationException"/>
+        /// from LINQ <c>Aggregate</c>.
+        /// </remarks>
         public static Rect Accumulate(this IEnumerable<Rect> rects)
         {
             return rects.Aggregate(
