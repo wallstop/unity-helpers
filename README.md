@@ -623,6 +623,8 @@ List<string> matches = commandTrie.GetWordsWithPrefix("tel");
 
 ### Helpers & Extensions
 
+See also: [Buffering Pattern](#buffering-pattern)
+
 High-level helpers and extension methods that streamline day-to-day Unity work.
 
 Key picks:
