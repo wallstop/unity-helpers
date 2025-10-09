@@ -424,6 +424,8 @@ namespace WallstopStudios.UnityHelpers.Tags
             _computedAllAttributeNamesIncludesTests = false;
             _typeFieldsLookup = null;
             _relationalFieldsLookup = null;
+            _resolvedRelationalFieldsLookup = null;
+            _elementTypeLookup = null;
             UnityEditor.EditorUtility.SetDirty(this);
         }
 #endif

@@ -22,28 +22,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
             EditorApplication.delayCall += GenerateCache;
         }
 
-        [MenuItem("Tools/WallstopStudios/Regenerate Attribute Metadata Cache")]
-        public static void RegenerateCacheMenuItem()
-        {
-            GenerateCache();
-            Debug.Log("Attribute Metadata Cache regenerated successfully.");
-        }
-
         internal static void GenerateCache()
         {
             try
             {
-                // Use TypeCache to get all types derived from AttributesComponent at compile-time
-                List<Type> attributeComponentTypes = TypeCache
-                    .GetTypesDerivedFrom<AttributesComponent>()
-                    .Where(AttributeMetadataFilters.ShouldSerialize)
-                    .ToList();
-
-                if (attributeComponentTypes.Count == 0)
-                {
-                    // No types found yet, might be during initial compilation
-                    return;
-                }
+                // Gather all types derived from AttributesComponent, with a robust fallback
+                List<Type> attributeComponentTypes = FindAttributeComponentTypes();
 
                 // Collect all unique attribute field names across all types
                 HashSet<string> allAttributeNames = new(StringComparer.Ordinal);
@@ -101,16 +85,123 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
             }
         }
 
+        private static List<Type> FindAttributeComponentTypes()
+        {
+            // Primary: fast TypeCache-based discovery
+            List<Type> types = TypeCache
+                .GetTypesDerivedFrom<AttributesComponent>()
+                .Where(AttributeMetadataFilters.ShouldSerialize)
+                .ToList();
+
+            if (types.Count > 0)
+            {
+                return types;
+            }
+
+            // Fallback: reflection-based scan across loaded assemblies
+            HashSet<Type> results = new();
+            foreach (System.Reflection.Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                if (assembly == null || assembly.IsDynamic)
+                {
+                    continue;
+                }
+
+                Type[] loaded;
+                try
+                {
+                    loaded = assembly.GetTypes();
+                }
+                catch (ReflectionTypeLoadException ex)
+                {
+                    loaded = ex.Types;
+                }
+                catch
+                {
+                    continue;
+                }
+
+                if (loaded == null || loaded.Length == 0)
+                {
+                    continue;
+                }
+
+                foreach (Type t in loaded)
+                {
+                    if (
+                        t != null
+                        && !t.IsAbstract
+                        && !t.IsGenericTypeDefinition
+                        && typeof(AttributesComponent).IsAssignableFrom(t)
+                        && AttributeMetadataFilters.ShouldSerialize(t)
+                    )
+                    {
+                        results.Add(t);
+                    }
+                }
+            }
+
+            return results.ToList();
+        }
+
         private static List<RelationalTypeMetadata> ScanRelationalAttributes()
         {
             List<RelationalTypeMetadata> result = new();
 
-            // Get all Component types using TypeCache
+            // Get all Component types using TypeCache with a reflection fallback for robustness
             List<Type> componentTypes = TypeCache
                 .GetTypesDerivedFrom<Component>()
                 .Where(type => !type.IsGenericType)
                 .Where(AttributeMetadataFilters.ShouldSerialize)
                 .ToList();
+
+            if (componentTypes.Count == 0)
+            {
+                HashSet<Type> results = new();
+                foreach (
+                    System.Reflection.Assembly assembly in AppDomain.CurrentDomain.GetAssemblies()
+                )
+                {
+                    if (assembly == null || assembly.IsDynamic)
+                    {
+                        continue;
+                    }
+
+                    Type[] loaded;
+                    try
+                    {
+                        loaded = assembly.GetTypes();
+                    }
+                    catch (ReflectionTypeLoadException ex)
+                    {
+                        loaded = ex.Types;
+                    }
+                    catch
+                    {
+                        continue;
+                    }
+
+                    if (loaded == null)
+                    {
+                        continue;
+                    }
+
+                    foreach (Type t in loaded)
+                    {
+                        if (
+                            t != null
+                            && typeof(Component).IsAssignableFrom(t)
+                            && !t.IsGenericType
+                            && AttributeMetadataFilters.ShouldSerialize(t)
+                        )
+                        {
+                            results.Add(t);
+                        }
+                    }
+                }
+
+                componentTypes = results.ToList();
+            }
 
             foreach (Type type in componentTypes)
             {

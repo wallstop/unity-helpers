@@ -6,6 +6,7 @@ namespace WallstopStudios.UnityHelpers.Editor
     using System.Linq;
     using System.Reflection;
     using UnityEditor;
+    using UnityEditor.IMGUI.Controls;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.Helper;
@@ -15,9 +16,21 @@ namespace WallstopStudios.UnityHelpers.Editor
     // https://gist.githubusercontent.com/yujen/5e1cd78e2a341260b38029de08a449da/raw/ac60c1002e0e14375de5b2b0a167af00df3f74b4/SeniaAnimationEventEditor.cs
     public sealed class AnimationEventEditor : EditorWindow
     {
-        private static readonly IReadOnlyDictionary<Type, IReadOnlyList<MethodInfo>> TypesToMethods;
+        private static IReadOnlyDictionary<Type, IReadOnlyList<MethodInfo>> _cachedTypesToMethods;
 
-        static AnimationEventEditor()
+        private static IReadOnlyDictionary<Type, IReadOnlyList<MethodInfo>> TypesToMethods
+        {
+            get
+            {
+                if (_cachedTypesToMethods == null)
+                {
+                    InitializeTypeCache();
+                }
+                return _cachedTypesToMethods;
+            }
+        }
+
+        private static void InitializeTypeCache()
         {
             Dictionary<Type, IReadOnlyList<MethodInfo>> typesToMethods = AppDomain
                 .CurrentDomain.GetAssemblies()
@@ -38,7 +51,7 @@ namespace WallstopStudios.UnityHelpers.Editor
                 }
             }
 
-            TypesToMethods = typesToMethods;
+            _cachedTypesToMethods = typesToMethods;
         }
 
         [MenuItem("Tools/Wallstop Studios/Unity Helpers/AnimationEvent Editor")]
@@ -53,11 +66,13 @@ namespace WallstopStudios.UnityHelpers.Editor
             {
                 this.animationEvent = animationEvent;
                 search = string.Empty;
+                typeSearch = string.Empty;
             }
 
             public Type selectedType;
             public MethodInfo selectedMethod;
             public string search;
+            public string typeSearch;
             public AnimationEvent animationEvent;
             public Texture2D texture;
             public bool isTextureReadable;
@@ -65,6 +80,12 @@ namespace WallstopStudios.UnityHelpers.Editor
             public Sprite sprite;
             public int? originalIndex;
             public bool overrideEnumValues;
+            public bool isValid = true;
+            public string validationMessage = string.Empty;
+
+            // Cache for filtered lookup
+            public IReadOnlyDictionary<Type, IReadOnlyList<MethodInfo>> cachedLookup;
+            public string lastSearchForCache;
         }
 
         private IReadOnlyDictionary<Type, IReadOnlyList<MethodInfo>> Lookup =>
@@ -83,19 +104,29 @@ namespace WallstopStudios.UnityHelpers.Editor
         private string _animationSearchString = string.Empty;
         private List<ObjectReferenceKeyframe> _referenceCurve;
 
+        // Cached frame rate to detect changes
+        private float _cachedFrameRate;
+        private bool _frameRateChanged;
+
         private readonly List<AnimationEvent> _baseClipEvents = new();
         private readonly List<AnimationEventItem> _state = new();
-        private readonly Dictionary<AnimationEventItem, string> _lastSeenSearch = new();
 
-        private readonly Dictionary<
-            AnimationEventItem,
-            IReadOnlyDictionary<Type, IReadOnlyList<MethodInfo>>
-        > _lookups = new();
+        // Cache for sprite previews
+        private readonly Dictionary<Sprite, Texture2D> _spriteTextureCache = new();
+
+        // Cache for filtered animation clips
+        private List<AnimationClip> _filteredClips;
+        private string _lastAnimationSearch;
 
         private int _selectedFrameIndex = -1;
 
+        // Keyboard shortcut state
+        private int _focusedEventIndex = -1;
+
         private void OnGUI()
         {
+            HandleKeyboardShortcuts();
+
             Animator tmpAnimator =
                 EditorGUILayout.ObjectField(
                     "Animator Object",
@@ -140,115 +171,190 @@ namespace WallstopStudios.UnityHelpers.Editor
             if (_currentClip != selectedClip)
             {
                 _currentClip = selectedClip;
+                _cachedFrameRate = _currentClip.frameRate;
                 RefreshAnimationEvents();
             }
 
             _selectedFrameIndex = EditorGUILayout.IntField("FrameIndex", _selectedFrameIndex);
 
-            float frameRate = _currentClip.frameRate;
-            float oldFrameRate = frameRate;
-            if (GUILayout.Button("Add Event"))
+            using (new EditorGUILayout.HorizontalScope())
             {
-                if (0 <= _selectedFrameIndex)
+                if (GUILayout.Button("Add Event"))
                 {
-                    _state.Add(
-                        new AnimationEventItem(
-                            new AnimationEvent { time = _selectedFrameIndex / frameRate }
-                        )
-                    );
+                    if (0 <= _selectedFrameIndex)
+                    {
+                        AddNewEvent(_selectedFrameIndex / _cachedFrameRate);
+                    }
+                }
+
+                if (GUILayout.Button("Add Event at Time 0"))
+                {
+                    AddNewEvent(0f);
                 }
             }
 
-            frameRate = _currentClip.frameRate = EditorGUILayout.FloatField("FrameRate", frameRate);
+            // Frame rate with change detection and undo support
+            EditorGUI.BeginChangeCheck();
+            float newFrameRate = EditorGUILayout.FloatField("FrameRate", _cachedFrameRate);
+            if (EditorGUI.EndChangeCheck())
+            {
+                _frameRateChanged = true;
+                _cachedFrameRate = newFrameRate;
+            }
+
+            if (_frameRateChanged)
+            {
+                EditorGUILayout.HelpBox(
+                    "Frame rate will be saved when you click 'Save'. Click 'Reset' to revert.",
+                    MessageType.Info
+                );
+            }
+
             DrawGuiLine(height: 5, color: new Color(0f, 0.5f, 1f, 1f));
             _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
 
-            // Need a copy because we might be mutating it
-            List<AnimationEventItem> stateCopy = _state.ToList();
-            for (int i = 0; i < stateCopy.Count; ++i)
+            // Use cached list to avoid allocations
+            int stateCount = _state.Count;
+            for (int i = 0; i < stateCount; ++i)
             {
-                AnimationEventItem item = stateCopy[i];
+                AnimationEventItem item = _state[i];
                 AnimationEvent animEvent = item.animationEvent;
 
-                int frame = Mathf.RoundToInt(animEvent.time * oldFrameRate);
+                int frame = Mathf.RoundToInt(animEvent.time * _cachedFrameRate);
+
+                // Highlight focused event
+                Color oldBgColor = GUI.backgroundColor;
+                if (i == _focusedEventIndex)
+                {
+                    GUI.backgroundColor = new Color(0.3f, 0.6f, 1f, 0.3f);
+                }
+
+                EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+                GUI.backgroundColor = oldBgColor;
+
                 EditorGUILayout.PrefixLabel("Frame " + frame);
 
                 DrawSpritePreview(item);
 
                 using (new EditorGUI.IndentLevelScope())
                 {
-                    RenderAnimationEventItem(item, frame, frameRate);
-                    if (i != stateCopy.Count - 1)
+                    RenderAnimationEventItem(item, frame, i);
+                    if (i != stateCount - 1)
                     {
                         DrawGuiLine(height: 3, color: new Color(0f, 1f, 0.3f, 1f));
                         EditorGUILayout.Space();
                     }
                 }
+
+                EditorGUILayout.EndVertical();
             }
 
             EditorGUILayout.EndScrollView();
 
             DrawControlButtons();
+
+            // Show keyboard shortcuts help
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField(
+                "Shortcuts: Delete (remove event), Ctrl+D (duplicate), Up/Down (navigate)",
+                EditorStyles.miniLabel
+            );
+        }
+
+        private void HandleKeyboardShortcuts()
+        {
+            Event e = Event.current;
+            if (e.type != EventType.KeyDown)
+            {
+                return;
+            }
+
+            if (_state.Count == 0)
+            {
+                return;
+            }
+
+            // Ensure focused index is valid
+            if (_focusedEventIndex < 0 || _focusedEventIndex >= _state.Count)
+            {
+                _focusedEventIndex = 0;
+            }
+
+            switch (e.keyCode)
+            {
+                case KeyCode.Delete:
+                    if (_focusedEventIndex >= 0 && _focusedEventIndex < _state.Count)
+                    {
+                        RecordUndo("Delete Animation Event");
+                        _state.RemoveAt(_focusedEventIndex);
+                        _focusedEventIndex = Mathf.Clamp(_focusedEventIndex, 0, _state.Count - 1);
+                        e.Use();
+                        Repaint();
+                    }
+                    break;
+
+                case KeyCode.D:
+                    if (e.control && _focusedEventIndex >= 0 && _focusedEventIndex < _state.Count)
+                    {
+                        RecordUndo("Duplicate Animation Event");
+                        AnimationEventItem original = _state[_focusedEventIndex];
+                        AnimationEvent duplicated = AnimationEventEqualityComparer.Instance.Copy(
+                            original.animationEvent
+                        );
+                        _state.Insert(_focusedEventIndex + 1, new AnimationEventItem(duplicated));
+                        _focusedEventIndex++;
+                        e.Use();
+                        Repaint();
+                    }
+                    break;
+
+                case KeyCode.UpArrow:
+                    _focusedEventIndex = Mathf.Max(0, _focusedEventIndex - 1);
+                    e.Use();
+                    Repaint();
+                    break;
+
+                case KeyCode.DownArrow:
+                    _focusedEventIndex = Mathf.Min(_state.Count - 1, _focusedEventIndex + 1);
+                    e.Use();
+                    Repaint();
+                    break;
+            }
+        }
+
+        private void AddNewEvent(float time)
+        {
+            RecordUndo("Add Animation Event");
+            _state.Add(new AnimationEventItem(new AnimationEvent { time = time }));
         }
 
         private AnimationClip DrawAndFilterAnimationClips()
         {
+            EditorGUI.BeginChangeCheck();
             _animationSearchString = EditorGUILayout.TextField(
                 "Animation Search",
                 _animationSearchString
             );
-            List<AnimationClip> animationClips =
-                _sourceAnimator.runtimeAnimatorController.animationClips.ToList();
-            int selectedIndex;
+            bool searchChanged = EditorGUI.EndChangeCheck();
+
+            // Cache filtered clips
             if (
-                string.IsNullOrEmpty(_animationSearchString)
-                || string.Equals(_animationSearchString, "*", StringComparison.Ordinal)
+                _filteredClips == null
+                || searchChanged
+                || _lastAnimationSearch != _animationSearchString
             )
             {
-                selectedIndex = EditorGUILayout.Popup(
-                    "Animation",
-                    animationClips.IndexOf(_currentClip),
-                    animationClips.Select(clip => clip.name).ToArray()
+                _filteredClips = FilterAnimationClips(
+                    _sourceAnimator.runtimeAnimatorController.animationClips.ToList()
                 );
+                _lastAnimationSearch = _animationSearchString;
             }
-            else
-            {
-                List<string> searchTerms = _animationSearchString
-                    .Split(" ")
-                    .Select(searchPart => searchPart.ToLowerInvariant().Trim())
-                    .Where(trimmed =>
-                        !string.IsNullOrEmpty(trimmed)
-                        && !string.Equals(trimmed, "*", StringComparison.Ordinal)
-                    )
-                    .ToList();
 
-                if (0 < searchTerms.Count)
-                {
-                    foreach (AnimationClip animationClip in animationClips.ToList())
-                    {
-                        if (_currentClip == animationClip)
-                        {
-                            continue;
-                        }
-
-                        foreach (string searchTerm in searchTerms)
-                        {
-                            if (animationClip.name.ToLowerInvariant().Contains(searchTerm))
-                            {
-                                continue;
-                            }
-
-                            animationClips.Remove(animationClip);
-                        }
-                    }
-                }
-
-                selectedIndex = EditorGUILayout.Popup(
-                    "Animation",
-                    animationClips.IndexOf(_currentClip),
-                    animationClips.Select(clip => clip.name).ToArray()
-                );
-            }
+            int selectedIndex = EditorGUILayout.Popup(
+                "Animation",
+                _filteredClips.IndexOf(_currentClip),
+                _filteredClips.Select(clip => clip.name).ToArray()
+            );
 
             if (selectedIndex < 0)
             {
@@ -257,7 +363,53 @@ namespace WallstopStudios.UnityHelpers.Editor
                 return null;
             }
 
-            return animationClips[selectedIndex];
+            return _filteredClips[selectedIndex];
+        }
+
+        private List<AnimationClip> FilterAnimationClips(List<AnimationClip> clips)
+        {
+            if (
+                string.IsNullOrEmpty(_animationSearchString)
+                || string.Equals(_animationSearchString, "*", StringComparison.Ordinal)
+            )
+            {
+                return clips;
+            }
+
+            List<string> searchTerms = _animationSearchString
+                .Split(" ")
+                .Select(searchPart => searchPart.ToLowerInvariant().Trim())
+                .Where(trimmed =>
+                    !string.IsNullOrEmpty(trimmed)
+                    && !string.Equals(trimmed, "*", StringComparison.Ordinal)
+                )
+                .ToList();
+
+            if (searchTerms.Count == 0)
+            {
+                return clips;
+            }
+
+            List<AnimationClip> filtered = new List<AnimationClip>();
+            foreach (AnimationClip clip in clips)
+            {
+                bool matches = true;
+                foreach (string searchTerm in searchTerms)
+                {
+                    if (!clip.name.ToLowerInvariant().Contains(searchTerm))
+                    {
+                        matches = false;
+                        break;
+                    }
+                }
+
+                if (matches || clip == _currentClip)
+                {
+                    filtered.Add(clip);
+                }
+            }
+
+            return filtered;
         }
 
         private int AnimationEventComparison(AnimationEventItem lhs, AnimationEventItem rhs)
@@ -289,7 +441,7 @@ namespace WallstopStudios.UnityHelpers.Editor
                 _baseClipEvents.SequenceEqual(
                     _state.Select(item => item.animationEvent),
                     AnimationEventEqualityComparer.Instance
-                )
+                ) && !_frameRateChanged
             )
             {
                 GUILayout.Label("No changes detected...");
@@ -320,14 +472,15 @@ namespace WallstopStudios.UnityHelpers.Editor
             {
                 if (GUILayout.Button("Re-Order"))
                 {
+                    RecordUndo("Re-order Animation Events");
                     _state.Sort(AnimationEventComparison);
                 }
             }
         }
 
-        private void RenderAnimationEventItem(AnimationEventItem item, int frame, float frameRate)
+        private void RenderAnimationEventItem(AnimationEventItem item, int frame, int itemIndex)
         {
-            int index = _state.IndexOf(item);
+            int index = itemIndex;
             using (new EditorGUILayout.HorizontalScope())
             {
                 if (
@@ -337,8 +490,10 @@ namespace WallstopStudios.UnityHelpers.Editor
                     && GUILayout.Button("Move Up")
                 )
                 {
+                    RecordUndo("Move Animation Event Up");
                     _state.RemoveAt(index);
                     _state.Insert(index - 1, item);
+                    _focusedEventIndex = index - 1;
                 }
 
                 if (
@@ -348,52 +503,66 @@ namespace WallstopStudios.UnityHelpers.Editor
                     && GUILayout.Button("Move Down")
                 )
                 {
+                    RecordUndo("Move Animation Event Down");
                     _state.RemoveAt(index);
                     _state.Insert(index + 1, item);
+                    _focusedEventIndex = index + 1;
                 }
 
                 if (
-                    0 <= index
-                    && index < _baseClipEvents.Count
+                    item.originalIndex.HasValue
+                    && item.originalIndex.Value >= 0
+                    && item.originalIndex.Value < _baseClipEvents.Count
                     && !AnimationEventEqualityComparer.Instance.Equals(
                         item.animationEvent,
-                        _baseClipEvents[index]
+                        _baseClipEvents[item.originalIndex.Value]
                     )
                     && GUILayout.Button("Reset")
                 )
                 {
+                    RecordUndo("Reset Animation Event");
                     AnimationEventEqualityComparer.Instance.CopyInto(
                         item.animationEvent,
-                        _baseClipEvents[index]
+                        _baseClipEvents[item.originalIndex.Value]
                     );
                     item.selectedType = null;
                     item.selectedMethod = null;
+                    item.cachedLookup = null;
                 }
 
                 if (GUILayout.Button($"Remove Event at frame {frame}"))
                 {
+                    RecordUndo("Remove Animation Event");
                     _state.Remove(item);
                     return;
+                }
+
+                if (GUILayout.Button("Duplicate", GUILayout.Width(80)))
+                {
+                    RecordUndo("Duplicate Animation Event");
+                    AnimationEvent duplicated = AnimationEventEqualityComparer.Instance.Copy(
+                        item.animationEvent
+                    );
+                    _state.Insert(index + 1, new AnimationEventItem(duplicated));
                 }
             }
 
             IReadOnlyDictionary<Type, IReadOnlyList<MethodInfo>> lookup = FilterLookup(item);
 
             TryPopulateTypeAndMethod(item, lookup);
+            ValidateEvent(item, lookup);
 
-            List<Type> orderedTypes = lookup.Keys.OrderBy(type => type.FullName).Take(20).ToList();
-            if (item.selectedType != null && !orderedTypes.Contains(item.selectedType))
-            {
-                orderedTypes.Add(item.selectedType);
-            }
-
-            string[] orderedTypeNames = orderedTypes.Select(type => type.FullName).ToArray();
-
-            SelectFrameTime(item, frame, frameRate);
+            SelectFrameTime(item, frame);
 
             SelectFunctionName(item);
 
-            if (!SelectTypes(item, orderedTypes, orderedTypeNames))
+            // Show validation status
+            if (!item.isValid)
+            {
+                EditorGUILayout.HelpBox(item.validationMessage, MessageType.Warning);
+            }
+
+            if (!SelectTypes(item, lookup))
             {
                 return;
             }
@@ -406,24 +575,28 @@ namespace WallstopStudios.UnityHelpers.Editor
             RenderEventParameters(item);
         }
 
-        private void SelectFrameTime(AnimationEventItem item, int frame, float frameRate)
+        private void SelectFrameTime(AnimationEventItem item, int frame)
         {
             AnimationEvent animEvent = item.animationEvent;
-            float previousTime = animEvent.time;
+            EditorGUI.BeginChangeCheck();
+            float proposedTime;
+
             if (_controlFrameTime)
             {
-                float proposedFrameTime = EditorGUILayout.FloatField("FrameTime", animEvent.time);
-                animEvent.time = Mathf.Clamp(proposedFrameTime, 0, _currentClip.length);
+                proposedTime = EditorGUILayout.FloatField("FrameTime", animEvent.time);
+                proposedTime = Mathf.Clamp(proposedTime, 0, _currentClip.length);
             }
             else
             {
                 int proposedFrame = EditorGUILayout.IntField("FrameIndex", frame);
-                animEvent.time = Mathf.Clamp(proposedFrame, 0, MaxFrameIndex) / frameRate;
+                proposedTime = Mathf.Clamp(proposedFrame, 0, MaxFrameIndex) / _cachedFrameRate;
             }
 
-            // ReSharper disable once CompareOfFloatsByEqualityOperator
-            if (previousTime != animEvent.time)
+            if (EditorGUI.EndChangeCheck())
             {
+                RecordUndo("Change Animation Event Time");
+                animEvent.time = proposedTime;
+                // Invalidate texture cache when time changes
                 item.texture = null;
             }
         }
@@ -431,13 +604,82 @@ namespace WallstopStudios.UnityHelpers.Editor
         private void SelectFunctionName(AnimationEventItem item)
         {
             AnimationEvent animEvent = item.animationEvent;
-            animEvent.functionName = EditorGUILayout.TextField(
+            EditorGUI.BeginChangeCheck();
+            string newFunctionName = EditorGUILayout.TextField(
                 "FunctionName",
                 animEvent.functionName ?? string.Empty
             );
+            if (EditorGUI.EndChangeCheck())
+            {
+                RecordUndo("Change Animation Event Function");
+                animEvent.functionName = newFunctionName;
+                item.selectedType = null;
+                item.selectedMethod = null;
+            }
+
             if (!_explicitMode)
             {
-                item.search = EditorGUILayout.TextField("Search", item.search);
+                EditorGUI.BeginChangeCheck();
+                item.search = EditorGUILayout.TextField("Method Search", item.search);
+                if (EditorGUI.EndChangeCheck())
+                {
+                    item.cachedLookup = null;
+                }
+
+                EditorGUI.BeginChangeCheck();
+                item.typeSearch = EditorGUILayout.TextField("Type Search", item.typeSearch);
+                if (EditorGUI.EndChangeCheck())
+                {
+                    item.cachedLookup = null;
+                }
+            }
+        }
+
+        private void ValidateEvent(
+            AnimationEventItem item,
+            IReadOnlyDictionary<Type, IReadOnlyList<MethodInfo>> lookup
+        )
+        {
+            item.isValid = true;
+            item.validationMessage = string.Empty;
+
+            if (string.IsNullOrEmpty(item.animationEvent.functionName))
+            {
+                item.isValid = false;
+                item.validationMessage = "Function name is empty";
+                return;
+            }
+
+            if (item.selectedType == null || item.selectedMethod == null)
+            {
+                // Try to find matching method
+                bool found = false;
+                foreach (var entry in lookup)
+                {
+                    foreach (var method in entry.Value)
+                    {
+                        if (
+                            string.Equals(
+                                method.Name,
+                                item.animationEvent.functionName,
+                                StringComparison.Ordinal
+                            )
+                        )
+                        {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (found)
+                        break;
+                }
+
+                if (!found)
+                {
+                    item.isValid = false;
+                    item.validationMessage =
+                        $"No method named '{item.animationEvent.functionName}' found in available types";
+                }
             }
         }
 
@@ -447,6 +689,11 @@ namespace WallstopStudios.UnityHelpers.Editor
         )
         {
             if (item.selectedType != null)
+            {
+                return;
+            }
+
+            if (lookup == null)
             {
                 return;
             }
@@ -474,20 +721,70 @@ namespace WallstopStudios.UnityHelpers.Editor
 
         private bool SelectTypes(
             AnimationEventItem item,
-            IList<Type> orderedTypes,
-            string[] orderedTypeNames
+            IReadOnlyDictionary<Type, IReadOnlyList<MethodInfo>> lookup
         )
         {
-            int existingIndex = orderedTypes.IndexOf(item.selectedType);
+            if (lookup == null || lookup.Count == 0)
+            {
+                EditorGUILayout.HelpBox(
+                    "No types with animation event methods found",
+                    MessageType.Info
+                );
+                return false;
+            }
+
+            // Get all types, but prioritize the selected one and filter by search
+            List<Type> allTypes = lookup.Keys.OrderBy(type => type.FullName).ToList();
+            List<Type> filteredTypes = allTypes;
+
+            // Apply type search filter
+            if (!string.IsNullOrEmpty(item.typeSearch))
+            {
+                string searchLower = item.typeSearch.ToLowerInvariant();
+                filteredTypes = allTypes
+                    .Where(t => t.FullName.ToLowerInvariant().Contains(searchLower))
+                    .ToList();
+
+                // Always include selected type even if it doesn't match search
+                if (item.selectedType != null && !filteredTypes.Contains(item.selectedType))
+                {
+                    filteredTypes.Insert(0, item.selectedType);
+                }
+            }
+
+            // Limit to reasonable number, but show more if searching
+            int limit = string.IsNullOrEmpty(item.typeSearch) ? 50 : 200;
+            List<Type> displayTypes = filteredTypes.Take(limit).ToList();
+
+            if (item.selectedType != null && !displayTypes.Contains(item.selectedType))
+            {
+                displayTypes.Insert(0, item.selectedType);
+            }
+
+            string[] orderedTypeNames = displayTypes.Select(type => type.FullName).ToArray();
+
+            int existingIndex = displayTypes.IndexOf(item.selectedType);
+
+            EditorGUI.BeginChangeCheck();
             int selectedTypeIndex = EditorGUILayout.Popup(
                 "TypeName",
                 existingIndex,
                 orderedTypeNames
             );
-            item.selectedType = selectedTypeIndex < 0 ? null : orderedTypes[selectedTypeIndex];
-            if (existingIndex != selectedTypeIndex)
+
+            if (EditorGUI.EndChangeCheck())
             {
+                RecordUndo("Change Animation Event Type");
+                item.selectedType = selectedTypeIndex < 0 ? null : displayTypes[selectedTypeIndex];
                 item.selectedMethod = null;
+            }
+
+            if (filteredTypes.Count > limit)
+            {
+                EditorGUILayout.HelpBox(
+                    $"Showing {limit} of {filteredTypes.Count} types. Use Type Search to filter.",
+                    MessageType.Info
+                );
             }
 
             return item.selectedType != null;
@@ -498,15 +795,22 @@ namespace WallstopStudios.UnityHelpers.Editor
             IReadOnlyDictionary<Type, IReadOnlyList<MethodInfo>> lookup
         )
         {
+            if (lookup == null)
+            {
+                return false;
+            }
+
             AnimationEvent animEvent = item.animationEvent;
             if (!lookup.TryGetValue(item.selectedType, out IReadOnlyList<MethodInfo> methods))
             {
                 methods = new List<MethodInfo>(0);
             }
 
-            if (item.selectedMethod == null || !methods.Contains(item.selectedMethod))
+            List<MethodInfo> methodsList = methods.ToList();
+
+            if (item.selectedMethod == null || !methodsList.Contains(item.selectedMethod))
             {
-                foreach (MethodInfo method in methods)
+                foreach (MethodInfo method in methodsList)
                 {
                     if (
                         string.Equals(method.Name, animEvent.functionName, StringComparison.Ordinal)
@@ -517,25 +821,27 @@ namespace WallstopStudios.UnityHelpers.Editor
                     }
                 }
 
-                if (item.selectedMethod != null && !methods.Contains(item.selectedMethod))
+                if (item.selectedMethod != null && !methodsList.Contains(item.selectedMethod))
                 {
-                    methods = methods.Concat(Enumerables.Of(item.selectedMethod)).ToList();
+                    methodsList.Add(item.selectedMethod);
                 }
             }
 
+            EditorGUI.BeginChangeCheck();
             int selectedMethodIndex = EditorGUILayout.Popup(
                 "MethodName",
-                methods.ToList().IndexOf(item.selectedMethod),
-                methods.Select(method => method.Name).ToArray()
+                methodsList.IndexOf(item.selectedMethod),
+                methodsList.Select(method => method.Name).ToArray()
             );
-            if (0 <= selectedMethodIndex)
+
+            if (EditorGUI.EndChangeCheck() && selectedMethodIndex >= 0)
             {
-                item.selectedMethod = methods[selectedMethodIndex];
+                RecordUndo("Change Animation Event Method");
+                item.selectedMethod = methodsList[selectedMethodIndex];
                 animEvent.functionName = item.selectedMethod.Name;
-                return true;
             }
 
-            return false;
+            return item.selectedMethod != null;
         }
 
         private void RenderEventParameters(AnimationEventItem item)
@@ -547,12 +853,16 @@ namespace WallstopStudios.UnityHelpers.Editor
                 using EditorGUI.IndentLevelScope indent = new();
 
                 Type paramType = arrayParameterInfo[0].ParameterType;
+                EditorGUI.BeginChangeCheck();
+
                 if (paramType == typeof(int))
                 {
-                    animEvent.intParameter = EditorGUILayout.IntField(
-                        "IntParameter",
-                        animEvent.intParameter
-                    );
+                    int newValue = EditorGUILayout.IntField("IntParameter", animEvent.intParameter);
+                    if (EditorGUI.EndChangeCheck())
+                    {
+                        RecordUndo("Change Animation Event Parameter");
+                        animEvent.intParameter = newValue;
+                    }
                 }
                 else if (paramType.BaseType == typeof(Enum))
                 {
@@ -565,8 +875,11 @@ namespace WallstopStudios.UnityHelpers.Editor
                         enumNames.IndexOf(enumName),
                         enumNamesArray
                     );
-                    if (0 <= index)
+
+                    bool checkEnded = EditorGUI.EndChangeCheck();
+                    if (checkEnded && index >= 0)
                     {
+                        RecordUndo("Change Animation Event Parameter");
                         animEvent.intParameter = (int)Enum.Parse(paramType, enumNames[index]);
                     }
 
@@ -576,34 +889,60 @@ namespace WallstopStudios.UnityHelpers.Editor
                     );
                     if (item.overrideEnumValues)
                     {
-                        animEvent.intParameter = EditorGUILayout.IntField(
+                        EditorGUI.BeginChangeCheck();
+                        int overrideValue = EditorGUILayout.IntField(
                             "IntParameter",
                             animEvent.intParameter
                         );
+                        if (EditorGUI.EndChangeCheck())
+                        {
+                            RecordUndo("Change Animation Event Parameter");
+                            animEvent.intParameter = overrideValue;
+                        }
                     }
                 }
                 else if (paramType == typeof(float))
                 {
-                    animEvent.floatParameter = EditorGUILayout.FloatField(
+                    float newValue = EditorGUILayout.FloatField(
                         "FloatParameter",
                         animEvent.floatParameter
                     );
+                    if (EditorGUI.EndChangeCheck())
+                    {
+                        RecordUndo("Change Animation Event Parameter");
+                        animEvent.floatParameter = newValue;
+                    }
                 }
                 else if (paramType == typeof(string))
                 {
-                    animEvent.stringParameter = EditorGUILayout.TextField(
+                    string newValue = EditorGUILayout.TextField(
                         "StringParameter",
                         animEvent.stringParameter
                     );
+                    if (EditorGUI.EndChangeCheck())
+                    {
+                        RecordUndo("Change Animation Event Parameter");
+                        animEvent.stringParameter = newValue;
+                    }
                 }
                 else if (paramType == typeof(UnityEngine.Object))
                 {
-                    animEvent.objectReferenceParameter = EditorGUILayout.ObjectField(
+                    UnityEngine.Object newValue = EditorGUILayout.ObjectField(
                         "ObjectReferenceParameter",
                         animEvent.objectReferenceParameter,
                         typeof(UnityEngine.Object),
                         true
                     );
+                    if (EditorGUI.EndChangeCheck())
+                    {
+                        RecordUndo("Change Animation Event Parameter");
+                        animEvent.objectReferenceParameter = newValue;
+                    }
+                }
+                else
+                {
+                    // End the change check that was started
+                    EditorGUI.EndChangeCheck();
                 }
             }
         }
@@ -615,61 +954,98 @@ namespace WallstopStudios.UnityHelpers.Editor
             IReadOnlyDictionary<Type, IReadOnlyList<MethodInfo>> lookup;
             if (!_explicitMode)
             {
-                if (
-                    !_lastSeenSearch.TryGetValue(item, out string lastSearch)
-                    || !string.Equals(
-                        lastSearch,
-                        item.search,
-                        StringComparison.InvariantCultureIgnoreCase
-                    )
-                    || !_lookups.TryGetValue(item, out lookup)
-                )
+                string currentSearch = item.search + "|" + item.typeSearch;
+
+                // Use cached lookup if search hasn't changed
+                if (item.cachedLookup != null && item.lastSearchForCache == currentSearch)
                 {
-                    Dictionary<Type, List<MethodInfo>> filtered = Lookup.ToDictionary(
-                        kvp => kvp.Key,
-                        kvp => kvp.Value.ToList()
-                    );
-                    List<string> searchTerms = item
-                        .search.Split(" ")
-                        .Select(searchTerm => searchTerm.Trim().ToLowerInvariant())
-                        .Where(trimmed =>
-                            !string.IsNullOrEmpty(trimmed)
-                            && !string.Equals(trimmed, "*", StringComparison.Ordinal)
-                        )
-                        .ToList();
+                    return item.cachedLookup;
+                }
 
-                    if (0 < searchTerms.Count)
+                Dictionary<Type, List<MethodInfo>> filtered =
+                    new Dictionary<Type, List<MethodInfo>>();
+
+                List<string> methodSearchTerms = item
+                    .search.Split(" ")
+                    .Select(searchTerm => searchTerm.Trim().ToLowerInvariant())
+                    .Where(trimmed =>
+                        !string.IsNullOrEmpty(trimmed)
+                        && !string.Equals(trimmed, "*", StringComparison.Ordinal)
+                    )
+                    .ToList();
+
+                List<string> typeSearchTerms = item
+                    .typeSearch.Split(" ")
+                    .Select(searchTerm => searchTerm.Trim().ToLowerInvariant())
+                    .Where(trimmed =>
+                        !string.IsNullOrEmpty(trimmed)
+                        && !string.Equals(trimmed, "*", StringComparison.Ordinal)
+                    )
+                    .ToList();
+
+                foreach (var kvp in Lookup)
+                {
+                    Type type = kvp.Key;
+
+                    // Filter by type search
+                    if (typeSearchTerms.Count > 0)
                     {
-                        foreach (KeyValuePair<Type, List<MethodInfo>> entry in filtered.ToList())
+                        bool typeMatches = true;
+                        string typeLower = type.FullName.ToLowerInvariant();
+                        foreach (string searchTerm in typeSearchTerms)
                         {
-                            foreach (string searchTerm in searchTerms)
+                            if (!typeLower.Contains(searchTerm))
                             {
-                                if (entry.Key.FullName.ToLowerInvariant().Contains(searchTerm))
-                                {
-                                    continue;
-                                }
-
-                                if (
-                                    entry.Value.Any(methodInfo =>
-                                        methodInfo.Name.ToLowerInvariant().Contains(searchTerm)
-                                    )
-                                )
-                                {
-                                    continue;
-                                }
-
-                                _ = filtered.Remove(entry.Key);
+                                typeMatches = false;
                                 break;
                             }
                         }
+                        if (!typeMatches)
+                        {
+                            continue;
+                        }
                     }
 
-                    _lookups[item] = lookup = filtered.ToDictionary(
-                        kvp => kvp.Key,
-                        kvp => (IReadOnlyList<MethodInfo>)kvp.Value
-                    );
-                    _lastSeenSearch[item] = item.search;
+                    List<MethodInfo> methodList = kvp.Value.ToList();
+
+                    // Filter by method search
+                    if (methodSearchTerms.Count > 0)
+                    {
+                        List<MethodInfo> filteredMethods = new List<MethodInfo>();
+                        foreach (MethodInfo method in methodList)
+                        {
+                            bool methodMatches = true;
+                            string methodLower = method.Name.ToLowerInvariant();
+                            foreach (string searchTerm in methodSearchTerms)
+                            {
+                                if (!methodLower.Contains(searchTerm))
+                                {
+                                    methodMatches = false;
+                                    break;
+                                }
+                            }
+                            if (methodMatches)
+                            {
+                                filteredMethods.Add(method);
+                            }
+                        }
+
+                        if (filteredMethods.Count > 0)
+                        {
+                            filtered[type] = filteredMethods;
+                        }
+                    }
+                    else
+                    {
+                        filtered[type] = methodList;
+                    }
                 }
+
+                item.cachedLookup = lookup = filtered.ToDictionary(
+                    kvp => kvp.Key,
+                    kvp => (IReadOnlyList<MethodInfo>)kvp.Value
+                );
+                item.lastSearchForCache = currentSearch;
             }
             else
             {
@@ -708,6 +1084,7 @@ namespace WallstopStudios.UnityHelpers.Editor
                             return;
                         }
 
+                        Undo.RecordObject(tImporter, "Enable Texture Read/Write");
                         tImporter.isReadable = true;
                         EditorUtility.SetDirty(tImporter);
                         tImporter.SaveAndReimport();
@@ -731,6 +1108,28 @@ namespace WallstopStudios.UnityHelpers.Editor
             if (TryFindSpriteForEvent(item, out Sprite currentSprite))
             {
                 item.sprite = currentSprite;
+
+                // Try to use cached texture first
+                if (_spriteTextureCache.TryGetValue(currentSprite, out Texture2D cachedTexture))
+                {
+                    item.texture = cachedTexture;
+                    item.isTextureReadable = true;
+                    item.isInvalidTextureRect = false;
+                    return;
+                }
+
+                // Try AssetPreview first (doesn't require Read/Write)
+                Texture2D preview = AssetPreview.GetAssetPreview(currentSprite);
+                if (preview != null)
+                {
+                    item.texture = preview;
+                    _spriteTextureCache[currentSprite] = preview;
+                    item.isTextureReadable = true;
+                    item.isInvalidTextureRect = false;
+                    return;
+                }
+
+                // Fall back to manual copy if texture is readable
                 item.isTextureReadable = currentSprite.texture.isReadable;
                 item.isInvalidTextureRect = false;
                 if (item.isTextureReadable)
@@ -740,7 +1139,7 @@ namespace WallstopStudios.UnityHelpers.Editor
                     {
                         maybeTextureRect = currentSprite.textureRect;
                     }
-                    catch
+                    catch (Exception)
                     {
                         item.isInvalidTextureRect = true;
                     }
@@ -748,7 +1147,9 @@ namespace WallstopStudios.UnityHelpers.Editor
                     if (maybeTextureRect != null)
                     {
                         Rect textureRect = maybeTextureRect.Value;
-                        item.texture = CopyTexture(textureRect, currentSprite.texture);
+                        Texture2D copiedTexture = CopyTexture(textureRect, currentSprite.texture);
+                        item.texture = copiedTexture;
+                        _spriteTextureCache[currentSprite] = copiedTexture;
                     }
                 }
             }
@@ -762,10 +1163,12 @@ namespace WallstopStudios.UnityHelpers.Editor
         private bool TryFindSpriteForEvent(AnimationEventItem item, out Sprite sprite)
         {
             sprite = null;
-            foreach (
-                ObjectReferenceKeyframe keyFrame in _referenceCurve
-                    ?? Enumerable.Empty<ObjectReferenceKeyframe>()
-            )
+            if (_referenceCurve == null || _referenceCurve.Count == 0)
+            {
+                return false;
+            }
+
+            foreach (ObjectReferenceKeyframe keyFrame in _referenceCurve)
             {
                 if (keyFrame.time <= item.animationEvent.time)
                 {
@@ -814,12 +1217,16 @@ namespace WallstopStudios.UnityHelpers.Editor
         {
             _state.Clear();
             _baseClipEvents.Clear();
-            _lookups.Clear();
-            _lastSeenSearch.Clear();
+            _spriteTextureCache.Clear();
+            _focusedEventIndex = -1;
+            _frameRateChanged = false;
+
             if (_currentClip == null)
             {
                 return;
             }
+
+            _cachedFrameRate = _currentClip.frameRate;
 
             for (int i = 0; i < _currentClip.events.Length; i++)
             {
@@ -853,14 +1260,29 @@ namespace WallstopStudios.UnityHelpers.Editor
             );
         }
 
+        private void RecordUndo(string operationName)
+        {
+            Undo.RecordObject(this, operationName);
+        }
+
         private void SaveAnimation()
         {
             if (_currentClip != null)
             {
+                Undo.RecordObject(_currentClip, "Save Animation Events");
+
                 AnimationUtility.SetAnimationEvents(
                     _currentClip,
                     _state.Select(item => item.animationEvent).ToArray()
                 );
+
+                // Apply frame rate changes if any
+                if (_frameRateChanged)
+                {
+                    _currentClip.frameRate = _cachedFrameRate;
+                    _frameRateChanged = false;
+                }
+
                 EditorUtility.SetDirty(_currentClip);
                 AssetDatabase.SaveAssetIfDirty(_currentClip);
                 _baseClipEvents.Clear();
