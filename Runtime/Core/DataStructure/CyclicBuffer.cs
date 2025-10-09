@@ -14,6 +14,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     [ProtoContract(IgnoreListHandling = true)]
     public sealed class CyclicBuffer<T> : IReadOnlyList<T>
     {
+        [ProtoIgnore]
+        private PooledResource<List<T>> _serializedItemsLease;
+
         public struct CyclicBufferEnumerator : IEnumerator<T>
         {
             private readonly CyclicBuffer<T> _buffer;
@@ -355,20 +358,17 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         {
             if (Count == 0)
             {
+                // Ensure any previous lease is returned
+                _serializedItemsLease.Dispose();
                 _serializedItems = null;
                 return;
             }
 
-            List<T> buffer = _serializedItems;
-            if (buffer == null)
-            {
-                buffer = new List<T>(Count);
-            }
-            else
-            {
-                buffer.Clear();
-            }
+            // Return any previous lease before renting a new one
+            _serializedItemsLease.Dispose();
 
+            // Rent a temporary list to avoid allocations during serialization
+            _serializedItemsLease = Buffers<T>.List.Get(out List<T> buffer);
             for (int i = 0; i < Count; i++)
             {
                 buffer.Add(_buffer[AdjustedIndexFor(i)]);
@@ -380,6 +380,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         [ProtoAfterSerialization]
         private void OnProtoSerialized()
         {
+            // Release rented list back to pool
+            _serializedItemsLease.Dispose();
             _serializedItems = null;
         }
 
@@ -412,6 +414,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             Count = itemCount;
             _position = Count < Capacity ? Count : 0;
             _serializedItems = null;
+            // Ensure no outstanding lease remains
+            _serializedItemsLease.Dispose();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -293,7 +293,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
 
             List<string> finalReadmeLines = BuildTabbedReadmeLines(datasetOutputs);
 
-            BenchmarkReadmeUpdater.UpdateSection("SPATIAL_TREE_3D_BENCHMARKS", finalReadmeLines);
+            BenchmarkReadmeUpdater.UpdateSection(
+                "SPATIAL_TREE_3D_BENCHMARKS",
+                finalReadmeLines,
+                "SPATIAL_TREE_3D_PERFORMANCE.md"
+            );
 
             yield break;
         }

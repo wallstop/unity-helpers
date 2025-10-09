@@ -422,9 +422,14 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 currentCategory == CharacterCategory.Lower
                 || currentCategory == CharacterCategory.Upper;
 
-            if ((currentIsDigit && lastWasLetter) || (currentIsLetter && lastWasDigit))
+            if (currentIsDigit && lastWasLetter)
             {
                 return true;
+            }
+
+            if (currentIsLetter && lastWasDigit)
+            {
+                return currentCategory == CharacterCategory.Upper;
             }
 
             return false;
@@ -887,11 +892,48 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return input.Substring(0, truncateLength) + ellipsis;
         }
 
+        private static bool IsAlreadyCamelCase(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                return false;
+            }
+
+            bool hasSeenLetter = false;
+
+            for (int i = 0; i < value.Length; ++i)
+            {
+                char c = value[i];
+
+                if (WordSeparators.Contains(c) || char.IsWhiteSpace(c) || CharsToStrip.Contains(c))
+                {
+                    return false;
+                }
+
+                if (char.IsLetter(c) && !hasSeenLetter)
+                {
+                    if (!char.IsLower(c))
+                    {
+                        return false;
+                    }
+
+                    hasSeenLetter = true;
+                }
+            }
+
+            return true;
+        }
+
         public static string ToCamelCase(this string value)
         {
             if (string.IsNullOrEmpty(value))
             {
                 return string.Empty;
+            }
+
+            if (IsAlreadyCamelCase(value))
+            {
+                return value;
             }
 
             string pascalCase = value.ToPascalCase();

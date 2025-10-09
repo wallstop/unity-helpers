@@ -251,6 +251,39 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
+        public void DequeEmptyPreservesCapacityOnSerialization()
+        {
+            const int capacity = 32;
+            Deque<int> original = new(capacity);
+
+            Deque<int> deserialized = SerializeDeserialize(original);
+
+            Assert.AreEqual(0, deserialized.Count);
+            Assert.AreEqual(capacity, deserialized.Capacity);
+        }
+
+        [Test]
+        public void DequeWrapAroundStateSerializesAndDeserializes()
+        {
+            Deque<int> original = new(4);
+            original.PushBack(1);
+            original.PushBack(2);
+            original.PushBack(3);
+            // Force wrap by popping and pushing
+            Assert.IsTrue(original.TryPopFront(out _)); // remove 1
+            original.PushBack(4); // wrap occurs internally
+            original.PushFront(0); // may trigger resize or wrap
+
+            Deque<int> deserialized = SerializeDeserialize(original);
+
+            Assert.AreEqual(original.Count, deserialized.Count);
+            for (int i = 0; i < original.Count; i++)
+            {
+                Assert.AreEqual(original[i], deserialized[i]);
+            }
+        }
+
+        [Test]
         public void SparseSetSerializesAndDeserializes()
         {
             SparseSet original = new(100);

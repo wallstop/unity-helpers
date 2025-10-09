@@ -38,7 +38,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             LogRow(RunTest(new XorShiftRandom(), timeout));
             LogRow(RunTest(new XoroShiroRandom(), timeout));
 
-            BenchmarkReadmeUpdater.UpdateSection("RANDOM_BENCHMARKS", tableLines);
+            BenchmarkReadmeUpdater.UpdateSection(
+                "RANDOM_BENCHMARKS",
+                tableLines,
+                "RANDOM_PERFORMANCE.md"
+            );
 
             void LogRow(string row)
             {

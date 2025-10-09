@@ -6,6 +6,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     using System.Runtime.CompilerServices;
     using ProtoBuf;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Utils;
 
     /// <summary>
     /// A highly optimized double-ended queue (deque) implemented with a circular array.
@@ -72,6 +73,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
         [ProtoMember(1)]
         private List<T> _serializedItems;
+
+        [ProtoIgnore]
+        private PooledResource<List<T>> _serializedItemsLease;
 
         [SerializeField]
         [ProtoMember(2)]
@@ -428,21 +432,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             if (_count == 0)
             {
+                _serializedItemsLease.Dispose();
                 _serializedItems = null;
                 return;
             }
 
-            List<T> buffer = _serializedItems;
+            // Return any previous lease before renting a new one
+            _serializedItemsLease.Dispose();
 
-            if (buffer == null || buffer.Capacity < _count)
-            {
-                buffer = new List<T>(_count);
-            }
-            else
-            {
-                buffer.Clear();
-            }
-
+            // Rent a temporary list to avoid allocations during serialization
+            _serializedItemsLease = Buffers<T>.List.Get(out List<T> buffer);
             for (int i = 0; i < _count; i++)
             {
                 int actualIndex = (_head + i) % _items.Length;
@@ -455,6 +454,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         [ProtoAfterSerialization]
         private void OnProtoSerialized()
         {
+            // Release rented list back to pool
+            _serializedItemsLease.Dispose();
             _serializedItems = null;
         }
 
@@ -497,6 +498,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             _serializedItems = null;
             _serializedCapacity = _items.Length;
+            // Ensure no outstanding lease remains
+            _serializedItemsLease.Dispose();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

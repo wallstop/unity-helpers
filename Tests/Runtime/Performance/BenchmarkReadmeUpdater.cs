@@ -13,13 +13,22 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
 
         public static void UpdateSection(string sectionName, IEnumerable<string> lines)
         {
+            UpdateSection(sectionName, lines, ReadmeFileName);
+        }
+
+        public static void UpdateSection(
+            string sectionName,
+            IEnumerable<string> lines,
+            string fileName
+        )
+        {
             if (Helpers.IsRunningInContinuousIntegration)
             {
                 return;
             }
 
-            string readmePath = ResolveReadmePath();
-            if (string.IsNullOrWhiteSpace(readmePath) || !File.Exists(readmePath))
+            string filePath = ResolveFilePath(fileName);
+            if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
             {
                 return;
             }
@@ -27,22 +36,22 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             string startToken = $"<!-- {sectionName}_START -->";
             string endToken = $"<!-- {sectionName}_END -->";
 
-            string readmeText = File.ReadAllText(readmePath);
-            int startIndex = readmeText.IndexOf(startToken, StringComparison.Ordinal);
-            int endIndex = readmeText.IndexOf(endToken, StringComparison.Ordinal);
+            string fileText = File.ReadAllText(filePath);
+            int startIndex = fileText.IndexOf(startToken, StringComparison.Ordinal);
+            int endIndex = fileText.IndexOf(endToken, StringComparison.Ordinal);
             if (startIndex < 0 || endIndex < 0 || endIndex < startIndex)
             {
                 return;
             }
 
-            string newline = readmeText.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
+            string newline = fileText.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
 
             List<string> contentLines = lines?.ToList() ?? new List<string>();
 
             string replacement =
                 startToken + newline + string.Join(newline, contentLines) + newline + endToken;
 
-            string existing = readmeText.Substring(
+            string existing = fileText.Substring(
                 startIndex,
                 endIndex + endToken.Length - startIndex
             );
@@ -52,13 +61,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             }
 
             string updated =
-                readmeText.Substring(0, startIndex)
+                fileText.Substring(0, startIndex)
                 + replacement
-                + readmeText[(endIndex + endToken.Length)..];
-            File.WriteAllText(readmePath, updated);
+                + fileText[(endIndex + endToken.Length)..];
+            File.WriteAllText(filePath, updated);
         }
 
-        private static string ResolveReadmePath()
+        private static string ResolveFilePath(string fileName)
         {
             string startDirectory = DirectoryHelper.GetCallerScriptDirectory();
             string root = DirectoryHelper.FindPackageRootPath(startDirectory);
@@ -67,7 +76,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 return string.Empty;
             }
 
-            return Path.Combine(root, ReadmeFileName);
+            return Path.Combine(root, fileName);
         }
     }
 }

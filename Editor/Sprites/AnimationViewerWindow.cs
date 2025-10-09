@@ -12,6 +12,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     using UnityEngine.UIElements;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Editor;
     using WallstopStudios.UnityHelpers.Visuals;
     using WallstopStudios.UnityHelpers.Visuals.UIToolkit;
     using Object = UnityEngine.Object;
@@ -21,6 +22,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         private const string PackageId = "com.wallstop-studios.unity-helpers";
         private const float DragThresholdSqrMagnitude = 10f * 10f;
         private const int InvalidPointerId = -1;
+        private const string DirToolName = "SpriteAnimationEditor";
+        private const string DirContextKey = "Clips";
 
         private sealed class EditorLayerData
         {
@@ -338,7 +341,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             if (_fileSelector == null)
             {
                 _fileSelector = new MultiFileSelectorElement(
-                    ProjectAnimationSettings.Instance.lastAnimationPath,
+                    GetLastAnimationDirectory(),
                     new[] { ".anim" }
                 );
                 _fileSelector.OnFilesSelected += HandleFilesSelectedFromCustomBrowser;
@@ -351,7 +354,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
             else if (_fileSelector.parent == null)
             {
-                _fileSelector.ResetAndShow(ProjectAnimationSettings.Instance.lastAnimationPath);
+                _fileSelector.ResetAndShow(GetLastAnimationDirectory());
                 root.Add(_fileSelector);
                 if (root.childCount > 1)
                 {
@@ -432,8 +435,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 this.Log($"Added {clipsAddedCount} clip(s).");
                 if (!string.IsNullOrWhiteSpace(lastValidDirectory))
                 {
-                    ProjectAnimationSettings.Instance.lastAnimationPath = lastValidDirectory;
-                    ProjectAnimationSettings.Instance.Save();
+                    RecordLastAnimationDirectory(lastValidDirectory);
                 }
             }
         }
@@ -497,7 +499,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         {
             string path = EditorUtility.OpenFilePanelWithFilters(
                 "Select Animation Clip to Add",
-                ProjectAnimationSettings.Instance.lastAnimationPath,
+                GetLastAnimationDirectory(),
                 new[] { "Animation Clip", "anim" }
             );
 
@@ -508,8 +510,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     path = "Assets" + path.Substring(Application.dataPath.Length);
                 }
 
-                ProjectAnimationSettings.Instance.lastAnimationPath = Path.GetDirectoryName(path);
-                ProjectAnimationSettings.Instance.Save();
+                string dir = Path.GetDirectoryName(path);
+                if (!string.IsNullOrWhiteSpace(dir))
+                {
+                    RecordLastAnimationDirectory(dir);
+                }
 
                 AnimationClip clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(path);
                 if (clip != null)
@@ -517,6 +522,64 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     AddEditorLayer(clip);
                 }
             }
+        }
+
+        private static string GetLastAnimationDirectory()
+        {
+            try
+            {
+                DirectoryUsageData[] paths = PersistentDirectorySettings.Instance?.GetPaths(
+                    DirToolName,
+                    DirContextKey,
+                    topOnly: true,
+                    topN: 1
+                );
+                string candidate = (paths != null && paths.Length > 0) ? paths[0]?.path : null;
+
+                if (string.IsNullOrWhiteSpace(candidate))
+                {
+                    return "Assets";
+                }
+
+                // Prefer Assets-relative paths for UI components that expect them
+                if (!candidate.StartsWith("Assets", StringComparison.OrdinalIgnoreCase))
+                {
+                    string assetsRoot = Application.dataPath.Replace('\\', '/');
+                    string full = candidate.Replace('\\', '/');
+                    if (full.StartsWith(assetsRoot, StringComparison.OrdinalIgnoreCase))
+                    {
+                        candidate = "Assets" + full.Substring(assetsRoot.Length);
+                    }
+                }
+
+                return string.IsNullOrWhiteSpace(candidate) ? "Assets" : candidate;
+            }
+            catch
+            {
+                return "Assets";
+            }
+        }
+
+        private static void RecordLastAnimationDirectory(string assetsRelativeDir)
+        {
+            if (string.IsNullOrWhiteSpace(assetsRelativeDir))
+            {
+                return;
+            }
+
+            // Ensure Assets-relative if possible
+            string path = assetsRelativeDir.Replace('\\', '/');
+            if (!path.StartsWith("Assets", StringComparison.OrdinalIgnoreCase))
+            {
+                string assetsRoot = Application.dataPath.Replace('\\', '/');
+                string full = path;
+                if (full.StartsWith(assetsRoot, StringComparison.OrdinalIgnoreCase))
+                {
+                    path = "Assets" + full.Substring(assetsRoot.Length);
+                }
+            }
+
+            PersistentDirectorySettings.Instance?.RecordPath(DirToolName, DirContextKey, path);
         }
 
         private void AddEditorLayer(AnimationClip clip)

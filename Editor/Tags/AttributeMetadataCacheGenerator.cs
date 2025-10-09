@@ -100,7 +100,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
 
             // Fallback: reflection-based scan across loaded assemblies
             HashSet<Type> results = new();
-            foreach (System.Reflection.Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
+            foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
                 if (assembly == null || assembly.IsDynamic)
                 {
@@ -158,9 +158,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
             if (componentTypes.Count == 0)
             {
                 HashSet<Type> results = new();
-                foreach (
-                    System.Reflection.Assembly assembly in AppDomain.CurrentDomain.GetAssemblies()
-                )
+                foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
                 {
                     if (assembly == null || assembly.IsDynamic)
                     {
@@ -243,6 +241,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
                         elementType = fieldType.GetElementType();
                     }
                     else
+                    {
                         switch (fieldType.IsGenericType)
                         {
                             case true when fieldType.GetGenericTypeDefinition() == typeof(List<>):
@@ -259,6 +258,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
                                 elementType = fieldType;
                                 break;
                         }
+                    }
 
                     // Determine if element type is an interface or base type
                     bool isInterface =

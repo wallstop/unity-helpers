@@ -32,11 +32,9 @@ namespace WallstopStudios.UnityHelpers.Editor
 
         private static void InitializeTypeCache()
         {
-            Dictionary<Type, IReadOnlyList<MethodInfo>> typesToMethods = AppDomain
-                .CurrentDomain.GetAssemblies()
-                .SelectMany(assembly => assembly.GetTypes())
-                .Where(type => type.IsClass)
-                .Where(type => typeof(MonoBehaviour).IsAssignableFrom(type))
+            Dictionary<Type, IReadOnlyList<MethodInfo>> typesToMethods = TypeCache
+                .GetTypesDerivedFrom<MonoBehaviour>()
+                .Where(type => type.IsClass && !type.IsAbstract)
                 .ToDictionary(
                     type => type,
                     type =>
@@ -671,7 +669,9 @@ namespace WallstopStudios.UnityHelpers.Editor
                         }
                     }
                     if (found)
+                    {
                         break;
+                    }
                 }
 
                 if (!found)
