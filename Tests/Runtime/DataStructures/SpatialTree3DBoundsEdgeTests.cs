@@ -85,5 +85,43 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             oct.GetElementsInBounds(query, buf);
             Assert.AreEqual(expected, buf.Count);
         }
+
+        [Test]
+        public void TouchingMaxFaceConsistentAcrossTrees()
+        {
+            Vector3[] points = CreateGridPoints(10, 10, 10);
+
+            var kd = new KdTree3D<Vector3>(points, p => p);
+            var oct = new OctTree3D<Vector3>(points, p => p);
+
+            Bounds query = new Bounds(new Vector3(4.5f, 9f, 4.5f), new Vector3(9f, 1f, 9f));
+
+            var buf = new List<Vector3>();
+            kd.GetElementsInBounds(query, buf);
+            int expected = buf.Count;
+
+            oct.GetElementsInBounds(query, buf);
+            Assert.AreEqual(expected, buf.Count);
+            Assert.AreEqual(100, expected);
+        }
+
+        [Test]
+        public void TouchingMinFaceConsistentAcrossTrees()
+        {
+            Vector3[] points = CreateGridPoints(10, 10, 10);
+
+            var kd = new KdTree3D<Vector3>(points, p => p);
+            var oct = new OctTree3D<Vector3>(points, p => p);
+
+            Bounds query = new Bounds(new Vector3(0f, 4.5f, 4.5f), new Vector3(1f, 9f, 9f));
+
+            var buf = new List<Vector3>();
+            kd.GetElementsInBounds(query, buf);
+            int expected = buf.Count;
+
+            oct.GetElementsInBounds(query, buf);
+            Assert.AreEqual(expected, buf.Count);
+            Assert.AreEqual(100, expected);
+        }
     }
 }

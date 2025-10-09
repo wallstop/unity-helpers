@@ -413,24 +413,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
                     // If the node is fully contained, we can skip distance checks for points
                     // but still need to check minimum range
-                    if (nodeFullyContained && !hasMinimumRange)
+                    if (nodeFullyContained)
                     {
-                        // Fast path: all points in this node are within range
-                        for (int i = start; i < end; ++i)
+                        if (!hasMinimumRange)
                         {
-                            elementsInRange.Add(entries[indices[i]].value);
-                        }
-                    }
-                    else if (nodeFullyContained && hasMinimumRange)
-                    {
-                        // Node is fully in outer sphere, but need to check minimum range
-                        // Check if node is fully outside minimum sphere
-                        bool nodeFullyOutsideMinimum = !minimumSphere.Intersects(
-                            currentNode.boundary
-                        );
-                        if (nodeFullyOutsideMinimum)
-                        {
-                            // Fast path: all points are in the annulus
                             for (int i = start; i < end; ++i)
                             {
                                 elementsInRange.Add(entries[indices[i]].value);
@@ -438,14 +424,30 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                         }
                         else
                         {
-                            // Need to check each point against minimum range
-                            for (int i = start; i < end; ++i)
+                            // Node is fully in outer sphere, but need to check minimum range
+                            // Check if node is fully outside minimum sphere
+                            bool nodeFullyOutsideMinimum = !minimumSphere.Intersects(
+                                currentNode.boundary
+                            );
+                            if (nodeFullyOutsideMinimum)
                             {
-                                Entry entry = entries[indices[i]];
-                                float squareDistance = (entry.position - position).sqrMagnitude;
-                                if (squareDistance > minimumRangeSquared)
+                                // Fast path: all points are in the annulus
+                                for (int i = start; i < end; ++i)
                                 {
-                                    elementsInRange.Add(entry.value);
+                                    elementsInRange.Add(entries[indices[i]].value);
+                                }
+                            }
+                            else
+                            {
+                                // Need to check each point against minimum range
+                                for (int i = start; i < end; ++i)
+                                {
+                                    Entry entry = entries[indices[i]];
+                                    float squareDistance = (entry.position - position).sqrMagnitude;
+                                    if (squareDistance > minimumRangeSquared)
+                                    {
+                                        elementsInRange.Add(entry.value);
+                                    }
                                 }
                             }
                         }
@@ -483,7 +485,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                         continue;
                     }
 
-                    if (IntersectsOrTouches(queryBounds, child.boundary))
+                    if (queryBounds.Intersects(child.boundary))
                     {
                         nodesToVisit.Push(child);
                     }
@@ -493,44 +495,17 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             return elementsInRange;
         }
 
-        public List<T> GetElementsInBounds(Bounds bounds, List<T> elementsInBounds)
-        {
-            using PooledResource<Stack<OctTreeNode>> stackResource =
-                Buffers<OctTreeNode>.Stack.Get();
-            BoundingBox3D queryInclusive = BoundingBox3D.FromClosedBoundsInclusiveMax(bounds);
-            BoundingBox3D queryExclusive = BoundingBox3D.FromClosedBounds(bounds);
-            return GetElementsInBounds(
-                queryInclusive,
-                queryExclusive,
-                elementsInBounds,
-                stackResource.resource
-            );
-        }
-
-        public List<T> GetElementsInBounds(
-            BoundingBox3D queryBounds,
-            List<T> elementsInBounds,
-            Stack<OctTreeNode> nodeBuffer
-        )
-        {
-            // Back-compat: use same bounds for inclusive traversal and exclusive point checks
-            return GetElementsInBounds(queryBounds, queryBounds, elementsInBounds, nodeBuffer);
-        }
-
-        public List<T> GetElementsInBounds(
-            BoundingBox3D queryBoundsInclusive,
-            BoundingBox3D queryBoundsExclusive,
-            List<T> elementsInBounds,
-            Stack<OctTreeNode> nodeBuffer
-        )
+        public List<T> GetElementsInBounds(Bounds queryBounds, List<T> elementsInBounds)
         {
             elementsInBounds.Clear();
-            if (_head._count <= 0 || !IntersectsOrTouches(queryBoundsInclusive, _bounds))
+            if (_head._count <= 0 || !queryBounds.Intersects(_boundary))
             {
                 return elementsInBounds;
             }
 
-            Stack<OctTreeNode> nodesToVisit = nodeBuffer ?? new Stack<OctTreeNode>();
+            using PooledResource<Stack<OctTreeNode>> stackResource = Buffers<OctTreeNode>.Stack.Get(
+                out Stack<OctTreeNode> nodesToVisit
+            );
             nodesToVisit.Push(_head);
 
             Entry[] entries = _entries;
@@ -543,7 +518,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     continue;
                 }
 
-                if (queryBoundsExclusive.Contains(currentNode.boundary))
+                Bounds nodeBounds = currentNode.boundary.ToBounds();
+                if (queryBounds.Contains(nodeBounds.min) && queryBounds.Contains(nodeBounds.max))
                 {
                     int start = currentNode._startIndex;
                     int end = start + currentNode._count;
@@ -562,7 +538,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     for (int i = start; i < end; ++i)
                     {
                         Entry entry = entries[indices[i]];
-                        if (queryBoundsExclusive.Contains(entry.position))
+                        if (queryBounds.Contains(entry.position))
                         {
                             elementsInBounds.Add(entry.value);
                         }
@@ -580,7 +556,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                         continue;
                     }
 
-                    if (IntersectsOrTouches(queryBoundsInclusive, child.boundary))
+                    if (queryBounds.Intersects(child.boundary.ToBounds()))
                     {
                         nodesToVisit.Push(child);
                     }
@@ -590,30 +566,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             return elementsInBounds;
         }
 
-        private static bool IntersectsOrTouches(BoundingBox3D a, BoundingBox3D b)
-        {
-            return a.min.x <= b.max.x
-                && a.max.x >= b.min.x
-                && a.min.y <= b.max.y
-                && a.max.y >= b.min.y
-                && a.min.z <= b.max.z
-                && a.max.z >= b.min.z;
-        }
-
-        private static bool ContainsInclusiveMax(BoundingBox3D a, BoundingBox3D b)
-        {
-            if (b.IsEmpty)
-            {
-                return false;
-            }
-
-            return a.min.x <= b.min.x
-                && a.min.y <= b.min.y
-                && a.min.z <= b.min.z
-                && a.max.x >= b.max.x
-                && a.max.y >= b.max.y
-                && a.max.z >= b.max.z;
-        }
+        // No additional helpers; use Unity Bounds methods to mirror KDTree behavior
 
         public List<T> GetApproximateNearestNeighbors(
             Vector3 position,
@@ -632,19 +585,14 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             int[] indices = _indices;
 
             using PooledResource<List<NodeDistance>> nodeHeapResource =
-                Buffers<NodeDistance>.List.Get();
-            List<NodeDistance> nodeHeap = nodeHeapResource.resource;
-            nodeHeap.Clear();
+                Buffers<NodeDistance>.List.Get(out List<NodeDistance> nodeHeap);
             PushNode(nodeHeap, _head, position);
 
             using PooledResource<List<EntryDistance>> bestNeighborResource =
-                Buffers<EntryDistance>.List.Get();
-            List<EntryDistance> bestNeighbors = bestNeighborResource.resource;
-            bestNeighbors.Clear();
-
-            using PooledResource<HashSet<T>> bestNeighborValuesResource = Buffers<T>.HashSet.Get();
-            HashSet<T> bestNeighborValues = bestNeighborValuesResource.resource;
-            bestNeighborValues.Clear();
+                Buffers<EntryDistance>.List.Get(out List<EntryDistance> bestNeighbors);
+            using PooledResource<HashSet<T>> bestNeighborValuesResource = Buffers<T>.HashSet.Get(
+                out HashSet<T> bestNeighborValues
+            );
 
             float currentWorstDistanceSquared = float.PositiveInfinity;
 
@@ -692,12 +640,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                         }
 
                         bestNeighbors.Add(new EntryDistance(entry, distanceSquared));
-
                         if (bestNeighbors.Count == count)
                         {
                             currentWorstDistanceSquared = FindWorstDistanceSquared(bestNeighbors);
                         }
-
                         continue;
                     }
 
@@ -737,7 +683,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             static void PushNode(List<NodeDistance> heap, OctTreeNode node, Vector3 point)
             {
-                NodeDistance entry = new NodeDistance(node, node.boundary.DistanceSquaredTo(point));
+                NodeDistance entry = new(node, node.boundary.DistanceSquaredTo(point));
                 heap.Add(entry);
                 int index = heap.Count - 1;
 

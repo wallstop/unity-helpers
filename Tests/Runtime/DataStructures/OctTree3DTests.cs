@@ -187,11 +187,11 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             tree.GetElementsInBounds(bounds, results);
 
-            CollectionAssert.AreEquivalent(new[] { points[0] }, results);
+            CollectionAssert.AreEquivalent(points, results);
         }
 
         [Test]
-        public void EdgeAlignedBoundsOnGridUsesExclusiveUpperBoundary()
+        public void EdgeAlignedBoundsOnGridConsistentWithKDTree()
         {
             List<Vector3> points = new();
             for (int z = 0; z < 10; ++z)
@@ -209,11 +209,11 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Bounds bounds = new(new Vector3(4.5f, 4.5f, 4.5f), new Vector3(9f, 9f, 9f));
             List<Vector3> results = new();
             tree.GetElementsInBounds(bounds, results);
-            Assert.AreEqual(729, results.Count);
+            Assert.AreEqual(1000, results.Count);
         }
 
         [Test]
-        public void FullBoundsOnGridCenteredAtBoundaryCenterUsesExclusiveUpperBoundary()
+        public void FullBoundsOnGridCenteredAtBoundaryCenterConsistentWithKDTree()
         {
             List<Vector3> points = new();
             for (int z = 0; z < 100; ++z)
@@ -233,8 +233,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Bounds bounds = new(center, size);
             List<Vector3> results = new();
             tree.GetElementsInBounds(bounds, results);
-            Assert.Greater(results.Count, 900000);
-            Assert.Less(results.Count, 1000000);
+            Assert.AreEqual(980100, results.Count);
         }
 
         [Test]
@@ -251,11 +250,11 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             tree.GetElementsInBounds(bounds, results);
 
-            CollectionAssert.AreEquivalent(new[] { points[0] }, results);
+            CollectionAssert.AreEquivalent(points, results);
         }
 
         [Test]
-        public void GetElementsInBoundsExcludesPointExactlyAtUpperBoundary()
+        public void GetElementsInBoundsIncludesPointExactlyAtUpperBoundary()
         {
             List<Vector3> points = new() { new Vector3(1f, 0f, 0f) };
 
@@ -268,7 +267,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             tree.GetElementsInBounds(bounds, results);
 
-            Assert.IsEmpty(results);
+            CollectionAssert.AreEquivalent(points, results);
         }
 
         [Test]

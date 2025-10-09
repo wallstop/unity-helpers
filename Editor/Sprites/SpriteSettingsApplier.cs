@@ -1369,10 +1369,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         {
                             try
                             {
-                                matches = System.Text.RegularExpressions.Regex.IsMatch(
+                                matches = Regex.IsMatch(
                                     filePath,
                                     s.matchPattern,
-                                    System.Text.RegularExpressions.RegexOptions.IgnoreCase
+                                    RegexOptions.IgnoreCase
                                 );
                             }
                             catch (Exception)

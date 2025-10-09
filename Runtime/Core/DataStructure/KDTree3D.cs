@@ -23,10 +23,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
         }
 
-        private struct Neighbor
+        private readonly struct Neighbor
         {
-            public T value;
-            public float sqrDistance;
+            public readonly T value;
+            public readonly float sqrDistance;
+
+            public Neighbor(T value, float sqrDistance)
+            {
+                this.value = value;
+                this.sqrDistance = sqrDistance;
+            }
         }
 
         [Serializable]
@@ -589,22 +595,11 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     int end = start + currentNode._count;
 
                     // If the node is fully contained, we can skip distance checks for points
-                    if (nodeFullyContained && !hasMinimumRange)
+                    if (nodeFullyContained)
                     {
-                        // Fast path: all points in this node are within range
-                        for (int i = start; i < end; ++i)
+                        if (!hasMinimumRange)
                         {
-                            elementsInRange.Add(entries[indices[i]].value);
-                        }
-                    }
-                    else if (nodeFullyContained && hasMinimumRange)
-                    {
-                        // Node is fully in outer sphere, but need to check minimum range
-                        // Check if node is fully outside minimum sphere
-                        bool nodeFullyOutsideMinimum = !minimumSphere.Intersects(nodeBoundary);
-                        if (nodeFullyOutsideMinimum)
-                        {
-                            // Fast path: all points are in the annulus
+                            // Fast path: all points in this node are within range
                             for (int i = start; i < end; ++i)
                             {
                                 elementsInRange.Add(entries[indices[i]].value);
@@ -612,14 +607,28 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                         }
                         else
                         {
-                            // Need to check each point against minimum range
-                            for (int i = start; i < end; ++i)
+                            // Node is fully in outer sphere, but need to check minimum range
+                            // Check if node is fully outside minimum sphere
+                            bool nodeFullyOutsideMinimum = !minimumSphere.Intersects(nodeBoundary);
+                            if (nodeFullyOutsideMinimum)
                             {
-                                Entry entry = entries[indices[i]];
-                                float squareDistance = (entry.position - position).sqrMagnitude;
-                                if (squareDistance > minimumRangeSquared)
+                                // Fast path: all points are in the annulus
+                                for (int i = start; i < end; ++i)
                                 {
-                                    elementsInRange.Add(entry.value);
+                                    elementsInRange.Add(entries[indices[i]].value);
+                                }
+                            }
+                            else
+                            {
+                                // Need to check each point against minimum range
+                                for (int i = start; i < end; ++i)
+                                {
+                                    Entry entry = entries[indices[i]];
+                                    float squareDistance = (entry.position - position).sqrMagnitude;
+                                    if (squareDistance > minimumRangeSquared)
+                                    {
+                                        elementsInRange.Add(entry.value);
+                                    }
                                 }
                             }
                         }
@@ -666,24 +675,15 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
         public List<T> GetElementsInBounds(Bounds bounds, List<T> elementsInBounds)
         {
-            using PooledResource<Stack<KdTreeNode>> stackResource = Buffers<KdTreeNode>.Stack.Get();
-            return GetElementsInBounds(bounds, elementsInBounds, stackResource.resource);
-        }
-
-        public List<T> GetElementsInBounds(
-            Bounds bounds,
-            List<T> elementsInBounds,
-            Stack<KdTreeNode> nodeBuffer
-        )
-        {
             elementsInBounds.Clear();
             if (_head._count <= 0 || !bounds.Intersects(_bounds))
             {
                 return elementsInBounds;
             }
 
-            Stack<KdTreeNode> nodesToVisit = nodeBuffer ?? new Stack<KdTreeNode>();
-            nodesToVisit.Clear();
+            using PooledResource<Stack<KdTreeNode>> stackResource = Buffers<KdTreeNode>.Stack.Get(
+                out Stack<KdTreeNode> nodesToVisit
+            );
             nodesToVisit.Push(_head);
 
             Entry[] entries = _entries;
@@ -757,20 +757,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
 
             using PooledResource<Stack<KdTreeNode>> nodeBufferResource =
-                Buffers<KdTreeNode>.Stack.Get();
-            Stack<KdTreeNode> nodeBuffer = nodeBufferResource.resource;
+                Buffers<KdTreeNode>.Stack.Get(out Stack<KdTreeNode> nodeBuffer);
             nodeBuffer.Push(_head);
-            using PooledResource<HashSet<T>> nearestNeighborBufferResource =
-                Buffers<T>.HashSet.Get();
-            HashSet<T> nearestNeighborBuffer = nearestNeighborBufferResource.resource;
+            using PooledResource<HashSet<T>> nearestNeighborBufferResource = Buffers<T>.HashSet.Get(
+                out HashSet<T> nearestNeighborBuffer
+            );
             using PooledResource<List<Neighbor>> neighborCandidatesResource =
-                Buffers<Neighbor>.List.Get();
-            List<Neighbor> neighborCandidates = neighborCandidatesResource.resource;
-            neighborCandidates.Clear();
+                Buffers<Neighbor>.List.Get(out List<Neighbor> neighborCandidates);
 
             Entry[] entries = _entries;
             int[] indices = _indices;
-            Vector3 searchPosition = position;
 
             KdTreeNode current = _head;
 
@@ -807,11 +803,11 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     continue;
                 }
 
-                float leftDistance = (left.boundary.center - searchPosition).sqrMagnitude;
-                float rightDistance = (right.boundary.center - searchPosition).sqrMagnitude;
+                float leftDistance = (left.boundary.center - position).sqrMagnitude;
+                float rightDistance = (right.boundary.center - position).sqrMagnitude;
                 if (leftDistance < rightDistance)
                 {
-                    if (right is not null && right._count > 0)
+                    if (right._count > 0)
                     {
                         nodeBuffer.Push(right);
                     }
@@ -825,7 +821,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 }
                 else
                 {
-                    if (left is not null && left._count > 0)
+                    if (left._count > 0)
                     {
                         nodeBuffer.Push(left);
                     }
@@ -858,10 +854,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                         continue;
                     }
 
-                    float sqrDistance = (entry.position - searchPosition).sqrMagnitude;
-                    neighborCandidates.Add(
-                        new Neighbor { value = entry.value, sqrDistance = sqrDistance }
-                    );
+                    float sqrDistance = (entry.position - position).sqrMagnitude;
+                    neighborCandidates.Add(new Neighbor(entry.value, sqrDistance));
                 }
             }
 

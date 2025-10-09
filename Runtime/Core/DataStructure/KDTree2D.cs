@@ -717,7 +717,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             Entry[] entries = _entries;
             int[] indices = _indices;
-            Vector2 searchPosition = position;
 
             KdTreeNode current = _head;
 
@@ -754,10 +753,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     continue;
                 }
 
-                float leftDistance = ((Vector2)left.boundary.center - searchPosition).sqrMagnitude;
-                float rightDistance = (
-                    (Vector2)right.boundary.center - searchPosition
-                ).sqrMagnitude;
+                float leftDistance = ((Vector2)left.boundary.center - position).sqrMagnitude;
+                float rightDistance = ((Vector2)right.boundary.center - position).sqrMagnitude;
                 if (leftDistance < rightDistance)
                 {
                     nodeBuffer.Push(left);
@@ -797,7 +794,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                         continue;
                     }
 
-                    float sqrDistance = (entry.position - searchPosition).sqrMagnitude;
+                    float sqrDistance = (entry.position - position).sqrMagnitude;
                     neighborCandidates.Add(new Neighbor(entry.value, sqrDistance));
                 }
             }

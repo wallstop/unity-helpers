@@ -218,13 +218,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             BoundsCheck(index);
             int capacity = Capacity;
             int physicalIndex = AdjustedIndexFor(index);
-            int leftCount = index;
             int rightCount = Count - index - 1;
-            if (leftCount <= rightCount)
+            if (index <= rightCount)
             {
                 int headIndex = GetHeadIndex();
                 int current = physicalIndex;
-                for (int i = 0; i < leftCount; ++i)
+                for (int i = 0; i < index; ++i)
                 {
                     int previous = current - 1;
                     if (previous < 0)

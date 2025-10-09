@@ -18,7 +18,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             internal T _value;
             internal BoundingBox3D _bounds;
             internal Vector3 _center;
-            internal uint _mortonKey;
             internal ulong _sortKey;
         }
 
@@ -223,7 +222,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 ushort quantizedY = QuantizeNormalized(normalizedY);
                 ushort quantizedZ = QuantizeNormalized(normalizedZ);
                 uint mortonKey = EncodeMorton(quantizedX, quantizedY, quantizedZ);
-                data._mortonKey = mortonKey;
                 data._sortKey = ComposeSortKey(mortonKey, quantizedX, quantizedY, quantizedZ);
             }
 
@@ -232,42 +230,32 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 RadixSort(elementData, elementCount);
             }
 
-            RTreeNode head;
-            using (
-                PooledResource<List<RTreeNode>> currentLevelResource = Buffers<RTreeNode>.List.Get(
-                    out List<RTreeNode> currentLevel
-                )
-            )
+            using PooledResource<List<RTreeNode>> currentLevelResource =
+                Buffers<RTreeNode>.List.Get(out List<RTreeNode> currentLevel);
+
+            for (int startIndex = 0; startIndex < elementCount; startIndex += bucketSize)
             {
-                int leafCount = Math.Max(1, (elementCount + bucketSize - 1) / bucketSize);
-                //      currentLevel.EnsureCapacity(leafCount);
-                for (int startIndex = 0; startIndex < elementCount; startIndex += bucketSize)
-                {
-                    int count = Math.Min(bucketSize, elementCount - startIndex);
-                    currentLevel.Add(RTreeNode.CreateLeaf(elementData, startIndex, count));
-                }
-
-                while (currentLevel.Count > 1)
-                {
-                    int parentCount = (currentLevel.Count + branchFactor - 1) / branchFactor;
-                    using PooledResource<List<RTreeNode>> nextLevelResource =
-                        Buffers<RTreeNode>.List.Get(out List<RTreeNode> nextLevel);
-                    //        nextLevel.EnsureCapacity(parentCount);
-                    for (int i = 0; i < currentLevel.Count; i += branchFactor)
-                    {
-                        int childCount = Math.Min(branchFactor, currentLevel.Count - i);
-                        RTreeNode[] children = new RTreeNode[childCount];
-                        currentLevel.CopyTo(i, children, 0, childCount);
-                        nextLevel.Add(RTreeNode.CreateInternal(children));
-                    }
-
-                    currentLevel.Clear();
-                    //          currentLevel.EnsureCapacity(parentCount);
-                    currentLevel.AddRange(nextLevel);
-                }
-
-                head = currentLevel.Count > 0 ? currentLevel[0] : RTreeNode.CreateEmpty();
+                int count = Math.Min(bucketSize, elementCount - startIndex);
+                currentLevel.Add(RTreeNode.CreateLeaf(elementData, startIndex, count));
             }
+
+            while (currentLevel.Count > 1)
+            {
+                using PooledResource<List<RTreeNode>> nextLevelResource =
+                    Buffers<RTreeNode>.List.Get(out List<RTreeNode> nextLevel);
+                for (int i = 0; i < currentLevel.Count; i += branchFactor)
+                {
+                    int childCount = Math.Min(branchFactor, currentLevel.Count - i);
+                    RTreeNode[] children = new RTreeNode[childCount];
+                    currentLevel.CopyTo(i, children, 0, childCount);
+                    nextLevel.Add(RTreeNode.CreateInternal(children));
+                }
+
+                currentLevel.Clear();
+                currentLevel.AddRange(nextLevel);
+            }
+
+            RTreeNode head = currentLevel.Count > 0 ? currentLevel[0] : RTreeNode.CreateEmpty();
 
             _head = head;
             _bounds = _head.boundary;
@@ -287,8 +275,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
 
             using PooledResource<Stack<RTreeNode>> nodeBufferResource =
-                Buffers<RTreeNode>.Stack.Get();
-            Stack<RTreeNode> nodesToVisit = nodeBufferResource.resource;
+                Buffers<RTreeNode>.Stack.Get(out Stack<RTreeNode> nodesToVisit);
             nodesToVisit.Push(_head);
 
             while (nodesToVisit.TryPop(out RTreeNode currentNode))
@@ -330,8 +317,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     nodesToVisit.Push(child);
                 }
             }
-
-            nodesToVisit.Clear();
         }
 
         public List<T> GetElementsInRange(
@@ -357,10 +342,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return elementsInRange;
             }
 
-            using PooledResource<List<int>> candidateIndicesResource = Buffers<int>.List.Get();
-            List<int> candidateIndices = candidateIndicesResource.resource;
+            using PooledResource<List<int>> candidateIndicesResource = Buffers<int>.List.Get(
+                out List<int> candidateIndices
+            );
             CollectElementIndicesInBounds(queryBounds, candidateIndices);
-
             if (candidateIndices.Count == 0)
             {
                 return elementsInRange;
@@ -403,8 +388,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return elementsInBounds;
             }
 
-            using PooledResource<List<int>> indicesResource = Buffers<int>.List.Get();
-            List<int> indices = indicesResource.resource;
+            using PooledResource<List<int>> indicesResource = Buffers<int>.List.Get(
+                out List<int> indices
+            );
             CollectElementIndicesInBounds(queryBounds, indices);
             foreach (int index in indices)
             {
@@ -427,28 +413,22 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         )
         {
             nearestNeighbors.Clear();
-
             if (count <= 0 || _head._count == 0)
             {
                 return nearestNeighbors;
             }
 
             using PooledResource<List<NodeDistance>> nodeHeapResource =
-                Buffers<NodeDistance>.List.Get();
-            List<NodeDistance> nodeHeap = nodeHeapResource.resource;
-            nodeHeap.Clear();
+                Buffers<NodeDistance>.List.Get(out List<NodeDistance> nodeHeap);
             PushNode(nodeHeap, _head, position);
 
-            using PooledResource<HashSet<T>> nearestNeighborBufferResource =
-                Buffers<T>.HashSet.Get();
-            HashSet<T> nearestNeighborsSet = nearestNeighborBufferResource.resource;
-            nearestNeighborsSet.Clear();
-
+            using PooledResource<HashSet<T>> nearestNeighborBufferResource = Buffers<T>.HashSet.Get(
+                out HashSet<T> nearestNeighborsSet
+            );
             using PooledResource<List<(int index, float distanceSquared)>> candidateBufferResource =
-                Buffers<(int index, float distanceSquared)>.List.Get();
-            List<(int index, float distanceSquared)> candidates = candidateBufferResource.resource;
-            candidates.Clear();
-
+                Buffers<(int index, float distanceSquared)>.List.Get(
+                    out List<(int index, float distanceSquared)> candidates
+                );
             float currentWorstDistanceSquared = float.PositiveInfinity;
 
             while (nodeHeap.Count > 0)
@@ -464,7 +444,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 }
 
                 RTreeNode currentNode = best._node;
-
                 if (!currentNode.isTerminal)
                 {
                     RTreeNode[] childNodes = currentNode._children;
@@ -476,7 +455,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                             PushNode(nodeHeap, child, position);
                         }
                     }
-
                     continue;
                 }
 
@@ -523,30 +501,21 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             if (candidates.Count == 0)
             {
-                nodeHeap.Clear();
-                nearestNeighborsSet.Clear();
-                candidates.Clear();
                 return nearestNeighbors;
             }
 
             candidates.Sort(CandidateComparer.Instance);
-
             int resultCount = Math.Min(count, candidates.Count);
             for (int i = 0; i < resultCount; ++i)
             {
                 nearestNeighbors.Add(_elementData[candidates[i].index]._value);
             }
-
-            nodeHeap.Clear();
-            nearestNeighborsSet.Clear();
-            candidates.Clear();
-
             return nearestNeighbors;
         }
 
-        static void PushNode(List<NodeDistance> heap, RTreeNode node, Vector3 point)
+        private static void PushNode(List<NodeDistance> heap, RTreeNode node, Vector3 point)
         {
-            NodeDistance entry = new NodeDistance(node, node.boundary.DistanceSquaredTo(point));
+            NodeDistance entry = new(node, node.boundary.DistanceSquaredTo(point));
             heap.Add(entry);
             int index = heap.Count - 1;
 
@@ -566,7 +535,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             heap[index] = entry;
         }
 
-        static NodeDistance PopNode(List<NodeDistance> heap)
+        private static NodeDistance PopNode(List<NodeDistance> heap)
         {
             int lastIndex = heap.Count - 1;
             NodeDistance result = heap[0];
@@ -606,7 +575,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             return result;
         }
 
-        static float FindWorstDistance(List<(int index, float distanceSquared)> list)
+        private static float FindWorstDistance(List<(int index, float distanceSquared)> list)
         {
             float worst = 0f;
             for (int i = 0; i < list.Count; ++i)
@@ -621,7 +590,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             return worst;
         }
 
-        static int FindIndexOfWorstCandidate(List<(int index, float distanceSquared)> list)
+        private static int FindIndexOfWorstCandidate(List<(int index, float distanceSquared)> list)
         {
             int worstIndex = 0;
             float worstDistance = list[0].distanceSquared;
@@ -717,7 +686,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 maxZ = Math.Max(maxZ, max.z);
             }
 
-            BoundingBox3D nodeBounds = new BoundingBox3D(
+            BoundingBox3D nodeBounds = new(
                 new Vector3(minX, minY, minZ),
                 new Vector3(maxX, maxY, maxZ)
             );

@@ -19,7 +19,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             internal T _value;
             internal Bounds _bounds;
             internal Vector2 _center;
-            internal uint _mortonKey;
             internal ulong _sortKey;
         }
 
@@ -191,7 +190,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     ushort quantizedX = QuantizeNormalized(normalizedX);
                     ushort quantizedY = QuantizeNormalized(normalizedY);
                     uint mortonKey = EncodeMorton(quantizedX, quantizedY);
-                    data._mortonKey = mortonKey;
                     data._sortKey = ComposeSortKey(mortonKey, quantizedX, quantizedY);
                 }
             }
@@ -307,10 +305,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return elementsInRange;
             }
 
-            using PooledResource<List<int>> candidateIndicesResource = Buffers<int>.List.Get();
-            List<int> candidateIndices = candidateIndicesResource.resource;
+            using PooledResource<List<int>> candidateIndicesResource = Buffers<int>.List.Get(
+                out List<int> candidateIndices
+            );
             CollectElementIndicesInBounds(queryBounds, candidateIndices);
-
             if (candidateIndices.Count == 0)
             {
                 return elementsInRange;
@@ -352,8 +350,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return elementsInBounds;
             }
 
-            using PooledResource<List<int>> indicesResource = Buffers<int>.List.Get();
-            List<int> indices = indicesResource.resource;
+            using PooledResource<List<int>> indicesResource = Buffers<int>.List.Get(
+                out List<int> indices
+            );
             CollectElementIndicesInBounds(bounds, indices);
             foreach (int index in indices)
             {
@@ -377,21 +376,20 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return nearestNeighbors;
             }
 
-            using PooledResource<List<RTreeNode>> childrenBufferResource =
-                Buffers<RTreeNode>.List.Get();
-            using PooledResource<HashSet<T>> nearestNeighborBufferResource =
-                Buffers<T>.HashSet.Get();
             using PooledResource<Stack<RTreeNode>> nodeBufferResource =
-                Buffers<RTreeNode>.Stack.Get();
-            using PooledResource<List<int>> nearestIndexBufferResource = Buffers<int>.List.Get();
-            Stack<RTreeNode> stack = nodeBufferResource.resource;
+                Buffers<RTreeNode>.Stack.Get(out Stack<RTreeNode> stack);
             stack.Push(_head);
-            List<RTreeNode> childrenCopy = childrenBufferResource.resource;
-            HashSet<T> nearestNeighborsSet = nearestNeighborBufferResource.resource;
-            List<int> nearestIndices = nearestIndexBufferResource.resource;
+
+            using PooledResource<List<RTreeNode>> childrenBufferResource =
+                Buffers<RTreeNode>.List.Get(out List<RTreeNode> childrenCopy);
+            using PooledResource<HashSet<T>> nearestNeighborBufferResource = Buffers<T>.HashSet.Get(
+                out HashSet<T> nearestNeighborsSet
+            );
+            using PooledResource<List<int>> nearestIndexBufferResource = Buffers<int>.List.Get(
+                out List<int> nearestIndices
+            );
 
             ElementData[] elementData = _elementData;
-            Vector2 searchPosition = position;
 
             RTreeNode current = _head;
 
@@ -413,7 +411,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     break;
                 }
 
-                SortChildrenByDistance(childrenCopy, searchPosition);
+                SortChildrenByDistance(childrenCopy, position);
                 for (int i = childrenCopy.Count - 1; i >= 0; --i)
                 {
                     stack.Push(childrenCopy[i]);
@@ -453,7 +451,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             if (count < nearestIndices.Count)
             {
-                SortIndicesByDistance(nearestIndices, elementData, searchPosition);
+                SortIndicesByDistance(nearestIndices, elementData, position);
                 nearestIndices.RemoveRange(count, nearestIndices.Count - count);
             }
 

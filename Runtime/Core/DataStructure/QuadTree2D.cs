@@ -184,11 +184,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             using PooledResource<List<Entry>> entryListResource = Buffers<Entry>.List.Get(
                 out List<Entry> entryList
             );
-            foreach (Entry entry in entries)
-            {
-                entryList.Add(entry);
-            }
-
+            entryList.AddRange(entries);
             int elementCount = entryList.Count;
             if (elementCount == 0)
             {
@@ -295,7 +291,13 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 Vector2 position = entries[entryIndex].position;
                 bool east = position.x > centerX;
                 bool north = position.y >= centerY;
-                int quadrant = east ? (north ? 1 : 2) : (north ? 0 : 3);
+                int quadrant = east
+                    ? north
+                        ? 1
+                        : 2
+                    : north
+                        ? 0
+                        : 3;
                 counts[quadrant]++;
             }
 
@@ -323,7 +325,13 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 Vector2 position = entries[entryIndex].position;
                 bool east = position.x > centerX;
                 bool north = position.y >= centerY;
-                int quadrant = east ? (north ? 1 : 2) : (north ? 0 : 3);
+                int quadrant = east
+                    ? north
+                        ? 1
+                        : 2
+                    : north
+                        ? 0
+                        : 3;
                 int destination = next[quadrant]++;
                 temp[destination] = entryIndex;
             }
@@ -385,8 +393,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
 
             using PooledResource<Stack<QuadTreeNode>> nodesToVisitResource =
-                Buffers<QuadTreeNode>.Stack.Get();
-            Stack<QuadTreeNode> nodesToVisit = nodesToVisitResource.resource;
+                Buffers<QuadTreeNode>.Stack.Get(out Stack<QuadTreeNode> nodesToVisit);
             nodesToVisit.Push(_head);
 
             Entry[] entries = _entries;
@@ -532,22 +539,19 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
 
             using PooledResource<Stack<QuadTreeNode>> nodeBufferResource =
-                Buffers<QuadTreeNode>.Stack.Get();
-            Stack<QuadTreeNode> nodeBuffer = nodeBufferResource.resource;
+                Buffers<QuadTreeNode>.Stack.Get(out Stack<QuadTreeNode> nodeBuffer);
             nodeBuffer.Push(_head);
+
             using PooledResource<List<QuadTreeNode>> childrenBufferResource =
-                Buffers<QuadTreeNode>.List.Get();
-            List<QuadTreeNode> childrenBuffer = childrenBufferResource.resource;
-            using PooledResource<HashSet<T>> nearestNeighborBufferResource =
-                Buffers<T>.HashSet.Get();
-            HashSet<T> nearestNeighborBuffer = nearestNeighborBufferResource.resource;
+                Buffers<QuadTreeNode>.List.Get(out List<QuadTreeNode> childrenBuffer);
+            using PooledResource<HashSet<T>> nearestNeighborBufferResource = Buffers<T>.HashSet.Get(
+                out HashSet<T> nearestNeighborBuffer
+            );
             using PooledResource<List<Neighbor>> neighborCandidatesResource =
-                Buffers<Neighbor>.List.Get();
-            List<Neighbor> neighborCandidates = neighborCandidatesResource.resource;
+                Buffers<Neighbor>.List.Get(out List<Neighbor> neighborCandidates);
 
             Entry[] entries = _entries;
             int[] indices = _indices;
-            Vector2 searchPosition = position;
 
             QuadTreeNode current = _head;
 
@@ -569,7 +573,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     break;
                 }
 
-                SortChildrenByDistance(childrenBuffer, searchPosition);
+                SortChildrenByDistance(childrenBuffer, position);
                 for (int i = childrenBuffer.Count - 1; i >= 0; --i)
                 {
                     nodeBuffer.Push(childrenBuffer[i]);
@@ -601,7 +605,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                         continue;
                     }
 
-                    float sqrDistance = (entry.position - searchPosition).sqrMagnitude;
+                    float sqrDistance = (entry.position - position).sqrMagnitude;
                     neighborCandidates.Add(new Neighbor(entry.value, sqrDistance));
                 }
             }

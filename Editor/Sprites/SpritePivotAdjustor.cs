@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;
+    using System.Text;
     using System.Text.RegularExpressions;
     using System.Threading;
     using System.Threading.Tasks;
@@ -17,7 +18,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
     public class SpritePivotAdjuster : EditorWindow
     {
-        private const float AlphaCutoff = 0.01f;
+        private const float PivotEpsilon = 1e-3f;
 
         private static readonly string[] ImageFileExtensions =
         {
@@ -36,12 +37,23 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         [SerializeField]
         private string _spriteNameRegex = ".*";
 
+        [SerializeField]
+        private float _alphaCutoff = 0.01f;
+
+        [SerializeField]
+        private bool _skipUnchanged = true;
+
+        [SerializeField]
+        private bool _forceReimport = false;
+
         private SerializedObject _serializedObject;
         private SerializedProperty _directoryPathsProperty;
         private SerializedProperty _spriteNameRegexProperty;
 
         private List<string> _filesToProcess;
         private Regex _regex;
+        private string _regexError;
+        private string _lastValidatedRegex;
 
         [MenuItem("Tools/Wallstop Studios/Unity Helpers/Sprite Pivot Adjuster")]
         public static void ShowWindow()
@@ -58,7 +70,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
         private void OnGUI()
         {
-            EditorGUILayout.LabelField("Input directories", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(
+                new GUIContent(
+                    "Input Directories",
+                    "Folders to scan for textures. Only supported image extensions are considered."
+                ),
+                EditorStyles.boldLabel
+            );
             _serializedObject.Update();
             PersistentDirectoryGUI.PathSelectorObjectArray(
                 _directoryPathsProperty,
@@ -67,14 +85,97 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             using (new GUILayout.HorizontalScope())
             {
-                EditorGUILayout.LabelField("Sprite Name Regex", EditorStyles.boldLabel);
-                _spriteNameRegex = EditorGUILayout.TextField(_spriteNameRegex);
+                _spriteNameRegex = EditorGUILayout.TextField(
+                    new GUIContent(
+                        "Sprite Name Regex",
+                        "Optional .NET regex applied to file names (no extension). Leave empty for all."
+                    ),
+                    _spriteNameRegex
+                );
+            }
+
+            // Inline regex validation (validate only when the text changes to avoid per-frame cost)
+            if (!string.Equals(_spriteNameRegex, _lastValidatedRegex, StringComparison.Ordinal))
+            {
+                _lastValidatedRegex = _spriteNameRegex;
+                if (string.IsNullOrWhiteSpace(_spriteNameRegex))
+                {
+                    _regexError = null;
+                }
+                else
+                {
+                    try
+                    {
+                        _ = new Regex(_spriteNameRegex, RegexOptions.CultureInvariant);
+                        _regexError = null;
+                    }
+                    catch (ArgumentException ex)
+                    {
+                        _regexError = ex.Message;
+                    }
+                }
+            }
+
+            if (!string.IsNullOrEmpty(_regexError))
+            {
+                EditorGUILayout.HelpBox($"Invalid regex: {_regexError}", MessageType.Error);
+            }
+
+            EditorGUILayout.HelpBox(
+                "Single-sprite textures only. Alpha Cutoff ignores pixels at/under the threshold when computing center-of-mass pivot. 'Skip Unchanged' avoids reimport if change < "
+                    + PivotEpsilon
+                    + ". 'Force Reimport' overrides that.",
+                MessageType.Info
+            );
+
+            _alphaCutoff = EditorGUILayout.Slider(
+                new GUIContent(
+                    "Alpha Cutoff",
+                    "Pixels with alpha <= cutoff are ignored when computing the pivot."
+                ),
+                _alphaCutoff,
+                0f,
+                1f
+            );
+
+            using (new GUILayout.HorizontalScope())
+            {
+                _skipUnchanged = EditorGUILayout.ToggleLeft(
+                    new GUIContent(
+                        "Skip Unchanged (fuzzy)",
+                        "If pivot delta < " + PivotEpsilon + ", skip reimport to save time."
+                    ),
+                    _skipUnchanged
+                );
+            }
+
+            using (new GUILayout.HorizontalScope())
+            {
+                _forceReimport = EditorGUILayout.ToggleLeft(
+                    new GUIContent(
+                        "Force Reimport",
+                        "Reimport even if the computed pivot is unchanged. Overrides 'Skip Unchanged'."
+                    ),
+                    _forceReimport
+                );
             }
 
             _serializedObject.ApplyModifiedProperties();
-            if (GUILayout.Button("Find Sprites To Process"))
+            if (
+                GUILayout.Button(
+                    new GUIContent(
+                        "Find Sprites To Process",
+                        "Scan selected folders and filter by regex."
+                    )
+                )
+            )
             {
                 _regex = null;
+                if (!string.IsNullOrEmpty(_regexError))
+                {
+                    ShowNotification(new GUIContent("Invalid regex. Fix it before searching."));
+                    return;
+                }
                 if (!string.IsNullOrWhiteSpace(_spriteNameRegex))
                 {
                     try
@@ -87,6 +188,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     catch (ArgumentException ex)
                     {
                         this.LogWarn($"Invalid regex '{_spriteNameRegex}': {ex.Message}");
+                        ShowNotification(new GUIContent("Invalid regex. Fix it before searching."));
+                        return;
                     }
                 }
                 FindFilesToProcess();
@@ -98,7 +201,14 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     $"Found {_filesToProcess.Count} sprites to process.",
                     EditorStyles.boldLabel
                 );
-                if (GUILayout.Button("Adjust Pivots in Directory"))
+                if (
+                    GUILayout.Button(
+                        new GUIContent(
+                            "Adjust Pivots in Directory",
+                            "Compute and apply pivots (cancelable). Honors Alpha Cutoff, Skip Unchanged, and Force Reimport."
+                        )
+                    )
+                )
                 {
                     AdjustPivotsInDirectory();
                     _filesToProcess = null;
@@ -176,6 +286,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 .Get(out HashSet<string> processedFiles);
             using PooledResource<List<TextureImporter>> importersRes =
                 Buffers<TextureImporter>.List.Get(out List<TextureImporter> importers);
+            int totalCandidates = _filesToProcess?.Count ?? 0;
+            int processedSingles = 0;
+            int changed = 0;
+            int skippedUnchanged = 0;
+            int skippedNonReadable = 0;
+            int skippedNotSprite = 0;
+            int skippedNullSprite = 0;
+            int skippedNotSingle = 0;
+            bool canceled = false;
             AssetDatabase.StartAssetEditing();
             try
             {
@@ -192,6 +311,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     )
                     {
                         // Not a sprite texture; skip to next file
+                        skippedNotSprite++;
                         continue;
                     }
 
@@ -199,6 +319,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
                     if (sprite == null)
                     {
+                        skippedNullSprite++;
                         continue;
                     }
 
@@ -210,26 +331,43 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         )
                     )
                     {
+                        canceled = true;
                         break; // user canceled
                     }
 
                     if (importer.spriteImportMode == SpriteImportMode.Single)
                     {
+                        processedSingles++;
                         if (!importer.isReadable)
                         {
+                            skippedNonReadable++;
                             this.LogWarn($"Skipping non-readable texture: {assetPath}");
                             continue;
                         }
                         TextureImporterSettings settings = new();
                         importer.ReadTextureSettings(settings);
 
-                        Vector2 newPivot = CalculateCenterOfMassPivot(sprite);
+                        Vector2 newPivot = CalculateCenterOfMassPivot(sprite, _alphaCutoff);
+                        Vector2 currentPivot = importer.spritePivot;
+                        bool unchanged =
+                            Mathf.Abs(currentPivot.x - newPivot.x) < PivotEpsilon
+                            && Mathf.Abs(currentPivot.y - newPivot.y) < PivotEpsilon;
+                        if (_skipUnchanged && !_forceReimport && unchanged)
+                        {
+                            skippedUnchanged++;
+                            continue; // no meaningful change and not forced
+                        }
                         settings.spritePivot = newPivot;
                         settings.spriteAlignment = (int)SpriteAlignment.Custom;
                         importer.SetTextureSettings(settings);
 
                         importer.spritePivot = newPivot;
                         importers.Add(importer);
+                        changed++;
+                    }
+                    else
+                    {
+                        skippedNotSingle++;
                     }
                 }
             }
@@ -243,10 +381,24 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 }
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
+
+                using PooledResource<StringBuilder> sbRes = Buffers.StringBuilder.Get(
+                    out StringBuilder sb
+                );
+                sb.AppendLine(canceled ? "Canceled by user." : "Completed.");
+                sb.AppendLine($"Total candidates: {totalCandidates}");
+                sb.AppendLine($"Single sprites processed: {processedSingles}");
+                sb.AppendLine($"Changed pivots: {changed}");
+                sb.AppendLine($"Skipped unchanged: {skippedUnchanged}");
+                sb.AppendLine($"Skipped non-readable: {skippedNonReadable}");
+                sb.AppendLine($"Skipped not sprite: {skippedNotSprite}");
+                sb.AppendLine($"Skipped missing sprite: {skippedNullSprite}");
+                sb.AppendLine($"Skipped multi-sprite textures: {skippedNotSingle}");
+                EditorUtility.DisplayDialog("Sprite Pivot Adjuster", sb.ToString(), "OK");
             }
         }
 
-        private static Vector2 CalculateCenterOfMassPivot(Sprite sprite)
+        private static Vector2 CalculateCenterOfMassPivot(Sprite sprite, float alphaCutoff)
         {
             Texture2D texture = sprite.texture;
             Rect spriteRect = sprite.rect;
@@ -263,7 +415,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             if (startX == 0 && startY == 0 && width == texture.width && height == texture.height)
             {
                 Color32[] pixels32 = texture.GetPixels32();
-                byte alphaThreshold = (byte)Mathf.CeilToInt(AlphaCutoff * 255f);
+                byte alphaThreshold = (byte)Mathf.CeilToInt(alphaCutoff * 255f);
 
                 Parallel.For(
                     0,
@@ -304,7 +456,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         int rowOffset = y * width;
                         for (int x = 0; x < width; ++x)
                         {
-                            if (pixels[rowOffset + x].a > AlphaCutoff)
+                            if (pixels[rowOffset + x].a > alphaCutoff)
                             {
                                 local.sumX += x;
                                 local.sumY += y;
