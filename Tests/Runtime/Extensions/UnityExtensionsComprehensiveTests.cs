@@ -1,6 +1,5 @@
 namespace WallstopStudios.UnityHelpers.Tests.Extensions
 {
-    using System;
     using System.Collections;
     using System.Collections.Generic;
     using System.Linq;
@@ -10,7 +9,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using UnityEngine.UI;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Core.Extension;
-    using WallstopStudios.UnityHelpers.Tests.Helper;
 
     public sealed class UnityExtensionsComprehensiveTests
     {
@@ -260,12 +258,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                     new Vector3Int(1, 0, 0),
                 };
 
-                DeterministicRandom random = new(Array.Empty<double>());
-                List<Vector3Int> hull = points.BuildConvexHull(
-                    grid,
-                    random,
-                    includeColinearPoints: true
-                );
+                List<Vector3Int> hull = points.BuildConvexHull(grid, includeColinearPoints: true);
 
                 CollectionAssert.AreEquivalent(points, hull);
                 Assert.AreEqual(new Vector3Int(0, 0, 0), hull[0]);
@@ -292,12 +285,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                     new Vector3Int(1, 0, 0),
                 };
 
-                DeterministicRandom random = new(Array.Empty<double>());
-                List<Vector3Int> hull = points.BuildConvexHull(
-                    grid,
-                    random,
-                    includeColinearPoints: false
-                );
+                List<Vector3Int> hull = points.BuildConvexHull(grid, includeColinearPoints: false);
 
                 CollectionAssert.AreEquivalent(
                     new[]
@@ -332,10 +320,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                     new FastVector3Int(1, 0, 0),
                 };
 
-                DeterministicRandom random = new(Array.Empty<double>());
                 List<FastVector3Int> hull = points.BuildConvexHull(
                     grid,
-                    random,
                     includeColinearPoints: false
                 );
 
@@ -372,10 +358,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                     new FastVector3Int(1, 0, 0),
                 };
 
-                DeterministicRandom random = new(Array.Empty<double>());
                 List<FastVector3Int> hull = points.BuildConvexHull(
                     grid,
-                    random,
                     includeColinearPoints: true
                 );
 
@@ -628,15 +612,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                     new FastVector3Int(3, 0, 0),
                 };
 
-                DeterministicRandom random = new(Array.Empty<double>());
                 List<FastVector3Int> convex = points.BuildConvexHull(
                     grid,
-                    random,
                     includeColinearPoints: false
                 );
-                List<FastVector3Int> concave3 = points.BuildConcaveHull3(grid, random);
-                List<FastVector3Int> concave2 = points.BuildConcaveHull2(grid, random);
-                List<FastVector3Int> concave = points.BuildConcaveHull(grid, random);
+                List<FastVector3Int> concave3 = points.BuildConcaveHull3(grid);
+                List<FastVector3Int> concave2 = points.BuildConcaveHull2(grid);
+                List<FastVector3Int> concave = points.BuildConcaveHull(grid);
 
                 CollectionAssert.AreEquivalent(convex, concave3);
                 CollectionAssert.AreEquivalent(convex, concave2);
@@ -664,15 +646,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                     new FastVector3Int(3, 0, 0),
                 };
 
-                DeterministicRandom random = new(Array.Empty<double>());
                 List<FastVector3Int> convex = points.BuildConvexHull(
                     grid,
-                    random,
                     includeColinearPoints: false
                 );
-                List<FastVector3Int> concave3 = points.BuildConcaveHull3(grid, random);
-                List<FastVector3Int> concave2 = points.BuildConcaveHull2(grid, random);
-                List<FastVector3Int> concave = points.BuildConcaveHull(grid, random);
+                List<FastVector3Int> concave3 = points.BuildConcaveHull3(grid);
+                List<FastVector3Int> concave2 = points.BuildConcaveHull2(grid);
+                List<FastVector3Int> concave = points.BuildConcaveHull(grid);
 
                 CollectionAssert.AreEquivalent(convex, concave3);
                 CollectionAssert.AreEquivalent(convex, concave2);

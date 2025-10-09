@@ -1,6 +1,5 @@
 namespace WallstopStudios.UnityHelpers.Tests.Helper
 {
-    using System;
     using System.Collections;
     using System.IO;
     using System.Threading;

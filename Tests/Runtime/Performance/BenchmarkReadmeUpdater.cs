@@ -4,7 +4,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;
-    using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
 
     internal static class BenchmarkReadmeUpdater

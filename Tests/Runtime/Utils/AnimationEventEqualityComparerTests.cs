@@ -1,9 +1,7 @@
 namespace WallstopStudios.UnityHelpers.Tests.Utils
 {
-    using System.Collections;
     using NUnit.Framework;
     using UnityEngine;
-    using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Utils;
 
     public sealed class AnimationEventEqualityComparerTests

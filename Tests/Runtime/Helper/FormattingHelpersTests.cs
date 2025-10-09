@@ -1,6 +1,5 @@
 namespace WallstopStudios.UnityHelpers.Tests.Helper
 {
-    using System;
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Core.Random;

@@ -1,11 +1,9 @@
 ﻿namespace WallstopStudios.UnityHelpers.Tests.Performance
 {
     using System;
-    using System.Collections.Generic;
     using System.Diagnostics;
     using System.Text.Json;
     using NUnit.Framework;
-    using WallstopStudios.UnityHelpers.Core.Serialization;
     using SerializerAlias = WallstopStudios.UnityHelpers.Core.Serialization.Serializer;
 
     [TestFixture]

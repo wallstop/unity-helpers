@@ -5,7 +5,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
     using DataStructure;
     using DataStructure.Adapters;
     using Helper;
-    using Random;
     using UnityEngine;
     using UnityEngine.UI;
     using Utils;
@@ -465,7 +464,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// </summary>
         /// <param name="pointsSet">The collection of grid positions to build the hull from.</param>
         /// <param name="grid">The Grid used to convert cell positions to world coordinates.</param>
-        /// <param name="random">Optional random number generator for tie-breaking. Uses PRNG.Instance if null.</param>
         /// <param name="includeColinearPoints">
         /// If true, includes points that lie on the hull edges. If false, only includes corner points. Default is true.
         /// </param>
@@ -484,7 +482,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         public static List<Vector3Int> BuildConvexHull(
             this IEnumerable<Vector3Int> pointsSet,
             Grid grid,
-            IRandom random = null,
             bool includeColinearPoints = true
         )
         {
@@ -500,8 +497,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             {
                 return new List<Vector3Int>(points);
             }
-
-            random ??= PRNG.Instance;
 
             Vector3Int startPoint = points[0];
             Vector2 startPointWorldPosition = CellToWorld(startPoint);
@@ -543,7 +538,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     return convexHull;
                 }
 
-                Vector3Int nextPoint = random.NextOf(points);
+                Vector3Int nextPoint = points[0];
                 Vector2 currentPointWorldPosition = CellToWorld(currentPoint);
                 Vector2 nextPointWorldPosition = CellToWorld(nextPoint);
                 foreach (Vector3Int point in points)
@@ -620,7 +615,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// </summary>
         /// <param name="pointsSet">The collection of FastVector3Int grid positions to build the hull from.</param>
         /// <param name="grid">The Grid used to convert cell positions to world coordinates.</param>
-        /// <param name="random">Optional random number generator for tie-breaking. Uses PRNG.Instance if null.</param>
         /// <param name="includeColinearPoints">
         /// If true, includes points that lie on the hull edges. If false, only includes corner points. Default is false.
         /// </param>
@@ -639,7 +633,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         public static List<FastVector3Int> BuildConvexHull(
             this IEnumerable<FastVector3Int> pointsSet,
             Grid grid,
-            IRandom random = null,
             bool includeColinearPoints = false
         )
         {
@@ -651,8 +644,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             {
                 return new List<FastVector3Int>(points);
             }
-
-            random ??= PRNG.Instance;
 
             FastVector3Int startPoint = points[0];
             Vector2 startPointWorldPosition = CellToWorld(startPoint);
@@ -694,7 +685,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     return convexHull;
                 }
 
-                FastVector3Int nextPoint = random.NextOf(points);
+                FastVector3Int nextPoint = points[0];
                 Vector2 currentPointWorldPosition = CellToWorld(currentPoint);
                 Vector2 nextPointWorldPosition = CellToWorld(nextPoint);
                 foreach (FastVector3Int point in points)
@@ -1100,7 +1091,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// </summary>
         /// <param name="gridPositions">The collection of grid positions to build the hull from.</param>
         /// <param name="grid">The Grid used for coordinate conversion.</param>
-        /// <param name="random">Optional random number generator. Uses PRNG.Instance if null.</param>
         /// <param name="bucketSize">The number of nearest neighbors to consider for each edge. Default is 40.</param>
         /// <param name="angleThreshold">
         /// The maximum angle (in degrees) for including a point. Higher values create more concave hulls. Default is 90.
@@ -1119,7 +1109,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         public static List<FastVector3Int> BuildConcaveHull3(
             this IReadOnlyCollection<FastVector3Int> gridPositions,
             Grid grid,
-            IRandom random = null,
             int bucketSize = 40,
             float angleThreshold = 90f
         )
@@ -1128,7 +1117,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 Buffers<FastVector3Int>.List.Get(out List<FastVector3Int> originalGridPositions);
             originalGridPositions.AddRange(gridPositions);
 
-            List<FastVector3Int> convexHull = gridPositions.BuildConvexHull(grid, random);
+            List<FastVector3Int> convexHull = gridPositions.BuildConvexHull(grid);
             using PooledResource<List<HullEdge>> concaveHullEdgesResource =
                 Buffers<HullEdge>.List.Get();
             List<HullEdge> concaveHullEdges = concaveHullEdgesResource.resource;
@@ -1364,7 +1353,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// </summary>
         /// <param name="gridPositions">The collection of grid positions to build the hull from.</param>
         /// <param name="grid">The Grid used for coordinate conversion.</param>
-        /// <param name="random">Optional random number generator. Uses PRNG.Instance if null.</param>
         /// <param name="nearestNeighbors">
         /// The number of nearest neighbors to consider (k parameter). Minimum is 3. Default is 3.
         /// Lower values create more concave hulls, higher values approach convex hull.
@@ -1384,7 +1372,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         public static List<FastVector3Int> BuildConcaveHull2(
             this IReadOnlyCollection<FastVector3Int> gridPositions,
             Grid grid,
-            IRandom random = null,
             int nearestNeighbors = 3
         )
         {
@@ -1482,15 +1469,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                         {
                             if (nearestNeighbors >= maximumNearestNeighbors)
                             {
-                                return gridPositions.BuildConvexHull(grid, random);
+                                return gridPositions.BuildConvexHull(grid);
                             }
 
-                            return BuildConcaveHull2(
-                                gridPositions,
-                                grid,
-                                random,
-                                nearestNeighbors + 1
-                            );
+                            return BuildConcaveHull2(gridPositions, grid, nearestNeighbors + 1);
                         }
                     }
 
@@ -1531,10 +1513,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 {
                     if (nearestNeighbors >= maximumNearestNeighbors)
                     {
-                        return gridPositions.BuildConvexHull(grid, random);
+                        return gridPositions.BuildConvexHull(grid);
                     }
 
-                    return BuildConcaveHull2(gridPositions, grid, random, nearestNeighbors + 1);
+                    return BuildConcaveHull2(gridPositions, grid, nearestNeighbors + 1);
                 }
             }
 
@@ -1798,7 +1780,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// </summary>
         /// <param name="gridPositions">The collection of grid positions to build the hull from.</param>
         /// <param name="grid">The Grid used for coordinate conversion.</param>
-        /// <param name="random">Optional random number generator. Uses PRNG.Instance if null.</param>
         /// <param name="scaleFactor">
         /// Scale factor for the search area when finding nearby points. Default is 1.
         /// </param>
@@ -1821,7 +1802,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         public static List<FastVector3Int> BuildConcaveHull(
             this IEnumerable<FastVector3Int> gridPositions,
             Grid grid,
-            IRandom random = null,
             float scaleFactor = 1,
             float concavity = 0f
         )
@@ -1840,7 +1820,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return new List<FastVector3Int>(originalGridPositions);
             }
 
-            List<FastVector3Int> convexHull = originalGridPositions.BuildConvexHull(grid, random);
+            List<FastVector3Int> convexHull = originalGridPositions.BuildConvexHull(grid);
             using PooledResource<HashSet<FastVector3Int>> unusedNodesResource =
                 Buffers<FastVector3Int>.HashSet.Get(out HashSet<FastVector3Int> unusedNodes);
             unusedNodes.UnionWith(originalGridPositions);

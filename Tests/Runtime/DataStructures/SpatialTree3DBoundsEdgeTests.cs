@@ -1,7 +1,6 @@
 namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 {
     using System.Collections.Generic;
-    using System.Linq;
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.DataStructure;
     using Bounds = UnityEngine.Bounds;

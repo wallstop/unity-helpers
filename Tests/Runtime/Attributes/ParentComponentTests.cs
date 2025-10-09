@@ -7,7 +7,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
     using Components;
     using NUnit.Framework;
     using UnityEngine;
-    using UnityEngine.Serialization;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using Object = UnityEngine.Object;

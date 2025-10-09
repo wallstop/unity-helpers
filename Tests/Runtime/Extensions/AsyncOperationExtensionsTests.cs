@@ -106,7 +106,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             AsyncOperation nullOp = null;
             Assert.Throws<ArgumentNullException>(() =>
             {
-                AsyncOperationExtensions.AsyncOperationAwaiter awaiter = nullOp.GetAwaiter();
+                nullOp.GetAwaiter();
             });
         }
 
