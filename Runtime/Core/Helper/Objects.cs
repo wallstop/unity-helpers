@@ -5,8 +5,14 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
     using System.Collections.Generic;
     using System.Runtime.CompilerServices;
 
+    /// <summary>
+    /// Utilities for null checks (including UnityEngine.Object overloads) and deterministic hash code composition.
+    /// </summary>
     public static class Objects
     {
+        /// <summary>
+        /// Unity-aware null check for UnityEngine.Object types (handles destroyed objects returning true for == null).
+        /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool Null<T>(T instance)
             where T : UnityEngine.Object
@@ -14,6 +20,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             return instance == null;
         }
 
+        /// <summary>
+        /// Hybrid null check for boxed or unknown objects (handles UnityEngine.Object special null semantics).
+        /// </summary>
         public static bool Null(object instance)
         {
             if (instance is null)
@@ -29,6 +38,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             return false;
         }
 
+        /// <summary>
+        /// Unity-aware not-null check for UnityEngine.Object types.
+        /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool NotNull<T>(T instance)
             where T : UnityEngine.Object
@@ -36,11 +48,17 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             return instance != null;
         }
 
+        /// <summary>
+        /// Hybrid not-null check for boxed or unknown objects.
+        /// </summary>
         public static bool NotNull(object instance)
         {
             return !Null(instance);
         }
 
+        /// <summary>
+        /// Combines hash codes for a span of values into a deterministic composite hash.
+        /// </summary>
         public static int HashCode<T>(ReadOnlySpan<T> values)
         {
             if (values.IsEmpty)
@@ -57,6 +75,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             return hash.ToHashCode();
         }
 
+        /// <summary>
+        /// Combines one value into a deterministic hash.
+        /// </summary>
         public static int HashCode<T1>(T1 param1)
         {
             DeterministicHashBuilder hash = default;
@@ -64,6 +85,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             return hash.ToHashCode();
         }
 
+        /// <summary>
+        /// Combines two values into a deterministic hash.
+        /// </summary>
         public static int HashCode<T1, T2>(T1 param1, T2 param2)
         {
             DeterministicHashBuilder hash = default;
@@ -252,6 +276,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             return hash.ToHashCode();
         }
 
+        /// <summary>
+        /// Combines hash codes for all elements in an enumerable (with optimized paths for common collection types).
+        /// </summary>
         public static int EnumerableHashCode<T>(IEnumerable<T> enumerable)
         {
             if (ReferenceEquals(enumerable, null))

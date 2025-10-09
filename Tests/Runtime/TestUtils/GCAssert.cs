@@ -24,14 +24,14 @@ namespace WallstopStudios.UnityHelpers.Tests
                 action();
             }
 
-            long before = System.GC.GetAllocatedBytesForCurrentThread();
+            long before = GC.GetAllocatedBytesForCurrentThread();
 
             for (int i = 0; i < measuredIterations; i++)
             {
                 action();
             }
 
-            long after = System.GC.GetAllocatedBytesForCurrentThread();
+            long after = GC.GetAllocatedBytesForCurrentThread();
             long delta = after - before;
             return delta < 0 ? 0 : delta;
         }

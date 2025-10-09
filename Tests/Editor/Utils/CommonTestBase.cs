@@ -17,6 +17,15 @@ namespace WallstopStudios.UnityHelpers.Tests
         protected readonly List<UnityEngine.Object> _trackedObjects = new();
         protected readonly List<IDisposable> _trackedDisposables = new();
 
+        protected GameObject Track(GameObject obj)
+        {
+            if (obj != null)
+            {
+                _trackedObjects.Add(obj);
+            }
+            return obj;
+        }
+
         protected T Track<T>(T obj)
             where T : UnityEngine.Object
         {

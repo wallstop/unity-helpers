@@ -11,6 +11,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tests.Editor.Utils
     using WallstopStudios.UnityHelpers.Utils;
 
     public sealed class ScriptableObjectSingletonCreatorEditorTests
+        : WallstopStudios.UnityHelpers.Tests.CommonTestBase
     {
         private const string ResourcesRoot = "Assets/Resources";
         private const string TargetFolder = ResourcesRoot + "/Tests/CreatorPath";

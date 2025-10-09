@@ -6,40 +6,20 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Attributes;
-    using Object = UnityEngine.Object;
 
     /// <summary>
     /// Tests for HashSet support in relational component attributes
     /// </summary>
     [TestFixture]
-    public sealed class RelationalComponentHashSetTests
+    public sealed class RelationalComponentHashSetTests : CommonTestBase
     {
-        private readonly List<Object> _spawned = new();
-
-        [UnityTearDown]
-        public IEnumerator Cleanup()
-        {
-            foreach (Object spawned in _spawned)
-            {
-                if (spawned != null)
-                {
-                    Object.Destroy(spawned);
-                    yield return null;
-                }
-            }
-            _spawned.Clear();
-        }
-
         [UnityTest]
         public IEnumerator ParentHashSetFindsComponents()
         {
-            GameObject root = new("Root", typeof(SpriteRenderer));
-            _spawned.Add(root);
-            GameObject parent1 = new("Parent1", typeof(SpriteRenderer));
-            _spawned.Add(parent1);
+            GameObject root = Track(new GameObject("Root", typeof(SpriteRenderer)));
+            GameObject parent1 = Track(new GameObject("Parent1", typeof(SpriteRenderer)));
             parent1.transform.SetParent(root.transform);
-            GameObject child = new("Child", typeof(ParentHashSetTester));
-            _spawned.Add(child);
+            GameObject child = Track(new GameObject("Child", typeof(ParentHashSetTester)));
             child.transform.SetParent(parent1.transform);
 
             ParentHashSetTester tester = child.GetComponent<ParentHashSetTester>();
@@ -55,14 +35,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [UnityTest]
         public IEnumerator ChildHashSetFindsComponents()
         {
-            GameObject root = new("Root", typeof(ChildHashSetTester));
-            _spawned.Add(root);
+            GameObject root = Track(new GameObject("Root", typeof(ChildHashSetTester)));
             ChildHashSetTester tester = root.GetComponent<ChildHashSetTester>();
 
             for (int i = 0; i < 3; i++)
             {
-                GameObject child = new($"Child{i}", typeof(SpriteRenderer));
-                _spawned.Add(child);
+                GameObject child = Track(new GameObject($"Child{i}", typeof(SpriteRenderer)));
                 child.transform.SetParent(root.transform);
             }
 
@@ -78,8 +56,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [UnityTest]
         public IEnumerator SiblingHashSetFindsComponents()
         {
-            GameObject root = new("Root");
-            _spawned.Add(root);
+            GameObject root = Track(new GameObject("Root"));
 
             for (int i = 0; i < 3; i++)
             {
@@ -102,13 +79,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             // This test verifies HashSet's natural deduplication
             // Even if the same component appears multiple times in search results,
             // HashSet should only contain unique instances
-            GameObject root = new("Root", typeof(ChildHashSetDeduplicationTester));
-            _spawned.Add(root);
+            GameObject root = Track(
+                new GameObject("Root", typeof(ChildHashSetDeduplicationTester))
+            );
             ChildHashSetDeduplicationTester tester =
                 root.GetComponent<ChildHashSetDeduplicationTester>();
 
-            GameObject child = new("Child", typeof(SpriteRenderer));
-            _spawned.Add(child);
+            GameObject child = Track(new GameObject("Child", typeof(SpriteRenderer)));
             child.transform.SetParent(root.transform);
 
             tester.AssignChildComponents();
@@ -123,14 +100,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [UnityTest]
         public IEnumerator HashSetSupportsMaxCount()
         {
-            GameObject root = new("Root", typeof(ChildHashSetMaxCountTester));
-            _spawned.Add(root);
+            GameObject root = Track(new GameObject("Root", typeof(ChildHashSetMaxCountTester)));
             ChildHashSetMaxCountTester tester = root.GetComponent<ChildHashSetMaxCountTester>();
 
             for (int i = 0; i < 5; i++)
             {
-                GameObject child = new($"Child{i}", typeof(SpriteRenderer));
-                _spawned.Add(child);
+                GameObject child = Track(new GameObject($"Child{i}", typeof(SpriteRenderer)));
                 child.transform.SetParent(root.transform);
             }
 
@@ -145,16 +120,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [UnityTest]
         public IEnumerator HashSetSupportsInterfaces()
         {
-            GameObject root = new("Root", typeof(ChildHashSetInterfaceTester));
-            _spawned.Add(root);
+            GameObject root = Track(new GameObject("Root", typeof(ChildHashSetInterfaceTester)));
             ChildHashSetInterfaceTester tester = root.GetComponent<ChildHashSetInterfaceTester>();
 
-            GameObject child1 = new("Child1", typeof(TestInterfaceComponent));
-            _spawned.Add(child1);
+            GameObject child1 = Track(new GameObject("Child1", typeof(TestInterfaceComponent)));
             child1.transform.SetParent(root.transform);
 
-            GameObject child2 = new("Child2", typeof(AnotherInterfaceComponent));
-            _spawned.Add(child2);
+            GameObject child2 = Track(new GameObject("Child2", typeof(AnotherInterfaceComponent)));
             child2.transform.SetParent(root.transform);
 
             tester.AssignChildComponents();
@@ -170,16 +142,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public IEnumerator HashSetWorksWithFilters()
         {
             GameObject root = new("Root", typeof(ChildHashSetFilterTester));
-            _spawned.Add(root);
+            Track(root);
             ChildHashSetFilterTester tester = root.GetComponent<ChildHashSetFilterTester>();
 
             GameObject child1 = new("PlayerChild", typeof(SpriteRenderer));
-            _spawned.Add(child1);
+            Track(child1);
             child1.tag = "Player";
             child1.transform.SetParent(root.transform);
 
             GameObject child2 = new("EnemyChild", typeof(SpriteRenderer));
-            _spawned.Add(child2);
+            Track(child2);
             child2.tag = "Untagged";
             child2.transform.SetParent(root.transform);
 

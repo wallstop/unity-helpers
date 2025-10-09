@@ -6,28 +6,18 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Utils;
 
-    public sealed class MatchTransformTests
+    public sealed class MatchTransformTests : CommonTestBase
     {
-        [TearDown]
-        public void Cleanup()
-        {
-            foreach (
-                GameObject go in Object.FindObjectsByType<GameObject>(FindObjectsSortMode.None)
-            )
-            {
-                Object.Destroy(go);
-            }
-        }
+        // Tracking handled by CommonTestBase
 
         [UnityTest]
         public IEnumerator MatchesTransformInUpdate()
         {
-            GameObject target = new("Target")
-            {
-                transform = { position = new Vector3(5f, 10f, 0f) },
-            };
+            GameObject target = Track(
+                new GameObject("Target") { transform = { position = new Vector3(5f, 10f, 0f) } }
+            );
 
-            GameObject follower = new("Follower", typeof(MatchTransform));
+            GameObject follower = Track(new GameObject("Follower", typeof(MatchTransform)));
             MatchTransform matcher = follower.GetComponent<MatchTransform>();
             matcher.toMatch = target.transform;
             matcher.mode = MatchTransformMode.Update;
@@ -42,12 +32,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator MatchesTransformInFixedUpdate()
         {
-            GameObject target = new("Target")
-            {
-                transform = { position = new Vector3(5f, 10f, 0f) },
-            };
+            GameObject target = Track(
+                new GameObject("Target") { transform = { position = new Vector3(5f, 10f, 0f) } }
+            );
 
-            GameObject follower = new("Follower", typeof(MatchTransform));
+            GameObject follower = Track(new GameObject("Follower", typeof(MatchTransform)));
             MatchTransform matcher = follower.GetComponent<MatchTransform>();
             matcher.toMatch = target.transform;
             matcher.mode = MatchTransformMode.FixedUpdate;
@@ -62,12 +51,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator MatchesTransformInLateUpdate()
         {
-            GameObject target = new("Target")
-            {
-                transform = { position = new Vector3(5f, 10f, 0f) },
-            };
+            GameObject target = Track(
+                new GameObject("Target") { transform = { position = new Vector3(5f, 10f, 0f) } }
+            );
 
-            GameObject follower = new("Follower", typeof(MatchTransform));
+            GameObject follower = Track(new GameObject("Follower", typeof(MatchTransform)));
             MatchTransform matcher = follower.GetComponent<MatchTransform>();
             matcher.toMatch = target.transform;
             matcher.mode = MatchTransformMode.LateUpdate;
@@ -82,12 +70,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator MatchesTransformOnAwake()
         {
-            GameObject target = new("Target")
-            {
-                transform = { position = new Vector3(5f, 10f, 0f) },
-            };
+            GameObject target = Track(
+                new GameObject("Target") { transform = { position = new Vector3(5f, 10f, 0f) } }
+            );
 
-            GameObject follower = new("Follower", typeof(MatchTransform));
+            GameObject follower = Track(new GameObject("Follower", typeof(MatchTransform)));
             MatchTransform matcher = follower.GetComponent<MatchTransform>();
             matcher.toMatch = target.transform;
             matcher.mode = MatchTransformMode.Awake;
@@ -101,12 +88,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator MatchesTransformOnStart()
         {
-            GameObject target = new("Target")
-            {
-                transform = { position = new Vector3(5f, 10f, 0f) },
-            };
+            GameObject target = Track(
+                new GameObject("Target") { transform = { position = new Vector3(5f, 10f, 0f) } }
+            );
 
-            GameObject follower = new("Follower", typeof(MatchTransform));
+            GameObject follower = Track(new GameObject("Follower", typeof(MatchTransform)));
             MatchTransform matcher = follower.GetComponent<MatchTransform>();
             matcher.toMatch = target.transform;
             matcher.mode = MatchTransformMode.Start;
@@ -121,10 +107,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator AppliesLocalOffset()
         {
-            GameObject target = new("Target")
-            {
-                transform = { position = new Vector3(5f, 10f, 0f) },
-            };
+            GameObject target = Track(
+                new GameObject("Target") { transform = { position = new Vector3(5f, 10f, 0f) } }
+            );
 
             GameObject follower = new("Follower", typeof(MatchTransform));
             MatchTransform matcher = follower.GetComponent<MatchTransform>();
@@ -143,10 +128,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator DoesNotMatchWithNullTarget()
         {
-            GameObject follower = new("Follower", typeof(MatchTransform))
-            {
-                transform = { position = new Vector3(1f, 2f, 3f) },
-            };
+            GameObject follower = Track(
+                new GameObject("Follower", typeof(MatchTransform))
+                {
+                    transform = { position = new Vector3(1f, 2f, 3f) },
+                }
+            );
             MatchTransform matcher = follower.GetComponent<MatchTransform>();
             matcher.toMatch = null;
             matcher.mode = MatchTransformMode.Update;
@@ -163,9 +150,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator UpdatesContinuouslyInUpdate()
         {
-            GameObject target = new("Target") { transform = { position = Vector3.zero } };
+            GameObject target = Track(
+                new GameObject("Target") { transform = { position = Vector3.zero } }
+            );
 
-            GameObject follower = new("Follower", typeof(MatchTransform));
+            GameObject follower = Track(new GameObject("Follower", typeof(MatchTransform)));
             MatchTransform matcher = follower.GetComponent<MatchTransform>();
             matcher.toMatch = target.transform;
             matcher.mode = MatchTransformMode.Update;
@@ -191,12 +180,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator SupportsCombinedModes()
         {
-            GameObject target = new("Target")
-            {
-                transform = { position = new Vector3(5f, 10f, 0f) },
-            };
+            GameObject target = Track(
+                new GameObject("Target") { transform = { position = new Vector3(5f, 10f, 0f) } }
+            );
 
-            GameObject follower = new("Follower", typeof(MatchTransform));
+            GameObject follower = Track(new GameObject("Follower", typeof(MatchTransform)));
             MatchTransform matcher = follower.GetComponent<MatchTransform>();
             matcher.toMatch = target.transform;
             matcher.mode = MatchTransformMode.Update | MatchTransformMode.FixedUpdate;
@@ -216,15 +204,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator DoesNotUpdateInWrongMode()
         {
-            GameObject target = new("Target")
-            {
-                transform = { position = new Vector3(5f, 10f, 0f) },
-            };
+            GameObject target = Track(
+                new GameObject("Target") { transform = { position = new Vector3(5f, 10f, 0f) } }
+            );
 
-            GameObject follower = new("Follower", typeof(MatchTransform))
-            {
-                transform = { position = Vector3.zero },
-            };
+            GameObject follower = Track(
+                new GameObject("Follower", typeof(MatchTransform))
+                {
+                    transform = { position = Vector3.zero },
+                }
+            );
             MatchTransform matcher = follower.GetComponent<MatchTransform>();
             matcher.toMatch = target.transform;
             matcher.mode = MatchTransformMode.FixedUpdate;
@@ -240,7 +229,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator AssignsTransformComponent()
         {
-            GameObject follower = new("Follower", typeof(MatchTransform));
+            GameObject follower = Track(new GameObject("Follower", typeof(MatchTransform)));
             MatchTransform matcher = follower.GetComponent<MatchTransform>();
 
             matcher.SendMessage("Awake");
@@ -253,12 +242,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator MatchesNegativePositions()
         {
-            GameObject target = new("Target")
-            {
-                transform = { position = new Vector3(-10f, -20f, -5f) },
-            };
+            GameObject target = Track(
+                new GameObject("Target") { transform = { position = new Vector3(-10f, -20f, -5f) } }
+            );
 
-            GameObject follower = new("Follower", typeof(MatchTransform));
+            GameObject follower = Track(new GameObject("Follower", typeof(MatchTransform)));
             MatchTransform matcher = follower.GetComponent<MatchTransform>();
             matcher.toMatch = target.transform;
             matcher.mode = MatchTransformMode.Update;
@@ -273,12 +261,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator MatchesZeroPosition()
         {
-            GameObject target = new("Target") { transform = { position = Vector3.zero } };
+            GameObject target = Track(
+                new GameObject("Target") { transform = { position = Vector3.zero } }
+            );
 
-            GameObject follower = new("Follower", typeof(MatchTransform))
-            {
-                transform = { position = new Vector3(10f, 10f, 10f) },
-            };
+            GameObject follower = Track(
+                new GameObject("Follower", typeof(MatchTransform))
+                {
+                    transform = { position = new Vector3(10f, 10f, 10f) },
+                }
+            );
             MatchTransform matcher = follower.GetComponent<MatchTransform>();
             matcher.toMatch = target.transform;
             matcher.mode = MatchTransformMode.Update;
@@ -293,12 +285,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator OffsetWorksWithNegativeValues()
         {
-            GameObject target = new("Target")
-            {
-                transform = { position = new Vector3(5f, 5f, 0f) },
-            };
+            GameObject target = Track(
+                new GameObject("Target") { transform = { position = new Vector3(5f, 5f, 0f) } }
+            );
 
-            GameObject follower = new("Follower", typeof(MatchTransform));
+            GameObject follower = Track(new GameObject("Follower", typeof(MatchTransform)));
             MatchTransform matcher = follower.GetComponent<MatchTransform>();
             matcher.toMatch = target.transform;
             matcher.localOffset = new Vector3(-2f, -3f, -1f);
@@ -315,12 +306,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator OffsetWorksWithZero()
         {
-            GameObject target = new("Target")
-            {
-                transform = { position = new Vector3(5f, 10f, 0f) },
-            };
+            GameObject target = Track(
+                new GameObject("Target") { transform = { position = new Vector3(5f, 10f, 0f) } }
+            );
 
-            GameObject follower = new("Follower", typeof(MatchTransform));
+            GameObject follower = Track(new GameObject("Follower", typeof(MatchTransform)));
             MatchTransform matcher = follower.GetComponent<MatchTransform>();
             matcher.toMatch = target.transform;
             matcher.localOffset = Vector3.zero;
@@ -364,17 +354,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator ChangingTargetDynamically()
         {
-            GameObject target1 = new("Target1")
-            {
-                transform = { position = new Vector3(5f, 5f, 0f) },
-            };
+            GameObject target1 = Track(
+                new GameObject("Target1") { transform = { position = new Vector3(5f, 5f, 0f) } }
+            );
 
-            GameObject target2 = new("Target2")
-            {
-                transform = { position = new Vector3(10f, 10f, 0f) },
-            };
+            GameObject target2 = Track(
+                new GameObject("Target2") { transform = { position = new Vector3(10f, 10f, 0f) } }
+            );
 
-            GameObject follower = new("Follower", typeof(MatchTransform));
+            GameObject follower = Track(new GameObject("Follower", typeof(MatchTransform)));
             MatchTransform matcher = follower.GetComponent<MatchTransform>();
             matcher.toMatch = target1.transform;
             matcher.mode = MatchTransformMode.Update;
@@ -395,32 +383,41 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator AllModesWorkIndependently()
         {
-            GameObject target = new("Target")
-            {
-                transform = { position = new Vector3(1f, 2f, 3f) },
-            };
+            GameObject target = Track(
+                new GameObject("Target") { transform = { position = new Vector3(1f, 2f, 3f) } }
+            );
 
-            GameObject awakeFollower = new("AwakeFollower", typeof(MatchTransform));
+            GameObject awakeFollower = Track(
+                new GameObject("AwakeFollower", typeof(MatchTransform))
+            );
             MatchTransform awakeMatcher = awakeFollower.GetComponent<MatchTransform>();
             awakeMatcher.toMatch = target.transform;
             awakeMatcher.mode = MatchTransformMode.Awake;
 
-            GameObject startFollower = new("StartFollower", typeof(MatchTransform));
+            GameObject startFollower = Track(
+                new GameObject("StartFollower", typeof(MatchTransform))
+            );
             MatchTransform startMatcher = startFollower.GetComponent<MatchTransform>();
             startMatcher.toMatch = target.transform;
             startMatcher.mode = MatchTransformMode.Start;
 
-            GameObject updateFollower = new("UpdateFollower", typeof(MatchTransform));
+            GameObject updateFollower = Track(
+                new GameObject("UpdateFollower", typeof(MatchTransform))
+            );
             MatchTransform updateMatcher = updateFollower.GetComponent<MatchTransform>();
             updateMatcher.toMatch = target.transform;
             updateMatcher.mode = MatchTransformMode.Update;
 
-            GameObject fixedUpdateFollower = new("FixedUpdateFollower", typeof(MatchTransform));
+            GameObject fixedUpdateFollower = Track(
+                new GameObject("FixedUpdateFollower", typeof(MatchTransform))
+            );
             MatchTransform fixedUpdateMatcher = fixedUpdateFollower.GetComponent<MatchTransform>();
             fixedUpdateMatcher.toMatch = target.transform;
             fixedUpdateMatcher.mode = MatchTransformMode.FixedUpdate;
 
-            GameObject lateUpdateFollower = new("LateUpdateFollower", typeof(MatchTransform));
+            GameObject lateUpdateFollower = Track(
+                new GameObject("LateUpdateFollower", typeof(MatchTransform))
+            );
             MatchTransform lateUpdateMatcher = lateUpdateFollower.GetComponent<MatchTransform>();
             lateUpdateMatcher.toMatch = target.transform;
             lateUpdateMatcher.mode = MatchTransformMode.LateUpdate;
@@ -450,12 +447,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator ChangingOffsetDynamically()
         {
-            GameObject target = new("Target")
-            {
-                transform = { position = new Vector3(5f, 10f, 0f) },
-            };
+            GameObject target = Track(
+                new GameObject("Target") { transform = { position = new Vector3(5f, 10f, 0f) } }
+            );
 
-            GameObject follower = new("Follower", typeof(MatchTransform));
+            GameObject follower = Track(new GameObject("Follower", typeof(MatchTransform)));
             MatchTransform matcher = follower.GetComponent<MatchTransform>();
             matcher.toMatch = target.transform;
             matcher.localOffset = new Vector3(1f, 1f, 0f);
@@ -477,12 +473,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator WorksWithLargePositions()
         {
-            GameObject target = new("Target")
-            {
-                transform = { position = new Vector3(10000f, 20000f, 5000f) },
-            };
+            GameObject target = Track(
+                new GameObject("Target")
+                {
+                    transform = { position = new Vector3(10000f, 20000f, 5000f) },
+                }
+            );
 
-            GameObject follower = new("Follower", typeof(MatchTransform));
+            GameObject follower = Track(new GameObject("Follower", typeof(MatchTransform)));
             MatchTransform matcher = follower.GetComponent<MatchTransform>();
             matcher.toMatch = target.transform;
             matcher.mode = MatchTransformMode.Update;

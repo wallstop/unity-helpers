@@ -4,8 +4,17 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
     using UnityEditor;
     using UnityEngine;
 
+    /// <summary>
+    /// Sprite and texture utilities for editor workflows.
+    /// </summary>
     public static class SpriteHelpers
     {
+        /// <summary>
+        /// Ensures a Texture2D asset is marked as readable (Editor only). No-ops in player.
+        /// </summary>
+        /// <remarks>
+        /// Useful for analysis or runtime generation workflows that require raw texture data.
+        /// </remarks>
         public static void MakeReadable(this Texture2D texture)
         {
             if (texture == null || texture.isReadable)

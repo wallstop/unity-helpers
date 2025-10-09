@@ -16,6 +16,14 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
     using UnityEditor;
     using UnityEditorInternal;
 #endif
+    /// <summary>
+    /// General-purpose utilities and Unity-centric helpers.
+    /// </summary>
+    /// <remarks>
+    /// Scope: Cross-cutting helpers for gameplay, math, pooling, scene, sprites, and layers.
+    /// Threading: Unless noted otherwise, methods that touch Unity APIs must run on the main thread.
+    /// Performance: Many methods use pooled buffers (see Buffers<T>) to avoid allocations.
+    /// </remarks>
     public static partial class Helpers
     {
 #if SINGLE_THREADED
@@ -63,8 +71,20 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             LayerCacheInitialized = false;
         }
 
+        /// <summary>
+        /// Indicates whether Unity is running in batch mode (no graphics device, command-line mode).
+        /// </summary>
+        /// <remarks>
+        /// Useful for disabling editor-only or interactive-only behavior in build scripts and CI.
+        /// </remarks>
         public static bool IsRunningInBatchMode => Application.isBatchMode;
 
+        /// <summary>
+        /// Indicates whether the process appears to be running under a CI system.
+        /// </summary>
+        /// <remarks>
+        /// Checks common CI environment variables including GITHUB_ACTIONS, CI, JENKINS_URL, and GITLAB_CI.
+        /// </remarks>
         public static bool IsRunningInContinuousIntegration
         {
             get
@@ -98,6 +118,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         internal static string[] AllSpriteLabels { get; private set; } = Array.Empty<string>();
         private static bool SpriteLabelCacheInitialized;
 
+        /// <summary>
+        /// Gets all unique sprite labels in the project (Editor only).
+        /// </summary>
+        /// <remarks>
+        /// Returns an empty array in batch/CI or at runtime player. Results are cached and sorted.
+        /// </remarks>
         public static string[] GetAllSpriteLabelNames()
         {
             if (IsRunningInContinuousIntegration || IsRunningInBatchMode)
@@ -119,6 +145,13 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #endif
         }
 
+        /// <summary>
+        /// Copies all unique sprite labels into <paramref name="destination"/> (Editor only).
+        /// </summary>
+        /// <param name="destination">Destination list which will be cleared first.</param>
+        /// <remarks>
+        /// Returns without changes in batch/CI or at runtime player. Results are cached and sorted.
+        /// </remarks>
         public static void GetAllSpriteLabelNames(List<string> destination)
         {
             if (destination == null)
@@ -149,6 +182,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #endif
         }
 
+        /// <summary>
+        /// Gets all defined Unity layer names.
+        /// </summary>
+        /// <remarks>
+        /// Uses InternalEditorUtility.layers in Editor with caching, otherwise queries LayerMask.LayerToName.
+        /// </remarks>
         public static string[] GetAllLayerNames()
         {
 #if UNITY_EDITOR
@@ -205,6 +244,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             return CachedLayerNames;
         }
 
+        /// <summary>
+        /// Copies all layer names into <paramref name="destination"/>.
+        /// </summary>
+        /// <param name="destination">Destination list which will be cleared first.</param>
         public static void GetAllLayerNames(List<string> destination)
         {
             if (destination == null)
@@ -315,6 +358,22 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         }
 
         // https://gamedevelopment.tutsplus.com/tutorials/unity-solution-for-hitting-moving-targets--cms-29633
+        /// <summary>
+        /// Computes a lead position for a moving target given projectile speed.
+        /// </summary>
+        /// <param name="currentTarget">Target GameObject to aim at.</param>
+        /// <param name="launchLocation">Projectile launch position.</param>
+        /// <param name="projectileSpeed">Projectile speed (units/second).</param>
+        /// <param name="predictiveFiring">If false, returns current target position.</param>
+        /// <param name="targetVelocity">Estimated target linear velocity.</param>
+        /// <returns>World position to aim at. Falls back to current target position if prediction fails.</returns>
+        /// <example>
+        /// <code>
+        /// // Aim turret with predictive lead
+        /// Vector2 aimPoint = target.PredictCurrentTarget(turret.position, projectileSpeed: 25f, predictiveFiring: true, targetVelocity);
+        /// turret.transform.up = (aimPoint - (Vector2)turret.position).normalized;
+        /// </code>
+        /// </example>
         public static Vector2 PredictCurrentTarget(
             this GameObject currentTarget,
             Vector2 launchLocation,
@@ -377,6 +436,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             return new Vector2(aimX, aimY);
         }
 
+        /// <summary>
+        /// Gets a component of type <typeparamref name="T"/> from a GameObject or Component reference.
+        /// Returns default when <paramref name="target"/> is neither.
+        /// </summary>
         public static T GetComponent<T>(this Object target)
         {
             return target switch
@@ -387,6 +450,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             };
         }
 
+        /// <summary>
+        /// Gets all components of type <typeparamref name="T"/> from a GameObject or Component reference.
+        /// Returns an empty array when no match is found.
+        /// </summary>
         public static T[] GetComponents<T>(this Object target)
         {
             return target switch
@@ -397,6 +464,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             };
         }
 
+        /// <summary>
+        /// Gets all components of type <typeparamref name="T"/> into a provided buffer, avoiding allocations.
+        /// </summary>
+        /// <param name="buffer">Destination buffer which is cleared first.</param>
         public static List<T> GetComponents<T>(this Object target, List<T> buffer)
         {
             if (buffer == null)
@@ -419,6 +490,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             return buffer;
         }
 
+        /// <summary>
+        /// Extracts a GameObject from either a GameObject or Component instance; returns null otherwise.
+        /// </summary>
         public static GameObject GetGameObject(this object target)
         {
             return target switch
@@ -429,6 +503,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             };
         }
 
+        /// <summary>
+        /// Tries to get a component of type <typeparamref name="T"/> from a GameObject or Component.
+        /// </summary>
         public static bool TryGetComponent<T>(this Object target, out T component)
         {
             component = default;
@@ -440,6 +517,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             };
         }
 
+        /// <summary>
+        /// Recursively searches the child hierarchy (including self) for the first GameObject with the specified tag.
+        /// </summary>
         public static GameObject FindChildGameObjectWithTag(this GameObject gameObject, string tag)
         {
             using PooledResource<List<Transform>> bufferResource = Buffers<Transform>.List.Get();
@@ -461,6 +541,19 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             return null;
         }
 
+        /// <summary>
+        /// Repeatedly invokes an action at the specified update rate using a coroutine.
+        /// </summary>
+        /// <param name="updateRate">Interval in seconds between invocations.</param>
+        /// <param name="useJitter">If true, applies a single randomized initial delay up to <paramref name="updateRate"/>.</param>
+        /// <param name="waitBefore">If true, waits one interval before the first invocation.</param>
+        /// <returns>The started coroutine.</returns>
+        /// <example>
+        /// <code>
+        /// // Poll a service every 0.5s with staggered start
+        /// this.StartFunctionAsCoroutine(CheckHealth, 0.5f, useJitter: true);
+        /// </code>
+        /// </example>
         public static Coroutine StartFunctionAsCoroutine(
             this MonoBehaviour monoBehaviour,
             Action action,
@@ -674,36 +767,60 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             );
         }
 
+        /// <summary>
+        /// Converts a tuple to a Vector3.
+        /// </summary>
         public static Vector3 AsVector3(this (uint x, uint y, uint z) vector)
         {
             return new Vector3(vector.x, vector.y, vector.z);
         }
 
+        /// <summary>
+        /// Converts a Vector3Int to Vector3.
+        /// </summary>
         public static Vector3 AsVector3(this Vector3Int vector)
         {
             return new Vector3(vector.x, vector.y, vector.z);
         }
 
+        /// <summary>
+        /// Converts a Vector3Int to Vector2 by dropping Z.
+        /// </summary>
         public static Vector2 AsVector2(this Vector3Int vector)
         {
             return new Vector2(vector.x, vector.y);
         }
 
+        /// <summary>
+        /// Converts a Vector3Int to Vector2Int by dropping Z.
+        /// </summary>
         public static Vector2Int AsVector2Int(this Vector3Int vector)
         {
             return new Vector2Int(vector.x, vector.y);
         }
 
+        /// <summary>
+        /// Converts a Vector2Int to Vector3Int (Z = 0).
+        /// </summary>
         public static Vector3Int AsVector3Int(this Vector2Int vector)
         {
             return new Vector3Int(vector.x, vector.y);
         }
 
+        /// <summary>
+        /// Converts a BoundsInt to a 2D Rect using X/Y and size.
+        /// </summary>
         public static Rect AsRect(this BoundsInt bounds)
         {
             return new Rect(bounds.x, bounds.y, bounds.size.x, bounds.size.y);
         }
 
+        /// <summary>
+        /// Returns a uniformly random point inside a circle.
+        /// </summary>
+        /// <param name="center">Circle center.</param>
+        /// <param name="radius">Circle radius.</param>
+        /// <param name="random">Optional RNG; defaults to PRNG.Instance.</param>
         public static Vector2 GetRandomPointInCircle(
             Vector2 center,
             float radius,
@@ -719,6 +836,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             );
         }
 
+        /// <summary>
+        /// Returns a uniformly random point inside a sphere.
+        /// </summary>
+        /// <param name="center">Sphere center.</param>
+        /// <param name="radius">Sphere radius.</param>
+        /// <param name="random">Optional RNG; defaults to PRNG.Instance.</param>
         public static Vector3 GetRandomPointInSphere(
             Vector3 center,
             float radius,
@@ -739,6 +862,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             );
         }
 
+        /// <summary>
+        /// Gets the first child (or self) with the Player tag.
+        /// </summary>
         public static GameObject GetPlayerObjectInChildHierarchy(
             this GameObject gameObject,
             string playerTag = "Player"
@@ -747,6 +873,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             return gameObject.GetTagObjectInChildHierarchy(playerTag);
         }
 
+        /// <summary>
+        /// Gets the first child (or self) with a specific tag.
+        /// </summary>
         public static GameObject GetTagObjectInChildHierarchy(
             this GameObject gameObject,
             string tag
@@ -771,6 +900,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         }
 
         //https://answers.unity.com/questions/722748/refreshing-the-polygon-collider-2d-upon-sprite-cha.html
+        /// <summary>
+        /// Updates a PolygonCollider2D's shape to match the current SpriteRenderer sprite.
+        /// </summary>
+        /// <remarks>
+        /// Useful when changing sprites at runtime and needing the collider to match the new shape.
+        /// </remarks>
         public static void UpdateShapeToSprite(this Component component)
         {
             if (
@@ -784,6 +919,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             UpdateShapeToSprite(spriteRenderer.sprite, collider);
         }
 
+        /// <summary>
+        /// Updates a PolygonCollider2D to match a given Sprite's physics shape.
+        /// </summary>
         public static void UpdateShapeToSprite(Sprite sprite, PolygonCollider2D collider)
         {
             if (sprite == null || collider == null)
@@ -803,6 +941,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
         }
 
+        /// <summary>
+        /// 3D cross product for Vector3Int.
+        /// </summary>
         public static Vector3Int Cross(this Vector3Int vector, Vector3Int other)
         {
             int x = vector.y * other.z - other.y * vector.z;
@@ -812,6 +953,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             return new Vector3Int(x, y, z);
         }
 
+        /// <summary>
+        /// Walks up the hierarchy (including self) to find the nearest GameObject with a component of type <typeparamref name="T"/>.
+        /// </summary>
         public static GameObject TryGetClosestParentWithComponentIncludingSelf<T>(
             this GameObject current
         )
@@ -887,6 +1031,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             return temp;
         }
 
+        /// <summary>
+        /// Enumerates Prefab assets in the project (Editor only). Uses search folders when provided.
+        /// </summary>
         public static IEnumerable<GameObject> EnumeratePrefabs(
             IEnumerable<string> assetPaths = null
         )
@@ -917,6 +1064,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
         }
 
+        /// <summary>
+        /// Enumerates ScriptableObject assets of type <typeparamref name="T"/> in the project (Editor only).
+        /// </summary>
         public static IEnumerable<T> EnumerateScriptableObjects<T>(
             IEnumerable<string> assetPaths = null
         )
@@ -1013,6 +1163,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             return new Color(red, green, blue, color.a);
         }
 
+        /// <summary>
+        /// Invokes Awake() on all <see cref="MonoBehaviour"/> components in the GameObject's hierarchy.
+        /// </summary>
+        /// <remarks>
+        /// Primarily useful in tests and tooling to simulate lifecycle when instantiating objects dynamically.
+        /// </remarks>
         public static void AwakeObject(this GameObject gameObject)
         {
             using PooledResource<List<MonoBehaviour>> componentResource =
@@ -1046,6 +1202,19 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
         }
 
+        /// <summary>
+        /// Rotates a direction vector toward a target direction at a fixed angular speed.
+        /// </summary>
+        /// <param name="targetDirection">Desired direction (normalized or not).</param>
+        /// <param name="currentDirection">Current direction (normalized or not).</param>
+        /// <param name="rotationSpeed">Degrees per second.</param>
+        /// <returns>New normalized direction after applying rotation for the current frame.</returns>
+        /// <example>
+        /// <code>
+        /// Vector2 facing = Vector2.right;
+        /// facing = Helpers.GetAngleWithSpeed(target - position, facing, 180f);
+        /// </code>
+        /// </example>
         public static Vector2 GetAngleWithSpeed(
             Vector2 targetDirection,
             Vector2 currentDirection,
@@ -1074,6 +1243,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             return (Quaternion.AngleAxis(currentAngle, Vector3.forward) * Vector3.right).normalized;
         }
 
+        /// <summary>
+        /// Expands a 2D BoundsInt to include the given X/Y position.
+        /// </summary>
         public static void Extend2D(ref BoundsInt bounds, FastVector3Int position)
         {
             if (position.x < bounds.xMin)

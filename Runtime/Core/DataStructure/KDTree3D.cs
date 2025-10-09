@@ -7,6 +7,14 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     using UnityEngine;
     using Utils;
 
+    /// <summary>
+    /// Immutable 3D k-d tree for efficient nearest neighbor, range, and bounds queries in 3D space.
+    /// </summary>
+    /// <typeparam name="T">Element type contained in the tree.</typeparam>
+    /// <remarks>
+    /// Pros: Very fast nearest neighbor performance; good for static or batched updates.
+    /// Cons: Immutable structure by design; rebuild when positions change frequently.
+    /// </remarks>
     [Serializable]
     public sealed class KdTree3D<T> : ISpatialTree3D<T>
     {
@@ -82,9 +90,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         private const float MinimumNodeSize = 0.001f;
         private const int SmallPartitionThreshold = 32;
 
+        /// <summary>
+        /// Default bucket size for leaves before stopping recursion.
+        /// </summary>
         public const int DefaultBucketSize = 12;
 
         public readonly ImmutableArray<T> elements;
+
+        /// <summary>
+        /// Gets the overall bounding box of the tree.
+        /// </summary>
         public Bounds Boundary => _bounds;
 
         private readonly Bounds _bounds;
@@ -94,6 +109,14 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         private readonly bool _balanced;
         private readonly int _bucketSize;
 
+        /// <summary>
+        /// Builds a 3D k-d tree from elements using a transformer to extract 3D positions.
+        /// </summary>
+        /// <param name="points">Source elements.</param>
+        /// <param name="elementTransformer">Maps element to its 3D position.</param>
+        /// <param name="bucketSize">Max elements per leaf. Minimum 1.</param>
+        /// <param name="balanced">If true, builds a balanced tree by median selection; otherwise uses a quick split strategy.</param>
+        /// <exception cref="ArgumentNullException">Thrown when points or elementTransformer are null.</exception>
         public KdTree3D(
             IEnumerable<T> points,
             Func<T, Vector3> elementTransformer,

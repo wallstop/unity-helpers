@@ -9,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tests.Editor.Helper
 
     [TestFixture]
     public sealed class SpriteSettingsApplierTests
+        : WallstopStudios.UnityHelpers.Tests.CommonTestBase
     {
         private const string TestFolder = "Assets/TempSpriteApplierTests";
         private string _assetPath;

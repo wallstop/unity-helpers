@@ -8,6 +8,14 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     using UnityEngine;
     using Utils;
 
+    /// <summary>
+    /// Immutable 2D R-Tree for efficient spatial indexing of rectangular bounds.
+    /// </summary>
+    /// <typeparam name="T">Element type.</typeparam>
+    /// <remarks>
+    /// Pros: Great for sized objects (sprites, colliders) with area; supports fast rectangle and radius queries.
+    /// Cons: Immutable; rebuild when element bounds change.
+    /// </remarks>
     [Serializable]
     public sealed class RTree2D<T> : ISpatialTree2D<T>
     {
@@ -73,16 +81,31 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
         }
 
+        /// <summary>
+        /// Default number of elements per leaf node.
+        /// </summary>
         public const int DefaultBucketSize = 10;
         public const int DefaultBranchFactor = 4;
 
         public readonly ImmutableArray<T> elements;
+
+        /// <summary>
+        /// Gets the overall bounding box of the tree.
+        /// </summary>
         public Bounds Boundary => _bounds;
 
         private readonly Bounds _bounds;
         private readonly ElementData[] _elementData;
         private readonly RTreeNode _head;
 
+        /// <summary>
+        /// Builds an R-Tree from elements using a transformer that returns each element's bounds.
+        /// </summary>
+        /// <param name="points">Source elements.</param>
+        /// <param name="elementTransformer">Maps element to an axis-aligned bounding box in world space.</param>
+        /// <param name="bucketSize">Max elements per leaf.</param>
+        /// <param name="branchFactor">Approximate number of children per internal node (≥2).</param>
+        /// <exception cref="ArgumentNullException">Thrown when points or elementTransformer are null.</exception>
         public RTree2D(
             IEnumerable<T> points,
             Func<T, Bounds> elementTransformer,
@@ -282,6 +305,14 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
         }
 
+        /// <summary>
+        /// Finds all elements within distance <paramref name="range"/> of <paramref name="position"/> (circle query).
+        /// </summary>
+        /// <param name="position">Query center.</param>
+        /// <param name="range">Query radius.</param>
+        /// <param name="elementsInRange">Destination list cleared before use.</param>
+        /// <param name="minimumRange">Optional inner exclusion radius.</param>
+        /// <returns>The destination list, for chaining.</returns>
         public List<T> GetElementsInRange(
             Vector2 position,
             float range,
@@ -342,6 +373,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             return elementsInRange;
         }
 
+        /// <summary>
+        /// Finds all elements whose bounds intersect the specified axis-aligned box.
+        /// </summary>
+        /// <returns>The destination list, for chaining.</returns>
         public List<T> GetElementsInBounds(Bounds bounds, List<T> elementsInBounds)
         {
             elementsInBounds.Clear();
@@ -362,7 +397,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             return elementsInBounds;
         }
 
-        // Heavily adapted http://homepage.divms.uiowa.edu/%7Ekvaradar/sp2012/daa/ann.pdf
+        /// <summary>
+        /// Returns an approximate set of the nearest <paramref name="count"/> neighbors to <paramref name="position"/>.
+        /// </summary>
+        /// <remarks>
+        /// Heavily adapted from ANN strategies for speed; suitable for gameplay proximity needs.
+        /// </remarks>
         public List<T> GetApproximateNearestNeighbors(
             Vector2 position,
             int count,

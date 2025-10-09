@@ -113,7 +113,7 @@
             _ = SerializerAlias.ProtoSerialize(sample, ref buffer);
             using (MemoryStream warm = new())
             {
-                ProtoBuf.Serializer.Serialize(warm, sample);
+                Serializer.Serialize(warm, sample);
             }
 
             // Measure pooled
@@ -131,7 +131,7 @@
             for (int i = 0; i < Iterations; ++i)
             {
                 using MemoryStream ms = new();
-                ProtoBuf.Serializer.Serialize(ms, sample);
+                Serializer.Serialize(ms, sample);
                 _ = ms.ToArray();
             }
             sw.Stop();
@@ -151,7 +151,7 @@
             _ = SerializerAlias.ProtoDeserialize<T>(data);
             using (MemoryStream warm = new MemoryStream(data, writable: false))
             {
-                _ = (T)ProtoBuf.Serializer.Deserialize(typeof(T), warm);
+                _ = (T)Serializer.Deserialize(typeof(T), warm);
             }
 
             // Measure pooled
@@ -168,7 +168,7 @@
             for (int i = 0; i < Iterations; ++i)
             {
                 using MemoryStream ms = new MemoryStream(data, writable: false);
-                _ = (T)ProtoBuf.Serializer.Deserialize(typeof(T), ms);
+                _ = (T)Serializer.Deserialize(typeof(T), ms);
             }
             sw.Stop();
             long classicMs = sw.ElapsedMilliseconds;

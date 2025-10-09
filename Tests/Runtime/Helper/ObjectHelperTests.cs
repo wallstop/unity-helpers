@@ -1,7 +1,6 @@
 namespace WallstopStudios.UnityHelpers.Tests.Helper
 {
     using System.Collections;
-    using System.Collections.Generic;
     using JetBrains.Annotations;
     using NUnit.Framework;
     using UnityEngine;
@@ -11,29 +10,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     [UsedImplicitly]
     public sealed class ObjectHelperComponent : MonoBehaviour { }
 
-    public sealed class ObjectHelperTests
+    public sealed class ObjectHelperTests : CommonTestBase
     {
-        private readonly List<Object> _spawned = new();
-
-        [UnityTearDown]
-        public IEnumerator Cleanup()
-        {
-            foreach (Object spawned in _spawned)
-            {
-                if (spawned != null)
-                {
-                    Object.Destroy(spawned);
-                    yield return null;
-                }
-            }
-            _spawned.Clear();
-        }
-
         [UnityTest]
         public IEnumerator HasComponent()
         {
-            GameObject go = new("Test SpriteRenderer", typeof(SpriteRenderer));
-            _spawned.Add(go);
+            GameObject go = Track(new GameObject("Test SpriteRenderer", typeof(SpriteRenderer)));
             SpriteRenderer spriteRenderer = go.GetComponent<SpriteRenderer>();
 
             Assert.IsTrue(go.HasComponent(typeof(SpriteRenderer)));
@@ -58,15 +40,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public IEnumerator EnableRendererRecursively()
         {
             GameObject one = New("1");
-            _spawned.Add(one);
             GameObject two = New("2");
-            _spawned.Add(two);
             two.transform.SetParent(one.transform);
             GameObject three = New("3");
-            _spawned.Add(three);
             three.transform.SetParent(two.transform);
             GameObject four = New("4");
-            _spawned.Add(four);
             four.transform.SetParent(three.transform);
 
             // Act
@@ -143,7 +121,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
             GameObject New(string name)
             {
-                return new GameObject(name, typeof(SpriteRenderer), typeof(CircleCollider2D));
+                return Track(
+                    new GameObject(name, typeof(SpriteRenderer), typeof(CircleCollider2D))
+                );
             }
         }
 
@@ -151,15 +131,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public IEnumerator EnableRecursively()
         {
             GameObject one = New("1");
-            _spawned.Add(one);
             GameObject two = New("2");
-            _spawned.Add(two);
             two.transform.SetParent(one.transform);
             GameObject three = New("3");
-            _spawned.Add(three);
             three.transform.SetParent(two.transform);
             GameObject four = New("4");
-            _spawned.Add(four);
             four.transform.SetParent(three.transform);
 
             // Act
@@ -236,23 +212,21 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
             GameObject New(string name)
             {
-                return new GameObject(name, typeof(SpriteRenderer), typeof(CircleCollider2D));
+                return Track(
+                    new GameObject(name, typeof(SpriteRenderer), typeof(CircleCollider2D))
+                );
             }
         }
 
         [UnityTest]
         public IEnumerator DestroyAllChildGameObjects()
         {
-            GameObject one = new("1");
-            _spawned.Add(one);
-            GameObject two = new("2");
-            _spawned.Add(two);
+            GameObject one = Track(new GameObject("1"));
+            GameObject two = Track(new GameObject("2"));
             two.transform.SetParent(one.transform);
-            GameObject three = new("3");
-            _spawned.Add(three);
+            GameObject three = Track(new GameObject("3"));
             three.transform.SetParent(two.transform);
-            GameObject four = new("4");
-            _spawned.Add(four);
+            GameObject four = Track(new GameObject("4"));
             four.transform.SetParent(three.transform);
 
             // Act
@@ -264,11 +238,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             Assert.IsTrue(three == null);
             Assert.IsTrue(four == null);
 
-            three = new GameObject("3");
-            _spawned.Add(three);
+            three = Track(new GameObject("3"));
             three.transform.SetParent(two.transform);
-            four = new GameObject("4");
-            _spawned.Add(four);
+            four = Track(new GameObject("4"));
             four.transform.SetParent(three.transform);
 
             // Act
@@ -285,11 +257,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public IEnumerator DestroyAllComponentsOfType()
         {
             GameObject one = New("1");
-            _spawned.Add(one);
             Assert.AreEqual(4, one.GetComponents<ObjectHelperComponent>().Length);
 
             GameObject two = New("2");
-            _spawned.Add(two);
             two.transform.SetParent(one.transform);
 
             one.DestroyAllComponentsOfType<ObjectHelperComponent>();
@@ -310,13 +280,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
             GameObject New(string name)
             {
-                return new GameObject(
-                    name,
-                    typeof(SpriteRenderer),
-                    typeof(ObjectHelperComponent),
-                    typeof(ObjectHelperComponent),
-                    typeof(ObjectHelperComponent),
-                    typeof(ObjectHelperComponent)
+                return Track(
+                    new GameObject(
+                        name,
+                        typeof(SpriteRenderer),
+                        typeof(ObjectHelperComponent),
+                        typeof(ObjectHelperComponent),
+                        typeof(ObjectHelperComponent),
+                        typeof(ObjectHelperComponent)
+                    )
                 );
             }
         }
@@ -324,15 +296,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [UnityTest]
         public IEnumerator SmartDestroy()
         {
-            GameObject one = new("1");
-            _spawned.Add(one);
+            GameObject one = Track(new GameObject("1"));
 
             one.SmartDestroy();
             yield return null;
             Assert.IsTrue(one == null);
 
-            GameObject two = new("2");
-            _spawned.Add(two);
+            GameObject two = Track(new GameObject("2"));
             two.SmartDestroy(1.5f);
             yield return null;
 
@@ -344,16 +314,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [UnityTest]
         public IEnumerator DestroyAllChildrenGameObjectsImmediatelyConditionally()
         {
-            GameObject one = new("1");
-            _spawned.Add(one);
-            GameObject two = new("2");
-            _spawned.Add(two);
+            GameObject one = Track(new GameObject("1"));
+            GameObject two = Track(new GameObject("2"));
             two.transform.SetParent(one.transform);
-            GameObject three = new("3");
-            _spawned.Add(three);
+            GameObject three = Track(new GameObject("3"));
             three.transform.SetParent(two.transform);
-            GameObject four = new("4");
-            _spawned.Add(four);
+            GameObject four = Track(new GameObject("4"));
             four.transform.SetParent(two.transform);
 
             two.DestroyAllChildrenGameObjectsImmediatelyConditionally(go => go == four);
@@ -380,16 +346,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [UnityTest]
         public IEnumerator DestroyAllChildGameObjectsConditionally()
         {
-            GameObject one = new("1");
-            _spawned.Add(one);
-            GameObject two = new("2");
-            _spawned.Add(two);
+            GameObject one = Track(new GameObject("1"));
+            GameObject two = Track(new GameObject("2"));
             two.transform.SetParent(one.transform);
-            GameObject three = new("3");
-            _spawned.Add(three);
+            GameObject three = Track(new GameObject("3"));
             three.transform.SetParent(two.transform);
-            GameObject four = new("4");
-            _spawned.Add(four);
+            GameObject four = Track(new GameObject("4"));
             four.transform.SetParent(two.transform);
 
             two.DestroyAllChildGameObjectsConditionally(go => go == four);
@@ -419,16 +381,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [UnityTest]
         public IEnumerator DestroyAllChildrenGameObjectsImmediately()
         {
-            GameObject one = new("1");
-            _spawned.Add(one);
-            GameObject two = new("2");
-            _spawned.Add(two);
+            GameObject one = Track(new GameObject("1"));
+            GameObject two = Track(new GameObject("2"));
             two.transform.SetParent(one.transform);
-            GameObject three = new("3");
-            _spawned.Add(three);
+            GameObject three = Track(new GameObject("3"));
             three.transform.SetParent(two.transform);
-            GameObject four = new("4");
-            _spawned.Add(four);
+            GameObject four = Track(new GameObject("4"));
             four.transform.SetParent(two.transform);
 
             two.DestroyAllChildrenGameObjectsImmediately();
@@ -437,11 +395,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             Assert.IsTrue(three == null);
             Assert.IsTrue(four == null);
 
-            three = new GameObject("3");
-            _spawned.Add(three);
+            three = Track(new GameObject("3"));
             three.transform.SetParent(two.transform);
-            four = new GameObject("4");
-            _spawned.Add(four);
+            four = Track(new GameObject("4"));
             four.transform.SetParent(two.transform);
 
             one.DestroyAllChildrenGameObjectsImmediately();
@@ -456,8 +412,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [UnityTest]
         public IEnumerator GetGameObject()
         {
-            GameObject go = new("Test", typeof(SpriteRenderer));
-            _spawned.Add(go);
+            GameObject go = Track(new GameObject("Test", typeof(SpriteRenderer)));
             SpriteRenderer spriteRenderer = go.GetComponent<SpriteRenderer>();
 
             GameObject result = go.GetGameObject();

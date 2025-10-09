@@ -260,6 +260,17 @@ public class EnemyManager : MonoBehaviour
 
 [📊 View 2D Performance Benchmarks](SPATIAL_TREE_2D_PERFORMANCE.md) | [📊 View 3D Performance Benchmarks](SPATIAL_TREE_3D_PERFORMANCE.md)
 
+### Choosing Spatial Structures
+
+- QuadTree2D — Static or semi-static point data in 2D. Great for circular and rectangular queries, approximate kNN. Immutable (rebuild when positions change).
+- KdTree2D/3D — Excellent nearest-neighbor performance for points. Balanced variant for uniform data; unbalanced for quicker builds. Immutable.
+- RTree2D — For rectangular/sized objects (sprites, colliders). Great for bounds and radius intersection queries. Immutable.
+- SpatialHash2D/3D — Many moving objects that are fairly uniformly distributed. Cheap updates; fast approximate neighborhood queries.
+
+Rules of thumb:
+- Frequent movement? Prefer SpatialHash. Static or batched rebuilds? Use QuadTree/KdTree/RTree.
+- Query by area/rectangle? RTree2D excels. Nearest neighbors? KdTree. Broad-phase neighbor checks? SpatialHash.
+
 ## Core Features
 
 ### Random Number Generators
@@ -605,6 +616,67 @@ commandTrie.Insert("terrain");
 List<string> matches = commandTrie.GetWordsWithPrefix("tel");
 // Returns: ["teleport", "tell"]
 ```
+
+### Helpers & Extensions
+
+High-level helpers and extension methods that streamline day-to-day Unity work.
+
+Key picks:
+- `Helpers.Find<T>(tag)` and `HasComponent<T>()` — Fewer `GetComponent` calls, cached lookups by tag.
+- `GetOrAddComponent<T>()` — Idempotent component setup in initialization code.
+- `DestroyAllChildren*` and `SmartDestroy()` — Safe destroy patterns across editor/runtime.
+- `StartFunctionAsCoroutine(action, rate, useJitter)` — Simple polling/ticking utilities.
+- `UpdateShapeToSprite()` — Sync `PolygonCollider2D` to `SpriteRenderer` at runtime.
+- `GetAllLayerNames()` and `GetAllSpriteLabelNames()` — Editor integrations and tooling.
+- `GetRandomPointInCircle/Sphere()` — Uniform random positions for spawn/FX.
+- Unity Extensions: conversions (`Rect`⇄`Bounds`), camera `OrthographicBounds()`, physics `Rigidbody2D.Stop()`, input filtering `Vector2.IsNoise()`.
+
+Examples:
+
+```csharp
+using WallstopStudios.UnityHelpers.Core.Helper;
+using WallstopStudios.UnityHelpers.Core.Extension;
+using UnityEngine;
+
+public class Setup : MonoBehaviour
+{
+    void Awake()
+    {
+        // Component orchestration
+        var rb = gameObject.GetOrAddComponent<Rigidbody2D>();
+        if (gameObject.HasComponent<SpriteRenderer>())
+        {
+            // Match collider to current sprite at runtime
+            gameObject.UpdateShapeToSprite();
+        }
+
+        // Destroy patterns
+        transform.parent.gameObject.DestroyAllChildrenGameObjects(); // runtime-safe
+
+        // Lightweight polling
+        this.StartFunctionAsCoroutine(() => Debug.Log("Tick"), 0.5f, useJitter: true);
+    }
+}
+
+public class CameraUtils : MonoBehaviour
+{
+    void OnDrawGizmosSelected()
+    {
+        if (Camera.main)
+        {
+            // Compute world-space orthographic bounds for culling or UI logic
+            Bounds view = Camera.main.OrthographicBounds();
+            Gizmos.DrawWireCube(view.center, view.size);
+        }
+    }
+}
+```
+
+When to use what:
+- Prefer `SpatialHash2D` for many moving objects uniformly spread; prefer `QuadTree2D` for static or semi-static content with clustered queries.
+- Use `Helpers.StartFunctionAsCoroutine` for simple, frame-safe polling; prefer `InvokeRepeating` or custom `Update` loops when you need fine-grained frame ordering.
+- Use `SmartDestroy` when writing code that runs in both edit mode and play mode to avoid editor/runtime differences.
+
 
 ### Editor Tools
 

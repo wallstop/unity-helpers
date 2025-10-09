@@ -6,7 +6,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Utils;
 
-    public sealed class RuntimeSingletonTests
+    public sealed class RuntimeSingletonTests : CommonTestBase
     {
         private sealed class TestRuntimeSingleton : RuntimeSingleton<TestRuntimeSingleton>
         {
@@ -82,61 +82,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             }
         }
 
-        [TearDown]
-        public void Cleanup()
-        {
-            TestRuntimeSingleton[] allTestSingletons =
-                Object.FindObjectsOfType<TestRuntimeSingleton>(includeInactive: true);
-            foreach (TestRuntimeSingleton singleton in allTestSingletons)
-            {
-                Object.DestroyImmediate(singleton.gameObject);
-            }
-
-            PreservableSingleton[] allPreservableSingletons =
-                Object.FindObjectsOfType<PreservableSingleton>(includeInactive: true);
-            foreach (PreservableSingleton singleton in allPreservableSingletons)
-            {
-                Object.DestroyImmediate(singleton.gameObject);
-            }
-
-            NonPreservableSingleton[] allNonPreservableSingletons =
-                Object.FindObjectsOfType<NonPreservableSingleton>(includeInactive: true);
-            foreach (NonPreservableSingleton singleton in allNonPreservableSingletons)
-            {
-                Object.DestroyImmediate(singleton.gameObject);
-            }
-
-            CustomAwakeSingleton[] allCustomAwakeSingletons =
-                Object.FindObjectsOfType<CustomAwakeSingleton>(includeInactive: true);
-            foreach (CustomAwakeSingleton singleton in allCustomAwakeSingletons)
-            {
-                Object.DestroyImmediate(singleton.gameObject);
-            }
-
-            CustomStartSingleton[] allCustomStartSingletons =
-                Object.FindObjectsOfType<CustomStartSingleton>(includeInactive: true);
-            foreach (CustomStartSingleton singleton in allCustomStartSingletons)
-            {
-                Object.DestroyImmediate(singleton.gameObject);
-            }
-
-            CustomDestroyableSingleton[] allCustomDestroyableSingletons =
-                Object.FindObjectsOfType<CustomDestroyableSingleton>(includeInactive: true);
-            foreach (CustomDestroyableSingleton singleton in allCustomDestroyableSingletons)
-            {
-                Object.DestroyImmediate(singleton.gameObject);
-            }
-
-            ApplicationQuitSingleton[] allApplicationQuitSingletons =
-                Object.FindObjectsOfType<ApplicationQuitSingleton>(includeInactive: true);
-            foreach (ApplicationQuitSingleton singleton in allApplicationQuitSingletons)
-            {
-                Object.DestroyImmediate(singleton.gameObject);
-            }
-
-            CustomDestroyableSingleton.destroyWasCalled = false;
-            ApplicationQuitSingleton.quitWasCalled = false;
-        }
+        // Cleanup handled by CommonTestBase via tracking
 
         [Test]
         public void HasInstanceReturnsFalseBeforeAccess()
@@ -148,6 +94,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         public void HasInstanceReturnsTrueAfterAccess()
         {
             TestRuntimeSingleton instance = TestRuntimeSingleton.Instance;
+            Track(instance.gameObject);
 
             Assert.IsTrue(TestRuntimeSingleton.HasInstance);
             Assert.IsTrue(instance != null);
@@ -157,6 +104,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         public void InstanceReturnsNonNull()
         {
             TestRuntimeSingleton instance = TestRuntimeSingleton.Instance;
+            Track(instance.gameObject);
             Assert.IsTrue(instance != null);
         }
 
@@ -164,6 +112,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         public void InstanceReturnsSameObjectOnMultipleAccesses()
         {
             TestRuntimeSingleton instance1 = TestRuntimeSingleton.Instance;
+            Track(instance1.gameObject);
             TestRuntimeSingleton instance2 = TestRuntimeSingleton.Instance;
 
             Assert.AreSame(instance1, instance2);
@@ -173,6 +122,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         public void InstanceIsMonoBehaviour()
         {
             TestRuntimeSingleton instance = TestRuntimeSingleton.Instance;
+            Track(instance.gameObject);
 
             Assert.IsInstanceOf<MonoBehaviour>(instance);
         }
@@ -181,6 +131,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         public void InstancePreservesData()
         {
             TestRuntimeSingleton instance = TestRuntimeSingleton.Instance;
+            Track(instance.gameObject);
 
             Assert.AreEqual(42, instance.testValue);
         }
@@ -189,6 +140,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         public void InstanceCreatesGameObjectWithCorrectName()
         {
             TestRuntimeSingleton instance = TestRuntimeSingleton.Instance;
+            Track(instance.gameObject);
 
             Assert.IsTrue(instance != null);
             Assert.AreEqual("TestRuntimeSingleton-Singleton", instance.gameObject.name);
@@ -206,7 +158,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator InstanceFindsExistingInstanceInScene()
         {
-            GameObject existingObject = new("ExistingTestRuntimeSingleton");
+            GameObject existingObject = Track(new GameObject("ExistingTestRuntimeSingleton"));
             TestRuntimeSingleton existing = existingObject.AddComponent<TestRuntimeSingleton>();
 
             yield return null;
@@ -215,13 +167,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             Assert.AreSame(existing, instance);
 
-            Object.DestroyImmediate(existingObject);
+            // Cleanup via tracking
         }
 
         [UnityTest]
         public IEnumerator PreservableSingletonSurvivesSceneLoad()
         {
             PreservableSingleton instance = PreservableSingleton.Instance;
+            Track(instance.gameObject);
 
             yield return null;
 
@@ -234,6 +187,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         public IEnumerator NonPreservableSingletonIsNotDontDestroyOnLoad()
         {
             NonPreservableSingleton instance = NonPreservableSingleton.Instance;
+            Track(instance.gameObject);
 
             yield return null;
             Assert.IsTrue(instance != null);
@@ -243,6 +197,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         public IEnumerator AwakeIsCalledOnceForSingleInstance()
         {
             CustomAwakeSingleton instance = CustomAwakeSingleton.Instance;
+            Track(instance.gameObject);
 
             yield return null;
 
@@ -252,12 +207,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator SecondInstanceIsDestroyedInStart()
         {
-            GameObject firstObject = new("FirstCustomStartSingleton");
+            GameObject firstObject = Track(new GameObject("FirstCustomStartSingleton"));
             CustomStartSingleton first = firstObject.AddComponent<CustomStartSingleton>();
 
             yield return null;
 
-            GameObject secondObject = new("SecondCustomStartSingleton");
+            GameObject secondObject = Track(new GameObject("SecondCustomStartSingleton"));
             CustomStartSingleton second = secondObject.AddComponent<CustomStartSingleton>();
 
             LogAssert.Expect(
@@ -276,6 +231,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         public IEnumerator OnDestroyResetsInstanceReference()
         {
             CustomDestroyableSingleton instance = CustomDestroyableSingleton.Instance;
+            Track(instance.gameObject);
 
             Assert.IsTrue(CustomDestroyableSingleton.HasInstance);
 
@@ -487,8 +443,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator InstanceWithParentCanBeFound()
         {
-            GameObject parent = new("Parent");
-            GameObject childObject = new("ChildTestRuntimeSingleton");
+            GameObject parent = Track(new GameObject("Parent"));
+            GameObject childObject = Track(new GameObject("ChildTestRuntimeSingleton"));
             childObject.transform.SetParent(parent.transform);
             TestRuntimeSingleton child = childObject.AddComponent<TestRuntimeSingleton>();
 
@@ -498,7 +454,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             Assert.AreSame(child, instance);
 
-            Object.DestroyImmediate(parent);
+            // Cleanup via tracking
         }
 
         [UnityTest]

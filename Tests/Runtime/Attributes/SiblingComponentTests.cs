@@ -8,32 +8,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Attributes;
-    using Object = UnityEngine.Object;
 
     [TestFixture]
-    public sealed class SiblingComponentTests
+    public sealed class SiblingComponentTests : CommonTestBase
     {
-        private readonly List<Object> _spawned = new();
-
-        [UnityTearDown]
-        public IEnumerator Cleanup()
-        {
-            foreach (Object spawned in _spawned)
-            {
-                if (spawned != null)
-                {
-                    Object.Destroy(spawned);
-                    yield return null;
-                }
-            }
-            _spawned.Clear();
-        }
-
         [UnityTest]
         public IEnumerator AssignSiblingComponentsPopulatesSupportedFieldShapes()
         {
-            GameObject root = new("SiblingAssignments");
-            _spawned.Add(root);
+            GameObject root = Track(new GameObject("SiblingAssignments"));
             BoxCollider first = root.AddComponent<BoxCollider>();
             BoxCollider second = root.AddComponent<BoxCollider>();
             SiblingAssignmentComponent tester = root.AddComponent<SiblingAssignmentComponent>();
@@ -52,8 +34,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [UnityTest]
         public IEnumerator AssignSiblingComponentsLogsErrorWhenRequiredSiblingMissing()
         {
-            GameObject root = new("SiblingMissing", typeof(SiblingMissingComponent));
-            _spawned.Add(root);
+            GameObject root = Track(
+                new GameObject("SiblingMissing", typeof(SiblingMissingComponent))
+            );
             SiblingMissingComponent tester = root.GetComponent<SiblingMissingComponent>();
 
             LogAssert.Expect(
@@ -72,15 +55,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [UnityTest]
         public IEnumerator SkipIfAssignedPreservesExistingValues()
         {
-            GameObject root = new("SiblingSkipIfAssigned");
-            _spawned.Add(root);
+            GameObject root = Track(new GameObject("SiblingSkipIfAssigned"));
             BoxCollider first = root.AddComponent<BoxCollider>();
             BoxCollider second = root.AddComponent<BoxCollider>();
             SiblingSkipIfAssignedTester tester = root.AddComponent<SiblingSkipIfAssignedTester>();
 
             // Pre-assign values that should NOT be overwritten
             tester.preAssignedSibling = second;
-            tester.preAssignedSiblingArray = new BoxCollider[] { second };
+            tester.preAssignedSiblingArray = new[] { second };
             tester.preAssignedSiblingList = new List<BoxCollider> { second };
 
             // Call assignment
@@ -102,8 +84,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [UnityTest]
         public IEnumerator SkipIfAssignedDoesNotSkipEmptyCollections()
         {
-            GameObject root = new("SiblingSkipEmpty");
-            _spawned.Add(root);
+            GameObject root = Track(new GameObject("SiblingSkipEmpty"));
             _ = root.AddComponent<BoxCollider>();
             SiblingSkipIfAssignedTester tester = root.AddComponent<SiblingSkipIfAssignedTester>();
 
@@ -122,8 +103,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [UnityTest]
         public IEnumerator SkipIfAssignedWithNullUnityObjectStillAssigns()
         {
-            GameObject root = new("SiblingSkipNull");
-            _spawned.Add(root);
+            GameObject root = Track(new GameObject("SiblingSkipNull"));
             BoxCollider collider = root.AddComponent<BoxCollider>();
             SiblingSkipIfAssignedTester tester = root.AddComponent<SiblingSkipIfAssignedTester>();
 
@@ -141,8 +121,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [UnityTest]
         public IEnumerator OptionalSiblingDoesNotLogErrorWhenMissing()
         {
-            GameObject root = new("SiblingOptional", typeof(SiblingOptionalTester));
-            _spawned.Add(root);
+            GameObject root = Track(
+                new GameObject("SiblingOptional", typeof(SiblingOptionalTester))
+            );
             SiblingOptionalTester tester = root.GetComponent<SiblingOptionalTester>();
 
             // Should NOT log error for optional component
@@ -155,8 +136,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [UnityTest]
         public IEnumerator MultipleSiblingComponentsOfSameType()
         {
-            GameObject root = new("SiblingMultiple");
-            _spawned.Add(root);
+            GameObject root = Track(new GameObject("SiblingMultiple"));
             BoxCollider first = root.AddComponent<BoxCollider>();
             BoxCollider second = root.AddComponent<BoxCollider>();
             BoxCollider third = root.AddComponent<BoxCollider>();
@@ -182,8 +162,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [UnityTest]
         public IEnumerator SiblingComponentIncludesSelf()
         {
-            GameObject root = new("SiblingSelf", typeof(SpriteRenderer));
-            _spawned.Add(root);
+            GameObject root = Track(new GameObject("SiblingSelf", typeof(SpriteRenderer)));
             SpriteRenderer selfRenderer = root.GetComponent<SpriteRenderer>();
             SiblingSelfInclusionTester tester = root.AddComponent<SiblingSelfInclusionTester>();
 
@@ -200,17 +179,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [UnityTest]
         public IEnumerator SiblingComponentExcludesOtherGameObjects()
         {
-            GameObject root = new("SiblingExclude");
-            _spawned.Add(root);
+            GameObject root = Track(new GameObject("SiblingExclude"));
             BoxCollider rootCollider = root.AddComponent<BoxCollider>();
             SiblingExclusionTester tester = root.AddComponent<SiblingExclusionTester>();
 
-            GameObject child = new("SiblingChild", typeof(BoxCollider));
-            _spawned.Add(child);
+            GameObject child = Track(new GameObject("SiblingChild", typeof(BoxCollider)));
             child.transform.SetParent(root.transform);
 
-            GameObject sibling = new("SiblingSibling", typeof(BoxCollider));
-            _spawned.Add(sibling);
+            GameObject sibling = Track(new GameObject("SiblingSibling", typeof(BoxCollider)));
             sibling.transform.SetParent(root.transform.parent);
 
             tester.AssignSiblingComponents();
@@ -226,8 +202,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [UnityTest]
         public IEnumerator SiblingComponentWithOnlyOneComponent()
         {
-            GameObject root = new("SiblingOne", typeof(BoxCollider));
-            _spawned.Add(root);
+            GameObject root = Track(new GameObject("SiblingOne", typeof(BoxCollider)));
             BoxCollider collider = root.GetComponent<BoxCollider>();
             SiblingOneTester tester = root.AddComponent<SiblingOneTester>();
 
@@ -243,8 +218,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [UnityTest]
         public IEnumerator CacheIsolationBetweenDifferentComponentTypes()
         {
-            GameObject root = new("SiblingCache", typeof(BoxCollider));
-            _spawned.Add(root);
+            GameObject root = Track(new GameObject("SiblingCache", typeof(BoxCollider)));
             SiblingCacheIsolationTesterA testerA =
                 root.AddComponent<SiblingCacheIsolationTesterA>();
             SiblingCacheIsolationTesterB testerB =
@@ -264,8 +238,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [UnityTest]
         public IEnumerator RepeatedAssignmentsAreIdempotent()
         {
-            GameObject root = new("SiblingIdempotent");
-            _spawned.Add(root);
+            GameObject root = Track(new GameObject("SiblingIdempotent"));
             _ = root.AddComponent<BoxCollider>();
             _ = root.AddComponent<BoxCollider>();
             SiblingMultipleTester tester = root.AddComponent<SiblingMultipleTester>();
@@ -288,7 +261,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public IEnumerator SiblingComponentWithMixedComponentTypes()
         {
             GameObject root = new("SiblingMixed");
-            _spawned.Add(root);
+            Track(root);
             root.AddComponent<BoxCollider>();
             root.AddComponent<SpriteRenderer>();
             root.AddComponent<Rigidbody>();
@@ -307,7 +280,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public IEnumerator SiblingComponentDoesNotFindDisabledBehaviours()
         {
             GameObject root = new("SiblingDisabled", typeof(BoxCollider));
-            _spawned.Add(root);
+            Track(root);
             BoxCollider collider = root.GetComponent<BoxCollider>();
             collider.enabled = false;
             SiblingDisabledTester tester = root.AddComponent<SiblingDisabledTester>();
@@ -325,7 +298,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public IEnumerator SiblingComponentWithNoMatchingTypeReturnsNull()
         {
             GameObject root = new("SiblingNoMatch", typeof(SiblingNoMatchTester));
-            _spawned.Add(root);
+            Track(root);
             SiblingNoMatchTester tester = root.GetComponent<SiblingNoMatchTester>();
 
             LogAssert.Expect(
@@ -362,7 +335,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public IEnumerator SiblingComponentFindsComponentsInOrder()
         {
             GameObject root = new("SiblingOrder");
-            _spawned.Add(root);
+            Track(root);
 
             // Add components in specific order
             BoxCollider first = root.AddComponent<BoxCollider>();
@@ -385,7 +358,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public IEnumerator IncludeInactiveFindsAllComponentsOnActiveGameObject()
         {
             GameObject root = new("SiblingIncludeInactive");
-            _spawned.Add(root);
+            Track(root);
             BoxCollider first = root.AddComponent<BoxCollider>();
             BoxCollider second = root.AddComponent<BoxCollider>();
             second.enabled = false;
@@ -409,7 +382,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public IEnumerator ExcludeInactiveFiltersDisabledComponents()
         {
             GameObject root = new("SiblingExcludeInactive");
-            _spawned.Add(root);
+            Track(root);
             BoxCollider first = root.AddComponent<BoxCollider>();
             BoxCollider second = root.AddComponent<BoxCollider>();
             second.enabled = false;
@@ -431,9 +404,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public IEnumerator ExcludeInactiveOnInactiveGameObjectFindsNothing()
         {
             GameObject root = new("SiblingInactiveGameObject");
-            _spawned.Add(root);
+            Track(root);
             root.SetActive(false);
-            BoxCollider collider = root.AddComponent<BoxCollider>();
             SiblingExcludeInactiveTester tester = root.AddComponent<SiblingExcludeInactiveTester>();
 
             LogAssert.Expect(
@@ -469,10 +441,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public IEnumerator IncludeInactiveOnInactiveGameObjectFindsComponents()
         {
             GameObject root = new("SiblingInactiveGameObjectInclude");
-            _spawned.Add(root);
+            Track(root);
             root.SetActive(false);
-            BoxCollider first = root.AddComponent<BoxCollider>();
-            BoxCollider second = root.AddComponent<BoxCollider>();
             SiblingIncludeInactiveTester tester = root.AddComponent<SiblingIncludeInactiveTester>();
 
             tester.AssignSiblingComponents();
@@ -489,7 +459,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public IEnumerator MixedActiveInactiveComponentsFilteredCorrectly()
         {
             GameObject root = new("SiblingMixedActive");
-            _spawned.Add(root);
+            Track(root);
             BoxCollider first = root.AddComponent<BoxCollider>();
             first.enabled = true;
             BoxCollider second = root.AddComponent<BoxCollider>();
@@ -524,7 +494,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public IEnumerator IncludeInactiveFindsBehavioursRegardlessOfEnabledState()
         {
             GameObject root = new("SiblingBehaviours");
-            _spawned.Add(root);
+            Track(root);
             SiblingTestBehaviour first = root.AddComponent<SiblingTestBehaviour>();
             first.enabled = true;
             SiblingTestBehaviour second = root.AddComponent<SiblingTestBehaviour>();
@@ -545,7 +515,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public IEnumerator ExcludeInactiveFiltersBehavioursByEnabledState()
         {
             GameObject root = new("SiblingBehavioursFiltered");
-            _spawned.Add(root);
+            Track(root);
             SiblingTestBehaviour first = root.AddComponent<SiblingTestBehaviour>();
             first.enabled = true;
             SiblingTestBehaviour second = root.AddComponent<SiblingTestBehaviour>();

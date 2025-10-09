@@ -6,24 +6,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Utils;
 
-    public sealed class UnityObjectNameComparerEdgeTests
+    public sealed class UnityObjectNameComparerEdgeTests : CommonTestBase
     {
-        private readonly System.Collections.Generic.List<UnityEngine.Object> _spawned = new();
-
-        [UnityTearDown]
-        public IEnumerator Cleanup()
-        {
-            foreach (UnityEngine.Object obj in _spawned)
-            {
-                if (obj != null)
-                {
-                    UnityEngine.Object.Destroy(obj);
-                    yield return null;
-                }
-            }
-
-            _spawned.Clear();
-        }
+        // Tracking handled by CommonTestBase
 
         [UnityTest]
         public IEnumerator CompareTreatsOnlyTrailingNumbersAsNumeric()
@@ -71,9 +56,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
         private GameObject Create(string name)
         {
-            GameObject go = new(name);
-            _spawned.Add(go);
-            return go;
+            return Track(new GameObject(name));
         }
     }
 }

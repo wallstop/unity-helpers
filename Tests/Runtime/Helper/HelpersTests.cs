@@ -12,26 +12,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using WallstopStudios.UnityHelpers.Core.Random;
     using Object = UnityEngine.Object;
 
-    public sealed class HelpersTests
+    public sealed class HelpersTests : CommonTestBase
     {
-        private readonly List<Object> _spawned = new();
-
-        [UnityTearDown]
-        public IEnumerator Cleanup()
-        {
-            foreach (Object spawned in _spawned.ToArray())
-            {
-                if (spawned == null)
-                {
-                    continue;
-                }
-
-                Object.Destroy(spawned);
-                yield return null;
-            }
-
-            _spawned.Clear();
-        }
+        // Tracking handled by CommonTestBase
 
         [Test]
         public void IsRunningInBatchModeReflectsApplication()
@@ -125,8 +108,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [UnityTest]
         public IEnumerator PredictCurrentTargetReturnsPositionWhenNonPredictive()
         {
-            GameObject target = new("PredictTarget_NonPredictive");
-            _spawned.Add(target);
+            GameObject target = Track(new GameObject("PredictTarget_NonPredictive"));
 
             target.transform.position = new Vector3(5f, 2f, 0f);
             Vector2 predicted = target.PredictCurrentTarget(
@@ -143,8 +125,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [UnityTest]
         public IEnumerator PredictCurrentTargetComputesIntercept()
         {
-            GameObject target = new("PredictTarget_Predictive");
-            _spawned.Add(target);
+            GameObject target = Track(new GameObject("PredictTarget_Predictive"));
 
             Vector2 launch = Vector2.zero;
             target.transform.position = new Vector3(10f, 5f, 0f);
@@ -179,8 +160,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [UnityTest]
         public IEnumerator GetComponentReturnsComponentForUnityObjects()
         {
-            GameObject go = new("Helpers_GetComponent", typeof(SpriteRenderer));
-            _spawned.Add(go);
+            GameObject go = Track(new GameObject("Helpers_GetComponent", typeof(SpriteRenderer)));
 
             SpriteRenderer renderer = go.GetComponent<SpriteRenderer>();
             Assert.IsNotNull(renderer);
@@ -196,12 +176,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [UnityTest]
         public IEnumerator GetComponentsReturnsAllComponents()
         {
-            GameObject go = new(
-                "Helpers_GetComponents",
-                typeof(SpriteRenderer),
-                typeof(BoxCollider2D)
+            GameObject go = Track(
+                new GameObject(
+                    "Helpers_GetComponents",
+                    typeof(SpriteRenderer),
+                    typeof(BoxCollider2D)
+                )
             );
-            _spawned.Add(go);
 
             Component[] expected = go.GetComponents<Component>();
             Component[] fromGo = Helpers.GetComponents<Component>(go);
@@ -225,8 +206,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [UnityTest]
         public IEnumerator TryGetComponentWrapsUnityImplementation()
         {
-            GameObject go = new("Helpers_TryGetComponent", typeof(SpriteRenderer));
-            _spawned.Add(go);
+            GameObject go = Track(
+                new GameObject("Helpers_TryGetComponent", typeof(SpriteRenderer))
+            );
 
             Assert.IsTrue(Helpers.TryGetComponent(go, out SpriteRenderer renderer));
             Assert.IsNotNull(renderer);
@@ -239,12 +221,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [UnityTest]
         public IEnumerator FindChildGameObjectWithTagFindsFirstMatch()
         {
-            GameObject parent = new("Helpers_FindTagParent");
-            _spawned.Add(parent);
-            GameObject child = new("Helpers_FindTagChild");
-            _spawned.Add(child);
-            GameObject grandChild = new("Helpers_FindTagGrandChild");
-            _spawned.Add(grandChild);
+            GameObject parent = Track(new GameObject("Helpers_FindTagParent"));
+            GameObject child = Track(new GameObject("Helpers_FindTagChild"));
+            GameObject grandChild = Track(new GameObject("Helpers_FindTagGrandChild"));
 
             child.transform.SetParent(parent.transform);
             grandChild.transform.SetParent(child.transform);
@@ -292,7 +271,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public IEnumerator StartFunctionAsCoroutineInvokesActionRepeatedly()
         {
             CoroutineHost host = CreateHost();
-            _spawned.Add(host.gameObject);
 
             Coroutine coroutine = host.StartFunctionAsCoroutine(host.Increment, 0.05f);
             yield return null;
@@ -308,7 +286,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public IEnumerator StartFunctionAsCoroutineWaitsBeforeFirstInvocationWhenRequested()
         {
             CoroutineHost host = CreateHost();
-            _spawned.Add(host.gameObject);
 
             Coroutine coroutine = host.StartFunctionAsCoroutine(
                 host.Increment,
@@ -332,7 +309,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public IEnumerator ExecuteFunctionAfterDelayInvokesOnce()
         {
             CoroutineHost host = CreateHost();
-            _spawned.Add(host.gameObject);
 
             float delay = 0.05f;
             Coroutine coroutine = host.ExecuteFunctionAfterDelay(host.SetFlagTrue, delay);
@@ -348,7 +324,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public IEnumerator ExecuteFunctionNextFrameInvokesOnSubsequentFrame()
         {
             CoroutineHost host = CreateHost();
-            _spawned.Add(host.gameObject);
 
             Coroutine coroutine = host.ExecuteFunctionNextFrame(host.Increment);
             Assert.AreEqual(0, host.InvocationCount);
@@ -361,7 +336,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public IEnumerator ExecuteFunctionAfterFrameInvokesAfterEndOfFrame()
         {
             CoroutineHost host = CreateHost();
-            _spawned.Add(host.gameObject);
 
             Coroutine coroutine = host.ExecuteFunctionAfterFrame(host.Increment);
             Assert.AreEqual(0, host.InvocationCount);
@@ -375,8 +349,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public IEnumerator ExecuteOverTimeRespectsCountAndDuration()
         {
             CoroutineHost host = CreateHost();
-            _spawned.Add(host.gameObject);
-            int totalInvocations;
 
             IEnumerator routine = Helpers.ExecuteOverTime(host.Increment, 3, 0.05f, delay: false);
             host.StartCoroutine(routine);
@@ -386,7 +358,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             {
                 yield return null;
             }
-            totalInvocations = host.InvocationCount;
+            int totalInvocations = host.InvocationCount;
 
             Assert.IsTrue(
                 3 <= totalInvocations,
@@ -461,7 +433,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void GetRandomPointInCircleUsesProvidedRandom()
         {
-            DeterministicRandom random = new(new double[] { 0.25, 0.0 });
+            DeterministicRandom random = new(new[] { 0.25, 0.0 });
             Vector2 point = Helpers.GetRandomPointInCircle(new Vector2(1f, 1f), 2f, random);
             Assert.AreEqual(2f, point.x, 1e-4f);
             Assert.AreEqual(1f, point.y, 1e-4f);
@@ -470,10 +442,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [UnityTest]
         public IEnumerator GetPlayerObjectInChildHierarchyFindsTaggedChild()
         {
-            GameObject parent = new("Helpers_PlayerParent");
-            _spawned.Add(parent);
-            GameObject child = new("Helpers_PlayerChild");
-            _spawned.Add(child);
+            GameObject parent = Track(new GameObject("Helpers_PlayerParent"));
+            GameObject child = Track(new GameObject("Helpers_PlayerChild"));
 
             child.transform.SetParent(parent.transform);
 
@@ -522,19 +492,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [UnityTest]
         public IEnumerator UpdateShapeToSpriteCopiesPhysicsShape()
         {
-            Texture2D texture = new(4, 4);
-            _spawned.Add(texture);
+            Texture2D texture = Track(new Texture2D(4, 4));
 
             texture.SetPixels(Enumerable.Repeat(Color.white, 16).ToArray());
             texture.Apply();
 
-            Sprite sprite = Sprite.Create(
-                texture,
-                new Rect(0f, 0f, texture.width, texture.height),
-                new Vector2(0.5f, 0.5f),
-                1f
+            Sprite sprite = Track(
+                Sprite.Create(
+                    texture,
+                    new Rect(0f, 0f, texture.width, texture.height),
+                    new Vector2(0.5f, 0.5f),
+                    1f
+                )
             );
-            _spawned.Add(sprite);
             Vector2[] originalShape = { new(0f, 0f), new(0f, 4f), new(4f, 4f), new(4f, 0f) };
             sprite.OverridePhysicsShape(new List<Vector2[]> { originalShape });
 
@@ -545,12 +515,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             List<Vector2> expectedShape = new();
             _ = sprite.GetPhysicsShape(0, expectedShape);
 
-            GameObject go = new(
-                "Helpers_UpdateShape",
-                typeof(SpriteRenderer),
-                typeof(PolygonCollider2D)
+            GameObject go = Track(
+                new GameObject(
+                    "Helpers_UpdateShape",
+                    typeof(SpriteRenderer),
+                    typeof(PolygonCollider2D)
+                )
             );
-            _spawned.Add(go);
 
             SpriteRenderer renderer = go.GetComponent<SpriteRenderer>();
             renderer.sprite = sprite;
@@ -578,12 +549,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [UnityTest]
         public IEnumerator TryGetClosestParentWithComponentIncludingSelfFindsNearestMatch()
         {
-            GameObject root = new("Helpers_ParentRoot");
-            _spawned.Add(root);
-            GameObject middle = new("Helpers_ParentMiddle", typeof(CopyProbeComponent));
-            _spawned.Add(middle);
-            GameObject leaf = new("Helpers_ParentLeaf");
-            _spawned.Add(leaf);
+            GameObject root = Track(new GameObject("Helpers_ParentRoot"));
+            GameObject middle = Track(
+                new GameObject("Helpers_ParentMiddle", typeof(CopyProbeComponent))
+            );
+            GameObject leaf = Track(new GameObject("Helpers_ParentLeaf"));
 
             middle.transform.SetParent(root.transform);
             leaf.transform.SetParent(middle.transform);
@@ -600,16 +570,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [UnityTest]
         public IEnumerator NameEqualsIgnoresCloneSuffix()
         {
-            GameObject original = new("Helpers_NameEquals");
-            _spawned.Add(original);
-            GameObject clone = Object.Instantiate(original);
-            _spawned.Add(clone);
+            GameObject original = Track(new GameObject("Helpers_NameEquals"));
+            GameObject clone = Track(Object.Instantiate(original));
 
             Assert.IsTrue(Helpers.NameEquals(original, clone));
             Assert.IsTrue(Helpers.NameEquals(clone, original));
 
-            GameObject other = new("DifferentName");
-            _spawned.Add(other);
+            GameObject other = Track(new GameObject("DifferentName"));
 
             Assert.IsFalse(Helpers.NameEquals(original, other));
             yield break;
@@ -636,8 +603,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [UnityTest]
         public IEnumerator AwakeObjectInvokesAwakeOnComponents()
         {
-            GameObject go = new("Helpers_Awake", typeof(AwakeProbe));
-            _spawned.Add(go);
+            GameObject go = Track(new GameObject("Helpers_Awake", typeof(AwakeProbe)));
 
             AwakeProbe probe = go.GetComponent<AwakeProbe>();
             probe.ResetCount();
@@ -669,9 +635,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             Assert.AreEqual(1, bounds.yMax);
         }
 
-        private static CoroutineHost CreateHost()
+        private CoroutineHost CreateHost()
         {
-            GameObject go = new("Helpers_CoroutineHost", typeof(CoroutineHost));
+            GameObject go = Track(new GameObject("Helpers_CoroutineHost", typeof(CoroutineHost)));
             return go.GetComponent<CoroutineHost>();
         }
     }

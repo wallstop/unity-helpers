@@ -37,7 +37,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             Assert.That(c.g, Is.EqualTo(pixels[0].g).Within(1e-5f));
             Assert.That(c.b, Is.EqualTo(pixels[0].b).Within(1e-5f));
             Assert.That(c.a, Is.EqualTo(pixels[0].a).Within(1e-5f));
-            UnityEngine.Object.DestroyImmediate(texture);
+            Object.DestroyImmediate(texture);
         }
 
         [Test]
@@ -69,7 +69,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             Assert.AreEqual(2, result.Length);
             Assert.That(result[0].a, Is.EqualTo(1f).Within(1e-5f));
             Assert.That(result[1].a, Is.EqualTo(1f).Within(1e-5f));
-            UnityEngine.Object.DestroyImmediate(texture);
+            Object.DestroyImmediate(texture);
         }
 
         [Test]
@@ -111,7 +111,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 Assert.That(afterBilinear[i].a, Is.EqualTo(before[i].a).Within(1e-5f));
             }
 
-            UnityEngine.Object.DestroyImmediate(texture);
+            Object.DestroyImmediate(texture);
         }
     }
 }

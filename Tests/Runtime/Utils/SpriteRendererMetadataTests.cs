@@ -1,7 +1,6 @@
 namespace WallstopStudios.UnityHelpers.Tests.Utils
 {
     using System.Collections;
-    using System.Collections.Generic;
     using System.Linq;
     using NUnit.Framework;
     using UnityEngine;
@@ -9,40 +8,25 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using WallstopStudios.UnityHelpers.Core.Random;
     using WallstopStudios.UnityHelpers.Utils;
 
-    public sealed class SpriteRendererMetadataTests
+    public sealed class SpriteRendererMetadataTests : CommonTestBase
     {
-        private readonly List<GameObject> _spawned = new();
-
-        [TearDown]
-        public void Cleanup()
-        {
-            foreach (GameObject spawned in _spawned)
-            {
-                if (spawned == null)
-                {
-                    continue;
-                }
-
-                Object.Destroy(spawned);
-            }
-
-            _spawned.Clear();
-        }
+        // Tracking handled by CommonTestBase
 
         private SpriteRendererMetadata CreateMetadata()
         {
-            GameObject go = new(
-                "TestSpriteRendererMetadata",
-                typeof(SpriteRenderer),
-                typeof(SpriteRendererMetadata)
+            GameObject go = Track(
+                new GameObject(
+                    "TestSpriteRendererMetadata",
+                    typeof(SpriteRenderer),
+                    typeof(SpriteRendererMetadata)
+                )
             );
-            _spawned.Add(go);
             return go.GetComponent<SpriteRendererMetadata>();
         }
 
         private Material CreateMaterial()
         {
-            return new Material(Shader.Find("Sprites/Default"));
+            return Track(new Material(Shader.Find("Sprites/Default")));
         }
 
         private Color CreateColor()

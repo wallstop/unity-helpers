@@ -9,47 +9,30 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Attributes;
-    using Object = UnityEngine.Object;
 
     [TestFixture]
-    public sealed class ChildComponentTests
+    public sealed class ChildComponentTests : CommonTestBase
     {
-        private readonly List<Object> _spawned = new();
-
-        [UnityTearDown]
-        public IEnumerator Cleanup()
-        {
-            foreach (Object spawned in _spawned)
-            {
-                if (spawned != null)
-                {
-                    Object.Destroy(spawned);
-                    yield return null;
-                }
-            }
-            _spawned.Clear();
-        }
-
         [UnityTest]
         public IEnumerator Nominal()
         {
-            GameObject parent = new("Parent-ChildComponentTest", typeof(SpriteRenderer));
-            _spawned.Add(parent);
+            GameObject parent = Track(
+                new GameObject("Parent-ChildComponentTest", typeof(SpriteRenderer))
+            );
             GameObject baseGameObject = new(
                 "Base-ChildComponentTest",
                 typeof(SpriteRenderer),
                 typeof(ExpectChildSpriteRenderers)
             );
-            _spawned.Add(baseGameObject);
+            baseGameObject = Track(baseGameObject);
             baseGameObject.transform.SetParent(parent.transform);
-            GameObject childLevel1 = new("ChildLevel1", typeof(SpriteRenderer));
-            _spawned.Add(childLevel1);
+            GameObject childLevel1 = Track(new GameObject("ChildLevel1", typeof(SpriteRenderer)));
             childLevel1.transform.SetParent(baseGameObject.transform);
-            GameObject childLevel2 = new("ChildLevel2", typeof(SpriteRenderer));
-            _spawned.Add(childLevel2);
+            GameObject childLevel2 = Track(new GameObject("ChildLevel2", typeof(SpriteRenderer)));
             childLevel2.transform.SetParent(childLevel1.transform);
-            GameObject childLevel2Point1 = new("ChildLevel2.1", typeof(SpriteRenderer));
-            _spawned.Add(childLevel2Point1);
+            GameObject childLevel2Point1 = Track(
+                new GameObject("ChildLevel2.1", typeof(SpriteRenderer))
+            );
             childLevel2Point1.transform.SetParent(childLevel1.transform);
 
             ExpectChildSpriteRenderers expect =
@@ -106,15 +89,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [UnityTest]
         public IEnumerator IncludeInactiveFalseSkipsInactiveDescendents()
         {
-            GameObject root = new("Child-InactiveRoot", typeof(ChildAssignmentTester));
-            _spawned.Add(root);
+            GameObject root = Track(
+                new GameObject("Child-InactiveRoot", typeof(ChildAssignmentTester))
+            );
             ChildAssignmentTester tester = root.GetComponent<ChildAssignmentTester>();
 
-            GameObject activeChild = new("ActiveChild", typeof(SpriteRenderer));
-            _spawned.Add(activeChild);
+            GameObject activeChild = Track(new GameObject("ActiveChild", typeof(SpriteRenderer)));
             activeChild.transform.SetParent(root.transform);
-            GameObject inactiveChild = new("InactiveChild", typeof(SpriteRenderer));
-            _spawned.Add(inactiveChild);
+            GameObject inactiveChild = Track(
+                new GameObject("InactiveChild", typeof(SpriteRenderer))
+            );
             inactiveChild.transform.SetParent(root.transform);
             inactiveChild.SetActive(false);
 
@@ -156,7 +140,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public IEnumerator MissingRequiredChildLogsError()
         {
             GameObject root = new("Child-Missing", typeof(ChildMissingTester));
-            _spawned.Add(root);
+            Track(root);
             ChildMissingTester tester = root.GetComponent<ChildMissingTester>();
 
             LogAssert.Expect(
@@ -176,19 +160,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [UnityTest]
         public IEnumerator SkipIfAssignedPreservesExistingValues()
         {
-            GameObject root = new("ChildSkipIfAssigned", typeof(ChildSkipIfAssignedTester));
-            _spawned.Add(root);
+            GameObject root = Track(
+                new GameObject("ChildSkipIfAssigned", typeof(ChildSkipIfAssignedTester))
+            );
             ChildSkipIfAssignedTester tester = root.GetComponent<ChildSkipIfAssignedTester>();
             SpriteRenderer rootRenderer = root.AddComponent<SpriteRenderer>();
 
-            GameObject child = new("Child", typeof(SpriteRenderer));
-            _spawned.Add(child);
+            GameObject child = Track(new GameObject("Child", typeof(SpriteRenderer)));
             child.transform.SetParent(root.transform);
             SpriteRenderer childRenderer = child.GetComponent<SpriteRenderer>();
 
             // Pre-assign values that should NOT be overwritten
             tester.preAssignedChild = rootRenderer;
-            tester.preAssignedChildArray = new SpriteRenderer[] { rootRenderer };
+            tester.preAssignedChildArray = new[] { rootRenderer };
             tester.preAssignedChildList = new List<SpriteRenderer> { rootRenderer };
 
             // Call assignment
@@ -210,13 +194,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [UnityTest]
         public IEnumerator SkipIfAssignedDoesNotSkipEmptyCollections()
         {
-            GameObject root = new("ChildSkipEmpty", typeof(ChildSkipIfAssignedTester));
-            _spawned.Add(root);
+            GameObject root = Track(
+                new GameObject("ChildSkipEmpty", typeof(ChildSkipIfAssignedTester))
+            );
             ChildSkipIfAssignedTester tester = root.GetComponent<ChildSkipIfAssignedTester>();
             SpriteRenderer rootRenderer = root.AddComponent<SpriteRenderer>();
 
-            GameObject child = new("Child", typeof(SpriteRenderer));
-            _spawned.Add(child);
+            GameObject child = Track(new GameObject("Child", typeof(SpriteRenderer)));
             child.transform.SetParent(root.transform);
 
             // Pre-assign EMPTY collections (should be overwritten)
@@ -236,7 +220,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public IEnumerator SkipIfAssignedWithNullUnityObjectStillAssigns()
         {
             GameObject root = new("ChildSkipNull", typeof(ChildSkipIfAssignedTester));
-            _spawned.Add(root);
+            Track(root);
             ChildSkipIfAssignedTester tester = root.GetComponent<ChildSkipIfAssignedTester>();
             SpriteRenderer rootRenderer = root.AddComponent<SpriteRenderer>();
 
@@ -255,7 +239,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public IEnumerator OptionalChildDoesNotLogErrorWhenMissing()
         {
             GameObject root = new("ChildOptional", typeof(ChildOptionalTester));
-            _spawned.Add(root);
+            Track(root);
             ChildOptionalTester tester = root.GetComponent<ChildOptionalTester>();
 
             // Should NOT log error for optional component
@@ -269,12 +253,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public IEnumerator OnlyDescendentsExcludesSelf()
         {
             GameObject root = new("ChildOnlyDescendents", typeof(SpriteRenderer));
-            _spawned.Add(root);
+            Track(root);
             SpriteRenderer rootRenderer = root.GetComponent<SpriteRenderer>();
             ChildOnlyDescendentsTester tester = root.AddComponent<ChildOnlyDescendentsTester>();
 
             GameObject child = new("Child", typeof(SpriteRenderer));
-            _spawned.Add(child);
+            Track(child);
             child.transform.SetParent(root.transform);
             SpriteRenderer childRenderer = child.GetComponent<SpriteRenderer>();
 
@@ -298,7 +282,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public IEnumerator OnlyDescendentsWithNoChildrenReturnsNothing()
         {
             GameObject root = new("ChildNoDescendents", typeof(ChildOnlyDescendentsTester));
-            _spawned.Add(root);
+            Track(root);
             ChildOnlyDescendentsTester tester = root.GetComponent<ChildOnlyDescendentsTester>();
 
             // Expect error for descendentOnly (SpriteRenderer)
@@ -345,7 +329,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public IEnumerator DeepHierarchyHandledCorrectly()
         {
             GameObject root = new("ChildDeepRoot", typeof(SpriteRenderer));
-            _spawned.Add(root);
+            Track(root);
             ChildMultipleTester tester = root.AddComponent<ChildMultipleTester>();
             GameObject current = root;
 
@@ -353,7 +337,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             for (int i = 0; i < 10; i++)
             {
                 GameObject next = new($"ChildDeepLevel{i}", typeof(SpriteRenderer));
-                _spawned.Add(next);
+                Track(next);
                 next.transform.SetParent(current.transform);
                 current = next;
             }
@@ -371,19 +355,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public IEnumerator BreadthFirstSearchOrderVerified()
         {
             GameObject root = new("ChildBFSRoot", typeof(SpriteRenderer));
-            _spawned.Add(root);
+            Track(root);
             ChildMultipleTester tester = root.AddComponent<ChildMultipleTester>();
 
             GameObject child1 = new("Child1", typeof(SpriteRenderer));
-            _spawned.Add(child1);
+            Track(child1);
             child1.transform.SetParent(root.transform);
 
             GameObject child2 = new("Child2", typeof(SpriteRenderer));
-            _spawned.Add(child2);
+            Track(child2);
             child2.transform.SetParent(root.transform);
 
             GameObject grandchild1 = new("Grandchild1", typeof(SpriteRenderer));
-            _spawned.Add(grandchild1);
+            Track(grandchild1);
             grandchild1.transform.SetParent(child1.transform);
 
             tester.AssignChildComponents();
@@ -402,15 +386,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public IEnumerator InactiveGameObjectExcludedWhenIncludeInactiveFalse()
         {
             GameObject root = new("ChildInactiveRoot", typeof(ChildInactiveTester));
-            _spawned.Add(root);
+            Track(root);
             ChildInactiveTester tester = root.GetComponent<ChildInactiveTester>();
 
             GameObject activeChild = new("ActiveChild", typeof(SpriteRenderer));
-            _spawned.Add(activeChild);
+            Track(activeChild);
             activeChild.transform.SetParent(root.transform);
 
             GameObject inactiveChild = new("InactiveChild", typeof(SpriteRenderer));
-            _spawned.Add(inactiveChild);
+            Track(inactiveChild);
             inactiveChild.transform.SetParent(root.transform);
             inactiveChild.SetActive(false);
 
@@ -440,11 +424,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public IEnumerator DisabledBehaviourExcludedWhenIncludeInactiveFalse()
         {
             GameObject root = new("ChildDisabledRoot", typeof(ChildDisabledBehaviourTester));
-            _spawned.Add(root);
+            Track(root);
             ChildDisabledBehaviourTester tester = root.GetComponent<ChildDisabledBehaviourTester>();
 
             GameObject child = new("ChildWithDisabled", typeof(BoxCollider));
-            _spawned.Add(child);
+            Track(child);
             child.transform.SetParent(root.transform);
             BoxCollider childCollider = child.GetComponent<BoxCollider>();
             childCollider.enabled = false;
@@ -481,11 +465,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public IEnumerator MultipleChildComponentsOnSameGameObject()
         {
             GameObject root = new("ChildMultiRoot", typeof(ChildMultiComponentTester));
-            _spawned.Add(root);
+            Track(root);
             ChildMultiComponentTester tester = root.GetComponent<ChildMultiComponentTester>();
 
             GameObject child = new("Child");
-            _spawned.Add(child);
+            Track(child);
             child.transform.SetParent(root.transform);
             BoxCollider first = child.AddComponent<BoxCollider>();
             BoxCollider second = child.AddComponent<BoxCollider>();
@@ -506,26 +490,26 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public IEnumerator ComplexHierarchyWithMultipleBranches()
         {
             GameObject root = new("ChildComplexRoot", typeof(SpriteRenderer));
-            _spawned.Add(root);
+            Track(root);
             ChildMultipleTester tester = root.AddComponent<ChildMultipleTester>();
 
             // Branch 1: 3 levels deep
             GameObject branch1L1 = new("Branch1L1", typeof(SpriteRenderer));
-            _spawned.Add(branch1L1);
+            Track(branch1L1);
             branch1L1.transform.SetParent(root.transform);
             GameObject branch1L2 = new("Branch1L2", typeof(SpriteRenderer));
-            _spawned.Add(branch1L2);
+            Track(branch1L2);
             branch1L2.transform.SetParent(branch1L1.transform);
             GameObject branch1L3 = new("Branch1L3", typeof(SpriteRenderer));
-            _spawned.Add(branch1L3);
+            Track(branch1L3);
             branch1L3.transform.SetParent(branch1L2.transform);
 
             // Branch 2: 2 levels deep
             GameObject branch2L1 = new("Branch2L1", typeof(SpriteRenderer));
-            _spawned.Add(branch2L1);
+            Track(branch2L1);
             branch2L1.transform.SetParent(root.transform);
             GameObject branch2L2 = new("Branch2L2", typeof(SpriteRenderer));
-            _spawned.Add(branch2L2);
+            Track(branch2L2);
             branch2L2.transform.SetParent(branch2L1.transform);
 
             tester.AssignChildComponents();
@@ -541,7 +525,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public IEnumerator CacheIsolationBetweenDifferentComponentTypes()
         {
             GameObject root = new("ChildCacheRoot", typeof(SpriteRenderer));
-            _spawned.Add(root);
+            Track(root);
             ChildCacheIsolationTesterA testerA = root.AddComponent<ChildCacheIsolationTesterA>();
             ChildCacheIsolationTesterB testerB = root.AddComponent<ChildCacheIsolationTesterB>();
 
@@ -560,11 +544,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public IEnumerator RepeatedAssignmentsAreIdempotent()
         {
             GameObject root = new("ChildIdempotentRoot", typeof(SpriteRenderer));
-            _spawned.Add(root);
+            Track(root);
             ChildMultipleTester tester = root.AddComponent<ChildMultipleTester>();
 
             GameObject child = new("Child", typeof(SpriteRenderer));
-            _spawned.Add(child);
+            Track(child);
             child.transform.SetParent(root.transform);
 
             tester.AssignChildComponents();
@@ -583,25 +567,25 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public IEnumerator ChildComponentWithMixedActiveStatesInHierarchy()
         {
             GameObject root = new("ChildMixedRoot", typeof(ChildInactiveTester));
-            _spawned.Add(root);
+            Track(root);
             ChildInactiveTester tester = root.GetComponent<ChildInactiveTester>();
 
             GameObject activeParent = new("ActiveParent", typeof(SpriteRenderer));
-            _spawned.Add(activeParent);
+            Track(activeParent);
             activeParent.transform.SetParent(root.transform);
 
             GameObject inactiveChild = new("InactiveChild", typeof(SpriteRenderer));
-            _spawned.Add(inactiveChild);
+            Track(inactiveChild);
             inactiveChild.transform.SetParent(activeParent.transform);
             inactiveChild.SetActive(false);
 
             GameObject inactiveParent = new("InactiveParent", typeof(SpriteRenderer));
-            _spawned.Add(inactiveParent);
+            Track(inactiveParent);
             inactiveParent.transform.SetParent(root.transform);
             inactiveParent.SetActive(false);
 
             GameObject childOfInactive = new("ChildOfInactive", typeof(SpriteRenderer));
-            _spawned.Add(childOfInactive);
+            Track(childOfInactive);
             childOfInactive.transform.SetParent(inactiveParent.transform);
 
             tester.AssignChildComponents();
@@ -622,15 +606,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public IEnumerator ChildComponentFindsFirstMatchInBFSOrder()
         {
             GameObject root = new("ChildFirstMatch", typeof(SpriteRenderer));
-            _spawned.Add(root);
+            Track(root);
             ChildSingleTester tester = root.AddComponent<ChildSingleTester>();
 
             GameObject child1 = new("Child1", typeof(SpriteRenderer));
-            _spawned.Add(child1);
+            Track(child1);
             child1.transform.SetParent(root.transform);
 
             GameObject child2 = new("Child2", typeof(SpriteRenderer));
-            _spawned.Add(child2);
+            Track(child2);
             child2.transform.SetParent(root.transform);
 
             tester.AssignChildComponents();
@@ -645,7 +629,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public IEnumerator ChildComponentHandlesEmptyHierarchy()
         {
             GameObject root = new("ChildEmpty", typeof(ChildOptionalTester));
-            _spawned.Add(root);
+            Track(root);
             ChildOptionalTester tester = root.GetComponent<ChildOptionalTester>();
 
             // No children, no SpriteRenderer on root

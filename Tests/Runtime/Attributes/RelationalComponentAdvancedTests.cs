@@ -6,7 +6,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Attributes;
-    using Object = UnityEngine.Object;
 
     /// <summary>
     /// Tests for advanced features of relational component attributes:
@@ -17,37 +16,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
     /// - Interface support
     /// </summary>
     [TestFixture]
-    public sealed class RelationalComponentAdvancedTests
+    public sealed class RelationalComponentAdvancedTests : CommonTestBase
     {
-        private readonly List<Object> _spawned = new();
-
-        [UnityTearDown]
-        public IEnumerator Cleanup()
-        {
-            foreach (Object spawned in _spawned)
-            {
-                if (spawned != null)
-                {
-                    Object.Destroy(spawned);
-                    yield return null;
-                }
-            }
-            _spawned.Clear();
-        }
-
         [UnityTest]
         public IEnumerator ParentMaxCountLimitsResults()
         {
-            GameObject root = new("MaxCountRoot", typeof(SpriteRenderer));
-            _spawned.Add(root);
-            GameObject parent1 = new("Parent1", typeof(SpriteRenderer));
-            _spawned.Add(parent1);
+            GameObject root = Track(new GameObject("MaxCountRoot", typeof(SpriteRenderer)));
+            GameObject parent1 = Track(new GameObject("Parent1", typeof(SpriteRenderer)));
             parent1.transform.SetParent(root.transform);
-            GameObject parent2 = new("Parent2", typeof(SpriteRenderer));
-            _spawned.Add(parent2);
+            GameObject parent2 = Track(new GameObject("Parent2", typeof(SpriteRenderer)));
             parent2.transform.SetParent(parent1.transform);
-            GameObject child = new("Child", typeof(ParentMaxCountTester));
-            _spawned.Add(child);
+            GameObject child = Track(new GameObject("Child", typeof(ParentMaxCountTester)));
             child.transform.SetParent(parent2.transform);
 
             ParentMaxCountTester tester = child.GetComponent<ParentMaxCountTester>();
@@ -64,14 +43,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [UnityTest]
         public IEnumerator ChildMaxCountLimitsResults()
         {
-            GameObject root = new("MaxCountRoot", typeof(ChildMaxCountTester));
-            _spawned.Add(root);
+            GameObject root = Track(new GameObject("MaxCountRoot", typeof(ChildMaxCountTester)));
             ChildMaxCountTester tester = root.GetComponent<ChildMaxCountTester>();
 
             for (int i = 0; i < 5; i++)
             {
-                GameObject child = new($"Child{i}", typeof(SpriteRenderer));
-                _spawned.Add(child);
+                GameObject child = Track(new GameObject($"Child{i}", typeof(SpriteRenderer)));
                 child.transform.SetParent(root.transform);
             }
 
@@ -88,8 +65,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [UnityTest]
         public IEnumerator SiblingMaxCountLimitsResults()
         {
-            GameObject root = new("MaxCountRoot");
-            _spawned.Add(root);
+            GameObject root = Track(new GameObject("MaxCountRoot"));
 
             for (int i = 0; i < 5; i++)
             {
@@ -110,19 +86,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [UnityTest]
         public IEnumerator ParentMaxDepthLimitsSearch()
         {
-            GameObject root = new("DepthRoot", typeof(SpriteRenderer));
-            _spawned.Add(root);
-            GameObject level1 = new("Level1", typeof(SpriteRenderer));
-            _spawned.Add(level1);
+            GameObject root = Track(new GameObject("DepthRoot", typeof(SpriteRenderer)));
+            GameObject level1 = Track(new GameObject("Level1", typeof(SpriteRenderer)));
             level1.transform.SetParent(root.transform);
-            GameObject level2 = new("Level2", typeof(SpriteRenderer));
-            _spawned.Add(level2);
+            GameObject level2 = Track(new GameObject("Level2", typeof(SpriteRenderer)));
             level2.transform.SetParent(level1.transform);
-            GameObject level3 = new("Level3", typeof(SpriteRenderer));
-            _spawned.Add(level3);
+            GameObject level3 = Track(new GameObject("Level3", typeof(SpriteRenderer)));
             level3.transform.SetParent(level2.transform);
-            GameObject child = new("Child", typeof(ParentMaxDepthTester));
-            _spawned.Add(child);
+            GameObject child = Track(new GameObject("Child", typeof(ParentMaxDepthTester)));
             child.transform.SetParent(level3.transform);
 
             ParentMaxDepthTester tester = child.GetComponent<ParentMaxDepthTester>();
@@ -144,20 +115,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [UnityTest]
         public IEnumerator ChildMaxDepthLimitsSearch()
         {
-            GameObject root = new("DepthRoot", typeof(ChildMaxDepthTester));
-            _spawned.Add(root);
+            GameObject root = Track(new GameObject("DepthRoot", typeof(ChildMaxDepthTester)));
             ChildMaxDepthTester tester = root.GetComponent<ChildMaxDepthTester>();
 
-            GameObject level1 = new("Level1", typeof(SpriteRenderer));
-            _spawned.Add(level1);
+            GameObject level1 = Track(new GameObject("Level1", typeof(SpriteRenderer)));
             level1.transform.SetParent(root.transform);
 
-            GameObject level2 = new("Level2", typeof(SpriteRenderer));
-            _spawned.Add(level2);
+            GameObject level2 = Track(new GameObject("Level2", typeof(SpriteRenderer)));
             level2.transform.SetParent(level1.transform);
 
-            GameObject level3 = new("Level3", typeof(SpriteRenderer));
-            _spawned.Add(level3);
+            GameObject level3 = Track(new GameObject("Level3", typeof(SpriteRenderer)));
             level3.transform.SetParent(level2.transform);
 
             tester.AssignChildComponents();
@@ -178,19 +145,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [UnityTest]
         public IEnumerator ParentTagFilterOnlyFindsMatchingTags()
         {
-            GameObject root = new("TagRoot");
-            _spawned.Add(root);
+            GameObject root = Track(new GameObject("TagRoot"));
             root.tag = "Player";
             root.AddComponent<SpriteRenderer>();
 
-            GameObject parent1 = new("Parent1");
-            _spawned.Add(parent1);
+            GameObject parent1 = Track(new GameObject("Parent1"));
             parent1.tag = "Untagged";
             parent1.AddComponent<SpriteRenderer>();
             parent1.transform.SetParent(root.transform);
 
-            GameObject child = new("Child", typeof(ParentTagFilterTester));
-            _spawned.Add(child);
+            GameObject child = Track(new GameObject("Child", typeof(ParentTagFilterTester)));
             child.transform.SetParent(parent1.transform);
 
             ParentTagFilterTester tester = child.GetComponent<ParentTagFilterTester>();
@@ -209,18 +173,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [UnityTest]
         public IEnumerator ChildTagFilterOnlyFindsMatchingTags()
         {
-            GameObject root = new("TagRoot", typeof(ChildTagFilterTester));
-            _spawned.Add(root);
+            GameObject root = Track(new GameObject("TagRoot", typeof(ChildTagFilterTester)));
             ChildTagFilterTester tester = root.GetComponent<ChildTagFilterTester>();
 
-            GameObject child1 = new("Child1");
-            _spawned.Add(child1);
+            GameObject child1 = Track(new GameObject("Child1"));
             child1.tag = "Player";
             child1.AddComponent<SpriteRenderer>();
             child1.transform.SetParent(root.transform);
 
             GameObject child2 = new("Child2");
-            _spawned.Add(child2);
+            Track(child2);
             child2.tag = "Untagged";
             child2.AddComponent<SpriteRenderer>();
             child2.transform.SetParent(root.transform);
@@ -241,7 +203,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public IEnumerator SiblingTagFilterOnlyFindsMatchingTags()
         {
             GameObject root = new("TagRoot");
-            _spawned.Add(root);
+            Track(root);
             root.tag = "Player";
 
             root.AddComponent<BoxCollider>();
@@ -261,12 +223,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public IEnumerator ParentNameFilterOnlyFindsMatchingNames()
         {
             GameObject root = new("PlayerRoot", typeof(SpriteRenderer));
-            _spawned.Add(root);
+            Track(root);
             GameObject parent1 = new("EnemyParent", typeof(SpriteRenderer));
-            _spawned.Add(parent1);
+            Track(parent1);
             parent1.transform.SetParent(root.transform);
             GameObject child = new("Child", typeof(ParentNameFilterTester));
-            _spawned.Add(child);
+            Track(child);
             child.transform.SetParent(parent1.transform);
 
             ParentNameFilterTester tester = child.GetComponent<ParentNameFilterTester>();
@@ -286,15 +248,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public IEnumerator ChildNameFilterOnlyFindsMatchingNames()
         {
             GameObject root = new("Root", typeof(ChildNameFilterTester));
-            _spawned.Add(root);
+            Track(root);
             ChildNameFilterTester tester = root.GetComponent<ChildNameFilterTester>();
 
             GameObject child1 = new("PlayerChild", typeof(SpriteRenderer));
-            _spawned.Add(child1);
+            Track(child1);
             child1.transform.SetParent(root.transform);
 
             GameObject child2 = new("EnemyChild", typeof(SpriteRenderer));
-            _spawned.Add(child2);
+            Track(child2);
             child2.transform.SetParent(root.transform);
 
             tester.AssignChildComponents();
@@ -313,9 +275,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public IEnumerator ParentCanFindInterfaceComponents()
         {
             GameObject root = new("InterfaceRoot", typeof(TestInterfaceComponent));
-            _spawned.Add(root);
+            Track(root);
             GameObject child = new("Child", typeof(ParentInterfaceTester));
-            _spawned.Add(child);
+            Track(child);
             child.transform.SetParent(root.transform);
 
             ParentInterfaceTester tester = child.GetComponent<ParentInterfaceTester>();
@@ -336,11 +298,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public IEnumerator ChildCanFindInterfaceComponents()
         {
             GameObject root = new("Root", typeof(ChildInterfaceTester));
-            _spawned.Add(root);
+            Track(root);
             ChildInterfaceTester tester = root.GetComponent<ChildInterfaceTester>();
 
             GameObject child = new("Child", typeof(TestInterfaceComponent));
-            _spawned.Add(child);
+            Track(child);
             child.transform.SetParent(root.transform);
 
             tester.AssignChildComponents();
@@ -360,7 +322,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public IEnumerator SiblingCanFindInterfaceComponents()
         {
             GameObject root = new("Root");
-            _spawned.Add(root);
+            Track(root);
             root.AddComponent<TestInterfaceComponent>();
             SiblingInterfaceTester tester = root.AddComponent<SiblingInterfaceTester>();
 
@@ -377,17 +339,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public IEnumerator InterfaceSearchFindsMultipleImplementations()
         {
             GameObject root = new("Root", typeof(ChildMultiInterfaceTester));
-            _spawned.Add(root);
+            Track(root);
             ChildMultiInterfaceTester tester = root.GetComponent<ChildMultiInterfaceTester>();
 
             GameObject child1 = new("Child1");
-            _spawned.Add(child1);
+            Track(child1);
             child1.AddComponent<TestInterfaceComponent>();
             child1.AddComponent<AnotherInterfaceComponent>();
             child1.transform.SetParent(root.transform);
 
             GameObject child2 = new("Child2");
-            _spawned.Add(child2);
+            Track(child2);
             child2.AddComponent<TestInterfaceComponent>();
             child2.transform.SetParent(root.transform);
 
@@ -403,14 +365,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public IEnumerator CombinedMaxCountAndTagFilter()
         {
             GameObject root = new("Root", typeof(ChildCombinedTester));
-            _spawned.Add(root);
+            Track(root);
             ChildCombinedTester tester = root.GetComponent<ChildCombinedTester>();
 
             // Create 3 player-tagged children and 2 enemy-tagged
             for (int i = 0; i < 3; i++)
             {
                 GameObject child = new($"PlayerChild{i}", typeof(SpriteRenderer));
-                _spawned.Add(child);
+                Track(child);
                 child.tag = "Player";
                 child.transform.SetParent(root.transform);
             }
@@ -418,7 +380,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             for (int i = 0; i < 2; i++)
             {
                 GameObject child = new($"EnemyChild{i}", typeof(SpriteRenderer));
-                _spawned.Add(child);
+                Track(child);
                 child.tag = "Untagged";
                 child.transform.SetParent(root.transform);
             }
@@ -435,19 +397,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public IEnumerator CombinedMaxDepthAndNameFilter()
         {
             GameObject root = new("Root", typeof(ChildDepthAndNameTester));
-            _spawned.Add(root);
+            Track(root);
             ChildDepthAndNameTester tester = root.GetComponent<ChildDepthAndNameTester>();
 
             GameObject level1Player = new("PlayerLevel1", typeof(SpriteRenderer));
-            _spawned.Add(level1Player);
+            Track(level1Player);
             level1Player.transform.SetParent(root.transform);
 
             GameObject level2Player = new("PlayerLevel2", typeof(SpriteRenderer));
-            _spawned.Add(level2Player);
+            Track(level2Player);
             level2Player.transform.SetParent(level1Player.transform);
 
             GameObject level1Enemy = new("EnemyLevel1", typeof(SpriteRenderer));
-            _spawned.Add(level1Enemy);
+            Track(level1Enemy);
             level1Enemy.transform.SetParent(root.transform);
 
             tester.AssignChildComponents();
@@ -466,14 +428,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public IEnumerator ErrorMessageIncludesFieldName()
         {
             GameObject root = new("ErrorRoot", typeof(ErrorMessageTester));
-            _spawned.Add(root);
+            Track(root);
             ErrorMessageTester tester = root.GetComponent<ErrorMessageTester>();
 
             // Expect error with field name
             LogAssert.Expect(
                 LogType.Error,
                 new System.Text.RegularExpressions.Regex(
-                    @"Unable to find parent component of type .* for field 'missingParentRenderer'"
+                    "Unable to find parent component of type .* for field 'missingParentRenderer'"
                 )
             );
 

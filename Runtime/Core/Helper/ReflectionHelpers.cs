@@ -22,6 +22,14 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
     public delegate void FieldSetter<TInstance, in TValue>(ref TInstance instance, TValue value);
 
+    /// <summary>
+    /// High-performance reflection helpers for field/property access, method/constructor invocation,
+    /// and dynamic collection creation with caching and optional IL emission.
+    /// </summary>
+    /// <remarks>
+    /// Uses expression compilation or dynamic IL where supported; falls back to reflection otherwise.
+    /// Caches delegates to avoid per-call reflection overhead.
+    /// </remarks>
     public static class ReflectionHelpers
     {
 #if SINGLE_THREADED
@@ -67,6 +75,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
         private static readonly bool CanCompileExpressions = CheckExpressionCompilationSupport();
 
+        /// <summary>
+        /// Tries to get an attribute of type <typeparamref name="T"/> and indicates whether it is present.
+        /// </summary>
         public static bool IsAttributeDefined<T>(
             this ICustomAttributeProvider provider,
             out T attribute,
@@ -97,6 +108,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             return false;
         }
 
+        /// <summary>
+        /// Loads all public static properties whose type matches <typeparamref name="T"/> keyed by property name (case-insensitive).
+        /// </summary>
         public static Dictionary<string, PropertyInfo> LoadStaticPropertiesForType<T>()
         {
             Type type = typeof(T);
@@ -109,6 +123,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 );
         }
 
+        /// <summary>
+        /// Loads all public static fields whose type matches <typeparamref name="T"/> keyed by field name (case-insensitive).
+        /// </summary>
         public static Dictionary<string, FieldInfo> LoadStaticFieldsForType<T>()
         {
             Type type = typeof(T);
@@ -122,6 +139,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        /// <summary>
+        /// Creates a new array instance of <paramref name="type"/> with the specified length.
+        /// </summary>
         public static Array CreateArray(Type type, int length)
         {
             return ArrayCreators
@@ -131,6 +151,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        /// <summary>
+        /// Creates a new <see cref="List{T}"/> instance for <paramref name="elementType"/> with the specified capacity.
+        /// </summary>
         public static IList CreateList(Type elementType, int length)
         {
             return ListWithCapacityCreators
@@ -140,12 +163,18 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        /// <summary>
+        /// Creates a new <see cref="List{T}"/> instance for <paramref name="elementType"/>.
+        /// </summary>
         public static IList CreateList(Type elementType)
         {
             // ReSharper disable once ConvertClosureToMethodGroup
             return ListCreators.GetOrAdd(elementType, type => GetListCreator(type)).Invoke();
         }
 
+        /// <summary>
+        /// Builds a cached delegate that returns the value of an instance field as <see cref="object"/>.
+        /// </summary>
         public static Func<object, object> GetFieldGetter(FieldInfo field)
         {
 #if !EMIT_DYNAMIC_IL
@@ -180,6 +209,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #endif
         }
 
+        /// <summary>
+        /// Builds a cached delegate that returns the value of a property as <see cref="object"/>.
+        /// Supports static and instance properties.
+        /// </summary>
         public static Func<object, object> GetPropertyGetter(PropertyInfo property)
         {
 #if !EMIT_DYNAMIC_IL

@@ -6,16 +6,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Utils;
 
-    public sealed class CoroutineHandlerTests
+    public sealed class CoroutineHandlerTests : CommonTestBase
     {
-        [TearDown]
-        public void Cleanup()
-        {
-            if (CoroutineHandler.HasInstance)
-            {
-                Object.Destroy(CoroutineHandler.Instance.gameObject);
-            }
-        }
+        // Tracking handled by CommonTestBase
 
         [UnityTest]
         public IEnumerator CreatesInstanceOnFirstAccess()
@@ -23,6 +16,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             Assert.IsFalse(CoroutineHandler.HasInstance);
 
             CoroutineHandler instance = CoroutineHandler.Instance;
+            Track(instance.gameObject);
 
             Assert.IsTrue(CoroutineHandler.HasInstance);
             Assert.IsNotNull(instance);
@@ -33,6 +27,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         public IEnumerator ReturnsSameInstanceOnMultipleAccesses()
         {
             CoroutineHandler instance1 = CoroutineHandler.Instance;
+            Track(instance1.gameObject);
             CoroutineHandler instance2 = CoroutineHandler.Instance;
 
             Assert.AreSame(instance1, instance2);
@@ -50,7 +45,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 coroutineRan = true;
             }
 
-            CoroutineHandler.Instance.StartCoroutine(TestCoroutine());
+            var inst = CoroutineHandler.Instance;
+            Track(inst.gameObject);
+            inst.StartCoroutine(TestCoroutine());
 
             yield return null;
             yield return null;
@@ -72,7 +69,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 }
             }
 
-            Coroutine coroutine = CoroutineHandler.Instance.StartCoroutine(TestCoroutine());
+            var inst2 = CoroutineHandler.Instance;
+            Track(inst2.gameObject);
+            Coroutine coroutine = inst2.StartCoroutine(TestCoroutine());
 
             yield return null;
             yield return null;
@@ -110,8 +109,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 }
             }
 
-            CoroutineHandler.Instance.StartCoroutine(TestCoroutine1());
-            CoroutineHandler.Instance.StartCoroutine(TestCoroutine2());
+            var inst3 = CoroutineHandler.Instance;
+            Track(inst3.gameObject);
+            inst3.StartCoroutine(TestCoroutine1());
+            inst3.StartCoroutine(TestCoroutine2());
 
             yield return null;
             yield return null;
@@ -119,7 +120,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             int count1BeforeStop = counter1;
             int count2BeforeStop = counter2;
 
-            CoroutineHandler.Instance.StopAllCoroutines();
+            inst3.StopAllCoroutines();
 
             yield return null;
             yield return null;
@@ -142,7 +143,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 }
             }
 
-            CoroutineHandler.Instance.StartCoroutine(TestCoroutine());
+            var inst4 = CoroutineHandler.Instance;
+            Track(inst4.gameObject);
+            inst4.StartCoroutine(TestCoroutine());
 
             for (int i = 0; i < 6; i++)
             {

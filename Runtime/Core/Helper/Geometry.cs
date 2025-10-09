@@ -4,8 +4,14 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
     using System.Linq;
     using UnityEngine;
 
+    /// <summary>
+    /// Lightweight geometric helpers for Rect accumulation and sidedness tests.
+    /// </summary>
     public static class Geometry
     {
+        /// <summary>
+        /// Computes the axis-aligned bounding Rect that contains all input rects.
+        /// </summary>
         public static Rect Accumulate(this IEnumerable<Rect> rects)
         {
             return rects.Aggregate(
@@ -25,16 +31,26 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         // < 0 -> to the right
         // = 0 -> on the line
         // > 0 -> to the left
+        /// <summary>
+        /// Returns signed area indicating where point p lies relative to vector a→b in 2D.
+        /// &lt; 0 → right, 0 → on line, &gt; 0 → left.
+        /// </summary>
         public static float IsAPointLeftOfVectorOrOnTheLine(Vector2 a, Vector2 b, Vector2 p)
         {
             return (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
         }
 
+        /// <summary>
+        /// Returns signed area indicating where point p lies relative to vector a→b in 2D (using Vector3 x/y).
+        /// </summary>
         public static float IsAPointLeftOfVectorOrOnTheLine(Vector3 a, Vector3 b, Vector3 p)
         {
             return (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
         }
 
+        /// <summary>
+        /// Returns signed area indicating where point p lies relative to vector a→b in 2D (int version).
+        /// </summary>
         public static int IsAPointLeftOfVectorOrOnTheLine(Vector2Int a, Vector2Int b, Vector2Int p)
         {
             return (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);

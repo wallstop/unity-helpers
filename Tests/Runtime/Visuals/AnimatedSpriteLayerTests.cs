@@ -6,27 +6,21 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Visuals;
 
-    public sealed class AnimatedSpriteLayerTests
+    public sealed class AnimatedSpriteLayerTests : CommonTestBase
     {
-        private readonly List<Object> _tracked = new();
-
-        [TearDown]
-        public void Cleanup()
-        {
-            VisualsTestHelpers.DestroyTracked(_tracked);
-        }
+        // Tracking handled by CommonTestBase
 
         [Test]
         public void ConstructingFromEnumerablePreservesFrameOrder()
         {
             Sprite first = VisualsTestHelpers.CreateSprite(
-                _tracked,
+                _trackedObjects,
                 2,
                 2,
                 (_, _) => new Color(1f, 0f, 0f, 1f)
             );
             Sprite second = VisualsTestHelpers.CreateSprite(
-                _tracked,
+                _trackedObjects,
                 2,
                 2,
                 (_, _) => new Color(0f, 1f, 0f, 1f)
@@ -45,7 +39,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
         public void ConstructingWithOffsetsScalesByPixelsPerUnit()
         {
             Sprite first = VisualsTestHelpers.CreateSprite(
-                _tracked,
+                _trackedObjects,
                 2,
                 2,
                 (_, _) => new Color(1f, 1f, 1f, 1f),
@@ -53,7 +47,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
                 pivot: Vector2.zero
             );
             Sprite second = VisualsTestHelpers.CreateSprite(
-                _tracked,
+                _trackedObjects,
                 2,
                 2,
                 (_, _) => new Color(0f, 0f, 1f, 1f),
@@ -90,7 +84,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
         public void ConstructingWithMoreOffsetsThanFramesTrimsOffsets()
         {
             Sprite frame = VisualsTestHelpers.CreateSprite(
-                _tracked,
+                _trackedObjects,
                 1,
                 1,
                 (_, _) => new Color(1f, 1f, 1f, 1f),
@@ -119,7 +113,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
         public void AlphaIsClampedToValidRange()
         {
             Sprite frame = VisualsTestHelpers.CreateSprite(
-                _tracked,
+                _trackedObjects,
                 1,
                 1,
                 (_, _) => new Color(1f, 0f, 0f, 1f)
@@ -146,13 +140,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
         public void EqualsComparesFramesOffsetsAndAlpha()
         {
             Sprite frameA = VisualsTestHelpers.CreateSprite(
-                _tracked,
+                _trackedObjects,
                 1,
                 1,
                 (_, _) => new Color(0f, 1f, 0f, 1f)
             );
             Sprite frameB = VisualsTestHelpers.CreateSprite(
-                _tracked,
+                _trackedObjects,
                 1,
                 1,
                 (_, _) => new Color(0f, 0f, 1f, 1f)
@@ -175,14 +169,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
         public void OffsetsShorterThanFramesDefaultsRemainingToZero()
         {
             Sprite first = VisualsTestHelpers.CreateSprite(
-                _tracked,
+                _trackedObjects,
                 1,
                 1,
                 (_, _) => new Color(1f, 1f, 1f, 1f),
                 pivot: Vector2.zero
             );
             Sprite second = VisualsTestHelpers.CreateSprite(
-                _tracked,
+                _trackedObjects,
                 1,
                 1,
                 (_, _) => new Color(1f, 1f, 1f, 1f),
@@ -211,7 +205,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
         public void OffsetsForFramesWithZeroPixelsPerUnitAreZero()
         {
             Sprite withPpu = VisualsTestHelpers.CreateSprite(
-                _tracked,
+                _trackedObjects,
                 2,
                 2,
                 (_, _) => new Color(1f, 1f, 1f, 1f),
@@ -219,7 +213,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
                 pivot: Vector2.zero
             );
             Sprite zeroPpu = VisualsTestHelpers.CreateSprite(
-                _tracked,
+                _trackedObjects,
                 2,
                 2,
                 (_, _) => new Color(0f, 0f, 1f, 1f),

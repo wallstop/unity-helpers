@@ -7,17 +7,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Visuals;
     using WallstopStudios.UnityHelpers.Visuals.UIToolkit;
-    using Object = UnityEngine.Object;
 
-    public sealed class LayeredImageTests
+    public sealed class LayeredImageTests : CommonTestBase
     {
-        private readonly List<Object> _tracked = new();
-
-        [TearDown]
-        public void Cleanup()
-        {
-            VisualsTestHelpers.DestroyTracked(_tracked);
-        }
+        // Tracking handled by CommonTestBase
 
         [Test]
         public void ComputeTexturesWithNoLayersReturnsEmptyArray()
@@ -27,7 +20,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
                 Color.clear
             );
 
-            Texture2D[] computed = VisualsTestHelpers.GetComputedTextures(image, _tracked);
+            Texture2D[] computed = VisualsTestHelpers.GetComputedTextures(image, _trackedObjects);
             Assert.That(computed, Is.Empty);
         }
 
@@ -35,7 +28,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
         public void ComputeTexturesWithTransparentFrameProducesNullEntry()
         {
             Sprite transparent = VisualsTestHelpers.CreateSprite(
-                _tracked,
+                _trackedObjects,
                 2,
                 2,
                 (_, _) => new Color(0f, 0f, 0f, 0f),
@@ -45,7 +38,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
 
             LayeredImage image = CreateLayeredImage(new[] { layer }, Color.clear);
 
-            Texture2D[] computed = VisualsTestHelpers.GetComputedTextures(image, _tracked);
+            Texture2D[] computed = VisualsTestHelpers.GetComputedTextures(image, _trackedObjects);
             Assert.That(computed, Has.Length.EqualTo(1));
             Assert.IsNull(computed[0]);
         }
@@ -54,7 +47,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
         public void ComputeTexturesCropsToVisiblePixels()
         {
             Sprite sprite = VisualsTestHelpers.CreateSprite(
-                _tracked,
+                _trackedObjects,
                 4,
                 4,
                 (x, y) => x == 2 && y == 1 ? new Color(1f, 0f, 0f, 1f) : Color.clear,
@@ -64,7 +57,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
 
             LayeredImage image = CreateLayeredImage(new[] { layer }, Color.clear);
 
-            Texture2D[] computed = VisualsTestHelpers.GetComputedTextures(image, _tracked);
+            Texture2D[] computed = VisualsTestHelpers.GetComputedTextures(image, _trackedObjects);
             Assert.That(computed, Has.Length.EqualTo(1));
             Assert.IsNotNull(computed[0]);
             Texture2D frame = computed[0];
@@ -79,7 +72,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
         public void ComputeTexturesAccountsForPivotInPositioning()
         {
             Sprite centered = VisualsTestHelpers.CreateSprite(
-                _tracked,
+                _trackedObjects,
                 1,
                 1,
                 (_, _) => new Color(0f, 0f, 1f, 1f),
@@ -89,7 +82,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
 
             LayeredImage image = CreateLayeredImage(new[] { layer }, Color.clear);
 
-            Texture2D[] computed = VisualsTestHelpers.GetComputedTextures(image, _tracked);
+            Texture2D[] computed = VisualsTestHelpers.GetComputedTextures(image, _trackedObjects);
             Assert.That(computed, Has.Length.EqualTo(1));
             Texture2D frame = computed[0];
             Assert.IsNotNull(frame);
@@ -117,14 +110,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
         public void ComputeTexturesAppliesOffsetsAndAlphaBlending()
         {
             Sprite baseSprite = VisualsTestHelpers.CreateSprite(
-                _tracked,
+                _trackedObjects,
                 1,
                 1,
                 (_, _) => new Color(0f, 1f, 0f, 1f),
                 pivot: Vector2.zero
             );
             Sprite offsetSprite = VisualsTestHelpers.CreateSprite(
-                _tracked,
+                _trackedObjects,
                 1,
                 1,
                 (_, _) => new Color(1f, 0f, 0f, 1f),
@@ -140,7 +133,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
 
             LayeredImage image = CreateLayeredImage(new[] { baseLayer, offsetLayer }, Color.clear);
 
-            Texture2D[] computed = VisualsTestHelpers.GetComputedTextures(image, _tracked);
+            Texture2D[] computed = VisualsTestHelpers.GetComputedTextures(image, _trackedObjects);
             Assert.That(computed, Has.Length.EqualTo(1));
             Texture2D frame = computed[0];
             Assert.IsNotNull(frame);
@@ -161,14 +154,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
         public void ComputeTexturesBlendsOverlappingPixelsCorrectly()
         {
             Sprite baseSprite = VisualsTestHelpers.CreateSprite(
-                _tracked,
+                _trackedObjects,
                 1,
                 1,
                 (_, _) => new Color(0f, 1f, 0f, 1f),
                 pivot: Vector2.zero
             );
             Sprite overlaySprite = VisualsTestHelpers.CreateSprite(
-                _tracked,
+                _trackedObjects,
                 1,
                 1,
                 (_, _) => new Color(1f, 0f, 0f, 1f),
@@ -180,7 +173,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
 
             LayeredImage image = CreateLayeredImage(new[] { baseLayer, overlay }, Color.clear);
 
-            Texture2D[] computed = VisualsTestHelpers.GetComputedTextures(image, _tracked);
+            Texture2D[] computed = VisualsTestHelpers.GetComputedTextures(image, _trackedObjects);
             Assert.That(computed, Has.Length.EqualTo(1));
             Texture2D frame = computed[0];
             Assert.IsNotNull(frame);
@@ -196,21 +189,21 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
         public void ComputeTexturesProducesFramesForAllIndicesAcrossLayers()
         {
             Sprite primaryFrame0 = VisualsTestHelpers.CreateSprite(
-                _tracked,
+                _trackedObjects,
                 1,
                 1,
                 (_, _) => new Color(0f, 0f, 1f, 1f),
                 pivot: Vector2.zero
             );
             Sprite primaryFrame1 = VisualsTestHelpers.CreateSprite(
-                _tracked,
+                _trackedObjects,
                 1,
                 1,
                 (_, _) => new Color(0f, 1f, 0f, 1f),
                 pivot: Vector2.zero
             );
             Sprite overlayFrame = VisualsTestHelpers.CreateSprite(
-                _tracked,
+                _trackedObjects,
                 1,
                 1,
                 (_, _) => new Color(1f, 0f, 0f, 1f),
@@ -222,7 +215,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
 
             LayeredImage image = CreateLayeredImage(new[] { primary, overlay }, Color.clear);
 
-            Texture2D[] computed = VisualsTestHelpers.GetComputedTextures(image, _tracked);
+            Texture2D[] computed = VisualsTestHelpers.GetComputedTextures(image, _trackedObjects);
             Assert.That(computed, Has.Length.EqualTo(2));
             Texture2D frame0 = computed[0];
             Texture2D frame1 = computed[1];
@@ -242,14 +235,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
         public void ComputeTexturesHonorsPixelCutoff()
         {
             Sprite faint = VisualsTestHelpers.CreateSprite(
-                _tracked,
+                _trackedObjects,
                 1,
                 1,
                 (_, _) => new Color(1f, 0f, 0f, 0.005f),
                 pivot: Vector2.zero
             );
             Sprite visible = VisualsTestHelpers.CreateSprite(
-                _tracked,
+                _trackedObjects,
                 1,
                 1,
                 (_, _) => new Color(0f, 0f, 1f, 0.2f),
@@ -265,7 +258,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
                 pixelCutoff: 0.01f
             );
 
-            Texture2D[] computed = VisualsTestHelpers.GetComputedTextures(image, _tracked);
+            Texture2D[] computed = VisualsTestHelpers.GetComputedTextures(image, _trackedObjects);
             Assert.That(computed, Has.Length.EqualTo(1));
             Texture2D frame = computed[0];
             Assert.IsNotNull(frame);
@@ -278,7 +271,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
         public void ComputeTexturesExcludesPixelsEqualToCutoff()
         {
             Sprite edge = VisualsTestHelpers.CreateSprite(
-                _tracked,
+                _trackedObjects,
                 1,
                 1,
                 (_, _) => new Color(1f, 1f, 1f, 0.01f),
@@ -292,7 +285,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
                 pixelCutoff: 0.01f
             );
 
-            Texture2D[] computed = VisualsTestHelpers.GetComputedTextures(image, _tracked);
+            Texture2D[] computed = VisualsTestHelpers.GetComputedTextures(image, _trackedObjects);
             Assert.That(computed, Has.Length.EqualTo(1));
             Assert.IsNull(computed[0], "Expected frame to be null when alpha equals cutoff.");
         }
@@ -301,14 +294,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
         public void ComputeTexturesIgnoresZeroAlphaLayers()
         {
             Sprite solid = VisualsTestHelpers.CreateSprite(
-                _tracked,
+                _trackedObjects,
                 1,
                 1,
                 (_, _) => new Color(0f, 1f, 0f, 1f),
                 pivot: Vector2.zero
             );
             Sprite transparentOverlay = VisualsTestHelpers.CreateSprite(
-                _tracked,
+                _trackedObjects,
                 1,
                 1,
                 (_, _) => new Color(1f, 0f, 0f, 1f),
@@ -323,7 +316,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
                 Color.clear
             );
 
-            Texture2D[] computed = VisualsTestHelpers.GetComputedTextures(image, _tracked);
+            Texture2D[] computed = VisualsTestHelpers.GetComputedTextures(image, _trackedObjects);
             Assert.That(computed, Has.Length.EqualTo(1));
             Texture2D frame = computed[0];
             Assert.IsNotNull(frame);
@@ -336,14 +329,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
         public void ComputeTexturesHandlesNegativeAndPositiveOffsets()
         {
             Sprite leftSprite = VisualsTestHelpers.CreateSprite(
-                _tracked,
+                _trackedObjects,
                 1,
                 1,
                 (_, _) => new Color(0f, 0f, 1f, 1f),
                 pivot: Vector2.zero
             );
             Sprite rightSprite = VisualsTestHelpers.CreateSprite(
-                _tracked,
+                _trackedObjects,
                 1,
                 1,
                 (_, _) => new Color(0f, 1f, 1f, 1f),
@@ -361,7 +354,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
 
             LayeredImage image = CreateLayeredImage(new[] { leftLayer, rightLayer }, Color.clear);
 
-            Texture2D[] computed = VisualsTestHelpers.GetComputedTextures(image, _tracked);
+            Texture2D[] computed = VisualsTestHelpers.GetComputedTextures(image, _trackedObjects);
             Assert.That(computed, Has.Length.EqualTo(1));
             Texture2D frame = computed[0];
             Assert.IsNotNull(frame);
@@ -383,7 +376,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
         public void ComputeTexturesHandlesLargeSpritesWithParallelPath()
         {
             Sprite large = VisualsTestHelpers.CreateSprite(
-                _tracked,
+                _trackedObjects,
                 50,
                 50,
                 (_, _) => new Color(1f, 0f, 0f, 1f),
@@ -393,7 +386,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
             AnimatedSpriteLayer layer = new(new[] { large });
             LayeredImage image = CreateLayeredImage(new[] { layer }, Color.clear);
 
-            Texture2D[] computed = VisualsTestHelpers.GetComputedTextures(image, _tracked);
+            Texture2D[] computed = VisualsTestHelpers.GetComputedTextures(image, _trackedObjects);
             Assert.That(computed, Has.Length.EqualTo(1));
             Texture2D frame = computed[0];
             Assert.IsNotNull(frame);

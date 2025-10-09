@@ -19,6 +19,20 @@ namespace WallstopStudios.UnityHelpers.Tests
         // Per-test tracked IDisposable instances
         protected readonly List<IDisposable> _trackedDisposables = new();
 
+        // Convenience overload for GameObject to support target-typed 'new(...)' at call sites
+        protected GameObject Track(GameObject obj)
+        {
+            if (obj != null)
+            {
+                _trackedObjects.Add(obj);
+            }
+            return obj;
+        }
+
+        // Per-test tracked async disposal producers (executed during UnityTearDown)
+        protected readonly List<Func<System.Threading.Tasks.ValueTask>> _trackedAsyncDisposals =
+            new();
+
         /// <summary>
         /// Track a UnityEngine.Object for automatic cleanup.
         /// </summary>
@@ -43,6 +57,20 @@ namespace WallstopStudios.UnityHelpers.Tests
                 _trackedDisposables.Add(disposable);
             }
             return disposable;
+        }
+
+        /// <summary>
+        /// Track an async disposal producer to be executed in UnityTearDown.
+        /// </summary>
+        protected Func<System.Threading.Tasks.ValueTask> TrackAsyncDisposal(
+            Func<System.Threading.Tasks.ValueTask> producer
+        )
+        {
+            if (producer != null)
+            {
+                _trackedAsyncDisposals.Add(producer);
+            }
+            return producer;
         }
 
         /// <summary>
@@ -93,6 +121,24 @@ namespace WallstopStudios.UnityHelpers.Tests
         [UnityTearDown]
         public IEnumerator UnityTearDown()
         {
+            // Run tracked async disposals first to release scene resources
+            if (_trackedAsyncDisposals.Count > 0)
+            {
+                foreach (var producer in _trackedAsyncDisposals.ToArray())
+                {
+                    if (producer == null)
+                    {
+                        continue;
+                    }
+                    var vt = producer();
+                    while (!vt.IsCompleted)
+                    {
+                        yield return null;
+                    }
+                }
+                _trackedAsyncDisposals.Clear();
+            }
+
             if (_trackedObjects.Count > 0)
             {
                 var snapshot = _trackedObjects.ToArray();
@@ -145,6 +191,23 @@ namespace WallstopStudios.UnityHelpers.Tests
                     }
                 }
                 _trackedDisposables.Clear();
+            }
+
+            if (_trackedAsyncDisposals.Count > 0)
+            {
+                // Fire and forget in editor context
+                foreach (var producer in _trackedAsyncDisposals.ToArray())
+                {
+                    try
+                    {
+                        var _ = producer?.Invoke();
+                    }
+                    catch
+                    {
+                        // ignore
+                    }
+                }
+                _trackedAsyncDisposals.Clear();
             }
         }
     }

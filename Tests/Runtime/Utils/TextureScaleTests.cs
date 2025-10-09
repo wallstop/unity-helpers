@@ -1,30 +1,13 @@
 namespace WallstopStudios.UnityHelpers.Tests.Utils
 {
     using System;
-    using System.Collections.Generic;
     using NUnit.Framework;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Utils;
-    using Object = UnityEngine.Object;
 
-    public sealed class TextureScaleTests
+    public sealed class TextureScaleTests : CommonTestBase
     {
-        private readonly List<Texture2D> _textures = new();
-
-        [TearDown]
-        public void Cleanup()
-        {
-            for (int i = _textures.Count - 1; i >= 0; --i)
-            {
-                Texture2D texture = _textures[i];
-                if (texture != null)
-                {
-                    Object.DestroyImmediate(texture);
-                }
-            }
-
-            _textures.Clear();
-        }
+        // Tracking handled by CommonTestBase
 
         [TestCase(true)]
         [TestCase(false)]
@@ -196,8 +179,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             texture.SetPixels(pixels);
             texture.Apply(updateMipmaps: false, makeNoLongerReadable: false);
-            _textures.Add(texture);
-            return texture;
+            return Track(texture);
         }
 
         private static void InvokeScale(Texture2D texture, int width, int height, bool useBilinear)

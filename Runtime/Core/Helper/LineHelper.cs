@@ -3,6 +3,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
     using System.Collections.Generic;
     using UnityEngine;
 
+    /// <summary>
+    /// Polyline simplification and distance helpers.
+    /// </summary>
     public static class LineHelper
     {
         private static float PerpendicularDistance(
@@ -35,6 +38,13 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
         // c# implementation of the Ramer-Douglas-Peucker-Algorithm by Craig Selbert slightly adapted for Unity Vector Types
         //http://www.codeproject.com/Articles/18936/A-Csharp-Implementation-of-Douglas-Peucker-Line-Ap
+        /// <summary>
+        /// Douglas-Peucker simplification that preserves extreme points with high precision (double tolerance).
+        /// </summary>
+        /// <param name="points">Input polyline points.</param>
+        /// <param name="tolerance">Maximum allowable deviation.</param>
+        /// <param name="buffer">Optional destination list (reused if provided).</param>
+        /// <returns>Output simplified points (in buffer if provided).</returns>
         public static List<Vector2> SimplifyPrecise(
             List<Vector2> points,
             double tolerance,
@@ -161,6 +171,13 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
         }
 
+        /// <summary>
+        /// Fast Douglas-Peucker simplification using float epsilon.
+        /// </summary>
+        /// <param name="points">Input polyline points.</param>
+        /// <param name="epsilon">Maximum allowable deviation.</param>
+        /// <param name="buffer">Optional destination list (reused if provided).</param>
+        /// <returns>Output simplified points (in buffer if provided).</returns>
         public static List<Vector2> Simplify(
             List<Vector2> points,
             float epsilon,

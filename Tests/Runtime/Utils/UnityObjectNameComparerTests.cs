@@ -1,30 +1,14 @@
 namespace WallstopStudios.UnityHelpers.Tests.Utils
 {
     using System.Collections;
-    using System.Collections.Generic;
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Utils;
 
-    public sealed class UnityObjectNameComparerTests
+    public sealed class UnityObjectNameComparerTests : CommonTestBase
     {
-        private readonly List<Object> _spawned = new();
-
-        [UnityTearDown]
-        public IEnumerator Cleanup()
-        {
-            foreach (Object obj in _spawned)
-            {
-                if (obj != null)
-                {
-                    Object.Destroy(obj);
-                    yield return null;
-                }
-            }
-
-            _spawned.Clear();
-        }
+        // Tracking handled by CommonTestBase
 
         [UnityTest]
         public IEnumerator CompareOrdersByNaturalNumberSuffix()
@@ -68,9 +52,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
         private GameObject Create(string name)
         {
-            GameObject go = new(name);
-            _spawned.Add(go);
-            return go;
+            return Track(new GameObject(name));
         }
     }
 }

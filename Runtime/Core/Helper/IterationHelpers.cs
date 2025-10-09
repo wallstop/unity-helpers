@@ -2,8 +2,14 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 {
     using System.Collections.Generic;
 
+    /// <summary>
+    /// Helpers for iterating over multidimensional arrays with tuples or buffered lists.
+    /// </summary>
     public static class IterationHelpers
     {
+        /// <summary>
+        /// Enumerates all (i, j) indices of a 2D array.
+        /// </summary>
         public static IEnumerable<(int, int)> IndexOver<T>(this T[,] array)
         {
             for (int i = 0; i < array.GetLength(0); i++)
@@ -15,6 +21,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
         }
 
+        /// <summary>
+        /// Fills a buffer with all (i, j) indices of a 2D array and returns the same buffer.
+        /// </summary>
         public static List<(int, int)> IndexOver<T>(this T[,] array, List<(int, int)> buffer)
         {
             buffer.Clear();
@@ -30,6 +39,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             return buffer;
         }
 
+        /// <summary>
+        /// Enumerates all (i, j, k) indices of a 3D array.
+        /// </summary>
         public static IEnumerable<(int, int, int)> IndexOver<T>(this T[,,] array)
         {
             for (int i = 0; i < array.GetLength(0); i++)
@@ -44,6 +56,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
         }
 
+        /// <summary>
+        /// Fills a buffer with all (i, j, k) indices of a 3D array and returns the same buffer.
+        /// </summary>
         public static List<(int, int, int)> IndexOver<T>(
             this T[,,] array,
             List<(int, int, int)> buffer

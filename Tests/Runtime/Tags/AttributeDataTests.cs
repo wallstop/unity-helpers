@@ -1,16 +1,12 @@
 namespace WallstopStudios.UnityHelpers.Tests.Tags
 {
-    using System.Collections;
-    using System.Collections.Generic;
     using System.Text.Json;
     using NUnit.Framework;
     using UnityEngine;
-    using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Tags;
     using Attribute = WallstopStudios.UnityHelpers.Tags.Attribute;
-    using Object = UnityEngine.Object;
 
-    public abstract class AttributeTagsTestBase : WallstopStudios.UnityHelpers.Tests.CommonTestBase
+    public abstract class AttributeTagsTestBase : CommonTestBase
     {
         protected static void ResetEffectHandleId(long value = 0)
         {

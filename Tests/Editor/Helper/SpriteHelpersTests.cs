@@ -7,7 +7,7 @@
     using WallstopStudios.UnityHelpers.Core.Helper;
 
     [TestFixture]
-    public sealed class SpriteHelpersTests
+    public sealed class SpriteHelpersTests : WallstopStudios.UnityHelpers.Tests.CommonTestBase
     {
         private const string TestFolder = "Assets/TempSpriteHelpersTests";
         private string _testTexturePath;

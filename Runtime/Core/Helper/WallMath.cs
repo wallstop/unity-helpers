@@ -3,6 +3,13 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
     using System;
     using UnityEngine;
 
+    /// <summary>
+    /// Numeric helpers for safe bounds, positive modulo, and wrap-around arithmetic.
+    /// </summary>
+    /// <remarks>
+    /// Includes IEEE-754-aware helpers (BoundedFloat/BoundedDouble) that adjust bit patterns to maintain strict inequalities.
+    /// Useful for RNG upper bounds, indices, and cyclical arithmetic.
+    /// </remarks>
     public static class WallMath
     {
         /// <summary>

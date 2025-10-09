@@ -7,47 +7,30 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Attributes;
-    using Object = UnityEngine.Object;
 
     [TestFixture]
-    public sealed class RelationalComponentTagAndNameFilterEdgeTests
+    public sealed class RelationalComponentTagAndNameFilterEdgeTests : CommonTestBase
     {
-        private readonly List<Object> _spawned = new();
-
-        [UnityTearDown]
-        public IEnumerator Cleanup()
-        {
-            foreach (Object spawned in _spawned)
-            {
-                if (spawned != null)
-                {
-                    Object.Destroy(spawned);
-                    yield return null;
-                }
-            }
-            _spawned.Clear();
-        }
-
         [UnityTest]
         public IEnumerator IncludeInactiveExcludesDisabledAndInactive()
         {
-            GameObject root = new("InactiveRoot", typeof(IncludeInactiveTester));
-            _spawned.Add(root);
+            GameObject root = Track(new GameObject("InactiveRoot", typeof(IncludeInactiveTester)));
             IncludeInactiveTester tester = root.GetComponent<IncludeInactiveTester>();
 
-            GameObject activeChild = new("ActiveChild", typeof(SpriteRenderer));
-            _spawned.Add(activeChild);
+            GameObject activeChild = Track(new GameObject("ActiveChild", typeof(SpriteRenderer)));
             activeChild.tag = "Player";
             activeChild.transform.SetParent(root.transform);
 
-            GameObject inactiveChild = new("InactiveChild", typeof(SpriteRenderer));
-            _spawned.Add(inactiveChild);
+            GameObject inactiveChild = Track(
+                new GameObject("InactiveChild", typeof(SpriteRenderer))
+            );
             inactiveChild.tag = "Player";
             inactiveChild.transform.SetParent(root.transform);
             inactiveChild.SetActive(false);
 
-            GameObject disabledChild = new("DisabledChild", typeof(SpriteRenderer));
-            _spawned.Add(disabledChild);
+            GameObject disabledChild = Track(
+                new GameObject("DisabledChild", typeof(SpriteRenderer))
+            );
             disabledChild.tag = "Player";
             disabledChild.transform.SetParent(root.transform);
             disabledChild.GetComponent<SpriteRenderer>().enabled = false;
@@ -63,22 +46,20 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [UnityTest]
         public IEnumerator CombinedTagAndNameFilterRequiresBoth()
         {
-            GameObject root = new("Root", typeof(CombinedFilterTester));
-            _spawned.Add(root);
+            GameObject root = Track(new GameObject("Root", typeof(CombinedFilterTester)));
             CombinedFilterTester tester = root.GetComponent<CombinedFilterTester>();
 
-            GameObject playerWrongName = new("EnemyOne", typeof(SpriteRenderer));
-            _spawned.Add(playerWrongName);
+            GameObject playerWrongName = Track(new GameObject("EnemyOne", typeof(SpriteRenderer)));
             playerWrongName.tag = "Player";
             playerWrongName.transform.SetParent(root.transform);
 
-            GameObject wrongTagRightName = new("PlayerOne", typeof(SpriteRenderer));
-            _spawned.Add(wrongTagRightName);
+            GameObject wrongTagRightName = Track(
+                new GameObject("PlayerOne", typeof(SpriteRenderer))
+            );
             wrongTagRightName.tag = "Untagged";
             wrongTagRightName.transform.SetParent(root.transform);
 
-            GameObject correct = new("PlayerAlpha", typeof(SpriteRenderer));
-            _spawned.Add(correct);
+            GameObject correct = Track(new GameObject("PlayerAlpha", typeof(SpriteRenderer)));
             correct.tag = "Player";
             correct.transform.SetParent(root.transform);
 
@@ -93,17 +74,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [UnityTest]
         public IEnumerator TagFilterMatchesUntagged()
         {
-            GameObject root = new("Root", typeof(UntaggedFilterTester));
-            _spawned.Add(root);
+            GameObject root = Track(new GameObject("Root", typeof(UntaggedFilterTester)));
             UntaggedFilterTester tester = root.GetComponent<UntaggedFilterTester>();
 
-            GameObject child1 = new("Child1", typeof(SpriteRenderer));
-            _spawned.Add(child1);
+            GameObject child1 = Track(new GameObject("Child1", typeof(SpriteRenderer)));
             child1.tag = "Untagged";
             child1.transform.SetParent(root.transform);
 
-            GameObject child2 = new("Child2", typeof(SpriteRenderer));
-            _spawned.Add(child2);
+            GameObject child2 = Track(new GameObject("Child2", typeof(SpriteRenderer)));
             child2.tag = "Player";
             child2.transform.SetParent(root.transform);
 
@@ -118,8 +96,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [UnityTest]
         public IEnumerator OnlyDescendantsIncludesSelfWhenFalse()
         {
-            GameObject root = new("SelfRoot", typeof(SelfInclusionTester), typeof(SpriteRenderer));
-            _spawned.Add(root);
+            GameObject root = Track(
+                new GameObject("SelfRoot", typeof(SelfInclusionTester), typeof(SpriteRenderer))
+            );
             SelfInclusionTester tester = root.GetComponent<SelfInclusionTester>();
 
             tester.AssignChildComponents();
@@ -133,12 +112,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [UnityTest]
         public IEnumerator AllowInterfacesFalseDisablesInterfaceResolution()
         {
-            GameObject root = new("InterfaceRoot", typeof(InterfacesDisabledTester));
-            _spawned.Add(root);
+            GameObject root = Track(
+                new GameObject("InterfaceRoot", typeof(InterfacesDisabledTester))
+            );
             InterfacesDisabledTester tester = root.GetComponent<InterfacesDisabledTester>();
 
-            GameObject child = new("Child", typeof(TestInterfaceComponent));
-            _spawned.Add(child);
+            GameObject child = Track(new GameObject("Child", typeof(TestInterfaceComponent)));
             child.transform.SetParent(root.transform);
 
             LogAssert.Expect(
@@ -155,8 +134,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [UnityTest]
         public IEnumerator OptionalSuppressesMissingErrors()
         {
-            GameObject root = new("OptionalRoot", typeof(OptionalTester));
-            _spawned.Add(root);
+            GameObject root = Track(new GameObject("OptionalRoot", typeof(OptionalTester)));
             OptionalTester tester = root.GetComponent<OptionalTester>();
 
             tester.AssignSiblingComponents();
@@ -170,7 +148,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public IEnumerator SiblingTagFilterNoMatchLogsError()
         {
             GameObject root = new("SiblingTagFilterRoot");
-            _spawned.Add(root);
+            Track(root);
             root.tag = "Untagged";
             root.AddComponent<BoxCollider>();
             SiblingNoMatchTagTester tester = root.AddComponent<SiblingNoMatchTagTester>();
@@ -192,7 +170,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public IEnumerator SkipIfAssignedDoesNotOverride()
         {
             GameObject root = new("SkipRoot", typeof(SkipIfAssignedTesterEdgeCase));
-            _spawned.Add(root);
+            Track(root);
             SkipIfAssignedTesterEdgeCase tester = root.GetComponent<SkipIfAssignedTesterEdgeCase>();
 
             SpriteRenderer preassigned = root.AddComponent<SpriteRenderer>();

@@ -7,38 +7,21 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Attributes;
-    using Object = UnityEngine.Object;
 
     [TestFixture]
-    public sealed class ValidateAssignmentAttributeTests
+    public sealed class ValidateAssignmentAttributeTests : CommonTestBase
     {
-        private readonly List<Object> _spawned = new();
-
-        [UnityTearDown]
-        public IEnumerator Cleanup()
-        {
-            foreach (Object spawned in _spawned)
-            {
-                if (spawned != null)
-                {
-                    Object.Destroy(spawned);
-                    yield return null;
-                }
-            }
-            _spawned.Clear();
-        }
-
         [UnityTest]
         public IEnumerator AreAnyAssignmentsInvalidDetectsMissingValues()
         {
-            GameObject go = new("ValidateAssignments", typeof(AssignmentComponent));
-            _spawned.Add(go);
+            GameObject go = Track(
+                new GameObject("ValidateAssignments", typeof(AssignmentComponent))
+            );
             AssignmentComponent component = go.GetComponent<AssignmentComponent>();
 
             Assert.IsTrue(component.AreAnyAssignmentsInvalid());
 
-            component.requiredObject = new GameObject("Assigned");
-            _spawned.Add(component.requiredObject);
+            component.requiredObject = Track(new GameObject("Assigned"));
             component.requiredString = "value";
             component.requiredList.Add(1);
             component.requiredCollection.Enqueue(2);
@@ -51,8 +34,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [UnityTest]
         public IEnumerator ValidateAssignmentsLogsWarningsForMissingFields()
         {
-            GameObject go = new("ValidateAssignmentsLogs", typeof(AssignmentComponent));
-            _spawned.Add(go);
+            GameObject go = Track(
+                new GameObject("ValidateAssignmentsLogs", typeof(AssignmentComponent))
+            );
             AssignmentComponent component = go.GetComponent<AssignmentComponent>();
 
             LogAssert.Expect(

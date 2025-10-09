@@ -7,7 +7,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using UnityEngine.UI;
     using WallstopStudios.UnityHelpers.Utils;
 
-    public sealed class MatchColliderToSpriteTests
+    public sealed class MatchColliderToSpriteTests : CommonTestBase
     {
         private Sprite _testSprite;
 
@@ -23,7 +23,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             );
 
             // Define a physics shape for the sprite (a simple rectangle)
-            Vector2[] physicsShape = new Vector2[]
+            Vector2[] physicsShape = new[]
             {
                 new Vector2(-0.5f, -0.5f),
                 new Vector2(-0.5f, 0.5f),
@@ -43,25 +43,18 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             }
         }
 
-        [TearDown]
-        public void Cleanup()
-        {
-            foreach (
-                GameObject go in Object.FindObjectsByType<GameObject>(FindObjectsSortMode.None)
-            )
-            {
-                Object.Destroy(go);
-            }
-        }
+        // Per-test cleanup handled by CommonTestBase
 
         [UnityTest]
         public IEnumerator FindsPolygonColliderOnAwake()
         {
-            GameObject go = new(
-                "Test",
-                typeof(PolygonCollider2D),
-                typeof(SpriteRenderer),
-                typeof(MatchColliderToSprite)
+            GameObject go = Track(
+                new GameObject(
+                    "Test",
+                    typeof(PolygonCollider2D),
+                    typeof(SpriteRenderer),
+                    typeof(MatchColliderToSprite)
+                )
             );
             MatchColliderToSprite matcher = go.GetComponent<MatchColliderToSprite>();
 
@@ -73,11 +66,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator FindsSpriteRendererOnValidate()
         {
-            GameObject go = new(
-                "Test",
-                typeof(PolygonCollider2D),
-                typeof(SpriteRenderer),
-                typeof(MatchColliderToSprite)
+            GameObject go = Track(
+                new GameObject(
+                    "Test",
+                    typeof(PolygonCollider2D),
+                    typeof(SpriteRenderer),
+                    typeof(MatchColliderToSprite)
+                )
             );
             SpriteRenderer renderer = go.GetComponent<SpriteRenderer>();
             renderer.sprite = _testSprite;
@@ -92,11 +87,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator UpdatesColliderWhenSpriteChanges()
         {
-            GameObject go = new(
-                "Test",
-                typeof(PolygonCollider2D),
-                typeof(SpriteRenderer),
-                typeof(MatchColliderToSprite)
+            GameObject go = Track(
+                new GameObject(
+                    "Test",
+                    typeof(PolygonCollider2D),
+                    typeof(SpriteRenderer),
+                    typeof(MatchColliderToSprite)
+                )
             );
             SpriteRenderer renderer = go.GetComponent<SpriteRenderer>();
             MatchColliderToSprite matcher = go.GetComponent<MatchColliderToSprite>();
@@ -118,11 +115,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator InvokesColliderUpdatedEvent()
         {
-            GameObject go = new(
-                "Test",
-                typeof(PolygonCollider2D),
-                typeof(SpriteRenderer),
-                typeof(MatchColliderToSprite)
+            GameObject go = Track(
+                new GameObject(
+                    "Test",
+                    typeof(PolygonCollider2D),
+                    typeof(SpriteRenderer),
+                    typeof(MatchColliderToSprite)
+                )
             );
             SpriteRenderer renderer = go.GetComponent<SpriteRenderer>();
             renderer.sprite = _testSprite;
@@ -143,11 +142,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator HandlesNullSprite()
         {
-            GameObject go = new(
-                "Test",
-                typeof(PolygonCollider2D),
-                typeof(SpriteRenderer),
-                typeof(MatchColliderToSprite)
+            GameObject go = Track(
+                new GameObject(
+                    "Test",
+                    typeof(PolygonCollider2D),
+                    typeof(SpriteRenderer),
+                    typeof(MatchColliderToSprite)
+                )
             );
             SpriteRenderer renderer = go.GetComponent<SpriteRenderer>();
             renderer.sprite = null;
@@ -163,13 +164,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator WorksWithImageComponent()
         {
-            GameObject go = new(
-                "Test",
-                typeof(PolygonCollider2D),
-                typeof(RectTransform),
-                typeof(CanvasRenderer),
-                typeof(Image),
-                typeof(MatchColliderToSprite)
+            GameObject go = Track(
+                new GameObject(
+                    "Test",
+                    typeof(PolygonCollider2D),
+                    typeof(RectTransform),
+                    typeof(CanvasRenderer),
+                    typeof(Image),
+                    typeof(MatchColliderToSprite)
+                )
             );
             Image image = go.GetComponent<Image>();
             image.sprite = _testSprite;
@@ -184,11 +187,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator UpdatesOnlyWhenSpriteChanges()
         {
-            GameObject go = new(
-                "Test",
-                typeof(PolygonCollider2D),
-                typeof(SpriteRenderer),
-                typeof(MatchColliderToSprite)
+            GameObject go = Track(
+                new GameObject(
+                    "Test",
+                    typeof(PolygonCollider2D),
+                    typeof(SpriteRenderer),
+                    typeof(MatchColliderToSprite)
+                )
             );
             SpriteRenderer renderer = go.GetComponent<SpriteRenderer>();
             renderer.sprite = _testSprite;
@@ -226,11 +231,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator TracksLastHandledSprite()
         {
-            GameObject go = new(
-                "Test",
-                typeof(PolygonCollider2D),
-                typeof(SpriteRenderer),
-                typeof(MatchColliderToSprite)
+            GameObject go = Track(
+                new GameObject(
+                    "Test",
+                    typeof(PolygonCollider2D),
+                    typeof(SpriteRenderer),
+                    typeof(MatchColliderToSprite)
+                )
             );
             SpriteRenderer renderer = go.GetComponent<SpriteRenderer>();
             renderer.sprite = _testSprite;
@@ -245,11 +252,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator SpriteOverrideProducerTakesPriority()
         {
-            GameObject go = new(
-                "Test",
-                typeof(PolygonCollider2D),
-                typeof(SpriteRenderer),
-                typeof(MatchColliderToSprite)
+            GameObject go = Track(
+                new GameObject(
+                    "Test",
+                    typeof(PolygonCollider2D),
+                    typeof(SpriteRenderer),
+                    typeof(MatchColliderToSprite)
+                )
             );
             SpriteRenderer renderer = go.GetComponent<SpriteRenderer>();
             MatchColliderToSprite matcher = go.GetComponent<MatchColliderToSprite>();
@@ -274,7 +283,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator ReturnsEarlyWithoutCollider()
         {
-            GameObject go = new("Test", typeof(SpriteRenderer), typeof(MatchColliderToSprite));
+            GameObject go = Track(
+                new GameObject("Test", typeof(SpriteRenderer), typeof(MatchColliderToSprite))
+            );
             SpriteRenderer renderer = go.GetComponent<SpriteRenderer>();
             renderer.sprite = _testSprite;
             MatchColliderToSprite matcher = go.GetComponent<MatchColliderToSprite>();
@@ -288,11 +299,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator ClearsColliderPointsBeforeUpdate()
         {
-            GameObject go = new(
-                "Test",
-                typeof(PolygonCollider2D),
-                typeof(SpriteRenderer),
-                typeof(MatchColliderToSprite)
+            GameObject go = Track(
+                new GameObject(
+                    "Test",
+                    typeof(PolygonCollider2D),
+                    typeof(SpriteRenderer),
+                    typeof(MatchColliderToSprite)
+                )
             );
             SpriteRenderer renderer = go.GetComponent<SpriteRenderer>();
             renderer.sprite = _testSprite;
@@ -310,11 +323,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator SetsPathCountFromPhysicsShapes()
         {
-            GameObject go = new(
-                "Test",
-                typeof(PolygonCollider2D),
-                typeof(SpriteRenderer),
-                typeof(MatchColliderToSprite)
+            GameObject go = Track(
+                new GameObject(
+                    "Test",
+                    typeof(PolygonCollider2D),
+                    typeof(SpriteRenderer),
+                    typeof(MatchColliderToSprite)
+                )
             );
             SpriteRenderer renderer = go.GetComponent<SpriteRenderer>();
             renderer.sprite = _testSprite;
@@ -331,11 +346,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator UpdatesInUpdateLoop()
         {
-            GameObject go = new(
-                "Test",
-                typeof(PolygonCollider2D),
-                typeof(SpriteRenderer),
-                typeof(MatchColliderToSprite)
+            GameObject go = Track(
+                new GameObject(
+                    "Test",
+                    typeof(PolygonCollider2D),
+                    typeof(SpriteRenderer),
+                    typeof(MatchColliderToSprite)
+                )
             );
             SpriteRenderer renderer = go.GetComponent<SpriteRenderer>();
             MatchColliderToSprite matcher = go.GetComponent<MatchColliderToSprite>();
@@ -360,11 +377,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator DoesNotUpdateWhenSpriteIsSame()
         {
-            GameObject go = new(
-                "Test",
-                typeof(PolygonCollider2D),
-                typeof(SpriteRenderer),
-                typeof(MatchColliderToSprite)
+            GameObject go = Track(
+                new GameObject(
+                    "Test",
+                    typeof(PolygonCollider2D),
+                    typeof(SpriteRenderer),
+                    typeof(MatchColliderToSprite)
+                )
             );
             SpriteRenderer renderer = go.GetComponent<SpriteRenderer>();
             renderer.sprite = _testSprite;
@@ -391,14 +410,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator WorksWithBothSpriteRendererAndImage()
         {
-            GameObject go = new(
-                "Test",
-                typeof(PolygonCollider2D),
-                typeof(SpriteRenderer),
-                typeof(RectTransform),
-                typeof(CanvasRenderer),
-                typeof(Image),
-                typeof(MatchColliderToSprite)
+            GameObject go = Track(
+                new GameObject(
+                    "Test",
+                    typeof(PolygonCollider2D),
+                    typeof(SpriteRenderer),
+                    typeof(RectTransform),
+                    typeof(CanvasRenderer),
+                    typeof(Image),
+                    typeof(MatchColliderToSprite)
+                )
             );
             SpriteRenderer renderer = go.GetComponent<SpriteRenderer>();
             Image image = go.GetComponent<Image>();
@@ -415,11 +436,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator MultipleUpdatesWithDifferentSprites()
         {
-            GameObject go = new(
-                "Test",
-                typeof(PolygonCollider2D),
-                typeof(SpriteRenderer),
-                typeof(MatchColliderToSprite)
+            GameObject go = Track(
+                new GameObject(
+                    "Test",
+                    typeof(PolygonCollider2D),
+                    typeof(SpriteRenderer),
+                    typeof(MatchColliderToSprite)
+                )
             );
             SpriteRenderer renderer = go.GetComponent<SpriteRenderer>();
             MatchColliderToSprite matcher = go.GetComponent<MatchColliderToSprite>();
@@ -452,11 +475,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator EventInvokedEvenOnFailure()
         {
-            GameObject go = new(
-                "Test",
-                typeof(PolygonCollider2D),
-                typeof(SpriteRenderer),
-                typeof(MatchColliderToSprite)
+            GameObject go = Track(
+                new GameObject(
+                    "Test",
+                    typeof(PolygonCollider2D),
+                    typeof(SpriteRenderer),
+                    typeof(MatchColliderToSprite)
+                )
             );
             SpriteRenderer renderer = go.GetComponent<SpriteRenderer>();
             renderer.sprite = null;

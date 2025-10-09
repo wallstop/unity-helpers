@@ -3,10 +3,16 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
     using System;
     using System.Reflection;
 
+    /// <summary>
+    /// Internal helpers for detecting Unity test assemblies and types by name markers or attributes.
+    /// </summary>
     internal static class TestAssemblyHelper
     {
         private static readonly StringComparison Comparison = StringComparison.OrdinalIgnoreCase;
 
+        /// <summary>
+        /// Heuristically determines if an assembly is a test assembly by name markers or Unity test attributes.
+        /// </summary>
         internal static bool IsTestAssembly(Assembly assembly)
         {
             if (assembly == null || assembly.IsDynamic)
@@ -28,6 +34,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             return false;
         }
 
+        /// <summary>
+        /// Heuristically determines if a type belongs to a test assembly or a namespace with test markers.
+        /// </summary>
         internal static bool IsTestType(Type type)
         {
             if (type == null)
@@ -49,6 +58,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             return false;
         }
 
+        /// <summary>
+        /// Returns true if the string contains common test markers (e.g., Test, Tests, prefixes/suffixes/segments).
+        /// </summary>
         internal static bool ContainsTestMarker(string value)
         {
             if (string.IsNullOrEmpty(value))

@@ -8,11 +8,23 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     using UnityEngine;
     using Utils;
 
+    /// <summary>
+    /// Immutable 2D spatial tree that partitions space into quadrants for efficient range and area queries.
+    /// </summary>
+    /// <typeparam name="T">Element type contained in the tree.</typeparam>
+    /// <remarks>
+    /// Pros: Excellent query performance for static data, low allocations for repeated queries, deterministic iteration.
+    /// Cons: Immutable structure; rebuild when positions change. Prefer <c>SpatialHash2D</c> for frequently moving, uniformly distributed data.
+    /// Usage: Build once from points, then call <see cref="GetElementsInRange(UnityEngine.Vector2,float,System.Collections.Generic.List{T},float)"/> or <see cref="GetElementsInBounds(UnityEngine.Bounds,System.Collections.Generic.List{T})"/>.
+    /// </remarks>
     [Serializable]
     public sealed class QuadTree2D<T> : ISpatialTree2D<T>
     {
         private const int NumChildren = 4;
 
+        /// <summary>
+        /// Represents a value and its position used to construct the tree directly.
+        /// </summary>
         [Serializable]
         public readonly struct Entry
         {
@@ -84,9 +96,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
         }
 
+        /// <summary>
+        /// Default bucket size for leaves before subdivision.
+        /// </summary>
         public const int DefaultBucketSize = 12;
 
         public readonly ImmutableArray<T> elements;
+
+        /// <summary>
+        /// Gets the overall bounding box of the tree.
+        /// </summary>
         public Bounds Boundary => _bounds;
 
         private readonly Bounds _bounds;
@@ -94,6 +113,14 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         private readonly int[] _indices;
         private readonly QuadTreeNode _head;
 
+        /// <summary>
+        /// Builds a QuadTree from elements using a transformer to extract 2D positions.
+        /// </summary>
+        /// <param name="points">Source elements.</param>
+        /// <param name="elementTransformer">Maps element to its 2D position.</param>
+        /// <param name="boundary">Optional precomputed bounds. If null, bounds are computed from points.</param>
+        /// <param name="bucketSize">Max elements in a leaf before subdividing. Minimum 1.</param>
+        /// <exception cref="ArgumentNullException">Thrown when points or elementTransformer are null.</exception>
         public QuadTree2D(
             IEnumerable<T> points,
             Func<T, Vector2> elementTransformer,
@@ -170,6 +197,13 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
         }
 
+        /// <summary>
+        /// Builds a QuadTree directly from entries containing values and positions.
+        /// </summary>
+        /// <param name="entries">Collection of values with positions.</param>
+        /// <param name="boundary">Optional precomputed bounds. If null, bounds are computed from entries.</param>
+        /// <param name="bucketSize">Max elements in a leaf before subdividing. Minimum 1.</param>
+        /// <exception cref="ArgumentNullException">Thrown when entries is null.</exception>
         public QuadTree2D(
             IEnumerable<Entry> entries,
             Bounds? boundary = null,
@@ -372,6 +406,20 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             return QuadTreeNode.CreateInternal(boundary, children, startIndex, count);
         }
 
+        /// <summary>
+        /// Finds all elements within distance <paramref name="range"/> of <paramref name="position"/>.
+        /// </summary>
+        /// <param name="position">Query center.</param>
+        /// <param name="range">Query radius.</param>
+        /// <param name="elementsInRange">Destination list which is cleared before use.</param>
+        /// <param name="minimumRange">Optional inner exclusion radius.</param>
+        /// <returns>The destination list, for chaining.</returns>
+        /// <example>
+        /// <code>
+        /// var tree = new QuadTree2D<Enemy>(enemies, e => e.transform.position);
+        /// tree.GetElementsInRange(playerPos, 10f, results);
+        /// </code>
+        /// </example>
         public List<T> GetElementsInRange(
             Vector2 position,
             float range,
@@ -457,6 +505,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             return elementsInRange;
         }
 
+        /// <summary>
+        /// Finds all elements whose positions lie within the specified bounds.
+        /// </summary>
+        /// <param name="bounds">Axis-aligned query bounds.</param>
+        /// <param name="elementsInBounds">Destination list which is cleared before use.</param>
+        /// <returns>The destination list, for chaining.</returns>
         public List<T> GetElementsInBounds(Bounds bounds, List<T> elementsInBounds)
         {
             elementsInBounds.Clear();
@@ -525,6 +579,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             return elementsInBounds;
         }
 
+        /// <summary>
+        /// Returns an approximate set of the nearest <paramref name="count"/> neighbors to <paramref name="position"/>.
+        /// </summary>
+        /// <remarks>
+        /// Faster than exact kNN on the tree by prioritizing closer nodes; suitable for gameplay proximity needs.
+        /// </remarks>
         public List<T> GetApproximateNearestNeighbors(
             Vector2 position,
             int count,

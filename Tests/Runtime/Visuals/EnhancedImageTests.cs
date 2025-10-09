@@ -1,22 +1,14 @@
 namespace WallstopStudios.UnityHelpers.Tests.Visuals
 {
-    using System.Collections.Generic;
     using System.Reflection;
     using NUnit.Framework;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Visuals.UGUI;
-    using Object = UnityEngine.Object;
 
-    public sealed class EnhancedImageTests
+    public sealed class EnhancedImageTests : CommonTestBase
     {
-        private readonly List<Object> _tracked = new();
-
-        [TearDown]
-        public void Cleanup()
-        {
-            VisualsTestHelpers.DestroyTracked(_tracked);
-        }
+        // Tracking handled by CommonTestBase
 
         [Test]
         public void StartCreatesMaterialInstanceAndRespectsSdrColor()
@@ -50,8 +42,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
         public void ShapeMaskAssignmentWritesTextureToMaterial()
         {
             EnhancedImage image = CreateEnhancedImage(out _);
-            Texture2D mask = new Texture2D(4, 4, TextureFormat.RGBA32, false, false);
-            _tracked.Add(mask);
+            Texture2D mask = Track(new Texture2D(4, 4, TextureFormat.RGBA32, false, false));
 
             typeof(EnhancedImage)
                 .GetField("_shapeMask", BindingFlags.Instance | BindingFlags.NonPublic)
@@ -167,12 +158,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
                 "Expected UI/Default shader to be available for tests."
             );
 
-            baseMaterial = new Material(shader);
-            _tracked.Add(baseMaterial);
+            baseMaterial = Track(new Material(shader));
 
-            GameObject owner = new GameObject("EnhancedImage Test Owner");
-            _tracked.Add(owner);
-
+            GameObject owner = Track(new GameObject("EnhancedImage Test Owner"));
             EnhancedImage image = owner.AddComponent<EnhancedImage>();
             image.material = baseMaterial;
             return image;

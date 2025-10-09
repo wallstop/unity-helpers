@@ -7,32 +7,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Core.Extension;
-    using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
-    public sealed class UnityExtensionsBasicTests
+    public sealed class UnityExtensionsBasicTests : CommonTestBase
     {
-        private readonly List<Object> _spawned = new();
-
-        [TearDown]
-        public void TearDown()
-        {
-            foreach (var spawned in _spawned.ToArray())
-            {
-                if (spawned != null)
-                {
-                    spawned.Destroy();
-                }
-            }
-            _spawned.Clear();
-        }
-
         [Test]
         public void GetCenterUsesCenterPointOffsetWhenAvailable()
         {
-            GameObject go = new("CenterPointTest", typeof(CenterPointOffset));
-            _spawned.Add(go);
+            GameObject go = Track(new GameObject("CenterPointTest", typeof(CenterPointOffset)));
 
             go.transform.position = new Vector3(5f, 5f, 0f);
             CenterPointOffset offset = go.GetComponent<CenterPointOffset>();
@@ -56,8 +39,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void GetWorldRectComputesRectFromCorners()
         {
-            GameObject go = new("RectTransformTest", typeof(RectTransform));
-            _spawned.Add(go);
+            GameObject go = Track(new GameObject("RectTransformTest", typeof(RectTransform)));
 
             RectTransform rectTransform = go.GetComponent<RectTransform>();
             rectTransform.sizeDelta = new Vector2(100f, 50f);
@@ -71,8 +53,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void OrthographicBoundsUsesCameraDepthAndCenter()
         {
-            GameObject go = new("CameraBoundsTest", typeof(Camera));
-            _spawned.Add(go);
+            GameObject go = Track(new GameObject("CameraBoundsTest", typeof(Camera)));
 
             Camera camera = go.GetComponent<Camera>();
             camera.orthographic = true;
@@ -134,8 +115,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void StopResetsRigidBody()
         {
-            GameObject go = new("RigidBodyTest", typeof(Rigidbody2D));
-            _spawned.Add(go);
+            GameObject go = Track(new GameObject("RigidBodyTest", typeof(Rigidbody2D)));
 
             Rigidbody2D body = go.GetComponent<Rigidbody2D>();
             body.velocity = new Vector2(10f, 5f);

@@ -1,36 +1,20 @@
 namespace WallstopStudios.UnityHelpers.Tests.Attributes
 {
     using System.Collections;
-    using System.Collections.Generic;
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Attributes;
 
     [TestFixture]
-    public sealed class RelationalComponentExtensionsTests
+    public sealed class RelationalComponentExtensionsTests : CommonTestBase
     {
-        private readonly List<Object> _spawned = new();
-
-        [UnityTearDown]
-        public IEnumerator Cleanup()
-        {
-            foreach (Object spawned in _spawned)
-            {
-                if (spawned != null)
-                {
-                    Object.Destroy(spawned);
-                    yield return null;
-                }
-            }
-            _spawned.Clear();
-        }
+        // Tracking handled by CommonTestBase
 
         [UnityTest]
         public IEnumerator AssignRelationalComponentsResolvesParentSiblingAndChild()
         {
-            GameObject parent = new("RelationalParent", typeof(Rigidbody));
-            _spawned.Add(parent);
+            GameObject parent = Track(new GameObject("RelationalParent", typeof(Rigidbody)));
             Rigidbody parentBody = parent.GetComponent<Rigidbody>();
 
             GameObject middle = new(
@@ -38,12 +22,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
                 typeof(BoxCollider),
                 typeof(RelationalComponentTester)
             );
-            _spawned.Add(middle);
+            middle = Track(middle);
             middle.transform.SetParent(parent.transform);
             BoxCollider siblingCollider = middle.GetComponent<BoxCollider>();
 
-            GameObject child = new("RelationalChild", typeof(CapsuleCollider));
-            _spawned.Add(child);
+            GameObject child = Track(new GameObject("RelationalChild", typeof(CapsuleCollider)));
             child.transform.SetParent(middle.transform);
             CapsuleCollider childCollider = child.GetComponent<CapsuleCollider>();
 

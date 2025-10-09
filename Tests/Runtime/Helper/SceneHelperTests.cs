@@ -1,8 +1,6 @@
 namespace WallstopStudios.UnityHelpers.Tests.Helper
 {
-    using System;
     using System.Collections;
-    using System.Collections.Generic;
     using System.Linq;
     using System.Threading.Tasks;
     using NUnit.Framework;
@@ -11,25 +9,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Utils;
 
-    public sealed class SceneHelperTests
+    public sealed class SceneHelperTests : CommonTestBase
     {
-        private readonly List<Func<ValueTask>> _disposalTasks = new();
-
-        [UnityTearDown]
-        public IEnumerator TearDown()
-        {
-            foreach (
-                ValueTask disposal in _disposalTasks.Select(disposalProducer => disposalProducer())
-            )
-            {
-                while (!disposal.IsCompleted)
-                {
-                    yield return null;
-                }
-            }
-
-            _disposalTasks.Clear();
-        }
+        // Async disposals queued via TrackAsyncDisposal in base
 
         [Test]
         public void GetScenesInBuild()
@@ -67,7 +49,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             }
             Assert.IsTrue(task.IsCompletedSuccessfully);
 
-            _disposalTasks.Add(task.Result.DisposeAsync);
+            TrackAsyncDisposal(task.Result.DisposeAsync);
             SpriteRenderer found = task.Result.result;
             Assert.IsTrue(found != null);
         }
@@ -86,7 +68,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             }
 
             Assert.IsTrue(task.IsCompletedSuccessfully);
-            _disposalTasks.Add(task.Result.DisposeAsync);
+            TrackAsyncDisposal(task.Result.DisposeAsync);
             SpriteRenderer[] found = task.Result.result;
             Assert.That(found, Has.Length.EqualTo(7));
         }

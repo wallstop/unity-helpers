@@ -11,6 +11,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tests.Editor.Utils
     using WallstopStudios.UnityHelpers.Utils;
 
     public sealed class ScriptableObjectSingletonTests
+        : WallstopStudios.UnityHelpers.Tests.CommonTestBase
     {
         private static readonly System.Collections.Generic.List<string> _createdAssetPaths = new();
 
