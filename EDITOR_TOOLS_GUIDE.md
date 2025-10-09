@@ -17,6 +17,8 @@ Comprehensive documentation for all editor wizards, windows, and automation tool
 
 ---
 
+<a id="texture--sprite-tools"></a>
+<a id="texture-sprite-tools"></a>
 ## Texture & Sprite Tools
 
 ### Image Blur Tool
@@ -664,6 +666,8 @@ maxTextureSize: 2048
 
 ---
 
+<a id="validation--quality-tools"></a>
+<a id="validation-quality-tools"></a>
 ## Validation & Quality Tools
 
 ### Prefab Checker
@@ -822,6 +826,8 @@ These custom inspectors enhance Unity components with additional functionality a
 
 ---
 
+<a id="property-drawers--attributes"></a>
+<a id="property-drawers-attributes"></a>
 ## Property Drawers & Attributes
 
 Custom property drawers enhance the inspector with conditional display, validation, and specialized input fields.
@@ -1024,6 +1030,8 @@ public class CharacterStats : MonoBehaviour
 
 ---
 
+<a id="automation--utilities"></a>
+<a id="automation-utilities"></a>
 ## Automation & Utilities
 
 ### ScriptableObject Singleton Creator
