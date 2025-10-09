@@ -16,6 +16,50 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     [Serializable]
     [DataContract]
     [ProtoContract]
+    /// <summary>
+    /// IllusionFlow: a modern, high-performance PRNG building on Xoroshiro concepts with additional state and mixing.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// IllusionFlow enhances the classic Xoroshiro approach with additional state and update rules for improved
+    /// distribution characteristics. In this package, <see cref="PRNG.Instance"/> defaults to <see cref="IllusionFlow"/>
+    /// to provide fast, high-quality randomness out of the box.
+    /// </para>
+    /// <para>Pros:</para>
+    /// <list type="bullet">
+    /// <item><description>Excellent performance; strong general-purpose statistical behavior.</description></item>
+    /// <item><description>Deterministic and portable via <see cref="RandomState"/>.</description></item>
+    /// </list>
+    /// <para>Cons:</para>
+    /// <list type="bullet">
+    /// <item><description>Not cryptographically secure.</description></item>
+    /// <item><description>Newer algorithm—choose established ones if you require historical precedence.</description></item>
+    /// </list>
+    /// <para>When to use:</para>
+    /// <list type="bullet">
+    /// <item><description>Default choice for most gameplay and procedural content needs.</description></item>
+    /// </list>
+    /// <para>When not to use:</para>
+    /// <list type="bullet">
+    /// <item><description>Cryptographic or adversarial contexts.</description></item>
+    /// </list>
+    /// <para>
+    /// Threading: Prefer <see cref="ThreadLocalRandom{T}.Instance"/> or <see cref="PRNG.Instance"/> to avoid sharing state.
+    /// </para>
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// using WallstopStudios.UnityHelpers.Core.Random;
+    ///
+    /// IRandom rng = PRNG.Instance; // IllusionFlow by default
+    /// int index = rng.Next(0, items.Count);
+    /// float gaussian = rng.NextGaussian(mean: 0f, stdDev: 1f);
+    ///
+    /// // Deterministic snapshot
+    /// var state = rng.InternalState;
+    /// var replay = new IllusionFlow(state);
+    /// </code>
+    /// </example>
     public sealed class IllusionFlow : AbstractRandom
     {
         private const int UintByteCount = sizeof(uint) * 8;

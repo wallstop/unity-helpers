@@ -11,6 +11,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     using CustomEditors;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
     [Serializable]
@@ -18,11 +19,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     {
         public enum MatchMode
         {
-            Any,
-            NameContains,
-            PathContains,
-            Regex,
-            Extension,
+            [Obsolete("Default is invalid. Choose a specific match mode.", false)]
+            None = 0,
+            Any = 1,
+            NameContains = 2,
+            PathContains = 3,
+            Regex = 4,
+            Extension = 5,
         }
 
         public MatchMode matchBy = MatchMode.Any;
@@ -704,6 +707,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             TextureImporterSettings settings = new();
             textureImporter.ReadTextureSettings(settings);
+            if (spriteData.applyTextureType)
+            {
+                changed |= textureImporter.textureType != spriteData.textureType;
+            }
             if (spriteData.applyPivot)
             {
                 changed |= settings.spriteAlignment != (int)SpriteAlignment.Custom;
@@ -773,6 +780,31 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             bool settingsChanged = false;
             TextureImporterSettings settings = new();
             textureImporter.ReadTextureSettings(settings);
+
+            if (spriteData.applyTextureType)
+            {
+                if (textureImporter.textureType != spriteData.textureType)
+                {
+                    textureImporter.textureType = spriteData.textureType;
+                    changed = true;
+                }
+            }
+            else
+            {
+                if (
+                    (
+                        spriteData.applyPivot
+                        || spriteData.applySpriteMode
+                        || spriteData.applyPixelsPerUnit
+                    )
+                    && textureImporter.textureType != TextureImporterType.Sprite
+                )
+                {
+                    this.LogWarn(
+                        $"Applying sprite settings on a non-Sprite texture type for: {filePath}"
+                    );
+                }
+            }
 
             if (spriteData.applySpriteMode)
             {
@@ -923,10 +955,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 }
             }
 
-            if (changed || settingsChanged)
+            if (settingsChanged)
             {
                 textureImporter.SetTextureSettings(settings);
-                textureImporter.SaveAndReimport();
             }
 
             return changed || settingsChanged;

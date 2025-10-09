@@ -8,6 +8,44 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     [Serializable]
     [DataContract]
     [ProtoContract]
+    /// <summary>
+    /// A thin wrapper around <c>System.Random</c> that exposes the <see cref="IRandom"/> API and supports state capture.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Uses a real <c>System.Random</c> internally and advances it to reflect the captured <see cref="RandomState"/>.
+    /// This makes it easy to interop with code that expects <c>System.Random</c> semantics while using the unified
+    /// <see cref="IRandom"/> interface.
+    /// </para>
+    /// <para>Pros:</para>
+    /// <list type="bullet">
+    /// <item><description>Compatibility with <c>System.Random</c> behavior.</description></item>
+    /// <item><description>Unified API; determinism via state capture.</description></item>
+    /// </list>
+    /// <para>Cons:</para>
+    /// <list type="bullet">
+    /// <item><description>Slower than modern PRNGs; not cryptographically secure.</description></item>
+    /// <item><description>Internal advance required after deserialization to sync to generation count.</description></item>
+    /// </list>
+    /// <para>When to use:</para>
+    /// <list type="bullet">
+    /// <item><description>Bridging code that uses <c>System.Random</c> to the <see cref="IRandom"/> ecosystem.</description></item>
+    /// </list>
+    /// <para>When not to use:</para>
+    /// <list type="bullet">
+    /// <item><description>Performance-critical or quality-sensitive randomness—prefer PCG or IllusionFlow.</description></item>
+    /// </list>
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// using WallstopStudios.UnityHelpers.Core.Random;
+    ///
+    /// var compat = new DotNetRandom(Guid.NewGuid());
+    /// // Use IRandom methods while maintaining System.Random semantics
+    /// byte b = compat.NextByte();
+    /// float f = compat.NextFloat();
+    /// </code>
+    /// </example>
     public sealed class DotNetRandom : AbstractRandom
     {
         public static DotNetRandom Instance => ThreadLocalRandom<DotNetRandom>.Instance;

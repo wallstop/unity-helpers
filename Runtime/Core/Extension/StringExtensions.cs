@@ -710,6 +710,46 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
         }
 
+        private static void AppendLowerInvariant(StringBuilder builder, string value)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                return;
+            }
+
+            for (int i = 0; i < value.Length; ++i)
+            {
+                char c = value[i];
+                _ = builder.Append(char.IsLetter(c) ? char.ToLowerInvariant(c) : c);
+            }
+        }
+
+        private static bool IsAllUppercaseLetters(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                return false;
+            }
+
+            bool foundLetter = false;
+            for (int i = 0; i < value.Length; ++i)
+            {
+                char c = value[i];
+                if (!char.IsLetter(c))
+                {
+                    continue;
+                }
+
+                foundLetter = true;
+                if (!char.IsUpper(c))
+                {
+                    return false;
+                }
+            }
+
+            return foundLetter;
+        }
+
         private static string CollapseSpaces(string value)
         {
             if (string.IsNullOrEmpty(value))
@@ -763,6 +803,8 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             stringBuilder.Clear();
 
             CaseTokenKind? previousTokenKind = null;
+            int previousWordLength = 0;
+
             for (int i = 0; i < tokens.Count; ++i)
             {
                 CaseToken token = tokens[i];
@@ -778,6 +820,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     }
 
                     previousTokenKind = CaseTokenKind.Separator;
+                    previousWordLength = 0;
                     continue;
                 }
 
@@ -789,7 +832,13 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 }
 
                 bool implicitBoundary = previousTokenKind == CaseTokenKind.Word;
-                if (implicitBoundary)
+                bool treatAsContinuation =
+                    implicitBoundary
+                    && startsWithLowerWord
+                    && previousWordLength <= 1
+                    && IsAllUppercaseLetters(sanitized);
+
+                if (implicitBoundary && !treatAsContinuation)
                 {
                     bool shouldInsertSpace = !startsWithLowerWord;
                     if (preserveSeparators)
@@ -809,7 +858,17 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     }
                 }
 
-                AppendTitleCasedWord(stringBuilder, sanitized);
+                if (treatAsContinuation)
+                {
+                    AppendLowerInvariant(stringBuilder, sanitized);
+                    previousWordLength += sanitized.Length;
+                }
+                else
+                {
+                    AppendTitleCasedWord(stringBuilder, sanitized);
+                    previousWordLength = sanitized.Length;
+                }
+
                 previousTokenKind = CaseTokenKind.Word;
             }
 

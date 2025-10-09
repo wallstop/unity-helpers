@@ -2,6 +2,42 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 {
     using System;
 
+    /// <summary>
+    /// A lightweight PCG-based struct RNG intended for low-overhead use (e.g., Burst/Jobs-friendly contexts).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Provides a minimal, non-allocating random number source patterned after PCG. Because it is a <c>struct</c>,
+    /// it is copied by value; take care to pass by ref where you want a single advancing sequence. Not wired into
+    /// <see cref="IRandom"/>; use this when allocations or interface dispatch must be avoided.
+    /// </para>
+    /// <para>Pros:</para>
+    /// <list type="bullet">
+    /// <item><description>No allocations, tiny footprint; suitable for tight inner loops.</description></item>
+    /// <item><description>Deterministic with good general-purpose quality.</description></item>
+    /// </list>
+    /// <para>Cons:</para>
+    /// <list type="bullet">
+    /// <item><description>Value-type semantics—accidental copying can lead to diverging sequences.</description></item>
+    /// <item><description>Not cryptographically secure; limited convenience API.</description></item>
+    /// </list>
+    /// <para>When to use:</para>
+    /// <list type="bullet">
+    /// <item><description>Performance-critical contexts (Burst/Jobs) where you control by-ref semantics.</description></item>
+    /// </list>
+    /// <para>When not to use:</para>
+    /// <list type="bullet">
+    /// <item><description>General gameplay—prefer <see cref="PRNG.Instance"/> with the richer <see cref="IRandom"/> API.</description></item>
+    /// </list>
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// var rng = new NativePcgRandom(seed: 123);
+    /// uint u = rng.NextUint();
+    /// bool b = rng.NextBool();
+    /// float t = rng.NextFloat();
+    /// </code>
+    /// </example>
     public struct NativePcgRandom
     {
         private const uint HalfwayUint = uint.MaxValue / 2;

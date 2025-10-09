@@ -8,6 +8,41 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     [Serializable]
     [DataContract]
     [ProtoContract]
+    /// <summary>
+    /// A simple Linear Congruential Generator (LCG): extremely fast with low-quality randomness.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// LCGs are among the oldest PRNGs. This configuration is fast and compact but exhibits correlations and
+    /// shorter periods compared to modern generators. Best suited for cosmetic randomness where quality is not
+    /// critical.
+    /// </para>
+    /// <para>Pros:</para>
+    /// <list type="bullet">
+    /// <item><description>Blazing fast; trivial implementation.</description></item>
+    /// <item><description>Tiny state and deterministic behavior.</description></item>
+    /// </list>
+    /// <para>Cons:</para>
+    /// <list type="bullet">
+    /// <item><description>Poor statistical quality vs. PCG/Xoroshiro; noticeable patterns in some uses.</description></item>
+    /// <item><description>Not cryptographically secure.</description></item>
+    /// </list>
+    /// <para>When to use:</para>
+    /// <list type="bullet">
+    /// <item><description>Cheap visual effects, quick throwaway randomness, prototyping.</description></item>
+    /// </list>
+    /// <para>When not to use:</para>
+    /// <list type="bullet">
+    /// <item><description>Gameplay-critical logic, simulations, or fairness-sensitive systems.</description></item>
+    /// </list>
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// var rng = new LinearCongruentialGenerator(seed: 12345);
+    /// int i = rng.Next(0, 100);
+    /// // Prefer PCG or IllusionFlow for production gameplay.
+    /// </code>
+    /// </example>
     public sealed class LinearCongruentialGenerator : AbstractRandom
     {
         public static LinearCongruentialGenerator Instance =>

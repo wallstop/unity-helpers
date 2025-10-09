@@ -8,6 +8,45 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     [Serializable]
     [DataContract]
     [ProtoContract]
+    /// <summary>
+    /// An adapter over <c>UnityEngine.Random</c> exposing the <see cref="IRandom"/> interface.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Uses Unity's global random state. If constructed with a seed, it initializes the global state via
+    /// <c>UnityEngine.Random.InitState</c>. Without a seed, it reads from whatever global state Unity maintains.
+    /// </para>
+    /// <para>Pros:</para>
+    /// <list type="bullet">
+    /// <item><description>Parity with Unity's <c>Random</c> for projects relying on its behavior.</description></item>
+    /// <item><description>Easy substitution of Unity's RNG with the unified <see cref="IRandom"/> interface.</description></item>
+    /// </list>
+    /// <para>Cons:</para>
+    /// <list type="bullet">
+    /// <item><description>Global shared state; can be modified by other code calling <c>UnityEngine.Random</c>.</description></item>
+    /// <item><description>Not thread-safe and generally slower than high-performance PRNGs.</description></item>
+    /// <item><description>Determinism depends on controlling Unity's global state elsewhere in your project.</description></item>
+    /// </list>
+    /// <para>When to use:</para>
+    /// <list type="bullet">
+    /// <item><description>When you must preserve Unity.Random behavior or interact with code that depends on it.</description></item>
+    /// </list>
+    /// <para>When not to use:</para>
+    /// <list type="bullet">
+    /// <item><description>General-purpose gameplay randomness—prefer <see cref="PRNG.Instance"/> or a concrete PRNG like PCG.</description></item>
+    /// </list>
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// using WallstopStudios.UnityHelpers.Core.Random;
+    ///
+    /// // Explicitly seed Unity's global RNG
+    /// var unityRng = new UnityRandom(seed: 2024);
+    /// int roll = unityRng.Next(1, 7);
+    ///
+    /// // Note: calling UnityEngine.Random elsewhere will affect this sequence.
+    /// </code>
+    /// </example>
     public sealed class UnityRandom : AbstractRandom
     {
         public static readonly UnityRandom Instance = new();

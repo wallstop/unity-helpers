@@ -11,6 +11,40 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     [Serializable]
     [DataContract]
     [ProtoContract]
+    /// <summary>
+    /// A wyhash-inspired PRNG variant (WyRandom) leveraging multiply-mix operations for speed and good distribution.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Designed around 64-bit multiply-and-mix steps, this generator is fast and suitable for general-purpose
+    /// randomness and hashing-like use cases. It is not a cryptographic hash nor a CSPRNG.
+    /// </para>
+    /// <para>Pros:</para>
+    /// <list type="bullet">
+    /// <item><description>Fast and simple; good distribution for typical gameplay uses.</description></item>
+    /// <item><description>Deterministic across platforms.</description></item>
+    /// </list>
+    /// <para>Cons:</para>
+    /// <list type="bullet">
+    /// <item><description>Not cryptographically secure.</description></item>
+    /// <item><description>Less widely standardized than PCG/Xoroshiro.</description></item>
+    /// </list>
+    /// <para>When to use:</para>
+    /// <list type="bullet">
+    /// <item><description>General gameplay RNG, weight selection, shuffles, seed generation.</description></item>
+    /// </list>
+    /// <para>When not to use:</para>
+    /// <list type="bullet">
+    /// <item><description>Security-sensitive contexts.</description></item>
+    /// </list>
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// var rng = new WyRandom(Guid.NewGuid());
+    /// uint u = rng.NextUint();
+    /// var color = rng.NextColor(); // via RandomExtensions
+    /// </code>
+    /// </example>
     public sealed class WyRandom : AbstractRandom
     {
         private const ulong Prime0 = 0xa0761d6478bd642f;
