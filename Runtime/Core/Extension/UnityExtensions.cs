@@ -539,6 +539,22 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 }
 
                 Vector3Int nextPoint = points[0];
+                if (nextPoint == currentPoint)
+                {
+                    int idx = 1;
+                    while (idx < points.Count && points[idx] == currentPoint)
+                    {
+                        ++idx;
+                    }
+                    if (idx < points.Count)
+                    {
+                        nextPoint = points[idx];
+                    }
+                    else
+                    {
+                        return convexHull;
+                    }
+                }
                 Vector2 currentPointWorldPosition = CellToWorld(currentPoint);
                 Vector2 nextPointWorldPosition = CellToWorld(nextPoint);
                 foreach (Vector3Int point in points)
@@ -686,6 +702,22 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 }
 
                 FastVector3Int nextPoint = points[0];
+                if (nextPoint.Equals(currentPoint))
+                {
+                    int idx = 1;
+                    while (idx < points.Count && points[idx].Equals(currentPoint))
+                    {
+                        ++idx;
+                    }
+                    if (idx < points.Count)
+                    {
+                        nextPoint = points[idx];
+                    }
+                    else
+                    {
+                        return convexHull;
+                    }
+                }
                 Vector2 currentPointWorldPosition = CellToWorld(currentPoint);
                 Vector2 nextPointWorldPosition = CellToWorld(nextPoint);
                 foreach (FastVector3Int point in points)
