@@ -157,6 +157,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                     Assert.IsTrue(message.Contains("Hello"), message);
                     Assert.IsTrue(message.Contains("Boom"), message);
                 };
+                // Mark the upcoming warning log as expected so the test runner doesn't flag it.
+                LogAssert.Expect(LogType.Warning, new Regex("Hello[\n\r]+.*Boom"));
                 formatter.LogWarn($"Hello", context: null, e: testException, pretty: false);
                 Assert.AreEqual(++expectedLogCount, logCount);
                 Assert.IsNull(exception, exception?.ToString());
@@ -167,6 +169,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                     Assert.IsTrue(message.Contains("Hello"), message);
                     Assert.IsTrue(message.Contains("Boom"), message);
                 };
+                // Mark the upcoming error log as expected so the test runner doesn't flag it.
+                LogAssert.Expect(LogType.Error, new Regex("Hello[\n\r]+.*Boom"));
                 formatter.LogError($"Hello", context: null, e: testException, pretty: false);
                 Assert.AreEqual(++expectedLogCount, logCount);
                 Assert.IsNull(exception, exception?.ToString());

@@ -14,6 +14,14 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
 
     public sealed class LayeredImage : VisualElement
     {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool IsAlphaEffectivelyInvisible(float alpha, float cutoff)
+        {
+            float maxMagnitude = Mathf.Max(Mathf.Abs(alpha), Mathf.Abs(cutoff));
+            float fudge = Mathf.Max(1e-6f * maxMagnitude, Mathf.Epsilon * 8f);
+            return alpha <= cutoff + fudge;
+        }
+
         public float Fps
         {
             get => _fps;
@@ -415,7 +423,7 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
                     for (int x = 0; x < compositeWidth; ++x)
                     {
                         // Treat pixels with alpha equal to cutoff as invisible
-                        if (bufferPixels[rowOffset + x].a <= pixelCutoff)
+                        if (IsAlphaEffectivelyInvisible(bufferPixels[rowOffset + x].a, pixelCutoff))
                         {
                             continue;
                         }
@@ -493,7 +501,7 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
                     {
                         Color pixel = bufferPixels[sourceRow + x];
                         // Exclude pixels with alpha equal to cutoff
-                        if (pixel.a > pixelCutoff)
+                        if (!IsAlphaEffectivelyInvisible(pixel.a, pixelCutoff))
                         {
                             finalPixels[destinationRow + x] = pixel;
                         }
@@ -682,7 +690,7 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
             {
                 Color spritePixel = spritePixels[spriteRowOffset + spriteColumn];
                 float spriteAlpha = spritePixel.a * layerAlpha;
-                if (spriteAlpha <= pixelCutoff)
+                if (IsAlphaEffectivelyInvisible(spriteAlpha, pixelCutoff))
                 {
                     continue;
                 }
@@ -702,7 +710,7 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
                 ref Color destination = ref bufferPixels[bufferIndex];
 
                 float destinationAlpha = destination.a;
-                if (destinationAlpha <= pixelCutoff)
+                if (IsAlphaEffectivelyInvisible(destinationAlpha, pixelCutoff))
                 {
                     destination.r = spritePixel.r;
                     destination.g = spritePixel.g;
@@ -713,7 +721,7 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
 
                 float inverseSourceAlpha = 1f - spriteAlpha;
                 float outAlpha = spriteAlpha + destinationAlpha * inverseSourceAlpha;
-                if (outAlpha <= pixelCutoff)
+                if (IsAlphaEffectivelyInvisible(outAlpha, pixelCutoff))
                 {
                     destination = Color.clear;
                     continue;
