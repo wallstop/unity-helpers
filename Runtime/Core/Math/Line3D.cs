@@ -92,96 +92,7 @@ namespace WallstopStudios.UnityHelpers.Core.Math
                 return false;
             }
 
-            // Robust segment vs AABB intersection using the slab method.
-            // Treat AABB boundaries as closed for intersection (touch counts as hit).
-            Vector3 d = to - from;
-
-            float tMin = 0f;
-            float tMax = 1f;
-
-            // X axis
-            if (Mathf.Abs(d.x) < 1e-8f)
-            {
-                if (from.x < bounds.min.x || from.x > bounds.max.x)
-                {
-                    return false;
-                }
-            }
-            else
-            {
-                float inv = 1f / d.x;
-                float t1 = (bounds.min.x - from.x) * inv;
-                float t2 = (bounds.max.x - from.x) * inv;
-                if (t1 > t2)
-                {
-                    float tmp = t1;
-                    t1 = t2;
-                    t2 = tmp;
-                }
-                tMin = Mathf.Max(tMin, t1);
-                tMax = Mathf.Min(tMax, t2);
-                if (tMin > tMax)
-                {
-                    return false;
-                }
-            }
-
-            // Y axis
-            if (Mathf.Abs(d.y) < 1e-8f)
-            {
-                if (from.y < bounds.min.y || from.y > bounds.max.y)
-                {
-                    return false;
-                }
-            }
-            else
-            {
-                float inv = 1f / d.y;
-                float t1 = (bounds.min.y - from.y) * inv;
-                float t2 = (bounds.max.y - from.y) * inv;
-                if (t1 > t2)
-                {
-                    float tmp = t1;
-                    t1 = t2;
-                    t2 = tmp;
-                }
-                tMin = Mathf.Max(tMin, t1);
-                tMax = Mathf.Min(tMax, t2);
-                if (tMin > tMax)
-                {
-                    return false;
-                }
-            }
-
-            // Z axis
-            if (Mathf.Abs(d.z) < 1e-8f)
-            {
-                if (from.z < bounds.min.z || from.z > bounds.max.z)
-                {
-                    return false;
-                }
-            }
-            else
-            {
-                float inv = 1f / d.z;
-                float t1 = (bounds.min.z - from.z) * inv;
-                float t2 = (bounds.max.z - from.z) * inv;
-                if (t1 > t2)
-                {
-                    float tmp = t1;
-                    t1 = t2;
-                    t2 = tmp;
-                }
-                tMin = Mathf.Max(tMin, t1);
-                tMax = Mathf.Min(tMax, t2);
-                if (tMin > tMax)
-                {
-                    return false;
-                }
-            }
-
-            // Overlap of parametric interval with [0,1] indicates intersection
-            return tMax >= 0f && tMin <= 1f && tMax >= tMin;
+            return TryClipSegmentAABB(bounds, out _, out _);
         }
 
         /// <summary>
@@ -285,7 +196,7 @@ namespace WallstopStudios.UnityHelpers.Core.Math
             }
 
             Vector3 closestOnLine = ClosestPointOnBounds(bounds);
-            Vector3 closestOnBounds = bounds.ClosestPoint(closestOnLine);
+            Vector3 closestOnBounds = ClampToBounds(closestOnLine, bounds);
             return Vector3.Distance(closestOnLine, closestOnBounds);
         }
 
@@ -322,13 +233,154 @@ namespace WallstopStudios.UnityHelpers.Core.Math
                 return from;
             }
 
-            // Approximate the closest point on the segment to the AABB by
-            // projecting the AABB center onto the segment and clamping.
-            // For intersecting segments, this returns a point inside the AABB.
-            // For non-intersecting segments, it yields a near-optimal closest point
-            // sufficient for current usage and tests.
-            Vector3 center = bounds.Center;
-            return ClosestPointOnLine(center);
+            // If it intersects, return the first intersection point along the segment.
+            if (TryClipSegmentAABB(bounds, out float tEnter, out _))
+            {
+                float tHit = Mathf.Clamp01(tEnter);
+                return from + (to - from) * tHit;
+            }
+
+            // Otherwise, find the exact closest point on the segment to the AABB using
+            // convex 1D minimization of f(t) = ||p(t) - clamp(p(t))||^2 over t in [0,1].
+            Vector3 d = to - from;
+            float lenSq = d.sqrMagnitude;
+            if (lenSq <= 1e-20f)
+            {
+                return from;
+            }
+
+            Vector3 localFrom = from;
+
+            float g0 = G(0f);
+            float g1 = G(1f);
+            if (g0 >= 0f)
+            {
+                return from;
+            }
+            if (g1 <= 0f)
+            {
+                return to;
+            }
+
+            float a = 0f;
+            float b = 1f;
+            for (int i = 0; i < 50; i++)
+            {
+                float m = 0.5f * (a + b);
+                float gm = G(m);
+                if (gm > 0f)
+                {
+                    b = m;
+                }
+                else
+                {
+                    a = m;
+                }
+            }
+            float tStar = 0.5f * (a + b);
+            return from + d * tStar;
+
+            float G(float t)
+            {
+                Vector3 p = localFrom + d * t;
+                Vector3 c = ClampToBounds(p, bounds);
+                Vector3 diff = p - c;
+                return diff.x * d.x + diff.y * d.y + diff.z * d.z;
+            }
+        }
+
+        private static Vector3 ClampToBounds(Vector3 p, BoundingBox3D bounds)
+        {
+            return new Vector3(
+                Mathf.Clamp(p.x, bounds.min.x, bounds.max.x),
+                Mathf.Clamp(p.y, bounds.min.y, bounds.max.y),
+                Mathf.Clamp(p.z, bounds.min.z, bounds.max.z)
+            );
+        }
+
+        private bool TryClipSegmentAABB(BoundingBox3D bounds, out float tEnter, out float tExit)
+        {
+            Vector3 d = to - from;
+
+            tEnter = 0f;
+            tExit = 1f;
+
+            // X axis
+            if (Mathf.Abs(d.x) < 1e-8f)
+            {
+                if (from.x < bounds.min.x || from.x > bounds.max.x)
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                float inv = 1f / d.x;
+                float t1 = (bounds.min.x - from.x) * inv;
+                float t2 = (bounds.max.x - from.x) * inv;
+                if (t1 > t2)
+                {
+                    (t1, t2) = (t2, t1);
+                }
+                tEnter = Mathf.Max(tEnter, t1);
+                tExit = Mathf.Min(tExit, t2);
+                if (tEnter > tExit)
+                {
+                    return false;
+                }
+            }
+
+            // Y axis
+            if (Mathf.Abs(d.y) < 1e-8f)
+            {
+                if (from.y < bounds.min.y || from.y > bounds.max.y)
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                float inv = 1f / d.y;
+                float t1 = (bounds.min.y - from.y) * inv;
+                float t2 = (bounds.max.y - from.y) * inv;
+                if (t1 > t2)
+                {
+                    (t1, t2) = (t2, t1);
+                }
+                tEnter = Mathf.Max(tEnter, t1);
+                tExit = Mathf.Min(tExit, t2);
+                if (tEnter > tExit)
+                {
+                    return false;
+                }
+            }
+
+            // Z axis
+            if (Mathf.Abs(d.z) < 1e-8f)
+            {
+                if (from.z < bounds.min.z || from.z > bounds.max.z)
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                float inv = 1f / d.z;
+                float t1 = (bounds.min.z - from.z) * inv;
+                float t2 = (bounds.max.z - from.z) * inv;
+                if (t1 > t2)
+                {
+                    (t1, t2) = (t2, t1);
+                }
+                tEnter = Mathf.Max(tEnter, t1);
+                tExit = Mathf.Min(tExit, t2);
+                if (tEnter > tExit)
+                {
+                    return false;
+                }
+            }
+
+            return tExit >= 0f && tEnter <= 1f && tExit >= tEnter;
         }
 
         /// <summary>

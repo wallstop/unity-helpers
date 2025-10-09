@@ -1144,5 +1144,72 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Vector3 closest2 = box2.ClosestPointOnLine(line);
             Assert.AreNotEqual(closest1, closest2);
         }
+
+        [Test]
+        public void IntersectsLineHandlesZeroLengthAtMaxFace()
+        {
+            BoundingBox3D box = new(Vector3.zero, new Vector3(10f, 10f, 10f));
+            // Point lies exactly on the max X face; intersection should count as true
+            Line3D pointOnMaxFace = new(new Vector3(10f, 5f, 5f), new Vector3(10f, 5f, 5f));
+            Assert.IsTrue(box.Intersects(pointOnMaxFace));
+        }
+
+        [Test]
+        public void IntersectsLineHandlesLineOnMaxFace()
+        {
+            BoundingBox3D box = new(Vector3.zero, Vector3.one);
+            // Segment lies on the z = max face across the unit square
+            Line3D onFace = new(new Vector3(0.25f, 0.75f, 1f), new Vector3(0.75f, 0.25f, 1f));
+            Assert.IsTrue(box.Intersects(onFace));
+        }
+
+        [Test]
+        public void DistanceToLineMatchesEpsilonOffsetParallel()
+        {
+            BoundingBox3D box = new(Vector3.zero, Vector3.one);
+            float eps = 1e-5f;
+            Line3D parallelX = new(
+                new Vector3(-1f, 1f + eps, 0.5f),
+                new Vector3(2f, 1f + eps, 0.5f)
+            );
+            float distance = box.DistanceToLine(parallelX);
+            Assert.AreEqual(eps, distance, 1e-6f);
+        }
+
+        [Test]
+        public void IntersectsLineHandlesTinyBox()
+        {
+            float s = 1e-8f;
+            BoundingBox3D tiny = BoundingBox3D.FromCenterAndSize(
+                Vector3.zero,
+                new Vector3(s, s, s)
+            );
+            Line3D throughCenter = new(new Vector3(-1f, 0f, 0f), new Vector3(1f, 0f, 0f));
+            Assert.IsTrue(tiny.Intersects(throughCenter));
+        }
+
+        [Test]
+        public void ClosestPointOnLineExactInteriorMinimum()
+        {
+            // Box [0,1]^3 and a segment where closest point occurs at interior t
+            BoundingBox3D box = new(Vector3.zero, Vector3.one);
+            Vector3 p0 = new(2f, 2f, 2f);
+            Vector3 p1 = new(3f, 0f, 0f);
+            Line3D seg = new(p0, p1);
+            Vector3 corner = Vector3.one; // (1,1,1)
+            Vector3 d = p1 - p0;
+            float tStar = Vector3.Dot(corner - p0, d) / d.sqrMagnitude;
+            tStar = Mathf.Clamp01(tStar);
+            Vector3 expectedOnSegment = p0 + tStar * d;
+
+            Vector3 closest = box.ClosestPointOnLine(seg);
+            Assert.AreEqual(expectedOnSegment.x, closest.x, 1e-4f);
+            Assert.AreEqual(expectedOnSegment.y, closest.y, 1e-4f);
+            Assert.AreEqual(expectedOnSegment.z, closest.z, 1e-4f);
+
+            float expectedDistance = Vector3.Distance(expectedOnSegment, corner);
+            float actualDistance = box.DistanceToLine(seg);
+            Assert.AreEqual(expectedDistance, actualDistance, 1e-4f);
+        }
     }
 }

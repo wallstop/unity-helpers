@@ -504,8 +504,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
             random ??= PRNG.Instance;
 
-            Vector2 CellToWorld(Vector3Int position) => grid.CellToWorld(position);
-
             Vector3Int startPoint = points[0];
             Vector2 startPointWorldPosition = CellToWorld(startPoint);
             for (int i = 1; i < points.Count; ++i)
@@ -608,6 +606,8 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
 
             return convexHull;
+
+            Vector2 CellToWorld(Vector3Int position) => grid.CellToWorld(position);
         }
 
         /// <summary>
@@ -651,8 +651,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
 
             random ??= PRNG.Instance;
-
-            Vector2 CellToWorld(FastVector3Int position) => grid.CellToWorld(position);
 
             FastVector3Int startPoint = points[0];
             Vector2 startPointWorldPosition = CellToWorld(startPoint);
@@ -756,6 +754,8 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
 
             return convexHull;
+
+            Vector2 CellToWorld(FastVector3Int position) => grid.CellToWorld(position);
         }
 
         /// <summary>
