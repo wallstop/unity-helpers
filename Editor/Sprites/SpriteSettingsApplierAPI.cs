@@ -41,28 +41,32 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     continue;
                 }
 
+                string trimmedPattern = string.IsNullOrEmpty(s.matchPattern)
+                    ? null
+                    : s.matchPattern.Trim();
+
                 PreparedProfile p = new()
                 {
                     settings = s,
                     mode = s.matchBy,
                     nameLower = string.IsNullOrEmpty(s.name) ? null : s.name.ToLowerInvariant(),
-                    patternLower = string.IsNullOrEmpty(s.matchPattern)
+                    patternLower = string.IsNullOrEmpty(trimmedPattern)
                         ? null
-                        : s.matchPattern.ToLowerInvariant(),
-                    extWithDot = string.IsNullOrEmpty(s.matchPattern)
+                        : trimmedPattern.ToLowerInvariant(),
+                    extWithDot = string.IsNullOrEmpty(trimmedPattern)
                         ? null
-                        : (s.matchPattern.StartsWith(".") ? s.matchPattern : "." + s.matchPattern),
+                        : (trimmedPattern.StartsWith(".") ? trimmedPattern : "." + trimmedPattern),
                     priority = s.priority,
                 };
                 if (
                     s.matchBy == SpriteSettings.MatchMode.Regex
-                    && !string.IsNullOrEmpty(s.matchPattern)
+                    && !string.IsNullOrEmpty(trimmedPattern)
                 )
                 {
                     try
                     {
                         p.regex = new Regex(
-                            s.matchPattern,
+                            trimmedPattern,
                             RegexOptions.IgnoreCase | RegexOptions.Compiled
                         );
                     }

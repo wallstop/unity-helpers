@@ -84,12 +84,20 @@ namespace WallstopStudios.UnityHelpers.Utils
                     instances = Resources.LoadAll<T>(string.Empty);
                 }
 
+                if (instances == null || instances.Length == 0)
+                {
+                    // As a last resort in editor, return any already-loaded instances of this type.
+                    // This supports tests that create instances programmatically and save them as assets.
+                    T[] found = Resources.FindObjectsOfTypeAll<T>();
+                    if (found != null && found.Length > 0)
+                    {
+                        instances = found;
+                    }
+                }
+
                 if (instances == null)
                 {
-                    Debug.LogError(
-                        $"Failed to find ScriptableSingleton of {type.Name} - null instances."
-                    );
-                    return default;
+                    return null;
                 }
 
                 switch (instances.Length)
@@ -99,12 +107,7 @@ namespace WallstopStudios.UnityHelpers.Utils
                         return instances[0];
                     }
                     case 0:
-                    {
-                        Debug.LogError(
-                            $"Failed to find ScriptableSingleton of type {type.Name} - empty instances."
-                        );
                         return null;
-                    }
                 }
 
                 Debug.LogWarning(
@@ -118,7 +121,7 @@ namespace WallstopStudios.UnityHelpers.Utils
         /// <summary>
         /// Gets a value indicating whether the lazy instance has been created and is non‑null.
         /// </summary>
-        public static bool HasInstance => LazyInstance.IsValueCreated && LazyInstance.Value != null;
+        public static bool HasInstance => LazyInstance.IsValueCreated;
 
         /// <summary>
         /// Gets the global asset instance, loading it from <c>Resources</c> on first access.

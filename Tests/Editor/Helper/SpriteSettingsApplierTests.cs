@@ -98,19 +98,26 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             List<SpriteSettingsApplierAPI.PreparedProfile> prepared =
                 SpriteSettingsApplierAPI.PrepareProfiles(profiles);
             bool willChange = SpriteSettingsApplierAPI.WillTextureSettingsChange(path, prepared);
-            Assert.IsTrue(willChange, "Expected changes to be detected");
+            Assert.IsTrue(willChange, $"Expected change detection for path: {path}");
 
             bool changed = SpriteSettingsApplierAPI.TryUpdateTextureSettings(
                 path,
                 prepared,
                 out TextureImporter importer
             );
-            Assert.IsTrue(changed);
-            Assert.IsNotNull(importer);
+            Assert.IsTrue(
+                changed,
+                $"Expected TryUpdateTextureSettings to apply settings. Path={path}"
+            );
+            Assert.IsNotNull(importer, $"Importer was null for path: {path}");
             importer.SaveAndReimport();
 
             // Verify final filter mode is from higher priority profile
-            Assert.AreEqual(FilterMode.Bilinear, importer.filterMode);
+            Assert.AreEqual(
+                FilterMode.Bilinear,
+                importer.filterMode,
+                $"Expected higher-priority Bilinear filter; actual={importer.filterMode}"
+            );
         }
 
         [Test]
@@ -141,8 +148,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 prepared,
                 out TextureImporter importer
             );
-            Assert.IsTrue(changed);
-            Assert.IsNotNull(importer);
+            Assert.IsTrue(
+                changed,
+                $"Expected TryUpdateTextureSettings to update importer for path: {path}"
+            );
+            Assert.IsNotNull(importer, $"Importer was null for path: {path}");
             importer.SaveAndReimport();
             Assert.AreEqual(TextureImporterType.Sprite, importer.textureType);
         }
