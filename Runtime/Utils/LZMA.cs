@@ -1,10 +1,10 @@
 namespace WallstopStudios.UnityHelpers.Utils
 {
-    // LzmaHelper.cs - A wrapper for the LZMA SDK
     using System;
     using System.IO;
     using System.Threading;
     using SevenZip.Compression.LZMA;
+    using WallstopStudios.UnityHelpers.Core.Serialization;
 
     public static class LZMA
     {
@@ -15,18 +15,38 @@ namespace WallstopStudios.UnityHelpers.Utils
 
         public static byte[] Compress(byte[] input)
         {
-            // Use a fresh encoder per call to avoid stateful side effects
-            Encoder encoder = new Encoder();
-            using MemoryStream inStream = new(input, writable: false);
-            using MemoryStream outStream = new();
-            encoder.WriteCoderProperties(outStream);
+            if (input == null)
+            {
+                throw new ArgumentNullException(nameof(input));
+            }
 
-            // Write original file size
-            outStream.Write(BitConverter.GetBytes(inStream.Length), 0, 8);
+            using (PooledReadOnlyMemoryStream.Rent(out PooledReadOnlyMemoryStream inStream))
+            using (PooledBufferStream.Rent(out PooledBufferStream outStream))
+            {
+                inStream.SetBuffer(input);
 
-            // Compress the data
-            encoder.Code(inStream, outStream, inStream.Length, -1, null);
-            return outStream.ToArray();
+                Encoder encoder = Encoders.Value;
+                encoder.WriteCoderProperties(outStream);
+
+#if NETSTANDARD2_1 || NET5_0_OR_GREATER
+                Span<byte> len = stackalloc byte[8];
+                BitConverter.TryWriteBytes(len, inStream.Length);
+                outStream.Write(len);
+#else
+                byte[] len = BitConverter.GetBytes(inStream.Length);
+                outStream.Write(len, 0, 8);
+#endif
+
+                encoder.Code(inStream, outStream, inStream.Length, -1, null);
+
+                byte[] result = null;
+                int count = outStream.ToArrayExact(ref result);
+                if (count != result.Length)
+                {
+                    Array.Resize(ref result, count);
+                }
+                return result;
+            }
         }
 
         public static byte[] Decompress(byte[] input)
@@ -41,66 +61,177 @@ namespace WallstopStudios.UnityHelpers.Utils
                 throw new Exception("Input is too short to be valid LZMA data.");
             }
 
-            using MemoryStream inStream = new(input, writable: false);
-            using MemoryStream outStream = new();
-
-            byte[] properties = Properties.Value;
-            Array.Clear(properties, 0, properties.Length);
-            int readProps = inStream.Read(properties, 0, properties.Length);
-            if (readProps != properties.Length)
+            using (PooledReadOnlyMemoryStream.Rent(out PooledReadOnlyMemoryStream inStream))
+            using (PooledBufferStream.Rent(out PooledBufferStream outStream))
             {
-                throw new Exception("Failed to read LZMA properties header.");
-            }
+                inStream.SetBuffer(input);
 
-            byte[] fileLengthBytes = FileLengths.Value;
-            Array.Clear(fileLengthBytes, 0, fileLengthBytes.Length);
-            int readLen = inStream.Read(fileLengthBytes, 0, 8);
-            if (readLen != 8)
-            {
-                throw new Exception("Failed to read LZMA length header.");
-            }
-            long fileLength = BitConverter.ToInt64(fileLengthBytes, 0);
-            if (fileLength < 0)
-            {
-                throw new Exception("Invalid LZMA length header.");
-            }
-
-            if (fileLength == 0 && inStream.Position >= inStream.Length)
-            {
-                throw new Exception("Failed to decompress LZMA data. No payload present.");
-            }
-
-            Decoder decoder = new Decoder();
-            try
-            {
-                decoder.SetDecoderProperties(properties);
-                decoder.Code(
-                    inStream,
-                    outStream,
-                    inStream.Length - inStream.Position,
-                    fileLength,
-                    null
-                );
-
-                // Validate declared length matches actual output
-                if (outStream.Length != fileLength)
+                byte[] properties = Properties.Value;
+                Array.Clear(properties, 0, properties.Length);
+                int readProps = inStream.Read(properties, 0, properties.Length);
+                if (readProps != properties.Length)
                 {
-                    throw new Exception("Failed to decompress LZMA data. Length mismatch.");
+                    throw new Exception("Failed to read LZMA properties header.");
                 }
 
-                // Ensure the decoder consumed the entire payload
-                if (inStream.Position != inStream.Length)
+                byte[] fileLengthBytes = FileLengths.Value;
+                Array.Clear(fileLengthBytes, 0, fileLengthBytes.Length);
+                int readLen = inStream.Read(fileLengthBytes, 0, 8);
+                if (readLen != 8)
                 {
-                    throw new Exception(
-                        "Failed to decompress LZMA data. Trailing bytes not consumed."
+                    throw new Exception("Failed to read LZMA length header.");
+                }
+                long fileLength = BitConverter.ToInt64(fileLengthBytes, 0);
+                if (fileLength < 0)
+                {
+                    throw new Exception("Invalid LZMA length header.");
+                }
+
+                if (fileLength == 0 && inStream.Position >= inStream.Length)
+                {
+                    throw new Exception("Failed to decompress LZMA data. No payload present.");
+                }
+
+                Decoder decoder = Decoders.Value;
+                try
+                {
+                    decoder.SetDecoderProperties(properties);
+                    decoder.Code(
+                        inStream,
+                        outStream,
+                        inStream.Length - inStream.Position,
+                        fileLength,
+                        null
                     );
+
+                    if (outStream.Length != fileLength)
+                    {
+                        throw new Exception("Failed to decompress LZMA data. Length mismatch.");
+                    }
+
+                    if (inStream.Position != inStream.Length)
+                    {
+                        throw new Exception(
+                            "Failed to decompress LZMA data. Trailing bytes not consumed."
+                        );
+                    }
+
+                    byte[] result = null;
+                    int count = outStream.ToArrayExact(ref result);
+                    if (count != result.Length)
+                    {
+                        Array.Resize(ref result, count);
+                    }
+                    return result;
                 }
-                return outStream.ToArray();
+                catch (Exception ex)
+                {
+                    throw new Exception("Failed to decompress LZMA data.", ex);
+                }
             }
-            catch (Exception ex)
+        }
+
+        public static void CompressTo(Stream output, byte[] input)
+        {
+            if (output == null)
             {
-                throw new Exception("Failed to decompress LZMA data.", ex);
+                throw new ArgumentNullException(nameof(output));
             }
+
+            using (PooledReadOnlyMemoryStream.Rent(out PooledReadOnlyMemoryStream inStream))
+            {
+                inStream.SetBuffer(input ?? Array.Empty<byte>());
+                Encoder encoder = Encoders.Value;
+                encoder.WriteCoderProperties(output);
+
+#if NETSTANDARD2_1 || NET5_0_OR_GREATER
+                Span<byte> len = stackalloc byte[8];
+                BitConverter.TryWriteBytes(len, inStream.Length);
+                output.Write(len);
+#else
+                byte[] len = BitConverter.GetBytes(inStream.Length);
+                output.Write(len, 0, 8);
+#endif
+                encoder.Code(inStream, output, inStream.Length, -1, null);
+            }
+        }
+
+        public static void DecompressTo(Stream output, byte[] input)
+        {
+            if (output == null)
+            {
+                throw new ArgumentNullException(nameof(output));
+            }
+
+            if (input == null || input.Length < 13)
+            {
+                throw new Exception("Input is too short to be valid LZMA data.");
+            }
+
+            using (PooledReadOnlyMemoryStream.Rent(out PooledReadOnlyMemoryStream inStream))
+            {
+                inStream.SetBuffer(input);
+
+                byte[] properties = Properties.Value;
+                Array.Clear(properties, 0, properties.Length);
+                int readProps = inStream.Read(properties, 0, properties.Length);
+                if (readProps != properties.Length)
+                {
+                    throw new Exception("Failed to read LZMA properties header.");
+                }
+
+                byte[] fileLengthBytes = FileLengths.Value;
+                Array.Clear(fileLengthBytes, 0, fileLengthBytes.Length);
+                int readLen = inStream.Read(fileLengthBytes, 0, 8);
+                if (readLen != 8)
+                {
+                    throw new Exception("Failed to read LZMA length header.");
+                }
+                long fileLength = BitConverter.ToInt64(fileLengthBytes, 0);
+                if (fileLength < 0)
+                {
+                    throw new Exception("Invalid LZMA length header.");
+                }
+
+                if (fileLength == 0 && inStream.Position >= inStream.Length)
+                {
+                    throw new Exception("Failed to decompress LZMA data. No payload present.");
+                }
+
+                Decoder decoder = Decoders.Value;
+                try
+                {
+                    decoder.SetDecoderProperties(properties);
+                    decoder.Code(
+                        inStream,
+                        output,
+                        inStream.Length - inStream.Position,
+                        fileLength,
+                        null
+                    );
+
+                    if (inStream.Position != inStream.Length)
+                    {
+                        throw new Exception(
+                            "Failed to decompress LZMA data. Trailing bytes not consumed."
+                        );
+                    }
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception("Failed to decompress LZMA data.", ex);
+                }
+            }
+        }
+
+        public static void CompressTo(Stream output, ReadOnlySpan<byte> input)
+        {
+            CompressTo(output, input.ToArray());
+        }
+
+        public static void DecompressTo(Stream output, ReadOnlySpan<byte> input)
+        {
+            DecompressTo(output, input.ToArray());
         }
     }
 }

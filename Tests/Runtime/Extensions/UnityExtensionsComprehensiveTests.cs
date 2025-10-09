@@ -1,10 +1,12 @@
 namespace WallstopStudios.UnityHelpers.Tests.Extensions
 {
     using System;
+    using System.Collections;
     using System.Collections.Generic;
     using System.Linq;
     using NUnit.Framework;
     using UnityEngine;
+    using UnityEngine.TestTools;
     using UnityEngine.UI;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Core.Extension;
@@ -243,8 +245,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             Assert.IsNull(new List<Bounds>().GetBounds());
         }
 
-        [Test]
-        public void BuildConvexHullVector3IntIncludesColinearPointsWhenRequested()
+        [UnityTest]
+        public IEnumerator BuildConvexHullVector3IntIncludesColinearPointsWhenRequested()
         {
             Grid grid = CreateGrid(out GameObject owner);
             try
@@ -272,10 +274,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             {
                 UnityEngine.Object.DestroyImmediate(owner);
             }
+            yield return null;
         }
 
-        [Test]
-        public void BuildConvexHullVector3IntExcludesColinearPointsWhenDisabled()
+        [UnityTest]
+        public IEnumerator BuildConvexHullVector3IntExcludesColinearPointsWhenDisabled()
         {
             Grid grid = CreateGrid(out GameObject owner);
             try
@@ -311,10 +314,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             {
                 UnityEngine.Object.DestroyImmediate(owner);
             }
+            yield return null;
         }
 
-        [Test]
-        public void BuildConvexHullFastVector3IntProducesExpectedLoop()
+        [UnityTest]
+        public IEnumerator BuildConvexHullFastVector3IntProducesExpectedLoop()
         {
             Grid grid = CreateGrid(out GameObject owner);
             try
@@ -350,9 +354,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             {
                 UnityEngine.Object.DestroyImmediate(owner);
             }
+            yield return null;
         }
 
-        public void BuildConvexHullFastVector3IntIncludesColinearWhenRequested()
+        [UnityTest]
+        public IEnumerator BuildConvexHullFastVector3IntIncludesColinearWhenRequested()
         {
             Grid grid = CreateGrid(out GameObject owner);
             try
@@ -379,10 +385,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             {
                 UnityEngine.Object.DestroyImmediate(owner);
             }
+            yield return null;
         }
 
-        [Test]
-        public void IsPointInsideConvexHullDetectsContainment()
+        [UnityTest]
+        public IEnumerator IsPointInsideConvexHullDetectsContainment()
         {
             Grid grid = CreateGrid(out GameObject owner);
             try
@@ -402,10 +409,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             {
                 UnityEngine.Object.DestroyImmediate(owner);
             }
+            yield return null;
         }
 
-        [Test]
-        public void IsPointInsideConvexHullTreatsBoundaryAsInside()
+        [UnityTest]
+        public IEnumerator IsPointInsideConvexHullTreatsBoundaryAsInside()
         {
             Grid grid = CreateGrid(out GameObject owner);
             try
@@ -426,10 +434,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             {
                 UnityEngine.Object.DestroyImmediate(owner);
             }
+            yield return null;
         }
 
-        [Test]
-        public void IsPointInsideConvexHullFastVectorDetectsContainment()
+        [UnityTest]
+        public IEnumerator IsPointInsideConvexHullFastVectorDetectsContainment()
         {
             Grid grid = CreateGrid(out GameObject owner);
             try
@@ -449,10 +458,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             {
                 UnityEngine.Object.DestroyImmediate(owner);
             }
+            yield return null;
         }
 
-        [Test]
-        public void IsPointInsideConvexHullFastVectorTreatsBoundaryAsInside()
+        [UnityTest]
+        public IEnumerator IsPointInsideConvexHullFastVectorTreatsBoundaryAsInside()
         {
             Grid grid = CreateGrid(out GameObject owner);
             try
@@ -473,10 +483,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             {
                 UnityEngine.Object.DestroyImmediate(owner);
             }
+            yield return null;
         }
 
-        [Test]
-        public void IsConvexHullInsideConvexHullValidatesInteriorPoints()
+        [UnityTest]
+        public IEnumerator IsConvexHullInsideConvexHullValidatesInteriorPoints()
         {
             Grid grid = CreateGrid(out GameObject owner);
             try
@@ -504,10 +515,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             {
                 UnityEngine.Object.DestroyImmediate(owner);
             }
+            yield return null;
         }
 
-        [Test]
-        public void IsConvexHullInsideConvexHullHandlesCounterClockwiseOrder()
+        [UnityTest]
+        public IEnumerator IsConvexHullInsideConvexHullHandlesCounterClockwiseOrder()
         {
             Grid grid = CreateGrid(out GameObject owner);
             try
@@ -535,10 +547,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             {
                 UnityEngine.Object.DestroyImmediate(owner);
             }
+            yield return null;
         }
 
-        [Test]
-        public void IsConvexHullInsideConvexHullFastVectorValidatesInteriorPoints()
+        [UnityTest]
+        public IEnumerator IsConvexHullInsideConvexHullFastVectorValidatesInteriorPoints()
         {
             Grid grid = CreateGrid(out GameObject owner);
             try
@@ -566,10 +579,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             {
                 UnityEngine.Object.DestroyImmediate(owner);
             }
+            yield return null;
         }
 
-        [Test]
-        public void IsConvexHullInsideConvexHullFastVectorHandlesCounterClockwiseOrder()
+        [UnityTest]
+        public IEnumerator IsConvexHullInsideConvexHullFastVectorHandlesCounterClockwiseOrder()
         {
             Grid grid = CreateGrid(out GameObject owner);
             try
@@ -597,10 +611,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             {
                 UnityEngine.Object.DestroyImmediate(owner);
             }
+            yield return null;
         }
 
-        [Test]
-        public void BuildConcaveHullVariantsMatchConvexHullForRectangle()
+        [UnityTest]
+        public IEnumerator BuildConcaveHullVariantsMatchConvexHullForRectangle()
         {
             Grid grid = CreateGrid(out GameObject owner);
             try
@@ -632,10 +647,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             {
                 UnityEngine.Object.DestroyImmediate(owner);
             }
+            yield return null;
         }
 
-        [Test]
-        public void BuildConcaveHullVariantsMatchConvexHullForTriangle()
+        [UnityTest]
+        public IEnumerator BuildConcaveHullVariantsMatchConvexHullForTriangle()
         {
             Grid grid = CreateGrid(out GameObject owner);
             try
@@ -666,10 +682,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             {
                 UnityEngine.Object.DestroyImmediate(owner);
             }
+            yield return null;
         }
 
-        [Test]
-        public void IsPositionInsideDetectsInsideAndOutside()
+        [UnityTest]
+        public IEnumerator IsPositionInsideDetectsInsideAndOutside()
         {
             Grid grid = CreateGrid(out GameObject owner);
             try
@@ -693,6 +710,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             {
                 UnityEngine.Object.DestroyImmediate(owner);
             }
+            yield return null;
         }
 
         [Test]
@@ -759,8 +777,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             Assert.IsFalse(new FastVector3Int(1, 1, 0).IsOnEdge2D(bounds));
         }
 
-        [Test]
-        public void WithPaddingAndSetOffsetsManipulateRectTransform()
+        [UnityTest]
+        public IEnumerator WithPaddingAndSetOffsetsManipulateRectTransform()
         {
             GameObject owner = new("RectTransformTest", typeof(RectTransform));
             try
@@ -790,10 +808,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             {
                 UnityEngine.Object.DestroyImmediate(owner);
             }
+            yield return null;
         }
 
-        [Test]
-        public void SetColorsAppliesColorAcrossStates()
+        [UnityTest]
+        public IEnumerator SetColorsAppliesColorAcrossStates()
         {
             GameObject owner = new("SliderTest", typeof(Canvas), typeof(Slider));
             try
@@ -813,10 +832,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             {
                 UnityEngine.Object.DestroyImmediate(owner);
             }
+            yield return null;
         }
 
-        [Test]
-        public void IsDontDestroyOnLoadDetectsFlag()
+        [UnityTest]
+        public IEnumerator IsDontDestroyOnLoadDetectsFlag()
         {
             GameObject owner = new("DontDestroyTest");
             try
@@ -829,10 +849,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             {
                 UnityEngine.Object.DestroyImmediate(owner);
             }
+            yield return null;
         }
 
-        [Test]
-        public void IsCircleFullyContainedValidatesBoundary()
+        [UnityTest]
+        public IEnumerator IsCircleFullyContainedValidatesBoundary()
         {
             GameObject owner = new("CircleColliderTest", typeof(CircleCollider2D));
             try
@@ -847,10 +868,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             {
                 UnityEngine.Object.DestroyImmediate(owner);
             }
+            yield return null;
         }
 
-        [Test]
-        public void InvertPolygonColliderCreatesOuterPath()
+        [UnityTest]
+        public IEnumerator InvertPolygonColliderCreatesOuterPath()
         {
             GameObject owner = new("PolygonColliderTest", typeof(PolygonCollider2D));
             try
@@ -900,11 +922,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             {
                 UnityEngine.Object.DestroyImmediate(owner);
             }
+            yield return null;
         }
 
 #if UNITY_EDITOR
-        [Test]
-        public void GetSpritesFromClipEnumeratesKeyframes()
+        [UnityTest]
+        public IEnumerator GetSpritesFromClipEnumeratesKeyframes()
         {
             Texture2D texture = new(16, 16);
             try
@@ -953,6 +976,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             {
                 UnityEngine.Object.DestroyImmediate(texture);
             }
+            yield return null;
         }
 #endif
     }

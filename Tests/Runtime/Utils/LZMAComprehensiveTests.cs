@@ -1,6 +1,7 @@
 namespace WallstopStudios.UnityHelpers.Tests.Utils
 {
     using System;
+    using System.IO;
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Utils;
 
@@ -154,6 +155,95 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 Does.Contain("Failed to decompress"),
                 "Should fail with corrupted body"
             );
+        }
+
+        [Test]
+        public void TrailingBytesAfterValidPayloadThrows()
+        {
+            byte[] data = new byte[128];
+            new Random(11).NextBytes(data);
+            byte[] compressed = LZMA.Compress(data);
+
+            byte[] withTrailing = new byte[compressed.Length + 5];
+            Array.Copy(compressed, withTrailing, compressed.Length);
+            for (int i = compressed.Length; i < withTrailing.Length; i++)
+            {
+                withTrailing[i] = 0xAA;
+            }
+
+            Exception ex = Assert.Throws<Exception>(() => LZMA.Decompress(withTrailing));
+            Assert.That(
+                ex.Message,
+                Does.Contain("Trailing bytes not consumed"),
+                "Should detect unconsumed trailing bytes"
+            );
+        }
+
+        [Test]
+        public void CompressNullThrowsArgumentNull()
+        {
+            ArgumentNullException ex = Assert.Throws<ArgumentNullException>(() =>
+                LZMA.Compress(null)
+            );
+            Assert.That(ex.ParamName, Is.EqualTo("input"), "Parameter name should be 'input'");
+        }
+
+        [Test]
+        public void StreamOverloadsRoundtrip()
+        {
+            Random random = new(123);
+            byte[] data = new byte[4096];
+            random.NextBytes(data);
+
+            using MemoryStream ms = new MemoryStream();
+            LZMA.CompressTo(ms, data);
+            byte[] compressed = ms.ToArray();
+
+            using MemoryStream output = new MemoryStream();
+            LZMA.DecompressTo(output, compressed);
+            byte[] roundtripped = output.ToArray();
+            Assert.AreEqual(data, roundtripped, "Stream overload roundtrip mismatch");
+        }
+
+        [Test]
+        public void LargeDataRoundtrip()
+        {
+            Random random = new(2024);
+            int length = 128 * 1024;
+            byte[] data = new byte[length];
+            random.NextBytes(data);
+
+            byte[] compressed = LZMA.Compress(data);
+            byte[] roundtripped = LZMA.Decompress(compressed);
+            Assert.AreEqual(data, roundtripped, "Large data roundtrip mismatch");
+        }
+
+        [Test]
+        public void ParallelRoundtripSmoke()
+        {
+            byte[] a = new byte[1024];
+            byte[] b = new byte[1536];
+            new Random(1).NextBytes(a);
+            new Random(2).NextBytes(b);
+
+            byte[] aCompressed = null;
+            byte[] bCompressed = null;
+
+            System.Threading.Tasks.Parallel.Invoke(
+                () => aCompressed = LZMA.Compress(a),
+                () => bCompressed = LZMA.Compress(b)
+            );
+
+            byte[] aRound = null;
+            byte[] bRound = null;
+
+            System.Threading.Tasks.Parallel.Invoke(
+                () => aRound = LZMA.Decompress(aCompressed),
+                () => bRound = LZMA.Decompress(bCompressed)
+            );
+
+            Assert.AreEqual(a, aRound, "Parallel roundtrip mismatch for first buffer");
+            Assert.AreEqual(b, bRound, "Parallel roundtrip mismatch for second buffer");
         }
     }
 }

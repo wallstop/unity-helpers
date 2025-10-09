@@ -530,6 +530,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             using PooledResource<List<Vector3Int>> colinearPointsResource =
                 Buffers<Vector3Int>.List.Get(out List<Vector3Int> colinearPoints);
             int counter = 0;
+            int maxIterations = Math.Max(16, points.Count * 4);
             while (true)
             {
                 if (counter == 2)
@@ -602,6 +603,11 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 }
 
                 ++counter;
+                if (counter > maxIterations)
+                {
+                    // Safety break to avoid potential infinite loop on degenerate inputs
+                    break;
+                }
             }
 
             return convexHull;
@@ -675,6 +681,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 Buffers<FastVector3Int>.List.Get();
             List<FastVector3Int> colinearPoints = colinearPointsResource.resource;
             int counter = 0;
+            int maxIterations = Math.Max(16, points.Count * 4);
             while (true)
             {
                 if (counter == 2)
@@ -747,6 +754,11 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 }
 
                 ++counter;
+                if (counter > maxIterations)
+                {
+                    // Safety break to avoid potential infinite loop on degenerate inputs
+                    break;
+                }
             }
 
             return convexHull;
@@ -1176,6 +1188,8 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             {
                 neighbors.Capacity = bucketSize;
             }
+            int iterations = 0;
+            int maxIterations = Math.Max(32, originalGridPositions.Count * 16);
             while (0 < data.Count)
             {
                 HullEdge edge = data.Max;
@@ -1274,6 +1288,17 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 {
                     concaveHullEdges.Add(edge);
                 }
+
+                ++iterations;
+                if (iterations > maxIterations)
+                {
+                    // Safety: avoid runaway refinement by flushing remaining edges to concave set
+                    foreach (HullEdge leftover in data)
+                    {
+                        concaveHullEdges.Add(leftover);
+                    }
+                    break;
+                }
             }
 
             List<FastVector3Int> concaveHull = new(concaveHullEdges.Count);
@@ -1296,7 +1321,33 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
                 if (nextIndex < 0)
                 {
-                    continue;
+                    // Try to recover by using a reversed edge if available.
+                    int reverseIndex = -1;
+                    for (int i = 0; i < concaveHullEdges.Count; ++i)
+                    {
+                        HullEdge edge = concaveHullEdges[i];
+                        if (edge.to == to)
+                        {
+                            reverseIndex = i;
+                            break;
+                        }
+                    }
+
+                    if (reverseIndex >= 0)
+                    {
+                        HullEdge reversed = new(
+                            concaveHullEdges[reverseIndex].to,
+                            concaveHullEdges[reverseIndex].from,
+                            grid
+                        );
+                        concaveHullEdges.RemoveAtSwapBack(reverseIndex);
+                        current = reversed;
+                        concaveHull.Add(current.from);
+                        continue;
+                    }
+
+                    // No connecting edge found; break to avoid infinite loop.
+                    break;
                 }
                 current = concaveHullEdges[nextIndex];
                 concaveHullEdges.RemoveAtSwapBack(nextIndex);
@@ -1383,6 +1434,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             FastVector3Int first = maybeFirst.Value;
             List<FastVector3Int> hull = new(dataSet.Count) { first };
             int step = 2;
+            int maxSteps = Math.Max(16, dataSet.Count * 6);
             float previousAngle = 0f;
             FastVector3Int current = first;
             _ = dataSet.Remove(current);
@@ -1466,6 +1518,11 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     grid.CellToWorld(hull[step - 2])
                 );
                 ++step;
+                if (step > maxSteps)
+                {
+                    // Safety break to avoid potential infinite loop; fall through to final containment check
+                    break;
+                }
             }
 
             for (int i = dataSet.Count - 1; 0 <= i; --i)
@@ -1807,6 +1864,8 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
 
             bool aLineWasDividedInTheIteration;
+            int splitIterations = 0;
+            int maxSplitIterations = Math.Max(16, originalGridPositions.Count * 8);
             using PooledResource<List<Line>> dividedLineResource = Buffers<Line>.List.Get(
                 out List<Line> dividedLine
             );
@@ -1850,6 +1909,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                         break;
                     }
                 }
+                if (++splitIterations > maxSplitIterations)
+                {
+                    break;
+                }
             } while (aLineWasDividedInTheIteration);
 
             List<FastVector3Int> concaveHull = new(concaveHullLines.Count);
@@ -1864,6 +1927,8 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             concaveHull.Add(from);
             concaveHull.Add(to);
             concaveHullLines.RemoveAtSwapBack(0);
+            int linkIterations = 0;
+            int maxLinkIterations = Math.Max(8, concaveHullLines.Count * 3);
             while (0 < concaveHullLines.Count)
             {
                 int index = -1;
@@ -1890,6 +1955,11 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 }
                 concaveHull.Add(to);
                 concaveHullLines.RemoveAtSwapBack(index);
+
+                if (++linkIterations > maxLinkIterations)
+                {
+                    break;
+                }
             }
 
             return concaveHull;
