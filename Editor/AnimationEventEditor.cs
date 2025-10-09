@@ -652,9 +652,9 @@ namespace WallstopStudios.UnityHelpers.Editor
             {
                 // Try to find matching method
                 bool found = false;
-                foreach (var entry in lookup)
+                foreach (KeyValuePair<Type, IReadOnlyList<MethodInfo>> entry in lookup)
                 {
-                    foreach (var method in entry.Value)
+                    foreach (MethodInfo method in entry.Value)
                     {
                         if (
                             string.Equals(
@@ -983,7 +983,7 @@ namespace WallstopStudios.UnityHelpers.Editor
                     )
                     .ToList();
 
-                foreach (var kvp in Lookup)
+                foreach (KeyValuePair<Type, IReadOnlyList<MethodInfo>> kvp in Lookup)
                 {
                     Type type = kvp.Key;
 

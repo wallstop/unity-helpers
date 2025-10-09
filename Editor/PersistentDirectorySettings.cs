@@ -164,7 +164,8 @@ namespace WallstopStudios.UnityHelpers.Editor
                                     $"Failed to move {nameof(PersistentDirectorySettings)} from {primaryPath} to {targetAssetPath}: {moveResult}. Will create new and merge."
                                 );
                                 // Create new target and merge below
-                                var newTarget = CreateInstance<PersistentDirectorySettings>();
+                                PersistentDirectorySettings newTarget =
+                                    CreateInstance<PersistentDirectorySettings>();
                                 AssetDatabase.CreateAsset(newTarget, targetAssetPath);
                                 target = newTarget;
                             }
@@ -186,9 +187,8 @@ namespace WallstopStudios.UnityHelpers.Editor
                             continue;
                         }
 
-                        var other = AssetDatabase.LoadAssetAtPath<PersistentDirectorySettings>(
-                            path
-                        );
+                        PersistentDirectorySettings other =
+                            AssetDatabase.LoadAssetAtPath<PersistentDirectorySettings>(path);
                         if (other == null)
                         {
                             continue;
