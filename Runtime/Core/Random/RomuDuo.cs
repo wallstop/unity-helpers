@@ -55,7 +55,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             IComparable<RomuDuo>
     {
         public static RomuDuo Instance => ThreadLocalRandom<RomuDuo>.Instance;
-        public override RandomState InternalState => new(_x, _y, _cachedGaussian);
+        public override RandomState InternalState => BuildState(_x, _y);
 
         [ProtoMember(2)]
         internal ulong _x;
@@ -95,7 +95,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         {
             _x = internalState.State1;
             _y = internalState.State2;
-            _cachedGaussian = internalState.Gaussian;
+            RestoreCommonState(internalState);
             EnsureNonZeroState();
         }
 

@@ -51,7 +51,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         public static DotNetRandom Instance => ThreadLocalRandom<DotNetRandom>.Instance;
 
         public override RandomState InternalState =>
-            new(unchecked((ulong)_seed), state2: _numberGenerated);
+            BuildState(unchecked((ulong)_seed), state2: _numberGenerated);
 
         [ProtoMember(2)]
         private ulong _numberGenerated;
@@ -82,6 +82,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             {
                 _ = NextUint();
             }
+            RestoreCommonState(internalState);
         }
 
         [ProtoAfterDeserialization]

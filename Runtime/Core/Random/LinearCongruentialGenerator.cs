@@ -48,7 +48,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         public static LinearCongruentialGenerator Instance =>
             ThreadLocalRandom<LinearCongruentialGenerator>.Instance;
 
-        public override RandomState InternalState => new(_state, 0, _cachedGaussian);
+        public override RandomState InternalState => BuildState(_state);
 
         [ProtoMember(2)]
         private uint _state;
@@ -70,7 +70,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         public LinearCongruentialGenerator(RandomState internalState)
         {
             _state = unchecked((uint)internalState.State1);
-            _cachedGaussian = internalState.Gaussian;
+            RestoreCommonState(internalState);
         }
 
         public override uint NextUint()

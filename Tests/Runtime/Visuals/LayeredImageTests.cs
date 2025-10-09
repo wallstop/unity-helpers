@@ -76,6 +76,44 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
         }
 
         [Test]
+        public void ComputeTexturesAccountsForPivotInPositioning()
+        {
+            Sprite centered = VisualsTestHelpers.CreateSprite(
+                _tracked,
+                1,
+                1,
+                (_, _) => new Color(0f, 0f, 1f, 1f),
+                pivot: new Vector2(0.5f, 0.5f)
+            );
+            AnimatedSpriteLayer layer = new(new[] { centered });
+
+            LayeredImage image = CreateLayeredImage(new[] { layer }, Color.clear);
+
+            Texture2D[] computed = VisualsTestHelpers.GetComputedTextures(image, _tracked);
+            Assert.That(computed, Has.Length.EqualTo(1));
+            Texture2D frame = computed[0];
+            Assert.IsNotNull(frame);
+            Assert.That(
+                frame.width,
+                Is.EqualTo(2),
+                "Expected width to expand due to centered pivot."
+            );
+            Assert.That(
+                frame.height,
+                Is.EqualTo(2),
+                "Expected height to expand due to centered pivot."
+            );
+            Assert.IsTrue(
+                VisualsTestHelpers.GetPixel(frame, 0, 0).Approximately(new Color32(0, 0, 255, 255)),
+                "Expected pixel to be positioned after pivot offset was applied."
+            );
+            Assert.IsTrue(
+                VisualsTestHelpers.GetPixel(frame, 1, 1).Approximately(new Color32(0, 0, 0, 0)),
+                "Expected area outside the single pixel to remain transparent."
+            );
+        }
+
+        [Test]
         public void ComputeTexturesAppliesOffsetsAndAlphaBlending()
         {
             Sprite baseSprite = VisualsTestHelpers.CreateSprite(
@@ -116,6 +154,41 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
             );
             Assert.IsTrue(
                 VisualsTestHelpers.GetPixel(frame, 2, 0).Approximately(new Color32(255, 0, 0, 128))
+            );
+        }
+
+        [Test]
+        public void ComputeTexturesBlendsOverlappingPixelsCorrectly()
+        {
+            Sprite baseSprite = VisualsTestHelpers.CreateSprite(
+                _tracked,
+                1,
+                1,
+                (_, _) => new Color(0f, 1f, 0f, 1f),
+                pivot: Vector2.zero
+            );
+            Sprite overlaySprite = VisualsTestHelpers.CreateSprite(
+                _tracked,
+                1,
+                1,
+                (_, _) => new Color(1f, 0f, 0f, 1f),
+                pivot: Vector2.zero
+            );
+
+            AnimatedSpriteLayer baseLayer = new(new[] { baseSprite });
+            AnimatedSpriteLayer overlay = new(new[] { overlaySprite }, alpha: 0.5f);
+
+            LayeredImage image = CreateLayeredImage(new[] { baseLayer, overlay }, Color.clear);
+
+            Texture2D[] computed = VisualsTestHelpers.GetComputedTextures(image, _tracked);
+            Assert.That(computed, Has.Length.EqualTo(1));
+            Texture2D frame = computed[0];
+            Assert.IsNotNull(frame);
+            Assert.IsTrue(
+                VisualsTestHelpers
+                    .GetPixel(frame, 0, 0)
+                    .Approximately(new Color32(128, 128, 0, 255)),
+                "Expected correct alpha blending result when layers overlap."
             );
         }
 
@@ -202,6 +275,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
         }
 
         [Test]
+        public void ComputeTexturesExcludesPixelsEqualToCutoff()
+        {
+            Sprite edge = VisualsTestHelpers.CreateSprite(
+                _tracked,
+                1,
+                1,
+                (_, _) => new Color(1f, 1f, 1f, 0.01f),
+                pivot: Vector2.zero
+            );
+
+            AnimatedSpriteLayer layer = new(new[] { edge });
+            LayeredImage image = CreateLayeredImage(
+                new[] { layer },
+                Color.clear,
+                pixelCutoff: 0.01f
+            );
+
+            Texture2D[] computed = VisualsTestHelpers.GetComputedTextures(image, _tracked);
+            Assert.That(computed, Has.Length.EqualTo(1));
+            Assert.IsNull(computed[0], "Expected frame to be null when alpha equals cutoff.");
+        }
+
+        [Test]
         public void ComputeTexturesIgnoresZeroAlphaLayers()
         {
             Sprite solid = VisualsTestHelpers.CreateSprite(
@@ -280,6 +376,34 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
                 VisualsTestHelpers
                     .GetPixel(frame, 2, 0)
                     .Approximately(new Color32(0, 255, 255, 255))
+            );
+        }
+
+        [Test]
+        public void ComputeTexturesHandlesLargeSpritesWithParallelPath()
+        {
+            Sprite large = VisualsTestHelpers.CreateSprite(
+                _tracked,
+                50,
+                50,
+                (_, _) => new Color(1f, 0f, 0f, 1f),
+                pivot: Vector2.zero
+            );
+
+            AnimatedSpriteLayer layer = new(new[] { large });
+            LayeredImage image = CreateLayeredImage(new[] { layer }, Color.clear);
+
+            Texture2D[] computed = VisualsTestHelpers.GetComputedTextures(image, _tracked);
+            Assert.That(computed, Has.Length.EqualTo(1));
+            Texture2D frame = computed[0];
+            Assert.IsNotNull(frame);
+            Assert.That(frame.width, Is.EqualTo(50));
+            Assert.That(frame.height, Is.EqualTo(50));
+            Assert.IsTrue(
+                VisualsTestHelpers
+                    .GetPixel(frame, 25, 25)
+                    .Approximately(new Color32(255, 0, 0, 255)),
+                "Expected parallel blending path to produce correct color."
             );
         }
 

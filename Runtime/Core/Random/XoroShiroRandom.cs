@@ -63,7 +63,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     {
         public static XoroShiroRandom Instance => ThreadLocalRandom<XoroShiroRandom>.Instance;
 
-        public override RandomState InternalState => new(_s0, _s1, _cachedGaussian);
+        public override RandomState InternalState => BuildState(_s0, _s1);
 
         [ProtoMember(2)]
         internal ulong _s0;
@@ -103,7 +103,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         {
             _s0 = internalState.State1;
             _s1 = internalState.State2;
-            _cachedGaussian = internalState.Gaussian;
+            RestoreCommonState(internalState);
             EnsureNonZeroState();
         }
 

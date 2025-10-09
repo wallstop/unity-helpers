@@ -49,12 +49,44 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         private readonly byte[] _guidBytes = new byte[16];
 
+        // Bit/byte reservoirs to accelerate small requests
+        protected uint _bitBuffer;
+        protected int _bitCount;
+        protected uint _byteBuffer;
+        protected int _byteCount;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected RandomState BuildState(ulong state1, ulong state2 = 0, byte[] payload = null)
+        {
+            return new RandomState(
+                state1,
+                state2,
+                _cachedGaussian,
+                payload,
+                _bitBuffer,
+                _bitCount,
+                _byteBuffer,
+                _byteCount
+            );
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected void RestoreCommonState(RandomState state)
+        {
+            _cachedGaussian = state.Gaussian;
+            _bitBuffer = state.BitBuffer;
+            _bitCount = state.BitCount;
+            _byteBuffer = state.ByteBuffer;
+            _byteCount = state.ByteCount;
+        }
+
         public virtual int Next()
         {
             // Mask out the MSB to ensure the value is within [0, int.MaxValue]
             return unchecked((int)NextUint() & 0x7FFFFFFF);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Next(int max)
         {
             if (max <= 0)
@@ -86,6 +118,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         // Internal sampler
         public abstract uint NextUint();
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public uint NextUint(uint max)
         {
             if (max == 0)
@@ -93,20 +126,27 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                 throw new ArgumentException("Max cannot be zero");
             }
 
-            uint remainder = unchecked((0u - max) % max);
-            if (remainder == 0)
+            // Power-of-two fast path
+            if ((max & (max - 1)) == 0)
             {
-                return NextUint() % max;
+                return NextUint() & (max - 1);
             }
 
-            uint threshold = unchecked(0u - remainder);
-            uint value;
-            do
+            // Lemire's method (32-bit): take high 32 bits of r*max
+            uint r = NextUint();
+            ulong m = (ulong)r * max;
+            uint lo = (uint)m;
+            if (lo < max)
             {
-                value = NextUint();
-            } while (value >= threshold);
-
-            return value % max;
+                uint t = unchecked((0u - max) % max);
+                while (lo < t)
+                {
+                    r = NextUint();
+                    m = (ulong)r * max;
+                    lo = (uint)m;
+                }
+            }
+            return (uint)(m >> 32);
         }
 
         public uint NextUint(uint min, uint max)
@@ -138,7 +178,15 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         public byte NextByte()
         {
-            return NextByte(byte.MaxValue);
+            if (_byteCount == 0)
+            {
+                _byteBuffer = NextUint();
+                _byteCount = 4;
+            }
+            byte b = (byte)_byteBuffer;
+            _byteBuffer >>= 8;
+            _byteCount--;
+            return b;
         }
 
         public byte NextByte(byte max)
@@ -196,6 +244,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             return ((ulong)upper << 32) | lower;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ulong NextUlong(ulong max)
         {
             if (max == 0)
@@ -203,6 +252,13 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                 throw new ArgumentException("Max cannot be zero");
             }
 
+            // Power-of-two fast path
+            if ((max & (max - 1)) == 0)
+            {
+                return NextUlong() & (max - 1);
+            }
+
+            // Fallback to rejection with modulo (uniform)
             ulong remainder = unchecked((0UL - max) % max);
             if (remainder == 0)
             {
@@ -231,48 +287,93 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             return NextUlong(max - min) + min;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public virtual bool NextBool()
         {
-            return (NextUint() & 1u) == 0;
+            if (_bitCount == 0)
+            {
+                _bitBuffer = NextUint();
+                _bitCount = 32;
+            }
+            bool bit = (_bitBuffer & 1u) == 0;
+            _bitBuffer >>= 1;
+            _bitCount--;
+            return bit;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public virtual void NextBytes(byte[] buffer)
         {
             if (buffer == null)
             {
                 throw new ArgumentNullException(nameof(buffer));
             }
+            NextBytes(buffer.AsSpan());
+        }
 
-            const int sizeOfUint = 4; // May differ on some platforms
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public virtual void NextBytes(Span<byte> buffer)
+        {
+            int i = 0;
+            int len = buffer.Length;
 
-            int chunks = buffer.Length / sizeOfUint;
-            int spare = buffer.Length - chunks * sizeOfUint;
-            for (int i = 0; i < chunks; ++i)
+            // 16-byte unrolled blocks
+            for (; i <= len - 16; i += 16)
             {
-                int offset = i * sizeOfUint;
-                uint random = NextUint();
-                buffer[offset] = unchecked((byte)random);
-                buffer[offset + 1] = unchecked((byte)(random >> 8));
-                buffer[offset + 2] = unchecked((byte)(random >> 16));
-                buffer[offset + 3] = unchecked((byte)(random >> 24));
+                uint r0 = NextUint();
+                uint r1 = NextUint();
+                uint r2 = NextUint();
+                uint r3 = NextUint();
+
+                buffer[i + 0] = (byte)r0;
+                buffer[i + 1] = (byte)(r0 >> 8);
+                buffer[i + 2] = (byte)(r0 >> 16);
+                buffer[i + 3] = (byte)(r0 >> 24);
+
+                buffer[i + 4] = (byte)r1;
+                buffer[i + 5] = (byte)(r1 >> 8);
+                buffer[i + 6] = (byte)(r1 >> 16);
+                buffer[i + 7] = (byte)(r1 >> 24);
+
+                buffer[i + 8] = (byte)r2;
+                buffer[i + 9] = (byte)(r2 >> 8);
+                buffer[i + 10] = (byte)(r2 >> 16);
+                buffer[i + 11] = (byte)(r2 >> 24);
+
+                buffer[i + 12] = (byte)r3;
+                buffer[i + 13] = (byte)(r3 >> 8);
+                buffer[i + 14] = (byte)(r3 >> 16);
+                buffer[i + 15] = (byte)(r3 >> 24);
             }
 
-            if (0 < spare)
+            // 4-byte chunks
+            for (; i <= len - 4; i += 4)
             {
-                uint spareRandom = NextUint();
-                for (int i = 0; i < spare; ++i)
+                uint r = NextUint();
+                buffer[i + 0] = (byte)r;
+                buffer[i + 1] = (byte)(r >> 8);
+                buffer[i + 2] = (byte)(r >> 16);
+                buffer[i + 3] = (byte)(r >> 24);
+            }
+
+            // Tail
+            if (i < len)
+            {
+                uint r = NextUint();
+                int j = 0;
+                for (; i < len; ++i, ++j)
                 {
-                    buffer[buffer.Length - spare + i] = unchecked((byte)(spareRandom >> (i * 8)));
+                    buffer[i] = (byte)(r >> (j * 8));
                 }
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public virtual double NextDouble()
         {
+            // 53 random bits from a 64-bit sample
             const double scale = 1.0 / 9007199254740992.0; // 2^53
-            ulong high = NextUint() >> 5;
-            ulong low = NextUint() >> 6;
-            ulong combined = (high << 26) | low;
+            ulong combined = NextUlong() >> 11;
             return combined * scale;
         }
 
@@ -371,10 +472,11 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             return y * fac;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public virtual float NextFloat()
         {
-            const float scale = 1f / 4294967296f;
-            return NextUint() * scale;
+            // Use 24 random bits for float mantissa
+            return (NextUint() >> 8) * (1f / (1 << 24));
         }
 
         public float NextFloat(float max)

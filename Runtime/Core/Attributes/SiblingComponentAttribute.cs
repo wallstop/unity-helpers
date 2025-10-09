@@ -9,16 +9,55 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     using static RelationalComponentProcessor;
 
     /// <summary>
-    /// Automatically assigns sibling components (components on the same GameObject) to the decorated field.
-    /// Supports single components, arrays, List&lt;T&gt;, and HashSet&lt;T&gt; collection types.
+    /// Automatically assigns sibling components (components on the same <see cref="GameObject"/>) to the decorated field.
+    /// Supports single components, <see cref="System.Array"/>s, <see cref="System.Collections.Generic.List{T}"/>,
+    /// and <see cref="System.Collections.Generic.HashSet{T}"/> collection types.
     /// </summary>
     /// <remarks>
-    /// Call <see cref="SiblingComponentExtensions.AssignSiblingComponents"/> to populate the field.
-    /// This is typically done in Awake() or OnEnable().
+    /// Call <see cref="SiblingComponentExtensions.AssignSiblingComponents"/> (or
+    /// <see cref="RelationalComponentExtensions.AssignRelationalComponents(UnityEngine.Component)"/>) to populate the field.
+    /// This is typically done in <c>Awake()</c> or <c>OnEnable()</c>.
+    ///
+    /// Use optional filters to refine results: <see cref="BaseRelationalComponentAttribute.TagFilter"/> (by tag),
+    /// <see cref="BaseRelationalComponentAttribute.NameFilter"/> (substring match on name), and
+    /// <see cref="BaseRelationalComponentAttribute.IncludeInactive"/> (include disabled/inactive components).
     ///
     /// IMPORTANT: This attribute populates fields at runtime, not during Unity serialization in Edit mode.
     /// Fields populated by this attribute will not be serialized by Unity.
+    ///
+    /// <seealso cref="BaseRelationalComponentAttribute"/>
+    /// <seealso cref="SiblingComponentExtensions.AssignSiblingComponents(UnityEngine.Component)"/>
+    /// <seealso cref="RelationalComponentExtensions.AssignRelationalComponents(UnityEngine.Component)"/>
     /// </remarks>
+    /// <example>
+    /// Assign common sibling components with filters and collections:
+    /// <code><![CDATA[
+    /// using UnityEngine;
+    /// using WallstopStudios.UnityHelpers.Core.Attributes;
+    ///
+    /// public class Enemy : MonoBehaviour
+    /// {
+    ///     // Single assignment (required by default)
+    ///     [SiblingComponent] private Animator animator;
+    ///
+    ///     // Optional – do not log an error if not present
+    ///     [SiblingComponent(Optional = true)] private Rigidbody2D rb;
+    ///
+    ///     // Multiple results – collect all on the same GameObject
+    ///     [SiblingComponent] private List<Collider2D> allSiblingColliders;
+    ///
+    ///     // Filter by tag and name substring
+    ///     [SiblingComponent(TagFilter = "Visual", NameFilter = "Sprite")]
+    ///     private Component[] visualComponents;
+    ///
+    ///     private void Awake()
+    ///     {
+    ///         this.AssignSiblingComponents();
+    ///         // or: this.AssignRelationalComponents();
+    ///     }
+    /// }
+    /// ]]></code>
+    /// </example>
     [AttributeUsage(AttributeTargets.Field)]
     public sealed class SiblingComponentAttribute : BaseRelationalComponentAttribute { }
 
@@ -29,6 +68,22 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             FieldMetadata<SiblingComponentAttribute>[]
         > FieldsByType = new();
 
+        /// <summary>
+        /// Assigns fields on <paramref name="component"/> marked with <see cref="SiblingComponentAttribute"/>.
+        /// </summary>
+        /// <param name="component">The component whose fields will be populated.</param>
+        /// <remarks>
+        /// Typical call site is <c>Awake()</c> or <c>OnEnable()</c>. For convenience, you can also call
+        /// <see cref="RelationalComponentExtensions.AssignRelationalComponents(UnityEngine.Component)"/> to assign all relational attributes.
+        /// </remarks>
+        /// <example>
+        /// <code><![CDATA[
+        /// void Awake()
+        /// {
+        ///     this.AssignSiblingComponents();
+        /// }
+        /// ]]></code>
+        /// </example>
         public static void AssignSiblingComponents(this Component component)
         {
             Type componentType = component.GetType();

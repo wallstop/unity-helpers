@@ -32,6 +32,12 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         public byte[] Payload => _payload;
 
+        // Reservoir state (for AbstractRandom bit/byte reservoirs)
+        public uint BitBuffer => _bitBuffer;
+        public int BitCount => _bitCount;
+        public uint ByteBuffer => _byteBuffer;
+        public int ByteCount => _byteCount;
+
         [ProtoMember(1)]
         private ulong _state1;
 
@@ -47,6 +53,19 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         [ProtoMember(5)]
         private byte[] _payload;
 
+        // Added fields for reservoir serialization
+        [ProtoMember(6)]
+        private uint _bitBuffer;
+
+        [ProtoMember(7)]
+        private int _bitCount;
+
+        [ProtoMember(8)]
+        private uint _byteBuffer;
+
+        [ProtoMember(9)]
+        private int _byteCount;
+
         private int _hashCode;
 
         [JsonConstructor]
@@ -54,7 +73,11 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             ulong state1,
             ulong state2 = 0,
             double? gaussian = null,
-            byte[] payload = null
+            byte[] payload = null,
+            uint bitBuffer = 0,
+            int bitCount = 0,
+            uint byteBuffer = 0,
+            int byteCount = 0
         )
         {
             _state1 = state1;
@@ -62,12 +85,20 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             _hasGaussian = gaussian.HasValue;
             _gaussian = gaussian ?? 0;
             _payload = payload?.ToArray();
+            _bitBuffer = bitBuffer;
+            _bitCount = bitCount;
+            _byteBuffer = byteBuffer;
+            _byteCount = byteCount;
             _hashCode = Objects.HashCode(
                 _state1,
                 _state2,
                 _hasGaussian,
                 _gaussian,
-                _payload?.Length
+                _payload?.Length,
+                _bitBuffer,
+                _bitCount,
+                _byteBuffer,
+                _byteCount
             );
         }
 
@@ -79,12 +110,20 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             _hasGaussian = false;
             _gaussian = 0;
             _payload = null;
+            _bitBuffer = 0;
+            _bitCount = 0;
+            _byteBuffer = 0;
+            _byteCount = 0;
             _hashCode = Objects.HashCode(
                 _state1,
                 _state2,
                 _hasGaussian,
                 _gaussian,
-                _payload?.Length
+                _payload?.Length,
+                _bitBuffer,
+                _bitCount,
+                _byteBuffer,
+                _byteCount
             );
         }
 
@@ -96,7 +135,11 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                 _state2,
                 _hasGaussian,
                 _gaussian,
-                _payload?.Length
+                _payload?.Length,
+                _bitBuffer,
+                _bitCount,
+                _byteBuffer,
+                _byteCount
             );
         }
 
@@ -112,7 +155,11 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                 _state1 == other._state1
                 && _state2 == other._state2
                 && _hasGaussian == other._hasGaussian
-                && (!_hasGaussian || _gaussian == other._gaussian);
+                && (!_hasGaussian || _gaussian == other._gaussian)
+                && _bitBuffer == other._bitBuffer
+                && _bitCount == other._bitCount
+                && _byteBuffer == other._byteBuffer
+                && _byteCount == other._byteCount;
             if (!equivalent)
             {
                 return false;
@@ -145,7 +192,11 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                     _state2,
                     _hasGaussian,
                     _gaussian,
-                    _payload?.Length
+                    _payload?.Length,
+                    _bitBuffer,
+                    _bitCount,
+                    _byteBuffer,
+                    _byteCount
                 );
             }
 

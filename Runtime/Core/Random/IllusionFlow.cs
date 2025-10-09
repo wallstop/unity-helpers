@@ -75,7 +75,16 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                 byte[] eBytes = BitConverter.GetBytes(_e);
                 Array.Resize(ref eBytes, sizeof(double));
                 Array.Fill<byte>(eBytes, 0, sizeof(uint), sizeof(double) - sizeof(uint));
-                return new RandomState(stateA, stateB, BitConverter.ToDouble(eBytes, 0));
+                return new RandomState(
+                    stateA,
+                    stateB,
+                    BitConverter.ToDouble(eBytes, 0),
+                    payload: null,
+                    bitBuffer: _bitBuffer,
+                    bitCount: _bitCount,
+                    byteBuffer: _byteBuffer,
+                    byteCount: _byteCount
+                );
             }
         }
 
@@ -130,6 +139,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                     );
                 }
             }
+            RestoreCommonState(internalState);
         }
 
         public override uint NextUint()

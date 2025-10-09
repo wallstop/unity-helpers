@@ -52,7 +52,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         public static WyRandom Instance => ThreadLocalRandom<WyRandom>.Instance;
 
-        public override RandomState InternalState => new(_state);
+        public override RandomState InternalState => BuildState(_state);
 
         [ProtoMember(2)]
         private ulong _state;
@@ -70,6 +70,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         public WyRandom(RandomState internalState)
         {
             _state = internalState.State1;
+            RestoreCommonState(internalState);
         }
 
         public WyRandom(ulong state)

@@ -18,6 +18,7 @@ A comprehensive collection of high-performance utilities, data structures, and e
   - [Random Number Generators](#random-number-generators)
   - [Spatial Trees](#spatial-trees)
   - [Component Attributes](#component-attributes)
+  - [Relational Components Guide](#relational-components-guide)
   - [Serialization](#serialization)
   - [Data Structures](#data-structures)
   - [Editor Tools](#editor-tools)
@@ -25,6 +26,7 @@ A comprehensive collection of high-performance utilities, data structures, and e
 - [Performance](#performance)
 - [Contributing](#contributing)
 - [License](#license)
+ - [Relational Components Guide](#relational-components-guide)
 
 ## Why Unity Helpers?
 
@@ -55,6 +57,8 @@ Unity Helpers was built to solve common game development challenges with **perfo
 - `[ValidateAssignment]` - Catch missing references at edit time
 - `[DxReadOnly]` - Display calculated values in inspector
 - `[WShowIf]` - Conditional inspector fields
+ 
+ See the in-depth guide: `RELATIONAL_COMPONENTS.md`.
 
 ### 20+ Editor Tools
 - **Sprite tools**: Cropper, Atlas Generator, Animation Editor
@@ -166,7 +170,7 @@ public class Player : MonoBehaviour
     private SpriteRenderer spriteRenderer;
 
     // Finds Rigidbody2D on same GameObject, but it's optional
-    [SiblingComponent(optional = true)]
+    [SiblingComponent(Optional = true)]
     private Rigidbody2D rigidbody;
 
     // Finds PlayerInput in parent hierarchy
@@ -174,7 +178,7 @@ public class Player : MonoBehaviour
     private PlayerInput input;
 
     // Only search ancestors, not siblings
-    [ParentComponent(onlyAncestors = true)]
+    [ParentComponent(OnlyAncestors = true)]
     private Transform[] parentTransforms;
 
     // Finds all PolygonCollider2D in children
@@ -182,7 +186,7 @@ public class Player : MonoBehaviour
     private List<PolygonCollider2D> childColliders;
 
     // Only search descendants
-    [ChildComponent(onlyDescendents = true)]
+    [ChildComponent(OnlyDescendants = true)]
     private EdgeCollider2D edgeCollider;
 
     private void Awake()
@@ -198,9 +202,13 @@ public class Player : MonoBehaviour
 
 **Benefits:**
 - Cleaner, more declarative code
-- Automatic error logging for missing components
-- Works with fields, arrays, and lists
-- Respects `includeInactive` settings
+- Safer defaults (required by default; opt-in `Optional = true`)
+- Filters by tag/name, limit results, control depth, support interfaces
+- Works with single fields, arrays, `List<T>`, and `HashSet<T>`
+- Descriptive error logging for missing required components
+- Honors `IncludeInactive` (include disabled/inactive when true)
+
+For a complete walkthrough with recipes and FAQs, read `RELATIONAL_COMPONENTS.md`.
 
 ### Spatial Queries
 
@@ -411,15 +419,15 @@ public class Enemy : MonoBehaviour
     private List<Weapon> weapons;
 
     // Optional component (no error if missing)
-    [SiblingComponent(optional = true)]
+    [SiblingComponent(Optional = true)]
     private AudioSource audioSource;
 
     // Only search direct children/parents
-    [ParentComponent(onlyAncestors = true)]
+    [ParentComponent(OnlyAncestors = true)]
     private Transform[] parentHierarchy;
 
     // Include inactive components
-    [ChildComponent(includeInactive = true)]
+    [ChildComponent(IncludeInactive = true)]
     private ParticleSystem[] effects;
 
     private void Awake()
@@ -801,9 +809,18 @@ Found a bug or have a feature request? [Open an issue](https://github.com/wallst
 
 ---
 
+## Relational Components Guide
+
+For a complete, user-friendly walkthrough of `[ParentComponent]`, `[ChildComponent]`, and `[SiblingComponent]` including examples, recipes, and FAQs, see:
+
+- `RELATIONAL_COMPONENTS.md`
+
+---
+
 ## Additional Resources
 
 - [Editor Tools Guide](EDITOR_TOOLS_GUIDE.md) - Complete documentation for all editor tools
+- [Relational Components Guide](RELATIONAL_COMPONENTS.md) - Sibling/Parent/Child attributes with examples
 - [Random Performance](RANDOM_PERFORMANCE.md) - Detailed RNG benchmarks
 - [2D Spatial Trees](SPATIAL_TREE_2D_PERFORMANCE.md) - 2D spatial tree benchmarks
 - [3D Spatial Trees](SPATIAL_TREE_3D_PERFORMANCE.md) - 3D spatial tree benchmarks

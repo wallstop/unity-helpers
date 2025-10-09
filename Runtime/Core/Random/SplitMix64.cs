@@ -53,7 +53,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     {
         public static SplitMix64 Instance => ThreadLocalRandom<SplitMix64>.Instance;
 
-        public override RandomState InternalState => new(_state, 0, _cachedGaussian);
+        public override RandomState InternalState => BuildState(_state);
 
         [ProtoMember(2)]
         internal ulong _state;
@@ -73,7 +73,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         public SplitMix64(RandomState internalState)
         {
             _state = internalState.State1;
-            _cachedGaussian = internalState.Gaussian;
+            RestoreCommonState(internalState);
         }
 
         public override uint NextUint()

@@ -59,7 +59,12 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                 {
                     return new RandomState(
                         (ulong)(_seed ?? 0),
-                        gaussian: _seed != null ? 0.0 : null
+                        gaussian: _seed != null ? 0.0 : null,
+                        payload: null,
+                        bitBuffer: _bitBuffer,
+                        bitCount: _bitCount,
+                        byteBuffer: _byteBuffer,
+                        byteCount: _byteCount
                     );
                 }
             }
@@ -83,6 +88,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             unchecked
             {
                 _seed = internalState.Gaussian != null ? (int)internalState.State1 : null;
+                RestoreCommonState(internalState);
             }
         }
 

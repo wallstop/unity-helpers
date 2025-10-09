@@ -58,7 +58,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         public static readonly SquirrelRandom Instance = ThreadLocalRandom<SquirrelRandom>.Instance;
 
-        public override RandomState InternalState => new(_position, gaussian: _cachedGaussian);
+        public override RandomState InternalState => BuildState(_position);
 
         [ProtoMember(2)]
         private uint _position;
@@ -75,7 +75,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         public SquirrelRandom(RandomState internalState)
         {
             _position = unchecked((uint)internalState.State1);
-            _cachedGaussian = internalState.Gaussian;
+            RestoreCommonState(internalState);
         }
 
         public override uint NextUint()

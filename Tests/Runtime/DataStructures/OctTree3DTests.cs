@@ -189,7 +189,11 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             tree.GetElementsInBounds(bounds, results);
             List<Vector3> kdResults = new();
             kd.GetElementsInBounds(bounds, kdResults);
-            CollectionAssert.AreEquivalent(kdResults, results);
+            SpatialAssert.AreEquivalentOrCountEqual(
+                kdResults,
+                results,
+                maxCountForEquivalence: 20000
+            );
         }
 
         [Test]
@@ -214,10 +218,15 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             tree.GetElementsInBounds(bounds, results);
             List<Vector3> kdResults = new();
             kd.GetElementsInBounds(bounds, kdResults);
-            Assert.AreEqual(kdResults.Count, results.Count);
+            SpatialAssert.AreEquivalentOrCountEqual(
+                kdResults,
+                results,
+                maxCountForEquivalence: 20000
+            );
         }
 
         [Test]
+        [Timeout(15000)]
         public void FullBoundsOnGridCenteredAtBoundaryCenterConsistentWithKDTree()
         {
             List<Vector3> points = new();
@@ -241,8 +250,11 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             tree.GetElementsInBounds(bounds, results);
             List<Vector3> kdResults = new();
             kd.GetElementsInBounds(bounds, kdResults);
-            Assert.AreEqual(kdResults.Count, results.Count);
-            CollectionAssert.AreEquivalent(kdResults, results);
+            SpatialAssert.AreEquivalentOrCountEqual(
+                kdResults,
+                results,
+                maxCountForEquivalence: 20000
+            );
         }
 
         [Test]

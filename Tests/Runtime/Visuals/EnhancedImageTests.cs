@@ -85,6 +85,79 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
             Assert.That(cachedBefore == null, Is.True);
         }
 
+        [Test]
+        public void UpdateHandlesNullMaterialGracefully()
+        {
+            EnhancedImage image = CreateEnhancedImage(out _);
+            image.material = null;
+
+            InvokeLifecycle(image, "Start");
+
+            var field = typeof(EnhancedImage).GetField(
+                "_cachedMaterialInstance",
+                BindingFlags.Instance | BindingFlags.NonPublic
+            );
+            Assert.That(field, Is.Not.Null);
+            Material cached = (Material)field.GetValue(image);
+            Assert.That(
+                cached,
+                Is.Null,
+                "Expected no instance to be created when material is null."
+            );
+        }
+
+        [Test]
+        public void HdrColorWithinSdrUsesGraphicColor()
+        {
+            EnhancedImage image = CreateEnhancedImage(out Material baseMaterial);
+            image.color = new Color(0.1f, 0.2f, 0.3f, 0.9f);
+            image.HdrColor = new Color(0.4f, 0.4f, 0.4f, 0.4f);
+
+            InvokeLifecycle(image, "Start");
+
+            Material cached = image.material;
+            Assert.That(cached, Is.Not.Null);
+            Assert.AreNotSame(baseMaterial, cached);
+            Assert.IsTrue(
+                cached.GetColor("_Color").Approximately(image.color),
+                "Expected SDR color to drive material when HDR values are not used."
+            );
+        }
+
+        [Test]
+        public void MaterialInstanceIsReusedAcrossUpdates()
+        {
+            EnhancedImage image = CreateEnhancedImage(out _);
+            InvokeLifecycle(image, "Start");
+            Material first = image.material;
+            Assert.That(first, Is.Not.Null);
+
+            image.HdrColor = new Color(1.1f, 0.2f, 0.3f, 1f);
+            Material second = image.material;
+            Assert.That(
+                second,
+                Is.SameAs(first),
+                "Expected material instance to be reused on updates."
+            );
+        }
+
+        [Test]
+        public void StartDoesNotDuplicateExistingInstance()
+        {
+            EnhancedImage image = CreateEnhancedImage(out _);
+            InvokeLifecycle(image, "Start");
+            Material first = image.material;
+            Assert.That(first, Is.Not.Null);
+
+            InvokeLifecycle(image, "Start");
+            Material second = image.material;
+            Assert.That(
+                second,
+                Is.SameAs(first),
+                "Expected repeated start to keep the same instance."
+            );
+        }
+
         private EnhancedImage CreateEnhancedImage(out Material baseMaterial)
         {
             Shader shader = Shader.Find("UI/Default");

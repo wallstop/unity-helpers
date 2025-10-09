@@ -56,40 +56,40 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             params T[] exceptions
         )
         {
-            T value;
-            switch (values)
+            if (values == null)
             {
-                case IReadOnlyList<T> list:
-                {
-                    do
-                    {
-                        value = random.NextOf(list);
-                    } while (0 <= Array.IndexOf(exceptions, value));
+                throw new ArgumentNullException(nameof(values));
+            }
 
-                    break;
-                }
-                case IReadOnlyCollection<T> collection:
-                {
-                    do
-                    {
-                        value = random.NextOf(collection);
-                    } while (0 <= Array.IndexOf(exceptions, value));
+            IReadOnlyList<T> source = values as IReadOnlyList<T> ?? values.ToArray();
+            if (source.Count == 0)
+            {
+                throw new ArgumentException("Collection cannot be empty", nameof(values));
+            }
 
-                    break;
-                }
-                default:
-                {
-                    T[] input = values.ToArray();
-                    do
-                    {
-                        value = random.NextOf(input);
-                    } while (0 <= Array.IndexOf(exceptions, value));
+            if (exceptions == null || exceptions.Length == 0)
+            {
+                return random.NextOf(source);
+            }
 
-                    break;
+            var exclude = new HashSet<T>(exceptions);
+            using var pooled = WallstopArrayPool<T>.Get(source.Count, out var buffer);
+            int n = 0;
+            for (int i = 0; i < source.Count; ++i)
+            {
+                T v = source[i];
+                if (!exclude.Contains(v))
+                {
+                    buffer[n++] = v;
                 }
             }
 
-            return value;
+            if (n == 0)
+            {
+                throw new ArgumentException("All values are excluded", nameof(exceptions));
+            }
+
+            return n == 1 ? buffer[0] : buffer[random.Next(n)];
         }
 
         /// <summary>

@@ -109,7 +109,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         public static PcgRandom Instance => ThreadLocalRandom<PcgRandom>.Instance;
 
-        public override RandomState InternalState => new(_state, _increment, _cachedGaussian);
+        public override RandomState InternalState => BuildState(_state, _increment);
 
         [ProtoMember(2)]
         internal readonly ulong _increment;
@@ -132,7 +132,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         {
             _state = internalState.State1;
             _increment = NormalizeIncrement(internalState.State2);
-            _cachedGaussian = internalState.Gaussian;
+            RestoreCommonState(internalState);
         }
 
         public PcgRandom(ulong increment, ulong state)

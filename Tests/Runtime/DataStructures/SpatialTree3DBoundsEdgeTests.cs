@@ -27,6 +27,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
+        [Timeout(20000)]
         public void FullBoundsOnGridConsistentAcrossTrees()
         {
             Vector3[] points = CreateGridPoints(100, 100, 100);

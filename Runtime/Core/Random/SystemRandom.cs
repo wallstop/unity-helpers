@@ -56,10 +56,9 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         public static SystemRandom Instance => ThreadLocalRandom<SystemRandom>.Instance;
 
         public override RandomState InternalState =>
-            new(
+            BuildState(
                 unchecked((ulong)_inext),
                 unchecked((ulong)_inextp),
-                _cachedGaussian,
                 ArrayConverter.IntArrayToByteArrayBlockCopy(_seedArray)
             );
 
@@ -121,7 +120,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                 _inext = (int)internalState.State1;
                 _inextp = (int)internalState.State2;
             }
-            _cachedGaussian = internalState.Gaussian;
+            RestoreCommonState(internalState);
             _seedArray = ArrayConverter.ByteArrayToIntArrayBlockCopy(internalState.Payload);
         }
 

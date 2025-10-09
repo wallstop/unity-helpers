@@ -171,6 +171,95 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
             Assert.IsTrue(left != differentFrames);
         }
 
+        [Test]
+        public void OffsetsShorterThanFramesDefaultsRemainingToZero()
+        {
+            Sprite first = VisualsTestHelpers.CreateSprite(
+                _tracked,
+                1,
+                1,
+                (_, _) => new Color(1f, 1f, 1f, 1f),
+                pivot: Vector2.zero
+            );
+            Sprite second = VisualsTestHelpers.CreateSprite(
+                _tracked,
+                1,
+                1,
+                (_, _) => new Color(1f, 1f, 1f, 1f),
+                pivot: Vector2.zero
+            );
+
+            AnimatedSpriteLayer layer = new(
+                new[] { first, second },
+                new[] { new Vector2(0.25f, -0.25f) }
+            );
+
+            Assert.That(layer.perFramePixelOffsets, Is.Not.Null);
+            Assert.That(layer.perFramePixelOffsets, Has.Length.EqualTo(1));
+            Assert.IsTrue(
+                layer
+                    .perFramePixelOffsets[0]
+                    .Approximately(
+                        new Vector2(first.pixelsPerUnit * 0.25f, -first.pixelsPerUnit * 0.25f),
+                        mode: WallMath.VectorApproximationMode.Components
+                    ),
+                "Expected first offset to be scaled by pixels per unit."
+            );
+        }
+
+        [Test]
+        public void OffsetsForFramesWithZeroPixelsPerUnitAreZero()
+        {
+            Sprite withPpu = VisualsTestHelpers.CreateSprite(
+                _tracked,
+                2,
+                2,
+                (_, _) => new Color(1f, 1f, 1f, 1f),
+                pixelsPerUnit: 10f,
+                pivot: Vector2.zero
+            );
+            Sprite zeroPpu = VisualsTestHelpers.CreateSprite(
+                _tracked,
+                2,
+                2,
+                (_, _) => new Color(0f, 0f, 1f, 1f),
+                pixelsPerUnit: 0f,
+                pivot: Vector2.zero
+            );
+
+            AnimatedSpriteLayer layer = new(
+                new[] { withPpu, zeroPpu },
+                new[] { new Vector2(0.1f, 0.2f), new Vector2(1f, 1f) }
+            );
+
+            Assert.That(layer.perFramePixelOffsets, Is.Not.Null);
+            Assert.That(layer.perFramePixelOffsets, Has.Length.EqualTo(2));
+            Assert.IsTrue(
+                layer
+                    .perFramePixelOffsets[0]
+                    .Approximately(
+                        new Vector2(1f, 2f),
+                        mode: WallMath.VectorApproximationMode.Components
+                    ),
+                "Expected offset to scale with pixels per unit."
+            );
+            Assert.IsTrue(
+                layer
+                    .perFramePixelOffsets[1]
+                    .Approximately(Vector2.zero, mode: WallMath.VectorApproximationMode.Components),
+                "Expected zero offset when frame pixels per unit is not positive."
+            );
+        }
+
+        [Test]
+        public void EmptyLayersAreEqual()
+        {
+            AnimatedSpriteLayer left = new((IEnumerable<Sprite>)null);
+            AnimatedSpriteLayer right = new((IEnumerable<Sprite>)null);
+            Assert.IsTrue(left.Equals(right));
+            Assert.IsTrue(left == right);
+        }
+
         private static IEnumerable<Sprite> YieldSprites(params Sprite[] sprites)
         {
             foreach (Sprite sprite in sprites)

@@ -16,44 +16,65 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     /// Base class for relational component attributes that provides common functionality
     /// for finding and assigning components based on hierarchy relationships.
     /// </summary>
+    /// <remarks>
+    /// Used by <see cref="ParentComponentAttribute"/>, <see cref="SiblingComponentAttribute"/>, and
+    /// <see cref="ChildComponentAttribute"/> to control search behavior, filtering, and assignment.
+    ///
+    /// Properties on this base attribute let you:
+    /// - Treat fields as required or optional (<see cref="Optional"/>)
+    /// - Include/exclude disabled components or inactive GameObjects (<see cref="IncludeInactive"/>)
+    /// - Skip assigning when a field is already populated (<see cref="SkipIfAssigned"/>)
+    /// - Limit results for collections (<see cref="MaxCount"/>)
+    /// - Filter by tag (<see cref="TagFilter"/>) or name substring (<see cref="NameFilter"/>)
+    /// - Allow interface/base-type searches (<see cref="AllowInterfaces"/>)
+    ///
+    /// Notes:
+    /// - Tag filtering uses <see cref="GameObject.CompareTag(string)"/> for efficient exact matches.
+    /// - Name filtering performs a case-sensitive substring match on <see cref="Object.name"/>.
+    /// - When <see cref="IncludeInactive"/> is false, only enabled components on active-in-hierarchy GameObjects are considered.
+    /// - For single fields, <see cref="MaxCount"/> is ignored.
+    /// </remarks>
     public abstract class BaseRelationalComponentAttribute : System.Attribute
     {
         /// <summary>
-        /// If true, no error is logged when the component is not found. Default: false.
+        /// When true, no error is logged when a matching component cannot be found.
+        /// When false (default), a descriptive error is logged identifying the field and expected type.
         /// </summary>
         public bool Optional { get; set; } = false;
 
         /// <summary>
-        /// If true, includes disabled Behaviour components and components on inactive GameObjects.
-        /// If false, only enabled components on active GameObjects are assigned. Default: true.
+        /// When true (default), includes disabled <see cref="Behaviour"/>s and components on inactive GameObjects.
+        /// When false, only enabled components on active-in-hierarchy GameObjects are assigned.
         /// </summary>
         public bool IncludeInactive { get; set; } = true;
 
         /// <summary>
-        /// If true, skips assignment if the field already has a non-null value (for single components)
+        /// When true, skips assignment if the field already has a non-null value (for single components)
         /// or a non-empty collection (for arrays/lists). Default: false.
+        /// Useful to avoid stomping values set manually or from prior initialization.
         /// </summary>
         public bool SkipIfAssigned { get; set; } = false;
 
         /// <summary>
-        /// Maximum number of components to find. 0 means unlimited. Default: 0.
-        /// Only applies to arrays and lists.
+        /// Maximum number of components to assign to collection fields. 0 means unlimited (default).
+        /// Applies to arrays, lists, and hash sets. Ignored for single component fields.
         /// </summary>
         public int MaxCount { get; set; } = 0;
 
         /// <summary>
         /// If set, only finds components on GameObjects with this tag.
+        /// Uses <see cref="GameObject.CompareTag(string)"/> for matching.
         /// </summary>
         public string TagFilter { get; set; } = null;
 
         /// <summary>
-        /// If set, only finds components on GameObjects whose names contain this string.
+        /// If set, only finds components on GameObjects whose names contain this string (case-sensitive substring).
         /// </summary>
         public string NameFilter { get; set; } = null;
 
         /// <summary>
-        /// If true, allows searching for interface types and base types, not just concrete Component types.
-        /// Default: true.
+        /// When true (default), allows searching by interface or base type and resolves matching components.
+        /// Set to false to restrict assignment to exact concrete component types only.
         /// </summary>
         public bool AllowInterfaces { get; set; } = true;
     }

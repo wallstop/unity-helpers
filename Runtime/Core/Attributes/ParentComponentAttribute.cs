@@ -10,22 +10,65 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
     /// <summary>
     /// Automatically assigns parent components (components up the transform hierarchy) to the decorated field.
-    /// Supports single components, arrays, List&lt;T&gt;, and HashSet&lt;T&gt; collection types.
+    /// Supports single components, <see cref="System.Array"/>s, <see cref="System.Collections.Generic.List{T}"/>,
+    /// and <see cref="System.Collections.Generic.HashSet{T}"/> collection types.
     /// </summary>
     /// <remarks>
-    /// Call <see cref="ParentComponentExtensions.AssignParentComponents"/> to populate the field.
-    /// This is typically done in Awake() or OnEnable().
-    /// By default, searches include the current GameObject. Use <see cref="OnlyAncestors"/> to exclude it.
+    /// Call <see cref="ParentComponentExtensions.AssignParentComponents"/> (or
+    /// <see cref="RelationalComponentExtensions.AssignRelationalComponents(UnityEngine.Component)"/>) to populate the field.
+    /// This is typically done in <c>Awake()</c> or <c>OnEnable()</c>.
+    ///
+    /// By default, searches include the current <see cref="GameObject"/>; set <see cref="OnlyAncestors"/> to exclude it.
+    /// Limit traversal with <see cref="MaxDepth"/> (depth 1 = immediate parent only). Combine with filters like
+    /// <see cref="BaseRelationalComponentAttribute.TagFilter"/> and <see cref="BaseRelationalComponentAttribute.NameFilter"/>.
+    /// Interfaces and base types are supported when <see cref="BaseRelationalComponentAttribute.AllowInterfaces"/> is true (default).
     ///
     /// IMPORTANT: This attribute populates fields at runtime, not during Unity serialization in Edit mode.
     /// Fields populated by this attribute will not be serialized by Unity.
+    ///
+    /// <seealso cref="BaseRelationalComponentAttribute"/>
+    /// <seealso cref="ParentComponentExtensions.AssignParentComponents(UnityEngine.Component)"/>
+    /// <seealso cref="RelationalComponentExtensions.AssignRelationalComponents(UnityEngine.Component)"/>
     /// </remarks>
+    /// <example>
+    /// Typical parent searches with depth and filters:
+    /// <code><![CDATA[
+    /// using UnityEngine;
+    /// using WallstopStudios.UnityHelpers.Core.Attributes;
+    ///
+    /// public interface IHealth { int Current { get; } }
+    ///
+    /// public class ChildComponent : MonoBehaviour
+    /// {
+    ///     // Immediate parent only
+    ///     [ParentComponent(OnlyAncestors = true, MaxDepth = 1)]
+    ///     private Transform directParent;
+    ///
+    ///     // Search up to 3 levels for a specific tag
+    ///     [ParentComponent(OnlyAncestors = true, MaxDepth = 3, TagFilter = "Player")]
+    ///     private Collider2D playerAncestorCollider;
+    ///
+    ///     // Interface lookup up the chain
+    ///     [ParentComponent]
+    ///     private IHealth healthProvider;
+    ///
+    ///     // Collect multiple up the chain (stops at MaxCount)
+    ///     [ParentComponent(MaxCount = 2)]
+    ///     private Rigidbody2D[] firstTwoRigidbodies;
+    ///
+    ///     private void Awake()
+    ///     {
+    ///         this.AssignParentComponents();
+    ///     }
+    /// }
+    /// ]]></code>
+    /// </example>
     [AttributeUsage(AttributeTargets.Field)]
     public sealed class ParentComponentAttribute : BaseRelationalComponentAttribute
     {
         /// <summary>
-        /// If true, excludes components on the current GameObject and only searches parent transforms.
-        /// If false, includes components on the current GameObject in the search. Default: true.
+        /// If true, excludes components on the current <see cref="GameObject"/> and only searches parent transforms.
+        /// If false, includes components on the current <see cref="GameObject"/> in the search. Default: false.
         /// </summary>
         public bool OnlyAncestors { get; set; } = false;
 
@@ -43,6 +86,22 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             FieldMetadata<ParentComponentAttribute>[]
         > FieldsByType = new();
 
+        /// <summary>
+        /// Assigns fields on <paramref name="component"/> marked with <see cref="ParentComponentAttribute"/>.
+        /// </summary>
+        /// <param name="component">The component whose fields will be populated.</param>
+        /// <remarks>
+        /// Typical call site is <c>Awake()</c> or <c>OnEnable()</c>. For convenience, you can also call
+        /// <see cref="RelationalComponentExtensions.AssignRelationalComponents(UnityEngine.Component)"/> to assign all relational attributes.
+        /// </remarks>
+        /// <example>
+        /// <code><![CDATA[
+        /// void Awake()
+        /// {
+        ///     this.AssignParentComponents();
+        /// }
+        /// ]]></code>
+        /// </example>
         public static void AssignParentComponents(this Component component)
         {
             Type componentType = component.GetType();

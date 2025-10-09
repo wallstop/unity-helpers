@@ -57,7 +57,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     {
         public static XorShiftRandom Instance => ThreadLocalRandom<XorShiftRandom>.Instance;
 
-        public override RandomState InternalState => new(_state, 0, _cachedGaussian);
+        public override RandomState InternalState => BuildState(_state);
 
         private const uint DefaultState = 2463534242U;
 
@@ -86,7 +86,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         public XorShiftRandom(RandomState internalState)
         {
             _state = NormalizeState(unchecked((uint)internalState.State1));
-            _cachedGaussian = internalState.Gaussian;
+            RestoreCommonState(internalState);
         }
 
         public override uint NextUint()
