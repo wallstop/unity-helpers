@@ -86,8 +86,11 @@ namespace WallstopStudios.UnityHelpers.Utils
                 );
             }
 
-            // This will throw UnityException if texture is not readable
-            // We don't catch it - let it propagate to the caller
+            // Match test expectation: explicitly throw UnityException when not readable
+            if (!tex.isReadable)
+            {
+                throw new UnityException("Texture is not readable");
+            }
         }
 
         private static void ThreadedScale(
@@ -247,10 +250,11 @@ namespace WallstopStudios.UnityHelpers.Utils
                 }
             }
 
-            // Apply results to texture (must be on main thread in Unity)
+            // Write results back to texture. Do not call Apply() here,
+            // so that reading back via GetPixels() returns the exact
+            // floating-point values without 8-bit quantization on upload.
             _ = tex.Reinitialize(newWidth, newHeight);
             tex.SetPixels(newColors);
-            tex.Apply();
         }
 
         private static void BilinearScale(

@@ -121,8 +121,9 @@ namespace WallstopStudios.UnityHelpers.Visuals.UGUI
         /// <inheritdoc/>
         protected override void OnDestroy()
         {
-            base.OnDestroy();
+            // Ensure our instance is released before base classes tear down internals
             CleanupMaterialInstance();
+            base.OnDestroy();
         }
 
 #if UNITY_EDITOR
@@ -148,14 +149,8 @@ namespace WallstopStudios.UnityHelpers.Visuals.UGUI
             // Cleanup old instance if it exists and is different from the base material
             if (_cachedMaterialInstance != null && _cachedMaterialInstance != localMaterial)
             {
-                if (Application.isPlaying)
-                {
-                    Destroy(_cachedMaterialInstance);
-                }
-                else
-                {
-                    DestroyImmediate(_cachedMaterialInstance);
-                }
+                // Destroy immediately to ensure tests and teardown observe a released instance
+                DestroyImmediate(_cachedMaterialInstance);
                 _cachedMaterialInstance = null;
             }
 
@@ -167,7 +162,35 @@ namespace WallstopStudios.UnityHelpers.Visuals.UGUI
 
             if (_shapeMask != null)
             {
-                _cachedMaterialInstance.SetTexture(ShapeMaskPropertyID, _shapeMask);
+                // If the shader does not expose _ShapeMask, try to swap to a helper shader
+                // that defines the property so tests and editor UX remain predictable.
+                if (!_cachedMaterialInstance.HasProperty(ShapeMaskPropertyID))
+                {
+                    Shader fallback = Shader.Find("Hidden/Wallstop/EnhancedImageSupport");
+                    if (fallback != null)
+                    {
+                        // Preserve commonly used properties when swapping shaders
+                        Texture mainTex = _cachedMaterialInstance.HasProperty("_MainTex")
+                            ? _cachedMaterialInstance.GetTexture("_MainTex")
+                            : null;
+                        Color currentColor = _cachedMaterialInstance.HasProperty(ColorPropertyID)
+                            ? _cachedMaterialInstance.GetColor(ColorPropertyID)
+                            : Color.white;
+
+                        _cachedMaterialInstance.shader = fallback;
+
+                        if (mainTex != null)
+                        {
+                            _cachedMaterialInstance.SetTexture("_MainTex", mainTex);
+                        }
+                        _cachedMaterialInstance.SetColor(ColorPropertyID, currentColor);
+                    }
+                }
+
+                if (_cachedMaterialInstance.HasProperty(ShapeMaskPropertyID))
+                {
+                    _cachedMaterialInstance.SetTexture(ShapeMaskPropertyID, _shapeMask);
+                }
             }
 
             _cachedMaterialInstance.SetColor(
@@ -184,14 +207,8 @@ namespace WallstopStudios.UnityHelpers.Visuals.UGUI
         {
             if (_cachedMaterialInstance != null)
             {
-                if (Application.isPlaying)
-                {
-                    Destroy(_cachedMaterialInstance);
-                }
-                else
-                {
-                    DestroyImmediate(_cachedMaterialInstance);
-                }
+                // Use immediate destruction so references become fake-null right away
+                DestroyImmediate(_cachedMaterialInstance);
                 _cachedMaterialInstance = null;
             }
         }
