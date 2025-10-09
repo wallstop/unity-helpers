@@ -78,7 +78,7 @@ namespace WallstopStudios.UnityHelpers.Tests
         /// Uses DestroyImmediate when not playing and disposes disposables.
         /// </summary>
         [TearDown]
-        public void TearDown()
+        public virtual void TearDown()
         {
             // Dispose tracked disposables (reverse order best-effort)
             if (_trackedDisposables.Count > 0)
