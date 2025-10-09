@@ -7,13 +7,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper.Logging;
+    using WallstopStudios.UnityHelpers.Tests;
 
-    public sealed class UnityLogTagFormatterEdgeTests
+    public sealed class UnityLogTagFormatterEdgeTests : CommonTestBase
     {
         [Test]
         public void UnknownTagFallsBack()
         {
-            GameObject go = new(nameof(UnknownTagFallsBack), typeof(SpriteRenderer));
+            GameObject go = Track(
+                new GameObject(nameof(UnknownTagFallsBack), typeof(SpriteRenderer))
+            );
 
             int logCount = 0;
             Exception exception = null;
@@ -69,7 +72,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void RepeatedSeparatorsAreIgnored()
         {
-            GameObject go = new(nameof(RepeatedSeparatorsAreIgnored), typeof(SpriteRenderer));
+            GameObject go = Track(
+                new GameObject(nameof(RepeatedSeparatorsAreIgnored), typeof(SpriteRenderer))
+            );
 
             int logCount = 0;
             Exception exception = null;

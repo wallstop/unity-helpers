@@ -7,9 +7,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Tests;
 
     [TestFixture]
-    public sealed class ObjectsTests
+    public sealed class ObjectsTests : CommonTestBase
     {
         private sealed class CustomClass
         {
@@ -116,7 +117,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [UnityTest]
         public IEnumerator NullReturnsFalseForValidUnityObject()
         {
-            GameObject gameObject = new("Test");
+            GameObject gameObject = Track(new GameObject("Test"));
 
             bool result = Objects.Null(gameObject);
 
@@ -128,7 +129,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [UnityTest]
         public IEnumerator NullReturnsTrueForDestroyedUnityObject()
         {
-            GameObject gameObject = new("Test");
+            GameObject gameObject = Track(new GameObject("Test"));
             UnityEngine.Object.Destroy(gameObject);
             yield return null;
 
@@ -140,7 +141,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [UnityTest]
         public IEnumerator NullDetectsDestroyedUnityObjectWhenBoxed()
         {
-            GameObject gameObject = new("Test");
+            GameObject gameObject = Track(new GameObject("Test"));
             object boxed = gameObject;
             UnityEngine.Object.Destroy(gameObject);
             yield return null;
@@ -194,7 +195,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [UnityTest]
         public IEnumerator NotNullReturnsTrueForValidUnityObject()
         {
-            GameObject gameObject = new("Test");
+            GameObject gameObject = Track(new GameObject("Test"));
 
             bool result = Objects.NotNull(gameObject);
 
@@ -206,7 +207,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [UnityTest]
         public IEnumerator NotNullReturnsFalseForDestroyedUnityObject()
         {
-            GameObject gameObject = new("Test");
+            GameObject gameObject = Track(new GameObject("Test"));
             UnityEngine.Object.Destroy(gameObject);
             yield return null;
 
@@ -218,7 +219,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [UnityTest]
         public IEnumerator NotNullDetectsDestroyedUnityObjectWhenBoxed()
         {
-            GameObject gameObject = new("Test");
+            GameObject gameObject = Track(new GameObject("Test"));
             object boxed = gameObject;
             UnityEngine.Object.Destroy(gameObject);
             yield return null;

@@ -443,6 +443,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             GameObject root = new("SiblingInactiveGameObjectInclude");
             Track(root);
             root.SetActive(false);
+            // Add sibling components while inactive to validate IncludeInactive behavior
+            root.AddComponent<BoxCollider>();
+            root.AddComponent<BoxCollider>();
             SiblingIncludeInactiveTester tester = root.AddComponent<SiblingIncludeInactiveTester>();
 
             tester.AssignSiblingComponents();

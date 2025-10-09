@@ -3,8 +3,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using NUnit.Framework;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Tests;
 
-    public sealed class AnimatorExtensionsTests
+    public sealed class AnimatorExtensionsTests : CommonTestBase
     {
         [Test]
         public void ResetTriggersAllowsNullAnimator()
@@ -16,19 +17,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void ResetTriggersDoesNotThrowWhenDisabled()
         {
-            GameObject gameObject = new("AnimatorResetTest");
-            try
-            {
-                Animator animator = gameObject.AddComponent<Animator>();
-                gameObject.SetActive(false);
+            GameObject gameObject = Track(new GameObject("AnimatorResetTest"));
+            Animator animator = gameObject.AddComponent<Animator>();
+            gameObject.SetActive(false);
 
-                Assert.IsFalse(animator.isActiveAndEnabled);
-                Assert.DoesNotThrow(() => animator.ResetTriggers());
-            }
-            finally
-            {
-                Object.DestroyImmediate(gameObject);
-            }
+            Assert.IsFalse(animator.isActiveAndEnabled);
+            Assert.DoesNotThrow(() => animator.ResetTriggers());
         }
     }
 }
