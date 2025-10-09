@@ -2,7 +2,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 {
     using System;
     using System.Collections.Generic;
-    using System.Linq;
     using DataStructure;
     using DataStructure.Adapters;
     using Helper;
@@ -640,10 +639,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         {
             using PooledResource<List<FastVector3Int>> pointsResource =
                 Buffers<FastVector3Int>.List.Get(out List<FastVector3Int> points);
-            foreach (FastVector3Int point in pointsSet)
-            {
-                points.Add(point);
-            }
+            points.AddRange(pointsSet);
 
             if (points.Count <= 3)
             {

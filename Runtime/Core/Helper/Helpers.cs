@@ -3,10 +3,8 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
     using System;
     using System.Collections;
     using System.Collections.Generic;
-    using System.Linq;
     using System.Reflection;
     using DataStructure.Adapters;
-    using Extension;
     using Random;
     using UnityEngine;
     using Utils;
@@ -20,7 +18,6 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #endif
     public static partial class Helpers
     {
-        private static readonly WaitForEndOfFrame WaitForEndOfFrame = new();
 #if SINGLE_THREADED
         private static readonly Dictionary<
             Type,

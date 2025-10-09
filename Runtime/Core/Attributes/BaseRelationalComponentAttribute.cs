@@ -200,9 +200,9 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 )
             )
             {
-                using var resultBuffer = Buffers<FieldMetadata<TAttribute>>.List.Get(
-                    out List<FieldMetadata<TAttribute>> result
-                );
+                using PooledResource<List<FieldMetadata<TAttribute>>> resultBuffer = Buffers<
+                    FieldMetadata<TAttribute>
+                >.List.Get(out List<FieldMetadata<TAttribute>> result);
                 foreach (AttributeMetadataCache.RelationalFieldMetadata cachedField in cachedFields)
                 {
                     if (cachedField.attributeKind != targetKind)

@@ -429,7 +429,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
             if (collection is IReadOnlyList<T> list)
             {
-                return NextOf(list);
+                return RandomOf(list);
             }
             int index = Next(collection.Count);
 
