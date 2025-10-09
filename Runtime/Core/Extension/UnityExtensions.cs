@@ -967,16 +967,11 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             do
             {
                 hull.Add(current);
-                // Pick an initial candidate different from current
+                Vector2 worldPoint = grid.CellToWorld(current);
+
+                // Phase 1: Find the most counterclockwise point
                 FastVector3Int candidate =
                     points[0] == current && points.Count > 1 ? points[1] : points[0];
-                Vector2 cW = grid.CellToWorld(candidate);
-                Vector2 worldPoint = grid.CellToWorld(current);
-                using PooledResource<List<FastVector3Int>> colinearRes =
-                    Buffers<FastVector3Int>.List.Get(out List<FastVector3Int> colinear);
-                colinear.Clear();
-
-                // First pass: find the rightmost turn (most counterclockwise direction)
                 for (int i = 0; i < points.Count; ++i)
                 {
                     FastVector3Int p = points[i];
@@ -985,52 +980,87 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                         continue;
                     }
                     Vector2 pW = grid.CellToWorld(p);
+                    Vector2 cW = grid.CellToWorld(candidate);
                     float rel = Geometry.IsAPointLeftOfVectorOrOnTheLine(worldPoint, cW, pW);
+
                     if (rel > ConvexHullRelationEpsilon)
                     {
-                        // p is more counterclockwise than current candidate
+                        // p is more counterclockwise
                         candidate = p;
-                        cW = pW;
+                    }
+                    else if (Mathf.Abs(rel) <= ConvexHullRelationEpsilon)
+                    {
+                        // p is collinear, prefer the farther one
+                        float distCandidate = (cW - worldPoint).sqrMagnitude;
+                        float distP = (pW - worldPoint).sqrMagnitude;
+                        if (distP > distCandidate)
+                        {
+                            candidate = p;
+                        }
                     }
                 }
 
-                // Second pass: collect all points collinear with the chosen direction
-                colinear.Clear();
-                for (int i = 0; i < points.Count; ++i)
+                // Phase 2: If requested, collect ALL collinear points with the candidate direction
+                if (includeColinearPoints)
                 {
-                    FastVector3Int p = points[i];
-                    if (p == current)
-                    {
-                        continue;
-                    }
-                    Vector2 pW = grid.CellToWorld(p);
-                    float rel = Geometry.IsAPointLeftOfVectorOrOnTheLine(worldPoint, cW, pW);
-                    if (Mathf.Abs(rel) <= ConvexHullRelationEpsilon)
-                    {
-                        // p is collinear with the candidate direction
-                        colinear.Add(p);
-                    }
-                }
+                    using PooledResource<List<FastVector3Int>> colinearRes =
+                        Buffers<FastVector3Int>.List.Get(out List<FastVector3Int> colinear);
+                    colinear.Clear();
 
-                if (colinear.Count > 0)
-                {
-                    // Sort collinear points by distance from current
-                    SortByDistanceAscending(colinear, grid, worldPoint);
-
-                    if (includeColinearPoints)
+                    Vector2 candidateW = grid.CellToWorld(candidate);
+                    for (int i = 0; i < points.Count; ++i)
                     {
-                        // Include all collinear points
-                        hull.AddRange(colinear);
-                        current = colinear[^1];
+                        FastVector3Int p = points[i];
+                        // Skip current point AND the candidate (candidate will be added in next iteration)
+                        if (p == current || p == candidate)
+                        {
+                            continue;
+                        }
+                        Vector2 pW = grid.CellToWorld(p);
+                        float rel = Geometry.IsAPointLeftOfVectorOrOnTheLine(
+                            worldPoint,
+                            candidateW,
+                            pW
+                        );
+
+                        if (Mathf.Abs(rel) <= ConvexHullRelationEpsilon)
+                        {
+                            colinear.Add(p);
+                        }
+                    }
+
+                    if (colinear.Count > 0)
+                    {
+                        // Sort by distance and add all (excluding duplicates)
+                        SortByDistanceAscending(colinear, grid, worldPoint);
+
+                        using PooledResource<HashSet<FastVector3Int>> hullSetRes =
+                            Buffers<FastVector3Int>.HashSet.Get(
+                                out HashSet<FastVector3Int> hullSet
+                            );
+                        foreach (FastVector3Int h in hull)
+                        {
+                            hullSet.Add(h);
+                        }
+                        foreach (FastVector3Int p in colinear)
+                        {
+                            if (!hullSet.Contains(p))
+                            {
+                                hull.Add(p);
+                            }
+                        }
+                        // Current becomes the candidate (the farthest collinear point)
+                        // Note: we don't use colinear[^1] because candidate is not in colinear list
+                        current = candidate;
                     }
                     else
                     {
-                        // Only take the farthest point to continue wrapping
-                        current = colinear[^1];
+                        current = candidate;
                     }
                 }
                 else
                 {
+                    // Just move to the farthest counterclockwise point
                     current = candidate;
                 }
 
