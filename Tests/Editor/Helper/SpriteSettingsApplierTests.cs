@@ -65,7 +65,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tests.Editor.Helper
         }
 
         [Test]
-        public void Applies_Profile_By_NameContains_With_Priority()
+        public void AppliesProfileByNameContainsWithPriority()
         {
             if (Application.isPlaying)
             {
@@ -113,7 +113,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tests.Editor.Helper
         }
 
         [Test]
-        public void Enforces_TextureType_When_Configured()
+        public void EnforcesTextureTypeWhenConfigured()
         {
             if (Application.isPlaying)
             {
