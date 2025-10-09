@@ -462,6 +462,8 @@ Tips:
 - Prefer `%`-style changes with Multiplication and small flat changes with Addition.
 - Keep tag strings consistent; centralize in constants to avoid mistakes.
 
+Further reading: see the full guide EFFECTS_SYSTEM.md.
+
 ### Component Attributes
 
 Streamline component relationships and inspector validation.

@@ -88,24 +88,27 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             texture.SetPixels(pixels);
             texture.Apply(false, false);
 
+            // Snapshot values as reported by the texture after Apply()
+            Color[] before = texture.GetPixels();
+
             TextureScale.Point(texture, 2, 2);
             Color[] afterPoint = texture.GetPixels();
-            for (int i = 0; i < pixels.Length; i++)
+            for (int i = 0; i < before.Length; i++)
             {
-                Assert.That(afterPoint[i].r, Is.EqualTo(pixels[i].r).Within(1e-5f));
-                Assert.That(afterPoint[i].g, Is.EqualTo(pixels[i].g).Within(1e-5f));
-                Assert.That(afterPoint[i].b, Is.EqualTo(pixels[i].b).Within(1e-5f));
-                Assert.That(afterPoint[i].a, Is.EqualTo(pixels[i].a).Within(1e-5f));
+                Assert.That(afterPoint[i].r, Is.EqualTo(before[i].r).Within(1e-5f));
+                Assert.That(afterPoint[i].g, Is.EqualTo(before[i].g).Within(1e-5f));
+                Assert.That(afterPoint[i].b, Is.EqualTo(before[i].b).Within(1e-5f));
+                Assert.That(afterPoint[i].a, Is.EqualTo(before[i].a).Within(1e-5f));
             }
 
             TextureScale.Bilinear(texture, 2, 2);
             Color[] afterBilinear = texture.GetPixels();
-            for (int i = 0; i < pixels.Length; i++)
+            for (int i = 0; i < before.Length; i++)
             {
-                Assert.That(afterBilinear[i].r, Is.EqualTo(pixels[i].r).Within(1e-5f));
-                Assert.That(afterBilinear[i].g, Is.EqualTo(pixels[i].g).Within(1e-5f));
-                Assert.That(afterBilinear[i].b, Is.EqualTo(pixels[i].b).Within(1e-5f));
-                Assert.That(afterBilinear[i].a, Is.EqualTo(pixels[i].a).Within(1e-5f));
+                Assert.That(afterBilinear[i].r, Is.EqualTo(before[i].r).Within(1e-5f));
+                Assert.That(afterBilinear[i].g, Is.EqualTo(before[i].g).Within(1e-5f));
+                Assert.That(afterBilinear[i].b, Is.EqualTo(before[i].b).Within(1e-5f));
+                Assert.That(afterBilinear[i].a, Is.EqualTo(before[i].a).Within(1e-5f));
             }
 
             UnityEngine.Object.DestroyImmediate(texture);

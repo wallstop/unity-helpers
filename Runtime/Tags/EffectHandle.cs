@@ -5,31 +5,41 @@ namespace WallstopStudios.UnityHelpers.Tags
     using Core.Extension;
 
     /// <summary>
-    /// Represents a unique handle to an applied effect instance.
-    /// EffectHandles are used to track and remove specific effect applications, especially for non-instant effects.
+    /// Opaque identifier for a specific effect application instance.
+    /// Use to remove or refresh one instance without affecting others.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// When an effect with <see cref="ModifierDurationType.Duration"/> or <see cref="ModifierDurationType.Infinite"/>
-    /// is applied, an EffectHandle is created. This handle uniquely identifies that specific application,
-    /// allowing it to be removed independently from other instances of the same effect.
+    /// Lifecycle: Handles are only created for <see cref="ModifierDurationType.Duration"/> and
+    /// <see cref="ModifierDurationType.Infinite"/> effects. <see cref="ModifierDurationType.Instant"/> effects
+    /// apply permanently and do not produce a handle.
     /// </para>
     /// <para>
-    /// Each EffectHandle contains:
-    /// - A unique ID for tracking
-    /// - A reference to the AttributeEffect that was applied
+    /// Problem solved: Distinguishes concurrent applications of the same <see cref="AttributeEffect"/>.
+    /// You can remove a single stack while leaving others intact, and systems can track/refresh durations
+    /// per instance using the handle ID.
     /// </para>
     /// <para>
-    /// Example usage:
+    /// Contains:
+    /// - A monotonically increasing unique <see cref="id"/>
+    /// - A reference to the applied <see cref="effect"/>
+    /// Equality and ordering are based solely on the ID.
+    /// </para>
+    /// <para>
+    /// Usage patterns:
     /// <code>
-    /// AttributeEffect speedBoost = ...;
-    /// EffectHandle? handle = player.ApplyEffect(speedBoost);
+    /// // Apply and store for later removal
+    /// EffectHandle? maybe = target.ApplyEffect(slow);
+    /// if (maybe.HasValue) _activeSlows.Add(maybe.Value);
     ///
-    /// // Later, remove this specific instance:
-    /// if (handle.HasValue)
-    /// {
-    ///     player.RemoveEffect(handle.Value);
+    /// // Remove one instance (e.g., dispel one stack)
+    /// if (_activeSlows.Count > 0) {
+    ///     target.RemoveEffect(_activeSlows[0]);
+    ///     _activeSlows.RemoveAt(0);
     /// }
+    ///
+    /// // Refreshing timed effects (EffectHandler already supports resetDurationOnReapplication)
+    /// target.ApplyEffect(slow); // Reapplying can reset duration (if enabled)
     /// </code>
     /// </para>
     /// </remarks>

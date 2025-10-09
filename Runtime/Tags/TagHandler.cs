@@ -6,35 +6,56 @@ namespace WallstopStudios.UnityHelpers.Tags
     using UnityEngine;
 
     /// <summary>
-    /// Manages string-based tags for a GameObject, tracking tag counts and notifying listeners of changes.
-    /// Tags are commonly used to represent active effect categories, status conditions, or gameplay states.
+    /// Tag system for gameplay state: applies, counts, and queries string-based tags on a GameObject.
+    /// Used to represent transient states (stunned, poisoned) and effect categories without coupling to specific effects.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The TagHandler maintains a count for each tag, allowing the same tag to be applied multiple times.
-    /// This is useful when multiple effects might apply the same tag (e.g., multiple "Stunned" effects).
-    /// The tag is only considered removed when its count reaches zero.
+    /// Why tags? Tags decouple “what is active” from “what applied it.” Systems can ask
+    /// “is Stunned?” or “has any of X,Y?” without caring which effect created the state.
+    /// This enables clean gating (e.g., block movement while Stunned) and cross‑system coordination.
     /// </para>
     /// <para>
-    /// Example usage:
+    /// Counting semantics: TagHandler maintains a reference count per tag. Multiple effects can apply the
+    /// same tag concurrently; the tag remains active until its count returns to 0. This solves common issues
+    /// where removing one source would accidentally clear the state still required by another effect.
+    /// </para>
+    /// <para>
+    /// Integration: The <see cref="EffectHandler"/> coordinates tag application/removal via
+    /// <see cref="ForceApplyTags(EffectHandle)"/> and <see cref="ForceRemoveTags(EffectHandle)"/>.
+    /// Instant effects can call <see cref="ForceApplyEffect(AttributeEffect)"/> since no handle exists.
+    /// </para>
+    /// <para>
+    /// Benefits:
+    /// - Decoupled state queries across systems (AI, input, animation)
+    /// - Safe stacking via counts (no premature clears)
+    /// - Lightweight string keys with event notifications for UI/FX
+    /// - Optimized overloads for common collection types
+    /// </para>
+    /// <para>
+    /// Usage examples:
     /// <code>
-    /// TagHandler tagHandler = gameObject.GetComponent&lt;TagHandler&gt;();
+    /// TagHandler tags = gameObject.GetComponent&lt;TagHandler&gt;();
     ///
-    /// // Check if a tag is active
-    /// if (tagHandler.HasTag("Stunned"))
-    /// {
-    ///     // Character is stunned
-    /// }
+    /// // Querying
+    /// if (tags.HasTag("Stunned")) { /* disable input */ }
+    /// if (tags.HasAnyTag(new [] { "Frozen", "Stunned" })) { /* play break-free anim */ }
     ///
-    /// // Add a tag
-    /// tagHandler.ApplyTag("Poisoned");
+    /// // Manual application (advanced; normally applied via EffectHandler)
+    /// tags.ApplyTag("Poisoned");
+    /// tags.RemoveTag("Poisoned", allInstances: false);
     ///
-    /// // Remove a tag
-    /// tagHandler.RemoveTag("Poisoned", allInstances: false);
-    ///
-    /// // Listen for tag changes
-    /// tagHandler.OnTagAdded += (tag) => Debug.Log($"Tag added: {tag}");
+    /// // Events for UI/telemetry
+    /// tags.OnTagAdded += tag => Debug.Log($"+{tag}");
+    /// tags.OnTagRemoved += tag => Debug.Log($"-{tag}");
+    /// tags.OnTagCountChanged += (tag, count) => Debug.Log($"{tag}: {count}");
     /// </code>
+    /// </para>
+    /// <para>
+    /// Tips:
+    /// - Keep tag strings consistent (consider central constants to avoid typos).
+    /// - Prefer using AttributeEffects to drive tags rather than calling ApplyTag/RemoveTag directly.
+    /// - Use <see cref="HasAnyTag(System.Collections.Generic.IReadOnlyList{string})"/> for perf‑critical code.
     /// </para>
     /// </remarks>
     [DisallowMultipleComponent]

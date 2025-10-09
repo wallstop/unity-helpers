@@ -1,14 +1,16 @@
 namespace WallstopStudios.UnityHelpers.Tests.Utils
 {
     using System;
+    using System.Collections;
     using System.Threading.Tasks;
     using NUnit.Framework;
+    using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Utils;
 
     public sealed class DeferredDisposalResultTests
     {
-        [Test]
-        public async Task DisposeAsyncInvokesDelegate()
+        [UnityTest]
+        public IEnumerator DisposeAsyncInvokesDelegate()
         {
             bool disposed = false;
             DeferredDisposalResult<int> result = new(
@@ -21,7 +23,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             );
 
             Assert.AreEqual(7, result.result);
-            await result.DisposeAsync();
+
+            // Start the async dispose and wait until it completes
+            ValueTask vt = result.DisposeAsync();
+            Task t = vt.AsTask();
+            while (!t.IsCompleted)
+            {
+                yield return null;
+            }
+
             Assert.IsTrue(disposed);
         }
 

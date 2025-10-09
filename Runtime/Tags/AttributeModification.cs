@@ -5,35 +5,44 @@ namespace WallstopStudios.UnityHelpers.Tags
     using Core.Helper;
 
     /// <summary>
-    /// Represents a single modification to be applied to an attribute.
-    /// Modifications define how an attribute's value should be changed using a specific action and value.
+    /// Declarative change to an <see cref="Attribute"/> value (add, multiply, or override).
+    /// Forms the stat‑modification payload inside an <see cref="AttributeEffect"/>.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Modifications are applied in a specific order based on their <see cref="ModificationAction"/>:
-    /// 1. Addition - Adds or subtracts from the value
-    /// 2. Multiplication - Scales the value
-    /// 3. Override - Completely replaces the value
+    /// Problems solved:
+    /// - Non‑destructive stat changes that can be added/removed per effect instance
+    /// - Clear stacking rules via action ordering
+    /// - Works with both permanent (Instant) and temporary (Duration/Infinite) effects
     /// </para>
     /// <para>
-    /// Example usage:
+    /// Stacking and order: Modifications are applied in this order across a target attribute:
+    /// 1) Addition (value += x) → 2) Multiplication (value *= x) → 3) Override (value = x).
+    /// This means Overrides always win last; use with care.
+    /// </para>
+    /// <para>
+    /// Addressing: The <see cref="attribute"/> field names an <see cref="AttributesComponent"/> field of type
+    /// <see cref="Attribute"/>. Misspelled or missing names are ignored at runtime to keep effects robust.
+    /// Use the Attribute Metadata Cache generator to populate editor dropdowns and avoid typos.
+    /// </para>
+    /// <para>
+    /// Examples:
     /// <code>
-    /// // Create a modification that adds 50 to a Health attribute
-    /// var healthBoost = new AttributeModification
-    /// {
-    ///     attribute = "Health",
-    ///     action = ModificationAction.Addition,
-    ///     value = 50f
-    /// };
+    /// // +50 flat Health
+    /// new AttributeModification { attribute = "Health", action = ModificationAction.Addition, value = 50f };
     ///
-    /// // Create a modification that multiplies Speed by 1.5 (150% speed)
-    /// var speedBoost = new AttributeModification
-    /// {
-    ///     attribute = "Speed",
-    ///     action = ModificationAction.Multiplication,
-    ///     value = 1.5f
-    /// };
+    /// // +50% Speed (i.e., multiply by 1.5)
+    /// new AttributeModification { attribute = "Speed", action = ModificationAction.Multiplication, value = 1.5f };
+    ///
+    /// // Set Defense to 0 (hard override)
+    /// new AttributeModification { attribute = "Defense", action = ModificationAction.Override, value = 0f };
     /// </code>
+    /// </para>
+    /// <para>
+    /// Tips:
+    /// - Prefer Addition for small buffs/debuffs; prefer Multiplication for % changes.
+    /// - Avoid frequent Overrides unless you intend to fully clamp a value.
+    /// - Use negative Addition values to subtract; use Multiplication < 1.0 for % reductions.
     /// </para>
     /// </remarks>
     [Serializable]

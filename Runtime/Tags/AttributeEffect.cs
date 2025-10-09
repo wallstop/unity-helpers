@@ -14,31 +14,40 @@ namespace WallstopStudios.UnityHelpers.Tags
 #endif
 
     /// <summary>
-    /// Defines a collection of attribute modifications, tags, and cosmetic effects that can be applied to game objects.
-    /// AttributeEffects are ScriptableObjects that serve as reusable templates for buffs, debuffs, and other gameplay effects.
+    /// Reusable, data‑driven bundle of stat modifications, tags, and cosmetic feedback.
+    /// Serves as the authoring unit for buffs, debuffs, and status effects.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// An AttributeEffect is a complete package that can include:
-    /// - Attribute modifications (stat changes)
-    /// - Effect tags (for tracking active effects and blocking/enabling behaviors)
-    /// - Cosmetic effects (visual/audio feedback)
-    /// - Duration settings (instant, timed, or infinite)
+    /// Composition:
+    /// - Attribute modifications: a list of <see cref="AttributeModification"/> applied to <see cref="Attribute"/> fields
+    /// - Tags: string markers for cross‑system state gating and queries
+    /// - Cosmetics: <see cref="CosmeticEffectData"/> references for visuals/audio on apply/remove
+    /// - Duration: <see cref="ModifierDurationType"/> with seconds and reapplication policy
     /// </para>
     /// <para>
-    /// Example usage:
+    /// Problems solved and benefits:
+    /// - Centralizes effect logic and presentation in one asset
+    /// - Safely stacks via <see cref="EffectHandle"/> per application
+    /// - Works with <see cref="EffectHandler"/> and <see cref="TagHandler"/> for lifecycle and state tracking
+    /// - Author once, reuse everywhere (designers can tweak without code changes)
+    /// </para>
+    /// <para>
+    /// Usage examples:
     /// <code>
-    /// // Create a speed boost effect in the editor as a ScriptableObject
+    /// // Create a speed boost effect in the editor
     /// // Then apply it to a GameObject:
     /// GameObject player = ...;
-    /// AttributeEffect speedBoost = ...; // Reference to the ScriptableObject
+    /// AttributeEffect speedBoost = ...; // ScriptableObject reference
     /// EffectHandle? handle = player.ApplyEffect(speedBoost);
     ///
-    /// // Later, remove the effect:
-    /// if (handle.HasValue)
-    /// {
-    ///     player.RemoveEffect(handle.Value);
-    /// }
+    /// // Instant vs Duration vs Infinite
+    /// //  - Instant: modifies base values permanently, returns null handle
+    /// //  - Duration: temporary, expires automatically, returns handle
+    /// //  - Infinite: persists until RemoveEffect(handle) is called, returns handle
+    ///
+    /// // Removing later
+    /// if (handle.HasValue) player.RemoveEffect(handle.Value);
     /// </code>
     /// </para>
     /// </remarks>
