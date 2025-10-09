@@ -772,5 +772,52 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 );
             }
         }
+
+        [Test]
+        public void IdenticalBoundsQueriesHandled()
+        {
+            const int count = 48;
+            Bounds repeated = new(new Vector3(12f, -4f, 0f), Vector3.zero);
+            List<Bounds> bounds = new();
+            for (int i = 0; i < count; ++i)
+            {
+                bounds.Add(repeated);
+            }
+
+            RTree2D<Bounds> tree = CreateTree(bounds);
+
+            List<Bounds> rangeResults = QueryRange(
+                tree,
+                new Vector2(repeated.center.x, repeated.center.y),
+                1f
+            );
+            Assert.AreEqual(count, rangeResults.Count);
+            foreach (Bounds result in rangeResults)
+            {
+                Assert.AreEqual(repeated.center, result.center);
+                Assert.AreEqual(repeated.size, result.size);
+            }
+
+            List<Bounds> boundsResults = QueryBounds(
+                tree,
+                new Bounds(repeated.center, new Vector3(2f, 2f, 1f))
+            );
+            Assert.AreEqual(count, boundsResults.Count);
+            foreach (Bounds result in boundsResults)
+            {
+                Assert.AreEqual(repeated.center, result.center);
+                Assert.AreEqual(repeated.size, result.size);
+            }
+
+            List<Bounds> neighbors = new();
+            tree.GetApproximateNearestNeighbors(
+                new Vector2(repeated.center.x, repeated.center.y),
+                count * 2,
+                neighbors
+            );
+            Assert.AreEqual(1, neighbors.Count);
+            Assert.AreEqual(repeated.center, neighbors[0].center);
+            Assert.AreEqual(repeated.size, neighbors[0].size);
+        }
     }
 }

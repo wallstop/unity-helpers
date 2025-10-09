@@ -50,6 +50,8 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
             }
         }
 
+        private const int ParallelBlendThreshold = 2048;
+
         private readonly AnimatedSpriteLayer[] _layers;
         private readonly Texture2D[] _computed;
         private readonly Color _backgroundColor;
@@ -173,25 +175,36 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
             }
         }
 
-        private IEnumerable<Texture2D> ComputeTextures()
+        private Texture2D[] ComputeTextures()
         {
             if (_layers is not { Length: > 0 })
             {
                 yield break;
             }
 
+            AnimatedSpriteLayer[] layers = _layers;
             int frameCount = 0;
-            foreach (AnimatedSpriteLayer layer in _layers)
+            for (int layerIndex = 0; layerIndex < layers.Length; ++layerIndex)
             {
-                if (layer.frames != null)
+                Sprite[] layerFrames = layers[layerIndex].frames;
+                if (layerFrames == null)
                 {
-                    frameCount = Mathf.Max(frameCount, layer.frames.Length);
+                    continue;
+                }
+
+                if (layerFrames.Length > frameCount)
+                {
+                    frameCount = layerFrames.Length;
                 }
             }
+
             if (frameCount == 0)
             {
                 yield break;
             }
+
+            Color backgroundColor = _backgroundColor;
+            float pixelCutoff = _pixelCutoff;
 
             for (int frameIndex = 0; frameIndex < frameCount; ++frameIndex)
             {
@@ -199,286 +212,397 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
                 float overallMaxX = float.MinValue;
                 float overallMinY = float.MaxValue;
                 float overallMaxY = float.MinValue;
-                bool hasVisibleSpriteThisFrame = false;
+                bool hasVisibleSprite = false;
 
-                foreach (AnimatedSpriteLayer layer in _layers)
+                for (int layerIndex = 0; layerIndex < layers.Length; ++layerIndex)
                 {
-                    if (layer.frames == null || frameIndex >= layer.frames.Length)
-                    {
-                        continue;
-                    }
-
-                    Sprite sprite = layer.frames[frameIndex];
-                    if (sprite == null)
-                    {
-                        continue;
-                    }
-
-                    hasVisibleSpriteThisFrame = true;
-                    Rect spriteGeomRect = sprite.rect;
-                    Vector2 pivot = sprite.pivot;
-
-                    Vector2 additionalPixelOffset = Vector2.zero;
+                    ref readonly AnimatedSpriteLayer layer = ref layers[layerIndex];
                     if (
-                        layer.perFramePixelOffsets != null
-                        && frameIndex < layer.perFramePixelOffsets.Length
+                        layer.alpha <= 0f
+                        || !TryGetLayerFrame(layer, frameIndex, out Sprite sprite)
                     )
                     {
-                        additionalPixelOffset = layer.perFramePixelOffsets[frameIndex];
+                        continue;
                     }
 
-                    float spriteWorldMinX = -pivot.x + additionalPixelOffset.x;
-                    float spriteWorldMaxX =
-                        spriteGeomRect.width - pivot.x + additionalPixelOffset.x;
-                    float spriteWorldMinY = -pivot.y + additionalPixelOffset.y;
-                    float spriteWorldMaxY =
-                        spriteGeomRect.height - pivot.y + additionalPixelOffset.y;
+                    hasVisibleSprite = true;
 
-                    overallMinX = Mathf.Min(overallMinX, spriteWorldMinX);
-                    overallMaxX = Mathf.Max(overallMaxX, spriteWorldMaxX);
-                    overallMinY = Mathf.Min(overallMinY, spriteWorldMinY);
-                    overallMaxY = Mathf.Max(overallMaxY, spriteWorldMaxY);
+                    Rect spriteRect = sprite.rect;
+                    Vector2 pivot = sprite.pivot;
+                    Vector2 pixelOffset = GetPixelOffset(layer, frameIndex);
+
+                    float spriteMinX = -pivot.x + pixelOffset.x;
+                    float spriteMaxX = spriteRect.width - pivot.x + pixelOffset.x;
+                    float spriteMinY = -pivot.y + pixelOffset.y;
+                    float spriteMaxY = spriteRect.height - pivot.y + pixelOffset.y;
+
+                    if (spriteMinX < overallMinX)
+                    {
+                        overallMinX = spriteMinX;
+                    }
+
+                    if (spriteMaxX > overallMaxX)
+                    {
+                        overallMaxX = spriteMaxX;
+                    }
+
+                    if (spriteMinY < overallMinY)
+                    {
+                        overallMinY = spriteMinY;
+                    }
+
+                    if (spriteMaxY > overallMaxY)
+                    {
+                        overallMaxY = spriteMaxY;
+                    }
                 }
 
-                if (!hasVisibleSpriteThisFrame)
+                if (!hasVisibleSprite)
                 {
                     yield return null;
                     continue;
                 }
 
-                int compositeBufferOriginX = Mathf.FloorToInt(overallMinX);
-                int compositeBufferOriginY = Mathf.FloorToInt(overallMinY);
-                int compositeBufferWidth = Mathf.CeilToInt(overallMaxX) - compositeBufferOriginX;
-                int compositeBufferHeight = Mathf.CeilToInt(overallMaxY) - compositeBufferOriginY;
+                int compositeOriginX = Mathf.FloorToInt(overallMinX);
+                int compositeOriginY = Mathf.FloorToInt(overallMinY);
+                int compositeWidth = Mathf.CeilToInt(overallMaxX) - compositeOriginX;
+                int compositeHeight = Mathf.CeilToInt(overallMaxY) - compositeOriginY;
 
-                if (compositeBufferWidth <= 0 || compositeBufferHeight <= 0)
+                if (compositeWidth <= 0 || compositeHeight <= 0)
                 {
                     yield return null;
                     continue;
                 }
 
-                Color[] bufferPixels = new Color[compositeBufferWidth * compositeBufferHeight];
+                int compositeLength = compositeWidth * compositeHeight;
+                using PooledResource<Color[]> compositeLease = WallstopFastArrayPool<Color>.Get(
+                    compositeLength,
+                    out Color[] bufferPixels
+                );
+                bufferPixels.AsSpan(0, compositeLength).Clear();
 
-                Array.Fill(bufferPixels, Color.clear);
-
-                foreach (AnimatedSpriteLayer layer in _layers)
+                for (int layerIndex = 0; layerIndex < layers.Length; ++layerIndex)
                 {
-                    if (layer.frames == null || frameIndex >= layer.frames.Length)
-                    {
-                        continue;
-                    }
-
-                    Sprite sprite = layer.frames[frameIndex];
-                    if (sprite == null)
-                    {
-                        continue;
-                    }
-
+                    ref readonly AnimatedSpriteLayer layer = ref layers[layerIndex];
                     float layerAlpha = layer.alpha;
-                    Texture2D spriteTexture = sprite.texture;
-                    Rect spriteGeomRect = sprite.rect;
-                    Vector2 pivot = sprite.pivot;
-
-                    Vector2 additionalPixelOffset = Vector2.zero;
-                    if (
-                        layer.perFramePixelOffsets != null
-                        && frameIndex < layer.perFramePixelOffsets.Length
-                    )
-                    {
-                        additionalPixelOffset = layer.perFramePixelOffsets[frameIndex];
-                    }
-
-                    int spriteRectX = Mathf.FloorToInt(spriteGeomRect.x);
-                    int spriteRectY = Mathf.FloorToInt(spriteGeomRect.y);
-                    int spriteRectWidth = Mathf.FloorToInt(spriteGeomRect.width);
-                    int spriteRectHeight = Mathf.FloorToInt(spriteGeomRect.height);
-
-                    if (spriteRectWidth <= 0 || spriteRectHeight <= 0)
+                    if (layerAlpha <= 0f || !TryGetLayerFrame(layer, frameIndex, out Sprite sprite))
                     {
                         continue;
                     }
 
-                    Color[] spriteRawPixels = spriteTexture.GetPixels(
+                    Texture2D spriteTexture = sprite.texture;
+                    if (spriteTexture == null || !spriteTexture.isReadable)
+                    {
+                        continue;
+                    }
+
+                    Rect spriteRect = sprite.rect;
+                    int spriteRectX = Mathf.FloorToInt(spriteRect.x);
+                    int spriteRectY = Mathf.FloorToInt(spriteRect.y);
+                    int spriteWidth = Mathf.FloorToInt(spriteRect.width);
+                    int spriteHeight = Mathf.FloorToInt(spriteRect.height);
+
+                    if (spriteWidth <= 0 || spriteHeight <= 0)
+                    {
+                        continue;
+                    }
+
+                    Color[] spritePixels = spriteTexture.GetPixels(
                         spriteRectX,
                         spriteRectY,
-                        spriteRectWidth,
-                        spriteRectHeight
+                        spriteWidth,
+                        spriteHeight
                     );
+                    Vector2 pixelOffset = GetPixelOffset(layer, frameIndex);
+                    float baseX = pixelOffset.x - sprite.pivot.x - compositeOriginX;
+                    float baseY = pixelOffset.y - sprite.pivot.y - compositeOriginY;
 
-                    Parallel.For(
-                        0,
-                        spriteRectHeight,
-                        sySprite =>
-                        {
-                            for (int sxSprite = 0; sxSprite < spriteRectWidth; ++sxSprite)
-                            {
-                                Color spritePixelColor = spriteRawPixels[
-                                    sySprite * spriteRectWidth + sxSprite
-                                ];
-
-                                if (spritePixelColor.a < _pixelCutoff)
-                                {
-                                    continue;
-                                }
-
-                                float pixelWorldX = sxSprite - pivot.x + additionalPixelOffset.x;
-                                float pixelWorldY = sySprite - pivot.y + additionalPixelOffset.y;
-                                int bufferX = Mathf.FloorToInt(
-                                    pixelWorldX - compositeBufferOriginX
-                                );
-                                int bufferY = Mathf.FloorToInt(
-                                    pixelWorldY - compositeBufferOriginY
-                                );
-
-                                if (
-                                    bufferX < 0
-                                    || bufferX >= compositeBufferWidth
-                                    || bufferY < 0
-                                    || bufferY >= compositeBufferHeight
-                                )
-                                {
-                                    continue;
-                                }
-
-                                int bufferIndex = bufferY * compositeBufferWidth + bufferX;
-                                Color existingColor = bufferPixels[bufferIndex];
-                                if (existingColor.a < _pixelCutoff)
-                                {
-                                    existingColor = _backgroundColor;
-                                }
-
-                                Color blendedColor = Color.Lerp(
-                                    existingColor,
-                                    spritePixelColor,
-                                    layerAlpha
-                                );
-
-                                bufferPixels[bufferIndex] = blendedColor;
-                            }
-                        }
+                    ComposeSpriteOntoBuffer(
+                        bufferPixels,
+                        compositeWidth,
+                        compositeHeight,
+                        spritePixels,
+                        spriteWidth,
+                        spriteHeight,
+                        baseX,
+                        baseY,
+                        layerAlpha,
+                        pixelCutoff
                     );
                 }
 
-                int globalMinX = int.MaxValue;
-                int globalMaxX = int.MinValue;
-                int globalMinY = int.MaxValue;
-                int globalMaxY = int.MinValue;
-                object sync = new();
+                int minX = compositeWidth;
+                int maxX = -1;
+                int minY = compositeHeight;
+                int maxY = -1;
 
-                Parallel.For(
-                    0,
-                    compositeBufferHeight,
-                    () =>
-                        (
-                            minX: int.MaxValue,
-                            maxX: int.MinValue,
-                            minY: int.MaxValue,
-                            maxY: int.MinValue
-                        ),
-                    (y, _, local) =>
+                for (int y = 0; y < compositeHeight; ++y)
+                {
+                    int rowOffset = y * compositeWidth;
+                    int rowMin = compositeWidth;
+                    int rowMax = -1;
+
+                    for (int x = 0; x < compositeWidth; ++x)
                     {
-                        int baseIndex = y * compositeBufferWidth;
-                        for (int x = 0; x < compositeBufferWidth; ++x)
+                        if (bufferPixels[rowOffset + x].a < pixelCutoff)
                         {
-                            if (bufferPixels[baseIndex + x].a < _pixelCutoff)
-                            {
-                                continue;
-                            }
-
-                            if (x < local.minX)
-                            {
-                                local.minX = x;
-                            }
-
-                            if (x > local.maxX)
-                            {
-                                local.maxX = x;
-                            }
-
-                            if (y < local.minY)
-                            {
-                                local.minY = y;
-                            }
-
-                            if (y > local.maxY)
-                            {
-                                local.maxY = y;
-                            }
+                            continue;
                         }
-                        return local;
-                    },
-                    local =>
-                    {
-                        lock (sync)
+
+                        if (x < rowMin)
                         {
-                            if (local.minX < globalMinX)
-                            {
-                                globalMinX = local.minX;
-                            }
+                            rowMin = x;
+                        }
 
-                            if (local.maxX > globalMaxX)
-                            {
-                                globalMaxX = local.maxX;
-                            }
-
-                            if (local.minY < globalMinY)
-                            {
-                                globalMinY = local.minY;
-                            }
-
-                            if (local.maxY > globalMaxY)
-                            {
-                                globalMaxY = local.maxY;
-                            }
+                        if (x > rowMax)
+                        {
+                            rowMax = x;
                         }
                     }
-                );
 
-                if (globalMinX == int.MaxValue)
+                    if (rowMax < rowMin)
+                    {
+                        continue;
+                    }
+
+                    if (y < minY)
+                    {
+                        minY = y;
+                    }
+
+                    if (y > maxY)
+                    {
+                        maxY = y;
+                    }
+
+                    if (rowMin < minX)
+                    {
+                        minX = rowMin;
+                    }
+
+                    if (rowMax > maxX)
+                    {
+                        maxX = rowMax;
+                    }
+                }
+
+                if (maxX < minX || maxY < minY)
                 {
                     yield return null;
                     continue;
                 }
 
-                int finalWidth = globalMaxX - globalMinX + 1;
-                int finalHeight = globalMaxY - globalMinY + 1;
+                int finalWidth = maxX - minX + 1;
+                int finalHeight = maxY - minY + 1;
+                int finalLength = finalWidth * finalHeight;
 
-                Color[] finalPixels = new Color[finalWidth * finalHeight];
+                using PooledResource<Color[]> finalLease = WallstopFastArrayPool<Color>.Get(
+                    finalLength,
+                    out Color[] finalPixels
+                );
+                Span<Color> finalSpan = finalPixels.AsSpan(0, finalLength);
+                finalSpan.Fill(backgroundColor);
 
-                Array.Fill(finalPixels, _backgroundColor);
-                Parallel.For(
-                    0,
-                    finalHeight,
-                    yFinal =>
+                for (int y = 0; y < finalHeight; ++y)
+                {
+                    int destinationRow = y * finalWidth;
+                    int sourceRow = (minY + y) * compositeWidth + minX;
+
+                    for (int x = 0; x < finalWidth; ++x)
                     {
-                        for (int xFinal = 0; xFinal < finalWidth; ++xFinal)
+                        Color pixel = bufferPixels[sourceRow + x];
+                        if (pixel.a >= pixelCutoff)
                         {
-                            int bufferX = globalMinX + xFinal;
-                            int bufferY = globalMinY + yFinal;
-                            Color pixelColor = bufferPixels[
-                                bufferY * compositeBufferWidth + bufferX
-                            ];
-
-                            if (pixelColor.a >= _pixelCutoff)
-                            {
-                                finalPixels[yFinal * finalWidth + xFinal] = pixelColor;
-                            }
+                            finalPixels[destinationRow + x] = pixel;
                         }
                     }
-                );
+                }
 
-                Texture2D finalTexture = new(
+                Texture2D finalTexture = new Texture2D(
                     finalWidth,
                     finalHeight,
                     TextureFormat.RGBA32,
                     mipChain: false,
                     linear: false
-                );
+                )
+                {
+                    filterMode = FilterMode.Point,
+                    wrapMode = TextureWrapMode.Clamp,
+                };
 
                 finalTexture.SetPixels(finalPixels);
                 finalTexture.Apply(updateMipmaps: false, makeNoLongerReadable: false);
                 yield return finalTexture;
             }
+        }
+
+        private static void ComposeSpriteOntoBuffer(
+            Color[] bufferPixels,
+            int bufferWidth,
+            int bufferHeight,
+            Color[] spritePixels,
+            int spriteWidth,
+            int spriteHeight,
+            float baseX,
+            float baseY,
+            float layerAlpha,
+            float pixelCutoff
+        )
+        {
+            if (spriteWidth == 0 || spriteHeight == 0)
+            {
+                return;
+            }
+
+            if (spriteWidth * spriteHeight >= ParallelBlendThreshold)
+            {
+                Parallel.For(
+                    0,
+                    spriteHeight,
+                    y =>
+                        BlendSpriteRow(
+                            bufferPixels,
+                            bufferWidth,
+                            bufferHeight,
+                            spritePixels,
+                            spriteWidth,
+                            baseX,
+                            baseY,
+                            layerAlpha,
+                            pixelCutoff,
+                            y
+                        )
+                );
+                return;
+            }
+
+            for (int y = 0; y < spriteHeight; ++y)
+            {
+                BlendSpriteRow(
+                    bufferPixels,
+                    bufferWidth,
+                    bufferHeight,
+                    spritePixels,
+                    spriteWidth,
+                    baseX,
+                    baseY,
+                    layerAlpha,
+                    pixelCutoff,
+                    y
+                );
+            }
+        }
+
+        private static void BlendSpriteRow(
+            Color[] bufferPixels,
+            int bufferWidth,
+            int bufferHeight,
+            Color[] spritePixels,
+            int spriteWidth,
+            float baseX,
+            float baseY,
+            float layerAlpha,
+            float pixelCutoff,
+            int spriteRow
+        )
+        {
+            int spriteRowOffset = spriteRow * spriteWidth;
+            float targetY = baseY + spriteRow;
+            int bufferY = Mathf.FloorToInt(targetY);
+            if (bufferY < 0 || bufferY >= bufferHeight)
+            {
+                return;
+            }
+
+            int bufferRowOffset = bufferY * bufferWidth;
+
+            for (int spriteColumn = 0; spriteColumn < spriteWidth; ++spriteColumn)
+            {
+                Color spritePixel = spritePixels[spriteRowOffset + spriteColumn];
+                float spriteAlpha = spritePixel.a * layerAlpha;
+                if (spriteAlpha <= pixelCutoff)
+                {
+                    continue;
+                }
+
+                if (spriteAlpha > 1f)
+                {
+                    spriteAlpha = 1f;
+                }
+
+                int bufferX = Mathf.FloorToInt(baseX + spriteColumn);
+                if (bufferX < 0 || bufferX >= bufferWidth)
+                {
+                    continue;
+                }
+
+                int bufferIndex = bufferRowOffset + bufferX;
+                ref Color destination = ref bufferPixels[bufferIndex];
+
+                float destinationAlpha = destination.a;
+                if (destinationAlpha <= pixelCutoff)
+                {
+                    destination.r = spritePixel.r;
+                    destination.g = spritePixel.g;
+                    destination.b = spritePixel.b;
+                    destination.a = spriteAlpha;
+                    continue;
+                }
+
+                float inverseSourceAlpha = 1f - spriteAlpha;
+                float outAlpha = spriteAlpha + destinationAlpha * inverseSourceAlpha;
+                if (outAlpha <= pixelCutoff)
+                {
+                    destination = Color.clear;
+                    continue;
+                }
+
+                if (outAlpha > 1f)
+                {
+                    outAlpha = 1f;
+                }
+
+                float invOutAlpha = 1f / outAlpha;
+                float sourceWeight = spriteAlpha * invOutAlpha;
+                float destinationWeight = destinationAlpha * inverseSourceAlpha * invOutAlpha;
+
+                float destR = destination.r;
+                float destG = destination.g;
+                float destB = destination.b;
+
+                destination.r = spritePixel.r * sourceWeight + destR * destinationWeight;
+                destination.g = spritePixel.g * sourceWeight + destG * destinationWeight;
+                destination.b = spritePixel.b * sourceWeight + destB * destinationWeight;
+                destination.a = outAlpha;
+            }
+        }
+
+        private static bool TryGetLayerFrame(
+            in AnimatedSpriteLayer layer,
+            int frameIndex,
+            out Sprite sprite
+        )
+        {
+            Sprite[] frames = layer.frames;
+            if (frames == null || frameIndex < 0 || frameIndex >= frames.Length)
+            {
+                sprite = null;
+                return false;
+            }
+
+            sprite = frames[frameIndex];
+            return sprite != null;
+        }
+
+        private static Vector2 GetPixelOffset(in AnimatedSpriteLayer layer, int frameIndex)
+        {
+            Vector2[] offsets = layer.perFramePixelOffsets;
+            if (offsets == null || frameIndex < 0 || frameIndex >= offsets.Length)
+            {
+                return Vector2.zero;
+            }
+
+            return offsets[frameIndex];
         }
     }
 }

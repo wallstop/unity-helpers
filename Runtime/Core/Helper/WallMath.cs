@@ -251,28 +251,68 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
         /// <summary>
         /// Checks if two float values are approximately equal within a specified tolerance.
-        /// Uses absolute difference comparison.
+        /// Uses absolute difference comparison with an epsilon-scaled cushion to handle rounding.
         /// </summary>
         /// <param name="lhs">The first value</param>
         /// <param name="rhs">The second value</param>
         /// <param name="tolerance">The maximum allowed difference (default 0.045)</param>
-        /// <returns>True if the absolute difference is less than or equal to tolerance</returns>
+        /// <returns>True if the absolute difference is less than or equal to tolerance plus the floating-point cushion</returns>
         public static bool Approximately(this float lhs, float rhs, float tolerance = 0.045f)
         {
-            return Mathf.Abs(lhs - rhs) <= Mathf.Abs(tolerance);
+            if (float.IsNaN(lhs) || float.IsNaN(rhs))
+            {
+                return false;
+            }
+
+            if (float.IsInfinity(lhs) || float.IsInfinity(rhs))
+            {
+                return false;
+            }
+
+            float difference = Mathf.Abs(lhs - rhs);
+            if (float.IsNaN(difference) || float.IsInfinity(difference))
+            {
+                return false;
+            }
+
+            float absTolerance = Mathf.Abs(tolerance);
+            float maxMagnitude = Mathf.Max(Mathf.Abs(lhs), Mathf.Abs(rhs));
+            float fudge = Mathf.Max(1e-6f * maxMagnitude, Mathf.Epsilon * 8f);
+
+            return difference <= absTolerance + fudge;
         }
 
         /// <summary>
         /// Checks if two double values are approximately equal within a specified tolerance.
-        /// Uses absolute difference comparison.
+        /// Uses absolute difference comparison with an epsilon-scaled cushion to handle rounding.
         /// </summary>
         /// <param name="lhs">The first value</param>
         /// <param name="rhs">The second value</param>
         /// <param name="tolerance">The maximum allowed difference (default 0.045)</param>
-        /// <returns>True if the absolute difference is less than or equal to tolerance</returns>
+        /// <returns>True if the absolute difference is less than or equal to tolerance plus the floating-point cushion</returns>
         public static bool Approximately(this double lhs, double rhs, double tolerance = 0.045f)
         {
-            return Math.Abs(lhs - rhs) <= Math.Abs(tolerance);
+            if (double.IsNaN(lhs) || double.IsNaN(rhs))
+            {
+                return false;
+            }
+
+            if (double.IsInfinity(lhs) || double.IsInfinity(rhs))
+            {
+                return false;
+            }
+
+            double difference = Math.Abs(lhs - rhs);
+            if (double.IsNaN(difference) || double.IsInfinity(difference))
+            {
+                return false;
+            }
+
+            double absTolerance = Math.Abs(tolerance);
+            double maxMagnitude = Math.Max(Math.Abs(lhs), Math.Abs(rhs));
+            double fudge = Math.Max(1e-12d * maxMagnitude, double.Epsilon * 8d);
+
+            return difference <= absTolerance + fudge;
         }
     }
 }

@@ -8,11 +8,75 @@ namespace WallstopStudios.UnityHelpers.Visuals.UGUI
     using UnityEngine.Serialization;
     using UnityEngine.UI;
 
+    /// <summary>
+    /// Extends Unity's <see cref="Image"/> with per-instance material instancing, HDR color support, and optional shape mask textures.
+    /// </summary>
+    /// <remarks>
+    /// <para>Assign a material that exposes a `_Color` property (for tint) and, optionally, a `_ShapeMask` texture slot. EnhancedImage duplicates that material at runtime so per-instance HDR adjustments stay local to the image.</para>
+    /// <para>Upsides:</para>
+    /// <list type="bullet">
+    /// <item>
+    /// <description>Automatically instantiates materials so HDR tints and mask assignments do not leak to other UI elements.</description>
+    /// </item>
+    /// <item>
+    /// <description>Supports shape masks without relying on additional UI mask components, enabling custom shader workflows.</description>
+    /// </item>
+    /// <item>
+    /// <description>Falls back to the underlying <see cref="Graphic.color"/> whenever HDR values are not required.</description>
+    /// </item>
+    /// </list>
+    /// <para>Downsides:</para>
+    /// <list type="bullet">
+    /// <item>
+    /// <description>Creates and manages a material copy per instance, which adds allocation and cleanup overhead.</description>
+    /// </item>
+    /// <item>
+    /// <description>Requires shaders that expose the `_ShapeMask` slot to benefit from mask-driven outlines or wipes.</description>
+    /// </item>
+    /// </list>
+    /// <para>Reach for <see cref="EnhancedImage"/> when you need per-control HDR highlights, stylised wipes, or shader-driven reveal effects. Prefer the stock <see cref="Image"/> when shared materials and low overhead matter more than these features.</para>
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// using UnityEngine;
+    /// using WallstopStudios.UnityHelpers.Visuals.UGUI;
+    ///
+    /// public sealed class AbilityIconPresenter : MonoBehaviour
+    /// {
+    ///     [SerializeField] private EnhancedImage icon;
+    ///     [SerializeField] private Material abilityMaterial;
+    ///
+    ///     void Awake()
+    ///     {
+    ///         icon.material = Instantiate(abilityMaterial);
+    ///         icon.HdrColor = new Color(1.6f, 1.2f, 0.6f, 1f);
+    ///     }
+    ///
+    ///     public void SetCharge(float normalizedCharge)
+    ///     {
+    ///         float intensity = Mathf.Lerp(1f, 2.5f, normalizedCharge);
+    ///         icon.HdrColor = new Color(intensity, 1f, 0.4f, 1f);
+    ///     }
+    /// }
+    /// </code>
+    /// </example>
+    /// <seealso cref="Image"/>
     public sealed class EnhancedImage : Image
     {
         private static readonly int ShapeMaskPropertyID = Shader.PropertyToID("_ShapeMask");
         private static readonly int ColorPropertyID = Shader.PropertyToID("_Color");
 
+        /// <summary>
+        /// Stores the dedicated material instance produced by <see cref="UpdateMaterialInstance"/>.
+        /// </summary>
+        private Material _cachedMaterialInstance;
+
+        /// <summary>
+        /// HDR-capable tint applied to the instantiated material. Values above 1 keep their intensity instead of being clamped.
+        /// </summary>
+        /// <remarks>
+        /// Changing this value refreshes the cached material instance, using <see cref="Graphic.color"/> whenever the supplied color remains within the standard dynamic range.
+        /// </remarks>
         public Color HdrColor
         {
             get => _hdrColor;
@@ -28,28 +92,41 @@ namespace WallstopStudios.UnityHelpers.Visuals.UGUI
             }
         }
 
-        /*
-            ShapeMask: This functionality mimics Unity's UI mask components, but works with custom materials.
-            To function, your image material must use a shader with a Texture2D property of this name, its
-            alpha mapped to the sprite shader's alpha.
-         */
+        /// <summary>
+        /// Optional shape mask texture assigned to the material's `_ShapeMask` slot to drive custom shader based masking.
+        /// </summary>
+        /// <remarks>
+        /// Mimics UI mask behaviour without additional components. Provide a shader that samples `_ShapeMask` alpha and multiplies it with the sprite alpha.
+        /// </remarks>
         [FormerlySerializedAs("shapeMask")]
         [SerializeField]
         internal Texture2D _shapeMask;
 
+        /// <summary>
+        /// Backing field for <see cref="HdrColor"/>, persisted for inspector integration and HDR authoring.
+        /// </summary>
         // HDR Color field that will override the base Image color if values set > 1
         [FormerlySerializedAs("hdrColor")]
         [SerializeField]
         [ColorUsage(showAlpha: true, hdr: true)]
         internal Color _hdrColor = Color.white;
 
+        /// <inheritdoc/>
         protected override void Start()
         {
             base.Start();
             UpdateMaterialInstance();
         }
 
+        /// <inheritdoc/>
+        protected override void OnDestroy()
+        {
+            base.OnDestroy();
+            CleanupMaterialInstance();
+        }
+
 #if UNITY_EDITOR
+        /// <inheritdoc/>
         protected override void OnValidate()
         {
             base.OnValidate();
@@ -57,6 +134,9 @@ namespace WallstopStudios.UnityHelpers.Visuals.UGUI
         }
 #endif
 
+        /// <summary>
+        /// Ensures this component owns a dedicated material instance and reapplies mask and color data.
+        /// </summary>
         private void UpdateMaterialInstance()
         {
             Material localMaterial = material;
@@ -65,17 +145,55 @@ namespace WallstopStudios.UnityHelpers.Visuals.UGUI
                 return;
             }
 
-            Material materialInstance = new(localMaterial);
-            if (_shapeMask != null)
+            // Cleanup old instance if it exists and is different from the base material
+            if (_cachedMaterialInstance != null && _cachedMaterialInstance != localMaterial)
             {
-                materialInstance.SetTexture(ShapeMaskPropertyID, _shapeMask);
+                if (Application.isPlaying)
+                {
+                    Destroy(_cachedMaterialInstance);
+                }
+                else
+                {
+                    DestroyImmediate(_cachedMaterialInstance);
+                }
+                _cachedMaterialInstance = null;
             }
 
-            materialInstance.SetColor(
+            // Create new instance only if we don't have one
+            if (_cachedMaterialInstance == null)
+            {
+                _cachedMaterialInstance = new Material(localMaterial);
+            }
+
+            if (_shapeMask != null)
+            {
+                _cachedMaterialInstance.SetTexture(ShapeMaskPropertyID, _shapeMask);
+            }
+
+            _cachedMaterialInstance.SetColor(
                 ColorPropertyID,
                 _hdrColor.maxColorComponent > 1 ? _hdrColor : color
             );
-            material = materialInstance;
+            material = _cachedMaterialInstance;
+        }
+
+        /// <summary>
+        /// Releases the cached material instance created for this image.
+        /// </summary>
+        private void CleanupMaterialInstance()
+        {
+            if (_cachedMaterialInstance != null)
+            {
+                if (Application.isPlaying)
+                {
+                    Destroy(_cachedMaterialInstance);
+                }
+                else
+                {
+                    DestroyImmediate(_cachedMaterialInstance);
+                }
+                _cachedMaterialInstance = null;
+            }
         }
     }
 }

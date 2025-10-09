@@ -2332,9 +2332,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void ToCaseNone()
         {
+#pragma warning disable CS0618 // Type or member is obsolete
             Assert.AreEqual("NoChange", "NoChange".ToCase(StringCase.None));
             Assert.AreEqual("test_value", "test_value".ToCase(StringCase.None));
             Assert.AreEqual("MixedCase", "MixedCase".ToCase(StringCase.None));
+#pragma warning restore CS0618 // Type or member is obsolete
         }
 
         [Test]
@@ -2349,7 +2351,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             Assert.AreEqual(string.Empty, ((string)null).ToCase(StringCase.UpperCase));
             Assert.AreEqual(string.Empty, ((string)null).ToCase(StringCase.LowerInvariant));
             Assert.AreEqual(string.Empty, ((string)null).ToCase(StringCase.UpperInvariant));
+#pragma warning disable CS0618 // Type or member is obsolete
             Assert.AreEqual(string.Empty, ((string)null).ToCase(StringCase.None));
+#pragma warning restore CS0618 // Type or member is obsolete
         }
 
         [Test]
@@ -2364,7 +2368,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             Assert.AreEqual(string.Empty, string.Empty.ToCase(StringCase.UpperCase));
             Assert.AreEqual(string.Empty, string.Empty.ToCase(StringCase.LowerInvariant));
             Assert.AreEqual(string.Empty, string.Empty.ToCase(StringCase.UpperInvariant));
+#pragma warning disable CS0618 // Type or member is obsolete
             Assert.AreEqual(string.Empty, string.Empty.ToCase(StringCase.None));
+#pragma warning restore CS0618 // Type or member is obsolete
         }
 
         [Test]

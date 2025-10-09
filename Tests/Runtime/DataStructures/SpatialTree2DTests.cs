@@ -363,5 +363,34 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             Assert.AreEqual(1, results.Count);
         }
+
+        [Test]
+        public void AllPointsIdenticalQueries()
+        {
+            const int count = 64;
+            Vector2 repeated = new(12.5f, -8.25f);
+            List<Vector2> points = Enumerable.Repeat(repeated, count).ToList();
+
+            TTree tree = CreateTree(points);
+
+            List<Vector2> rangeResults = new() { new Vector2(1f, 2f) };
+            tree.GetElementsInRange(repeated, 0f, rangeResults);
+            Assert.AreEqual(count, rangeResults.Count);
+            Assert.IsTrue(rangeResults.TrueForAll(candidate => candidate == repeated));
+
+            Bounds bounds = new(
+                new Vector3(repeated.x, repeated.y, 0f),
+                new Vector3(0.1f, 0.1f, 1f)
+            );
+            List<Vector2> boundsResults = new() { new Vector2(-1f, -1f) };
+            tree.GetElementsInBounds(bounds, boundsResults);
+            Assert.AreEqual(count, boundsResults.Count);
+            Assert.IsTrue(boundsResults.TrueForAll(candidate => candidate == repeated));
+
+            List<Vector2> neighbors = new();
+            tree.GetApproximateNearestNeighbors(repeated, count * 2, neighbors);
+            Assert.IsNotEmpty(neighbors);
+            Assert.AreEqual(repeated, neighbors[0]);
+        }
     }
 }
