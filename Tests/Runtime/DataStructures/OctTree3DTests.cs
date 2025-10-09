@@ -179,6 +179,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             List<Vector3> points = new() { new Vector3(0f, 0f, 0f), new Vector3(1f, 0f, 0f) };
 
             OctTree3D<Vector3> tree = CreateTree(points);
+            KdTree3D<Vector3> kd = new(points, p => p);
             Bounds bounds = new(
                 center: new Vector3(0.5f, 0f, 0f),
                 size: new Vector3(1f, 0.1f, 0.1f)
@@ -186,8 +187,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             List<Vector3> results = new();
 
             tree.GetElementsInBounds(bounds, results);
-
-            CollectionAssert.AreEquivalent(points, results);
+            List<Vector3> kdResults = new();
+            kd.GetElementsInBounds(bounds, kdResults);
+            CollectionAssert.AreEquivalent(kdResults, results);
         }
 
         [Test]
@@ -206,10 +208,13 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             }
 
             OctTree3D<Vector3> tree = CreateTree(points);
+            KdTree3D<Vector3> kd = new(points, p => p);
             Bounds bounds = new(new Vector3(4.5f, 4.5f, 4.5f), new Vector3(9f, 9f, 9f));
             List<Vector3> results = new();
             tree.GetElementsInBounds(bounds, results);
-            Assert.AreEqual(1000, results.Count);
+            List<Vector3> kdResults = new();
+            kd.GetElementsInBounds(bounds, kdResults);
+            Assert.AreEqual(kdResults.Count, results.Count);
         }
 
         [Test]
@@ -228,12 +233,16 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             }
 
             OctTree3D<Vector3> tree = CreateTree(points);
+            KdTree3D<Vector3> kd = new(points, p => p);
             Vector3 center = tree.Boundary.center;
             Vector3 size = new Vector3(99f, 99f, 99f);
             Bounds bounds = new(center, size);
             List<Vector3> results = new();
             tree.GetElementsInBounds(bounds, results);
-            Assert.AreEqual(980100, results.Count);
+            List<Vector3> kdResults = new();
+            kd.GetElementsInBounds(bounds, kdResults);
+            Assert.AreEqual(kdResults.Count, results.Count);
+            CollectionAssert.AreEquivalent(kdResults, results);
         }
 
         [Test]

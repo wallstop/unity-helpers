@@ -48,7 +48,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
         private SerializedObject _serializedObject;
         private SerializedProperty _directoryPathsProperty;
-        private SerializedProperty _spriteNameRegexProperty;
+
+        // private SerializedProperty _spriteNameRegexProperty; // unused, removed
 
         private List<string> _filesToProcess;
         private Regex _regex;
@@ -65,7 +66,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         {
             _serializedObject = new SerializedObject(this);
             _directoryPathsProperty = _serializedObject.FindProperty(nameof(_directoryPaths));
-            _spriteNameRegexProperty = _serializedObject.FindProperty(nameof(_spriteNameRegex));
+            // _spriteNameRegexProperty was unused; using direct field to enable inline validation and tooltips.
         }
 
         private void OnGUI()
@@ -201,17 +202,31 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     $"Found {_filesToProcess.Count} sprites to process.",
                     EditorStyles.boldLabel
                 );
-                if (
-                    GUILayout.Button(
-                        new GUIContent(
-                            "Adjust Pivots in Directory",
-                            "Compute and apply pivots (cancelable). Honors Alpha Cutoff, Skip Unchanged, and Force Reimport."
+                using (new GUILayout.HorizontalScope())
+                {
+                    if (
+                        GUILayout.Button(
+                            new GUIContent(
+                                "Dry Run",
+                                "Simulate pivot changes without applying. Shows a brief summary."
+                            )
                         )
                     )
-                )
-                {
-                    AdjustPivotsInDirectory();
-                    _filesToProcess = null;
+                    {
+                        AdjustPivotsInDirectory(dryRun: true);
+                    }
+                    if (
+                        GUILayout.Button(
+                            new GUIContent(
+                                "Adjust Pivots in Directory",
+                                "Compute and apply pivots (cancelable). Honors Alpha Cutoff, Skip Unchanged, and Force Reimport."
+                            )
+                        )
+                    )
+                    {
+                        AdjustPivotsInDirectory(dryRun: false);
+                        _filesToProcess = null;
+                    }
                 }
             }
             else if (_filesToProcess != null)
@@ -279,8 +294,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             Repaint();
         }
 
-        private void AdjustPivotsInDirectory()
+        private void AdjustPivotsInDirectory(bool dryRun)
         {
+            if (_filesToProcess == null || _filesToProcess.Count == 0)
+            {
+                ShowNotification(new GUIContent("Nothing to process. Run 'Find' first."));
+                return;
+            }
             using PooledResource<HashSet<string>> processedFilesRes = SetBuffers<string>
                 .GetHashSetPool(StringComparer.OrdinalIgnoreCase)
                 .Get(out HashSet<string> processedFiles);
@@ -295,7 +315,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             int skippedNullSprite = 0;
             int skippedNotSingle = 0;
             bool canceled = false;
-            AssetDatabase.StartAssetEditing();
+            if (!dryRun)
+            {
+                AssetDatabase.StartAssetEditing();
+            }
             try
             {
                 for (int i = 0; i < _filesToProcess.Count; i++)
@@ -344,9 +367,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                             this.LogWarn($"Skipping non-readable texture: {assetPath}");
                             continue;
                         }
-                        TextureImporterSettings settings = new();
-                        importer.ReadTextureSettings(settings);
-
                         Vector2 newPivot = CalculateCenterOfMassPivot(sprite, _alphaCutoff);
                         Vector2 currentPivot = importer.spritePivot;
                         bool unchanged =
@@ -357,12 +377,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                             skippedUnchanged++;
                             continue; // no meaningful change and not forced
                         }
-                        settings.spritePivot = newPivot;
-                        settings.spriteAlignment = (int)SpriteAlignment.Custom;
-                        importer.SetTextureSettings(settings);
-
-                        importer.spritePivot = newPivot;
-                        importers.Add(importer);
+                        if (!dryRun)
+                        {
+                            TextureImporterSettings settings = new();
+                            importer.ReadTextureSettings(settings);
+                            settings.spritePivot = newPivot;
+                            settings.spriteAlignment = (int)SpriteAlignment.Custom;
+                            importer.SetTextureSettings(settings);
+                            importer.spritePivot = newPivot;
+                            importers.Add(importer);
+                        }
                         changed++;
                     }
                     else
@@ -374,27 +398,38 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             finally
             {
                 EditorUtility.ClearProgressBar();
-                AssetDatabase.StopAssetEditing();
-                foreach (TextureImporter importer in importers)
+                if (!dryRun)
                 {
-                    importer.SaveAndReimport();
+                    AssetDatabase.StopAssetEditing();
+                    foreach (TextureImporter importer in importers)
+                    {
+                        importer.SaveAndReimport();
+                    }
+                    AssetDatabase.SaveAssets();
+                    AssetDatabase.Refresh();
                 }
-                AssetDatabase.SaveAssets();
-                AssetDatabase.Refresh();
 
                 using PooledResource<StringBuilder> sbRes = Buffers.StringBuilder.Get(
                     out StringBuilder sb
                 );
-                sb.AppendLine(canceled ? "Canceled by user." : "Completed.");
+                sb.AppendLine(
+                    canceled ? "Canceled by user." : (dryRun ? "Dry run completed." : "Completed.")
+                );
                 sb.AppendLine($"Total candidates: {totalCandidates}");
                 sb.AppendLine($"Single sprites processed: {processedSingles}");
-                sb.AppendLine($"Changed pivots: {changed}");
+                sb.AppendLine(
+                    $"Changed pivots" + (dryRun ? " (would change)" : "") + $": {changed}"
+                );
                 sb.AppendLine($"Skipped unchanged: {skippedUnchanged}");
                 sb.AppendLine($"Skipped non-readable: {skippedNonReadable}");
                 sb.AppendLine($"Skipped not sprite: {skippedNotSprite}");
                 sb.AppendLine($"Skipped missing sprite: {skippedNullSprite}");
                 sb.AppendLine($"Skipped multi-sprite textures: {skippedNotSingle}");
-                EditorUtility.DisplayDialog("Sprite Pivot Adjuster", sb.ToString(), "OK");
+                EditorUtility.DisplayDialog(
+                    dryRun ? "Sprite Pivot Adjuster — Dry Run" : "Sprite Pivot Adjuster",
+                    sb.ToString(),
+                    "OK"
+                );
             }
         }
 
