@@ -11,6 +11,50 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     [Serializable]
     [DataContract]
     [ProtoContract]
+    /// <summary>
+    /// A fast 128-bit state Xoroshiro-based PRNG with good quality and tiny footprint.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Xoroshiro family generators (here in a 64/64 configuration) offer an excellent balance between speed and quality
+    /// for real-time applications. This implementation maintains two 64-bit state variables and returns 32-bit outputs.
+    /// </para>
+    /// <para>Pros:</para>
+    /// <list type="bullet">
+    /// <item><description>Very fast; suitable for gameplay and procedural generation.</description></item>
+    /// <item><description>Good statistical properties for non-crypto use; long period (~2^128−1).</description></item>
+    /// <item><description>Deterministic and reproducible across platforms.</description></item>
+    /// </list>
+    /// <para>Cons:</para>
+    /// <list type="bullet">
+    /// <item><description>Not cryptographically secure.</description></item>
+    /// <item><description>Low bits may show weaker properties in some variants; use full width for mixing.</description></item>
+    /// </list>
+    /// <para>When to use:</para>
+    /// <list type="bullet">
+    /// <item><description>General-purpose game randomness, procedural placement, shuffles, noise seeding.</description></item>
+    /// </list>
+    /// <para>When not to use:</para>
+    /// <list type="bullet">
+    /// <item><description>Security or adversarial contexts.</description></item>
+    /// </list>
+    /// <para>
+    /// Threading: Prefer <c>ThreadLocalRandom&lt;XoroShiroRandom&gt;.Instance</c> to avoid sharing state across threads.
+    /// </para>
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// using WallstopStudios.UnityHelpers.Core.Random;
+    ///
+    /// IRandom rng = new XoroShiroRandom(Guid.NewGuid());
+    /// float t = rng.NextFloat();
+    /// Color c = rng.NextColor(); // via RandomExtensions
+    ///
+    /// // Save/restore for deterministic replays
+    /// var state = rng.InternalState;
+    /// var replay = new XoroShiroRandom(state);
+    /// </code>
+    /// </example>
     public sealed class XoroShiroRandom
         : AbstractRandom,
             IEquatable<XoroShiroRandom>,

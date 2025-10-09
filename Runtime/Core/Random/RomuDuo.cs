@@ -11,6 +11,43 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     [Serializable]
     [DataContract]
     [ProtoContract]
+    /// <summary>
+    /// A member of the ROMU family (RomuDuo) emphasizing high speed and good statistical quality on modern CPUs.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// RomuDuo maintains two 64-bit state variables and uses rotations and multiplies to evolve the state. It is
+    /// competitive with Xoroshiro-style generators in speed while exhibiting strong distribution for general use.
+    /// </para>
+    /// <para>Pros:</para>
+    /// <list type="bullet">
+    /// <item><description>Very fast; excellent for real-time usage.</description></item>
+    /// <item><description>Good statistical behavior for non-crypto applications.</description></item>
+    /// <item><description>Deterministic and reproducible across platforms.</description></item>
+    /// </list>
+    /// <para>Cons:</para>
+    /// <list type="bullet">
+    /// <item><description>Not cryptographically secure.</description></item>
+    /// <item><description>Relatively newer family; choose proven options if organizational policy requires long-term validation.</description></item>
+    /// </list>
+    /// <para>When to use:</para>
+    /// <list type="bullet">
+    /// <item><description>Gameplay RNG, procedural content generation, fast Monte Carlo sampling.</description></item>
+    /// </list>
+    /// <para>When not to use:</para>
+    /// <list type="bullet">
+    /// <item><description>Security/adversarial contexts.</description></item>
+    /// </list>
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// using WallstopStudios.UnityHelpers.Core.Random;
+    ///
+    /// var rng = new RomuDuo(Guid.NewGuid());
+    /// var point = rng.NextVector3InSphere(5f); // via RandomExtensions
+    /// double normal = rng.NextGaussian(0.0, 1.0);
+    /// </code>
+    /// </example>
     public sealed class RomuDuo
         : AbstractRandom,
             IEquatable<RomuDuo>,

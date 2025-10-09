@@ -7,8 +7,43 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     using ProtoBuf;
 
     /// <summary>
-    ///     Implementation dependent upon .Net's Random class.
+    /// A reimplementation of legacy .NET <c>System.Random</c> behavior for deterministic, serializable use.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Mirrors the algorithm used by .NET's classic <c>System.Random</c> so its sequence can be serialized and
+    /// reproduced across platforms. This is not the same as .NET 6+ <c>Random</c> improvements and is slower than
+    /// modern PRNGs.
+    /// </para>
+    /// <para>Pros:</para>
+    /// <list type="bullet">
+    /// <item><description>Behavioral parity with classic <c>System.Random</c> sequences for compatibility.</description></item>
+    /// <item><description>Deterministic and serializable via <see cref="RandomState"/>.</description></item>
+    /// </list>
+    /// <para>Cons:</para>
+    /// <list type="bullet">
+    /// <item><description>Slower than PCG/Xoroshiro/RomuDuo; larger state.</description></item>
+    /// <item><description>Not cryptographically secure; modest statistical quality.</description></item>
+    /// </list>
+    /// <para>When to use:</para>
+    /// <list type="bullet">
+    /// <item><description>When you need to match or migrate code that relied on <c>System.Random</c>.</description></item>
+    /// </list>
+    /// <para>When not to use:</para>
+    /// <list type="bullet">
+    /// <item><description>General gameplay—prefer faster, higher-quality PRNGs like PCG or IllusionFlow (via <see cref="PRNG.Instance"/>).</description></item>
+    /// </list>
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// using WallstopStudios.UnityHelpers.Core.Random;
+    ///
+    /// var compatible = new SystemRandom(seed: 123);
+    /// // Produces the same sequence as classic System.Random initialized with 123
+    /// int a = compatible.Next();
+    /// double d = compatible.NextDouble();
+    /// </code>
+    /// </example>
     [Serializable]
     [DataContract]
     [ProtoContract]

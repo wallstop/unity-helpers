@@ -11,6 +11,91 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     [Serializable]
     [DataContract]
     [ProtoContract]
+    /// <summary>
+    /// A high-quality, small-state pseudo-random number generator based on the PCG family.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// PCG (Permuted Congruential Generator) offers excellent statistical quality with very small state
+    /// and extremely fast generation. This implementation uses a 64-bit state with 32-bit outputs and
+    /// an increment (stream selector) to avoid overlapping sequences when constructing multiple instances.
+    /// </para>
+    /// <para>
+    /// Pros:
+    /// </para>
+    /// <list type="bullet">
+    /// <item>
+    /// <description>Fast and allocation-free; suitable for gameplay hot paths.</description>
+    /// </item>
+    /// <item>
+    /// <description>Great statistical quality for games and simulations; passes common PRNG test suites for 32-bit outputs.</description>
+    /// </item>
+    /// <item>
+    /// <description>Deterministic and reproducible across platforms for identical seeds.</description>
+    /// </item>
+    /// <item>
+    /// <description>Small state footprint; trivial to serialize via <see cref="RandomState"/>.</description>
+    /// </item>
+    /// </list>
+    /// <para>
+    /// Cons:
+    /// </para>
+    /// <list type="bullet">
+    /// <item>
+    /// <description>Not cryptographically secure; do not use for security-sensitive tokens or secrets.</description>
+    /// </item>
+    /// <item>
+    /// <description>32-bit outputs; if you need full 64-bit outputs, consider generating two uint values or using a 64-bit variant.</description>
+    /// </item>
+    /// </list>
+    /// <para>
+    /// When to use:
+    /// </para>
+    /// <list type="bullet">
+    /// <item>
+    /// <description>General gameplay randomness, procedural content, Monte Carlo style sampling.</description>
+    /// </item>
+    /// <item>
+    /// <description>Situations requiring deterministic replays by capturing and restoring <see cref="InternalState"/>.</description>
+    /// </item>
+    /// </list>
+    /// <para>
+    /// When not to use:
+    /// </para>
+    /// <list type="bullet">
+    /// <item>
+    /// <description>Cryptographic or adversarial scenarios.</description>
+    /// </item>
+    /// <item>
+    /// <description>When you specifically need UnityEngine.Random’s global state behavior; use <see cref="UnityRandom"/> for parity.</description>
+    /// </item>
+    /// </list>
+    /// <para>
+    /// Threading: prefer accessing via <c>ThreadLocalRandom&lt;PcgRandom&gt;.Instance</c> or <see cref="PRNG.Instance"/> (which returns the default PRNG)
+    /// to avoid contention and accidental shared-state between threads.
+    /// </para>
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// using WallstopStudios.UnityHelpers.Core.Random;
+    ///
+    /// // Recommended: use the global default PRNG (thread-local instance)
+    /// IRandom rng = PRNG.Instance; // currently IllusionFlow; swap to PcgRandom easily
+    /// int value = rng.Next(0, 100);
+    /// float probability = rng.NextFloat();
+    /// bool coinFlip = rng.NextBool();
+    ///
+    /// // Deterministic playthrough: capture and restore state
+    /// var seeded = new PcgRandom(seed: 123456789L);
+    /// RandomState snapshot = seeded.InternalState;
+    /// // ... generate values
+    /// var replay = new PcgRandom(snapshot);
+    /// // replay now yields identical sequence
+    ///
+    /// // Weighted selection (via extensions):
+    /// // var index = rng.NextWeightedIndex(new float[] { 0.1f, 0.3f, 0.6f });
+    /// </code>
+    /// </example>
     public sealed class PcgRandom
         : AbstractRandom,
             IEquatable<PcgRandom>,

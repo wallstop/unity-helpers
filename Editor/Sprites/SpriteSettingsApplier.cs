@@ -16,6 +16,19 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     [Serializable]
     public sealed class SpriteSettings
     {
+        public enum MatchMode
+        {
+            Any,
+            NameContains,
+            PathContains,
+            Regex,
+            Extension,
+        }
+
+        public MatchMode matchBy = MatchMode.Any;
+        public string matchPattern = string.Empty;
+        public int priority;
+
         public bool applyPixelsPerUnit;
 
         [WShowIf(nameof(applyPixelsPerUnit))]
@@ -74,6 +87,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         public TextureImporterCompression compressionLevel = TextureImporterCompression.Compressed;
 
         public string name = string.Empty;
+
+        public bool applyTextureType;
+
+        [WShowIf(nameof(applyTextureType))]
+        public TextureImporterType textureType = TextureImporterType.Sprite;
     }
 
     [CustomPropertyDrawer(typeof(SpriteSettings))]

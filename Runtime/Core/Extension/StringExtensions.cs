@@ -537,29 +537,13 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return string.Empty;
             }
 
-            bool shouldSeparateNumbers = false;
-            for (int i = 0; i < tokens.Count; ++i)
-            {
-                CaseToken token = tokens[i];
-                if (token.Kind == CaseTokenKind.Separator)
-                {
-                    shouldSeparateNumbers = true;
-                    break;
-                }
-
-                if (token.Kind == CaseTokenKind.Word && token.HasUppercase)
-                {
-                    shouldSeparateNumbers = true;
-                    break;
-                }
-            }
-
             using PooledResource<StringBuilder> stringBuilderBuffer = Buffers.StringBuilder.Get();
             StringBuilder stringBuilder = stringBuilderBuffer.resource;
             stringBuilder.Clear();
 
             bool previousWasWord = false;
             bool previousWasNumeric = false;
+            bool previousHadUppercase = false;
             bool forceDelimiter = false;
 
             for (int i = 0; i < tokens.Count; ++i)
@@ -597,13 +581,49 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     }
                 }
 
-                bool joinWithoutDelimiter =
+                bool startsWithDigit = char.IsDigit(sanitized[0]);
+                bool tokenHasUppercase = token.HasUppercase;
+
+                bool nextWordHasUppercase = false;
+                for (int lookahead = i + 1; lookahead < tokens.Count; ++lookahead)
+                {
+                    CaseToken lookaheadToken = tokens[lookahead];
+                    if (lookaheadToken.Kind == CaseTokenKind.Separator)
+                    {
+                        continue;
+                    }
+
+                    string lookaheadSanitized = SanitizeWord(
+                        lookaheadToken.Value,
+                        removeStripChars: true
+                    );
+                    if (string.IsNullOrEmpty(lookaheadSanitized))
+                    {
+                        continue;
+                    }
+
+                    nextWordHasUppercase = lookaheadToken.HasUppercase;
+                    break;
+                }
+
+                bool allowDigitLetterContinuation =
                     previousWasWord
                     && !forceDelimiter
-                    && !shouldSeparateNumbers
-                    && ((previousWasNumeric && hasLetter) || (!previousWasNumeric && isNumeric));
+                    && startsWithDigit
+                    && hasLetter
+                    && !tokenHasUppercase
+                    && !previousHadUppercase
+                    && !nextWordHasUppercase;
 
-                if (previousWasWord && !joinWithoutDelimiter)
+                bool allowNumericContinuation =
+                    previousWasWord
+                    && !forceDelimiter
+                    && isNumeric
+                    && !previousWasNumeric
+                    && !previousHadUppercase
+                    && !nextWordHasUppercase;
+
+                if (!allowDigitLetterContinuation && !allowNumericContinuation && previousWasWord)
                 {
                     if (stringBuilder.Length > 0 && stringBuilder[^1] != delimiter)
                     {
@@ -614,6 +634,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 _ = stringBuilder.Append(sanitized.ToLowerInvariant());
                 previousWasWord = true;
                 previousWasNumeric = isNumeric;
+                previousHadUppercase = tokenHasUppercase;
                 forceDelimiter = false;
             }
 
@@ -910,14 +931,30 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     return false;
                 }
 
-                if (char.IsLetter(c) && !hasSeenLetter)
+                if (char.IsLetter(c))
                 {
-                    if (!char.IsLower(c))
+                    if (!hasSeenLetter)
                     {
-                        return false;
+                        if (!char.IsLower(c))
+                        {
+                            return false;
+                        }
+
+                        hasSeenLetter = true;
                     }
 
-                    hasSeenLetter = true;
+                    if (char.IsUpper(c))
+                    {
+                        int nextIndex = i + 1;
+                        if (nextIndex < value.Length && char.IsUpper(value[nextIndex]))
+                        {
+                            return false;
+                        }
+                    }
+                }
+                else if (!char.IsDigit(c))
+                {
+                    return false;
                 }
             }
 
