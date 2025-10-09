@@ -87,23 +87,7 @@ namespace WallstopStudios.UnityHelpers.Visuals
 
         public override int GetHashCode()
         {
-            HashCode hash = new();
-            hash.Add(alpha);
-
-            if (perFramePixelOffsets != null)
-            {
-                foreach (Vector2 offset in perFramePixelOffsets)
-                {
-                    hash.Add(offset);
-                }
-            }
-
-            foreach (Sprite frame in frames)
-            {
-                hash.Add(frame);
-            }
-
-            return hash.ToHashCode();
+            return Objects.HashCode(alpha, perFramePixelOffsets?.Length, frames?.Length);
         }
 
         private static Sprite[] CreateFrameArray(IEnumerable<Sprite> sprites)

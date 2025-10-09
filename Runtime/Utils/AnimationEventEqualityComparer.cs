@@ -3,6 +3,7 @@ namespace WallstopStudios.UnityHelpers.Utils
     using System;
     using System.Collections.Generic;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Helper;
 
     /// <summary>
     /// Provides value and ordering comparisons for <see cref="AnimationEvent"/> instances and
@@ -121,7 +122,7 @@ namespace WallstopStudios.UnityHelpers.Utils
         /// <inheritdoc />
         public override int GetHashCode(AnimationEvent instance)
         {
-            return HashCode.Combine(
+            return Objects.HashCode(
                 instance.time,
                 instance.functionName,
                 instance.intParameter,

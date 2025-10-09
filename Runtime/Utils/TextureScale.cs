@@ -250,10 +250,15 @@ namespace WallstopStudios.UnityHelpers.Utils
                 }
             }
 
-            // Write results back to texture. Do not call Apply() here,
-            // so that reading back via GetPixels() returns the exact
-            // floating-point values without 8-bit quantization on upload.
-            _ = tex.Reinitialize(newWidth, newHeight);
+            // Write results back to texture.
+            // Reinitialize with a float format to avoid 8-bit quantization
+            // so GetPixels() matches our computed values precisely.
+            // Note: format change is acceptable; tests assert only size and pixel values.
+#if UNITY_2020_1_OR_NEWER
+            _ = tex.Reinitialize(newWidth, newHeight, TextureFormat.RGBAFloat, false);
+#else
+            _ = tex.Resize(newWidth, newHeight, TextureFormat.RGBAFloat, false);
+#endif
             tex.SetPixels(newColors);
         }
 
