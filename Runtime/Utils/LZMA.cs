@@ -8,8 +8,7 @@ namespace WallstopStudios.UnityHelpers.Utils
 
     public static class LZMA
     {
-        private static readonly ThreadLocal<Decoder> Decoders = new(() => new Decoder());
-        private static readonly ThreadLocal<Encoder> Encoders = new(() => new Encoder());
+        // Retain only small reusable buffers; instantiate codecs per call for safety
         private static readonly ThreadLocal<byte[]> Properties = new(() => new byte[5]);
         private static readonly ThreadLocal<byte[]> FileLengths = new(() => new byte[8]);
 
@@ -25,17 +24,10 @@ namespace WallstopStudios.UnityHelpers.Utils
             {
                 inStream.SetBuffer(input);
 
-                Encoder encoder = Encoders.Value;
+                Encoder encoder = new Encoder();
                 encoder.WriteCoderProperties(outStream);
 
-#if NETSTANDARD2_1 || NET5_0_OR_GREATER
-                Span<byte> len = stackalloc byte[8];
-                BitConverter.TryWriteBytes(len, inStream.Length);
-                outStream.Write(len);
-#else
-                byte[] len = BitConverter.GetBytes(inStream.Length);
-                outStream.Write(len, 0, 8);
-#endif
+                WriteInt64LE(outStream, inStream.Length);
 
                 encoder.Code(inStream, outStream, inStream.Length, -1, null);
 
@@ -81,7 +73,7 @@ namespace WallstopStudios.UnityHelpers.Utils
                 {
                     throw new Exception("Failed to read LZMA length header.");
                 }
-                long fileLength = BitConverter.ToInt64(fileLengthBytes, 0);
+                long fileLength = ReadInt64LE(fileLengthBytes);
                 if (fileLength < 0)
                 {
                     throw new Exception("Invalid LZMA length header.");
@@ -92,7 +84,7 @@ namespace WallstopStudios.UnityHelpers.Utils
                     throw new Exception("Failed to decompress LZMA data. No payload present.");
                 }
 
-                Decoder decoder = Decoders.Value;
+                Decoder decoder = new Decoder();
                 try
                 {
                     decoder.SetDecoderProperties(properties);
@@ -103,31 +95,31 @@ namespace WallstopStudios.UnityHelpers.Utils
                         fileLength,
                         null
                     );
-
-                    if (outStream.Length != fileLength)
-                    {
-                        throw new Exception("Failed to decompress LZMA data. Length mismatch.");
-                    }
-
-                    if (inStream.Position != inStream.Length)
-                    {
-                        throw new Exception(
-                            "Failed to decompress LZMA data. Trailing bytes not consumed."
-                        );
-                    }
-
-                    byte[] result = null;
-                    int count = outStream.ToArrayExact(ref result);
-                    if (count != result.Length)
-                    {
-                        Array.Resize(ref result, count);
-                    }
-                    return result;
                 }
                 catch (Exception ex)
                 {
                     throw new Exception("Failed to decompress LZMA data.", ex);
                 }
+
+                if (outStream.Length != fileLength)
+                {
+                    throw new Exception("Failed to decompress LZMA data. Length mismatch.");
+                }
+
+                if (inStream.Position != inStream.Length)
+                {
+                    throw new Exception(
+                        "Failed to decompress LZMA data. Trailing bytes not consumed."
+                    );
+                }
+
+                byte[] result = null;
+                int count = outStream.ToArrayExact(ref result);
+                if (count != result.Length)
+                {
+                    Array.Resize(ref result, count);
+                }
+                return result;
             }
         }
 
@@ -141,17 +133,10 @@ namespace WallstopStudios.UnityHelpers.Utils
             using (PooledReadOnlyMemoryStream.Rent(out PooledReadOnlyMemoryStream inStream))
             {
                 inStream.SetBuffer(input ?? Array.Empty<byte>());
-                Encoder encoder = Encoders.Value;
+                Encoder encoder = new Encoder();
                 encoder.WriteCoderProperties(output);
 
-#if NETSTANDARD2_1 || NET5_0_OR_GREATER
-                Span<byte> len = stackalloc byte[8];
-                BitConverter.TryWriteBytes(len, inStream.Length);
-                output.Write(len);
-#else
-                byte[] len = BitConverter.GetBytes(inStream.Length);
-                output.Write(len, 0, 8);
-#endif
+                WriteInt64LE(output, inStream.Length);
                 encoder.Code(inStream, output, inStream.Length, -1, null);
             }
         }
@@ -187,7 +172,7 @@ namespace WallstopStudios.UnityHelpers.Utils
                 {
                     throw new Exception("Failed to read LZMA length header.");
                 }
-                long fileLength = BitConverter.ToInt64(fileLengthBytes, 0);
+                long fileLength = ReadInt64LE(fileLengthBytes);
                 if (fileLength < 0)
                 {
                     throw new Exception("Invalid LZMA length header.");
@@ -198,7 +183,7 @@ namespace WallstopStudios.UnityHelpers.Utils
                     throw new Exception("Failed to decompress LZMA data. No payload present.");
                 }
 
-                Decoder decoder = Decoders.Value;
+                Decoder decoder = new Decoder();
                 try
                 {
                     decoder.SetDecoderProperties(properties);
@@ -209,17 +194,17 @@ namespace WallstopStudios.UnityHelpers.Utils
                         fileLength,
                         null
                     );
-
-                    if (inStream.Position != inStream.Length)
-                    {
-                        throw new Exception(
-                            "Failed to decompress LZMA data. Trailing bytes not consumed."
-                        );
-                    }
                 }
                 catch (Exception ex)
                 {
                     throw new Exception("Failed to decompress LZMA data.", ex);
+                }
+
+                if (inStream.Position != inStream.Length)
+                {
+                    throw new Exception(
+                        "Failed to decompress LZMA data. Trailing bytes not consumed."
+                    );
                 }
             }
         }
@@ -232,6 +217,60 @@ namespace WallstopStudios.UnityHelpers.Utils
         public static void DecompressTo(Stream output, ReadOnlySpan<byte> input)
         {
             DecompressTo(output, input.ToArray());
+        }
+
+        private static void WriteInt64LE(Stream stream, long value)
+        {
+#if NETSTANDARD2_1 || NET5_0_OR_GREATER
+            Span<byte> bytes = stackalloc byte[8];
+            unchecked
+            {
+                ulong v = (ulong)value;
+                bytes[0] = (byte)v;
+                bytes[1] = (byte)(v >> 8);
+                bytes[2] = (byte)(v >> 16);
+                bytes[3] = (byte)(v >> 24);
+                bytes[4] = (byte)(v >> 32);
+                bytes[5] = (byte)(v >> 40);
+                bytes[6] = (byte)(v >> 48);
+                bytes[7] = (byte)(v >> 56);
+            }
+            stream.Write(bytes);
+#else
+            unchecked
+            {
+                ulong v = (ulong)value;
+                byte[] bytes = new byte[8]
+                {
+                    (byte)v,
+                    (byte)(v >> 8),
+                    (byte)(v >> 16),
+                    (byte)(v >> 24),
+                    (byte)(v >> 32),
+                    (byte)(v >> 40),
+                    (byte)(v >> 48),
+                    (byte)(v >> 56),
+                };
+                stream.Write(bytes, 0, 8);
+            }
+#endif
+        }
+
+        private static long ReadInt64LE(byte[] bytes)
+        {
+            unchecked
+            {
+                ulong v =
+                    (ulong)bytes[0]
+                    | ((ulong)bytes[1] << 8)
+                    | ((ulong)bytes[2] << 16)
+                    | ((ulong)bytes[3] << 24)
+                    | ((ulong)bytes[4] << 32)
+                    | ((ulong)bytes[5] << 40)
+                    | ((ulong)bytes[6] << 48)
+                    | ((ulong)bytes[7] << 56);
+                return (long)v;
+            }
         }
     }
 }
