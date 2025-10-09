@@ -8,6 +8,25 @@ namespace WallstopStudios.UnityHelpers.Utils
     using Sirenix.OdinInspector;
 #endif
 
+    /// <summary>
+    /// Provides a global, lazily loaded singleton pattern for <see cref="ScriptableObject"/> assets.
+    /// Ensures that exactly one asset instance of <typeparamref name="T"/> is used at runtime.
+    /// </summary>
+    /// <remarks>
+    /// Lookup order (lazy):
+    /// 1) Load from a custom Resources subfolder when the type is decorated with
+    ///    <see cref="WallstopStudios.UnityHelpers.Core.Attributes.ScriptableSingletonPathAttribute"/>.
+    /// 2) Load from a folder named after the type (Resources/&lt;TypeName&gt;).
+    /// 3) Load by exact type name in Resources root, then fallback to all matches in Resources.
+    ///
+    /// If multiple assets are found, a warning is logged and the first result ordered by name is returned.
+    /// The editor utility “ScriptableObject Singleton Creator” automatically creates and relocates assets to
+    /// the correct path on editor load — see EDITOR_TOOLS_GUIDE.md#scriptableobject-singleton-creator.
+    ///
+    /// ODIN compatibility: When the <c>ODIN_INSPECTOR</c> symbol is defined, this class derives from
+    /// <c>Sirenix.OdinInspector.SerializedScriptableObject</c>; otherwise it derives from <see cref="ScriptableObject"/>.
+    /// </remarks>
+    /// <typeparam name="T">Concrete singleton ScriptableObject type that derives from this base.</typeparam>
     public abstract class ScriptableObjectSingleton<T> :
 #if ODIN_INSPECTOR
         SerializedScriptableObject
@@ -96,8 +115,26 @@ namespace WallstopStudios.UnityHelpers.Utils
             });
         }
 
+        /// <summary>
+        /// Gets a value indicating whether the lazy instance has been created and is non‑null.
+        /// </summary>
         public static bool HasInstance => LazyInstance.IsValueCreated && LazyInstance.Value != null;
 
+        /// <summary>
+        /// Gets the global asset instance, loading it from <c>Resources</c> on first access.
+        /// </summary>
+        /// <example>
+        /// <code>
+        /// [ScriptableSingletonPath("Settings/Audio")]
+        /// public sealed class AudioSettings : ScriptableObjectSingleton&lt;AudioSettings&gt;
+        /// {
+        ///     public float musicVolume = 0.8f;
+        /// }
+        ///
+        /// // Access anywhere
+        /// float volume = AudioSettings.Instance.musicVolume;
+        /// </code>
+        /// </example>
         public static T Instance => LazyInstance.Value;
     }
 }

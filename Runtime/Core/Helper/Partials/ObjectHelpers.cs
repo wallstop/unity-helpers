@@ -298,8 +298,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #if UNITY_EDITOR
             if (Application.isEditor && !Application.isPlaying)
             {
-                // If this is an asset object, unload it instead of deleting the asset.
-                // Deleting assets in edit mode can cause data loss and error logs.
+                // If this is an asset object, unload it so a fresh instance can be loaded next time.
                 string assetPath = UnityEditor.AssetDatabase.GetAssetPath(obj);
                 if (!string.IsNullOrEmpty(assetPath))
                 {

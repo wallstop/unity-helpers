@@ -76,11 +76,17 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             return result;
         }
 
+        private static string SanitizePath(string p)
+        {
+            return string.IsNullOrEmpty(p) ? p : p.Replace('\\', '/');
+        }
+
         public static SpriteSettings FindMatchingSettings(
             string assetPath,
             List<PreparedProfile> prepared
         )
         {
+            assetPath = SanitizePath(assetPath);
             if (prepared == null || prepared.Count == 0)
             {
                 return null;
@@ -147,13 +153,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             TextureImporterSettings buffer = null
         )
         {
+            assetPath = SanitizePath(assetPath);
             TextureImporter textureImporter = AssetImporter.GetAtPath(assetPath) as TextureImporter;
             if (textureImporter == null)
             {
                 return false;
             }
 
-            SpriteSettings spriteData = FindMatchingSettings(assetPath, prepared);
+            // Use Unity's canonical assetPath for matching to avoid path separator issues.
+            string realPath = textureImporter.assetPath;
+            SpriteSettings spriteData = FindMatchingSettings(realPath, prepared);
             if (spriteData == null)
             {
                 return false;
@@ -238,13 +247,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             TextureImporterSettings buffer = null
         )
         {
+            assetPath = SanitizePath(assetPath);
             textureImporter = AssetImporter.GetAtPath(assetPath) as TextureImporter;
             if (textureImporter == null)
             {
                 return false;
             }
 
-            SpriteSettings spriteData = FindMatchingSettings(assetPath, prepared);
+            // Use Unity's canonical assetPath for matching to avoid path separator issues.
+            string realPath = textureImporter.assetPath;
+            SpriteSettings spriteData = FindMatchingSettings(realPath, prepared);
             if (spriteData == null)
             {
                 return false;

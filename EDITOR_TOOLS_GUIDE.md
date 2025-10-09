@@ -1040,6 +1040,8 @@ public class CharacterStats : MonoBehaviour
 
 **Purpose:** Automatically creates and maintains singleton ScriptableObject assets.
 
+See the base API guide for details on `ScriptableObjectSingleton<T>` usage, scenarios, and ODIN compatibility: `SINGLETONS.md`.
+
 **How It Works:**
 ```
 1. Runs when Unity editor starts

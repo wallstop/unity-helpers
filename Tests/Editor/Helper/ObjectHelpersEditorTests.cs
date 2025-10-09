@@ -10,10 +10,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     public sealed class ObjectHelpersEditorTests : CommonTestBase
     {
         private const string TempFolder = "Assets/TempObjectHelpersEditorTests";
-        private const string AssetName = "TestSO.asset";
+        private const string AssetName = "TestMaterial.mat";
         private string _assetPath;
-
-        private sealed class TestSO : ScriptableObject { }
 
         [SetUp]
         public void Setup()
@@ -41,18 +39,23 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void SmartDestroyDoesNotDeleteAssetsInEditMode()
         {
-            TestSO instance = ScriptableObject.CreateInstance<TestSO>();
-            AssetDatabase.CreateAsset(instance, _assetPath);
+            Shader shader = Shader.Find("Sprites/Default");
+            if (shader == null)
+            {
+                Assert.Inconclusive("Required shader not found.");
+            }
+            Material mat = new Material(shader);
+            AssetDatabase.CreateAsset(mat, _assetPath);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
 
-            TestSO loaded = AssetDatabase.LoadAssetAtPath<TestSO>(_assetPath);
+            Material loaded = AssetDatabase.LoadAssetAtPath<Material>(_assetPath);
             Assert.IsTrue(loaded != null, "Expected asset to be created and loadable");
 
             // Should not log errors and should not delete the on-disk asset
             loaded.Destroy();
 
-            TestSO reloaded = AssetDatabase.LoadAssetAtPath<TestSO>(_assetPath);
+            Material reloaded = AssetDatabase.LoadAssetAtPath<Material>(_assetPath);
             Assert.IsTrue(reloaded != null, "Expected asset to remain after SmartDestroy");
         }
     }
