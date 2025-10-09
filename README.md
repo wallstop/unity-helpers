@@ -208,7 +208,7 @@ public class Player : MonoBehaviour
 - Descriptive error logging for missing required components
 - Honors `IncludeInactive` (include disabled/inactive when true)
 
-For a complete walkthrough with recipes and FAQs, read `RELATIONAL_COMPONENTS.md`.
+For a complete walkthrough with recipes, FAQs, and troubleshooting, see `RELATIONAL_COMPONENTS.md` (Troubleshooting: `RELATIONAL_COMPONENTS.md#troubleshooting`).
 
 ### Spatial Queries
 
@@ -814,6 +814,10 @@ Found a bug or have a feature request? [Open an issue](https://github.com/wallst
 For a complete, user-friendly walkthrough of `[ParentComponent]`, `[ChildComponent]`, and `[SiblingComponent]` including examples, recipes, and FAQs, see:
 
 - `RELATIONAL_COMPONENTS.md`
+
+Troubleshooting common issues (runtime-only assignment, filters, depth, inactive objects):
+
+- `RELATIONAL_COMPONENTS.md#troubleshooting`
 
 ---
 
