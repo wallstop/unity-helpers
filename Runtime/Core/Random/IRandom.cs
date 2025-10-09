@@ -3,6 +3,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     using System;
     using System.Collections.Generic;
     using DataStructure.Adapters;
+    using UnityEngine;
 
     public interface IRandom
     {
@@ -172,18 +173,15 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             where T : unmanaged, Enum;
 
         float[,] NextNoiseMap(
-            int width,
-            int height,
-            PerlinNoise noise = null,
-            float scale = 2.5f,
-            int octaves = 8
-        );
-
-        float[,] NextNoiseMap(
             float[,] noiseMap,
             PerlinNoise noise = null,
             float scale = 2.5f,
-            int octaves = 8
+            int octaves = 8,
+            float persistence = 0.5f,
+            float lacunarity = 2f,
+            Vector2 baseOffset = default,
+            float octaveOffsetRange = 100000f,
+            bool normalize = true
         );
 
         IRandom Copy();

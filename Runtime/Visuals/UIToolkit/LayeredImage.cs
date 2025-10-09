@@ -4,6 +4,7 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
     using System.Collections.Generic;
     using System.Diagnostics;
     using System.Linq;
+    using System.Runtime.CompilerServices;
     using System.Threading.Tasks;
     using UnityEditor;
     using UnityEngine;
@@ -77,7 +78,7 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
             _pixelCutoff = pixelCutoff;
             _layers = inputSpriteLayers.ToArray();
             _backgroundColor = backgroundColor ?? Color.white;
-            _computed = ComputeTextures().ToArray();
+            _computed = ComputeTextures();
             _largestArea = null;
             _updatesSelf = updatesSelf;
 
@@ -177,12 +178,12 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
 
         private Texture2D[] ComputeTextures()
         {
-            if (_layers is not { Length: > 0 })
+            AnimatedSpriteLayer[] layers = _layers;
+            if (layers == null || layers.Length == 0)
             {
-                yield break;
+                return Array.Empty<Texture2D>();
             }
 
-            AnimatedSpriteLayer[] layers = _layers;
             int frameCount = 0;
             for (int layerIndex = 0; layerIndex < layers.Length; ++layerIndex)
             {
@@ -192,49 +193,101 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
                     continue;
                 }
 
-                if (layerFrames.Length > frameCount)
+                int layerFrameCount = layerFrames.Length;
+                if (layerFrameCount > frameCount)
                 {
-                    frameCount = layerFrames.Length;
+                    frameCount = layerFrameCount;
                 }
             }
 
             if (frameCount == 0)
             {
-                yield break;
+                return Array.Empty<Texture2D>();
             }
 
-            Color backgroundColor = _backgroundColor;
-            float pixelCutoff = _pixelCutoff;
+            FrameCompositor compositor = new FrameCompositor(
+                layers,
+                _backgroundColor,
+                _pixelCutoff
+            );
+            Texture2D[] computed = new Texture2D[frameCount];
 
             for (int frameIndex = 0; frameIndex < frameCount; ++frameIndex)
             {
+                computed[frameIndex] = compositor.ComposeFrame(frameIndex);
+            }
+
+            return computed;
+        }
+
+        private readonly struct FrameCompositor
+        {
+            private readonly AnimatedSpriteLayer[] _layers;
+            private readonly Color _backgroundColor;
+            private readonly float _pixelCutoff;
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public FrameCompositor(
+                AnimatedSpriteLayer[] layers,
+                Color backgroundColor,
+                float pixelCutoff
+            )
+            {
+                _layers = layers;
+                _backgroundColor = backgroundColor;
+                _pixelCutoff = pixelCutoff;
+            }
+
+            public Texture2D ComposeFrame(int frameIndex)
+            {
+                AnimatedSpriteLayer[] layers = _layers;
+                int layerCount = layers.Length;
+
+                using PooledResource<LayerFrameInfo[]> frameInfoLease =
+                    WallstopFastArrayPool<LayerFrameInfo>.Get(
+                        layerCount,
+                        out LayerFrameInfo[] frameInfos
+                    );
+
+                int infoCount = 0;
                 float overallMinX = float.MaxValue;
                 float overallMaxX = float.MinValue;
                 float overallMinY = float.MaxValue;
                 float overallMaxY = float.MinValue;
                 bool hasVisibleSprite = false;
 
-                for (int layerIndex = 0; layerIndex < layers.Length; ++layerIndex)
+                for (int layerIndex = 0; layerIndex < layerCount; ++layerIndex)
                 {
                     ref readonly AnimatedSpriteLayer layer = ref layers[layerIndex];
-                    if (
-                        layer.alpha <= 0f
-                        || !TryGetLayerFrame(layer, frameIndex, out Sprite sprite)
-                    )
+                    float layerAlpha = layer.alpha;
+                    if (layerAlpha <= 0f || !TryGetLayerFrame(layer, frameIndex, out Sprite sprite))
                     {
                         continue;
                     }
 
-                    hasVisibleSprite = true;
+                    Texture2D texture = sprite.texture;
+                    if (texture == null || !texture.isReadable)
+                    {
+                        continue;
+                    }
 
                     Rect spriteRect = sprite.rect;
-                    Vector2 pivot = sprite.pivot;
-                    Vector2 pixelOffset = GetPixelOffset(layer, frameIndex);
+                    int spriteRectWidth = Mathf.FloorToInt(spriteRect.width);
+                    int spriteRectHeight = Mathf.FloorToInt(spriteRect.height);
+                    if (spriteRectWidth <= 0 || spriteRectHeight <= 0)
+                    {
+                        continue;
+                    }
 
-                    float spriteMinX = -pivot.x + pixelOffset.x;
-                    float spriteMaxX = spriteRect.width - pivot.x + pixelOffset.x;
-                    float spriteMinY = -pivot.y + pixelOffset.y;
-                    float spriteMaxY = spriteRect.height - pivot.y + pixelOffset.y;
+                    Vector2 pixelOffset = GetPixelOffset(layer, frameIndex);
+                    Vector2 pivot = sprite.pivot;
+
+                    float baseX = pixelOffset.x - pivot.x;
+                    float baseY = pixelOffset.y - pivot.y;
+                    float spriteMinX = baseX;
+                    float spriteMaxX = baseX + spriteRect.width;
+                    float spriteMinY = baseY;
+                    float spriteMaxY = baseY + spriteRect.height;
 
                     if (spriteMinX < overallMinX)
                     {
@@ -255,12 +308,24 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
                     {
                         overallMaxY = spriteMaxY;
                     }
+
+                    frameInfos[infoCount++] = new LayerFrameInfo(
+                        texture,
+                        Mathf.FloorToInt(spriteRect.x),
+                        Mathf.FloorToInt(spriteRect.y),
+                        spriteRectWidth,
+                        spriteRectHeight,
+                        baseX,
+                        baseY,
+                        layerAlpha
+                    );
+
+                    hasVisibleSprite = true;
                 }
 
                 if (!hasVisibleSprite)
                 {
-                    yield return null;
-                    continue;
+                    return null;
                 }
 
                 int compositeOriginX = Mathf.FloorToInt(overallMinX);
@@ -270,8 +335,7 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
 
                 if (compositeWidth <= 0 || compositeHeight <= 0)
                 {
-                    yield return null;
-                    continue;
+                    return null;
                 }
 
                 int compositeLength = compositeWidth * compositeHeight;
@@ -279,58 +343,46 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
                     compositeLength,
                     out Color[] bufferPixels
                 );
+
                 bufferPixels.AsSpan(0, compositeLength).Clear();
 
-                for (int layerIndex = 0; layerIndex < layers.Length; ++layerIndex)
+                float pixelCutoff = _pixelCutoff;
+
+                for (int infoIndex = 0; infoIndex < infoCount; ++infoIndex)
                 {
-                    ref readonly AnimatedSpriteLayer layer = ref layers[layerIndex];
-                    float layerAlpha = layer.alpha;
-                    if (layerAlpha <= 0f || !TryGetLayerFrame(layer, frameIndex, out Sprite sprite))
-                    {
-                        continue;
-                    }
+                    ref readonly LayerFrameInfo info = ref frameInfos[infoIndex];
 
-                    Texture2D spriteTexture = sprite.texture;
-                    if (spriteTexture == null || !spriteTexture.isReadable)
-                    {
-                        continue;
-                    }
-
-                    Rect spriteRect = sprite.rect;
-                    int spriteRectX = Mathf.FloorToInt(spriteRect.x);
-                    int spriteRectY = Mathf.FloorToInt(spriteRect.y);
-                    int spriteWidth = Mathf.FloorToInt(spriteRect.width);
-                    int spriteHeight = Mathf.FloorToInt(spriteRect.height);
-
-                    if (spriteWidth <= 0 || spriteHeight <= 0)
-                    {
-                        continue;
-                    }
-
-                    Color[] spritePixels = spriteTexture.GetPixels(
-                        spriteRectX,
-                        spriteRectY,
-                        spriteWidth,
-                        spriteHeight
+                    Color[] spritePixels = info.Texture.GetPixels(
+                        info.SourceX,
+                        info.SourceY,
+                        info.Width,
+                        info.Height
                     );
-                    Vector2 pixelOffset = GetPixelOffset(layer, frameIndex);
-                    float baseX = pixelOffset.x - sprite.pivot.x - compositeOriginX;
-                    float baseY = pixelOffset.y - sprite.pivot.y - compositeOriginY;
 
                     ComposeSpriteOntoBuffer(
                         bufferPixels,
                         compositeWidth,
                         compositeHeight,
                         spritePixels,
-                        spriteWidth,
-                        spriteHeight,
-                        baseX,
-                        baseY,
-                        layerAlpha,
+                        info.Width,
+                        info.Height,
+                        info.BaseX - compositeOriginX,
+                        info.BaseY - compositeOriginY,
+                        info.Alpha,
                         pixelCutoff
                     );
                 }
 
+                return FinalizeTexture(bufferPixels, compositeWidth, compositeHeight, pixelCutoff);
+            }
+
+            private Texture2D FinalizeTexture(
+                Color[] bufferPixels,
+                int compositeWidth,
+                int compositeHeight,
+                float pixelCutoff
+            )
+            {
                 int minX = compositeWidth;
                 int maxX = -1;
                 int minY = compositeHeight;
@@ -388,8 +440,7 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
 
                 if (maxX < minX || maxY < minY)
                 {
-                    yield return null;
-                    continue;
+                    return null;
                 }
 
                 int finalWidth = maxX - minX + 1;
@@ -400,8 +451,9 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
                     finalLength,
                     out Color[] finalPixels
                 );
+
                 Span<Color> finalSpan = finalPixels.AsSpan(0, finalLength);
-                finalSpan.Fill(backgroundColor);
+                finalSpan.Fill(_backgroundColor);
 
                 for (int y = 0; y < finalHeight; ++y)
                 {
@@ -432,7 +484,41 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
 
                 finalTexture.SetPixels(finalPixels);
                 finalTexture.Apply(updateMipmaps: false, makeNoLongerReadable: false);
-                yield return finalTexture;
+                return finalTexture;
+            }
+
+            private readonly struct LayerFrameInfo
+            {
+                public readonly Texture2D Texture;
+                public readonly int SourceX;
+                public readonly int SourceY;
+                public readonly int Width;
+                public readonly int Height;
+                public readonly float BaseX;
+                public readonly float BaseY;
+                public readonly float Alpha;
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public LayerFrameInfo(
+                    Texture2D texture,
+                    int sourceX,
+                    int sourceY,
+                    int width,
+                    int height,
+                    float baseX,
+                    float baseY,
+                    float alpha
+                )
+                {
+                    Texture = texture;
+                    SourceX = sourceX;
+                    SourceY = sourceY;
+                    Width = width;
+                    Height = height;
+                    BaseX = baseX;
+                    BaseY = baseY;
+                    Alpha = alpha;
+                }
             }
         }
 
@@ -454,45 +540,91 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
                 return;
             }
 
+            BlendSpriteRowJob job = new BlendSpriteRowJob(
+                bufferPixels,
+                bufferWidth,
+                bufferHeight,
+                spritePixels,
+                spriteWidth,
+                baseX,
+                baseY,
+                layerAlpha,
+                pixelCutoff
+            );
+
             if (spriteWidth * spriteHeight >= ParallelBlendThreshold)
             {
-                Parallel.For(
-                    0,
-                    spriteHeight,
-                    y =>
-                        BlendSpriteRow(
-                            bufferPixels,
-                            bufferWidth,
-                            bufferHeight,
-                            spritePixels,
-                            spriteWidth,
-                            baseX,
-                            baseY,
-                            layerAlpha,
-                            pixelCutoff,
-                            y
-                        )
-                );
+                Parallel.For(0, spriteHeight, job.Execute);
                 return;
             }
 
-            for (int y = 0; y < spriteHeight; ++y)
+            job.RunSequential(spriteHeight);
+        }
+
+        private readonly struct BlendSpriteRowJob
+        {
+            private readonly Color[] _bufferPixels;
+            private readonly int _bufferWidth;
+            private readonly int _bufferHeight;
+            private readonly Color[] _spritePixels;
+            private readonly int _spriteWidth;
+            private readonly float _baseX;
+            private readonly float _baseY;
+            private readonly float _layerAlpha;
+            private readonly float _pixelCutoff;
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public BlendSpriteRowJob(
+                Color[] bufferPixels,
+                int bufferWidth,
+                int bufferHeight,
+                Color[] spritePixels,
+                int spriteWidth,
+                float baseX,
+                float baseY,
+                float layerAlpha,
+                float pixelCutoff
+            )
+            {
+                _bufferPixels = bufferPixels;
+                _bufferWidth = bufferWidth;
+                _bufferHeight = bufferHeight;
+                _spritePixels = spritePixels;
+                _spriteWidth = spriteWidth;
+                _baseX = baseX;
+                _baseY = baseY;
+                _layerAlpha = layerAlpha;
+                _pixelCutoff = pixelCutoff;
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void Execute(int spriteRow)
             {
                 BlendSpriteRow(
-                    bufferPixels,
-                    bufferWidth,
-                    bufferHeight,
-                    spritePixels,
-                    spriteWidth,
-                    baseX,
-                    baseY,
-                    layerAlpha,
-                    pixelCutoff,
-                    y
+                    _bufferPixels,
+                    _bufferWidth,
+                    _bufferHeight,
+                    _spritePixels,
+                    _spriteWidth,
+                    _baseX,
+                    _baseY,
+                    _layerAlpha,
+                    _pixelCutoff,
+                    spriteRow
                 );
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void RunSequential(int spriteHeight)
+            {
+                for (int spriteRow = 0; spriteRow < spriteHeight; ++spriteRow)
+                {
+                    Execute(spriteRow);
+                }
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void BlendSpriteRow(
             Color[] bufferPixels,
             int bufferWidth,
@@ -577,6 +709,7 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool TryGetLayerFrame(
             in AnimatedSpriteLayer layer,
             int frameIndex,
@@ -594,6 +727,7 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
             return sprite != null;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static Vector2 GetPixelOffset(in AnimatedSpriteLayer layer, int frameIndex)
         {
             Vector2[] offsets = layer.perFramePixelOffsets;

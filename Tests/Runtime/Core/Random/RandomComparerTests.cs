@@ -149,19 +149,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Core.Random
                 where T : unmanaged, Enum => NotSupported<T>();
 
             public float[,] NextNoiseMap(
-                int width,
-                int height,
-                PerlinNoise noise = null,
-                float scale = 2.5f,
-                int octaves = 8
-            ) => throw new NotSupportedException();
-
-            public float[,] NextNoiseMap(
                 float[,] noiseMap,
                 PerlinNoise noise = null,
                 float scale = 2.5f,
-                int octaves = 8
-            ) => throw new NotSupportedException();
+                int octaves = 8,
+                float persistence = 0.5f,
+                float lacunarity = 2,
+                UnityEngine.Vector2 baseOffset = default,
+                float octaveOffsetRange = 100000,
+                bool normalize = true
+            ) => NotSupported<float[,]>();
 
             public IRandom Copy() => NotSupported<IRandom>();
         }

@@ -17,7 +17,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
 
             using (new EditorGUI.DisabledScope(EditorApplication.isPlaying))
             {
-                if (GUILayout.Button("Purge && Refresh Cache"))
+                if (GUILayout.Button("Purge & Refresh Cache"))
                 {
                     PurgeAndRefreshCache();
                 }

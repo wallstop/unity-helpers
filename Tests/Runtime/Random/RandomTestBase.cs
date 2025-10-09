@@ -701,9 +701,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Random
             {
                 int width = random.Next(1, 75);
                 int height = random.Next(1, 75);
-                float[,] noise = random.NextNoiseMap(width, height);
-                Assert.IsNotNull(noise);
-                Assert.AreEqual(width * height, noise.Length);
+                float[,] noise = new float[width, height];
+                random.NextNoiseMap(noise);
                 foreach (float value in noise)
                 {
                     Assert.LessOrEqual(0f, value);
