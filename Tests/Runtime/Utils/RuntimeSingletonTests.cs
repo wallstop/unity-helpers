@@ -8,6 +8,35 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
     public sealed class RuntimeSingletonTests : CommonTestBase
     {
+        [SetUp]
+        public void ResetSingletons()
+        {
+            // Proactively clear any lingering singleton instances between tests
+            void DestroyAll<T>()
+                where T : RuntimeSingleton<T>
+            {
+                foreach (var inst in Object.FindObjectsOfType<T>(includeInactive: true))
+                {
+                    if (inst != null)
+                    {
+                        Object.DestroyImmediate(inst.gameObject);
+                    }
+                }
+            }
+
+            DestroyAll<TestRuntimeSingleton>();
+            DestroyAll<PreservableSingleton>();
+            DestroyAll<NonPreservableSingleton>();
+            DestroyAll<CustomAwakeSingleton>();
+            DestroyAll<CustomStartSingleton>();
+            DestroyAll<CustomDestroyableSingleton>();
+            DestroyAll<ApplicationQuitSingleton>();
+
+            // Reset test flags
+            CustomDestroyableSingleton.destroyWasCalled = false;
+            ApplicationQuitSingleton.quitWasCalled = false;
+        }
+
         private sealed class TestRuntimeSingleton : RuntimeSingleton<TestRuntimeSingleton>
         {
             public int testValue = 42;
