@@ -77,6 +77,51 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         private static readonly string CombiningDotAboveString = CombiningDotAbove.ToString();
         private static readonly string CapitalIWithDotString = CapitalIWithDot.ToString();
 
+        private enum CharacterCategory
+        {
+            None,
+            Lower,
+            Upper,
+            Digit,
+            Other,
+        }
+
+        private enum CaseTokenKind
+        {
+            Word,
+            Separator,
+        }
+
+        private readonly struct CaseToken
+        {
+            public CaseToken(
+                CaseTokenKind kind,
+                string value,
+                bool hasLetter,
+                bool hasDigit,
+                bool hasUppercase
+            )
+            {
+                Kind = kind;
+                Value = value;
+                HasLetter = hasLetter;
+                HasDigit = hasDigit;
+                HasUppercase = hasUppercase;
+            }
+
+            public CaseTokenKind Kind { get; }
+
+            public string Value { get; }
+
+            public bool HasLetter { get; }
+
+            public bool HasDigit { get; }
+
+            public bool HasUppercase { get; }
+
+            public bool IsNumeric => !HasLetter && HasDigit;
+        }
+
         public static string Center(this string input, int length)
         {
             if (input == null || length <= input.Length)
@@ -217,6 +262,539 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
         }
 
+        private static List<CaseToken> TokenizeForCase(string value)
+        {
+            List<CaseToken> tokens = new List<CaseToken>();
+            if (string.IsNullOrEmpty(value))
+            {
+                return tokens;
+            }
+
+            using PooledResource<StringBuilder> bufferResource = Buffers.StringBuilder.Get();
+            StringBuilder buffer = bufferResource.resource;
+            buffer.Clear();
+
+            CaseTokenKind? currentKind = null;
+            CharacterCategory lastCategory = CharacterCategory.None;
+
+            for (int i = 0; i < value.Length; ++i)
+            {
+                char current = value[i];
+                bool isSeparator = WordSeparators.Contains(current) || char.IsWhiteSpace(current);
+
+                if (isSeparator)
+                {
+                    if (currentKind == CaseTokenKind.Word && buffer.Length > 0)
+                    {
+                        tokens.Add(CreateWordToken(buffer.ToString()));
+                        buffer.Clear();
+                    }
+
+                    if (currentKind != CaseTokenKind.Separator)
+                    {
+                        if (currentKind == CaseTokenKind.Separator && buffer.Length > 0)
+                        {
+                            tokens.Add(
+                                new CaseToken(
+                                    CaseTokenKind.Separator,
+                                    buffer.ToString(),
+                                    false,
+                                    false,
+                                    false
+                                )
+                            );
+                            buffer.Clear();
+                        }
+
+                        currentKind = CaseTokenKind.Separator;
+                        buffer.Clear();
+                    }
+
+                    _ = buffer.Append(current);
+                    lastCategory = CharacterCategory.None;
+                    continue;
+                }
+
+                CharacterCategory category = CategorizeChar(current);
+
+                if (currentKind == CaseTokenKind.Separator && buffer.Length > 0)
+                {
+                    tokens.Add(
+                        new CaseToken(
+                            CaseTokenKind.Separator,
+                            buffer.ToString(),
+                            false,
+                            false,
+                            false
+                        )
+                    );
+                    buffer.Clear();
+                }
+
+                if (currentKind != CaseTokenKind.Word)
+                {
+                    currentKind = CaseTokenKind.Word;
+                    lastCategory = CharacterCategory.None;
+                }
+                else if (ShouldStartNewWord(category, lastCategory, value, i) && buffer.Length > 0)
+                {
+                    tokens.Add(CreateWordToken(buffer.ToString()));
+                    buffer.Clear();
+                    lastCategory = CharacterCategory.None;
+                }
+
+                _ = buffer.Append(current);
+                if (category != CharacterCategory.Other)
+                {
+                    lastCategory = category;
+                }
+            }
+
+            if (currentKind == CaseTokenKind.Separator && buffer.Length > 0)
+            {
+                tokens.Add(
+                    new CaseToken(CaseTokenKind.Separator, buffer.ToString(), false, false, false)
+                );
+            }
+            else if (currentKind == CaseTokenKind.Word && buffer.Length > 0)
+            {
+                tokens.Add(CreateWordToken(buffer.ToString()));
+            }
+
+            return tokens;
+        }
+
+        private static CharacterCategory CategorizeChar(char value)
+        {
+            if (char.IsDigit(value))
+            {
+                return CharacterCategory.Digit;
+            }
+
+            if (char.IsLetter(value))
+            {
+                return char.IsUpper(value) ? CharacterCategory.Upper : CharacterCategory.Lower;
+            }
+
+            return CharacterCategory.Other;
+        }
+
+        private static bool ShouldStartNewWord(
+            CharacterCategory currentCategory,
+            CharacterCategory lastCategory,
+            string value,
+            int index
+        )
+        {
+            if (
+                lastCategory == CharacterCategory.None
+                || currentCategory == CharacterCategory.Other
+            )
+            {
+                return false;
+            }
+
+            if (currentCategory == CharacterCategory.Upper)
+            {
+                if (
+                    lastCategory == CharacterCategory.Lower
+                    || lastCategory == CharacterCategory.Digit
+                )
+                {
+                    return true;
+                }
+
+                if (lastCategory == CharacterCategory.Upper)
+                {
+                    int nextIndex = index + 1;
+                    if (nextIndex < value.Length && char.IsLower(value[nextIndex]))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            bool lastWasDigit = lastCategory == CharacterCategory.Digit;
+            bool currentIsDigit = currentCategory == CharacterCategory.Digit;
+            bool lastWasLetter =
+                lastCategory == CharacterCategory.Lower || lastCategory == CharacterCategory.Upper;
+            bool currentIsLetter =
+                currentCategory == CharacterCategory.Lower
+                || currentCategory == CharacterCategory.Upper;
+
+            if ((currentIsDigit && lastWasLetter) || (currentIsLetter && lastWasDigit))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        private static CaseToken CreateWordToken(string value)
+        {
+            bool hasLetter = false;
+            bool hasDigit = false;
+            bool hasUppercase = false;
+
+            for (int i = 0; i < value.Length; ++i)
+            {
+                char c = value[i];
+                if (char.IsDigit(c))
+                {
+                    hasDigit = true;
+                }
+                else if (char.IsLetter(c))
+                {
+                    hasLetter = true;
+                    if (char.IsUpper(c))
+                    {
+                        hasUppercase = true;
+                    }
+                }
+            }
+
+            return new CaseToken(CaseTokenKind.Word, value, hasLetter, hasDigit, hasUppercase);
+        }
+
+        private static string SanitizeWord(string value, bool removeStripChars)
+        {
+            if (string.IsNullOrEmpty(value) || !removeStripChars)
+            {
+                return value;
+            }
+
+            bool needsSanitization = false;
+            for (int i = 0; i < value.Length; ++i)
+            {
+                if (CharsToStrip.Contains(value[i]))
+                {
+                    needsSanitization = true;
+                    break;
+                }
+            }
+
+            if (!needsSanitization)
+            {
+                return value;
+            }
+
+            using PooledResource<StringBuilder> builderResource = Buffers.StringBuilder.Get();
+            StringBuilder builder = builderResource.resource;
+            builder.Clear();
+
+            for (int i = 0; i < value.Length; ++i)
+            {
+                char c = value[i];
+                if (!CharsToStrip.Contains(c))
+                {
+                    _ = builder.Append(c);
+                }
+            }
+
+            return builder.ToString();
+        }
+
+        private static void AppendWordWithCasing(
+            StringBuilder builder,
+            string word,
+            bool uppercaseFirstLetter
+        )
+        {
+            if (string.IsNullOrEmpty(word))
+            {
+                return;
+            }
+
+            char firstChar = word[0];
+            _ = builder.Append(
+                uppercaseFirstLetter
+                    ? char.ToUpperInvariant(firstChar)
+                    : char.ToLowerInvariant(firstChar)
+            );
+
+            for (int i = 1; i < word.Length; ++i)
+            {
+                char c = word[i];
+                _ = builder.Append(char.ToLowerInvariant(c));
+            }
+        }
+
+        private static string ToDelimitedCase(string value, char delimiter)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                return string.Empty;
+            }
+
+            List<CaseToken> tokens = TokenizeForCase(value);
+            if (tokens.Count == 0)
+            {
+                return string.Empty;
+            }
+
+            bool shouldSeparateNumbers = false;
+            for (int i = 0; i < tokens.Count; ++i)
+            {
+                CaseToken token = tokens[i];
+                if (token.Kind == CaseTokenKind.Separator)
+                {
+                    shouldSeparateNumbers = true;
+                    break;
+                }
+
+                if (token.Kind == CaseTokenKind.Word && token.HasUppercase)
+                {
+                    shouldSeparateNumbers = true;
+                    break;
+                }
+            }
+
+            using PooledResource<StringBuilder> stringBuilderBuffer = Buffers.StringBuilder.Get();
+            StringBuilder stringBuilder = stringBuilderBuffer.resource;
+            stringBuilder.Clear();
+
+            bool previousWasWord = false;
+            bool previousWasNumeric = false;
+            bool forceDelimiter = false;
+
+            for (int i = 0; i < tokens.Count; ++i)
+            {
+                CaseToken token = tokens[i];
+                if (token.Kind == CaseTokenKind.Separator)
+                {
+                    if (previousWasWord)
+                    {
+                        forceDelimiter = true;
+                    }
+
+                    continue;
+                }
+
+                string sanitized = SanitizeWord(token.Value, removeStripChars: true);
+                if (string.IsNullOrEmpty(sanitized))
+                {
+                    continue;
+                }
+
+                bool isNumeric = true;
+                bool hasLetter = false;
+                for (int j = 0; j < sanitized.Length; ++j)
+                {
+                    char c = sanitized[j];
+                    if (!char.IsDigit(c))
+                    {
+                        isNumeric = false;
+                    }
+
+                    if (char.IsLetter(c))
+                    {
+                        hasLetter = true;
+                    }
+                }
+
+                bool joinWithoutDelimiter =
+                    previousWasWord
+                    && !forceDelimiter
+                    && !shouldSeparateNumbers
+                    && ((previousWasNumeric && hasLetter) || (!previousWasNumeric && isNumeric));
+
+                if (previousWasWord && !joinWithoutDelimiter)
+                {
+                    if (stringBuilder.Length > 0 && stringBuilder[^1] != delimiter)
+                    {
+                        _ = stringBuilder.Append(delimiter);
+                    }
+                }
+
+                _ = stringBuilder.Append(sanitized.ToLowerInvariant());
+                previousWasWord = true;
+                previousWasNumeric = isNumeric;
+                forceDelimiter = false;
+            }
+
+            return stringBuilder.ToString();
+        }
+
+        private static bool StartsWithLowercaseWord(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                return false;
+            }
+
+            for (int i = 0; i < value.Length; ++i)
+            {
+                char c = value[i];
+                if (CharsToStrip.Contains(c))
+                {
+                    continue;
+                }
+
+                if (WordSeparators.Contains(c) || char.IsWhiteSpace(c))
+                {
+                    continue;
+                }
+
+                if (char.IsLetter(c))
+                {
+                    return char.IsLower(c);
+                }
+
+                if (char.IsDigit(c))
+                {
+                    return false;
+                }
+            }
+
+            return false;
+        }
+
+        private static void AppendTitleCasedWord(StringBuilder builder, string word)
+        {
+            if (string.IsNullOrEmpty(word))
+            {
+                return;
+            }
+
+            bool firstLetterHandled = false;
+            for (int i = 0; i < word.Length; ++i)
+            {
+                char c = word[i];
+                if (!firstLetterHandled && char.IsLetter(c))
+                {
+                    _ = builder.Append(char.ToUpperInvariant(c));
+                    firstLetterHandled = true;
+                }
+                else if (!firstLetterHandled && char.IsDigit(c))
+                {
+                    _ = builder.Append(c);
+                }
+                else if (!firstLetterHandled)
+                {
+                    _ = builder.Append(c);
+                }
+                else if (char.IsLetter(c))
+                {
+                    _ = builder.Append(char.ToLowerInvariant(c));
+                }
+                else
+                {
+                    _ = builder.Append(c);
+                }
+            }
+        }
+
+        private static string CollapseSpaces(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                return string.Empty;
+            }
+
+            using PooledResource<StringBuilder> builderResource = Buffers.StringBuilder.Get();
+            StringBuilder builder = builderResource.resource;
+            builder.Clear();
+
+            bool previousWasSpace = false;
+            for (int i = 0; i < value.Length; ++i)
+            {
+                char c = value[i];
+                if (char.IsWhiteSpace(c))
+                {
+                    if (!previousWasSpace)
+                    {
+                        _ = builder.Append(' ');
+                        previousWasSpace = true;
+                    }
+                }
+                else
+                {
+                    _ = builder.Append(c);
+                    previousWasSpace = false;
+                }
+            }
+
+            return builder.ToString().Trim();
+        }
+
+        private static string ToTitleCaseInternal(string value, bool preserveSeparators)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                return string.Empty;
+            }
+
+            List<CaseToken> tokens = TokenizeForCase(value);
+            if (tokens.Count == 0)
+            {
+                return string.Empty;
+            }
+
+            bool startsWithLowerWord = StartsWithLowercaseWord(value);
+
+            using PooledResource<StringBuilder> stringBuilderBuffer = Buffers.StringBuilder.Get();
+            StringBuilder stringBuilder = stringBuilderBuffer.resource;
+            stringBuilder.Clear();
+
+            CaseTokenKind? previousTokenKind = null;
+            for (int i = 0; i < tokens.Count; ++i)
+            {
+                CaseToken token = tokens[i];
+                if (token.Kind == CaseTokenKind.Separator)
+                {
+                    if (preserveSeparators)
+                    {
+                        _ = stringBuilder.Append(token.Value);
+                    }
+                    else if (stringBuilder.Length > 0 && stringBuilder[^1] != ' ')
+                    {
+                        _ = stringBuilder.Append(' ');
+                    }
+
+                    previousTokenKind = CaseTokenKind.Separator;
+                    continue;
+                }
+
+                string sanitized = SanitizeWord(token.Value, removeStripChars: false);
+                if (string.IsNullOrEmpty(sanitized))
+                {
+                    previousTokenKind = CaseTokenKind.Word;
+                    continue;
+                }
+
+                bool implicitBoundary = previousTokenKind == CaseTokenKind.Word;
+                if (implicitBoundary)
+                {
+                    bool shouldInsertSpace = !startsWithLowerWord;
+                    if (preserveSeparators)
+                    {
+                        if (shouldInsertSpace)
+                        {
+                            _ = stringBuilder.Append(' ');
+                        }
+                    }
+                    else if (
+                        shouldInsertSpace
+                        && stringBuilder.Length > 0
+                        && stringBuilder[^1] != ' '
+                    )
+                    {
+                        _ = stringBuilder.Append(' ');
+                    }
+                }
+
+                AppendTitleCasedWord(stringBuilder, sanitized);
+                previousTokenKind = CaseTokenKind.Word;
+            }
+
+            if (!preserveSeparators)
+            {
+                return CollapseSpaces(stringBuilder.ToString());
+            }
+
+            return stringBuilder.ToString();
+        }
+
         public static string ToPascalCase(this string value, string separator = "")
         {
             if (string.IsNullOrEmpty(value))
@@ -224,117 +802,37 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return string.Empty;
             }
 
-            using PooledResource<StringBuilder> stringBuilderBuffer = Buffers.StringBuilder.Get();
-            StringBuilder stringBuilder = stringBuilderBuffer.resource;
-            using PooledResource<StringBuilder> wordBuffer = Buffers.StringBuilder.Get();
-            StringBuilder currentWord = wordBuffer.resource;
-            bool isFirstWord = true;
-
-            for (int i = 0; i < value.Length; ++i)
+            List<CaseToken> tokens = TokenizeForCase(value);
+            if (tokens.Count == 0)
             {
-                char current = value[i];
-
-                // Skip characters that should be stripped (apostrophes, quotes)
-                if (CharsToStrip.Contains(current))
-                {
-                    continue;
-                }
-
-                // Check if this is a separator or whitespace
-                if (WordSeparators.Contains(current))
-                {
-                    // Flush the current word if we have one
-                    if (currentWord.Length > 0)
-                    {
-                        if (!isFirstWord && !string.IsNullOrEmpty(separator))
-                        {
-                            _ = stringBuilder.Append(separator);
-                        }
-
-                        // Capitalize first letter, lowercase the rest
-                        _ = stringBuilder.Append(char.ToUpperInvariant(currentWord[0]));
-                        for (int j = 1; j < currentWord.Length; ++j)
-                        {
-                            _ = stringBuilder.Append(char.ToLowerInvariant(currentWord[j]));
-                        }
-
-                        currentWord.Clear();
-                        isFirstWord = false;
-                    }
-
-                    continue;
-                }
-
-                // Check for word boundary: lowercase/digit to uppercase transition
-                if (
-                    currentWord.Length > 0
-                    && !char.IsUpper(currentWord[^1])
-                    && char.IsUpper(current)
-                )
-                {
-                    // Flush the current word
-                    if (!isFirstWord && !string.IsNullOrEmpty(separator))
-                    {
-                        _ = stringBuilder.Append(separator);
-                    }
-
-                    // Capitalize first letter, lowercase the rest
-                    _ = stringBuilder.Append(char.ToUpperInvariant(currentWord[0]));
-                    for (int j = 1; j < currentWord.Length; ++j)
-                    {
-                        _ = stringBuilder.Append(char.ToLowerInvariant(currentWord[j]));
-                    }
-
-                    currentWord.Clear();
-                    isFirstWord = false;
-                }
-
-                // Check for word boundary: multiple uppercase followed by lowercase
-                // e.g., "XMLParser" -> "XML" "Parser"
-                if (
-                    currentWord.Length > 1
-                    && char.IsUpper(currentWord[^1])
-                    && char.IsUpper(currentWord[^2])
-                    && char.IsLower(current)
-                )
-                {
-                    // Take all but the last uppercase character as one word
-                    char lastChar = currentWord[^1];
-                    currentWord.Length -= 1;
-
-                    if (!isFirstWord && !string.IsNullOrEmpty(separator))
-                    {
-                        _ = stringBuilder.Append(separator);
-                    }
-
-                    // Capitalize first letter, lowercase the rest
-                    _ = stringBuilder.Append(char.ToUpperInvariant(currentWord[0]));
-                    for (int j = 1; j < currentWord.Length; ++j)
-                    {
-                        _ = stringBuilder.Append(char.ToLowerInvariant(currentWord[j]));
-                    }
-
-                    currentWord.Clear();
-                    _ = currentWord.Append(lastChar);
-                    isFirstWord = false;
-                }
-
-                _ = currentWord.Append(current);
+                return string.Empty;
             }
 
-            // Flush any remaining word
-            if (currentWord.Length > 0)
+            using PooledResource<StringBuilder> stringBuilderBuffer = Buffers.StringBuilder.Get();
+            StringBuilder stringBuilder = stringBuilderBuffer.resource;
+            stringBuilder.Clear();
+
+            bool isFirstWord = true;
+            foreach (CaseToken token in tokens)
             {
+                if (token.Kind != CaseTokenKind.Word)
+                {
+                    continue;
+                }
+
+                string sanitized = SanitizeWord(token.Value, removeStripChars: true);
+                if (string.IsNullOrEmpty(sanitized))
+                {
+                    continue;
+                }
+
                 if (!isFirstWord && !string.IsNullOrEmpty(separator))
                 {
                     _ = stringBuilder.Append(separator);
                 }
 
-                _ = stringBuilder.Append(char.ToUpperInvariant(currentWord[0]));
-                for (int j = 1; j < currentWord.Length; ++j)
-                {
-                    _ = stringBuilder.Append(char.ToLowerInvariant(currentWord[j]));
-                }
+                AppendWordWithCasing(stringBuilder, sanitized, uppercaseFirstLetter: true);
+                isFirstWord = false;
             }
 
             return stringBuilder.ToString();
@@ -407,9 +905,9 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return char.ToLowerInvariant(pascalCase[0]).ToString();
             }
 
-            // Use StringBuilder for better performance
             using PooledResource<StringBuilder> stringBuilderBuffer = Buffers.StringBuilder.Get();
             StringBuilder stringBuilder = stringBuilderBuffer.resource;
+            stringBuilder.Clear();
             _ = stringBuilder.Append(char.ToLowerInvariant(pascalCase[0]));
 
             for (int i = 1; i < pascalCase.Length; ++i)
@@ -422,171 +920,17 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
         public static string ToSnakeCase(this string value)
         {
-            if (string.IsNullOrEmpty(value))
-            {
-                return string.Empty;
-            }
-
-            // Check if the string is already in valid snake_case format
-            // (all lowercase letters/digits/underscores, no consecutive underscores, no leading/trailing underscores)
-            bool isAlreadySnakeCase = true;
-            bool hasUpperCase = false;
-            bool hasWordSeparators = false;
-
-            for (int i = 0; i < value.Length; ++i)
-            {
-                char c = value[i];
-                if (char.IsUpper(c))
-                {
-                    hasUpperCase = true;
-                    isAlreadySnakeCase = false;
-                    break;
-                }
-                if (CharsToStrip.Contains(c))
-                {
-                    // Presence of chars to strip means it's not already snake_case
-                    isAlreadySnakeCase = false;
-                    break;
-                }
-                if (WordSeparators.Contains(c))
-                {
-                    hasWordSeparators = true;
-                    if (c != '_')
-                    {
-                        isAlreadySnakeCase = false;
-                        break;
-                    }
-                    // Check for consecutive underscores or leading/trailing underscores
-                    if (i == 0 || i == value.Length - 1 || (i > 0 && value[i - 1] == '_'))
-                    {
-                        isAlreadySnakeCase = false;
-                        break;
-                    }
-                }
-                else if (!char.IsLower(c) && !char.IsDigit(c))
-                {
-                    isAlreadySnakeCase = false;
-                    break;
-                }
-            }
-
-            // If already in snake_case, return as-is
-            if (isAlreadySnakeCase)
-            {
-                return value;
-            }
-
-            using PooledResource<StringBuilder> stringBuilderBuffer = Buffers.StringBuilder.Get();
-            StringBuilder stringBuilder = stringBuilderBuffer.resource;
-
-            for (int i = 0; i < value.Length; ++i)
-            {
-                char current = value[i];
-
-                // Skip characters that should be stripped (apostrophes, quotes)
-                if (CharsToStrip.Contains(current))
-                {
-                    continue;
-                }
-
-                if (WordSeparators.Contains(current))
-                {
-                    if (stringBuilder.Length > 0 && stringBuilder[^1] != '_')
-                    {
-                        _ = stringBuilder.Append('_');
-                    }
-                    continue;
-                }
-
-                if (i > 0)
-                {
-                    char previous = value[i - 1];
-                    bool shouldAddSeparator = false;
-
-                    // Handle uppercase letter transitions
-                    if (char.IsUpper(current))
-                    {
-                        if (!WordSeparators.Contains(previous) && !char.IsUpper(previous))
-                        {
-                            shouldAddSeparator = true;
-                        }
-                        else if (i + 1 < value.Length && char.IsLower(value[i + 1]))
-                        {
-                            shouldAddSeparator = true;
-                        }
-                    }
-                    // Handle letter-to-digit transition ONLY if we have uppercase letters or word separators
-                    else if (
-                        char.IsDigit(current)
-                        && char.IsLetter(previous)
-                        && (hasUpperCase || hasWordSeparators)
-                    )
-                    {
-                        shouldAddSeparator = true;
-                    }
-                    // Handle digit-to-letter transition ONLY if we have uppercase letters or word separators
-                    else if (
-                        char.IsLetter(current)
-                        && char.IsDigit(previous)
-                        && (hasUpperCase || hasWordSeparators)
-                    )
-                    {
-                        shouldAddSeparator = true;
-                    }
-
-                    if (shouldAddSeparator && stringBuilder.Length > 0 && stringBuilder[^1] != '_')
-                    {
-                        _ = stringBuilder.Append('_');
-                    }
-                }
-
-                _ = stringBuilder.Append(char.ToLowerInvariant(current));
-            }
-
-            string result = stringBuilder.ToString();
-            while (result.Contains("__"))
-            {
-                result = result.Replace("__", "_");
-            }
-
-            return result.Trim('_');
+            return ToDelimitedCase(value, '_');
         }
 
         public static string ToKebabCase(this string value)
         {
-            return value.ToSnakeCase().Replace('_', '-');
+            return ToDelimitedCase(value, '-');
         }
 
-        public static string ToTitleCase(this string value)
+        public static string ToTitleCase(this string value, bool preserveSeparators = true)
         {
-            if (string.IsNullOrEmpty(value))
-            {
-                return string.Empty;
-            }
-
-            using PooledResource<StringBuilder> stringBuilderBuffer = Buffers.StringBuilder.Get();
-            StringBuilder stringBuilder = stringBuilderBuffer.resource;
-            bool capitalizeNext = true;
-
-            foreach (char c in value)
-            {
-                if (char.IsWhiteSpace(c) || WordSeparators.Contains(c))
-                {
-                    _ = stringBuilder.Append(c);
-                    capitalizeNext = true;
-                }
-                else if (capitalizeNext)
-                {
-                    _ = stringBuilder.Append(char.ToUpperInvariant(c));
-                    capitalizeNext = false;
-                }
-                else
-                {
-                    _ = stringBuilder.Append(char.ToLowerInvariant(c));
-                }
-            }
-
-            return stringBuilder.ToString();
+            return ToTitleCaseInternal(value, preserveSeparators);
         }
 
         public static bool ContainsIgnoreCase(this string input, string value)
@@ -882,17 +1226,44 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return value;
             }
 
-            if (value.IndexOf(CombiningDotAbove) >= 0)
+            bool containsSpecialCharacter = false;
+            for (int i = 0; i < value.Length; ++i)
             {
-                value = value.Replace(CombiningDotAboveString, string.Empty);
+                char c = value[i];
+                if (c == CombiningDotAbove || c == CapitalIWithDot)
+                {
+                    containsSpecialCharacter = true;
+                    break;
+                }
             }
 
-            if (value.IndexOf(CapitalIWithDot) >= 0)
+            if (!containsSpecialCharacter)
             {
-                value = value.Replace(CapitalIWithDotString, string.Empty);
+                return value;
             }
 
-            return value;
+            using PooledResource<StringBuilder> builderResource = Buffers.StringBuilder.Get();
+            StringBuilder builder = builderResource.resource;
+            builder.Clear();
+
+            for (int i = 0; i < value.Length; ++i)
+            {
+                char c = value[i];
+                if (c == CombiningDotAbove)
+                {
+                    continue;
+                }
+
+                if (c == CapitalIWithDot)
+                {
+                    _ = builder.Append(char.ToLowerInvariant('I'));
+                    continue;
+                }
+
+                _ = builder.Append(c);
+            }
+
+            return builder.ToString();
         }
 
         public static string ToCase(this string value, StringCase stringCase)
@@ -908,7 +1279,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 case StringCase.KebabCase:
                     return value.ToKebabCase();
                 case StringCase.TitleCase:
-                    return value.ToTitleCase();
+                    return value.ToTitleCase(preserveSeparators: false);
                 case StringCase.LowerCase:
                     return value == null
                         ? string.Empty
