@@ -768,7 +768,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         break;
                     }
                     if (shouldUpdate)
+                    {
                         lastUpdateTime = now;
+                    }
 
                     if (
                         TryUpdateTextureSettingsPrepared(
@@ -823,12 +825,18 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         {
             List<PreparedProfile> result = new(profiles?.Count ?? 0);
             if (profiles == null)
+            {
                 return result;
+            }
+
             for (int i = 0; i < profiles.Count; i++)
             {
                 SpriteSettings s = profiles[i];
                 if (s == null)
+                {
                     continue;
+                }
+
                 PreparedProfile p = new()
                 {
                     settings = s,
@@ -870,7 +878,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         )
         {
             if (prepared == null || prepared.Count == 0)
+            {
                 return null;
+            }
+
             string fileName = Path.GetFileName(filePath);
             string fileNameLower = fileName.ToLowerInvariant();
             string pathLower = filePath.ToLowerInvariant();
@@ -928,7 +939,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         break;
                 }
                 if (!matches)
+                {
                     continue;
+                }
+
                 if (best == null || p.priority > bestPriority)
                 {
                     best = p.settings;
@@ -944,7 +958,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         )
         {
             if (string.IsNullOrWhiteSpace(filePath))
+            {
                 return false;
+            }
+
             TextureImporter textureImporter = AssetImporter.GetAtPath(filePath) as TextureImporter;
             if (textureImporter == null)
             {
@@ -1024,7 +1041,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         {
             textureImporter = default;
             if (string.IsNullOrWhiteSpace(filePath))
+            {
                 return false;
+            }
+
             textureImporter = AssetImporter.GetAtPath(filePath) as TextureImporter;
             if (textureImporter == null)
             {

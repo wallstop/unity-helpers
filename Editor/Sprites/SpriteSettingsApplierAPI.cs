@@ -29,12 +29,18 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         {
             List<PreparedProfile> result = new(profiles?.Count ?? 0);
             if (profiles == null)
+            {
                 return result;
+            }
+
             for (int i = 0; i < profiles.Count; i++)
             {
                 SpriteSettings s = profiles[i];
                 if (s == null)
+                {
                     continue;
+                }
+
                 PreparedProfile p = new()
                 {
                     settings = s,
@@ -76,7 +82,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         )
         {
             if (prepared == null || prepared.Count == 0)
+            {
                 return null;
+            }
+
             string fileName = Path.GetFileName(assetPath);
             string fileNameLower = fileName.ToLowerInvariant();
             string pathLower = assetPath.ToLowerInvariant();
@@ -90,7 +99,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 bool matches = false;
                 switch (p.mode)
                 {
+#pragma warning disable CS0618 // Type or member is obsolete
                     case SpriteSettings.MatchMode.None:
+#pragma warning restore CS0618 // Type or member is obsolete
                         break;
                     case SpriteSettings.MatchMode.Any:
                         matches =
@@ -117,7 +128,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         break;
                 }
                 if (!matches)
+                {
                     continue;
+                }
+
                 if (best == null || p.priority > bestPriority)
                 {
                     best = p.settings;
@@ -135,10 +149,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         {
             TextureImporter textureImporter = AssetImporter.GetAtPath(assetPath) as TextureImporter;
             if (textureImporter == null)
+            {
                 return false;
+            }
+
             SpriteSettings spriteData = FindMatchingSettings(assetPath, prepared);
             if (spriteData == null)
+            {
                 return false;
+            }
 
             bool changed = false;
             if (spriteData.applyPixelsPerUnit)
@@ -208,10 +227,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         {
             textureImporter = AssetImporter.GetAtPath(assetPath) as TextureImporter;
             if (textureImporter == null)
+            {
                 return false;
+            }
+
             SpriteSettings spriteData = FindMatchingSettings(assetPath, prepared);
             if (spriteData == null)
+            {
                 return false;
+            }
 
             bool changed = false;
             bool settingsChanged = false;

@@ -38,6 +38,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         private SerializedProperty _autoRefreshProp;
         private SerializedProperty _groupingCaseInsensitiveProp;
         private SerializedProperty _includeFolderNameProp;
+        private SerializedProperty _includeFullFolderPathProp;
         private SerializedProperty _autoParseNamePrefixProp;
         private SerializedProperty _autoParseNameSuffixProp;
         private SerializedProperty _useCustomGroupRegexProp;
@@ -45,6 +46,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         private SerializedProperty _customGroupRegexIgnoreCaseProp;
         private SerializedProperty _resolveDuplicateNamesProp;
         private SerializedProperty _regexTestInputProp;
+        private SerializedProperty _strictNumericOrderingProp;
 
         public List<AnimationData> animationData = new();
         public List<Object> animationSources = new();
@@ -53,6 +55,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         public bool autoRefresh = true;
         public bool groupingCaseInsensitive = true;
         public bool includeFolderNameInAnimName;
+        public bool includeFullFolderPathInAnimName;
         public string autoParseNamePrefix = string.Empty;
         public string autoParseNameSuffix = string.Empty;
         public bool useCustomGroupRegex;
@@ -60,6 +63,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         public bool customGroupRegexIgnoreCase = true;
         public bool resolveDuplicateAnimationNames = true;
         public string regexTestInput = string.Empty;
+        public bool strictNumericOrdering = false;
 
         [HideInInspector]
         [SerializeField]
@@ -77,6 +81,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         private int _lastSourcesHash;
         private bool _animationDataIsExpanded = true;
         private bool _autoParsePreviewExpanded = false;
+        private bool _autoParseDryRunExpanded = false;
 
         private sealed class AutoParsePreviewRecord
         {
@@ -87,6 +92,18 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         }
 
         private readonly List<AutoParsePreviewRecord> _autoParsePreview = new();
+
+        private sealed class AutoParseDryRunRecord
+        {
+            public string folderPath;
+            public string finalName;
+            public string finalAssetPath;
+            public int count;
+            public bool hasIndex;
+            public bool duplicateResolved;
+        }
+
+        private readonly List<AutoParseDryRunRecord> _autoParseDryRun = new();
 
         private static readonly Regex s_ParenIndexRegex = new(
             @"^(?<base>.*?)[\s]*\(\s*(?<index>\d+)\s*\)\s*$",
@@ -121,6 +138,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             _includeFolderNameProp = _serializedObject.FindProperty(
                 nameof(includeFolderNameInAnimName)
             );
+            _includeFullFolderPathProp = _serializedObject.FindProperty(
+                nameof(includeFullFolderPathInAnimName)
+            );
             _autoParseNamePrefixProp = _serializedObject.FindProperty(nameof(autoParseNamePrefix));
             _autoParseNameSuffixProp = _serializedObject.FindProperty(nameof(autoParseNameSuffix));
             _useCustomGroupRegexProp = _serializedObject.FindProperty(nameof(useCustomGroupRegex));
@@ -132,6 +152,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 nameof(resolveDuplicateAnimationNames)
             );
             _regexTestInputProp = _serializedObject.FindProperty(nameof(regexTestInput));
+            _strictNumericOrderingProp = _serializedObject.FindProperty(
+                nameof(strictNumericOrdering)
+            );
 
             UpdateRegex();
             UpdateGroupRegex();
@@ -163,7 +186,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             );
             EditorGUILayout.PropertyField(
                 _includeFolderNameProp,
-                new GUIContent("Prefix Folder Name")
+                new GUIContent("Prefix Leaf Folder Name")
+            );
+            EditorGUILayout.PropertyField(
+                _includeFullFolderPathProp,
+                new GUIContent("Prefix Full Folder Path")
             );
             EditorGUILayout.PropertyField(
                 _autoParseNamePrefixProp,
@@ -176,6 +203,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             EditorGUILayout.PropertyField(
                 _resolveDuplicateNamesProp,
                 new GUIContent("Resolve Duplicate Animation Names")
+            );
+            EditorGUILayout.PropertyField(
+                _strictNumericOrderingProp,
+                new GUIContent("Strict Numeric Ordering")
             );
 
             EditorGUILayout.Space();
@@ -297,6 +328,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     GenerateAutoParsePreview();
                     _autoParsePreviewExpanded = true;
                 }
+                if (GUILayout.Button("Generate Dry-Run Apply"))
+                {
+                    GenerateAutoParseDryRun();
+                    _autoParseDryRunExpanded = true;
+                }
             }
             if (_filteredSprites.Count == 0)
             {
@@ -322,6 +358,35 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         if (shown >= 200)
                         {
                             EditorGUILayout.LabelField($"Showing first {shown} groups...");
+                            break;
+                        }
+                    }
+                }
+            }
+            _autoParseDryRunExpanded = EditorGUILayout.Foldout(
+                _autoParseDryRunExpanded,
+                $"Dry-Run Results ({_autoParseDryRun.Count})",
+                true
+            );
+            if (_autoParseDryRunExpanded && _autoParseDryRun.Count > 0)
+            {
+                using (new EditorGUI.IndentLevelScope())
+                {
+                    int shown = 0;
+                    foreach (var rec in _autoParseDryRun)
+                    {
+                        string info =
+                            $"Name: {rec.finalName} | Frames: {rec.count} | Numeric: {(rec.hasIndex ? "Yes" : "No")}";
+                        if (rec.duplicateResolved)
+                        {
+                            info += " | Renamed to avoid duplicate";
+                        }
+                        EditorGUILayout.LabelField(rec.folderPath, info);
+                        EditorGUILayout.LabelField("→ Asset Path:", rec.finalAssetPath);
+                        shown++;
+                        if (shown >= 200)
+                        {
+                            EditorGUILayout.LabelField($"Showing first {shown} results...");
                             break;
                         }
                     }
@@ -978,7 +1043,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 if (groups.Count == 0)
                 {
                     this.LogWarn(
-                        "Auto-parsing did not result in any animation groups. Check naming."
+                        $"Auto-parsing did not result in any animation groups. Check naming."
                     );
                     return;
                 }
@@ -1191,15 +1256,26 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     }
 
                     bool hasAnyIndex = entries.Any(e => e.index >= 0);
-                    if (hasAnyIndex)
+                    if (strictNumericOrdering)
                     {
-                        entries.Sort((a, b) => a.index.CompareTo(b.index));
+                        if (hasAnyIndex)
+                        {
+                            entries.Sort((a, b) => a.index.CompareTo(b.index));
+                        }
+                        // else leave discovery order
                     }
                     else
                     {
-                        entries.Sort(
-                            (a, b) => EditorUtility.NaturalCompare(a.sprite.name, b.sprite.name)
-                        );
+                        if (hasAnyIndex)
+                        {
+                            entries.Sort((a, b) => a.index.CompareTo(b.index));
+                        }
+                        else
+                        {
+                            entries.Sort(
+                                (a, b) => EditorUtility.NaturalCompare(a.sprite.name, b.sprite.name)
+                            );
+                        }
                     }
 
                     List<Sprite> framesForAnim = new List<Sprite>(entries.Count);
@@ -1208,25 +1284,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         framesForAnim.Add(e.sprite);
                     }
 
-                    string finalNameCore = baseKey;
-                    if (includeFolderNameInAnimName && !string.IsNullOrWhiteSpace(folderName))
-                    {
-                        finalNameCore = folderName + "_" + finalNameCore;
-                    }
-                    if (!string.IsNullOrEmpty(autoParseNamePrefix))
-                    {
-                        finalNameCore = autoParseNamePrefix + finalNameCore;
-                    }
-                    if (!string.IsNullOrEmpty(autoParseNameSuffix))
-                    {
-                        finalNameCore = finalNameCore + autoParseNameSuffix;
-                    }
-                    string finalAnimName = SanitizeName(finalNameCore);
-
-                    if (resolveDuplicateAnimationNames)
-                    {
-                        finalAnimName = EnsureUniqueName(finalAnimName, usedNames);
-                    }
+                    string finalAnimName = ComposeFinalName(
+                        baseKey,
+                        kvpAssetPath.Key,
+                        usedNames,
+                        out bool _
+                    );
                     usedNames.Add(finalAnimName);
 
                     animationData.Add(
@@ -1260,6 +1323,142 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 counter++;
             } while (used.Contains(candidate));
             return candidate;
+        }
+
+        private string ComposeFinalName(
+            string baseKey,
+            string directoryPath,
+            ISet<string> usedNames,
+            out bool duplicateResolved
+        )
+        {
+            string finalNameCore = baseKey;
+            string folderPrefix = GetFolderPrefix(directoryPath);
+            if (!string.IsNullOrEmpty(folderPrefix))
+            {
+                finalNameCore = folderPrefix + "_" + finalNameCore;
+            }
+            if (!string.IsNullOrEmpty(autoParseNamePrefix))
+            {
+                finalNameCore = autoParseNamePrefix + finalNameCore;
+            }
+            if (!string.IsNullOrEmpty(autoParseNameSuffix))
+            {
+                finalNameCore = finalNameCore + autoParseNameSuffix;
+            }
+            string finalAnimName = SanitizeName(finalNameCore);
+
+            duplicateResolved = false;
+            if (resolveDuplicateAnimationNames && usedNames != null)
+            {
+                if (usedNames.Contains(finalAnimName))
+                {
+                    finalAnimName = EnsureUniqueName(finalAnimName, usedNames);
+                    duplicateResolved = true;
+                }
+            }
+            return finalAnimName;
+        }
+
+        private string GetFolderPrefix(string directoryPath)
+        {
+            if (!includeFolderNameInAnimName && !includeFullFolderPathInAnimName)
+            {
+                return string.Empty;
+            }
+            if (string.IsNullOrWhiteSpace(directoryPath))
+            {
+                return string.Empty;
+            }
+            string sanitized = directoryPath.Replace('\\', '/');
+            if (includeFullFolderPathInAnimName)
+            {
+                if (sanitized.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))
+                {
+                    sanitized = sanitized.Substring("Assets/".Length);
+                }
+                sanitized = sanitized.Trim('/');
+                sanitized = sanitized.Replace('/', '_');
+                return SanitizeName(sanitized);
+            }
+            return new DirectoryInfo(directoryPath).Name;
+        }
+
+        private void GenerateAutoParseDryRun()
+        {
+            _autoParseDryRun.Clear();
+            Dictionary<string, Dictionary<string, List<(int index, Sprite sprite)>>> groups =
+                GroupFilteredSprites(withProgress: false);
+
+            HashSet<string> usedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (AnimationData data in animationData)
+            {
+                if (!data.isCreatedFromAutoParse && !string.IsNullOrWhiteSpace(data.animationName))
+                {
+                    usedNames.Add(data.animationName);
+                }
+            }
+
+            foreach (
+                KeyValuePair<
+                    string,
+                    Dictionary<string, List<(int index, Sprite sprite)>>
+                > kvp in groups
+            )
+            {
+                string dir = kvp.Key;
+                foreach ((string baseKey, List<(int index, Sprite sprite)> entries) in kvp.Value)
+                {
+                    bool hasAnyIndex = entries.Any(e => e.index >= 0);
+                    if (strictNumericOrdering)
+                    {
+                        if (hasAnyIndex)
+                        {
+                            entries.Sort((a, b) => a.index.CompareTo(b.index));
+                        }
+                    }
+                    else
+                    {
+                        if (hasAnyIndex)
+                        {
+                            entries.Sort((a, b) => a.index.CompareTo(b.index));
+                        }
+                        else
+                        {
+                            entries.Sort(
+                                (a, b) => EditorUtility.NaturalCompare(a.sprite.name, b.sprite.name)
+                            );
+                        }
+                    }
+
+                    string finalName = ComposeFinalName(
+                        baseKey,
+                        dir,
+                        usedNames,
+                        out bool wasResolved
+                    );
+                    usedNames.Add(finalName);
+
+                    string folderPath = dir;
+                    if (!folderPath.EndsWith("/"))
+                    {
+                        folderPath += "/";
+                    }
+                    string finalAssetPath = folderPath + finalName + ".anim";
+
+                    _autoParseDryRun.Add(
+                        new AutoParseDryRunRecord
+                        {
+                            folderPath = dir,
+                            finalName = finalName,
+                            finalAssetPath = finalAssetPath,
+                            count = entries.Count,
+                            hasIndex = hasAnyIndex,
+                            duplicateResolved = wasResolved,
+                        }
+                    );
+                }
+            }
         }
 
         private void GenerateAutoParsePreview()
