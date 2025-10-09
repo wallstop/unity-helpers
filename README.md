@@ -17,6 +17,7 @@ A comprehensive collection of high-performance utilities, data structures, and e
 - [Core Features](#core-features)
   - [Random Number Generators](#random-number-generators)
   - [Spatial Trees](#spatial-trees)
+  - [Effects, Attributes, and Tags](#effects-attributes-and-tags)
   - [Component Attributes](#component-attributes)
   - [Relational Components Guide](#relational-components-guide)
   - [Serialization](#serialization)
@@ -396,6 +397,70 @@ tree.GetElementsInRange(center, radius: 50f, results);
 - Already using Unity's physics system
 
 [📊 2D Benchmarks](SPATIAL_TREE_2D_PERFORMANCE.md) | [📊 3D Benchmarks](SPATIAL_TREE_3D_PERFORMANCE.md)
+
+### Effects, Attributes, and Tags
+
+Create data-driven gameplay effects that modify stats, apply tags, and drive cosmetics.
+
+Key pieces:
+
+- `AttributeEffect` — ScriptableObject that bundles stat changes, tags, cosmetics, and duration.
+- `EffectHandle` — Unique ID for one application instance; remove/refresh specific stacks.
+- `AttributesComponent` — Base class for components that expose modifiable `Attribute` fields.
+- `TagHandler` — Counts and queries string tags for gating gameplay (e.g., "Stunned").
+- `CosmeticEffectData` — Prefab-like container of behaviors shown while an effect is active.
+
+Why this helps:
+
+- Decouples gameplay logic from presentation and from effect sources.
+- Safe stacking and independent removal via handles and tag reference counts.
+- Designer-friendly: author once in assets, reuse everywhere.
+
+Quick start:
+
+```csharp
+using WallstopStudios.UnityHelpers.Tags;
+
+// 1) Define stats on a component
+public class CharacterStats : AttributesComponent
+{
+    public Attribute Health = 100f;
+    public Attribute Speed = 5f;
+}
+
+// 2) Author an AttributeEffect (ScriptableObject) in the editor
+//    - modifications: [ { attribute: "Speed", action: Multiplication, value: 1.5f } ]
+//    - durationType: Duration, duration: 5
+//    - effectTags: [ "Haste" ]
+//    - cosmeticEffects: [ a prefab with CosmeticEffectData + Particle/Audio components ]
+
+// 3) Apply and later remove
+GameObject player = ...;
+AttributeEffect haste = ...; // ScriptableObject reference
+EffectHandle? handle = player.ApplyEffect(haste);
+if (handle.HasValue)
+{
+    // Remove early if needed
+    player.RemoveEffect(handle.Value);
+}
+
+// Query tags anywhere
+if (player.HasTag("Stunned")) { /* disable input */ }
+```
+
+Details at a glance:
+
+- `ModifierDurationType.Instant` — applies permanently; returns null handle.
+- `ModifierDurationType.Duration` — temporary; expires automatically; reapply can reset if enabled.
+- `ModifierDurationType.Infinite` — persists until `RemoveEffect(handle)` is called.
+- `AttributeModification` order: Addition → Multiplication → Override.
+- `CosmeticEffectData.RequiresInstancing` — instance per application or reuse shared presenters.
+
+Tips:
+
+- Use the Attribute Metadata Cache generator to power dropdowns and avoid typos in attribute names.
+- Prefer `%`-style changes with Multiplication and small flat changes with Addition.
+- Keep tag strings consistent; centralize in constants to avoid mistakes.
 
 ### Component Attributes
 
