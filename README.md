@@ -27,7 +27,9 @@ A comprehensive collection of high-performance utilities, data structures, and e
 - [Performance](#performance)
 - [Contributing](#contributing)
 - [License](#license)
- - [Relational Components Guide](#relational-components-guide)
+- [Relational Components Guide](#relational-components-guide)
+- [API Index](#api-index)
+ - [Buffering Pattern](#buffering-pattern)
 
 ## Why Unity Helpers?
 
@@ -259,6 +261,8 @@ public class EnemyManager : MonoBehaviour
 **Important:** Spatial trees are **immutable** - rebuild them when positions change.
 
 [📊 View 2D Performance Benchmarks](SPATIAL_TREE_2D_PERFORMANCE.md) | [📊 View 3D Performance Benchmarks](SPATIAL_TREE_3D_PERFORMANCE.md)
+
+For zero‑alloc queries and stable GC, see the [Buffering Pattern](#buffering-pattern).
 
 ### Choosing Spatial Structures
 
@@ -677,6 +681,14 @@ When to use what:
 - Use `Helpers.StartFunctionAsCoroutine` for simple, frame-safe polling; prefer `InvokeRepeating` or custom `Update` loops when you need fine-grained frame ordering.
 - Use `SmartDestroy` when writing code that runs in both edit mode and play mode to avoid editor/runtime differences.
 
+### Choosing Helpers
+
+- Destroy patterns: Use `SmartDestroy` for editor/play safe teardown; `DestroyAllChildren*` to clear hierarchies quickly.
+- Component wiring: Prefer relational attributes (`[SiblingComponent]`, etc.) + `AssignRelationalComponents()` over manual `GetComponent` calls.
+- Random placement: Use `Helpers.GetRandomPointInCircle/Sphere` or `RandomExtensions.NextVector2/3(InRange)` for uniform distributions.
+- Asset/tooling: `GetAllLayerNames` and `GetAllSpriteLabelNames` power menu tooling and editor workflows.
+- Math/geometry: `WallMath.PositiveMod/Wrapped*` for robust wrap-around; `LineHelper.Simplify*` to reduce polyline complexity; `Geometry.IsAPointLeftOfVectorOrOnTheLine` for sidedness tests.
+
 
 ### Editor Tools
 
@@ -976,3 +988,115 @@ Troubleshooting common issues (runtime-only assignment, filters, depth, inactive
 **Made with ❤️ by [Wallstop Studios](https://wallstopstudios.com)**
 
 *Unity Helpers is production-ready and actively maintained. Star the repo if you find it useful!*
+
+## API Index
+
+- Namespaces
+  - `WallstopStudios.UnityHelpers.Core.Helper`
+    - `Helpers` — General utilities (layers, sprites, components, math, pooling)
+    - `Objects` — Unity-aware null checks and deterministic hashing
+    - `WallMath` — Positive modulo, wrapped add/increment, bounded floats/doubles
+    - `LineHelper` — Douglas–Peucker polyline simplification
+    - `Geometry` — Rect accumulation, sidedness tests
+    - `PathHelper`/`FileHelper`/`DirectoryHelper` — File and path utilities (editor/runtime)
+    - `SceneHelper` — Scene discovery and object retrieval (with disposal scope)
+    - `SpriteHelpers` — Make textures readable (editor)
+    - `UnityMainThreadDispatcher` — Enqueue work for main thread
+    - `ReflectionHelpers` — High-performance field/property/method/ctor access and type scanning
+    - `FormattingHelpers` — Human-friendly sizes (e.g., bytes)
+    - `IterationHelpers` — 2D/3D array index enumeration
+    - `FuncBasedComparer`/`ReverseComparer` — Comparer utilities
+    - `StringInList` — Inspector dropdown for strings
+  - `WallstopStudios.UnityHelpers.Core.Extension`
+    - `UnityExtensions` — Unity-centric extensions (Rect/Bounds, Camera, Rigidbody2D, vectors)
+    - `RandomExtensions` — Random vectors/quaternions/colors and selections
+    - `StringExtensions` — Case transforms, UTF-8, JSON, Levenshtein
+    - `IEnumerableExtensions` — Collection conversions, infinite sequences, shuffle
+    - `IListExtensions`/`IReadonlyListExtensions` — Shuffle/shift/sort/search utilities
+    - `DictionaryExtensions` — GetOrAdd, GetOrElse helpers
+    - `AnimatorExtensions` — ResetTriggers convenience
+    - `AsyncOperationExtensions` — Await `AsyncOperation` (Task/ValueTask)
+  - `WallstopStudios.UnityHelpers.Core.DataStructure`
+    - Point/Bounds trees: `QuadTree2D<T>`, `KdTree2D<T>`, `KdTree3D<T>`, `RTree2D<T>`, `RTree3D<T>`
+    - Spatial hashes: `SpatialHash2D<T>`, `SpatialHash3D<T>`
+    - General: `Heap<T>`, `PriorityQueue<T>`, `Deque<T>`, `Trie`, `BitSet`, `CyclicBuffer<T>`, `SparseSet<T>`
+
+Tip: Most collection-based APIs accept and fill buffers you provide (List<T>, arrays) to minimize allocations. Prefer passing a preallocated buffer for hot paths.
+
+### Buffering Pattern
+
+Many APIs accept a caller-provided buffer (e.g., `List<T>`) and clear it before writing results. Reuse these buffers to avoid per-frame allocations and reduce GC pressure.
+
+Why it helps
+- Prevents transient allocations in tight loops (AI queries, physics scans).
+- Keeps GC stable in gameplay spikes (hundreds/thousands of queries).
+
+Basics
+- Create buffers once per system and reuse them.
+- APIs that take a `List<T>` will clear it before use and return the same list for chaining.
+- Don’t share a single buffer across concurrent operations; allocate one per caller or use pooling.
+
+Examples
+
+```csharp
+// 2D tree query reuse
+readonly List<Enemy> _enemiesBuffer = new(capacity: 256);
+
+void Scan(QuadTree2D<Enemy> tree, Vector2 position, float radius)
+{
+    tree.GetElementsInRange(position, radius, _enemiesBuffer);
+    for (int i = 0; i < _enemiesBuffer.Count; ++i)
+    {
+        Enemy e = _enemiesBuffer[i];
+        // ... process
+    }
+}
+
+// Spatial hash with distinct results, approximate distance
+readonly List<Unit> _units = new(512);
+hash.Query(center, 10f, _units, distinct: true, exactDistance: false);
+
+// Components without allocations
+readonly List<BoxCollider2D> _colliders = new(32);
+gameObject.GetComponents(_colliders); // buffer is cleared by the API
+```
+
+Using the built‑in pool (advanced)
+
+```csharp
+using WallstopStudios.UnityHelpers.Utils;
+
+// Get a pooled List<T> and return it automatically via Dispose
+using PooledResource<List<int>> lease = Buffers<int>.List.Get(out List<int> list);
+
+// Use list here ...
+
+// On dispose, list is cleared and returned to the pool
+```
+
+Do / Don’t
+- Do reuse buffers per system or component.
+- Do treat buffers as temporary scratch space (APIs clear them first).
+- Don’t keep references to pooled lists beyond their lease lifetime.
+- Don’t share the same buffer across overlapping async/coroutine work.
+
+Pooling utilities
+
+- `Buffers<T>` — pooled collections (List/Stack/Queue/HashSet) with `PooledResource` leases.
+  - Lists: `using var lease = Buffers<Foo>.List.Get(out List<Foo> list);`
+  - Stacks: `using var lease = Buffers<Foo>.Stack.Get(out Stack<Foo> stack);`
+  - HashSets: `using var lease = Buffers<Foo>.HashSet.Get(out HashSet<Foo> set);`
+  - Pattern: acquire → use → Dispose (returns to pool, clears collection).
+
+- `WallstopArrayPool<T>` — rent arrays by length with automatic return on dispose.
+  - Example: `using var lease = WallstopArrayPool<int>.Get(1024, out int[] buffer);`
+  - Use for temporary processing buffers, sorting, or interop with APIs that require arrays.
+
+- `WallstopFastArrayPool<T>` — fast array pool specialized for frequent short‑lived arrays.
+  - Example: `using var lease = WallstopFastArrayPool<string>.Get(count, out string[] buffer);`
+  - Used throughout Helpers for high‑frequency editor/runtime operations (e.g., asset searches).
+
+How pooling + buffering help APIs
+- Spatial queries: pass a reusable `List<T>` to `GetElementsInRange/GetElementsInBounds` and iterate results without allocations.
+- Component queries: `GetComponents(buffer)` clears and fills your buffer instead of allocating arrays.
+- Editor utilities: temporary arrays/lists from pools keep import/scan tools snappy, especially inside loops.

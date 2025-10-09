@@ -7,6 +7,14 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     using UnityEngine;
     using Utils;
 
+    /// <summary>
+    /// Immutable 3D R-Tree for efficient spatial indexing of 3D bounds.
+    /// </summary>
+    /// <typeparam name="T">Element type.</typeparam>
+    /// <remarks>
+    /// Pros: Great for sized 3D objects (meshes, volumes) with fast box and radius intersection queries.
+    /// Cons: Immutable; rebuild when element bounds change.
+    /// </remarks>
     [Serializable]
     public sealed class RTree3D<T> : ISpatialTree3D<T>
     {
@@ -102,16 +110,29 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
         }
 
+        /// <summary>Default number of elements per leaf node.</summary>
         public const int DefaultBucketSize = 10;
         public const int DefaultBranchFactor = 4;
 
         public readonly ImmutableArray<T> elements;
+
+        /// <summary>
+        /// Gets the overall bounding box of the tree (as Unity Bounds).
+        /// </summary>
         public Bounds Boundary => _bounds.ToBounds();
 
         private readonly BoundingBox3D _bounds;
         private readonly ElementData[] _elementData;
         private readonly RTreeNode _head;
 
+        /// <summary>
+        /// Builds an R-Tree from elements using a transformer that returns each element's 3D bounds.
+        /// </summary>
+        /// <param name="points">Source elements.</param>
+        /// <param name="elementTransformer">Maps element to an axis-aligned bounding box in world space.</param>
+        /// <param name="bucketSize">Max elements per leaf.</param>
+        /// <param name="branchFactor">Approximate number of children per internal node (≥2).</param>
+        /// <exception cref="ArgumentNullException">Thrown when points or elementTransformer are null.</exception>
         public RTree3D(
             IEnumerable<T> points,
             Func<T, Bounds> elementTransformer,

@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Tests.Tests.Editor.Helper
+namespace WallstopStudios.UnityHelpers.Tests.Helper
 {
     using System.Collections.Generic;
     using System.IO;
@@ -6,10 +6,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Tests.Editor.Helper
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
+    using WallstopStudios.UnityHelpers.Tests.Utils;
 
     [TestFixture]
-    public sealed class SpriteSettingsApplierTests
-        : WallstopStudios.UnityHelpers.Tests.CommonTestBase
+    public sealed class SpriteSettingsApplierTests : CommonTestBase
     {
         private const string TestFolder = "Assets/TempSpriteApplierTests";
         private string _assetPath;
@@ -96,7 +96,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Tests.Editor.Helper
                 },
             };
 
-            var prepared = SpriteSettingsApplierAPI.PrepareProfiles(profiles);
+            List<SpriteSettingsApplierAPI.PreparedProfile> prepared =
+                SpriteSettingsApplierAPI.PrepareProfiles(profiles);
             bool willChange = SpriteSettingsApplierAPI.WillTextureSettingsChange(path, prepared);
             Assert.IsTrue(willChange, "Expected changes to be detected");
 
@@ -134,7 +135,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Tests.Editor.Helper
                     textureType = TextureImporterType.Sprite,
                 },
             };
-            var prepared = SpriteSettingsApplierAPI.PrepareProfiles(profiles);
+            List<SpriteSettingsApplierAPI.PreparedProfile> prepared =
+                SpriteSettingsApplierAPI.PrepareProfiles(profiles);
             bool changed = SpriteSettingsApplierAPI.TryUpdateTextureSettings(
                 path,
                 prepared,

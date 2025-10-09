@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Tests
+namespace WallstopStudios.UnityHelpers.Tests.Utils
 {
     using System;
     using System.Collections;
@@ -6,6 +6,7 @@ namespace WallstopStudios.UnityHelpers.Tests
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.TestTools;
+    using Object = UnityEngine.Object;
 
     /// <summary>
     /// Common test base that tracks spawned Unity objects and disposables
@@ -14,7 +15,7 @@ namespace WallstopStudios.UnityHelpers.Tests
     /// </summary>
     public abstract class CommonTestBase
     {
-        protected readonly List<UnityEngine.Object> _trackedObjects = new();
+        protected readonly List<Object> _trackedObjects = new();
         protected readonly List<IDisposable> _trackedDisposables = new();
 
         protected GameObject Track(GameObject obj)
@@ -27,7 +28,7 @@ namespace WallstopStudios.UnityHelpers.Tests
         }
 
         protected T Track<T>(T obj)
-            where T : UnityEngine.Object
+            where T : Object
         {
             if (obj != null)
             {
@@ -47,7 +48,7 @@ namespace WallstopStudios.UnityHelpers.Tests
         }
 
         [TearDown]
-        public void TearDown()
+        public virtual void TearDown()
         {
             if (_trackedDisposables.Count > 0)
             {
@@ -64,12 +65,12 @@ namespace WallstopStudios.UnityHelpers.Tests
 
             if (!Application.isPlaying && _trackedObjects.Count > 0)
             {
-                var snapshot = _trackedObjects.ToArray();
-                foreach (UnityEngine.Object obj in snapshot)
+                Object[] snapshot = _trackedObjects.ToArray();
+                foreach (Object obj in snapshot)
                 {
                     if (obj != null)
                     {
-                        UnityEngine.Object.DestroyImmediate(obj);
+                        Object.DestroyImmediate(obj);
                     }
                 }
                 _trackedObjects.Clear();
@@ -77,18 +78,18 @@ namespace WallstopStudios.UnityHelpers.Tests
         }
 
         [UnityTearDown]
-        public IEnumerator UnityTearDown()
+        public virtual IEnumerator UnityTearDown()
         {
             if (_trackedObjects.Count > 0)
             {
-                var snapshot = _trackedObjects.ToArray();
-                foreach (UnityEngine.Object obj in snapshot)
+                Object[] snapshot = _trackedObjects.ToArray();
+                foreach (Object obj in snapshot)
                 {
                     if (obj == null)
                     {
                         continue;
                     }
-                    UnityEngine.Object.Destroy(obj);
+                    Object.Destroy(obj);
                     yield return null;
                 }
                 _trackedObjects.Clear();
@@ -96,16 +97,16 @@ namespace WallstopStudios.UnityHelpers.Tests
         }
 
         [OneTimeTearDown]
-        public void OneTimeTearDown()
+        public virtual void OneTimeTearDown()
         {
             if (_trackedObjects.Count > 0)
             {
-                var snapshot = _trackedObjects.ToArray();
-                foreach (UnityEngine.Object obj in snapshot)
+                Object[] snapshot = _trackedObjects.ToArray();
+                foreach (Object obj in snapshot)
                 {
                     if (obj != null)
                     {
-                        UnityEngine.Object.DestroyImmediate(obj);
+                        Object.DestroyImmediate(obj);
                     }
                 }
                 _trackedObjects.Clear();

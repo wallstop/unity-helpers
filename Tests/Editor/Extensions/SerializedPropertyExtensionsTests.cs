@@ -1,10 +1,9 @@
-﻿namespace WallstopStudios.UnityHelpers.Tests.Tests.Editor.Extensions
+﻿namespace WallstopStudios.UnityHelpers.Tests.Extensions
 {
 #if UNITY_EDITOR
     using System;
     using System.Collections.Generic;
     using System.Reflection;
-    using System.Reflection.Emit;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;

@@ -1,17 +1,16 @@
-namespace WallstopStudios.UnityHelpers.Tests.Tests.Editor.Utils
+namespace WallstopStudios.UnityHelpers.Tests.Utils
 {
 #if UNITY_EDITOR
     using System.Collections;
-    using Core.Attributes;
-    using Core.Helper;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
     using UnityEngine.TestTools;
+    using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Utils;
 
-    public sealed class ScriptableObjectSingletonTests
-        : WallstopStudios.UnityHelpers.Tests.CommonTestBase
+    public sealed class ScriptableObjectSingletonTests : CommonTestBase
     {
         private static readonly System.Collections.Generic.List<string> _createdAssetPaths = new();
 

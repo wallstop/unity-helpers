@@ -344,6 +344,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #endif
         }
 
+        /// <summary>
+        /// Builds a cached delegate that returns the value of a static field as object.
+        /// </summary>
         public static Func<object> GetStaticFieldGetter(FieldInfo field)
         {
             if (!field.IsStatic)
@@ -379,6 +382,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #endif
         }
 
+        /// <summary>
+        /// Builds a strongly-typed field getter delegate for instance fields.
+        /// </summary>
         public static Func<TInstance, TValue> GetFieldGetter<TInstance, TValue>(FieldInfo field)
         {
 #if !EMIT_DYNAMIC_IL
@@ -449,6 +455,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #endif
         }
 
+        /// <summary>
+        /// Builds a cached delegate that returns the value of a static property as TValue.
+        /// </summary>
         public static Func<TValue> GetStaticPropertyGetter<TValue>(PropertyInfo property)
         {
             MethodInfo getMethod = property.GetGetMethod(true);
@@ -499,6 +508,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #endif
         }
 
+        /// <summary>
+        /// Builds a cached delegate that returns the value of a static field as TValue.
+        /// </summary>
         public static Func<TValue> GetStaticFieldGetter<TValue>(FieldInfo field)
         {
             if (!field.IsStatic)
@@ -552,6 +564,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #endif
         }
 
+        /// <summary>
+        /// Builds a strongly-typed field setter for instance fields.
+        /// </summary>
         public static FieldSetter<TInstance, TValue> GetFieldSetter<TInstance, TValue>(
             FieldInfo field
         )
@@ -594,6 +609,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #endif
         }
 
+        /// <summary>
+        /// Builds a delegate that sets a static field to a value (boxed types supported).
+        /// </summary>
         public static Action<TValue> GetStaticFieldSetter<TValue>(FieldInfo field)
         {
             if (!field.IsStatic)
@@ -624,6 +642,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #endif
         }
 
+        /// <summary>
+        /// Builds a field setter for instance fields with boxed parameters (object instance, object value).
+        /// </summary>
         public static Action<object, object> GetFieldSetter(FieldInfo field)
         {
 #if !EMIT_DYNAMIC_IL
@@ -657,6 +678,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #endif
         }
 
+        /// <summary>
+        /// Builds a static field setter with boxed parameter (object value).
+        /// </summary>
         public static Action<object> GetStaticFieldSetter(FieldInfo field)
         {
             if (!field.IsStatic)
@@ -691,6 +715,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #endif
         }
 
+        /// <summary>
+        /// Gets (or caches) an array creator function for the given element type and length.
+        /// </summary>
         public static Func<int, Array> GetArrayCreator(Type elementType)
         {
 #if !EMIT_DYNAMIC_IL
@@ -711,6 +738,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #endif
         }
 
+        /// <summary>
+        /// Gets (or caches) a List<T> creator function for the given element type.
+        /// </summary>
         public static Func<IList> GetListCreator(Type elementType)
         {
             Type listType = typeof(List<>).MakeGenericType(elementType);
@@ -739,6 +769,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #endif
         }
 
+        /// <summary>
+        /// Gets (or caches) a List<T> creator function with capacity for the given element type.
+        /// </summary>
         public static Func<int, IList> GetListWithCapacityCreator(Type elementType)
         {
             Type listType = typeof(List<>).MakeGenericType(elementType);
@@ -769,6 +802,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        /// <summary>
+        /// Creates a HashSet<T> instance for the given element type with capacity.
+        /// </summary>
         public static object CreateHashSet(Type elementType, int capacity)
         {
             return HashSetWithCapacityCreators
@@ -777,6 +813,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 .Invoke(capacity);
         }
 
+        /// <summary>
+        /// Gets (or caches) a HashSet<T> creator with capacity for the given element type.
+        /// </summary>
         public static Func<int, object> GetHashSetWithCapacityCreator(Type elementType)
         {
             Type hashSetType = typeof(HashSet<>).MakeGenericType(elementType);
@@ -806,6 +845,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #endif
         }
 
+        /// <summary>
+        /// Gets (or caches) an adder delegate for HashSet<T>.Add.
+        /// </summary>
         public static Action<object, object> GetHashSetAdder(Type elementType)
         {
             if (elementType == null)
@@ -860,6 +902,13 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #endif
         }
 
+        /// <summary>
+        /// Invokes an instance method using a cached invoker; avoids per-call reflection overhead.
+        /// </summary>
+        /// <param name="method">The instance method to invoke.</param>
+        /// <param name="instance">The target instance.</param>
+        /// <param name="parameters">Optional parameters.</param>
+        /// <returns>The return value from the method, or null for void.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static object InvokeMethod(
             MethodInfo method,
@@ -872,6 +921,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 .Invoke(instance, parameters);
         }
 
+        /// <summary>
+        /// Invokes a static method using a cached invoker; avoids per-call reflection overhead.
+        /// </summary>
+        /// <param name="method">The static method to invoke.</param>
+        /// <param name="parameters">Optional parameters.</param>
+        /// <returns>The return value from the method, or null for void.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static object InvokeStaticMethod(MethodInfo method, params object[] parameters)
         {
@@ -880,6 +935,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 .Invoke(parameters);
         }
 
+        /// <summary>
+        /// Constructs an instance using a cached constructor invoker.
+        /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static object CreateInstance(ConstructorInfo constructor, params object[] parameters)
         {
@@ -889,6 +947,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        /// <summary>
+        /// Constructs an instance using a cached constructor invoker and returns it as T.
+        /// </summary>
+        /// <summary>
+        /// Constructs an instance using a cached constructor invoker and returns it as T.
+        /// </summary>
         public static T CreateInstance<T>(params object[] parameters)
         {
             Type type = typeof(T);
@@ -902,6 +966,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             return (T)CreateInstance(constructor, parameters);
         }
 
+        /// <summary>
+        /// Constructs an instance of a closed generic type built from the given definition and arguments.
+        /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T CreateGenericInstance<T>(
             Type genericTypeDefinition,
@@ -922,6 +989,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             return (T)CreateInstance(constructor, parameters);
         }
 
+        /// <summary>
+        /// Gets (or caches) a fast method invoker for instance methods to avoid reflection per call.
+        /// </summary>
         public static Func<object, object[], object> GetMethodInvoker(MethodInfo method)
         {
             if (method.IsStatic)
@@ -987,6 +1057,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #endif
         }
 
+        /// <summary>
+        /// Gets (or caches) a fast method invoker for static methods to avoid reflection per call.
+        /// </summary>
         public static Func<object[], object> GetStaticMethodInvoker(MethodInfo method)
         {
             if (!method.IsStatic)
@@ -1043,6 +1116,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #endif
         }
 
+        /// <summary>
+        /// Gets (or caches) a fast constructor invoker delegate that accepts an object[] of arguments.
+        /// </summary>
         public static Func<object[], object> GetConstructor(ConstructorInfo constructor)
         {
 #if !EMIT_DYNAMIC_IL
@@ -1090,6 +1166,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #endif
         }
 
+        /// <summary>
+        /// Gets a parameterless constructor delegate for type T, or throws if not present.
+        /// </summary>
+        /// <summary>
+        /// Gets a parameterless constructor delegate for type T, or throws if not present.
+        /// </summary>
         public static Func<T> GetParameterlessConstructor<T>()
         {
             Type type = typeof(T);
@@ -1120,6 +1202,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #endif
         }
 
+        /// <summary>
+        /// Gets a parameterless constructor delegate for a closed generic type constructed from the given generic definition and arguments.
+        /// </summary>
         public static Func<T> GetGenericParameterlessConstructor<T>(
             Type genericTypeDefinition,
             params Type[] genericArguments
@@ -1157,6 +1242,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #endif
         }
 
+        /// <summary>
+        /// Returns all loaded types across accessible assemblies, swallowing reflection errors.
+        /// </summary>
         public static IEnumerable<Type> GetAllLoadedTypes()
         {
             return GetAllLoadedAssemblies()
@@ -1164,6 +1252,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 .Where(type => type != null);
         }
 
+        /// <summary>
+        /// Returns all loaded assemblies discoverable by the current AppDomain.
+        /// </summary>
         public static IEnumerable<Assembly> GetAllLoadedAssemblies()
         {
             try
@@ -1178,6 +1269,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
         }
 
+        /// <summary>
+        /// Safely gets all types from the specified assembly, returning an empty array on failure.
+        /// </summary>
         public static Type[] GetTypesFromAssembly(Assembly assembly)
         {
             if (assembly == null)
@@ -1199,6 +1293,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
         }
 
+        /// <summary>
+        /// Safely gets all types from the assembly with the specified name, if loaded.
+        /// </summary>
         public static Type[] GetTypesFromAssemblyName(string assemblyName)
         {
             try
@@ -1212,12 +1309,18 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
         }
 
+        /// <summary>
+        /// Finds all types with a given attribute across loaded assemblies.
+        /// </summary>
         public static IEnumerable<Type> GetTypesWithAttribute<TAttribute>()
             where TAttribute : Attribute
         {
             return GetAllLoadedTypes().Where(type => HasAttributeSafe<TAttribute>(type));
         }
 
+        /// <summary>
+        /// Finds all types with a given attribute across loaded assemblies (non-generic overload).
+        /// </summary>
         public static IEnumerable<Type> GetTypesWithAttribute(Type attributeType)
         {
             if (attributeType == null || !typeof(Attribute).IsAssignableFrom(attributeType))

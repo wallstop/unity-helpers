@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Tests.Tests.Editor.Utils
+namespace WallstopStudios.UnityHelpers.Tests.Utils
 {
 #if UNITY_EDITOR
     using System.IO;
@@ -10,8 +10,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tests.Editor.Utils
     using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Utils;
 
-    public sealed class ScriptableObjectSingletonCreatorEditorTests
-        : WallstopStudios.UnityHelpers.Tests.CommonTestBase
+    public sealed class ScriptableObjectSingletonCreatorEditorTests : CommonTestBase
     {
         private const string ResourcesRoot = "Assets/Resources";
         private const string TargetFolder = ResourcesRoot + "/Tests/CreatorPath";

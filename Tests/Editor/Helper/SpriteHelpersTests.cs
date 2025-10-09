@@ -1,13 +1,14 @@
-﻿namespace WallstopStudios.UnityHelpers.Tests.Tests.Editor.Helper
+﻿namespace WallstopStudios.UnityHelpers.Tests.Helper
 {
     using System.IO;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Tests.Utils;
 
     [TestFixture]
-    public sealed class SpriteHelpersTests : WallstopStudios.UnityHelpers.Tests.CommonTestBase
+    public sealed class SpriteHelpersTests : CommonTestBase
     {
         private const string TestFolder = "Assets/TempSpriteHelpersTests";
         private string _testTexturePath;
@@ -28,8 +29,9 @@
         }
 
         [TearDown]
-        public void TearDown()
+        public override void TearDown()
         {
+            base.TearDown();
             if (Application.isPlaying)
             {
                 return;
