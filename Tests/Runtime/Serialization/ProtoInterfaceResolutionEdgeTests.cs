@@ -20,11 +20,18 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         }
 
         [Test]
-        public void SingleImplementationDeserializesWithoutRegistration()
+        public void SingleImplementationRequiresRegistration()
         {
             IWidget original = new Widget { Id = 3, Label = "ok" };
             byte[] data = Serializer.ProtoSerialize<IWidget>(original);
 
+            Assert.Throws<ProtoException>(
+                () => Serializer.ProtoDeserialize<IWidget>(data),
+                "Deserializing interface even with a single implementation should require registration"
+            );
+
+            // After registration, it should succeed
+            Serializer.RegisterProtobufRoot<IWidget, Widget>();
             IWidget round = Serializer.ProtoDeserialize<IWidget>(data);
             Assert.IsNotNull(round, "Deserialized instance should not be null");
             Assert.IsInstanceOf<Widget>(round);

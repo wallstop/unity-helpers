@@ -345,6 +345,94 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         }
 
         /// <summary>
+        /// Builds a boxed setter delegate for an instance property (object instance, object value).
+        /// </summary>
+        public static Action<object, object> GetPropertySetter(PropertyInfo property)
+        {
+            MethodInfo setMethod = property.GetSetMethod(true);
+            if (setMethod == null)
+            {
+                throw new ArgumentException(
+                    $"Property {property?.Name} has no setter",
+                    nameof(property)
+                );
+            }
+#if !EMIT_DYNAMIC_IL
+            return (obj, value) => property.SetValue(obj, value);
+#else
+            DynamicMethod dynamicMethod = new(
+                $"SetProperty{property.DeclaringType.Name}_{property.Name}",
+                typeof(void),
+                new[] { typeof(object), typeof(object) },
+                property.DeclaringType,
+                true
+            );
+
+            ILGenerator il = dynamicMethod.GetILGenerator();
+
+            // instance
+            il.Emit(OpCodes.Ldarg_0);
+            il.Emit(
+                property.DeclaringType.IsValueType ? OpCodes.Unbox : OpCodes.Castclass,
+                property.DeclaringType
+            );
+
+            // value
+            il.Emit(OpCodes.Ldarg_1);
+            il.Emit(
+                property.PropertyType.IsValueType ? OpCodes.Unbox_Any : OpCodes.Castclass,
+                property.PropertyType
+            );
+
+            il.Emit(
+                property.DeclaringType.IsValueType ? OpCodes.Call : OpCodes.Callvirt,
+                setMethod
+            );
+            il.Emit(OpCodes.Ret);
+
+            return (Action<object, object>)
+                dynamicMethod.CreateDelegate(typeof(Action<object, object>));
+#endif
+        }
+
+        /// <summary>
+        /// Returns a compiled parameterless constructor delegate for a given System.Type producing object.
+        /// </summary>
+        public static Func<object> GetParameterlessConstructor(Type type)
+        {
+            if (type == null)
+            {
+                throw new ArgumentNullException(nameof(type));
+            }
+            ConstructorInfo ctor = type.GetConstructor(Type.EmptyTypes);
+            if (ctor == null)
+            {
+                throw new ArgumentException(
+                    $"Type {type.FullName} does not have a parameterless constructor"
+                );
+            }
+#if !EMIT_DYNAMIC_IL
+            return () => Activator.CreateInstance(type);
+#else
+            DynamicMethod dynamicMethod = new(
+                $"New_{type.Name}",
+                typeof(object),
+                Type.EmptyTypes,
+                type,
+                true
+            );
+            ILGenerator il = dynamicMethod.GetILGenerator();
+            il.Emit(OpCodes.Newobj, ctor);
+            if (type.IsValueType)
+            {
+                il.Emit(OpCodes.Box, type);
+            }
+            il.Emit(OpCodes.Ret);
+            return (Func<object>)dynamicMethod.CreateDelegate(typeof(Func<object>));
+#endif
+        }
+
+        /// <summary>
         /// Builds a cached delegate that returns the value of a static field as object.
         /// </summary>
         public static Func<object> GetStaticFieldGetter(FieldInfo field)

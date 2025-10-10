@@ -167,6 +167,39 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
     {
         private static readonly ConcurrentDictionary<Type, Type> ProtobufRootCache = new();
         private static readonly Type NoRootMarker = typeof(void);
+
+        // Centralized decision logic for protobuf runtime vs declared handling
+        internal static bool ShouldUseRuntimeTypeForProtobuf<T>(
+            Type declared,
+            T instance,
+            bool forceRuntimeType
+        )
+        {
+            if (forceRuntimeType)
+            {
+                return true;
+            }
+
+            if (declared == null)
+            {
+                return true;
+            }
+
+            if (declared.IsInterface || declared.IsAbstract || declared == typeof(object))
+            {
+                return true;
+            }
+
+            // Last resort: if the declared type is a reference type and the runtime type differs,
+            // prefer using the runtime serializer to avoid protobuf-net subtype errors.
+            if (!declared.IsValueType && instance != null && instance.GetType() != declared)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
         private static readonly Utils.WallstopGenericPool<BinaryFormatter> BinaryFormatterPool =
             new(() => new BinaryFormatter());
 
@@ -471,13 +504,18 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             try
             {
                 Type declared = typeof(T);
-                if (declared.IsInterface || declared.IsAbstract || declared == typeof(object))
+                if (ShouldUseRuntimeTypeForProtobuf<T>(declared, default, forceRuntimeType: false))
                 {
                     Type root = ResolveProtobufRootType(declared);
                     if (root != null)
                     {
                         return (T)ProtoBuf.Serializer.Deserialize(root, stream);
                     }
+
+                    // Ambiguous or unknown root for interface/abstract/object; require registration
+                    throw new ProtoException(
+                        $"Unable to resolve a unique protobuf root for declared type {declared.FullName}. Register a root via RegisterProtobufRoot or annotate a shared abstract base with [ProtoInclude]s."
+                    );
                 }
 
                 return ProtoBuf.Serializer.Deserialize<T>(stream);
@@ -495,9 +533,14 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             }
         }
 
-        // Attempts to infer a concrete root type for protobuf-net when the declared generic type
-        // is interface/abstract/object. Prefers a single abstract class with [ProtoContract]
-        // that is assignable to the declared type. Falls back to any single class if needed.
+        // Attempts to resolve a concrete root type for protobuf-net when the declared generic type
+        // is interface/abstract/object.
+        // Rules:
+        // - If a root is explicitly registered, use it.
+        // - If the declared type itself is an abstract [ProtoContract] (with [ProtoInclude]s), return the declared type
+        //   to allow protobuf-net to handle subtypes via includes.
+        // - Do not auto-pick implementations based on reflection heuristics; require registration instead to avoid
+        //   ambiguity and brittle ordering of loaded types.
         private static Type ResolveProtobufRootType(Type declared)
         {
             if (declared == null)
@@ -523,46 +566,6 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             if (ProtobufRootCache.TryGetValue(declared, out Type cached))
             {
                 return cached == NoRootMarker ? null : cached;
-            }
-
-            try
-            {
-                Type[] abstractRoots = ReflectionHelpers
-                    .GetAllLoadedTypes()
-                    .Where(t =>
-                        t != null
-                        && t.IsClass
-                        && t.IsAbstract
-                        && declared.IsAssignableFrom(t)
-                        && ReflectionHelpers.HasAttributeSafe<ProtoContractAttribute>(t)
-                    )
-                    .ToArray();
-                if (abstractRoots.Length == 1)
-                {
-                    Type resolved = abstractRoots[0];
-                    ProtobufRootCache[declared] = resolved;
-                    return resolved;
-                }
-
-                Type[] anyRoots = ReflectionHelpers
-                    .GetAllLoadedTypes()
-                    .Where(t =>
-                        t != null
-                        && t.IsClass
-                        && declared.IsAssignableFrom(t)
-                        && ReflectionHelpers.HasAttributeSafe<ProtoContractAttribute>(t)
-                    )
-                    .ToArray();
-                if (anyRoots.Length == 1)
-                {
-                    Type resolved = anyRoots[0];
-                    ProtobufRootCache[declared] = resolved;
-                    return resolved;
-                }
-            }
-            catch
-            {
-                // Reflection might fail in restricted contexts; ignore and fall through
             }
 
             ProtobufRootCache[declared] = NoRootMarker;
@@ -628,13 +631,8 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             using Utils.PooledResource<PooledBufferStream> lease = PooledBufferStream.Rent(
                 out PooledBufferStream stream
             );
-            bool useRuntime = forceRuntimeType;
-            if (!useRuntime)
-            {
-                Type declared = typeof(T);
-                useRuntime =
-                    declared.IsInterface || declared.IsAbstract || declared == typeof(object);
-            }
+            Type declared = typeof(T);
+            bool useRuntime = ShouldUseRuntimeTypeForProtobuf(declared, input, forceRuntimeType);
 
             if (useRuntime)
             {
@@ -667,13 +665,8 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             using Utils.PooledResource<PooledBufferStream> lease = PooledBufferStream.Rent(
                 out PooledBufferStream stream
             );
-            bool useRuntime = forceRuntimeType;
-            if (!useRuntime)
-            {
-                Type declared = typeof(T);
-                useRuntime =
-                    declared.IsInterface || declared.IsAbstract || declared == typeof(object);
-            }
+            Type declared = typeof(T);
+            bool useRuntime = ShouldUseRuntimeTypeForProtobuf(declared, input, forceRuntimeType);
 
             if (useRuntime)
             {

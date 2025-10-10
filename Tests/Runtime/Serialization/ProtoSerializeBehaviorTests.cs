@@ -8,6 +8,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
     public sealed class ProtoSerializeBehaviorTests
     {
         [ProtoContract]
+        [ProtoInclude(100, typeof(DerivedMsg))]
         private class BaseMsg
         {
             [ProtoMember(1)]
@@ -22,7 +23,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         }
 
         [Test]
-        public void GenericBaseDropsDerivedFieldsWithoutForce()
+        public void GenericBasePrefersRuntimeTypeWhenDifferent()
         {
             DerivedMsg original = new() { A = 123, B = "hello" };
             byte[] data = Serializer.ProtoSerialize<BaseMsg>(original);
@@ -30,7 +31,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
 
             Assert.IsNotNull(round, "Deserialized instance should not be null");
             Assert.AreEqual(123, round.A, "Base field A should match");
-            Assert.IsTrue(string.IsNullOrEmpty(round.B), "Derived field B should be empty");
+            Assert.AreEqual("hello", round.B, "Derived field B should be preserved");
         }
 
         [Test]
