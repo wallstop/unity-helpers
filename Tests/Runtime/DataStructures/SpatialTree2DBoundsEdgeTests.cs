@@ -28,16 +28,16 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             Vector2[] points = CreateGridPoints(100, 100);
 
-            var kdBalanced = new KdTree2D<Vector2>(points, p => p);
-            var kdUnbalanced = new KdTree2D<Vector2>(points, p => p, balanced: false);
-            var quad = new QuadTree2D<Vector2>(points, p => p);
+            KdTree2D<Vector2> kdBalanced = new KdTree2D<Vector2>(points, p => p);
+            KdTree2D<Vector2> kdUnbalanced = new KdTree2D<Vector2>(points, p => p, balanced: false);
+            QuadTree2D<Vector2> quad = new QuadTree2D<Vector2>(points, p => p);
 
             Vector3 center3 = kdBalanced.Boundary.center;
             Vector2 center = new Vector2(center3.x, center3.y);
             Vector3 size = new Vector3(99f, 99f, 1f);
             Bounds query = new Bounds(new Vector3(center.x, center.y, 0f), size);
 
-            var buf = new List<Vector2>();
+            List<Vector2> buf = new List<Vector2>();
             kdBalanced.GetElementsInBounds(query, buf);
             int expected = buf.Count;
 
@@ -53,12 +53,12 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             Vector2[] points = CreateGridPoints(10, 10);
 
-            var kd = new KdTree2D<Vector2>(points, p => p);
-            var quad = new QuadTree2D<Vector2>(points, p => p);
+            KdTree2D<Vector2> kd = new KdTree2D<Vector2>(points, p => p);
+            QuadTree2D<Vector2> quad = new QuadTree2D<Vector2>(points, p => p);
 
             Bounds query = new Bounds(new Vector3(4.5f, 4.5f, 0f), new Vector3(9f, 9f, 1f));
 
-            var buf = new List<Vector2>();
+            List<Vector2> buf = new List<Vector2>();
             kd.GetElementsInBounds(query, buf);
             int expected = buf.Count;
             Assert.AreEqual(100, expected);
@@ -72,12 +72,12 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             Vector2[] points = CreateGridPoints(10, 10);
 
-            var kd = new KdTree2D<Vector2>(points, p => p);
-            var quad = new QuadTree2D<Vector2>(points, p => p);
+            KdTree2D<Vector2> kd = new KdTree2D<Vector2>(points, p => p);
+            QuadTree2D<Vector2> quad = new QuadTree2D<Vector2>(points, p => p);
 
             Bounds query = new Bounds(new Vector3(5f, 5f, 0f), new Vector3(1f, 1f, 1f));
 
-            var buf = new List<Vector2>();
+            List<Vector2> buf = new List<Vector2>();
             kd.GetElementsInBounds(query, buf);
             int expected = buf.Count;
             Assert.AreEqual(1, expected);
@@ -91,12 +91,12 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             Vector2[] points = CreateGridPoints(10, 10);
 
-            var kd = new KdTree2D<Vector2>(points, p => p);
-            var quad = new QuadTree2D<Vector2>(points, p => p);
+            KdTree2D<Vector2> kd = new KdTree2D<Vector2>(points, p => p);
+            QuadTree2D<Vector2> quad = new QuadTree2D<Vector2>(points, p => p);
 
             Bounds query = new Bounds(new Vector3(4.5f, 9f, 0f), new Vector3(9f, 1f, 1f));
 
-            var buf = new List<Vector2>();
+            List<Vector2> buf = new List<Vector2>();
             kd.GetElementsInBounds(query, buf);
             int expected = buf.Count;
             Assert.AreEqual(10, expected);
@@ -110,12 +110,12 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             Vector2[] points = CreateGridPoints(10, 10);
 
-            var kd = new KdTree2D<Vector2>(points, p => p);
-            var quad = new QuadTree2D<Vector2>(points, p => p);
+            KdTree2D<Vector2> kd = new KdTree2D<Vector2>(points, p => p);
+            QuadTree2D<Vector2> quad = new QuadTree2D<Vector2>(points, p => p);
 
             Bounds query = new Bounds(new Vector3(0f, 4.5f, 0f), new Vector3(1f, 9f, 1f));
 
-            var buf = new List<Vector2>();
+            List<Vector2> buf = new List<Vector2>();
             kd.GetElementsInBounds(query, buf);
             int expected = buf.Count;
             Assert.AreEqual(10, expected);

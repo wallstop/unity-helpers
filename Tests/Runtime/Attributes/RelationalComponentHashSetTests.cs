@@ -6,6 +6,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
     /// <summary>
     /// Tests for HashSet support in relational component attributes

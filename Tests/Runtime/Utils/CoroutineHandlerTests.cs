@@ -4,6 +4,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.TestTools;
+    using WallstopStudios.UnityHelpers.Tests.TestUtils;
     using WallstopStudios.UnityHelpers.Utils;
 
     public sealed class CoroutineHandlerTests : CommonTestBase
@@ -45,7 +46,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 coroutineRan = true;
             }
 
-            var inst = CoroutineHandler.Instance;
+            CoroutineHandler inst = CoroutineHandler.Instance;
             Track(inst.gameObject);
             inst.StartCoroutine(TestCoroutine());
 
@@ -69,7 +70,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 }
             }
 
-            var inst2 = CoroutineHandler.Instance;
+            CoroutineHandler inst2 = CoroutineHandler.Instance;
             Track(inst2.gameObject);
             Coroutine coroutine = inst2.StartCoroutine(TestCoroutine());
 
@@ -109,7 +110,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 }
             }
 
-            var inst3 = CoroutineHandler.Instance;
+            CoroutineHandler inst3 = CoroutineHandler.Instance;
             Track(inst3.gameObject);
             inst3.StartCoroutine(TestCoroutine1());
             inst3.StartCoroutine(TestCoroutine2());
@@ -143,7 +144,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 }
             }
 
-            var inst4 = CoroutineHandler.Instance;
+            CoroutineHandler inst4 = CoroutineHandler.Instance;
             Track(inst4.gameObject);
             inst4.StartCoroutine(TestCoroutine());
 

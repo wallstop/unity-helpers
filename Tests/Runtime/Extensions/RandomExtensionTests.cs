@@ -454,7 +454,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void NextWeighted()
         {
-            var items = new List<(string, float)> { ("rare", 1f), ("common", 99f) };
+            List<(string, float)> items = new List<(string, float)>
+            {
+                ("rare", 1f),
+                ("common", 99f),
+            };
             HashSet<string> seen = new();
             int commonCount = 0;
             int rareCount = 0;
@@ -476,21 +480,21 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void NextWeightedThrowsOnEmptyCollection()
         {
-            var empty = new List<(string, float)>();
+            List<(string, float)> empty = new List<(string, float)>();
             Assert.Throws<ArgumentException>(() => PRNG.Instance.NextWeighted(empty));
         }
 
         [Test]
         public void NextWeightedThrowsOnNegativeWeight()
         {
-            var items = new List<(string, float)> { ("item", -1f) };
+            List<(string, float)> items = new List<(string, float)> { ("item", -1f) };
             Assert.Throws<ArgumentException>(() => PRNG.Instance.NextWeighted(items));
         }
 
         [Test]
         public void NextWeightedThrowsOnZeroTotalWeight()
         {
-            var items = new List<(string, float)> { ("item", 0f) };
+            List<(string, float)> items = new List<(string, float)> { ("item", 0f) };
             Assert.Throws<ArgumentException>(() => PRNG.Instance.NextWeighted(items));
         }
 
@@ -604,12 +608,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void NextSubset()
         {
-            var items = Enumerable.Range(0, 20).ToArray();
+            int[] items = Enumerable.Range(0, 20).ToArray();
             for (int count = 0; count <= items.Length; ++count)
             {
-                var subset = PRNG.Instance.NextSubset(items, count).ToArray();
+                int[] subset = PRNG.Instance.NextSubset(items, count).ToArray();
                 Assert.AreEqual(count, subset.Length);
-                foreach (var item in subset)
+                foreach (int item in subset)
                 {
                     Assert.Contains(item, items);
                 }
@@ -643,7 +647,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void NextOfExceptWithList()
         {
-            var values = new List<int> { 1, 2, 3, 4, 5 };
+            List<int> values = new List<int> { 1, 2, 3, 4, 5 };
             HashSet<int> seen = new();
             for (int i = 0; i < 200; ++i)
             {
@@ -659,7 +663,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void NextOfExceptWithEnumerable()
         {
-            var values = Enumerable.Range(1, 5);
+            IEnumerable<int> values = Enumerable.Range(1, 5);
             HashSet<int> seen = new();
             for (int i = 0; i < 200; ++i)
             {

@@ -57,10 +57,10 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         public static RomuDuo Instance => ThreadLocalRandom<RomuDuo>.Instance;
         public override RandomState InternalState => BuildState(_x, _y);
 
-        [ProtoMember(2)]
+        [ProtoMember(6)]
         internal ulong _x;
 
-        [ProtoMember(3)]
+        [ProtoMember(7)]
         internal ulong _y;
 
         private void EnsureNonZeroState()

@@ -88,19 +88,19 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             }
         }
 
-        [ProtoMember(2)]
+        [ProtoMember(6)]
         private uint _a;
 
-        [ProtoMember(3)]
+        [ProtoMember(7)]
         private uint _b;
 
-        [ProtoMember(4)]
+        [ProtoMember(8)]
         private uint _c;
 
-        [ProtoMember(5)]
+        [ProtoMember(9)]
         private uint _d;
 
-        [ProtoMember(6)]
+        [ProtoMember(10)]
         private uint _e;
 
         public IllusionFlow()

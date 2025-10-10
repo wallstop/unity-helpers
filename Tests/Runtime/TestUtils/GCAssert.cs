@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Tests
+namespace WallstopStudios.UnityHelpers.Tests.TestUtils
 {
     using System;
     using NUnit.Framework;

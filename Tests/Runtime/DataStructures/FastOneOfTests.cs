@@ -1,6 +1,7 @@
-namespace WallstopStudios.UnityHelpers.Tests.OneOf
+namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 {
     using System;
+    using System.Collections.Generic;
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.OneOf;
 
@@ -917,7 +918,7 @@ namespace WallstopStudios.UnityHelpers.Tests.OneOf
         [Test]
         public void NoneCanBeUsedInCollections()
         {
-            var set = new System.Collections.Generic.HashSet<None>
+            HashSet<None> set = new System.Collections.Generic.HashSet<None>
             {
                 default,
                 None.Default,
@@ -930,7 +931,10 @@ namespace WallstopStudios.UnityHelpers.Tests.OneOf
         [Test]
         public void NoneCanBeUsedInDictionary()
         {
-            var dict = new System.Collections.Generic.Dictionary<None, int> { [default(None)] = 1 };
+            Dictionary<None, int> dict = new System.Collections.Generic.Dictionary<None, int>
+            {
+                [default(None)] = 1,
+            };
 
             Assert.AreEqual(1, dict[None.Default]);
         }

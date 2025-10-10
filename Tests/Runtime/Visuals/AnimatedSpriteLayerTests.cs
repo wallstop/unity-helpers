@@ -4,6 +4,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
     using NUnit.Framework;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Tests.TestUtils;
     using WallstopStudios.UnityHelpers.Visuals;
 
     public sealed class AnimatedSpriteLayerTests : CommonTestBase

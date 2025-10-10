@@ -7,6 +7,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure;
     using WallstopStudios.UnityHelpers.Core.Random;
+    using WallstopStudios.UnityHelpers.Tests.TestUtils;
     using Vector3 = UnityEngine.Vector3;
 
     [TestFixture]

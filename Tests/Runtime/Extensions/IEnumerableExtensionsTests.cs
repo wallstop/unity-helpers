@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using System.Linq;
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Utils;
 
     public sealed class IEnumerableExtensionsTests
     {
@@ -141,9 +142,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         {
             int[] values = { 1, 2, 3, 4, 5 };
             List<int[]> partitions = new();
-            foreach (var pooled in values.PartitionPooled(2))
+            foreach (PooledResource<List<int>> pooled in values.PartitionPooled(2))
             {
-                using var lease = pooled; // ensure return to pool
+                using PooledResource<List<int>> lease = pooled; // ensure return to pool
                 partitions.Add(lease.resource.ToArray());
             }
 

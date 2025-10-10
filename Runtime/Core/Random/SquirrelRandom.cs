@@ -60,7 +60,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         public override RandomState InternalState => BuildState(_position);
 
-        [ProtoMember(2)]
+        [ProtoMember(6)]
         private uint _position;
 
         public SquirrelRandom()

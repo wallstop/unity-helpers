@@ -11,6 +11,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Tests;
+    using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
     public sealed class UnityExtensionsComprehensiveTests : CommonTestBase
     {

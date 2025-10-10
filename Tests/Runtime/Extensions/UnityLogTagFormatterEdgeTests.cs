@@ -8,6 +8,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper.Logging;
     using WallstopStudios.UnityHelpers.Tests;
+    using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
     public sealed class UnityLogTagFormatterEdgeTests : CommonTestBase
     {

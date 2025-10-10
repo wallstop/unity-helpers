@@ -70,10 +70,13 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             }
         }
 
-        [ProtoMember(2)]
+        [ProtoMember(6)]
         private readonly int? _seed;
 
-        public UnityRandom(int? seed = null)
+        public UnityRandom()
+            : this(null) { }
+
+        public UnityRandom(int? seed)
         {
             if (seed != null)
             {
@@ -99,7 +102,8 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         public override IRandom Copy()
         {
-            return new UnityRandom(_seed);
+            // Clone from full InternalState to preserve reservoirs and cached values
+            return new UnityRandom(InternalState);
         }
     }
 }

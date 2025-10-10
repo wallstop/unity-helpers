@@ -573,7 +573,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         public void PartitionBasic()
         {
             int[] arr = { 1, 2, 3, 4, 5, 6 };
-            var (even, odd) = arr.Partition(x => x % 2 == 0);
+            (List<int> even, List<int> odd) = arr.Partition(x => x % 2 == 0);
             Assert.That(even, Is.EqualTo(new[] { 2, 4, 6 }));
             Assert.That(odd, Is.EqualTo(new[] { 1, 3, 5 }));
         }
@@ -582,7 +582,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         public void PartitionAllMatch()
         {
             int[] arr = { 2, 4, 6 };
-            var (matching, notMatching) = arr.Partition(x => x % 2 == 0);
+            (List<int> matching, List<int> notMatching) = arr.Partition(x => x % 2 == 0);
             Assert.That(matching, Is.EqualTo(new[] { 2, 4, 6 }));
             Assert.That(notMatching, Is.Empty);
         }
@@ -591,7 +591,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         public void PartitionNoneMatch()
         {
             int[] arr = { 1, 3, 5 };
-            var (matching, notMatching) = arr.Partition(x => x % 2 == 0);
+            (List<int> matching, List<int> notMatching) = arr.Partition(x => x % 2 == 0);
             Assert.That(matching, Is.Empty);
             Assert.That(notMatching, Is.EqualTo(new[] { 1, 3, 5 }));
         }
@@ -755,7 +755,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         {
             int[] arr = new int[10];
             arr.Fill(i => i);
-            var (even, odd) = arr.Partition(x => x % 2 == 0);
+            (List<int> even, List<int> odd) = arr.Partition(x => x % 2 == 0);
             Assert.That(even, Is.EqualTo(new[] { 0, 2, 4, 6, 8 }));
             Assert.That(odd, Is.EqualTo(new[] { 1, 3, 5, 7, 9 }));
         }

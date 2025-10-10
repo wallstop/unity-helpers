@@ -111,7 +111,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Math
         public void VertexReturnsCorrectCoordinates()
         {
             Parabola parabola = new(maxHeight: 15f, length: 30f);
-            var vertex = parabola.Vertex;
+            (float x, float y) vertex = parabola.Vertex;
 
             Assert.AreEqual(15f, vertex.x, Tolerance);
             Assert.AreEqual(15f, vertex.y, Tolerance);
@@ -121,7 +121,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Math
         public void XRangeReturnsCorrectBounds()
         {
             Parabola parabola = new(maxHeight: 10f, length: 25f);
-            var range = parabola.XRange;
+            (float min, float max) range = parabola.XRange;
 
             Assert.AreEqual(0f, range.min, Tolerance);
             Assert.AreEqual(25f, range.max, Tolerance);

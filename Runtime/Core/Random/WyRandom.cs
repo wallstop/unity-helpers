@@ -54,7 +54,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         public override RandomState InternalState => BuildState(_state);
 
-        [ProtoMember(2)]
+        [ProtoMember(6)]
         private ulong _state;
 
         public WyRandom()

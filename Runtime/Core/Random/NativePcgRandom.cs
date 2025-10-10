@@ -92,11 +92,17 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                 Generates a uniform random number within the bound, avoiding modulo bias
             */
             uint threshold = unchecked((uint)((0x100000000UL - max) % max));
+            int attempts = 0;
             while (true)
             {
                 uint randomValue = NextUint();
                 if (threshold <= randomValue)
                 {
+                    return randomValue % max;
+                }
+                if (++attempts > 1 << 16)
+                {
+                    // Prevent infinite loop: return modulo (introduces tiny bias) rather than hang
                     return randomValue % max;
                 }
             }

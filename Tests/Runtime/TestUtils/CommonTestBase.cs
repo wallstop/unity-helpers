@@ -1,11 +1,13 @@
-namespace WallstopStudios.UnityHelpers.Tests
+namespace WallstopStudios.UnityHelpers.Tests.TestUtils
 {
     using System;
     using System.Collections;
     using System.Collections.Generic;
+    using System.Threading.Tasks;
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.TestTools;
+    using Object = UnityEngine.Object;
 
     /// <summary>
     /// Common test base that tracks spawned Unity objects and disposables
@@ -102,7 +104,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             if (!Application.isPlaying && _trackedObjects.Count > 0)
             {
                 // Snapshot to avoid list mutation issues during destruction
-                var snapshot = _trackedObjects.ToArray();
+                Object[] snapshot = _trackedObjects.ToArray();
                 foreach (UnityEngine.Object obj in snapshot)
                 {
                     if (obj != null)
@@ -124,13 +126,13 @@ namespace WallstopStudios.UnityHelpers.Tests
             // Run tracked async disposals first to release scene resources
             if (_trackedAsyncDisposals.Count > 0)
             {
-                foreach (var producer in _trackedAsyncDisposals.ToArray())
+                foreach (Func<ValueTask> producer in _trackedAsyncDisposals.ToArray())
                 {
                     if (producer == null)
                     {
                         continue;
                     }
-                    var vt = producer();
+                    ValueTask vt = producer();
                     while (!vt.IsCompleted)
                     {
                         yield return null;
@@ -141,7 +143,7 @@ namespace WallstopStudios.UnityHelpers.Tests
 
             if (_trackedObjects.Count > 0)
             {
-                var snapshot = _trackedObjects.ToArray();
+                Object[] snapshot = _trackedObjects.ToArray();
                 foreach (UnityEngine.Object obj in snapshot)
                 {
                     if (obj == null)
@@ -165,7 +167,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             // Best-effort final cleanup using DestroyImmediate (editor-safe)
             if (_trackedObjects.Count > 0)
             {
-                var snapshot = _trackedObjects.ToArray();
+                Object[] snapshot = _trackedObjects.ToArray();
                 foreach (UnityEngine.Object obj in snapshot)
                 {
                     if (obj != null)
@@ -196,11 +198,11 @@ namespace WallstopStudios.UnityHelpers.Tests
             if (_trackedAsyncDisposals.Count > 0)
             {
                 // Fire and forget in editor context
-                foreach (var producer in _trackedAsyncDisposals.ToArray())
+                foreach (Func<ValueTask> producer in _trackedAsyncDisposals.ToArray())
                 {
                     try
                     {
-                        var _ = producer?.Invoke();
+                        ValueTask? _ = producer?.Invoke();
                     }
                     catch
                     {

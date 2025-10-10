@@ -55,7 +55,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         public override RandomState InternalState => BuildState(_state);
 
-        [ProtoMember(2)]
+        [ProtoMember(6)]
         internal ulong _state;
 
         public SplitMix64()

@@ -53,10 +53,10 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         public override RandomState InternalState =>
             BuildState(unchecked((ulong)_seed), state2: _numberGenerated);
 
-        [ProtoMember(2)]
+        [ProtoMember(6)]
         private ulong _numberGenerated;
 
-        [ProtoMember(3)]
+        [ProtoMember(7)]
         private int _seed;
 
         private Random _random;

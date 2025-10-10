@@ -41,6 +41,10 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         protected const uint HalfwayUint = uint.MaxValue / 2;
         protected const float MagicFloat = 5.960465E-008F;
         private const ulong LongBias = 1UL << 63;
+        private const int MaxRejectionAttempts32 = 1 << 16;
+        private const int MaxRejectionAttempts64 = 1 << 20;
+        private const int MaxGaussianAttempts = 1 << 20;
+        private const int MaxDoubleBitAttempts = 1 << 20;
 
         [ProtoMember(1)]
         protected double? _cachedGaussian;
@@ -50,9 +54,17 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         private readonly byte[] _guidBytes = new byte[16];
 
         // Bit/byte reservoirs to accelerate small requests
+        // Note: included in protobuf to preserve exact generator state across round-trips
+        [ProtoMember(2)]
         protected uint _bitBuffer;
+
+        [ProtoMember(3)]
         protected int _bitCount;
+
+        [ProtoMember(4)]
         protected uint _byteBuffer;
+
+        [ProtoMember(5)]
         protected int _byteCount;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -139,8 +151,14 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             if (lo < max)
             {
                 uint t = unchecked((0u - max) % max);
+                int attempts = 0;
                 while (lo < t)
                 {
+                    if (++attempts > MaxRejectionAttempts32)
+                    {
+                        // Prevent infinite loop: fall back to modulo (small bias) rather than hang
+                        return r % max;
+                    }
                     r = NextUint();
                     m = (ulong)r * max;
                     lo = (uint)m;
@@ -252,27 +270,9 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                 throw new ArgumentException("Max cannot be zero");
             }
 
-            // Power-of-two fast path
-            if ((max & (max - 1)) == 0)
-            {
-                return NextUlong() & (max - 1);
-            }
-
-            // Fallback to rejection with modulo (uniform)
-            ulong remainder = unchecked((0UL - max) % max);
-            if (remainder == 0)
-            {
-                return NextUlong() % max;
-            }
-
-            ulong threshold = unchecked(0UL - remainder);
-            ulong value;
-            do
-            {
-                value = NextUlong();
-            } while (value >= threshold);
-
-            return value % max;
+            // 64-bit Lemire method via high 64 bits of 128-bit product
+            // Produces uniform values in [0, max) without rejection
+            return MulHi64(NextUlong(), max);
         }
 
         public ulong NextUlong(ulong min, ulong max)
@@ -418,6 +418,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             }
 
             ulong range = orderedMax - orderedMin;
+            int attempts = 0;
             while (true)
             {
                 ulong sample = orderedMin + NextUlong(range);
@@ -427,6 +428,28 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                 {
                     return value;
                 }
+                if (++attempts > MaxRejectionAttempts64)
+                {
+                    // Transparent fallback: pick a finite value inside [min, max)
+                    if (double.IsPositiveInfinity(max))
+                    {
+                        return FromOrderedDouble(orderedMax - 1);
+                    }
+                    if (double.IsNegativeInfinity(min))
+                    {
+                        return FromOrderedDouble(orderedMin + 1);
+                    }
+
+                    ulong midpoint = orderedMin + (range >> 1);
+                    double midValue = FromOrderedDouble(midpoint);
+                    if (!double.IsNaN(midValue) && !double.IsInfinity(midValue))
+                    {
+                        return midValue;
+                    }
+
+                    // Final safeguard: nudge just above min in ordered space
+                    return FromOrderedDouble(orderedMin + 1);
+                }
             }
         }
 
@@ -434,9 +457,16 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         {
             const ulong exponentMask = 0x7FF0000000000000;
             ulong randomBits;
+            int attempts = 0;
             do
             {
                 randomBits = NextUlong();
+                if (++attempts > MaxDoubleBitAttempts)
+                {
+                    // Force a finite value by clearing exponent bits
+                    randomBits &= ~exponentMask;
+                    break;
+                }
             } while ((randomBits & exponentMask) == exponentMask);
 
             return BitConverter.Int64BitsToDouble(unchecked((long)randomBits));
@@ -460,11 +490,27 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             double x;
             double y;
             double square;
+            int attempts = 0;
             do
             {
                 x = 2 * NextDouble() - 1;
                 y = 2 * NextDouble() - 1;
                 square = x * x + y * y;
+                if (++attempts > MaxGaussianAttempts)
+                {
+                    // Fallback to Box-Muller without rejection to avoid infinite loop
+                    double u1 = NextDouble();
+                    if (u1 <= double.Epsilon)
+                    {
+                        u1 = double.Epsilon;
+                    }
+                    double u2 = NextDouble();
+                    double mag = Math.Sqrt(-2.0 * Math.Log(u1));
+                    double z0 = mag * Math.Cos(2.0 * Math.PI * u2);
+                    double z1 = mag * Math.Sin(2.0 * Math.PI * u2);
+                    _cachedGaussian = z1;
+                    return z0;
+                }
             } while (square is 0 or > 1);
 
             double fac = Math.Sqrt(-2 * Math.Log(square) / square);
@@ -928,6 +974,35 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         private static long UnbiasLong(ulong value)
         {
             return unchecked((long)(value - LongBias));
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static ulong MulHi64(ulong x, ulong y)
+        {
+#if NET7_0_OR_GREATER
+            if (System.Runtime.Intrinsics.X86.Bmi2.X64.IsSupported)
+            {
+                unsafe
+                {
+                    ulong lo;
+                    ulong hi = System.Runtime.Intrinsics.X86.Bmi2.X64.MultiplyNoFlags(x, y, &lo);
+                    return hi;
+                }
+            }
+#endif
+            ulong x0 = (uint)x;
+            ulong x1 = x >> 32;
+            ulong y0 = (uint)y;
+            ulong y1 = y >> 32;
+
+            ulong p11 = x1 * y1;
+            ulong p01 = x0 * y1;
+            ulong p10 = x1 * y0;
+            ulong p00 = x0 * y0;
+
+            ulong middle = p10 + (p00 >> 32) + (uint)p01;
+            ulong hi = p11 + (middle >> 32) + (p01 >> 32);
+            return hi;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

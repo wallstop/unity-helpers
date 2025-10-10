@@ -2,10 +2,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
 {
     using System;
     using System.Diagnostics;
-    using Components;
     using NUnit.Framework;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Tests.Attributes.Components;
 
     public sealed class RelationComponentPerformanceTests
     {

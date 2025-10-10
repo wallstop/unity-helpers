@@ -61,7 +61,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         private const uint DefaultState = 2463534242U;
 
-        [ProtoMember(2)]
+        [ProtoMember(6)]
         private uint _state;
 
         private static uint NormalizeState(uint state)

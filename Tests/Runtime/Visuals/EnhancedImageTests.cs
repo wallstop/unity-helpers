@@ -4,6 +4,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
     using NUnit.Framework;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Tests.TestUtils;
     using WallstopStudios.UnityHelpers.Visuals.UGUI;
 
     public sealed class EnhancedImageTests : CommonTestBase
@@ -84,7 +85,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
 
             InvokeLifecycle(image, "Start");
 
-            var field = typeof(EnhancedImage).GetField(
+            FieldInfo field = typeof(EnhancedImage).GetField(
                 "_cachedMaterialInstance",
                 BindingFlags.Instance | BindingFlags.NonPublic
             );

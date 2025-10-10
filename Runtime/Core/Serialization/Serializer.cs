@@ -2,8 +2,10 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
 {
     using System;
     using System.Buffers;
+    using System.Collections.Concurrent;
     using System.ComponentModel;
     using System.IO;
+    using System.Linq;
     using System.Runtime.Serialization.Formatters.Binary;
     using System.Text;
     using System.Text.Json;
@@ -11,6 +13,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
     using System.Threading.Tasks;
     using JsonConverters;
     using ProtoBuf;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using TypeConverter = JsonConverters.TypeConverter;
 
     internal static class SerializerEncoding
@@ -29,6 +32,16 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                 ReferenceHandler = ReferenceHandler.IgnoreCycles,
                 IncludeFields = true,
                 PropertyNameCaseInsensitive = true,
+                NumberHandling =
+                    System
+                        .Text
+                        .Json
+                        .Serialization
+                        .JsonNumberHandling
+                        .AllowNamedFloatingPointLiterals
+                    | System.Text.Json.Serialization.JsonNumberHandling.AllowReadingFromString,
+                ReadCommentHandling = JsonCommentHandling.Skip,
+                AllowTrailingCommas = true,
                 Converters =
                 {
                     new JsonStringEnumConverter(),
@@ -49,6 +62,16 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                 ReferenceHandler = ReferenceHandler.IgnoreCycles,
                 PropertyNameCaseInsensitive = true,
                 IncludeFields = true,
+                NumberHandling =
+                    System
+                        .Text
+                        .Json
+                        .Serialization
+                        .JsonNumberHandling
+                        .AllowNamedFloatingPointLiterals
+                    | System.Text.Json.Serialization.JsonNumberHandling.AllowReadingFromString,
+                ReadCommentHandling = JsonCommentHandling.Skip,
+                AllowTrailingCommas = true,
                 Converters =
                 {
                     new JsonStringEnumConverter(),
@@ -65,16 +88,95 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
         }
     }
 
+    /// <summary>
+    /// Selects the wire format used by <see cref="Serializer"/>.
+    /// </summary>
+    /// <remarks>
+    /// Choose a format based on your requirements:
+    /// <list type="bullet">
+    /// <item>
+    /// <description>
+    /// <see cref="Json"/> — Human‑readable and diff‑friendly. Uses System.Text.Json with Unity‑aware
+    /// converters for common types (e.g., Vector2/3/4, Matrix4x4, Color, Type).
+    /// Prefer for save files, configs, and tooling.
+    /// </description>
+    /// </item>
+    /// <item>
+    /// <description>
+    /// <see cref="Protobuf"/> — Compact binary with great performance using protobuf‑net.
+    /// Prefer for networking, large payloads, and memory‑sensitive scenarios.
+    /// Requires opt‑in attributes like [ProtoContract]/[ProtoMember] or runtime models.
+    /// </description>
+    /// </item>
+    /// <item>
+    /// <description>
+    /// <see cref="SystemBinary"/> — .NET BinaryFormatter. Legacy and trusted‑only. Not
+    /// cross‑version/portable and unsafe for untrusted input. Use only for ephemeral/dev data.
+    /// </description>
+    /// </item>
+    /// </list>
+    /// </remarks>
     public enum SerializationType
     {
+        /// <summary>Unspecified format; not valid for read/write.</summary>
+        [Obsolete("Please use a valid enum value")]
         None = 0,
+
+        /// <summary>Legacy .NET BinaryFormatter. Trusted/ephemeral data only.</summary>
         SystemBinary = 1,
+
+        /// <summary>protobuf-net compact binary. Best for networking and high-performance.</summary>
         Protobuf = 2,
+
+        /// <summary>System.Text.Json text. Human-readable and diff-friendly.</summary>
         Json = 3,
     }
 
+    /// <summary>
+    /// Unified serialization helpers for JSON, protobuf‑net, and legacy BinaryFormatter.
+    /// </summary>
+    /// <remarks>
+    /// Highlights
+    /// <list type="bullet">
+    /// <item><description>JSON: Uses pooled writers and Unity‑aware converters; supports pretty printing.</description></item>
+    /// <item><description>Protobuf: Compact binary via protobuf‑net; supports interface/abstract types via root resolution or <see cref="RegisterProtobufRoot(Type, Type)"/>.</description></item>
+    /// <item><description>Binary: Convenience for legacy only; do not feed untrusted data.</description></item>
+    /// <item><description>Minimal allocations with ArrayPool-backed streams to reduce GC pressure.</description></item>
+    /// </list>
+    /// When to use what
+    /// <list type="bullet">
+    /// <item><description>Prefer <see cref="SerializationType.Json"/> for save systems, settings, and tools.</description></item>
+    /// <item><description>Prefer <see cref="SerializationType.Protobuf"/> for networking, large or frequent messages.</description></item>
+    /// <item><description>Reserve <see cref="SerializationType.SystemBinary"/> for trusted legacy scenarios only.</description></item>
+    /// </list>
+    /// </remarks>
+    /// <example>
+    /// JSON save/config
+    /// <code>
+    /// var save = new SaveData { Level = 3 };
+    /// // To string
+    /// string text = Serializer.JsonStringify(save, pretty: true);
+    /// // File IO
+    /// Serializer.WriteToJsonFile(save, "save.json", pretty: true);
+    /// var loaded = Serializer.ReadFromJsonFile&lt;SaveData&gt;("save.json");
+    /// </code>
+    /// Protobuf networking
+    /// <code>
+    /// [ProtoContract]
+    /// class NetworkMessage { [ProtoMember(1)] public int Id { get; set; } }
+    /// byte[] bytes = Serializer.ProtoSerialize(new NetworkMessage { Id = 42 });
+    /// NetworkMessage msg = Serializer.ProtoDeserialize&lt;NetworkMessage&gt;(bytes);
+    /// </code>
+    /// Legacy BinaryFormatter (trusted only)
+    /// <code>
+    /// byte[] blob = Serializer.BinarySerialize(obj);
+    /// var roundtrip = Serializer.BinaryDeserialize&lt;SomeType&gt;(blob);
+    /// </code>
+    /// </example>
     public static class Serializer
     {
+        private static readonly ConcurrentDictionary<Type, Type> ProtobufRootCache = new();
+        private static readonly Type NoRootMarker = typeof(void);
         private static readonly Utils.WallstopGenericPool<BinaryFormatter> BinaryFormatterPool =
             new(() => new BinaryFormatter());
 
@@ -87,6 +189,102 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             onDisposal: stream => stream.Dispose()
         );
 
+        /// <summary>
+        /// Registers a concrete or abstract protobuf root type for a declared interface/abstract/object type.
+        /// The root must be assignable to <paramref name="declared"/> and annotated with [ProtoContract].
+        /// Subsequent deserializations to the declared type will use the registered root.
+        /// </summary>
+        /// <remarks>
+        /// Use this when deserializing to an interface/abstract/object and you want deterministic root selection
+        /// instead of relying on reflection inference.
+        /// </remarks>
+        /// <example>
+        /// <code>
+        /// // Given an interface and concrete implementation
+        /// [ProtoContract] class PlayerJoined : IEvent { [ProtoMember(1)] public string Name { get; set; } }
+        /// Serializer.RegisterProtobufRoot(typeof(IEvent), typeof(PlayerJoined));
+        /// var evt = Serializer.ProtoDeserialize&lt;IEvent&gt;(bytes);
+        /// </code>
+        /// </example>
+        /// <exception cref="ArgumentNullException">If declared or root is null.</exception>
+        /// <exception cref="ArgumentException">If root is not assignable to declared or missing [ProtoContract].</exception>
+        /// <exception cref="InvalidOperationException">If a conflicting root is already registered.</exception>
+        public static void RegisterProtobufRoot(Type declared, Type root)
+        {
+            if (declared == null)
+            {
+                throw new ArgumentNullException(nameof(declared));
+            }
+            if (root == null)
+            {
+                throw new ArgumentNullException(nameof(root));
+            }
+            if (!declared.IsAssignableFrom(root))
+            {
+                throw new ArgumentException(
+                    $"Type {root.FullName} is not assignable to {declared.FullName}",
+                    nameof(root)
+                );
+            }
+            if (!ReflectionHelpers.HasAttributeSafe<ProtoContractAttribute>(root))
+            {
+                throw new ArgumentException(
+                    $"Type {root.FullName} must be annotated with [ProtoContract]",
+                    nameof(root)
+                );
+            }
+
+            if (ProtobufRootCache.TryGetValue(declared, out Type existing))
+            {
+                if (existing != root && existing != NoRootMarker)
+                {
+                    throw new InvalidOperationException(
+                        $"A different root {existing.FullName} is already registered for {declared.FullName}"
+                    );
+                }
+            }
+
+            ProtobufRootCache[declared] = root;
+        }
+
+        /// <summary>
+        /// Generic convenience overload for registering a protobuf root type.
+        /// </summary>
+        /// <remarks>
+        /// Useful for polymorphic APIs: map <typeparamref name="TDeclared"/> to <typeparamref name="TRoot"/> once,
+        /// then call <see cref="ProtoDeserialize{T}(byte[])"/> for the declared type.
+        /// </remarks>
+        /// <example>
+        /// <code>
+        /// Serializer.RegisterProtobufRoot&lt;IEvent, PlayerJoined&gt;();
+        /// IEvent evt = Serializer.ProtoDeserialize&lt;IEvent&gt;(bytes);
+        /// </code>
+        /// </example>
+        public static void RegisterProtobufRoot<TDeclared, TRoot>()
+            where TRoot : TDeclared
+        {
+            RegisterProtobufRoot(typeof(TDeclared), typeof(TRoot));
+        }
+
+        /// <summary>
+        /// Deserializes a payload that was serialized with the specified <paramref name="serializationType"/>.
+        /// </summary>
+        /// <typeparam name="T">The target type.</typeparam>
+        /// <param name="serialized">Payload bytes to decode.</param>
+        /// <param name="serializationType">The format the payload is encoded with.</param>
+        /// <returns>The decoded instance.</returns>
+        /// <example>
+        /// JSON
+        /// <code>
+        /// byte[] data = Serializer.JsonSerialize(save);
+        /// SaveData loaded = Serializer.Deserialize&lt;SaveData&gt;(data, SerializationType.Json);
+        /// </code>
+        /// Protobuf
+        /// <code>
+        /// byte[] msg = Serializer.ProtoSerialize(message);
+        /// NetworkMessage decoded = Serializer.Deserialize&lt;NetworkMessage&gt;(msg, SerializationType.Protobuf);
+        /// </code>
+        /// </example>
         public static T Deserialize<T>(byte[] serialized, SerializationType serializationType)
         {
             switch (serializationType)
@@ -115,6 +313,21 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             }
         }
 
+        /// <summary>
+        /// Serializes an instance into bytes using the specified <paramref name="serializationType"/>.
+        /// </summary>
+        /// <typeparam name="T">The instance type.</typeparam>
+        /// <param name="instance">The instance to encode.</param>
+        /// <param name="serializationType">The target wire format.</param>
+        /// <returns>Serialized bytes.</returns>
+        /// <example>
+        /// <code>
+        /// // As bytes
+        /// byte[] data = Serializer.Serialize(save, SerializationType.Json);
+        /// // Later
+        /// SaveData loaded = Serializer.Deserialize&lt;SaveData&gt;(data, SerializationType.Json);
+        /// </code>
+        /// </example>
         public static byte[] Serialize<T>(T instance, SerializationType serializationType)
         {
             switch (serializationType)
@@ -142,6 +355,14 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             }
         }
 
+        /// <summary>
+        /// Serializes into a caller-provided buffer to avoid an extra allocation.
+        /// </summary>
+        /// <typeparam name="T">The instance type.</typeparam>
+        /// <param name="instance">The instance to encode.</param>
+        /// <param name="serializationType">The target wire format.</param>
+        /// <param name="buffer">Destination buffer reference. Resized if too small.</param>
+        /// <returns>The number of valid bytes written to <paramref name="buffer"/>.</returns>
         public static int Serialize<T>(
             T instance,
             SerializationType serializationType,
@@ -173,6 +394,16 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             }
         }
 
+        /// <summary>
+        /// Deserializes bytes using legacy <c>BinaryFormatter</c>.
+        /// </summary>
+        /// <typeparam name="T">Target type.</typeparam>
+        /// <param name="data">Serialized bytes.</param>
+        /// <remarks>
+        /// Security: Never deserialize untrusted data with BinaryFormatter. It is obsolete and unsafe.
+        /// Portability: Fragile across versions/platforms; avoid for long‑lived data.
+        /// Prefer <see cref="JsonDeserialize{T}(string, System.Type, System.Text.Json.JsonSerializerOptions)"/> or <see cref="ProtoDeserialize{T}(byte[])"/> in production.
+        /// </remarks>
         public static T BinaryDeserialize<T>(byte[] data)
         {
             using Utils.PooledResource<PooledReadOnlyMemoryStream> lease =
@@ -184,6 +415,15 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             return (T)binaryFormatter.Deserialize(stream);
         }
 
+        /// <summary>
+        /// Serializes an object using legacy <c>BinaryFormatter</c>.
+        /// </summary>
+        /// <typeparam name="T">Instance type.</typeparam>
+        /// <param name="input">Object to serialize.</param>
+        /// <returns>Serialized bytes.</returns>
+        /// <remarks>
+        /// Use for trusted, temporary data only. Not safe for untrusted input. Prefer JSON or protobuf.
+        /// </remarks>
         public static byte[] BinarySerialize<T>(T input)
         {
             using Utils.PooledResource<PooledBufferStream> lease = PooledBufferStream.Rent(
@@ -198,6 +438,13 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             return buffer;
         }
 
+        /// <summary>
+        /// Serializes to a caller buffer using <c>BinaryFormatter</c>.
+        /// </summary>
+        /// <typeparam name="T">Instance type.</typeparam>
+        /// <param name="input">Object to serialize.</param>
+        /// <param name="buffer">Destination buffer reference. Resized if necessary.</param>
+        /// <returns>Number of bytes written.</returns>
         public static int BinarySerialize<T>(T input, ref byte[] buffer)
         {
             using Utils.PooledResource<PooledBufferStream> lease = PooledBufferStream.Rent(
@@ -210,6 +457,17 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             return stream.ToArrayExact(ref buffer);
         }
 
+        /// <summary>
+        /// Deserializes protobuf‑net bytes to <typeparamref name="T"/>.
+        /// </summary>
+        /// <typeparam name="T">Target type.</typeparam>
+        /// <param name="data">Encoded protobuf payload.</param>
+        /// <returns>The decoded instance.</returns>
+        /// <remarks>
+        /// Supports interface/abstract/object targets by attempting to infer a concrete root type marked with
+        /// [ProtoContract]. For deterministic behavior, prefer annotating a shared abstract base with
+        /// [ProtoInclude]s or call <see cref="RegisterProtobufRoot{TDeclared, TRoot}()"/>.
+        /// </remarks>
         public static T ProtoDeserialize<T>(byte[] data)
         {
             if (data == null)
@@ -222,6 +480,16 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             stream.SetBuffer(data);
             try
             {
+                Type declared = typeof(T);
+                if (declared.IsInterface || declared.IsAbstract || declared == typeof(object))
+                {
+                    Type root = ResolveProtobufRootType(declared);
+                    if (root != null)
+                    {
+                        return (T)ProtoBuf.Serializer.Deserialize(root, stream);
+                    }
+                }
+
                 return ProtoBuf.Serializer.Deserialize<T>(stream);
             }
             catch (ProtoException)
@@ -237,6 +505,87 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             }
         }
 
+        // Attempts to infer a concrete root type for protobuf-net when the declared generic type
+        // is interface/abstract/object. Prefers a single abstract class with [ProtoContract]
+        // that is assignable to the declared type. Falls back to any single class if needed.
+        private static Type ResolveProtobufRootType(Type declared)
+        {
+            if (declared == null)
+            {
+                return null;
+            }
+
+            // If declared is already a usable concrete type, just return it
+            if (!declared.IsInterface && !declared.IsAbstract && declared != typeof(object))
+            {
+                return declared;
+            }
+
+            // If declared itself is an abstract [ProtoContract] base with [ProtoInclude]s, prefer it
+            if (
+                declared.IsAbstract
+                && ReflectionHelpers.HasAttributeSafe<ProtoContractAttribute>(declared)
+            )
+            {
+                return declared;
+            }
+
+            if (ProtobufRootCache.TryGetValue(declared, out Type cached))
+            {
+                return cached == NoRootMarker ? null : cached;
+            }
+
+            try
+            {
+                Type[] abstractRoots = ReflectionHelpers
+                    .GetAllLoadedTypes()
+                    .Where(t =>
+                        t != null
+                        && t.IsClass
+                        && t.IsAbstract
+                        && declared.IsAssignableFrom(t)
+                        && ReflectionHelpers.HasAttributeSafe<ProtoContractAttribute>(t)
+                    )
+                    .ToArray();
+                if (abstractRoots.Length == 1)
+                {
+                    Type resolved = abstractRoots[0];
+                    ProtobufRootCache[declared] = resolved;
+                    return resolved;
+                }
+
+                Type[] anyRoots = ReflectionHelpers
+                    .GetAllLoadedTypes()
+                    .Where(t =>
+                        t != null
+                        && t.IsClass
+                        && declared.IsAssignableFrom(t)
+                        && ReflectionHelpers.HasAttributeSafe<ProtoContractAttribute>(t)
+                    )
+                    .ToArray();
+                if (anyRoots.Length == 1)
+                {
+                    Type resolved = anyRoots[0];
+                    ProtobufRootCache[declared] = resolved;
+                    return resolved;
+                }
+            }
+            catch
+            {
+                // Reflection might fail in restricted contexts; ignore and fall through
+            }
+
+            ProtobufRootCache[declared] = NoRootMarker;
+            return null;
+        }
+
+        /// <summary>
+        /// Deserializes protobuf‑net bytes into the provided <paramref name="type"/>.
+        /// </summary>
+        /// <typeparam name="T">Expected return type after cast.</typeparam>
+        /// <param name="data">Encoded protobuf payload.</param>
+        /// <param name="type">Concrete type to deserialize to.</param>
+        /// <returns>The decoded instance cast to <typeparamref name="T"/>.</returns>
         public static T ProtoDeserialize<T>(byte[] data, Type type)
         {
             if (data == null)
@@ -269,26 +618,92 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             }
         }
 
-        public static byte[] ProtoSerialize<T>(T input)
+        /// <summary>
+        /// Serializes an instance to protobuf‑net bytes.
+        /// </summary>
+        /// <typeparam name="T">Declared type.</typeparam>
+        /// <param name="input">The instance to serialize.</param>
+        /// <param name="forceRuntimeType">When true, always serialize as the runtime type; otherwise uses declared type unless it is interface/abstract/object.</param>
+        /// <returns>Serialized bytes.</returns>
+        /// <example>
+        /// <code>
+        /// [ProtoContract]
+        /// class NetworkMessage { [ProtoMember(1)] public int Id { get; set; } }
+        /// var bytes = Serializer.ProtoSerialize(new NetworkMessage { Id = 5 });
+        /// var msg = Serializer.ProtoDeserialize&lt;NetworkMessage&gt;(bytes);
+        /// </code>
+        /// </example>
+        public static byte[] ProtoSerialize<T>(T input, bool forceRuntimeType = false)
         {
             using Utils.PooledResource<PooledBufferStream> lease = PooledBufferStream.Rent(
                 out PooledBufferStream stream
             );
-            ProtoBuf.Serializer.Serialize(stream, input);
+            bool useRuntime = forceRuntimeType;
+            if (!useRuntime)
+            {
+                Type declared = typeof(T);
+                useRuntime =
+                    declared.IsInterface || declared.IsAbstract || declared == typeof(object);
+            }
+
+            if (useRuntime)
+            {
+                ProtoBuf.Serializer.NonGeneric.Serialize(stream, input);
+            }
+            else
+            {
+                ProtoBuf.Serializer.Serialize(stream, input);
+            }
+
             byte[] buffer = null;
             stream.ToArrayExact(ref buffer);
             return buffer;
         }
 
-        public static int ProtoSerialize<T>(T input, ref byte[] buffer)
+        /// <summary>
+        /// Serializes an instance to protobuf‑net bytes into a caller-provided buffer.
+        /// </summary>
+        /// <typeparam name="T">Declared type.</typeparam>
+        /// <param name="input">The instance to serialize.</param>
+        /// <param name="buffer">Destination buffer reference. Resized if necessary.</param>
+        /// <param name="forceRuntimeType">When true, always serialize as the runtime type.</param>
+        /// <returns>Number of bytes written.</returns>
+        public static int ProtoSerialize<T>(
+            T input,
+            ref byte[] buffer,
+            bool forceRuntimeType = false
+        )
         {
             using Utils.PooledResource<PooledBufferStream> lease = PooledBufferStream.Rent(
                 out PooledBufferStream stream
             );
-            ProtoBuf.Serializer.Serialize(stream, input);
+            bool useRuntime = forceRuntimeType;
+            if (!useRuntime)
+            {
+                Type declared = typeof(T);
+                useRuntime =
+                    declared.IsInterface || declared.IsAbstract || declared == typeof(object);
+            }
+
+            if (useRuntime)
+            {
+                ProtoBuf.Serializer.NonGeneric.Serialize(stream, input);
+            }
+            else
+            {
+                ProtoBuf.Serializer.Serialize(stream, input);
+            }
             return stream.ToArrayExact(ref buffer);
         }
 
+        /// <summary>
+        /// Deserializes JSON text to <typeparamref name="T"/> using Unity‑aware converters.
+        /// </summary>
+        /// <typeparam name="T">Target type.</typeparam>
+        /// <param name="data">JSON string.</param>
+        /// <param name="type">Optional concrete target type (defaults to <typeparamref name="T"/>).</param>
+        /// <param name="options">Serializer options; defaults include converters for Unity types and ReferenceHandler.IgnoreCycles.</param>
+        /// <returns>The decoded instance.</returns>
         public static T JsonDeserialize<T>(
             string data,
             Type type = null,
@@ -303,6 +718,12 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                 );
         }
 
+        /// <summary>
+        /// Serializes an instance to JSON bytes (UTF‑8) using Unity‑aware converters.
+        /// </summary>
+        /// <typeparam name="T">Instance type.</typeparam>
+        /// <param name="input">The instance to serialize.</param>
+        /// <returns>UTF‑8 JSON bytes.</returns>
         public static byte[] JsonSerialize<T>(T input)
         {
             using Utils.PooledResource<PooledBufferStream> lease = PooledBufferStream.Rent(
@@ -314,6 +735,13 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             return buffer;
         }
 
+        /// <summary>
+        /// Serializes an instance to JSON bytes (UTF‑8) into a caller-provided buffer.
+        /// </summary>
+        /// <typeparam name="T">Instance type.</typeparam>
+        /// <param name="input">The instance to serialize.</param>
+        /// <param name="buffer">Destination buffer reference. Resized if necessary.</param>
+        /// <returns>Number of bytes written.</returns>
         public static int JsonSerialize<T>(T input, ref byte[] buffer)
         {
             using Utils.PooledResource<PooledBufferStream> lease = PooledBufferStream.Rent(
@@ -368,6 +796,19 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             }
         }
 
+        /// <summary>
+        /// Serializes an instance to a JSON string.
+        /// </summary>
+        /// <typeparam name="T">Instance type.</typeparam>
+        /// <param name="input">The instance to serialize.</param>
+        /// <param name="pretty">Write indented output when true.</param>
+        /// <returns>JSON text.</returns>
+        /// <example>
+        /// <code>
+        /// var json = Serializer.JsonStringify(save, pretty: true);
+        /// var roundtrip = Serializer.JsonDeserialize&lt;SaveData&gt;(json);
+        /// </code>
+        /// </example>
         public static string JsonStringify<T>(T input, bool pretty = false)
         {
             JsonSerializerOptions options = pretty
@@ -377,6 +818,13 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             return JsonStringify(input, options);
         }
 
+        /// <summary>
+        /// Serializes an instance to a JSON string using the provided <paramref name="options"/>.
+        /// </summary>
+        /// <typeparam name="T">Instance type.</typeparam>
+        /// <param name="input">The instance to serialize.</param>
+        /// <param name="options">Serializer options.</param>
+        /// <returns>JSON text.</returns>
         public static string JsonStringify<T>(T input, JsonSerializerOptions options)
         {
             if (options == null)
@@ -404,36 +852,76 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             return JsonSerializer.Serialize(input, options);
         }
 
+        /// <summary>
+        /// Reads JSON text from a file (UTF‑8) and deserializes to <typeparamref name="T"/>.
+        /// </summary>
+        /// <typeparam name="T">Target type.</typeparam>
+        /// <param name="path">File path.</param>
+        /// <returns>Decoded instance.</returns>
         public static T ReadFromJsonFile<T>(string path)
         {
             string settingsAsText = File.ReadAllText(path, SerializerEncoding.Encoding);
             return JsonDeserialize<T>(settingsAsText);
         }
 
+        /// <summary>
+        /// Asynchronously reads JSON text from a file (UTF‑8) and deserializes to <typeparamref name="T"/>.
+        /// </summary>
+        /// <typeparam name="T">Target type.</typeparam>
+        /// <param name="path">File path.</param>
+        /// <returns>Decoded instance.</returns>
         public static async Task<T> ReadFromJsonFileAsync<T>(string path)
         {
             string settingsAsText = await File.ReadAllTextAsync(path, SerializerEncoding.Encoding);
             return JsonDeserialize<T>(settingsAsText);
         }
 
+        /// <summary>
+        /// Writes an instance to a JSON file (UTF‑8).
+        /// </summary>
+        /// <typeparam name="T">Instance type.</typeparam>
+        /// <param name="input">The instance to serialize.</param>
+        /// <param name="path">Destination file path.</param>
+        /// <param name="pretty">Write indented output when true.</param>
         public static void WriteToJsonFile<T>(T input, string path, bool pretty = true)
         {
             string jsonAsText = JsonStringify(input, pretty);
             File.WriteAllText(path, jsonAsText);
         }
 
+        /// <summary>
+        /// Asynchronously writes an instance to a JSON file (UTF‑8).
+        /// </summary>
+        /// <typeparam name="T">Instance type.</typeparam>
+        /// <param name="input">The instance to serialize.</param>
+        /// <param name="path">Destination file path.</param>
+        /// <param name="pretty">Write indented output when true.</param>
         public static async Task WriteToJsonFileAsync<T>(T input, string path, bool pretty = true)
         {
             string jsonAsText = JsonStringify(input, pretty);
             await File.WriteAllTextAsync(path, jsonAsText);
         }
 
+        /// <summary>
+        /// Writes an instance to a JSON file (UTF‑8) using the provided <paramref name="options"/>.
+        /// </summary>
+        /// <typeparam name="T">Instance type.</typeparam>
+        /// <param name="input">The instance to serialize.</param>
+        /// <param name="path">Destination file path.</param>
+        /// <param name="options">Serializer options.</param>
         public static void WriteToJsonFile<T>(T input, string path, JsonSerializerOptions options)
         {
             string jsonAsText = JsonStringify(input, options);
             File.WriteAllText(path, jsonAsText);
         }
 
+        /// <summary>
+        /// Asynchronously writes an instance to a JSON file (UTF‑8) using the provided <paramref name="options"/>.
+        /// </summary>
+        /// <typeparam name="T">Instance type.</typeparam>
+        /// <param name="input">The instance to serialize.</param>
+        /// <param name="path">Destination file path.</param>
+        /// <param name="options">Serializer options.</param>
         public static async Task WriteToJsonFileAsync<T>(
             T input,
             string path,

@@ -4,6 +4,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.TestTools;
+    using WallstopStudios.UnityHelpers.Tests.TestUtils;
     using WallstopStudios.UnityHelpers.Utils;
 
     public sealed class RuntimeSingletonTests : CommonTestBase
@@ -15,7 +16,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             void DestroyAll<T>()
                 where T : RuntimeSingleton<T>
             {
-                foreach (var inst in Object.FindObjectsOfType<T>(includeInactive: true))
+                foreach (T inst in Object.FindObjectsOfType<T>(includeInactive: true))
                 {
                     if (inst != null)
                     {

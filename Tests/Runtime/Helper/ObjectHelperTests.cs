@@ -6,6 +6,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
     [UsedImplicitly]
     public sealed class ObjectHelperComponent : MonoBehaviour { }

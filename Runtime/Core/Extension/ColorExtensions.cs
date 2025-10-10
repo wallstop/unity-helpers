@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
     using System.Linq;
     using Helper;
     using Random;
+    using Unity.Collections;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Utils;
@@ -139,7 +140,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     a = 0,
                     b = 0;
                 int count = 0;
-                foreach (var sprite in sprites)
+                foreach (Sprite sprite in sprites)
                 {
                     if (sprite == null)
                     {
@@ -152,10 +153,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     }
                     texture.MakeReadable();
                     int expectedBytes = texture.width * texture.height * 4;
-                    var rawBytes = texture.GetRawTextureData<byte>();
+                    NativeArray<byte> rawBytes = texture.GetRawTextureData<byte>();
                     if (rawBytes.Length == expectedBytes)
                     {
-                        var raw = texture.GetRawTextureData<Color32>();
+                        NativeArray<Color32> raw = texture.GetRawTextureData<Color32>();
                         int n = raw.Length;
                         for (int i = 0; i < n; ++i)
                         {
@@ -203,7 +204,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     sumS = 0f,
                     sumV = 0f;
                 int count = 0;
-                foreach (var sprite in sprites)
+                foreach (Sprite sprite in sprites)
                 {
                     if (sprite == null)
                     {
@@ -216,10 +217,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     }
                     texture.MakeReadable();
                     int expectedBytes = texture.width * texture.height * 4;
-                    var rawBytes = texture.GetRawTextureData<byte>();
+                    NativeArray<byte> rawBytes = texture.GetRawTextureData<byte>();
                     if (rawBytes.Length == expectedBytes)
                     {
-                        var raw = texture.GetRawTextureData<Color32>();
+                        NativeArray<Color32> raw = texture.GetRawTextureData<Color32>();
                         int n = raw.Length;
                         for (int i = 0; i < n; ++i)
                         {
@@ -286,7 +287,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     g = 0f,
                     b = 0f,
                     a = 0f;
-                foreach (var sprite in sprites)
+                foreach (Sprite sprite in sprites)
                 {
                     if (sprite == null)
                     {
@@ -299,10 +300,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     }
                     texture.MakeReadable();
                     int expectedBytes = texture.width * texture.height * 4;
-                    var rawBytes = texture.GetRawTextureData<byte>();
+                    NativeArray<byte> rawBytes = texture.GetRawTextureData<byte>();
                     if (rawBytes.Length == expectedBytes)
                     {
-                        var raw = texture.GetRawTextureData<Color32>();
+                        NativeArray<Color32> raw = texture.GetRawTextureData<Color32>();
                         int n = raw.Length;
                         for (int i = 0; i < n; ++i)
                         {
@@ -359,10 +360,12 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             static Color DominantColorFromSprites(IEnumerable<Sprite> sprites, float alphaCutoff)
             {
                 using PooledResource<Dictionary<FastVector3Int, int>> bucketsLease =
-                    DictionaryBuffer<FastVector3Int, int>.Dictionary.Get(out var buckets);
+                    DictionaryBuffer<FastVector3Int, int>.Dictionary.Get(
+                        out Dictionary<FastVector3Int, int> buckets
+                    );
                 const int bucketSize = 32;
 
-                foreach (var sprite in sprites)
+                foreach (Sprite sprite in sprites)
                 {
                     if (sprite == null)
                     {
@@ -375,10 +378,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     }
                     texture.MakeReadable();
                     int expectedBytes = texture.width * texture.height * 4;
-                    var rawBytes = texture.GetRawTextureData<byte>();
+                    NativeArray<byte> rawBytes = texture.GetRawTextureData<byte>();
                     if (rawBytes.Length == expectedBytes)
                     {
-                        var raw = texture.GetRawTextureData<Color32>();
+                        NativeArray<Color32> raw = texture.GetRawTextureData<Color32>();
                         int n = raw.Length;
                         for (int i = 0; i < n; ++i)
                         {
@@ -416,7 +419,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 }
 
                 KeyValuePair<FastVector3Int, int>? largest = null;
-                foreach (var kv in buckets)
+                foreach (KeyValuePair<FastVector3Int, int> kv in buckets)
                 {
                     largest ??= kv;
                     if (largest.Value.Value < kv.Value)

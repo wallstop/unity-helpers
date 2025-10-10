@@ -4,6 +4,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using System.Collections.Generic;
     using System.Linq;
     using NUnit.Framework;
+    using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure;
     using WallstopStudios.UnityHelpers.Core.Random;
     using Vector3 = UnityEngine.Vector3;
@@ -235,7 +236,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             List<Vector3> points = new() { new Vector3(0f, 0f, 0f), new Vector3(1f, 0f, 0f) };
             KdTree3D<Vector3> tree = CreateTree(points);
-            var bounds = new UnityEngine.Bounds(
+            Bounds bounds = new UnityEngine.Bounds(
                 new Vector3(0.5f, 0f, 0f),
                 new Vector3(1f, 0.1f, 0.1f)
             );
@@ -260,7 +261,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             }
 
             KdTree3D<Vector3> tree = CreateTree(points);
-            var bounds = new UnityEngine.Bounds(
+            Bounds bounds = new UnityEngine.Bounds(
                 new Vector3(4.5f, 4.5f, 4.5f),
                 new Vector3(9f, 9f, 9f)
             );

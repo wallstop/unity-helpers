@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Tests.Components
+namespace WallstopStudios.UnityHelpers.Tests.Attributes.Components
 {
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;

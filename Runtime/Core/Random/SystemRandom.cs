@@ -67,13 +67,13 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             same across platforms, a fact which defeats the purpose of these serializable
             randoms.
          */
-        [ProtoMember(2)]
+        [ProtoMember(6)]
         private int _inext;
 
-        [ProtoMember(3)]
+        [ProtoMember(7)]
         private int _inextp;
 
-        [ProtoMember(4)]
+        [ProtoMember(8)]
         private readonly int[] _seedArray = new int[SeedArraySize];
 
         public SystemRandom()

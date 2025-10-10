@@ -111,10 +111,10 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         public override RandomState InternalState => BuildState(_state, _increment);
 
-        [ProtoMember(2)]
+        [ProtoMember(6)]
         internal readonly ulong _increment;
 
-        [ProtoMember(3)]
+        [ProtoMember(7)]
         internal ulong _state;
 
         public PcgRandom()

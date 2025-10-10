@@ -344,7 +344,9 @@
             TestMessage msg = new() { Id = 1, Name = "Test" };
 
             Assert.Throws<InvalidEnumArgumentException>(() =>
+#pragma warning disable CS0618 // Type or member is obsolete
                 Serializer.Serialize(msg, SerializationType.None)
+#pragma warning restore CS0618 // Type or member is obsolete
             );
         }
 
@@ -354,7 +356,9 @@
             byte[] data = { 1, 2, 3 };
 
             Assert.Throws<InvalidEnumArgumentException>(() =>
+#pragma warning disable CS0618 // Type or member is obsolete
                 Serializer.Deserialize<TestMessage>(data, SerializationType.None)
+#pragma warning restore CS0618 // Type or member is obsolete
             );
         }
 

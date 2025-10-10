@@ -31,15 +31,15 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             Vector3[] points = CreateGridPoints(100, 100, 100);
 
-            var kdBalanced = new KdTree3D<Vector3>(points, p => p);
-            var kdUnbalanced = new KdTree3D<Vector3>(points, p => p, balanced: false);
-            var oct = new OctTree3D<Vector3>(points, p => p);
+            KdTree3D<Vector3> kdBalanced = new KdTree3D<Vector3>(points, p => p);
+            KdTree3D<Vector3> kdUnbalanced = new KdTree3D<Vector3>(points, p => p, balanced: false);
+            OctTree3D<Vector3> oct = new OctTree3D<Vector3>(points, p => p);
 
             Vector3 center = kdBalanced.Boundary.center;
             Vector3 size = new Vector3(99f, 99f, 99f);
             Bounds query = new Bounds(center, size);
 
-            var buf = new List<Vector3>();
+            List<Vector3> buf = new List<Vector3>();
             kdBalanced.GetElementsInBounds(query, buf);
             int expected = buf.Count;
 
@@ -55,12 +55,12 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             Vector3[] points = CreateGridPoints(10, 10, 10);
 
-            var kd = new KdTree3D<Vector3>(points, p => p);
-            var oct = new OctTree3D<Vector3>(points, p => p);
+            KdTree3D<Vector3> kd = new KdTree3D<Vector3>(points, p => p);
+            OctTree3D<Vector3> oct = new OctTree3D<Vector3>(points, p => p);
 
             Bounds query = new Bounds(new Vector3(4.5f, 4.5f, 4.5f), new Vector3(9f, 9f, 9f));
 
-            var buf = new List<Vector3>();
+            List<Vector3> buf = new List<Vector3>();
             kd.GetElementsInBounds(query, buf);
             int expected = buf.Count;
 
@@ -73,12 +73,12 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             Vector3[] points = CreateGridPoints(10, 10, 10);
 
-            var kd = new KdTree3D<Vector3>(points, p => p);
-            var oct = new OctTree3D<Vector3>(points, p => p);
+            KdTree3D<Vector3> kd = new KdTree3D<Vector3>(points, p => p);
+            OctTree3D<Vector3> oct = new OctTree3D<Vector3>(points, p => p);
 
             Bounds query = new Bounds(new Vector3(5f, 5f, 5f), Vector3.one);
 
-            var buf = new List<Vector3>();
+            List<Vector3> buf = new List<Vector3>();
             kd.GetElementsInBounds(query, buf);
             int expected = buf.Count;
 
@@ -91,12 +91,12 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             Vector3[] points = CreateGridPoints(10, 10, 10);
 
-            var kd = new KdTree3D<Vector3>(points, p => p);
-            var oct = new OctTree3D<Vector3>(points, p => p);
+            KdTree3D<Vector3> kd = new KdTree3D<Vector3>(points, p => p);
+            OctTree3D<Vector3> oct = new OctTree3D<Vector3>(points, p => p);
 
             Bounds query = new Bounds(new Vector3(4.5f, 9f, 4.5f), new Vector3(9f, 1f, 9f));
 
-            var buf = new List<Vector3>();
+            List<Vector3> buf = new List<Vector3>();
             kd.GetElementsInBounds(query, buf);
             int expected = buf.Count;
 
@@ -110,12 +110,12 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             Vector3[] points = CreateGridPoints(10, 10, 10);
 
-            var kd = new KdTree3D<Vector3>(points, p => p);
-            var oct = new OctTree3D<Vector3>(points, p => p);
+            KdTree3D<Vector3> kd = new KdTree3D<Vector3>(points, p => p);
+            OctTree3D<Vector3> oct = new OctTree3D<Vector3>(points, p => p);
 
             Bounds query = new Bounds(new Vector3(0f, 4.5f, 4.5f), new Vector3(1f, 9f, 9f));
 
-            var buf = new List<Vector3>();
+            List<Vector3> buf = new List<Vector3>();
             kd.GetElementsInBounds(query, buf);
             int expected = buf.Count;
 

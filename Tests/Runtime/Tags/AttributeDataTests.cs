@@ -4,6 +4,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
     using NUnit.Framework;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Tags;
+    using WallstopStudios.UnityHelpers.Tests.TestUtils;
     using Attribute = WallstopStudios.UnityHelpers.Tags.Attribute;
 
     public abstract class AttributeTagsTestBase : CommonTestBase

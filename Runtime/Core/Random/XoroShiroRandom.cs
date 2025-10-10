@@ -65,10 +65,10 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         public override RandomState InternalState => BuildState(_s0, _s1);
 
-        [ProtoMember(2)]
+        [ProtoMember(6)]
         internal ulong _s0;
 
-        [ProtoMember(3)]
+        [ProtoMember(7)]
         internal ulong _s1;
 
         private void EnsureNonZeroState()
