@@ -10,7 +10,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     // https://github.com/cocowalla/wyhash-dotnet/blob/master/src/WyHash/WyRng.cs
     [Serializable]
     [DataContract]
-    [ProtoContract]
+    [ProtoContract(SkipConstructor = true)]
     /// <summary>
     /// A wyhash-inspired PRNG variant (WyRandom) leveraging multiply-mix operations for speed and good distribution.
     /// </summary>
