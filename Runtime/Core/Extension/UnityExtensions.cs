@@ -4008,6 +4008,105 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return boundsMax.x >= otherMin.x && boundsMax.y >= otherMin.y;
         }
 
+        // =========================
+        // 3D Bounds helpers (opt-in tolerance)
+        // =========================
+
+        /// <summary>
+        /// Fast 3D point containment with optional tolerance and half-open semantics [min, max).
+        /// A point on the max face is NOT contained.
+        /// </summary>
+        public static bool FastContains3D(this Bounds bounds, Vector3 p, float tolerance = 0f)
+        {
+            Vector3 min = bounds.min;
+            Vector3 max = bounds.max;
+            return p.x + tolerance >= min.x
+                && p.x < max.x - tolerance
+                && p.y + tolerance >= min.y
+                && p.y < max.y - tolerance
+                && p.z + tolerance >= min.z
+                && p.z < max.z - tolerance;
+        }
+
+        /// <summary>
+        /// Fast 3D containment test (box in box) with optional tolerance and inclusive semantics on max faces.
+        /// Returns true if 'other' is fully inside or touching 'bounds' (with tolerance).
+        /// </summary>
+        public static bool FastContains3D(this Bounds bounds, Bounds other, float tolerance = 0f)
+        {
+            Vector3 min = bounds.min;
+            Vector3 max = bounds.max;
+            Vector3 omin = other.min;
+            Vector3 omax = other.max;
+            if (
+                omin.x < min.x - tolerance
+                || omin.y < min.y - tolerance
+                || omin.z < min.z - tolerance
+            )
+            {
+                return false;
+            }
+            return omax.x <= max.x + tolerance
+                && omax.y <= max.y + tolerance
+                && omax.z <= max.z + tolerance;
+        }
+
+        // =========================
+        // 3D Bounds helpers (opt-in tolerance)
+        // =========================
+
+        /// <summary>
+        /// Fast 3D bounds intersection with optional tolerance and half-open semantics at max edges.
+        /// Touching at max faces is not considered intersection; touching at min faces is considered intersection.
+        /// </summary>
+        public static bool FastIntersects3D(this Bounds a, Bounds b, float tolerance = 0f)
+        {
+            Vector3 amin = a.min;
+            Vector3 bmax = b.max;
+            if (
+                bmax.x < amin.x - tolerance
+                || bmax.y < amin.y - tolerance
+                || bmax.z < amin.z - tolerance
+            )
+            {
+                return false;
+            }
+
+            Vector3 amax = a.max;
+            Vector3 bmin = b.min;
+            return amax.x + tolerance >= bmin.x
+                && amax.y + tolerance >= bmin.y
+                && amax.z + tolerance >= bmin.z;
+        }
+
+        /// <summary>
+        /// Fast 3D containment test (box in box) with optional tolerance and half-open semantics on max faces.
+        /// Returns true only if 'other' is fully inside 'bounds' and does NOT touch the max faces.
+        /// Equivalent to: other.min >= bounds.min and other.max < bounds.max (with tolerance).
+        /// </summary>
+        public static bool FastContainsHalfOpen3D(
+            this Bounds bounds,
+            Bounds other,
+            float tolerance = 0f
+        )
+        {
+            Vector3 min = bounds.min;
+            Vector3 max = bounds.max;
+            Vector3 omin = other.min;
+            Vector3 omax = other.max;
+            if (
+                omin.x < min.x - tolerance
+                || omin.y < min.y - tolerance
+                || omin.z < min.z - tolerance
+            )
+            {
+                return false;
+            }
+            return omax.x < max.x - tolerance
+                && omax.y < max.y - tolerance
+                && omax.z < max.z - tolerance;
+        }
+
         /// <summary>
         /// Creates a new BoundsInt with additional padding in the X and Y directions.
         /// </summary>

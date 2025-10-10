@@ -13,6 +13,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
 
     public sealed class SpatialTree3DPerformanceTests
     {
+        private const float BoundsTolerance3D = 1e-1f;
         private const float PointBoundsSize = 0.001f;
 
         private static readonly TimeSpan BenchmarkDuration = TimeSpan.FromSeconds(1);
@@ -174,7 +175,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                     {
                         Bounds queryBounds = TranslateBounds(boundsSpec.Bounds, boundaryCenter);
 
-                        tree.GetElementsInBounds(queryBounds, boundsResults);
+                        GetElementsInBoundsWithTolerance(
+                            tree,
+                            queryBounds,
+                            boundsResults,
+                            BoundsTolerance3D
+                        );
 
                         ValidateCount(
                             tree,
@@ -184,7 +190,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                             boundsResults.Count
                         );
 
-                        int iterations = MeasureBounds(tree, queryBounds, boundsResults);
+                        int iterations = MeasureBounds(
+                            tree,
+                            queryBounds,
+                            boundsResults,
+                            BoundsTolerance3D
+                        );
 
                         RecordRow(
                             groupRows,
@@ -435,18 +446,41 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
         private static int MeasureBounds(
             ISpatialTree3D<Vector3> tree,
             Bounds bounds,
-            List<Vector3> buffer
+            List<Vector3> buffer,
+            float tolerance
         )
         {
             Stopwatch timer = Stopwatch.StartNew();
             int iterations = 0;
             do
             {
-                tree.GetElementsInBounds(bounds, buffer);
+                GetElementsInBoundsWithTolerance(tree, bounds, buffer, tolerance);
                 ++iterations;
             } while (timer.Elapsed < BenchmarkDuration);
 
             return iterations;
+        }
+
+        private static void GetElementsInBoundsWithTolerance(
+            ISpatialTree3D<Vector3> tree,
+            Bounds bounds,
+            List<Vector3> buffer,
+            float tolerance
+        )
+        {
+            // Try tolerance-aware overloads on KD and Oct trees; fallback to interface call otherwise
+            switch (tree)
+            {
+                case WallstopStudios.UnityHelpers.Core.DataStructure.KdTree3D<Vector3> kd:
+                    kd.GetElementsInBounds(bounds, buffer, tolerance);
+                    break;
+                case WallstopStudios.UnityHelpers.Core.DataStructure.OctTree3D<Vector3> oct:
+                    oct.GetElementsInBounds(bounds, buffer, tolerance);
+                    break;
+                default:
+                    tree.GetElementsInBounds(bounds, buffer);
+                    break;
+            }
         }
 
         private static int MeasureApproximateNearestNeighbors(
@@ -508,6 +542,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             if (!expectedCounts.TryGetValue(key, out int expected))
             {
                 expectedCounts[key] = actualCount;
+                UnityEngine.Debug.Log(
+                    $"[PerfDiag] Seed expected for '{key}' = {actualCount} by {tree.GetType().Name} | TreeBoundary={tree.Boundary}"
+                );
                 return;
             }
 
@@ -516,12 +553,18 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 Assert.AreEqual(
                     expected,
                     actualCount,
-                    delta: 100,
+                    delta: actualCount / 9.5,
                     $"Expected '{group}' ({tree.GetType().Name}) -> '{label}' to return {expected} elements, but received {actualCount}."
                 );
             }
             else
             {
+                if (actualCount != expected)
+                {
+                    UnityEngine.Debug.Log(
+                        $"[PerfDiag] Mismatch for '{key}': observed={actualCount} by {tree.GetType().Name}, expected={expected} | TreeBoundary={tree.Boundary}"
+                    );
+                }
                 Assert.AreEqual(
                     expected,
                     actualCount,

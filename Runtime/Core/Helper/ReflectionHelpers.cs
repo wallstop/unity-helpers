@@ -482,24 +482,36 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
             ILGenerator il = dynamicMethod.GetILGenerator();
 
-            // instance
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit(
-                property.DeclaringType.IsValueType ? OpCodes.Unbox : OpCodes.Castclass,
-                property.DeclaringType
-            );
+            if (setMethod.IsStatic)
+            {
+                // For static properties, only load the value argument
+                il.Emit(OpCodes.Ldarg_1);
+                il.Emit(
+                    property.PropertyType.IsValueType ? OpCodes.Unbox_Any : OpCodes.Castclass,
+                    property.PropertyType
+                );
+                il.Emit(OpCodes.Call, setMethod);
+            }
+            else
+            {
+                // For instance properties, load and cast the instance, then the value
+                il.Emit(OpCodes.Ldarg_0);
+                il.Emit(
+                    property.DeclaringType.IsValueType ? OpCodes.Unbox : OpCodes.Castclass,
+                    property.DeclaringType
+                );
 
-            // value
-            il.Emit(OpCodes.Ldarg_1);
-            il.Emit(
-                property.PropertyType.IsValueType ? OpCodes.Unbox_Any : OpCodes.Castclass,
-                property.PropertyType
-            );
+                il.Emit(OpCodes.Ldarg_1);
+                il.Emit(
+                    property.PropertyType.IsValueType ? OpCodes.Unbox_Any : OpCodes.Castclass,
+                    property.PropertyType
+                );
 
-            il.Emit(
-                property.DeclaringType.IsValueType ? OpCodes.Call : OpCodes.Callvirt,
-                setMethod
-            );
+                il.Emit(
+                    property.DeclaringType.IsValueType ? OpCodes.Call : OpCodes.Callvirt,
+                    setMethod
+                );
+            }
             il.Emit(OpCodes.Ret);
 
             return (Action<object, object>)

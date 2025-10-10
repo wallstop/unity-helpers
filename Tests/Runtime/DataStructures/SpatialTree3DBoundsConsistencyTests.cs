@@ -214,7 +214,6 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             }
         }
 
-        [Ignore("Inaccurate due to tree specialization")]
         [Test]
         public void UnitBoundsAtGridCenterOnTenGridConsistentWithKDTree()
         {

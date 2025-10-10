@@ -1107,6 +1107,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void GetPropertyGetterStatic()
         {
+            // Reset static state to initial values
+            TestPropertyClass.StaticProperty = 50;
+            TestPropertyClass.StaticStringProperty = "static";
+
             PropertyInfo staticProp = typeof(TestPropertyClass).GetProperty(
                 nameof(TestPropertyClass.StaticProperty)
             );

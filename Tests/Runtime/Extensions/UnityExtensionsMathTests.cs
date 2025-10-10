@@ -871,5 +871,894 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             );
             Assert.IsTrue(bounds1.FastIntersects(bounds2));
         }
+
+        [Test]
+        public void FastIntersects3DVeryLargeBoundsOverlappingReturnsTrue()
+        {
+            Bounds bounds1 = new(new Vector3(0f, 0f, 0f), new Vector3(10000f, 10000f, 10000f));
+            Bounds bounds2 = new(
+                new Vector3(5000f, 5000f, 5000f),
+                new Vector3(10000f, 10000f, 10000f)
+            );
+            Assert.IsTrue(bounds1.FastIntersects(bounds2));
+        }
+
+        [Test]
+        public void FastIntersects3DAlmostTouchingBoundsReturnsFalse()
+        {
+            Bounds bounds1 = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Bounds bounds2 = new(new Vector3(5.01f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Assert.IsFalse(bounds1.FastIntersects(bounds2));
+        }
+
+        [Test]
+        public void FastIntersects3DTouchingAtSinglePointReturnsTrue()
+        {
+            Bounds bounds1 = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Bounds bounds2 = new(new Vector3(5f, 5f, 5f), new Vector3(10f, 10f, 10f));
+            Assert.IsTrue(bounds1.FastIntersects(bounds2));
+        }
+
+        [Test]
+        public void FastIntersects3DOnlyXOverlapsReturnsFalse()
+        {
+            Bounds bounds1 = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Bounds bounds2 = new(new Vector3(5f, 11f, 11f), new Vector3(10f, 10f, 10f));
+            Assert.IsFalse(bounds1.FastIntersects(bounds2));
+        }
+
+        [Test]
+        public void FastIntersects3DOnlyYOverlapsReturnsFalse()
+        {
+            Bounds bounds1 = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Bounds bounds2 = new(new Vector3(11f, 5f, 11f), new Vector3(10f, 10f, 10f));
+            Assert.IsFalse(bounds1.FastIntersects(bounds2));
+        }
+
+        [Test]
+        public void FastIntersects3DOnlyZOverlapsReturnsFalse()
+        {
+            Bounds bounds1 = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Bounds bounds2 = new(new Vector3(11f, 11f, 5f), new Vector3(10f, 10f, 10f));
+            Assert.IsFalse(bounds1.FastIntersects(bounds2));
+        }
+
+        [Test]
+        public void FastIntersects3DXYOverlapZSeparatedReturnsFalse()
+        {
+            Bounds bounds1 = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Bounds bounds2 = new(new Vector3(5f, 5f, 11f), new Vector3(10f, 10f, 10f));
+            Assert.IsFalse(bounds1.FastIntersects(bounds2));
+        }
+
+        [Test]
+        public void FastIntersects3DXZOverlapYSeparatedReturnsFalse()
+        {
+            Bounds bounds1 = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Bounds bounds2 = new(new Vector3(5f, 11f, 5f), new Vector3(10f, 10f, 10f));
+            Assert.IsFalse(bounds1.FastIntersects(bounds2));
+        }
+
+        [Test]
+        public void FastIntersects3DYZOverlapXSeparatedReturnsFalse()
+        {
+            Bounds bounds1 = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Bounds bounds2 = new(new Vector3(11f, 5f, 5f), new Vector3(10f, 10f, 10f));
+            Assert.IsFalse(bounds1.FastIntersects(bounds2));
+        }
+
+        [Test]
+        public void FastIntersects3DBarelyOverlappingXReturnsTrue()
+        {
+            Bounds bounds1 = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Bounds bounds2 = new(new Vector3(4.99f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Assert.IsTrue(bounds1.FastIntersects(bounds2));
+        }
+
+        [Test]
+        public void FastIntersects3DBarelyOverlappingYReturnsTrue()
+        {
+            Bounds bounds1 = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Bounds bounds2 = new(new Vector3(0f, 4.99f, 0f), new Vector3(10f, 10f, 10f));
+            Assert.IsTrue(bounds1.FastIntersects(bounds2));
+        }
+
+        [Test]
+        public void FastIntersects3DBarelyOverlappingZReturnsTrue()
+        {
+            Bounds bounds1 = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Bounds bounds2 = new(new Vector3(0f, 0f, 4.99f), new Vector3(10f, 10f, 10f));
+            Assert.IsTrue(bounds1.FastIntersects(bounds2));
+        }
+
+        [Test]
+        public void FastIntersects3DBoundsWithZeroVolumeReturnsFalse()
+        {
+            Bounds bounds1 = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Bounds bounds2 = new(new Vector3(5f, 5f, 5f), new Vector3(0f, 0f, 0f));
+            Assert.IsFalse(bounds1.FastIntersects(bounds2));
+        }
+
+        [Test]
+        public void FastIntersects3DBothBoundsWithZeroVolumeReturnsFalse()
+        {
+            Bounds bounds1 = new(new Vector3(5f, 5f, 5f), new Vector3(0f, 0f, 0f));
+            Bounds bounds2 = new(new Vector3(5f, 5f, 5f), new Vector3(0f, 0f, 0f));
+            Assert.IsFalse(bounds1.FastIntersects(bounds2));
+        }
+
+        [Test]
+        public void FastIntersects3DThinSliceOverlapsReturnsTrue()
+        {
+            Bounds bounds1 = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Bounds bounds2 = new(new Vector3(5f, 5f, 5f), new Vector3(0.01f, 10f, 10f));
+            Assert.IsTrue(bounds1.FastIntersects(bounds2));
+        }
+
+        [Test]
+        public void FastIntersects3DLineSegmentOverlapsReturnsTrue()
+        {
+            Bounds bounds1 = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Bounds bounds2 = new(new Vector3(5f, 5f, 5f), new Vector3(0.01f, 0.01f, 10f));
+            Assert.IsTrue(bounds1.FastIntersects(bounds2));
+        }
+
+        [Test]
+        public void FastIntersects3DExtremeNegativeCoordinatesReturnsTrue()
+        {
+            Bounds bounds1 = new(
+                new Vector3(-1000f, -1000f, -1000f),
+                new Vector3(100f, 100f, 100f)
+            );
+            Bounds bounds2 = new(new Vector3(-960f, -960f, -960f), new Vector3(100f, 100f, 100f));
+            Assert.IsTrue(bounds1.FastIntersects(bounds2));
+        }
+
+        [Test]
+        public void FastIntersects3DMixedPositiveNegativeCoordinatesReturnsTrue()
+        {
+            Bounds bounds1 = new(new Vector3(-5f, -5f, -5f), new Vector3(20f, 20f, 20f));
+            Bounds bounds2 = new(new Vector3(5f, 5f, 5f), new Vector3(10f, 10f, 10f));
+            Assert.IsTrue(bounds1.FastIntersects(bounds2));
+        }
+
+        [Test]
+        public void FastIntersects3DMinimalOverlapAllAxesReturnsTrue()
+        {
+            Bounds bounds1 = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Bounds bounds2 = new(new Vector3(4.99f, 4.99f, 4.99f), new Vector3(10f, 10f, 10f));
+            Assert.IsTrue(bounds1.FastIntersects(bounds2));
+        }
+
+        [Test]
+        public void FastIntersects3DCompletelyContainingBoundsReturnsTrue()
+        {
+            Bounds bounds1 = new(new Vector3(0f, 0f, 0f), new Vector3(100f, 100f, 100f));
+            Bounds bounds2 = new(new Vector3(25f, 25f, 25f), new Vector3(10f, 10f, 10f));
+            Assert.IsTrue(bounds1.FastIntersects(bounds2));
+        }
+
+        [Test]
+        public void FastIntersects3DCompletelyContainedBoundsReturnsTrue()
+        {
+            Bounds bounds1 = new(new Vector3(25f, 25f, 25f), new Vector3(10f, 10f, 10f));
+            Bounds bounds2 = new(new Vector3(0f, 0f, 0f), new Vector3(100f, 100f, 100f));
+            Assert.IsTrue(bounds1.FastIntersects(bounds2));
+        }
+
+        [Test]
+        public void FastContains3DPointInsideReturnsTrue()
+        {
+            Bounds bounds = new(new Vector3(5f, 5f, 5f), new Vector3(10f, 10f, 10f));
+            Vector3 point = new(5f, 5f, 5f);
+            Assert.IsTrue(bounds.FastContains3D(point));
+        }
+
+        [Test]
+        public void FastContains3DPointAtMinReturnsTrue()
+        {
+            Bounds bounds = new(new Vector3(5f, 5f, 5f), new Vector3(10f, 10f, 10f));
+            Vector3 point = new(0f, 0f, 0f);
+            Assert.IsTrue(bounds.FastContains3D(point));
+        }
+
+        [Test]
+        public void FastContains3DPointAtMaxReturnsFalse()
+        {
+            Bounds bounds = new(new Vector3(5f, 5f, 5f), new Vector3(10f, 10f, 10f));
+            Vector3 point = new(10f, 10f, 10f);
+            Assert.IsFalse(bounds.FastContains3D(point));
+        }
+
+        [Test]
+        public void FastContains3DPointJustBelowMaxReturnsTrue()
+        {
+            Bounds bounds = new(new Vector3(5f, 5f, 5f), new Vector3(10f, 10f, 10f));
+            Vector3 point = new(9.99f, 9.99f, 9.99f);
+            Assert.IsTrue(bounds.FastContains3D(point));
+        }
+
+        [Test]
+        public void FastContains3DPointJustBelowMinReturnsFalse()
+        {
+            Bounds bounds = new(new Vector3(5f, 5f, 5f), new Vector3(10f, 10f, 10f));
+            Vector3 point = new(-0.01f, 5f, 5f);
+            Assert.IsFalse(bounds.FastContains3D(point));
+        }
+
+        [Test]
+        public void FastContains3DPointOutsideXReturnsFalse()
+        {
+            Bounds bounds = new(new Vector3(5f, 5f, 5f), new Vector3(10f, 10f, 10f));
+            Vector3 point = new(10.1f, 5f, 5f);
+            Assert.IsFalse(bounds.FastContains3D(point));
+        }
+
+        [Test]
+        public void FastContains3DPointOutsideYReturnsFalse()
+        {
+            Bounds bounds = new(new Vector3(5f, 5f, 5f), new Vector3(10f, 10f, 10f));
+            Vector3 point = new(5f, 10.1f, 5f);
+            Assert.IsFalse(bounds.FastContains3D(point));
+        }
+
+        [Test]
+        public void FastContains3DPointOutsideZReturnsFalse()
+        {
+            Bounds bounds = new(new Vector3(5f, 5f, 5f), new Vector3(10f, 10f, 10f));
+            Vector3 point = new(5f, 5f, 10.1f);
+            Assert.IsFalse(bounds.FastContains3D(point));
+        }
+
+        [Test]
+        public void FastContains3DPointOnMaxXEdgeReturnsFalse()
+        {
+            Bounds bounds = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Vector3 point = new(5f, 2f, 2f);
+            Assert.IsFalse(bounds.FastContains3D(point));
+        }
+
+        [Test]
+        public void FastContains3DPointOnMaxYEdgeReturnsFalse()
+        {
+            Bounds bounds = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Vector3 point = new(2f, 5f, 2f);
+            Assert.IsFalse(bounds.FastContains3D(point));
+        }
+
+        [Test]
+        public void FastContains3DPointOnMaxZEdgeReturnsFalse()
+        {
+            Bounds bounds = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Vector3 point = new(2f, 2f, 5f);
+            Assert.IsFalse(bounds.FastContains3D(point));
+        }
+
+        [Test]
+        public void FastContains3DPointNegativeCoordinatesInsideReturnsTrue()
+        {
+            Bounds bounds = new(new Vector3(-5f, -5f, -5f), new Vector3(10f, 10f, 10f));
+            Vector3 point = new(-3f, -3f, -3f);
+            Assert.IsTrue(bounds.FastContains3D(point));
+        }
+
+        [Test]
+        public void FastContains3DPointNegativeCoordinatesOutsideReturnsFalse()
+        {
+            Bounds bounds = new(new Vector3(-5f, -5f, -5f), new Vector3(10f, 10f, 10f));
+            // Put x below bounds.min.x (-10) so the point is truly outside
+            Vector3 point = new(-10.1f, -3f, -3f);
+            Assert.IsFalse(bounds.FastContains3D(point));
+        }
+
+        [Test]
+        public void FastContains3DPointVerySmallBoundsInsideReturnsTrue()
+        {
+            Bounds bounds = new(new Vector3(0f, 0f, 0f), new Vector3(0.01f, 0.01f, 0.01f));
+            Vector3 point = new(0.005f, 0.005f, 0.005f);
+            Assert.IsTrue(bounds.FastContains3D(point));
+        }
+
+        [Test]
+        public void FastContains3DPointVeryLargeBoundsInsideReturnsTrue()
+        {
+            Bounds bounds = new(new Vector3(0f, 0f, 0f), new Vector3(10000f, 10000f, 10000f));
+            Vector3 point = new(4999f, 4999f, 4999f);
+            Assert.IsTrue(bounds.FastContains3D(point));
+        }
+
+        [Test]
+        public void FastContains3DPointAtCenterReturnsTrue()
+        {
+            Bounds bounds = new(new Vector3(10f, 10f, 10f), new Vector3(20f, 20f, 20f));
+            Vector3 point = bounds.center;
+            Assert.IsTrue(bounds.FastContains3D(point));
+        }
+
+        [Test]
+        public void FastContains3DPointZeroBoundsReturnsFalse()
+        {
+            Bounds bounds = new(new Vector3(5f, 5f, 5f), new Vector3(0f, 0f, 0f));
+            Vector3 point = new(5f, 5f, 5f);
+            Assert.IsFalse(bounds.FastContains3D(point));
+        }
+
+        [Test]
+        public void FastContains3DPointOnMinXEdgeReturnsTrue()
+        {
+            Bounds bounds = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Vector3 point = new(-5f, 2f, 2f);
+            Assert.IsTrue(bounds.FastContains3D(point));
+        }
+
+        [Test]
+        public void FastContains3DPointOnMinYEdgeReturnsTrue()
+        {
+            Bounds bounds = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Vector3 point = new(2f, -5f, 2f);
+            Assert.IsTrue(bounds.FastContains3D(point));
+        }
+
+        [Test]
+        public void FastContains3DPointOnMinZEdgeReturnsTrue()
+        {
+            Bounds bounds = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Vector3 point = new(2f, 2f, -5f);
+            Assert.IsTrue(bounds.FastContains3D(point));
+        }
+
+        [Test]
+        public void FastContains3DPointExactlyAtMaxXReturnsFalse()
+        {
+            Bounds bounds = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Vector3 point = new(5f, 2f, 2f);
+            Assert.IsFalse(bounds.FastContains3D(point));
+        }
+
+        [Test]
+        public void FastContains3DPointExactlyAtMaxYReturnsFalse()
+        {
+            Bounds bounds = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Vector3 point = new(2f, 5f, 2f);
+            Assert.IsFalse(bounds.FastContains3D(point));
+        }
+
+        [Test]
+        public void FastContains3DPointExactlyAtMaxZReturnsFalse()
+        {
+            Bounds bounds = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Vector3 point = new(2f, 2f, 5f);
+            Assert.IsFalse(bounds.FastContains3D(point));
+        }
+
+        [Test]
+        public void FastContains3DPointBarelyInsideMinXReturnsTrue()
+        {
+            Bounds bounds = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Vector3 point = new(-4.99f, 2f, 2f);
+            Assert.IsTrue(bounds.FastContains3D(point));
+        }
+
+        [Test]
+        public void FastContains3DPointBarelyOutsideMaxXReturnsFalse()
+        {
+            Bounds bounds = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Vector3 point = new(5.01f, 2f, 2f);
+            Assert.IsFalse(bounds.FastContains3D(point));
+        }
+
+        [Test]
+        public void FastContains3DBoundsFullyContainedReturnsTrue()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(100f, 100f, 100f));
+            Bounds inner = new(new Vector3(25f, 25f, 25f), new Vector3(50f, 50f, 50f));
+            Assert.IsTrue(outer.FastContains3D(inner));
+        }
+
+        [Test]
+        public void FastContains3DBoundsIdenticalBoundsReturnsTrue()
+        {
+            Bounds bounds = new(new Vector3(5f, 5f, 5f), new Vector3(10f, 10f, 10f));
+            Assert.IsTrue(bounds.FastContains3D(bounds));
+        }
+
+        [Test]
+        public void FastContains3DBoundsPartiallyOutsideReturnsFalse()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Bounds inner = new(new Vector3(5f, 5f, 5f), new Vector3(20f, 20f, 20f));
+            Assert.IsFalse(outer.FastContains3D(inner));
+        }
+
+        [Test]
+        public void FastContains3DBoundsCompletelyOutsideReturnsFalse()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Bounds inner = new(new Vector3(20f, 20f, 20f), new Vector3(10f, 10f, 10f));
+            Assert.IsFalse(outer.FastContains3D(inner));
+        }
+
+        [Test]
+        public void FastContains3DBoundsInnerMinOutsideReturnsFalse()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(20f, 20f, 20f));
+            Bounds inner = new(
+                // Shift slightly so inner.min.x is strictly less than outer.min.x
+                new Vector3(-5.1f, 5f, 5f),
+                new Vector3(10f, 10f, 10f)
+            );
+            Assert.IsFalse(outer.FastContains3D(inner));
+        }
+
+        [Test]
+        public void FastContains3DBoundsInnerMaxOutsideReturnsFalse()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(20f, 20f, 20f));
+            Bounds inner = new(new Vector3(5f, 5f, 5f), new Vector3(30f, 10f, 10f));
+            Assert.IsFalse(outer.FastContains3D(inner));
+        }
+
+        [Test]
+        public void FastContains3DBoundsInnerTouchingOuterMinReturnsTrue()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(20f, 20f, 20f));
+            Bounds inner = new(
+                // Place inner so inner.min == outer.min and inner.max < outer.max (touches min only)
+                new Vector3(-5f, -5f, -5f),
+                new Vector3(10f, 10f, 10f)
+            );
+            Assert.IsTrue(outer.FastContains3D(inner));
+        }
+
+        [Test]
+        public void FastContains3DBoundsInnerTouchingOuterMaxReturnsTrue()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(20f, 20f, 20f));
+            Bounds inner = new(new Vector3(0f, 0f, 0f), new Vector3(20f, 20f, 20f));
+            Assert.IsTrue(outer.FastContains3D(inner));
+        }
+
+        [Test]
+        public void FastContains3DBoundsInnerJustBeyondMaxReturnsFalse()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(20f, 20f, 20f));
+            Bounds inner = new(new Vector3(0f, 0f, 0f), new Vector3(20.01f, 20f, 20f));
+            Assert.IsFalse(outer.FastContains3D(inner));
+        }
+
+        [Test]
+        public void FastContains3DBoundsInnerJustBeyondMinReturnsFalse()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(20f, 20f, 20f));
+            Bounds inner = new(new Vector3(-10.01f, -10f, -10f), new Vector3(20f, 20f, 20f));
+            Assert.IsFalse(outer.FastContains3D(inner));
+        }
+
+        [Test]
+        public void FastContains3DBoundsNegativeCoordinatesFullyContainedReturnsTrue()
+        {
+            Bounds outer = new(new Vector3(-50f, -50f, -50f), new Vector3(100f, 100f, 100f));
+            Bounds inner = new(new Vector3(-25f, -25f, -25f), new Vector3(50f, 50f, 50f));
+            Assert.IsTrue(outer.FastContains3D(inner));
+        }
+
+        [Test]
+        public void FastContains3DBoundsVerySmallInnerReturnsTrue()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Bounds inner = new(
+                // Place the very small inner well inside the outer
+                new Vector3(0f, 0f, 0f),
+                new Vector3(0.01f, 0.01f, 0.01f)
+            );
+            Assert.IsTrue(outer.FastContains3D(inner));
+        }
+
+        [Test]
+        public void FastContains3DBoundsVeryLargeOuterReturnsTrue()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(10000f, 10000f, 10000f));
+            Bounds inner = new(new Vector3(100f, 100f, 100f), new Vector3(500f, 500f, 500f));
+            Assert.IsTrue(outer.FastContains3D(inner));
+        }
+
+        [Test]
+        public void FastContains3DBoundsZeroVolumeInnerReturnsFalse()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Bounds inner = new(new Vector3(5f, 5f, 5f), new Vector3(0f, 0f, 0f));
+            // Degenerate inner (point) at (5,5,5) is within outer; containment is inclusive
+            Assert.IsTrue(outer.FastContains3D(inner));
+        }
+
+        [Test]
+        public void FastContains3DBoundsInnerExceedsOnXAxisReturnsFalse()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Bounds inner = new(new Vector3(0f, 2f, 2f), new Vector3(20f, 5f, 5f));
+            Assert.IsFalse(outer.FastContains3D(inner));
+        }
+
+        [Test]
+        public void FastContains3DBoundsInnerExceedsOnYAxisReturnsFalse()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Bounds inner = new(new Vector3(2f, 0f, 2f), new Vector3(5f, 20f, 5f));
+            Assert.IsFalse(outer.FastContains3D(inner));
+        }
+
+        [Test]
+        public void FastContains3DBoundsInnerExceedsOnZAxisReturnsFalse()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Bounds inner = new(new Vector3(2f, 2f, 0f), new Vector3(5f, 5f, 20f));
+            Assert.IsFalse(outer.FastContains3D(inner));
+        }
+
+        [Test]
+        public void FastContains3DBoundsInnerMinBelowOnXReturnsFalse()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Bounds inner = new(new Vector3(-5.1f, 0f, 0f), new Vector3(5f, 5f, 5f));
+            Assert.IsFalse(outer.FastContains3D(inner));
+        }
+
+        [Test]
+        public void FastContains3DBoundsInnerMinBelowOnYReturnsFalse()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Bounds inner = new(new Vector3(0f, -5.1f, 0f), new Vector3(5f, 5f, 5f));
+            Assert.IsFalse(outer.FastContains3D(inner));
+        }
+
+        [Test]
+        public void FastContains3DBoundsInnerMinBelowOnZReturnsFalse()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Bounds inner = new(new Vector3(0f, 0f, -5.1f), new Vector3(5f, 5f, 5f));
+            Assert.IsFalse(outer.FastContains3D(inner));
+        }
+
+        [Test]
+        public void FastContains3DBoundsInnerBarelyFitsReturnsTrue()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(20f, 20f, 20f));
+            Bounds inner = new(
+                // Place centered so it's just slightly smaller than outer on all sides
+                new Vector3(0f, 0f, 0f),
+                new Vector3(19.99f, 19.99f, 19.99f)
+            );
+            Assert.IsTrue(outer.FastContains3D(inner));
+        }
+
+        [Test]
+        public void FastContains3DBoundsInnerBarelyDoesNotFitOnXReturnsFalse()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(20f, 20f, 20f));
+            Bounds inner = new(new Vector3(-10f, -9.99f, -9.99f), new Vector3(20f, 19.99f, 19.99f));
+            Assert.IsFalse(outer.FastContains3D(inner));
+        }
+
+        [Test]
+        public void FastContains3DBoundsInnerBarelyDoesNotFitOnYReturnsFalse()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(20f, 20f, 20f));
+            Bounds inner = new(new Vector3(-9.99f, -10f, -9.99f), new Vector3(19.99f, 20f, 19.99f));
+            Assert.IsFalse(outer.FastContains3D(inner));
+        }
+
+        [Test]
+        public void FastContains3DBoundsInnerBarelyDoesNotFitOnZReturnsFalse()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(20f, 20f, 20f));
+            Bounds inner = new(new Vector3(-9.99f, -9.99f, -10f), new Vector3(19.99f, 19.99f, 20f));
+            Assert.IsFalse(outer.FastContains3D(inner));
+        }
+
+        [Test]
+        public void FastContains3DBoundsMixedPositiveNegativeReturnsTrue()
+        {
+            Bounds outer = new(new Vector3(-10f, -10f, -10f), new Vector3(40f, 40f, 40f));
+            Bounds inner = new(
+                // Adjust Z so inner.max.z does not exceed outer.max.z
+                new Vector3(-5f, 0f, 0f),
+                new Vector3(20f, 20f, 20f)
+            );
+            Assert.IsTrue(outer.FastContains3D(inner));
+        }
+
+        [Test]
+        public void FastContains3DBoundsOuterLargerOnlyOnOneAxisReturnsFalse()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 5f, 5f));
+            Bounds inner = new(new Vector3(0f, 0f, 0f), new Vector3(5f, 10f, 5f));
+            Assert.IsFalse(outer.FastContains3D(inner));
+        }
+
+        [Test]
+        public void FastContains3DBoundsInnerSingleAxisSliceReturnsTrue()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(20f, 20f, 20f));
+            Bounds inner = new(new Vector3(0f, 0f, 0f), new Vector3(0.01f, 10f, 10f));
+            Assert.IsTrue(outer.FastContains3D(inner));
+        }
+
+        [Test]
+        public void FastContains3DBoundsInnerLineSegmentReturnsTrue()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(20f, 20f, 20f));
+            Bounds inner = new(new Vector3(0f, 0f, 0f), new Vector3(0.01f, 0.01f, 10f));
+            Assert.IsTrue(outer.FastContains3D(inner));
+        }
+
+        // FastContainsHalfOpen3D tests
+        [Test]
+        public void FastContainsHalfOpen3DFullyContainedReturnsTrue()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(100f, 100f, 100f));
+            Bounds inner = new(new Vector3(25f, 25f, 25f), new Vector3(50f, 50f, 50f));
+            Assert.IsTrue(outer.FastContainsHalfOpen3D(inner));
+        }
+
+        [Test]
+        public void FastContainsHalfOpen3DInnerTouchingOuterMaxReturnsFalse()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(20f, 20f, 20f));
+            Bounds inner = new(new Vector3(0f, 0f, 0f), new Vector3(20f, 20f, 20f));
+            Assert.IsFalse(outer.FastContainsHalfOpen3D(inner));
+        }
+
+        [Test]
+        public void FastContainsHalfOpen3DInnerMaxJustBelowOuterMaxReturnsTrue()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(20f, 20f, 20f));
+            Bounds inner = new(new Vector3(0f, 0f, 0f), new Vector3(19.99f, 19.99f, 19.99f));
+            Assert.IsTrue(outer.FastContainsHalfOpen3D(inner));
+        }
+
+        [Test]
+        public void FastContainsHalfOpen3DInnerMinBelowOuterMinReturnsFalse()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(20f, 20f, 20f));
+            Bounds inner = new(new Vector3(-10.01f, -10f, -10f), new Vector3(15f, 15f, 15f));
+            Assert.IsFalse(outer.FastContainsHalfOpen3D(inner));
+        }
+
+        [Test]
+        public void FastContainsHalfOpen3DInnerMinAtOuterMinReturnsTrue()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(20f, 20f, 20f));
+            Bounds inner = new(new Vector3(-10f, -10f, -10f), new Vector3(15f, 15f, 15f));
+            Assert.IsTrue(outer.FastContainsHalfOpen3D(inner));
+        }
+
+        [Test]
+        public void FastContainsHalfOpen3DInnerMaxTouchesOuterMaxOnXReturnsFalse()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(20f, 20f, 20f));
+            Bounds inner = new(new Vector3(5f, 5f, 5f), new Vector3(10f, 15f, 15f));
+            Assert.IsFalse(outer.FastContainsHalfOpen3D(inner));
+        }
+
+        [Test]
+        public void FastContainsHalfOpen3DInnerMaxTouchesOuterMaxOnYReturnsFalse()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(20f, 20f, 20f));
+            Bounds inner = new(new Vector3(5f, 5f, 5f), new Vector3(15f, 10f, 15f));
+            Assert.IsFalse(outer.FastContainsHalfOpen3D(inner));
+        }
+
+        [Test]
+        public void FastContainsHalfOpen3DInnerMaxTouchesOuterMaxOnZReturnsFalse()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(20f, 20f, 20f));
+            Bounds inner = new(new Vector3(5f, 5f, 5f), new Vector3(15f, 15f, 10f));
+            Assert.IsFalse(outer.FastContainsHalfOpen3D(inner));
+        }
+
+        [Test]
+        public void FastContainsHalfOpen3DInnerExceedsOuterMaxOnXReturnsFalse()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Bounds inner = new(new Vector3(0f, 2f, 2f), new Vector3(10.01f, 5f, 5f));
+            Assert.IsFalse(outer.FastContainsHalfOpen3D(inner));
+        }
+
+        [Test]
+        public void FastContainsHalfOpen3DInnerExceedsOuterMaxOnYReturnsFalse()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Bounds inner = new(new Vector3(2f, 0f, 2f), new Vector3(5f, 10.01f, 5f));
+            Assert.IsFalse(outer.FastContainsHalfOpen3D(inner));
+        }
+
+        [Test]
+        public void FastContainsHalfOpen3DInnerExceedsOuterMaxOnZReturnsFalse()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Bounds inner = new(new Vector3(2f, 2f, 0f), new Vector3(5f, 5f, 10.01f));
+            Assert.IsFalse(outer.FastContainsHalfOpen3D(inner));
+        }
+
+        [Test]
+        public void FastContainsHalfOpen3DCompletelyOutsideReturnsFalse()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Bounds inner = new(new Vector3(20f, 20f, 20f), new Vector3(10f, 10f, 10f));
+            Assert.IsFalse(outer.FastContainsHalfOpen3D(inner));
+        }
+
+        [Test]
+        public void FastContainsHalfOpen3DNegativeCoordinatesFullyContainedReturnsTrue()
+        {
+            Bounds outer = new(new Vector3(-50f, -50f, -50f), new Vector3(100f, 100f, 100f));
+            Bounds inner = new(new Vector3(-25f, -25f, -25f), new Vector3(75f, 75f, 75f));
+            Assert.IsTrue(outer.FastContainsHalfOpen3D(inner));
+        }
+
+        [Test]
+        public void FastContainsHalfOpen3DVerySmallInnerReturnsTrue()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Bounds inner = new(new Vector3(5f, 5f, 5f), new Vector3(0.01f, 0.01f, 0.01f));
+            Assert.IsTrue(outer.FastContainsHalfOpen3D(inner));
+        }
+
+        [Test]
+        public void FastContainsHalfOpen3DVeryLargeOuterReturnsTrue()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(10000f, 10000f, 10000f));
+            Bounds inner = new(new Vector3(100f, 100f, 100f), new Vector3(500f, 500f, 500f));
+            Assert.IsTrue(outer.FastContainsHalfOpen3D(inner));
+        }
+
+        [Test]
+        public void FastContainsHalfOpen3DZeroVolumeInnerReturnsFalse()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Bounds inner = new(new Vector3(5f, 5f, 5f), new Vector3(0f, 0f, 0f));
+            Assert.IsFalse(outer.FastContainsHalfOpen3D(inner));
+        }
+
+        [Test]
+        public void FastContainsHalfOpen3DInnerMinBelowOnXReturnsFalse()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Bounds inner = new(new Vector3(-5.1f, 0f, 0f), new Vector3(5f, 5f, 5f));
+            Assert.IsFalse(outer.FastContainsHalfOpen3D(inner));
+        }
+
+        [Test]
+        public void FastContainsHalfOpen3DInnerMinBelowOnYReturnsFalse()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Bounds inner = new(new Vector3(0f, -5.1f, 0f), new Vector3(5f, 5f, 5f));
+            Assert.IsFalse(outer.FastContainsHalfOpen3D(inner));
+        }
+
+        [Test]
+        public void FastContainsHalfOpen3DInnerMinBelowOnZReturnsFalse()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Bounds inner = new(new Vector3(0f, 0f, -5.1f), new Vector3(5f, 5f, 5f));
+            Assert.IsFalse(outer.FastContainsHalfOpen3D(inner));
+        }
+
+        [Test]
+        public void FastContainsHalfOpen3DInnerBarelyFitsWithoutTouchingMaxReturnsTrue()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(20f, 20f, 20f));
+            Bounds inner = new(new Vector3(-10f, -10f, -10f), new Vector3(19.99f, 19.99f, 19.99f));
+            Assert.IsTrue(outer.FastContainsHalfOpen3D(inner));
+        }
+
+        [Test]
+        public void FastContainsHalfOpen3DMixedPositiveNegativeReturnsTrue()
+        {
+            Bounds outer = new(new Vector3(-10f, -10f, -10f), new Vector3(40f, 40f, 40f));
+            Bounds inner = new(new Vector3(-5f, 0f, 5f), new Vector3(35f, 35f, 35f));
+            Assert.IsTrue(outer.FastContainsHalfOpen3D(inner));
+        }
+
+        [Test]
+        public void FastContainsHalfOpen3DPartiallyOverlappingReturnsFalse()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Bounds inner = new(new Vector3(5f, 5f, 5f), new Vector3(20f, 20f, 20f));
+            Assert.IsFalse(outer.FastContainsHalfOpen3D(inner));
+        }
+
+        [Test]
+        public void FastContainsHalfOpen3DThinSliceNotTouchingMaxReturnsTrue()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(20f, 20f, 20f));
+            Bounds inner = new(new Vector3(0f, 0f, 0f), new Vector3(0.01f, 10f, 10f));
+            Assert.IsTrue(outer.FastContainsHalfOpen3D(inner));
+        }
+
+        [Test]
+        public void FastContainsHalfOpen3DLineSegmentNotTouchingMaxReturnsTrue()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(20f, 20f, 20f));
+            Bounds inner = new(new Vector3(0f, 0f, 0f), new Vector3(0.01f, 0.01f, 10f));
+            Assert.IsTrue(outer.FastContainsHalfOpen3D(inner));
+        }
+
+        [Test]
+        public void FastContainsHalfOpen3DExtremeNegativeCoordinatesReturnsTrue()
+        {
+            Bounds outer = new(
+                new Vector3(-1000f, -1000f, -1000f),
+                new Vector3(2000f, 2000f, 2000f)
+            );
+            Bounds inner = new(new Vector3(-500f, -500f, -500f), new Vector3(1000f, 1000f, 1000f));
+            Assert.IsTrue(outer.FastContainsHalfOpen3D(inner));
+        }
+
+        [Test]
+        public void FastContainsHalfOpen3DInnerAtMinEdgeNotTouchingMaxReturnsTrue()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(20f, 20f, 20f));
+            Bounds inner = new(new Vector3(-10f, -10f, -10f), new Vector3(10f, 10f, 10f));
+            Assert.IsTrue(outer.FastContainsHalfOpen3D(inner));
+        }
+
+        [Test]
+        public void FastContainsHalfOpen3DInnerMaxExactlyAtOuterMaxOnAllAxesReturnsFalse()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Bounds inner = new(new Vector3(5f, 5f, 5f), new Vector3(10f, 10f, 10f));
+            Assert.IsFalse(outer.FastContainsHalfOpen3D(inner));
+        }
+
+        [Test]
+        public void FastContainsHalfOpen3DInnerMaxJustBelowOuterMaxOnAllAxesReturnsTrue()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Bounds inner = new(new Vector3(0f, 0f, 0f), new Vector3(9.99f, 9.99f, 9.99f));
+            Assert.IsTrue(outer.FastContainsHalfOpen3D(inner));
+        }
+
+        [Test]
+        public void FastContainsHalfOpen3DInnerMaxExceedsOuterMaxOnOneAxisReturnsFalse()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Bounds inner = new(new Vector3(0f, 0f, 0f), new Vector3(9.99f, 9.99f, 10.01f));
+            Assert.IsFalse(outer.FastContainsHalfOpen3D(inner));
+        }
+
+        [Test]
+        public void FastContainsHalfOpen3DAsymmetricBoundsReturnsTrue()
+        {
+            Bounds outer = new(new Vector3(-20f, 0f, 10f), new Vector3(100f, 50f, 80f));
+            Bounds inner = new(new Vector3(-10f, 5f, 15f), new Vector3(75f, 45f, 75f));
+            Assert.IsTrue(outer.FastContainsHalfOpen3D(inner));
+        }
+
+        [Test]
+        public void FastContainsHalfOpen3DInnerMinAtOuterMinMaxTouchesReturnsFalse()
+        {
+            Bounds outer = new(new Vector3(5f, 5f, 5f), new Vector3(10f, 10f, 10f));
+            Bounds inner = new(new Vector3(-2.5f, -2.5f, -2.5f), new Vector3(10f, 10f, 10f));
+            Assert.IsFalse(outer.FastContainsHalfOpen3D(inner));
+        }
+
+        [Test]
+        public void FastContainsHalfOpen3DInnerSinglePointNotAtMaxReturnsTrue()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(20f, 20f, 20f));
+            // Single point bounds at (5,5,5)
+            Bounds inner = new(new Vector3(5f, 5f, 5f), new Vector3(0.0001f, 0.0001f, 0.0001f));
+            Assert.IsTrue(outer.FastContainsHalfOpen3D(inner));
+        }
+
+        [Test]
+        public void FastContainsHalfOpen3DInnerSinglePointAtMaxReturnsFalse()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(20f, 20f, 20f));
+            // Single point bounds at (10,10,10) which is the max
+            Bounds inner = new(new Vector3(10f, 10f, 10f), new Vector3(0.0001f, 0.0001f, 0.0001f));
+            Assert.IsFalse(outer.FastContainsHalfOpen3D(inner));
+        }
     }
 }
