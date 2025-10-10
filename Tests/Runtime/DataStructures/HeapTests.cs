@@ -768,10 +768,10 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             IComparer<Person> comparer = new PersonAgeComparer();
             Person[] people =
             {
-                new Person("Alice", 30),
-                new Person("Bob", 25),
-                new Person("Charlie", 35),
-                new Person("David", 20),
+                new("Alice", 30),
+                new("Bob", 25),
+                new("Charlie", 35),
+                new("David", 20),
             };
             Heap<Person> heap = new(people, comparer);
 

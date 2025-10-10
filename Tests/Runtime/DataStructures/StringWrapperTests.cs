@@ -249,7 +249,7 @@
         [Test]
         public void LargeStringHandling()
         {
-            string largeString = new string('a', 10000);
+            string largeString = new('a', 10000);
             StringWrapper wrapper = StringWrapper.Get(largeString);
             Assert.AreEqual(largeString, wrapper.value);
             Assert.AreSame(wrapper, StringWrapper.Get(largeString));

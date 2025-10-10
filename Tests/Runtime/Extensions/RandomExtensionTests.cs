@@ -217,7 +217,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void NextColorInRange()
         {
-            Color baseColor = new Color(0.5f, 0.5f, 0.5f, 1f);
+            Color baseColor = new(0.5f, 0.5f, 0.5f, 1f);
             for (int i = 0; i < 100; ++i)
             {
                 float hueVar = PRNG.Instance.NextFloat(0f, 0.5f);
@@ -290,14 +290,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         {
             for (int i = 0; i < 100; ++i)
             {
-                Vector2Int min = new Vector2Int(
-                    PRNG.Instance.Next(-100, 0),
-                    PRNG.Instance.Next(-100, 0)
-                );
-                Vector2Int max = new Vector2Int(
-                    PRNG.Instance.Next(1, 100),
-                    PRNG.Instance.Next(1, 100)
-                );
+                Vector2Int min = new(PRNG.Instance.Next(-100, 0), PRNG.Instance.Next(-100, 0));
+                Vector2Int max = new(PRNG.Instance.Next(1, 100), PRNG.Instance.Next(1, 100));
                 Vector2Int result = PRNG.Instance.NextVector2Int(min, max);
                 Assert.GreaterOrEqual(result.x, min.x);
                 Assert.Less(result.x, max.x);
@@ -344,12 +338,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         {
             for (int i = 0; i < 100; ++i)
             {
-                Vector3Int min = new Vector3Int(
+                Vector3Int min = new(
                     PRNG.Instance.Next(-100, 0),
                     PRNG.Instance.Next(-100, 0),
                     PRNG.Instance.Next(-100, 0)
                 );
-                Vector3Int max = new Vector3Int(
+                Vector3Int max = new(
                     PRNG.Instance.Next(1, 100),
                     PRNG.Instance.Next(1, 100),
                     PRNG.Instance.Next(1, 100)
@@ -415,7 +409,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         {
             for (int i = 0; i < 100; ++i)
             {
-                Rect rect = new Rect(
+                Rect rect = new(
                     PRNG.Instance.NextFloat(-100f, 0f),
                     PRNG.Instance.NextFloat(-100f, 0f),
                     PRNG.Instance.NextFloat(1f, 100f),
@@ -435,12 +429,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             for (int i = 0; i < 100; ++i)
             {
                 Vector3 center = PRNG.Instance.NextVector3(-50, 50);
-                Vector3 size = new Vector3(
+                Vector3 size = new(
                     PRNG.Instance.NextFloat(1f, 100f),
                     PRNG.Instance.NextFloat(1f, 100f),
                     PRNG.Instance.NextFloat(1f, 100f)
                 );
-                Bounds bounds = new Bounds(center, size);
+                Bounds bounds = new(center, size);
                 Vector3 result = PRNG.Instance.NextVector3InBounds(bounds);
                 Assert.GreaterOrEqual(result.x, bounds.min.x);
                 Assert.Less(result.x, bounds.max.x);
@@ -454,11 +448,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void NextWeighted()
         {
-            List<(string, float)> items = new List<(string, float)>
-            {
-                ("rare", 1f),
-                ("common", 99f),
-            };
+            List<(string, float)> items = new() { ("rare", 1f), ("common", 99f) };
             HashSet<string> seen = new();
             int commonCount = 0;
             int rareCount = 0;
@@ -480,21 +470,21 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void NextWeightedThrowsOnEmptyCollection()
         {
-            List<(string, float)> empty = new List<(string, float)>();
+            List<(string, float)> empty = new();
             Assert.Throws<ArgumentException>(() => PRNG.Instance.NextWeighted(empty));
         }
 
         [Test]
         public void NextWeightedThrowsOnNegativeWeight()
         {
-            List<(string, float)> items = new List<(string, float)> { ("item", -1f) };
+            List<(string, float)> items = new() { ("item", -1f) };
             Assert.Throws<ArgumentException>(() => PRNG.Instance.NextWeighted(items));
         }
 
         [Test]
         public void NextWeightedThrowsOnZeroTotalWeight()
         {
-            List<(string, float)> items = new List<(string, float)> { ("item", 0f) };
+            List<(string, float)> items = new() { ("item", 0f) };
             Assert.Throws<ArgumentException>(() => PRNG.Instance.NextWeighted(items));
         }
 
@@ -647,7 +637,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void NextOfExceptWithList()
         {
-            List<int> values = new List<int> { 1, 2, 3, 4, 5 };
+            List<int> values = new() { 1, 2, 3, 4, 5 };
             HashSet<int> seen = new();
             for (int i = 0; i < 200; ++i)
             {

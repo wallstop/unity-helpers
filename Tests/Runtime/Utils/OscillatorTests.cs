@@ -170,7 +170,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             float x = Mathf.Cos(Time.time * 0f) * 2f;
             float y = Mathf.Sin(Time.time * 0f) * 2f;
-            Vector3 expected = new Vector3(x, y, 0f);
+            Vector3 expected = new(x, y, 0f);
 
             Assert.AreEqual(expected.x, go.transform.localPosition.x, 0.001f);
             Assert.AreEqual(expected.y, go.transform.localPosition.y, 0.001f);

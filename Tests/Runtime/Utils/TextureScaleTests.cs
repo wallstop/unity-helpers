@@ -156,7 +156,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
         private Texture2D CreateTexture(int width, int height, Func<int, int, Color> pixelFactory)
         {
-            Texture2D texture = new Texture2D(
+            Texture2D texture = new(
                 width,
                 height,
                 TextureFormat.RGBA32,

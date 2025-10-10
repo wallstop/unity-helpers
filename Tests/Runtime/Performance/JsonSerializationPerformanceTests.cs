@@ -98,8 +98,8 @@
             // Test with very large collection to stress memory allocation
             MediumMsg msg = MakeMedium(999, 50_000);
 
-            var normal = SerializerAlias.CreateNormalJsonOptions();
-            var fast = SerializerAlias.CreateFastJsonOptions();
+            JsonSerializerOptions normal = SerializerAlias.CreateNormalJsonOptions();
+            JsonSerializerOptions fast = SerializerAlias.CreateFastJsonOptions();
             byte[] buffer = null;
 
             Stopwatch sw = Stopwatch.StartNew();
@@ -150,8 +150,8 @@
                 _ = MakeMedium(i, 10);
             }
 
-            var normal = SerializerAlias.CreateNormalJsonOptions();
-            var fast = SerializerAlias.CreateFastJsonOptions();
+            JsonSerializerOptions normal = SerializerAlias.CreateNormalJsonOptions();
+            JsonSerializerOptions fast = SerializerAlias.CreateFastJsonOptions();
             byte[] buffer = null;
 
             Stopwatch sw = Stopwatch.StartNew();
@@ -195,8 +195,8 @@
             T sample = factory();
 
             // Warmup
-            var normal = SerializerAlias.CreateNormalJsonOptions();
-            var fast = SerializerAlias.CreateFastJsonOptions();
+            JsonSerializerOptions normal = SerializerAlias.CreateNormalJsonOptions();
+            JsonSerializerOptions fast = SerializerAlias.CreateFastJsonOptions();
             byte[] buffer = null;
             _ = SerializerAlias.JsonSerialize(sample, fast, ref buffer);
             _ = JsonSerializer.SerializeToUtf8Bytes(sample);
@@ -250,9 +250,9 @@
 
         private static void RunDeserializeBenchmark<T>(string label, T payload)
         {
-            var normal = SerializerAlias.CreateNormalJsonOptions();
-            var fast = SerializerAlias.CreateFastJsonOptions();
-            var fastPoco = SerializerAlias.CreateFastPocoJsonOptions();
+            JsonSerializerOptions normal = SerializerAlias.CreateNormalJsonOptions();
+            JsonSerializerOptions fast = SerializerAlias.CreateFastJsonOptions();
+            JsonSerializerOptions fastPoco = SerializerAlias.CreateFastPocoJsonOptions();
             byte[] data = SerializerAlias.JsonSerialize(payload, fastPoco);
 
             // Warmup
@@ -321,8 +321,8 @@
         private static void RunStringifyVsSerializeBenchmark<T>(string label, T payload)
         {
             // Warmup
-            var normal = SerializerAlias.CreateNormalJsonOptions();
-            var fast = SerializerAlias.CreateFastJsonOptions();
+            JsonSerializerOptions normal = SerializerAlias.CreateNormalJsonOptions();
+            JsonSerializerOptions fast = SerializerAlias.CreateFastJsonOptions();
             _ = SerializerAlias.JsonStringify(payload, fast);
             byte[] buffer = null;
             _ = SerializerAlias.JsonSerialize(payload, fast, ref buffer);

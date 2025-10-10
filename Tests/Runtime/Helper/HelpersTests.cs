@@ -716,7 +716,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             _doubles = new Queue<double>(doubles ?? Array.Empty<double>());
         }
 
-        public override RandomState InternalState => new RandomState(0);
+        public override RandomState InternalState => new(0);
 
         public override IRandom Copy()
         {

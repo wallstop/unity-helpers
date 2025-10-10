@@ -28,19 +28,19 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
         private static Bounds[] BuildBoundsSpecs(Vector2Int gridSize)
         {
-            Vector2 span = new Vector2(Mathf.Max(gridSize.x - 1, 1), Mathf.Max(gridSize.y - 1, 1));
-            Vector2 center = new Vector2((gridSize.x - 1) * 0.5f, (gridSize.y - 1) * 0.5f);
+            Vector2 span = new(Mathf.Max(gridSize.x - 1, 1), Mathf.Max(gridSize.y - 1, 1));
+            Vector2 center = new((gridSize.x - 1) * 0.5f, (gridSize.y - 1) * 0.5f);
 
             Bounds Scale(Vector2 ratio)
             {
-                Vector2 size = new Vector2(
+                Vector2 size = new(
                     Mathf.Max(span.x * ratio.x, 1f),
                     Mathf.Max(span.y * ratio.y, 1f)
                 );
                 return new Bounds(center, new Vector3(size.x, size.y, 1f));
             }
 
-            var specs = new List<Bounds>
+            List<Bounds> specs = new()
             {
                 Scale(new Vector2(1f, 1f)),
                 Scale(new Vector2(0.5f, 0.5f)),
@@ -53,7 +53,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void BoundsDefinitionsOnTenAndTwentyGridsMatchAcrossTrees()
         {
-            Vector2Int[] sizes = { new Vector2Int(10, 10), new Vector2Int(20, 20) };
+            Vector2Int[] sizes = { new(10, 10), new(20, 20) };
             foreach (Vector2Int size in sizes)
             {
                 Vector2[] points = CreateGridPoints(size);
@@ -105,10 +105,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             KdTree2D<Vector2> unbalancedKd = new(points, p => p, balanced: false);
             QuadTree2D<Vector2> quad = new(points, p => p);
 
-            Bounds fullBounds = new Bounds(
-                new Vector3(49.5f, 49.5f, 0f),
-                new Vector3(99f, 99f, 1f)
-            );
+            Bounds fullBounds = new(new Vector3(49.5f, 49.5f, 0f), new Vector3(99f, 99f, 1f));
 
             List<Vector2> balancedKdResults = new();
             balancedKd.GetElementsInBounds(fullBounds, balancedKdResults);
@@ -177,7 +174,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             foreach ((Vector2 center, Vector2 sizeVec) in cases)
             {
                 Vector2 clampedSize = new(Mathf.Max(sizeVec.x, 1f), Mathf.Max(sizeVec.y, 1f));
-                Bounds b = new Bounds(center, new Vector3(clampedSize.x, clampedSize.y, 1f));
+                Bounds b = new(center, new Vector3(clampedSize.x, clampedSize.y, 1f));
 
                 List<Vector2> balancedKdResults = new();
                 balancedKd.GetElementsInBounds(b, balancedKdResults);
@@ -215,18 +212,12 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             KdTree2D<Vector2> unbalancedKd = new(points, p => p, balanced: false);
             QuadTree2D<Vector2> quad = new(points, p => p);
 
-            Vector2 baseSize = new Vector2(3f, 3f);
+            Vector2 baseSize = new(3f, 3f);
             for (int i = 0; i <= 9; ++i)
             {
                 float c = i + 1.5f; // slides centers from 1.5 to 10.5
-                Bounds bx = new Bounds(
-                    new Vector3(c, 5.5f, 0f),
-                    new Vector3(baseSize.x, baseSize.y, 1f)
-                );
-                Bounds by = new Bounds(
-                    new Vector3(5.5f, c, 0f),
-                    new Vector3(baseSize.x, baseSize.y, 1f)
-                );
+                Bounds bx = new(new Vector3(c, 5.5f, 0f), new Vector3(baseSize.x, baseSize.y, 1f));
+                Bounds by = new(new Vector3(5.5f, c, 0f), new Vector3(baseSize.x, baseSize.y, 1f));
 
                 foreach (Bounds b in new[] { bx, by })
                 {
@@ -267,7 +258,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             KdTree2D<Vector2> unbalancedKd = new(points, p => p, balanced: false);
             QuadTree2D<Vector2> quad = new(points, p => p);
 
-            Bounds b = new Bounds(new Vector3(4.5f, 4.5f, 0f), new Vector3(1f, 1f, 1f));
+            Bounds b = new(new Vector3(4.5f, 4.5f, 0f), new Vector3(1f, 1f, 1f));
             List<Vector2> balancedKdResults = new();
             balancedKd.GetElementsInBounds(b, balancedKdResults);
             List<Vector2> unbalancedKdResults = new();
@@ -312,10 +303,10 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             Bounds[] cases =
             {
-                new Bounds(new Vector3(0.5f, 4.5f, 0f), new Vector3(1f, 1f, 1f)),
-                new Bounds(new Vector3(9.5f, 4.5f, 0f), new Vector3(1f, 1f, 1f)),
-                new Bounds(new Vector3(4.5f, 0.5f, 0f), new Vector3(1f, 1f, 1f)),
-                new Bounds(new Vector3(4.5f, 9.5f, 0f), new Vector3(1f, 1f, 1f)),
+                new(new Vector3(0.5f, 4.5f, 0f), new Vector3(1f, 1f, 1f)),
+                new(new Vector3(9.5f, 4.5f, 0f), new Vector3(1f, 1f, 1f)),
+                new(new Vector3(4.5f, 0.5f, 0f), new Vector3(1f, 1f, 1f)),
+                new(new Vector3(4.5f, 9.5f, 0f), new Vector3(1f, 1f, 1f)),
             };
 
             foreach (Bounds b in cases)

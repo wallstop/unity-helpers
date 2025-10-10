@@ -149,7 +149,7 @@
 
             // Warmup
             _ = SerializerAlias.ProtoDeserialize<T>(data);
-            using (MemoryStream warm = new MemoryStream(data, writable: false))
+            using (MemoryStream warm = new(data, writable: false))
             {
                 _ = (T)Serializer.Deserialize(typeof(T), warm);
             }
@@ -167,7 +167,7 @@
             sw.Restart();
             for (int i = 0; i < Iterations; ++i)
             {
-                using MemoryStream ms = new MemoryStream(data, writable: false);
+                using MemoryStream ms = new(data, writable: false);
                 _ = (T)Serializer.Deserialize(typeof(T), ms);
             }
             sw.Stop();

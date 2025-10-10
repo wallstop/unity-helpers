@@ -245,7 +245,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             OctTree3D<Vector3> tree = CreateTree(points);
             KdTree3D<Vector3> kd = new(points, p => p);
             Vector3 center = tree.Boundary.center;
-            Vector3 size = new Vector3(99f, 99f, 99f);
+            Vector3 size = new(99f, 99f, 99f);
             Bounds bounds = new(center, size);
             List<Vector3> results = new();
             tree.GetElementsInBounds(bounds, results);

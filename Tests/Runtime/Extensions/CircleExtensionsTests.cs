@@ -128,10 +128,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         public void EnumerateAreaBufferClearsBufferBeforeUse()
         {
             Circle circle = new(new Vector2(0f, 0f), 2f);
-            List<FastVector3Int> buffer = new List<FastVector3Int>
-            {
-                new FastVector3Int(999, 999, 999),
-            };
+            List<FastVector3Int> buffer = new() { new FastVector3Int(999, 999, 999) };
 
             circle.EnumerateArea(buffer);
 
@@ -143,7 +140,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         public void EnumerateAreaBufferReturnsCorrectPoints()
         {
             Circle circle = new(new Vector2(5f, 5f), 3f);
-            List<FastVector3Int> buffer = new List<FastVector3Int>();
+            List<FastVector3Int> buffer = new();
 
             List<FastVector3Int> result = circle.EnumerateArea(buffer);
 
@@ -166,7 +163,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             Circle circle = new(new Vector2(7f, 3f), 4f);
 
             HashSet<FastVector3Int> enumerablePoints = new(circle.EnumerateArea());
-            List<FastVector3Int> buffer = new List<FastVector3Int>();
+            List<FastVector3Int> buffer = new();
             circle.EnumerateArea(buffer);
             HashSet<FastVector3Int> bufferPoints = new(buffer);
 

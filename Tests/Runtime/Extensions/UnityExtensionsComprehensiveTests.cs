@@ -1429,8 +1429,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
 
             UnityEditor.ObjectReferenceKeyframe[] frames =
             {
-                new UnityEditor.ObjectReferenceKeyframe { time = 0f, value = spriteA },
-                new UnityEditor.ObjectReferenceKeyframe { time = 1f, value = spriteB },
+                new() { time = 0f, value = spriteA },
+                new() { time = 1f, value = spriteB },
             };
 
             UnityEditor.AnimationUtility.SetObjectReferenceCurve(clip, binding, frames);

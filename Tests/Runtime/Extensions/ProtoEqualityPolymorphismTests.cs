@@ -78,8 +78,9 @@
         [Test]
         public void ProtoComparerWorksForAbstractBaseInCollections()
         {
-            var comparer = ProtoEqualityExtensions.GetProtoComparer<AnimalBase>();
-            var set = new HashSet<AnimalBase>(comparer)
+            IEqualityComparer<AnimalBase> comparer =
+                ProtoEqualityExtensions.GetProtoComparer<AnimalBase>();
+            HashSet<AnimalBase> set = new(comparer)
             {
                 new Dog { Name = "Buddy", Age = 2 },
             };

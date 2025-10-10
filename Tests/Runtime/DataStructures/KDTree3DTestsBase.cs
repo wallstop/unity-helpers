@@ -236,10 +236,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             List<Vector3> points = new() { new Vector3(0f, 0f, 0f), new Vector3(1f, 0f, 0f) };
             KdTree3D<Vector3> tree = CreateTree(points);
-            Bounds bounds = new UnityEngine.Bounds(
-                new Vector3(0.5f, 0f, 0f),
-                new Vector3(1f, 0.1f, 0.1f)
-            );
+            Bounds bounds = new(new Vector3(0.5f, 0f, 0f), new Vector3(1f, 0.1f, 0.1f));
             List<Vector3> results = new();
             tree.GetElementsInBounds(bounds, results);
             CollectionAssert.AreEquivalent(points, results);
@@ -261,10 +258,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             }
 
             KdTree3D<Vector3> tree = CreateTree(points);
-            Bounds bounds = new UnityEngine.Bounds(
-                new Vector3(4.5f, 4.5f, 4.5f),
-                new Vector3(9f, 9f, 9f)
-            );
+            Bounds bounds = new(new Vector3(4.5f, 4.5f, 4.5f), new Vector3(9f, 9f, 9f));
             List<Vector3> results = new();
             tree.GetElementsInBounds(bounds, results);
             Assert.AreEqual(1000, results.Count);
@@ -287,10 +281,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             }
 
             KdTree3D<Vector3> tree = CreateTree(points);
-            Bounds bounds = new UnityEngine.Bounds(
-                new Vector3(49.5f, 49.5f, 49.5f),
-                new Vector3(99f, 99f, 99f)
-            );
+            Bounds bounds = new(new Vector3(49.5f, 49.5f, 49.5f), new Vector3(99f, 99f, 99f));
 
             List<Vector3> results = new();
             tree.GetElementsInBounds(bounds, results);

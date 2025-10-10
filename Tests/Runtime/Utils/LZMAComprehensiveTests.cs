@@ -195,11 +195,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             byte[] data = new byte[4096];
             random.NextBytes(data);
 
-            using MemoryStream ms = new MemoryStream();
+            using MemoryStream ms = new();
             LZMA.CompressTo(ms, data);
             byte[] compressed = ms.ToArray();
 
-            using MemoryStream output = new MemoryStream();
+            using MemoryStream output = new();
             LZMA.DecompressTo(output, compressed);
             byte[] roundtripped = output.ToArray();
             Assert.AreEqual(data, roundtripped, "Stream overload roundtrip mismatch");

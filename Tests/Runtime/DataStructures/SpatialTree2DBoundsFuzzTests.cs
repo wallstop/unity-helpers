@@ -40,17 +40,17 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             IRandom prng = PRNG.Instance;
             for (int i = 0; i < 250; ++i)
             {
-                Vector2 center = new Vector2(
+                Vector2 center = new(
                     prng.NextFloat(0f, grid.x - 1),
                     prng.NextFloat(0f, grid.y - 1)
                 );
 
-                Vector2 size = new Vector2(
+                Vector2 size = new(
                     Mathf.Max(1f, prng.NextFloat(0.1f, grid.x - 1)),
                     Mathf.Max(1f, prng.NextFloat(0.1f, grid.y - 1))
                 );
 
-                Bounds b = new Bounds(center, new Vector3(size.x, size.y, 1f));
+                Bounds b = new(center, new Vector3(size.x, size.y, 1f));
                 List<Vector2> balancedKdResults = new();
                 balancedKd.GetElementsInBounds(b, balancedKdResults);
                 List<Vector2> unbalancedKdResults = new();
@@ -87,20 +87,14 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             KdTree2D<Vector2> unbalancedKd = new(points, p => p, balanced: false);
             QuadTree2D<Vector2> quad = new(points, p => p);
 
-            Vector2[] deltas =
-            {
-                new Vector2(-0.01f, 0f),
-                new Vector2(0.01f, 0f),
-                new Vector2(0f, -0.01f),
-                new Vector2(0f, 0.01f),
-            };
+            Vector2[] deltas = { new(-0.01f, 0f), new(0.01f, 0f), new(0f, -0.01f), new(0f, 0.01f) };
 
-            Vector2 baseCenter = new Vector2(4.5f, 4.5f);
-            Vector2 baseSize = new Vector2(1f, 1f);
+            Vector2 baseCenter = new(4.5f, 4.5f);
+            Vector2 baseSize = new(1f, 1f);
 
             foreach (Vector2 delta in deltas)
             {
-                Bounds b = new Bounds(baseCenter + delta, new Vector3(baseSize.x, baseSize.y, 1f));
+                Bounds b = new(baseCenter + delta, new Vector3(baseSize.x, baseSize.y, 1f));
                 List<Vector2> balancedKdResults = new();
                 balancedKd.GetElementsInBounds(b, balancedKdResults);
                 List<Vector2> unbalancedKdResults = new();
@@ -142,10 +136,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             {
                 int cx = prng.Next(0, grid.x - 1);
                 int cy = prng.Next(0, grid.y - 1);
-                Bounds b = new Bounds(
-                    new Vector3(cx + 0.5f, cy + 0.5f, 0f),
-                    new Vector3(1f, 1f, 1f)
-                );
+                Bounds b = new(new Vector3(cx + 0.5f, cy + 0.5f, 0f), new Vector3(1f, 1f, 1f));
 
                 List<Vector2> balancedKdResults = new();
                 balancedKd.GetElementsInBounds(b, balancedKdResults);
@@ -186,7 +177,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             float[] eps = { -0.01f, -0.001f, 0f, 0.001f, 0.01f };
             foreach (float e in eps)
             {
-                Bounds b = new Bounds(new Vector3(4.5f, 4.5f + e, 0f), new Vector3(1f, 1f, 1f));
+                Bounds b = new(new Vector3(4.5f, 4.5f + e, 0f), new Vector3(1f, 1f, 1f));
 
                 List<Vector2> balancedKdResults = new();
                 balancedKd.GetElementsInBounds(b, balancedKdResults);

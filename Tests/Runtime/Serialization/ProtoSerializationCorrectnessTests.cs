@@ -19,7 +19,7 @@
             public string Name { get; set; }
 
             [ProtoMember(3)]
-            public List<int> Values { get; set; } = new List<int>();
+            public List<int> Values { get; set; } = new();
 
             [ProtoMember(4)]
             public byte[] Data { get; set; } = Array.Empty<byte>();

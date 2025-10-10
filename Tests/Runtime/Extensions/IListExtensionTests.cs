@@ -807,7 +807,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void SortByNameSingleElement()
         {
-            UnityEngine.GameObject obj = new UnityEngine.GameObject("SingleObject");
+            UnityEngine.GameObject obj = new("SingleObject");
             try
             {
                 List<UnityEngine.GameObject> list = new() { obj };
@@ -824,9 +824,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void SortByNameArray()
         {
-            UnityEngine.GameObject obj1 = new UnityEngine.GameObject("Zebra");
-            UnityEngine.GameObject obj2 = new UnityEngine.GameObject("Alpha");
-            UnityEngine.GameObject obj3 = new UnityEngine.GameObject("Bravo");
+            UnityEngine.GameObject obj1 = new("Zebra");
+            UnityEngine.GameObject obj2 = new("Alpha");
+            UnityEngine.GameObject obj3 = new("Bravo");
             try
             {
                 UnityEngine.GameObject[] array = { obj1, obj2, obj3 };
@@ -846,10 +846,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void SortByNameList()
         {
-            UnityEngine.GameObject obj1 = new UnityEngine.GameObject("Zebra");
-            UnityEngine.GameObject obj2 = new UnityEngine.GameObject("Alpha");
-            UnityEngine.GameObject obj3 = new UnityEngine.GameObject("Bravo");
-            UnityEngine.GameObject obj4 = new UnityEngine.GameObject("Charlie");
+            UnityEngine.GameObject obj1 = new("Zebra");
+            UnityEngine.GameObject obj2 = new("Alpha");
+            UnityEngine.GameObject obj3 = new("Bravo");
+            UnityEngine.GameObject obj4 = new("Charlie");
             try
             {
                 List<UnityEngine.GameObject> list = new() { obj1, obj2, obj3, obj4 };
@@ -871,9 +871,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void SortByNameCustomIList()
         {
-            UnityEngine.GameObject obj1 = new UnityEngine.GameObject("Zebra");
-            UnityEngine.GameObject obj2 = new UnityEngine.GameObject("Alpha");
-            UnityEngine.GameObject obj3 = new UnityEngine.GameObject("Bravo");
+            UnityEngine.GameObject obj1 = new("Zebra");
+            UnityEngine.GameObject obj2 = new("Alpha");
+            UnityEngine.GameObject obj3 = new("Bravo");
             try
             {
                 IList<UnityEngine.GameObject> list = new CustomList<UnityEngine.GameObject>
@@ -898,9 +898,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void SortByNameDuplicateNames()
         {
-            UnityEngine.GameObject obj1 = new UnityEngine.GameObject("Same");
-            UnityEngine.GameObject obj2 = new UnityEngine.GameObject("Same");
-            UnityEngine.GameObject obj3 = new UnityEngine.GameObject("Alpha");
+            UnityEngine.GameObject obj1 = new("Same");
+            UnityEngine.GameObject obj2 = new("Same");
+            UnityEngine.GameObject obj3 = new("Alpha");
             try
             {
                 List<UnityEngine.GameObject> list = new() { obj1, obj2, obj3 };

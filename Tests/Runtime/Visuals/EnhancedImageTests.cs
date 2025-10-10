@@ -31,7 +31,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
             EnhancedImage image = CreateEnhancedImage(out _);
             InvokeLifecycle(image, "Start");
 
-            Color hdr = new Color(2f, 0.5f, 0.25f, 1f);
+            Color hdr = new(2f, 0.5f, 0.25f, 1f);
             image.HdrColor = hdr;
 
             Material cached = image.material;

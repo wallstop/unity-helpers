@@ -3236,7 +3236,7 @@
         [Test]
         public void TryGetValueWithVeryLongKey()
         {
-            string longKey = new string('x', 10000);
+            string longKey = new('x', 10000);
             Dictionary<string, int> dict = new() { { longKey, 42 } };
             Trie<int> trie = new(dict);
 
@@ -3248,7 +3248,7 @@
         [Test]
         public void GetValuesWithPrefixWithVeryLongPrefix()
         {
-            string longPrefix = new string('x', 5000);
+            string longPrefix = new('x', 5000);
             string longerKey = longPrefix + "extra";
             Dictionary<string, int> dict = new() { { longerKey, 99 } };
             Trie<int> trie = new(dict);

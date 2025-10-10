@@ -43,19 +43,19 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             IRandom prng = PRNG.Instance;
             for (int i = 0; i < 250; ++i)
             {
-                Vector3 center = new Vector3(
+                Vector3 center = new(
                     prng.NextFloat(0f, grid.x - 1),
                     prng.NextFloat(0f, grid.y - 1),
                     prng.NextFloat(0f, grid.z - 1)
                 );
 
-                Vector3 size = new Vector3(
+                Vector3 size = new(
                     Mathf.Max(1f, prng.NextFloat(0.1f, grid.x - 1)),
                     Mathf.Max(1f, prng.NextFloat(0.1f, grid.y - 1)),
                     Mathf.Max(1f, prng.NextFloat(0.1f, grid.z - 1))
                 );
 
-                Bounds b = new Bounds(center, size);
+                Bounds b = new(center, size);
                 List<Vector3> kdResults = new();
                 kd.GetElementsInBounds(b, kdResults);
                 List<Vector3> octResults = new();
@@ -80,20 +80,20 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             Vector3[] deltas =
             {
-                new Vector3(-0.01f, 0f, 0f),
-                new Vector3(0.01f, 0f, 0f),
-                new Vector3(0f, -0.01f, 0f),
-                new Vector3(0f, 0.01f, 0f),
-                new Vector3(0f, 0f, -0.01f),
-                new Vector3(0f, 0f, 0.01f),
+                new(-0.01f, 0f, 0f),
+                new(0.01f, 0f, 0f),
+                new(0f, -0.01f, 0f),
+                new(0f, 0.01f, 0f),
+                new(0f, 0f, -0.01f),
+                new(0f, 0f, 0.01f),
             };
 
-            Vector3 baseCenter = new Vector3(4.5f, 4.5f, 4.5f);
-            Vector3 baseSize = new Vector3(1f, 1f, 1f);
+            Vector3 baseCenter = new(4.5f, 4.5f, 4.5f);
+            Vector3 baseSize = new(1f, 1f, 1f);
 
             foreach (Vector3 delta in deltas)
             {
-                Bounds b = new Bounds(baseCenter + delta, baseSize);
+                Bounds b = new(baseCenter + delta, baseSize);
                 List<Vector3> kdResults = new();
                 kd.GetElementsInBounds(b, kdResults);
                 List<Vector3> octResults = new();
@@ -122,7 +122,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 int cx = prng.Next(0, grid.x - 1);
                 int cy = prng.Next(0, grid.y - 1);
                 int cz = prng.Next(0, grid.z - 1);
-                Bounds b = new Bounds(
+                Bounds b = new(
                     new Vector3(cx + 0.5f, cy + 0.5f, cz + 0.5f),
                     new Vector3(1f, 1f, 1f)
                 );
@@ -152,7 +152,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             float[] eps = { -0.01f, -0.001f, 0f, 0.001f, 0.01f };
             foreach (float e in eps)
             {
-                Bounds b = new Bounds(new Vector3(4.5f, 4.5f + e, 4.5f), new Vector3(1f, 1f, 1f));
+                Bounds b = new(new Vector3(4.5f, 4.5f + e, 4.5f), new Vector3(1f, 1f, 1f));
 
                 List<Vector3> kdResults = new();
                 kd.GetElementsInBounds(b, kdResults);

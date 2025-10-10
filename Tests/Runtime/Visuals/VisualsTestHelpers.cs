@@ -17,7 +17,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
             Vector2? pivot = null
         )
         {
-            Texture2D texture = new Texture2D(
+            Texture2D texture = new(
                 width,
                 height,
                 TextureFormat.RGBA32,

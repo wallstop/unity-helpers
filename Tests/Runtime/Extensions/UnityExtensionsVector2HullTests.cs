@@ -105,11 +105,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 new Vector2(4, 0),
             };
             Assert.IsTrue(
-                hull.IsConvexHullInsideConvexHull(new List<Vector2> { new Vector2(1, 1) }),
+                hull.IsConvexHullInsideConvexHull(new List<Vector2> { new(1, 1) }),
                 "Point inside square should be reported as inside."
             );
             Assert.IsFalse(
-                hull.IsConvexHullInsideConvexHull(new List<Vector2> { new Vector2(5, 5) }),
+                hull.IsConvexHullInsideConvexHull(new List<Vector2> { new(5, 5) }),
                 "Point outside square should be reported as outside."
             );
         }

@@ -918,12 +918,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void NoneCanBeUsedInCollections()
         {
-            HashSet<None> set = new System.Collections.Generic.HashSet<None>
-            {
-                default,
-                None.Default,
-                default(None),
-            };
+            HashSet<None> set = new() { default, None.Default, default(None) };
 
             Assert.AreEqual(1, set.Count);
         }
@@ -931,10 +926,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void NoneCanBeUsedInDictionary()
         {
-            Dictionary<None, int> dict = new System.Collections.Generic.Dictionary<None, int>
-            {
-                [default(None)] = 1,
-            };
+            Dictionary<None, int> dict = new() { [default(None)] = 1 };
 
             Assert.AreEqual(1, dict[None.Default]);
         }

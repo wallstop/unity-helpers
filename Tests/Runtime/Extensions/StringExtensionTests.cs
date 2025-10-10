@@ -2473,7 +2473,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         {
             string input = "testValue";
 
-            Dictionary<StringCase, string> expectations = new Dictionary<StringCase, string>
+            Dictionary<StringCase, string> expectations = new()
             {
                 { StringCase.PascalCase, "TestValue" },
                 { StringCase.CamelCase, "testValue" },

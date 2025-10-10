@@ -6,6 +6,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using System.Linq;
     using System.Reflection;
     using NUnit.Framework;
+    using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Core.Random;
     using CategoryAttribute = System.ComponentModel.CategoryAttribute;
@@ -1219,13 +1220,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void GetPropertySetterInstanceAndStatic()
         {
-            var instance = new TestPropertyClass();
+            TestPropertyClass instance = new();
 
             // Instance setter
             PropertyInfo instProp = typeof(TestPropertyClass).GetProperty(
                 nameof(TestPropertyClass.InstanceProperty)
             );
-            var instSetter = ReflectionHelpers.GetPropertySetter(instProp);
+            Action<object, object> instSetter = ReflectionHelpers.GetPropertySetter(instProp);
             instSetter(instance, 555);
             Assert.AreEqual(555, instance.InstanceProperty);
 
@@ -1233,7 +1234,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             PropertyInfo staticProp = typeof(TestPropertyClass).GetProperty(
                 nameof(TestPropertyClass.StaticProperty)
             );
-            var staticSetter = ReflectionHelpers.GetPropertySetter(staticProp);
+            Action<object, object> staticSetter = ReflectionHelpers.GetPropertySetter(staticProp);
             staticSetter(null, 777);
             Assert.AreEqual(777, TestPropertyClass.StaticProperty);
         }
@@ -1261,17 +1262,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void GetPropertyGetterGenericCoversInstanceAndStatic()
         {
-            var obj = new TestPropertyClass { InstanceProperty = 123 };
+            TestPropertyClass obj = new() { InstanceProperty = 123 };
 
-            var instGetter = ReflectionHelpers.GetPropertyGetter<TestPropertyClass, int>(
-                typeof(TestPropertyClass).GetProperty(nameof(TestPropertyClass.InstanceProperty))
-            );
+            Func<TestPropertyClass, int> instGetter = ReflectionHelpers.GetPropertyGetter<
+                TestPropertyClass,
+                int
+            >(typeof(TestPropertyClass).GetProperty(nameof(TestPropertyClass.InstanceProperty)));
             Assert.AreEqual(123, instGetter(obj));
 
             TestPropertyClass.StaticProperty = 246;
-            var staticGetter = ReflectionHelpers.GetPropertyGetter<TestPropertyClass, int>(
-                typeof(TestPropertyClass).GetProperty(nameof(TestPropertyClass.StaticProperty))
-            );
+            Func<TestPropertyClass, int> staticGetter = ReflectionHelpers.GetPropertyGetter<
+                TestPropertyClass,
+                int
+            >(typeof(TestPropertyClass).GetProperty(nameof(TestPropertyClass.StaticProperty)));
             Assert.AreEqual(246, staticGetter(obj)); // instance arg ignored for static
         }
 
@@ -1280,7 +1283,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             object intSetObj = ReflectionHelpers.CreateHashSet(typeof(int), 0);
             Assert.IsInstanceOf<HashSet<int>>(intSetObj);
-            var addInt = ReflectionHelpers.GetHashSetAdder(typeof(int));
+            Action<object, object> addInt = ReflectionHelpers.GetHashSetAdder(typeof(int));
             addInt(intSetObj, 1);
             addInt(intSetObj, 1);
             addInt(intSetObj, 2);
@@ -1288,7 +1291,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
             object strSetObj = ReflectionHelpers.CreateHashSet(typeof(string), 0);
             Assert.IsInstanceOf<HashSet<string>>(strSetObj);
-            var addStr = ReflectionHelpers.GetHashSetAdder(typeof(string));
+            Action<object, object> addStr = ReflectionHelpers.GetHashSetAdder(typeof(string));
             addStr(strSetObj, null);
             addStr(strSetObj, "a");
             addStr(strSetObj, "a");
@@ -1303,7 +1306,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 nameof(string.Concat),
                 new[] { typeof(string), typeof(string) }
             );
-            var invoker = ReflectionHelpers.GetStaticMethodInvoker<string, string, string>(concat);
+            Func<string, string, string> invoker = ReflectionHelpers.GetStaticMethodInvoker<
+                string,
+                string,
+                string
+            >(concat);
             Assert.AreEqual("ab", invoker("a", "b"));
         }
 
@@ -1332,7 +1339,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void GetParameterlessConstructorTypeOverload()
         {
-            var ctor = ReflectionHelpers.GetParameterlessConstructor(typeof(TestConstructorClass));
+            Func<object> ctor = ReflectionHelpers.GetParameterlessConstructor(
+                typeof(TestConstructorClass)
+            );
             object instance = ctor();
             Assert.IsInstanceOf<TestConstructorClass>(instance);
 
@@ -1345,19 +1354,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void BuildParameterlessInstanceMethodIfExists()
         {
-            var action =
+            Action<TestMethodClass> action =
                 ReflectionHelpers.BuildParameterlessInstanceMethodIfExists<TestMethodClass>(
                     "Reset"
                 );
             Assert.IsNotNull(action);
-            var obj = new TestMethodClass();
+            TestMethodClass obj = new();
             TestMethodClass.StaticMethodCallCount = 5;
             obj.instanceMethodCallCount = 4;
             action(obj);
             Assert.AreEqual(0, TestMethodClass.StaticMethodCallCount);
             Assert.AreEqual(0, obj.instanceMethodCallCount);
 
-            var missing =
+            Action<TestMethodClass> missing =
                 ReflectionHelpers.BuildParameterlessInstanceMethodIfExists<TestMethodClass>(
                     "DoesNotExist"
                 );
@@ -1367,15 +1376,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void IsComponentEnabledCoversMonoBehaviourAndScriptableObject()
         {
-            var go = new UnityEngine.GameObject("probe");
+            GameObject go = new("probe");
             try
             {
-                var probe = go.AddComponent<EnabledProbe>();
+                EnabledProbe probe = go.AddComponent<EnabledProbe>();
                 Assert.IsTrue(probe.IsComponentEnabled());
                 probe.enabled = false;
                 Assert.IsFalse(probe.IsComponentEnabled());
 
-                var so =
+                ScriptableObject so =
                     UnityEngine.ScriptableObject.CreateInstance<UnityEngine.ScriptableObject>();
                 Assert.IsTrue(so.IsComponentEnabled());
             }

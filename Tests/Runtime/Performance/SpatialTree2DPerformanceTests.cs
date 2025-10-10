@@ -19,11 +19,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
 
         private static readonly DatasetSpec[] DatasetSpecs =
         {
-            new DatasetSpec("1,000,000 entries", new Vector2Int(1_000, 1_000)),
-            new DatasetSpec("100,000 entries", new Vector2Int(400, 250)),
-            new DatasetSpec("10,000 entries", new Vector2Int(100, 100)),
-            new DatasetSpec("1,000 entries", new Vector2Int(50, 20)),
-            new DatasetSpec("100 entries", new Vector2Int(10, 10)),
+            new("1,000,000 entries", new Vector2Int(1_000, 1_000)),
+            new("100,000 entries", new Vector2Int(400, 250)),
+            new("10,000 entries", new Vector2Int(100, 100)),
+            new("1,000 entries", new Vector2Int(50, 20)),
+            new("100 entries", new Vector2Int(10, 10)),
         };
 
         private static readonly (string Name, float Ratio)[] RangeBenchmarkDefinitions =
