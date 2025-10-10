@@ -1159,6 +1159,26 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
         }
 
         /// <summary>
+        /// Serializes into a caller-provided buffer using caller options and a size hint to reduce growth copies.
+        /// </summary>
+        public static int JsonSerialize<T>(
+            T input,
+            JsonSerializerOptions options,
+            int sizeHint,
+            ref byte[] buffer
+        )
+        {
+            using Utils.PooledResource<PooledArrayBufferWriter> lease =
+                PooledArrayBufferWriter.Rent(out PooledArrayBufferWriter bufferWriter);
+            if (sizeHint > 0)
+            {
+                bufferWriter.Preallocate(sizeHint);
+            }
+            WriteJsonToBuffer(input, options ?? SerializerEncoding.NormalJsonOptions, bufferWriter);
+            return bufferWriter.ToArrayExact(ref buffer);
+        }
+
+        /// <summary>
         /// Fast-path JSON serialize using strict, allocation-lean options.
         /// </summary>
         public static byte[] JsonSerializeFast<T>(T input)
@@ -1684,6 +1704,11 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
         }
 
         public int WrittenCount => _written;
+
+        public void Preallocate(int sizeHint)
+        {
+            EnsureCapacity(sizeHint);
+        }
 
         public int ToArrayExact(ref byte[] buffer)
         {

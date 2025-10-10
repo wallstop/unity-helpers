@@ -103,9 +103,10 @@
             byte[] buffer = null;
 
             Stopwatch sw = Stopwatch.StartNew();
+            int sizeHint = (msg.Values?.Length ?? 0) * 12 + 2048;
             for (int i = 0; i < 100; ++i)
             {
-                _ = SerializerAlias.JsonSerialize(msg, normal, ref buffer);
+                _ = SerializerAlias.JsonSerialize(msg, normal, sizeHint, ref buffer);
             }
             sw.Stop();
             long normalMs = sw.ElapsedMilliseconds;
@@ -113,7 +114,7 @@
             sw.Restart();
             for (int i = 0; i < 100; ++i)
             {
-                _ = SerializerAlias.JsonSerialize(msg, fast, ref buffer);
+                _ = SerializerAlias.JsonSerialize(msg, fast, sizeHint, ref buffer);
             }
             sw.Stop();
             long fastMs = sw.ElapsedMilliseconds;
