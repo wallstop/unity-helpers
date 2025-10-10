@@ -74,7 +74,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             LoadAtlasConfigs();
         }
 
-        private void LoadAtlasConfigs()
+        internal void LoadAtlasConfigs()
         {
             _atlasConfigs.Clear();
             Dictionary<ScriptableSpriteAtlas, ScanResult> existingScanCache = new(
@@ -981,7 +981,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             Repaint();
         }
 
-        private void GenerateAllAtlases()
+        internal void GenerateAllAtlases()
         {
             if (_atlasConfigs.Count == 0)
             {
@@ -1188,7 +1188,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             atlas.SetPlatformSettings(ps);
         }
 
-        private void PackAllProjectAtlases()
+        internal void PackAllProjectAtlases()
         {
             this.Log(
                 $"Starting to pack all Sprite Atlases in the project for target: {EditorUserBuildSettings.activeBuildTarget}"

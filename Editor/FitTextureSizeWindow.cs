@@ -19,10 +19,10 @@ namespace WallstopStudios.UnityHelpers.Editor
 
     public sealed class FitTextureSizeWindow : EditorWindow
     {
-        private FitMode _fitMode = FitMode.GrowAndShrink;
+        internal FitMode _fitMode = FitMode.GrowAndShrink;
 
         [SerializeField]
-        private List<Object> _textureSourcePaths = new();
+        internal List<Object> _textureSourcePaths = new();
         private Vector2 _scrollPosition = Vector2.zero;
         private SerializedObject _serializedObject;
         private SerializedProperty _textureSourcePathsProperty;
@@ -177,7 +177,7 @@ namespace WallstopStudios.UnityHelpers.Editor
             return foundTextures.Distinct().OrderBy(texture => texture.name).ToList();
         }
 
-        private int CalculateTextureChanges(bool applyChanges)
+        internal int CalculateTextureChanges(bool applyChanges)
         {
             List<Texture2D> texturesToProcess = CollectTextures();
 
@@ -252,7 +252,9 @@ namespace WallstopStudios.UnityHelpers.Editor
                     if (_fitMode is FitMode.GrowAndShrink or FitMode.ShrinkOnly)
                     {
                         int tempSize = targetTextureSize;
-                        while (0 < tempSize >> 1 && size <= tempSize >> 1)
+                        // Shrink to the tightest power-of-two that is <= the largest dimension (size),
+                        // without dipping below 1. This matches test expectation for ShrinkOnly.
+                        while (tempSize > 1 && tempSize > size)
                         {
                             tempSize >>= 1;
                         }

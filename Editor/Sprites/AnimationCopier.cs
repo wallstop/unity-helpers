@@ -16,6 +16,42 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
     public sealed class AnimationCopierWindow : EditorWindow
     {
+        // Test-friendly: allow suppressing modal prompts and progress UI
+        internal static bool SuppressUserPrompts { get; set; }
+
+        internal string AnimationSourcePathRelative
+        {
+            get => _animationSourcePathRelative;
+            set
+            {
+                _animationSourcePathRelative = value;
+                ValidatePaths();
+                _analysisNeeded = true;
+            }
+        }
+
+        internal string AnimationDestinationPathRelative
+        {
+            get => _animationDestinationPathRelative;
+            set
+            {
+                _animationDestinationPathRelative = value;
+                ValidatePaths();
+                _analysisNeeded = true;
+            }
+        }
+
+        internal bool DryRun
+        {
+            get => _dryRun;
+            set => _dryRun = value;
+        }
+
+        internal int NewCount => _newAnimations.Count;
+        internal int ChangedCount => _changedAnimations.Count;
+        internal int UnchangedCount => _unchangedAnimations.Count;
+        internal int OrphansCount => _destinationOrphans.Count;
+
         [SerializeField]
         private string _animationSourcePathRelative = "Assets/Sprites";
 
@@ -63,7 +99,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             Unchanged,
         }
 
-        private enum CopyMode
+        internal enum CopyMode
         {
             All,
             Changed,
@@ -191,11 +227,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 }
                 else
                 {
-                    EditorUtility.DisplayDialog(
-                        "Error",
-                        "Source or Destination path is not set or invalid.",
-                        "OK"
-                    );
+                    Info("Error", "Source or Destination path is not set or invalid.");
                 }
             }
 
@@ -241,7 +273,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             if (GUILayout.Button($"Copy New ({selectedNew})"))
             {
                 if (
-                    EditorUtility.DisplayDialog(
+                    Confirm(
                         "Confirm Copy New",
                         $"Copy {selectedNew} new animation(s) from '{_animationSourcePathRelative}' to '{_animationDestinationPathRelative}'{(_dryRun ? " (dry run)" : string.Empty)}?",
                         "Yes, Copy New",
@@ -258,7 +290,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             if (GUILayout.Button($"Copy Changed ({selectedChanged})"))
             {
                 if (
-                    EditorUtility.DisplayDialog(
+                    Confirm(
                         "Confirm Copy Changed",
                         $"Copy {selectedChanged} changed animation(s) from '{_animationSourcePathRelative}' to '{_animationDestinationPathRelative}', overwriting existing files{(_dryRun ? " (dry run)" : string.Empty)}?",
                         "Yes, Copy Changed",
@@ -287,7 +319,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         ? $" This will overwrite {selectedChanged + (_includeUnchangedInCopyAll ? _unchangedAnimations.Count(a => a.Selected) : 0)} existing files."
                         : "";
                 if (
-                    EditorUtility.DisplayDialog(
+                    Confirm(
                         "Confirm Copy All",
                         $"Copy {totalToCopyAll} animation(s) from '{_animationSourcePathRelative}' to '{_animationDestinationPathRelative}'?{overwriteWarning}{(_dryRun ? " (dry run)" : string.Empty)}",
                         "Yes, Copy All",
@@ -405,7 +437,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 );
         }
 
-        private void AnalyzeAnimations()
+        internal void AnalyzeAnimations()
         {
             if (!ArePathsValid())
             {
@@ -623,7 +655,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
                             if (local % 20 == 0)
                             {
-                                EditorUtility.DisplayProgressBar(
+                                ShowProgress(
                                     "Analyzing Animations",
                                     $"Scanning destination: {orphan.FileName}",
                                     current / total
@@ -646,23 +678,19 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             catch (Exception ex)
             {
                 this.LogError($"Error during analysis: {ex.Message}\n{ex.StackTrace}");
-                EditorUtility.DisplayDialog(
-                    "Analysis Error",
-                    $"An error occurred during analysis: {ex.Message}",
-                    "OK"
-                );
+                Info("Analysis Error", $"An error occurred during analysis: {ex.Message}");
                 ClearAnalysisResults();
             }
             finally
             {
                 _isAnalyzing = false;
                 _analysisNeeded = false;
-                EditorUtility.ClearProgressBar();
+                ClearProgress();
                 Repaint();
             }
         }
 
-        private void CopyAnimationsInternal(CopyMode mode)
+        internal void CopyAnimationsInternal(CopyMode mode)
         {
             if (!ArePathsValid() || _isAnalyzing || _isCopying || _isDeleting)
             {
@@ -689,11 +717,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             if (animationsToCopy.Count == 0)
             {
                 this.Log($"No animations to copy for the selected mode.");
-                EditorUtility.DisplayDialog(
-                    "Nothing to Copy",
-                    "There are no animations matching the selected criteria.",
-                    "OK"
-                );
+                Info("Nothing to Copy", "There are no animations matching the selected criteria.");
                 return;
             }
 
@@ -701,11 +725,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             animationsToCopy.RemoveAll(info => info == null || !info.Selected);
             if (animationsToCopy.Count == 0)
             {
-                EditorUtility.DisplayDialog(
-                    "Nothing Selected",
-                    "No animations are selected for the operation.",
-                    "OK"
-                );
+                Info("Nothing Selected", "No animations are selected for the operation.");
                 return;
             }
 
@@ -752,7 +772,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     bool userCancelled = false;
                     if (i == 0 || i % 10 == 0 || i == animationsToCopy.Count - 1)
                     {
-                        userCancelled = EditorUtility.DisplayCancelableProgressBar(
+                        userCancelled = CancelableProgress(
                             $"Copying Animations ({mode})",
                             $"Copying: {animInfo.FileName} ({i + 1}/{animationsToCopy.Count})",
                             progress
@@ -862,16 +882,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     AssetDatabase.SaveAssets();
                     AssetDatabase.Refresh();
                 }
-                EditorUtility.ClearProgressBar();
+                ClearProgress();
                 _isCopying = false;
                 this.Log(
                     $"Copy operation finished{(_dryRun ? " (dry run)" : string.Empty)}. Mode: {mode}. Success: {successCount}, Errors: {errorCount}."
                 );
 
-                EditorUtility.DisplayDialog(
+                Info(
                     "Copy Complete",
-                    $"Copy operation finished{(_dryRun ? " (dry run)" : string.Empty)}.\nMode: {mode}\nItems processed: {successCount + errorCount}\nSuccessful: {successCount}\nErrors: {errorCount}\n\nSee console log for details.",
-                    "OK"
+                    $"Copy operation finished{(_dryRun ? " (dry run)" : string.Empty)}.\nMode: {mode}\nItems processed: {successCount + errorCount}\nSuccessful: {successCount}\nErrors: {errorCount}\n\nSee console log for details."
                 );
 
                 _analysisNeeded = true;
@@ -897,7 +916,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 return;
             }
 
-            bool confirm = EditorUtility.DisplayDialog(
+            bool confirm = Confirm(
                 "Confirm Delete Unchanged",
                 $"Delete {animationsToDelete.Count} unchanged source animation(s) from '{_animationSourcePathRelative}'?\n\nThese files are duplicates of the destination and will be moved to Trash.{(_dryRun ? "\n\nDry run is ON: no files will be changed." : string.Empty)}",
                 _dryRun ? "OK" : "Yes, Delete",
@@ -1250,7 +1269,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             return query;
         }
 
-        private void MirrorDeleteDestinationAnimations()
+        internal void MirrorDeleteDestinationAnimations()
         {
             if (!ArePathsValid() || _isAnalyzing || _isCopying || _isDeleting)
             {
@@ -1262,15 +1281,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 .ToList();
             if (toDelete.Count == 0)
             {
-                EditorUtility.DisplayDialog(
-                    "Nothing to Delete",
-                    "No destination orphans are selected.",
-                    "OK"
-                );
+                Info("Nothing to Delete", "No destination orphans are selected.");
                 return;
             }
 
-            bool confirm = EditorUtility.DisplayDialog(
+            bool confirm = Confirm(
                 "Confirm Mirror Delete",
                 $"Delete {toDelete.Count} destination-only animation(s) from '{_animationDestinationPathRelative}'.{(_dryRun ? "\n\nDry run is ON: no files will be changed." : string.Empty)}",
                 _dryRun ? "OK" : "Yes, Delete",
@@ -1300,7 +1315,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     bool userCancelled = false;
                     if (i == 0 || i % 10 == 0 || i == toDelete.Count - 1)
                     {
-                        userCancelled = EditorUtility.DisplayCancelableProgressBar(
+                        userCancelled = CancelableProgress(
                             "Mirror Deleting Destination Orphans",
                             $"Deleting: {info.FileName} ({i + 1}/{toDelete.Count})",
                             progress
@@ -1339,7 +1354,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     AssetDatabase.StopAssetEditing();
                     AssetDatabase.Refresh();
                 }
-                EditorUtility.ClearProgressBar();
+                ClearProgress();
                 _isDeleting = false;
                 this.Log(
                     $"Mirror delete finished{(_dryRun ? " (dry run)" : string.Empty)}. Success: {success}, Errors: {errors}."
@@ -1347,6 +1362,54 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 _analysisNeeded = true;
                 Repaint();
             }
+        }
+
+        // Convenience wrappers for tests
+        internal void CopyChanged() => CopyAnimationsInternal(CopyMode.Changed);
+
+        internal void CopyNew() => CopyAnimationsInternal(CopyMode.New);
+
+        internal void CopyAll() => CopyAnimationsInternal(CopyMode.All);
+
+        private static bool Confirm(string title, string message, string ok, string cancel)
+        {
+            if (SuppressUserPrompts)
+            {
+                return true;
+            }
+            return EditorUtility.DisplayDialog(title, message, ok, cancel);
+        }
+
+        private static void Info(string title, string message)
+        {
+            if (SuppressUserPrompts)
+            {
+                return;
+            }
+            EditorUtility.DisplayDialog(title, message, "OK");
+        }
+
+        private static void ShowProgress(string title, string info, float progress)
+        {
+            if (SuppressUserPrompts)
+            {
+                return;
+            }
+            EditorUtility.DisplayProgressBar(title, info, progress);
+        }
+
+        private static bool CancelableProgress(string title, string info, float progress)
+        {
+            if (SuppressUserPrompts)
+            {
+                return false;
+            }
+            return EditorUtility.DisplayCancelableProgressBar(title, info, progress);
+        }
+
+        private static void ClearProgress()
+        {
+            EditorUtility.ClearProgressBar();
         }
 
         private void ExportPreviewReport()

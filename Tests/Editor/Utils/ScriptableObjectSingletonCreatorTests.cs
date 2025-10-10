@@ -54,19 +54,28 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils
         {
             string wrongFolder = "Assets/SomeOther";
             EnsureFolder(wrongFolder);
-            var inst = ScriptableObject.CreateInstance<MyTestSingleton>();
-            AssetDatabase.CreateAsset(inst, wrongFolder + "/MyTestSingleton.asset");
+
+            var inst =
+                ScriptableObject.CreateInstance<WallstopStudios.UnityHelpers.Tags.AttributeMetadataCache>();
+            string wrongPath = wrongFolder + "/AttributeMetadataCache.asset";
+            AssetDatabase.CreateAsset(inst, wrongPath);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
 
             SetIncludeTestAssemblies(true);
             InvokeEnsureSingletonAssets();
 
-            var moved = AssetDatabase.LoadAssetAtPath<MyTestSingleton>(TargetAsset);
+            string target =
+                ResourcesRoot
+                + "/Wallstop Studios/AttributeMetadataCache/AttributeMetadataCache.asset";
+            var moved =
+                AssetDatabase.LoadAssetAtPath<WallstopStudios.UnityHelpers.Tags.AttributeMetadataCache>(
+                    target
+                );
             Assert.IsNotNull(moved, "Expected asset to be moved to target path");
             Assert.IsNull(
-                AssetDatabase.LoadAssetAtPath<MyTestSingleton>(
-                    wrongFolder + "/MyTestSingleton.asset"
+                AssetDatabase.LoadAssetAtPath<WallstopStudios.UnityHelpers.Tags.AttributeMetadataCache>(
+                    wrongPath
                 ),
                 "Old location should no longer contain asset"
             );

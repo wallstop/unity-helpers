@@ -540,7 +540,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Random
             IRandom deserialized = Serializer.ProtoDeserialize<IRandom>(serialized);
             Assert.AreEqual(random.InternalState, deserialized.InternalState);
 
-            if (NewRandom() is not UnityRandom)
+            if (random is not UnityRandom)
             {
                 for (int i = 0; i < NumGeneratorChecks; ++i)
                 {

@@ -7,7 +7,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
     [Serializable]
     [DataContract]
-    [ProtoContract]
+    [ProtoContract(SkipConstructor = true)]
     /// <summary>
     /// A thin wrapper around <c>System.Random</c> that exposes the <see cref="IRandom"/> API and supports state capture.
     /// </summary>
@@ -66,7 +66,13 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         public DotNetRandom(Guid guid)
         {
-            _seed = guid.GetHashCode();
+            // Derive a deterministic 32-bit seed from GUID bytes rather than GetHashCode()
+            // to avoid runtime/platform hash differences.
+            unchecked
+            {
+                byte[] gb = guid.ToByteArray();
+                _seed = gb[0] | (gb[1] << 8) | (gb[2] << 16) | (gb[3] << 24);
+            }
             _random = new Random(_seed);
         }
 
@@ -74,31 +80,37 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         public DotNetRandom(RandomState internalState)
         {
             _seed = unchecked((int)internalState.State1);
-            _random = new Random(_seed);
-            _numberGenerated = 0;
-            ulong generationCount = internalState.State2;
-
-            while (_numberGenerated < generationCount)
-            {
-                _ = NextUint();
-            }
+            _numberGenerated = internalState.State2;
             RestoreCommonState(internalState);
+            EnsureRandomInitialized();
         }
 
         [ProtoAfterDeserialization]
         private void OnProtoDeserialize()
         {
-            _random = new Random(_seed);
-            ulong count = _numberGenerated;
-            _numberGenerated = 0;
-            while (_numberGenerated < count)
+            EnsureRandomInitialized();
+        }
+
+        private void EnsureRandomInitialized()
+        {
+            if (_random != null)
             {
-                _ = NextUint();
+                return;
+            }
+
+            // Reconstruct System.Random with the deserialized seed
+            _random = new Random(_seed);
+
+            // Advance System.Random to match the generation count without touching protobuf fields
+            for (ulong i = 0; i < _numberGenerated; ++i)
+            {
+                _ = _random.Next(int.MinValue, int.MaxValue);
             }
         }
 
         public override uint NextUint()
         {
+            EnsureRandomInitialized();
             ++_numberGenerated;
             return unchecked((uint)_random.Next(int.MinValue, int.MaxValue));
         }

@@ -29,14 +29,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Tools
         [Test]
         public void GenerateGaussianKernelIsNormalizedAndSymmetric()
         {
-            Type tool = typeof(WallstopStudios.UnityHelpers.Editor.Tools.ImageBlurTool);
-            MethodInfo kernelMethod = tool.GetMethod(
-                "GenerateGaussianKernel",
-                BindingFlags.NonPublic | BindingFlags.Static
-            );
-            Assert.IsNotNull(kernelMethod, "GenerateGaussianKernel not found");
-
-            float[] k = (float[])kernelMethod.Invoke(null, new object[] { 5 });
+            float[] k = WallstopStudios.UnityHelpers.Editor.Tools.ImageBlurTool.KernelForTests(5);
             Assert.IsNotNull(k, "Kernel should not be null");
             Assert.That(k.Length, Is.EqualTo(11), "Kernel size should be 2r+1");
 
@@ -61,14 +54,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Tools
             src.SetPixels(pixels);
             src.Apply();
 
-            Type tool = typeof(WallstopStudios.UnityHelpers.Editor.Tools.ImageBlurTool);
-            MethodInfo blurMethod = tool.GetMethod(
-                "CreateBlurredTexture",
-                BindingFlags.NonPublic | BindingFlags.Static
-            );
-            Assert.IsNotNull(blurMethod, "CreateBlurredTexture not found");
-
-            Texture2D blurred = (Texture2D)blurMethod.Invoke(null, new object[] { src, 2 });
+            Texture2D blurred =
+                WallstopStudios.UnityHelpers.Editor.Tools.ImageBlurTool.BlurredForTests(src, 2);
             Assert.IsNotNull(blurred, "Blurred texture should be created");
             Assert.That(blurred.width, Is.EqualTo(5));
             Assert.That(blurred.height, Is.EqualTo(5));
@@ -89,15 +76,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Tools
             var folderObj = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(TempRoot);
             Assert.IsNotNull(folderObj, "Temp folder not found as asset");
 
-            Type tool = typeof(WallstopStudios.UnityHelpers.Editor.Tools.ImageBlurTool);
-            MethodInfo syncMethod = tool.GetMethod(
-                "TrySyncDirectory",
-                BindingFlags.NonPublic | BindingFlags.Static
-            );
-            Assert.IsNotNull(syncMethod, "TrySyncDirectory not found");
-
             var list = new System.Collections.Generic.List<Texture2D>();
-            syncMethod.Invoke(null, new object[] { TempRoot, list });
+            WallstopStudios.UnityHelpers.Editor.Tools.ImageBlurTool.TrySyncDirectory(
+                TempRoot,
+                list
+            );
             Assert.That(
                 list.Count,
                 Is.GreaterThanOrEqualTo(1),

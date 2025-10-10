@@ -70,7 +70,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         }
 
         [SerializeField]
-        private List<Object> _inputDirectories = new();
+        internal List<Object> _inputDirectories = new();
 
         [SerializeField]
         private string _spriteNameRegex = ".*";
@@ -91,10 +91,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         private int _bottomPadding;
 
         [SerializeField]
-        private bool _overwriteOriginals;
+        internal bool _overwriteOriginals;
 
         [SerializeField]
-        private Object _outputDirectory;
+        internal Object _outputDirectory;
 
         [SerializeField]
         private OutputReadability _outputReadability = OutputReadability.MirrorSource;
@@ -262,7 +262,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
         }
 
-        private void FindFilesToProcess()
+        internal void FindFilesToProcess()
         {
             _filesToProcess = new List<string>();
             if (_inputDirectories is not { Count: > 0 })
@@ -483,7 +483,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
         }
 
-        private void ProcessFoundSprites()
+        internal void ProcessFoundSprites()
         {
             if (_filesToProcess is not { Count: > 0 })
             {

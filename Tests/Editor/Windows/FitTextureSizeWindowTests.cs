@@ -39,33 +39,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
 
             var window =
                 ScriptableObject.CreateInstance<WallstopStudios.UnityHelpers.Editor.FitTextureSizeWindow>();
-            Type t = window.GetType();
-
-            var fitMode = Enum.Parse(
-                t.Assembly.GetType("WallstopStudios.UnityHelpers.Editor.FitMode"),
-                "GrowOnly"
-            );
-            t.GetField("_fitMode", BindingFlags.NonPublic | BindingFlags.Instance)!
-                .SetValue(window, fitMode);
-
-            var listField = t.GetField(
-                "_textureSourcePaths",
-                BindingFlags.NonPublic | BindingFlags.Instance
-            );
-            Assert.IsNotNull(listField);
-            var arr = new System.Collections.Generic.List<UnityEngine.Object>
+            window._fitMode = WallstopStudios.UnityHelpers.Editor.FitMode.GrowOnly;
+            window._textureSourcePaths = new System.Collections.Generic.List<UnityEngine.Object>
             {
                 AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(Root),
             };
-            listField.SetValue(window, arr);
 
-            MethodInfo calc = t.GetMethod(
-                "CalculateTextureChanges",
-                BindingFlags.NonPublic | BindingFlags.Instance
-            );
-            Assert.IsNotNull(calc, "CalculateTextureChanges not found");
-
-            int count = (int)calc.Invoke(window, new object[] { true });
+            int count = window.CalculateTextureChanges(true);
             Assert.That(count, Is.GreaterThanOrEqualTo(1), "Expected at least one change");
 
             imp = AssetImporter.GetAtPath(path) as TextureImporter;
@@ -91,33 +71,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
 
             var window =
                 ScriptableObject.CreateInstance<WallstopStudios.UnityHelpers.Editor.FitTextureSizeWindow>();
-            Type t = window.GetType();
-
-            var fitMode = Enum.Parse(
-                t.Assembly.GetType("WallstopStudios.UnityHelpers.Editor.FitMode"),
-                "ShrinkOnly"
-            );
-            t.GetField("_fitMode", BindingFlags.NonPublic | BindingFlags.Instance)!
-                .SetValue(window, fitMode);
-
-            var listField = t.GetField(
-                "_textureSourcePaths",
-                BindingFlags.NonPublic | BindingFlags.Instance
-            );
-            Assert.IsNotNull(listField);
-            var arr = new System.Collections.Generic.List<UnityEngine.Object>
+            window._fitMode = WallstopStudios.UnityHelpers.Editor.FitMode.ShrinkOnly;
+            window._textureSourcePaths = new System.Collections.Generic.List<UnityEngine.Object>
             {
                 AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(Root),
             };
-            listField.SetValue(window, arr);
 
-            MethodInfo calc = t.GetMethod(
-                "CalculateTextureChanges",
-                BindingFlags.NonPublic | BindingFlags.Instance
-            );
-            Assert.IsNotNull(calc, "CalculateTextureChanges not found");
-
-            int count = (int)calc.Invoke(window, new object[] { true });
+            int count = window.CalculateTextureChanges(true);
             Assert.That(count, Is.GreaterThanOrEqualTo(1), "Expected at least one change");
 
             imp = AssetImporter.GetAtPath(path) as TextureImporter;
@@ -127,6 +87,88 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
                 Is.EqualTo(256),
                 "Max size should shrink to tight POT above size"
             );
+        }
+
+        [Test]
+        public void ShrinkOnlyKeepsExactPowerOfTwo()
+        {
+            string path = Path.Combine(Root, "shrinkExact.png").Replace('\\', '/');
+            CreatePng(path, 256, 128, Color.yellow);
+            AssetDatabase.Refresh();
+
+            TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
+            Assert.IsNotNull(imp, "Importer should exist");
+            imp.maxTextureSize = 1024;
+            imp.SaveAndReimport();
+
+            var window =
+                ScriptableObject.CreateInstance<WallstopStudios.UnityHelpers.Editor.FitTextureSizeWindow>();
+            window._fitMode = WallstopStudios.UnityHelpers.Editor.FitMode.ShrinkOnly;
+            window._textureSourcePaths = new System.Collections.Generic.List<UnityEngine.Object>
+            {
+                AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(Root),
+            };
+            int count = window.CalculateTextureChanges(true);
+            Assert.That(count, Is.GreaterThanOrEqualTo(1), "Expected at least one change");
+
+            imp = AssetImporter.GetAtPath(path) as TextureImporter;
+            Assert.IsNotNull(imp);
+            Assert.That(imp.maxTextureSize, Is.EqualTo(256), "Should keep exact POT");
+        }
+
+        [Test]
+        public void ShrinkOnlyShrinksFromSlightlyOverPot()
+        {
+            string path = Path.Combine(Root, "shrinkOver.png").Replace('\\', '/');
+            CreatePng(path, 257, 64, Color.gray);
+            AssetDatabase.Refresh();
+
+            TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
+            Assert.IsNotNull(imp, "Importer should exist");
+            imp.maxTextureSize = 2048;
+            imp.SaveAndReimport();
+
+            var window =
+                ScriptableObject.CreateInstance<WallstopStudios.UnityHelpers.Editor.FitTextureSizeWindow>();
+            window._fitMode = WallstopStudios.UnityHelpers.Editor.FitMode.ShrinkOnly;
+            window._textureSourcePaths = new System.Collections.Generic.List<UnityEngine.Object>
+            {
+                AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(Root),
+            };
+            int count = window.CalculateTextureChanges(true);
+            Assert.That(count, Is.GreaterThanOrEqualTo(1), "Expected at least one change");
+
+            imp = AssetImporter.GetAtPath(path) as TextureImporter;
+            Assert.IsNotNull(imp);
+            Assert.That(imp.maxTextureSize, Is.EqualTo(256), "Should shrink to 256");
+        }
+
+        [Test]
+        public void GrowOnlyDoesNotShrinkWhenAlreadyLarge()
+        {
+            string path = Path.Combine(Root, "growNoChange.png").Replace('\\', '/');
+            CreatePng(path, 300, 100, Color.white);
+            AssetDatabase.Refresh();
+
+            TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
+            Assert.IsNotNull(imp);
+            imp.maxTextureSize = 2048;
+            imp.SaveAndReimport();
+
+            var window =
+                ScriptableObject.CreateInstance<WallstopStudios.UnityHelpers.Editor.FitTextureSizeWindow>();
+            window._fitMode = WallstopStudios.UnityHelpers.Editor.FitMode.GrowOnly;
+            window._textureSourcePaths = new System.Collections.Generic.List<UnityEngine.Object>
+            {
+                AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(Root),
+            };
+            int count = window.CalculateTextureChanges(true);
+
+            // Expect no change because it's already large enough (GrowOnly)
+            Assert.That(count, Is.EqualTo(0));
+            imp = AssetImporter.GetAtPath(path) as TextureImporter;
+            Assert.IsNotNull(imp);
+            Assert.That(imp.maxTextureSize, Is.EqualTo(2048));
         }
 
         private static void EnsureFolder(string relPath)

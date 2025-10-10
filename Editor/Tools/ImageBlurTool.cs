@@ -167,7 +167,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools
             }
         }
 
-        private static void TrySyncDirectory(string directory, List<Texture2D> output)
+        internal static void TrySyncDirectory(string directory, List<Texture2D> output)
         {
             if (!AssetDatabase.IsValidFolder(directory))
             {
@@ -306,6 +306,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools
                     );
                 }
             }
+        }
+
+        internal static Texture2D BlurredForTests(Texture2D original, int radius)
+        {
+            return CreateBlurredTexture(original, radius);
+        }
+
+        internal static float[] KernelForTests(int radius)
+        {
+            return GenerateGaussianKernel(radius);
         }
 
         private static Texture2D CreateBlurredTexture(Texture2D original, int radius)

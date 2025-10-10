@@ -64,7 +64,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             _ = DisplayWizard<TextureSettingsApplier>("Texture Settings Directory Applier", "Set");
         }
 
-        private void OnWizardCreate()
+        internal void OnWizardCreate()
         {
             HashSet<string> uniqueDirectories = new();
             foreach (Object directory in directories)

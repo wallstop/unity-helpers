@@ -38,6 +38,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     /// </remarks>
     public class SpritePivotAdjuster : EditorWindow
     {
+        internal static bool SuppressUserPrompts { get; set; }
         private const float PivotEpsilon = 1e-3f;
 
         private static readonly string[] ImageFileExtensions =
@@ -52,19 +53,19 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         };
 
         [SerializeField]
-        private List<Object> _directoryPaths = new();
+        internal List<Object> _directoryPaths = new();
 
         [SerializeField]
         private string _spriteNameRegex = ".*";
 
         [SerializeField]
-        private float _alphaCutoff = 0.01f;
+        internal float _alphaCutoff = 0.01f;
 
         [SerializeField]
-        private bool _skipUnchanged = true;
+        internal bool _skipUnchanged = true;
 
         [SerializeField]
-        private bool _forceReimport;
+        internal bool _forceReimport;
 
         private SerializedObject _serializedObject;
         private SerializedProperty _directoryPathsProperty;
@@ -255,7 +256,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
         }
 
-        private void FindFilesToProcess()
+        internal void FindFilesToProcess()
         {
             _filesToProcess = new List<string>();
             if (_directoryPaths is not { Count: > 0 })
@@ -311,7 +312,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             Repaint();
         }
 
-        private void AdjustPivotsInDirectory(bool dryRun)
+        internal void AdjustPivotsInDirectory(bool dryRun)
         {
             if (_filesToProcess == null || _filesToProcess.Count == 0)
             {
@@ -370,7 +371,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     }
 
                     if (
-                        EditorUtility.DisplayCancelableProgressBar(
+                        ShowCancelableProgress(
                             "Processing sprites",
                             $"Processing {sprite.name}",
                             (float)i / _filesToProcess.Count
@@ -423,7 +424,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
             finally
             {
-                EditorUtility.ClearProgressBar();
+                ClearProgress();
                 if (!dryRun)
                 {
                     AssetDatabase.StopAssetEditing();
@@ -453,12 +454,34 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 sb.AppendLine($"Skipped not sprite: {skippedNotSprite}");
                 sb.AppendLine($"Skipped missing sprite: {skippedNullSprite}");
                 sb.AppendLine($"Skipped multi-sprite textures: {skippedNotSingle}");
-                EditorUtility.DisplayDialog(
+                Info(
                     dryRun ? "Sprite Pivot Adjuster — Dry Run" : "Sprite Pivot Adjuster",
-                    sb.ToString(),
-                    "OK"
+                    sb.ToString()
                 );
             }
+        }
+
+        private static bool ShowCancelableProgress(string title, string info, float progress)
+        {
+            if (SuppressUserPrompts)
+            {
+                return false;
+            }
+            return EditorUtility.DisplayCancelableProgressBar(title, info, progress);
+        }
+
+        private static void ClearProgress()
+        {
+            EditorUtility.ClearProgressBar();
+        }
+
+        private static void Info(string title, string message)
+        {
+            if (SuppressUserPrompts)
+            {
+                return;
+            }
+            EditorUtility.DisplayDialog(title, message, "OK");
         }
 
         private static Vector2 CalculateCenterOfMassPivot(Sprite sprite, float alphaCutoff)
