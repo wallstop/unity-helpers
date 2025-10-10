@@ -55,10 +55,10 @@
         public void CompareSerializeSmallMediumLarge()
         {
             UnityEngine.Debug.Log(
-                "| Payload | Pooled Serialize (ms) | Classic Serialize (ms) | Speedup | Size (bytes) |"
+                "| Payload | Pooled-Normal (ms, KB) | Pooled-Fast (ms, KB) | Classic (ms, KB) | Fast/Classic | Size (bytes) |"
             );
             UnityEngine.Debug.Log(
-                "| ------- | ---------------------:| ---------------------:| -------:| ------------:|"
+                "| ------- | ---------------------:| --------------------:| ---------------:| -----------:| ------------:|"
             );
 
             RunSerializeBenchmark("Small", () => MakeSmall(123), out int smallSize);
@@ -70,10 +70,10 @@
         public void CompareDeserializeSmallMediumLarge()
         {
             UnityEngine.Debug.Log(
-                "| Payload | Pooled Deserialize (ms) | Classic Deserialize (ms) | Speedup |"
+                "| Payload | Pooled-Normal (ms, KB) | Pooled-Fast (ms, KB) | Pooled-FastPOCO (ms, KB) | Classic (ms, KB) | FPOCO/Classic |"
             );
             UnityEngine.Debug.Log(
-                "| ------- | -----------------------:| -----------------------:| -------:|"
+                "| ------- | ---------------------:| -------------------:| ------------------------:| ---------------:| -------------:|"
             );
 
             RunDeserializeBenchmark("Small", MakeSmall(123));
@@ -201,38 +201,49 @@
             _ = JsonSerializer.SerializeToUtf8Bytes(sample);
 
             T value = factory();
+            long allocStart,
+                allocEnd;
             // Pooled - Normal
             Stopwatch sw = Stopwatch.StartNew();
+            allocStart = GetAlloc();
             for (int i = 0; i < Iterations; ++i)
             {
                 _ = SerializerAlias.JsonSerialize(value, normal, ref buffer);
             }
             sw.Stop();
+            allocEnd = GetAlloc();
             long pooledNormalMs = sw.ElapsedMilliseconds;
+            long pooledNormalKB = (allocEnd - allocStart) / 1024;
 
             // Pooled - Fast
             sw.Restart();
+            allocStart = GetAlloc();
             for (int i = 0; i < Iterations; ++i)
             {
                 _ = SerializerAlias.JsonSerialize(value, fast, ref buffer);
             }
             sw.Stop();
+            allocEnd = GetAlloc();
             long pooledFastMs = sw.ElapsedMilliseconds;
+            long pooledFastKB = (allocEnd - allocStart) / 1024;
             payloadSize = buffer?.Length ?? 0;
 
             // Measure classic (using System.Text.Json directly)
             sw.Restart();
+            allocStart = GetAlloc();
             for (int i = 0; i < Iterations; ++i)
             {
                 _ = JsonSerializer.SerializeToUtf8Bytes(value);
             }
             sw.Stop();
+            allocEnd = GetAlloc();
             long classicMs = sw.ElapsedMilliseconds;
+            long classicKB = (allocEnd - allocStart) / 1024;
 
             double fastVsClassic =
                 classicMs > 0 ? (double)classicMs / pooledFastMs : double.PositiveInfinity;
             UnityEngine.Debug.Log(
-                $"| {label} | {pooledNormalMs, 17:N0} | {pooledFastMs, 14:N0} | {classicMs, 16:N0} | {fastVsClassic, 11:0.00}x | {payloadSize, 12:N0} |"
+                $"| {label} | {pooledNormalMs, 17:N0}, {pooledNormalKB, 4:N0} | {pooledFastMs, 14:N0}, {pooledFastKB, 4:N0} | {classicMs, 13:N0}, {classicKB, 4:N0} | {fastVsClassic, 11:0.00}x | {payloadSize, 12:N0} |"
             );
         }
 
@@ -240,44 +251,69 @@
         {
             var normal = SerializerAlias.CreateNormalJsonOptions();
             var fast = SerializerAlias.CreateFastJsonOptions();
-            byte[] data = SerializerAlias.JsonSerialize(payload, fast);
+            var fastPoco = SerializerAlias.CreateFastPocoJsonOptions();
+            byte[] data = SerializerAlias.JsonSerialize(payload, fastPoco);
 
             // Warmup
             _ = SerializerAlias.JsonDeserialize<T>(data, null, normal);
             _ = SerializerAlias.JsonDeserialize<T>(data, null, fast);
+            _ = SerializerAlias.JsonDeserialize<T>(data, null, fastPoco);
             _ = JsonSerializer.Deserialize<T>(data);
 
             Stopwatch sw = Stopwatch.StartNew();
+            long allocStart,
+                allocEnd;
             // Pooled - Normal
+            allocStart = GetAlloc();
             for (int i = 0; i < Iterations; ++i)
             {
                 _ = SerializerAlias.JsonDeserialize<T>(data, null, normal);
             }
             sw.Stop();
+            allocEnd = GetAlloc();
             long pooledNormalMs = sw.ElapsedMilliseconds;
+            long pooledNormalKB = (allocEnd - allocStart) / 1024;
 
             // Pooled - Fast
             sw.Restart();
+            allocStart = GetAlloc();
             for (int i = 0; i < Iterations; ++i)
             {
                 _ = SerializerAlias.JsonDeserialize<T>(data, null, fast);
             }
             sw.Stop();
+            allocEnd = GetAlloc();
             long pooledFastMs = sw.ElapsedMilliseconds;
+            long pooledFastKB = (allocEnd - allocStart) / 1024;
+
+            // Pooled - FastPOCO
+            sw.Restart();
+            allocStart = GetAlloc();
+            for (int i = 0; i < Iterations; ++i)
+            {
+                _ = SerializerAlias.JsonDeserialize<T>(data, null, fastPoco);
+            }
+            sw.Stop();
+            allocEnd = GetAlloc();
+            long pooledFastPocoMs = sw.ElapsedMilliseconds;
+            long pooledFastPocoKB = (allocEnd - allocStart) / 1024;
 
             // Measure classic (using System.Text.Json directly)
             sw.Restart();
+            allocStart = GetAlloc();
             for (int i = 0; i < Iterations; ++i)
             {
                 _ = JsonSerializer.Deserialize<T>(data);
             }
             sw.Stop();
+            allocEnd = GetAlloc();
             long classicMs = sw.ElapsedMilliseconds;
+            long classicKB = (allocEnd - allocStart) / 1024;
 
-            double fastVsClassic =
-                classicMs > 0 ? (double)classicMs / pooledFastMs : double.PositiveInfinity;
+            double fPocoVsClassic =
+                classicMs > 0 ? (double)classicMs / pooledFastPocoMs : double.PositiveInfinity;
             UnityEngine.Debug.Log(
-                $"| {label} | {pooledNormalMs, 17:N0} | {pooledFastMs, 14:N0} | {classicMs, 16:N0} | {fastVsClassic, 11:0.00}x |"
+                $"| {label} | {pooledNormalMs, 17:N0}, {pooledNormalKB, 4:N0} | {pooledFastMs, 13:N0}, {pooledFastKB, 4:N0} | {pooledFastPocoMs, 22:N0}, {pooledFastPocoKB, 4:N0} | {classicMs, 13:N0}, {classicKB, 4:N0} | {fPocoVsClassic, 12:0.00}x |"
             );
         }
 
@@ -292,6 +328,8 @@
 
             // Measure JsonStringify (returns string)
             Stopwatch sw = Stopwatch.StartNew();
+            long allocStart,
+                allocEnd;
             for (int i = 0; i < Iterations; ++i)
             {
                 _ = SerializerAlias.JsonStringify(payload, normal);
@@ -308,20 +346,26 @@
             long stringifyFastMs = sw.ElapsedMilliseconds;
 
             sw.Restart();
+            allocStart = GetAlloc();
             for (int i = 0; i < Iterations; ++i)
             {
                 _ = SerializerAlias.JsonSerialize(payload, normal, ref buffer);
             }
             sw.Stop();
+            allocEnd = GetAlloc();
             long serializeNormalMs = sw.ElapsedMilliseconds;
+            long serializeNormalKB = (allocEnd - allocStart) / 1024;
 
             sw.Restart();
+            allocStart = GetAlloc();
             for (int i = 0; i < Iterations; ++i)
             {
                 _ = SerializerAlias.JsonSerialize(payload, fast, ref buffer);
             }
             sw.Stop();
+            allocEnd = GetAlloc();
             long serializeFastMs = sw.ElapsedMilliseconds;
+            long serializeFastKB = (allocEnd - allocStart) / 1024;
 
             double ratioNormal =
                 serializeNormalMs > 0
@@ -332,8 +376,20 @@
                     ? (double)stringifyFastMs / serializeFastMs
                     : double.PositiveInfinity;
             UnityEngine.Debug.Log(
-                $"| {label} | stringify-Normal={stringifyNormalMs, 6:N0} | stringify-Fast={stringifyFastMs, 6:N0} | serialize-Normal={serializeNormalMs, 6:N0} | serialize-Fast={serializeFastMs, 6:N0} | ratio(N)={ratioNormal, 5:0.00}x | ratio(F)={ratioFast, 5:0.00}x |"
+                $"| {label} | stringify-Normal={stringifyNormalMs, 6:N0} | stringify-Fast={stringifyFastMs, 6:N0} | serialize-Normal={serializeNormalMs, 6:N0}, {serializeNormalKB, 4:N0}KB | serialize-Fast={serializeFastMs, 6:N0}, {serializeFastKB, 4:N0}KB | ratio(N)={ratioNormal, 5:0.00}x | ratio(F)={ratioFast, 5:0.00}x |"
             );
+        }
+
+        private static long GetAlloc()
+        {
+            try
+            {
+                return GC.GetAllocatedBytesForCurrentThread();
+            }
+            catch
+            {
+                return 0;
+            }
         }
 
         private static int[] MakeIntArray(int len, int seed)

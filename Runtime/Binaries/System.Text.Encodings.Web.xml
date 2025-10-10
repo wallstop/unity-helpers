@@ -78,11 +78,6 @@
       <exception cref="T:System.ArgumentOutOfRangeException">
         <paramref name="characterCount" /> is out of range.</exception>
     </member>
-    <member name="M:System.Text.Encodings.Web.TextEncoder.Encode(System.IO.TextWriter,System.String)">
-      <summary>Encodes the specified string to a <see cref="T:System.IO.TextWriter" /> object.</summary>
-      <param name="output">The stream to which to write the encoded text.</param>
-      <param name="value">The string to encode.</param>
-    </member>
     <member name="M:System.Text.Encodings.Web.TextEncoder.Encode(System.IO.TextWriter,System.String,System.Int32,System.Int32)">
       <summary>Encodes a substring and writes it to a <see cref="T:System.IO.TextWriter" /> object.</summary>
       <param name="output">The stream to which to write the encoded text.</param>
@@ -98,6 +93,11 @@
         <paramref name="startIndex" /> is out of range.</exception>
       <exception cref="T:System.ArgumentOutOfRangeException">
         <paramref name="characterCount" /> is out of range.</exception>
+    </member>
+    <member name="M:System.Text.Encodings.Web.TextEncoder.Encode(System.IO.TextWriter,System.String)">
+      <summary>Encodes the specified string to a <see cref="T:System.IO.TextWriter" /> object.</summary>
+      <param name="output">The stream to which to write the encoded text.</param>
+      <param name="value">The string to encode.</param>
     </member>
     <member name="M:System.Text.Encodings.Web.TextEncoder.Encode(System.ReadOnlySpan{System.Char},System.Span{System.Char},System.Int32@,System.Int32@,System.Boolean)">
       <summary>Encodes the supplied characters.</summary>
@@ -306,6 +306,9 @@
     <member name="P:System.Text.Unicode.UnicodeRanges.ArabicExtendedA">
       <summary>Gets the Arabic Extended-A Unicode block (U+08A0-U+08FF).</summary>
       <returns>The Arabic Extended-A Unicode block (U+08A0-U+08FF).</returns>
+    </member>
+    <member name="P:System.Text.Unicode.UnicodeRanges.ArabicExtendedB">
+      <summary>A <see cref="T:System.Text.Unicode.UnicodeRange" /> corresponding to the 'Arabic Extended-B' Unicode block (U+0870..U+089F).</summary>
     </member>
     <member name="P:System.Text.Unicode.UnicodeRanges.ArabicPresentationFormsA">
       <summary>Gets the Arabic Presentation Forms-A Unicode block (U+FB50-U+FDFF).</summary>

@@ -23,6 +23,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
         public static readonly JsonSerializerOptions NormalJsonOptions;
         public static readonly JsonSerializerOptions PrettyJsonOptions;
         public static readonly JsonSerializerOptions FastJsonOptions;
+        public static readonly JsonSerializerOptions FastPocoJsonOptions;
 
         public static JsonSerializerOptions GetNormalJsonOptions()
         {
@@ -107,12 +108,29 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             };
         }
 
+        public static JsonSerializerOptions GetFastPocoJsonOptions()
+        {
+            return new JsonSerializerOptions
+            {
+                IgnoreReadOnlyFields = false,
+                IgnoreReadOnlyProperties = false,
+                ReferenceHandler = null,
+                PropertyNameCaseInsensitive = false,
+                IncludeFields = false,
+                NumberHandling = JsonNumberHandling.Strict,
+                ReadCommentHandling = JsonCommentHandling.Disallow,
+                AllowTrailingCommas = false,
+                // No converters for POCO to minimize overhead
+            };
+        }
+
         static SerializerEncoding()
         {
             Encoding = Encoding.UTF8;
             NormalJsonOptions = GetNormalJsonOptions();
             PrettyJsonOptions = GetPrettyJsonOptions();
             FastJsonOptions = GetFastJsonOptions();
+            FastPocoJsonOptions = GetFastPocoJsonOptions();
         }
     }
 
@@ -223,6 +241,13 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
         /// </summary>
         public static JsonSerializerOptions CreateFastJsonOptions() =>
             SerializerEncoding.GetFastJsonOptions();
+
+        /// <summary>
+        /// Returns a copy of the package's Fast POCO JSON options: strict, minimal, and with no Unity-specific
+        /// converters. Use for pure POCO graphs when you want the fastest possible serialization/deserialization.
+        /// </summary>
+        public static JsonSerializerOptions CreateFastPocoJsonOptions() =>
+            new JsonSerializerOptions(SerializerEncoding.FastPocoJsonOptions);
 
         // Small protobuf payloads benefit from protobuf-net's MemoryStream fast-path (TryGetBuffer).
         // Larger payloads see wins from our pooled read-only stream to avoid per-iteration allocations.
