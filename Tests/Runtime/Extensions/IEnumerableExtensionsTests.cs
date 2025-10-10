@@ -121,6 +121,39 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         }
 
         [Test]
+        public void PartitionThrowsOnNonPositiveSize()
+        {
+            int[] values = { 1, 2, 3 };
+            Assert.Throws<ArgumentOutOfRangeException>(() => values.Partition(0).ToArray());
+            Assert.Throws<ArgumentOutOfRangeException>(() => values.Partition(-1).ToArray());
+        }
+
+        [Test]
+        public void PartitionPooledThrowsOnNonPositiveSize()
+        {
+            int[] values = { 1, 2, 3 };
+            Assert.Throws<ArgumentOutOfRangeException>(() => values.PartitionPooled(0).ToArray());
+            Assert.Throws<ArgumentOutOfRangeException>(() => values.PartitionPooled(-1).ToArray());
+        }
+
+        [Test]
+        public void PartitionPooledReturnsIndependentPooledLists()
+        {
+            int[] values = { 1, 2, 3, 4, 5 };
+            List<int[]> partitions = new();
+            foreach (var pooled in values.PartitionPooled(2))
+            {
+                using var lease = pooled; // ensure return to pool
+                partitions.Add(lease.resource.ToArray());
+            }
+
+            Assert.AreEqual(3, partitions.Count);
+            CollectionAssert.AreEqual(new[] { 1, 2 }, partitions[0]);
+            CollectionAssert.AreEqual(new[] { 3, 4 }, partitions[1]);
+            CollectionAssert.AreEqual(new[] { 5 }, partitions[2]);
+        }
+
+        [Test]
         public void PartitionHandlesRemainingElementsWithoutPadding()
         {
             int[] values = Enumerable.Range(1, 7).ToArray();

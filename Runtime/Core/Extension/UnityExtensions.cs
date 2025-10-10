@@ -93,7 +93,9 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             int nearestNeighbors = 3
         )
         {
+#pragma warning disable CS0618 // Type or member is obsolete
             return BuildConcaveHull2(gridPositions, grid, nearestNeighbors);
+#pragma warning restore CS0618 // Type or member is obsolete
         }
 
         public static List<FastVector3Int> BuildConcaveHullEdgeSplit(
@@ -103,7 +105,356 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             float angleThreshold = 90f
         )
         {
+#pragma warning disable CS0618 // Type or member is obsolete
             return BuildConcaveHull3(gridPositions, grid, bucketSize, angleThreshold);
+#pragma warning restore CS0618 // Type or member is obsolete
+        }
+
+        private static List<Vector2> BuildConvexHullJarvis(
+            IEnumerable<Vector2> pointsSet,
+            bool includeColinearPoints
+        )
+        {
+            using PooledResource<List<Vector2>> ptsRes = Buffers<Vector2>.List.Get(
+                out List<Vector2> pts
+            );
+            pts.AddRange(pointsSet);
+
+            using PooledResource<HashSet<Vector2>> uniqRes = Buffers<Vector2>.HashSet.Get(
+                out HashSet<Vector2> uniq
+            );
+            foreach (Vector2 p in pts)
+            {
+                uniq.Add(p);
+            }
+            List<Vector2> points = new(uniq);
+            if (points.Count == 0)
+            {
+                return new List<Vector2>();
+            }
+            if (points.Count <= 2)
+            {
+                return new List<Vector2>(points);
+            }
+
+            points.Sort(
+                (a, b) =>
+                {
+                    int cmp = a.x.CompareTo(b.x);
+                    return cmp != 0 ? cmp : a.y.CompareTo(b.y);
+                }
+            );
+            Vector2 start = points[0];
+
+            bool allColinear = true;
+            for (int i = 1; i < points.Count - 1; ++i)
+            {
+                float rel = Geometry.IsAPointLeftOfVectorOrOnTheLine(start, points[^1], points[i]);
+                if (Mathf.Abs(rel) > ConvexHullRelationEpsilon)
+                {
+                    allColinear = false;
+                    break;
+                }
+            }
+            if (allColinear)
+            {
+                if (includeColinearPoints)
+                {
+                    return new List<Vector2>(points);
+                }
+                Vector2 min = start;
+                Vector2 max = start;
+                for (int i = 0; i < points.Count; ++i)
+                {
+                    Vector2 w = points[i];
+                    if (w.x < min.x || (Mathf.Approximately(w.x, min.x) && w.y < min.y))
+                    {
+                        min = w;
+                    }
+                    if (w.x > max.x || (Mathf.Approximately(w.x, max.x) && w.y > max.y))
+                    {
+                        max = w;
+                    }
+                }
+                return new List<Vector2> { min, max };
+            }
+
+            List<Vector2> hull = new(points.Count + 1);
+            Vector2 current = start;
+            int guard = 0;
+            int guardMax = Math.Max(8, points.Count * 8);
+            do
+            {
+                hull.Add(current);
+
+                Vector2 candidate =
+                    points[0] == current && points.Count > 1 ? points[1] : points[0];
+                for (int i = 0; i < points.Count; ++i)
+                {
+                    Vector2 p = points[i];
+                    if (p == current)
+                    {
+                        continue;
+                    }
+                    float rel = Geometry.IsAPointLeftOfVectorOrOnTheLine(current, candidate, p);
+                    if (rel > ConvexHullRelationEpsilon)
+                    {
+                        candidate = p;
+                    }
+                    else if (Mathf.Abs(rel) <= ConvexHullRelationEpsilon)
+                    {
+                        float distCandidate = (candidate - current).sqrMagnitude;
+                        float distP = (p - current).sqrMagnitude;
+                        if (distP > distCandidate)
+                        {
+                            candidate = p;
+                        }
+                    }
+                }
+
+                if (includeColinearPoints)
+                {
+                    using PooledResource<List<Vector2>> colinearRes = Buffers<Vector2>.List.Get(
+                        out List<Vector2> colinear
+                    );
+                    colinear.Clear();
+                    for (int i = 0; i < points.Count; ++i)
+                    {
+                        Vector2 p = points[i];
+                        if (p == current || p == candidate)
+                        {
+                            continue;
+                        }
+                        float rel = Geometry.IsAPointLeftOfVectorOrOnTheLine(current, candidate, p);
+                        if (Mathf.Abs(rel) <= ConvexHullRelationEpsilon)
+                        {
+                            colinear.Add(p);
+                        }
+                    }
+                    if (colinear.Count > 0)
+                    {
+                        SortByDistanceAscending(colinear, current);
+                        using PooledResource<HashSet<Vector2>> hullSetRes =
+                            Buffers<Vector2>.HashSet.Get(out HashSet<Vector2> hullSet);
+                        foreach (Vector2 h in hull)
+                        {
+                            hullSet.Add(h);
+                        }
+                        foreach (Vector2 p in colinear)
+                        {
+                            if (!hullSet.Contains(p))
+                            {
+                                hull.Add(p);
+                            }
+                        }
+                        current = candidate;
+                    }
+                    else
+                    {
+                        current = candidate;
+                    }
+                }
+                else
+                {
+                    current = candidate;
+                }
+
+                if (++guard > guardMax)
+                {
+                    break;
+                }
+            } while (current != start);
+
+            if (hull.Count > 1 && hull[0] == hull[^1])
+            {
+                hull.RemoveAt(hull.Count - 1);
+            }
+            if (!includeColinearPoints && hull.Count > 2)
+            {
+                PruneColinearOnHull(hull);
+            }
+            return hull;
+        }
+
+        private static void PruneColinearOnHull(List<Vector2> hull)
+        {
+            int i = 0;
+            while (i < hull.Count)
+            {
+                int prev = (i - 1 + hull.Count) % hull.Count;
+                int next = (i + 1) % hull.Count;
+                float cross = Geometry.IsAPointLeftOfVectorOrOnTheLine(
+                    hull[prev],
+                    hull[i],
+                    hull[next]
+                );
+                if (Mathf.Abs(cross) <= ConvexHullRelationEpsilon)
+                {
+                    hull.RemoveAt(i);
+                    if (hull.Count < 3)
+                    {
+                        break;
+                    }
+                    continue;
+                }
+                ++i;
+            }
+        }
+
+        private static List<Vector2> BuildConvexHullMonotoneChain(
+            IEnumerable<Vector2> pointsSet,
+            bool includeColinearPoints
+        )
+        {
+            using PooledResource<List<Vector2>> pointsResource = Buffers<Vector2>.List.Get(
+                out List<Vector2> points
+            );
+            points.AddRange(pointsSet);
+
+            using PooledResource<HashSet<Vector2>> uniqueRes = Buffers<Vector2>.HashSet.Get(
+                out HashSet<Vector2> unique
+            );
+            foreach (Vector2 p in points)
+            {
+                unique.Add(p);
+            }
+            points = new List<Vector2>(unique);
+            if (points.Count <= 1)
+            {
+                return new List<Vector2>(points);
+            }
+
+            points.Sort(
+                (a, b) =>
+                {
+                    int cmp = a.x.CompareTo(b.x);
+                    return cmp != 0 ? cmp : a.y.CompareTo(b.y);
+                }
+            );
+
+            if (points.Count >= 2)
+            {
+                Vector2 first = points[0];
+                Vector2 last = points[^1];
+                bool allColinear = true;
+                for (int i = 1; i < points.Count - 1; ++i)
+                {
+                    float cross = Geometry.IsAPointLeftOfVectorOrOnTheLine(first, last, points[i]);
+                    if (Mathf.Abs(cross) > ConvexHullRelationEpsilon)
+                    {
+                        allColinear = false;
+                        break;
+                    }
+                }
+                if (allColinear)
+                {
+                    if (includeColinearPoints)
+                    {
+                        return new List<Vector2>(points);
+                    }
+                    else
+                    {
+                        return new List<Vector2> { points[0], points[^1] };
+                    }
+                }
+            }
+
+            using PooledResource<List<Vector2>> lowerRes = Buffers<Vector2>.List.Get(
+                out List<Vector2> lower
+            );
+            using PooledResource<List<Vector2>> upperRes = Buffers<Vector2>.List.Get(
+                out List<Vector2> upper
+            );
+
+            foreach (Vector2 p in points)
+            {
+                while (lower.Count >= 2)
+                {
+                    float cross = Turn(lower[^2], lower[^1], p);
+                    if (cross < -ConvexHullRelationEpsilon)
+                    {
+                        lower.RemoveAt(lower.Count - 1);
+                        continue;
+                    }
+                    break;
+                }
+                lower.Add(p);
+            }
+
+            for (int i = points.Count - 1; i >= 0; --i)
+            {
+                Vector2 p = points[i];
+                while (upper.Count >= 2)
+                {
+                    float cross = Turn(upper[^2], upper[^1], p);
+                    if (cross < -ConvexHullRelationEpsilon)
+                    {
+                        upper.RemoveAt(upper.Count - 1);
+                        continue;
+                    }
+                    break;
+                }
+                upper.Add(p);
+            }
+
+            List<Vector2> hull = new(lower.Count + upper.Count - 2);
+            for (int i = 0; i < lower.Count; ++i)
+            {
+                hull.Add(lower[i]);
+            }
+            for (int i = 1; i < upper.Count - 1; ++i)
+            {
+                hull.Add(upper[i]);
+            }
+            if (!includeColinearPoints && hull.Count > 2)
+            {
+                PruneColinearOnHull(hull);
+            }
+            return hull;
+
+            float Turn(Vector2 a, Vector2 b, Vector2 c)
+            {
+                return Geometry.IsAPointLeftOfVectorOrOnTheLine(a, b, c);
+            }
+        }
+
+        // ===================== Vector2 Convex Hulls =====================
+
+        /// <summary>
+        /// Builds a convex hull from a set of Vector2 points using the Monotone Chain algorithm.
+        /// </summary>
+        /// <param name="pointsSet">The collection of points.</param>
+        /// <param name="includeColinearPoints">When true, includes colinear points along edges.</param>
+        public static List<Vector2> BuildConvexHull(
+            this IEnumerable<Vector2> pointsSet,
+            bool includeColinearPoints = true
+        )
+        {
+            return BuildConvexHullMonotoneChain(pointsSet, includeColinearPoints);
+        }
+
+        /// <summary>
+        /// Builds a convex hull from Vector2 with an explicit algorithm selection.
+        /// </summary>
+        public static List<Vector2> BuildConvexHull(
+            this IEnumerable<Vector2> pointsSet,
+            bool includeColinearPoints,
+            ConvexHullAlgorithm algorithm
+        )
+        {
+            switch (algorithm)
+            {
+                case ConvexHullAlgorithm.MonotoneChain:
+                    return BuildConvexHullMonotoneChain(pointsSet, includeColinearPoints);
+                case ConvexHullAlgorithm.Jarvis:
+                    return BuildConvexHullJarvis(pointsSet, includeColinearPoints);
+                default:
+                    throw new InvalidEnumArgumentException(
+                        nameof(algorithm),
+                        (int)algorithm,
+                        typeof(ConvexHullAlgorithm)
+                    );
+            }
         }
 
         /// <summary>
@@ -621,7 +972,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 case ConvexHullAlgorithm.Jarvis:
                     return BuildConvexHullJarvis(pointsSet, grid, includeColinearPoints);
                 default:
-                    throw new System.ComponentModel.InvalidEnumArgumentException(
+                    throw new InvalidEnumArgumentException(
                         nameof(algorithm),
                         (int)algorithm,
                         typeof(ConvexHullAlgorithm)
@@ -655,7 +1006,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     return hullFast.ConvertAll(p => (Vector3Int)p);
                 }
                 default:
-                    throw new System.ComponentModel.InvalidEnumArgumentException(
+                    throw new InvalidEnumArgumentException(
                         nameof(algorithm),
                         (int)algorithm,
                         typeof(ConvexHullAlgorithm)
@@ -728,14 +1079,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 out List<Vector3Int> upper
             );
 
-            float Turn(Vector3Int a, Vector3Int b, Vector3Int c)
-            {
-                Vector2 aw = grid.CellToWorld(a);
-                Vector2 bw = grid.CellToWorld(b);
-                Vector2 cw = grid.CellToWorld(c);
-                return Geometry.IsAPointLeftOfVectorOrOnTheLine(aw, bw, cw);
-            }
-
             foreach (Vector3Int p in points)
             {
                 while (lower.Count >= 2)
@@ -783,6 +1126,14 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 PruneColinearOnHull(hull, grid);
             }
             return hull;
+
+            float Turn(Vector3Int a, Vector3Int b, Vector3Int c)
+            {
+                Vector2 aw = grid.CellToWorld(a);
+                Vector2 bw = grid.CellToWorld(b);
+                Vector2 cw = grid.CellToWorld(c);
+                return Geometry.IsAPointLeftOfVectorOrOnTheLine(aw, bw, cw);
+            }
         }
 
         private static List<FastVector3Int> BuildConvexHullMonotoneChain(
@@ -853,14 +1204,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 out List<FastVector3Int> upper
             );
 
-            float Turn(FastVector3Int a, FastVector3Int b, FastVector3Int c)
-            {
-                Vector2 aw = grid.CellToWorld(a);
-                Vector2 bw = grid.CellToWorld(b);
-                Vector2 cw = grid.CellToWorld(c);
-                return Geometry.IsAPointLeftOfVectorOrOnTheLine(aw, bw, cw);
-            }
-
             foreach (FastVector3Int p in points)
             {
                 while (lower.Count >= 2)
@@ -908,6 +1251,14 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 PruneColinearOnHull(hull, grid);
             }
             return hull;
+
+            float Turn(FastVector3Int a, FastVector3Int b, FastVector3Int c)
+            {
+                Vector2 aw = grid.CellToWorld(a);
+                Vector2 bw = grid.CellToWorld(b);
+                Vector2 cw = grid.CellToWorld(c);
+                return Geometry.IsAPointLeftOfVectorOrOnTheLine(aw, bw, cw);
+            }
         }
 
         private static List<FastVector3Int> BuildConvexHullJarvis(
@@ -1192,6 +1543,78 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
         }
 
+        // ===================== Vector2 Convex Hull Containment =====================
+
+        public static bool IsConvexHullInsideConvexHull(
+            this List<Vector2> convexHull,
+            List<Vector2> maybeInside
+        )
+        {
+            int orientation = DetermineConvexHullOrientation(convexHull);
+            foreach (Vector2 point in maybeInside)
+            {
+                if (!IsPointInsideConvexHull(convexHull, point, orientation))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private static int DetermineConvexHullOrientation(List<Vector2> convexHull)
+        {
+            if (convexHull == null || convexHull.Count < 3)
+            {
+                return 0;
+            }
+            double area = 0d;
+            for (int i = 0; i < convexHull.Count; ++i)
+            {
+                Vector2 a = convexHull[i];
+                Vector2 b = convexHull[(i + 1) % convexHull.Count];
+                area += (double)a.x * b.y - (double)a.y * b.x;
+            }
+            if (Math.Abs(area) <= ConvexHullOrientationEpsilon)
+            {
+                return 0;
+            }
+            return area > 0d ? 1 : -1;
+        }
+
+        private static bool IsPointInsideConvexHull(
+            List<Vector2> convexHull,
+            Vector2 point,
+            int expectedSide
+        )
+        {
+            if (convexHull == null || convexHull.Count == 0)
+            {
+                return true;
+            }
+            int requiredSide = expectedSide;
+            for (int i = 0; i < convexHull.Count; ++i)
+            {
+                Vector2 lhs = convexHull[i];
+                Vector2 rhs = convexHull[(i + 1) % convexHull.Count];
+                float relation = Geometry.IsAPointLeftOfVectorOrOnTheLine(lhs, rhs, point);
+                if (Mathf.Abs(relation) <= ConvexHullRelationEpsilon)
+                {
+                    continue;
+                }
+                int side = requiredSide;
+                if (side == 0)
+                {
+                    side = relation > 0f ? 1 : -1;
+                    requiredSide = side;
+                }
+                if (relation * side < -ConvexHullRelationEpsilon)
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
         /// <summary>
         /// Determines if one convex hull is completely inside another convex hull.
         /// </summary>
@@ -1223,6 +1646,50 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
 
             return true;
+        }
+
+        // ===================== Vector2 Concave Hulls =====================
+
+        public static List<Vector2> BuildConcaveHull(
+            this IReadOnlyCollection<Vector2> points,
+            ConcaveHullOptions options
+        )
+        {
+            options ??= new ConcaveHullOptions();
+            switch (options.Strategy)
+            {
+                case ConcaveHullStrategy.Knn:
+                    return BuildConcaveHull2(points, Math.Max(3, options.NearestNeighbors));
+                case ConcaveHullStrategy.EdgeSplit:
+                    return BuildConcaveHull3(
+                        points,
+                        Math.Max(1, options.BucketSize),
+                        options.AngleThreshold
+                    );
+                default:
+                    throw new InvalidEnumArgumentException(
+                        nameof(options.Strategy),
+                        (int)options.Strategy,
+                        typeof(ConcaveHullStrategy)
+                    );
+            }
+        }
+
+        public static List<Vector2> BuildConcaveHullKnn(
+            this IReadOnlyCollection<Vector2> points,
+            int nearestNeighbors = 3
+        )
+        {
+            return BuildConcaveHull2(points, nearestNeighbors);
+        }
+
+        public static List<Vector2> BuildConcaveHullEdgeSplit(
+            this IReadOnlyCollection<Vector2> points,
+            int bucketSize = 40,
+            float angleThreshold = 90f
+        )
+        {
+            return BuildConcaveHull3(points, bucketSize, angleThreshold);
         }
 
         /// <summary>
@@ -1495,6 +1962,83 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 float angleTo = Vector2.Angle(fromWorld - toWorld, worldPoint - toWorld);
                 return Math.Max(angleFrom, angleTo);
             }
+        }
+
+        // =============== Vector2 helpers used by concave hull ===============
+        private static void SortByDistanceAscending(List<Vector2> points, Vector2 origin)
+        {
+            int count = points.Count;
+            if (count <= 1)
+            {
+                return;
+            }
+            using PooledResource<float[]> distancesResource = WallstopFastArrayPool<float>.Get(
+                count
+            );
+            float[] distances = distancesResource.resource;
+            for (int i = 0; i < count; ++i)
+            {
+                distances[i] = (points[i] - origin).sqrMagnitude;
+            }
+            SelectionSort(points, distances, count);
+        }
+
+        private static void SortByRightHandTurn(
+            List<Vector2> points,
+            Vector2 current,
+            float previousAngle
+        )
+        {
+            int count = points.Count;
+            if (count <= 1)
+            {
+                return;
+            }
+            using PooledResource<float[]> angleRes = WallstopFastArrayPool<float>.Get(count);
+            float[] angles = angleRes.resource;
+            for (int i = 0; i < count; ++i)
+            {
+                float candidateAngle = CalculateAngle(current, points[i]);
+                angles[i] = -AngleDifference(previousAngle, candidateAngle);
+            }
+            SelectionSort(points, angles, count);
+        }
+
+        /// <summary>
+        /// Determines if a world-space position is inside a polygon hull using the ray-casting algorithm.
+        /// </summary>
+        public static bool IsPositionInside(List<Vector2> hull, Vector2 position)
+        {
+            bool isPositionInside = false;
+            for (int i = 0; i < hull.Count; ++i)
+            {
+                Vector2 oldVector = hull[i];
+                int nextIndex = (i + 1) % hull.Count;
+                Vector2 newVector = hull[nextIndex];
+
+                Vector2 lhs;
+                Vector2 rhs;
+                if (oldVector.x < newVector.x)
+                {
+                    lhs = oldVector;
+                    rhs = newVector;
+                }
+                else
+                {
+                    lhs = newVector;
+                    rhs = oldVector;
+                }
+
+                if (
+                    (newVector.x < position.x) == (position.x <= oldVector.x)
+                    && (position.y - (long)lhs.y) * (rhs.x - lhs.x)
+                        < (rhs.y - (long)lhs.y) * (position.x - lhs.x)
+                )
+                {
+                    isPositionInside = !isPositionInside;
+                }
+            }
+            return isPositionInside;
         }
 
         private sealed class ConcaveHullComparer : IComparer<HullEdge>
@@ -1793,6 +2337,169 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return concaveHull;
 
             Vector2 CellToWorld(FastVector3Int cell) => grid.CellToWorld(cell);
+        }
+
+        // KNN-style concave hull for Vector2 (port of BuildConcaveHull2)
+        private static List<Vector2> BuildConcaveHull2(
+            this IReadOnlyCollection<Vector2> input,
+            int nearestNeighbors
+        )
+        {
+            const int minimumNearestNeighbors = 3;
+            nearestNeighbors = Math.Max(minimumNearestNeighbors, nearestNeighbors);
+
+            using PooledResource<List<Vector2>> dataSetRes = Buffers<Vector2>.List.Get(
+                out List<Vector2> dataSet
+            );
+            using PooledResource<HashSet<Vector2>> uniqueRes = Buffers<Vector2>.HashSet.Get(
+                out HashSet<Vector2> unique
+            );
+            using PooledResource<List<Vector2>> originalRes = Buffers<Vector2>.List.Get(
+                out List<Vector2> original
+            );
+            original.AddRange(input);
+
+            foreach (Vector2 p in original)
+            {
+                if (unique.Add(p))
+                {
+                    dataSet.Add(p);
+                }
+            }
+            int maximumNearestNeighbors = dataSet.Count;
+            if (dataSet.Count <= 4)
+            {
+                return input.BuildConvexHull(includeColinearPoints: false);
+            }
+            nearestNeighbors = Math.Min(dataSet.Count, nearestNeighbors);
+
+            Vector2 first = default;
+            bool firstInit = false;
+            float lowestY = float.MaxValue;
+            foreach (Vector2 p in dataSet)
+            {
+                if (
+                    !firstInit
+                    || p.y < lowestY
+                    || (Mathf.Approximately(p.y, lowestY) && p.x < first.x)
+                )
+                {
+                    first = p;
+                    lowestY = p.y;
+                    firstInit = true;
+                }
+            }
+            if (!firstInit)
+            {
+                return new List<Vector2>(dataSet);
+            }
+
+            List<Vector2> hull = new(dataSet.Count) { first };
+            int step = 2;
+            int maxSteps = Math.Max(16, dataSet.Count * 6);
+            float previousAngle = 0f;
+            Vector2 current = first;
+            _ = dataSet.Remove(current);
+
+            using PooledResource<List<Vector2>> clockwisePointsRes = Buffers<Vector2>.List.Get(
+                out List<Vector2> clockwisePoints
+            );
+            while (0 < dataSet.Count)
+            {
+                if (step == 5)
+                {
+                    dataSet.Add(first);
+                }
+
+                FindNearestNeighborsAndPutInClockwisePoints();
+                SortByRightHandTurn(clockwisePoints, current, previousAngle);
+
+                bool intersects = true;
+                int i = -1;
+                while (intersects && i < clockwisePoints.Count - 1)
+                {
+                    ++i;
+                    Vector2 indexedPoint = clockwisePoints[i];
+                    int lastPoint = indexedPoint == first ? 1 : 0;
+                    int j = 2;
+                    intersects = false;
+                    Vector2 lhsTo = indexedPoint;
+                    while (!intersects && j < hull.Count - lastPoint)
+                    {
+                        Vector2 lhsFrom = hull[step - 2];
+                        Vector2 rhsFrom = hull[step - 2 - j];
+                        Vector2 rhsTo = hull[step - 1 - j];
+                        intersects = Intersects(lhsFrom, lhsTo, rhsFrom, rhsTo);
+                        ++j;
+                    }
+                }
+
+                if (intersects)
+                {
+                    for (i = dataSet.Count - 1; 0 <= i; --i)
+                    {
+                        if (!IsPositionInside(hull, dataSet[i]))
+                        {
+                            if (nearestNeighbors >= maximumNearestNeighbors)
+                            {
+                                return input.BuildConvexHull(includeColinearPoints: false);
+                            }
+                            return BuildConcaveHull2(input, nearestNeighbors + 1);
+                        }
+                    }
+                    return hull;
+                }
+
+                current = clockwisePoints[i];
+                if (current != first)
+                {
+                    hull.Add(current);
+                }
+                else
+                {
+                    break;
+                }
+
+                int currentIndex = dataSet.IndexOf(current);
+                if (0 <= currentIndex)
+                {
+                    dataSet.RemoveAtSwapBack(currentIndex);
+                }
+
+                previousAngle = CalculateAngle(hull[step - 1], hull[step - 2]);
+                ++step;
+                if (step > maxSteps)
+                {
+                    break;
+                }
+            }
+
+            for (int i = dataSet.Count - 1; 0 <= i; --i)
+            {
+                if (!IsPositionInside(hull, dataSet[i]))
+                {
+                    if (nearestNeighbors >= maximumNearestNeighbors)
+                    {
+                        return input.BuildConvexHull(includeColinearPoints: false);
+                    }
+                    return BuildConcaveHull2(input, nearestNeighbors + 1);
+                }
+            }
+            return hull;
+
+            void FindNearestNeighborsAndPutInClockwisePoints()
+            {
+                clockwisePoints.Clear();
+                clockwisePoints.AddRange(dataSet);
+                SortByDistanceAscending(clockwisePoints, current);
+                if (nearestNeighbors < clockwisePoints.Count)
+                {
+                    clockwisePoints.RemoveRange(
+                        nearestNeighbors,
+                        clockwisePoints.Count - nearestNeighbors
+                    );
+                }
+            }
         }
 
         /// <summary>
@@ -2572,6 +3279,279 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
 
             return false;
+        }
+
+        // Edge-splitting + kNN queries via QuadTree for Vector2 (port of BuildConcaveHull3)
+        private static List<Vector2> BuildConcaveHull3(
+            this IReadOnlyCollection<Vector2> input,
+            int bucketSize,
+            float angleThreshold
+        )
+        {
+            using PooledResource<List<Vector2>> originalRes = Buffers<Vector2>.List.Get(
+                out List<Vector2> original
+            );
+            original.AddRange(input);
+
+            List<Vector2> convexHull = input.BuildConvexHull(includeColinearPoints: false);
+            using (
+                PooledResource<HashSet<Vector2>> uniqRes = Buffers<Vector2>.HashSet.Get(
+                    out HashSet<Vector2> uniq
+                )
+            )
+            {
+                foreach (Vector2 p in original)
+                {
+                    uniq.Add(p);
+                }
+                if (uniq.Count <= 4)
+                {
+                    return new List<Vector2>(convexHull);
+                }
+            }
+
+            using PooledResource<List<HullEdgeV2>> edgeListRes = Buffers<HullEdgeV2>.List.Get(
+                out List<HullEdgeV2> concaveHullEdges
+            );
+            if (concaveHullEdges.Capacity < convexHull.Count)
+            {
+                concaveHullEdges.Capacity = convexHull.Count;
+            }
+            using PooledResource<SortedSet<HullEdgeV2>> sortedSetRes = SetBuffers<HullEdgeV2>
+                .GetSortedSetPool(ConcaveHullComparerV2.Instance)
+                .Get(out SortedSet<HullEdgeV2> data);
+
+            for (int i = 0; i < convexHull.Count; ++i)
+            {
+                Vector2 lhs = convexHull[i];
+                Vector2 rhs = convexHull[(i + 1) % convexHull.Count];
+                _ = data.Add(new HullEdgeV2(lhs, rhs));
+            }
+
+            Bounds? maybeBounds = input.GetBounds();
+            if (maybeBounds == null)
+            {
+                throw new ArgumentException(nameof(input));
+            }
+
+            using PooledResource<List<QuadTree2D<Vector2>.Entry>> entriesRes =
+                Buffers<QuadTree2D<Vector2>.Entry>.List.Get(
+                    out List<QuadTree2D<Vector2>.Entry> entries
+                );
+            foreach (Vector2 p in original)
+            {
+                entries.Add(new QuadTree2D<Vector2>.Entry(p, p));
+            }
+            QuadTree2D<Vector2> quadTree = new(entries, maybeBounds.Value, bucketSize);
+            using PooledResource<List<Vector2>> neighborsRes = Buffers<Vector2>.List.Get(
+                out List<Vector2> neighbors
+            );
+            if (neighbors.Capacity < bucketSize)
+            {
+                neighbors.Capacity = bucketSize;
+            }
+
+            int iterations = 0;
+            int maxIterations = Math.Max(32, original.Count * 16);
+            while (0 < data.Count)
+            {
+                HullEdgeV2 edge = data.Max;
+                _ = data.Remove(edge);
+
+                Vector2 edgeCenter = edge.from + (edge.to - edge.from) / 2f;
+                quadTree.GetApproximateNearestNeighbors(edgeCenter, bucketSize, neighbors);
+                float localMaximumDistance = float.MinValue;
+                foreach (Vector2 n in neighbors)
+                {
+                    if (n == edge.to || n == edge.from)
+                    {
+                        continue;
+                    }
+                    localMaximumDistance = Math.Max(
+                        localMaximumDistance,
+                        (n - edgeCenter).sqrMagnitude
+                    );
+                }
+                if (edge.edgeLength <= localMaximumDistance)
+                {
+                    concaveHullEdges.Add(edge);
+                    continue;
+                }
+
+                float smallestAngle = float.MaxValue;
+                Vector2? maybeChosen = null;
+                foreach (Vector2 n in neighbors)
+                {
+                    if (n == edge.to || n == edge.from)
+                    {
+                        continue;
+                    }
+                    float angle = edge.LargestAngle(n);
+                    if (angle < smallestAngle)
+                    {
+                        smallestAngle = angle;
+                        maybeChosen = n;
+                    }
+                }
+                if (!maybeChosen.HasValue || smallestAngle > angleThreshold)
+                {
+                    concaveHullEdges.Add(edge);
+                    continue;
+                }
+
+                Vector2 chosen = maybeChosen.Value;
+                HullEdgeV2 e2 = new(edge.from, chosen);
+                HullEdgeV2 e3 = new(chosen, edge.to);
+                bool intersects = false;
+                foreach (HullEdgeV2 hullEdge in data)
+                {
+                    if (hullEdge.Intersects(e2) || hullEdge.Intersects(e3))
+                    {
+                        intersects = true;
+                        break;
+                    }
+                }
+                if (!intersects)
+                {
+                    foreach (HullEdgeV2 hullEdge in concaveHullEdges)
+                    {
+                        if (hullEdge.Intersects(e2) || hullEdge.Intersects(e3))
+                        {
+                            intersects = true;
+                            break;
+                        }
+                    }
+                }
+                if (!intersects)
+                {
+                    _ = data.Add(e2);
+                    _ = data.Add(e3);
+                }
+                else
+                {
+                    concaveHullEdges.Add(edge);
+                }
+
+                ++iterations;
+                if (iterations > maxIterations)
+                {
+                    concaveHullEdges.AddRange(data);
+                    break;
+                }
+            }
+
+            List<Vector2> result = new(concaveHullEdges.Count);
+            if (concaveHullEdges.Count == 0)
+            {
+                return result;
+            }
+            HullEdgeV2 current = concaveHullEdges[0];
+            concaveHullEdges.RemoveAtSwapBack(0);
+            result.Add(current.from);
+            while (0 < concaveHullEdges.Count)
+            {
+                Vector2 to = current.to;
+                int nextIndex = -1;
+                for (int i = 0; i < concaveHullEdges.Count; ++i)
+                {
+                    HullEdgeV2 e = concaveHullEdges[i];
+                    if (e.from == to)
+                    {
+                        nextIndex = i;
+                        break;
+                    }
+                }
+                if (nextIndex < 0)
+                {
+                    int reverseIndex = -1;
+                    for (int i = 0; i < concaveHullEdges.Count; ++i)
+                    {
+                        HullEdgeV2 e = concaveHullEdges[i];
+                        if (e.to == to)
+                        {
+                            reverseIndex = i;
+                            break;
+                        }
+                    }
+                    if (reverseIndex >= 0)
+                    {
+                        HullEdgeV2 reversed = new(
+                            concaveHullEdges[reverseIndex].to,
+                            concaveHullEdges[reverseIndex].from
+                        );
+                        concaveHullEdges.RemoveAtSwapBack(reverseIndex);
+                        current = reversed;
+                        result.Add(current.from);
+                        continue;
+                    }
+                    break;
+                }
+                current = concaveHullEdges[nextIndex];
+                concaveHullEdges.RemoveAtSwapBack(nextIndex);
+                result.Add(current.from);
+            }
+            return result;
+        }
+
+        private readonly struct HullEdgeV2
+        {
+            public readonly float edgeLength;
+            public readonly Vector2 from;
+            public readonly Vector2 to;
+
+            public HullEdgeV2(Vector2 from, Vector2 to)
+            {
+                this.from = from;
+                this.to = to;
+                edgeLength = (from - to).sqrMagnitude;
+            }
+
+            public bool Intersects(HullEdgeV2 other)
+            {
+                return UnityExtensions.Intersects(from, to, other.from, other.to);
+            }
+
+            public float LargestAngle(Vector2 point)
+            {
+                float angleFrom = Vector2.Angle(to - from, point - from);
+                float angleTo = Vector2.Angle(from - to, point - to);
+                return Math.Max(angleFrom, angleTo);
+            }
+        }
+
+        private sealed class ConcaveHullComparerV2 : IComparer<HullEdgeV2>
+        {
+            public static readonly ConcaveHullComparerV2 Instance = new();
+
+            private ConcaveHullComparerV2() { }
+
+            public int Compare(HullEdgeV2 lhs, HullEdgeV2 rhs)
+            {
+                int comparison = lhs.edgeLength.CompareTo(rhs.edgeLength);
+                if (comparison != 0)
+                {
+                    return comparison;
+                }
+                comparison = lhs.from.x.CompareTo(rhs.from.x);
+                if (comparison != 0)
+                {
+                    return comparison;
+                }
+
+                comparison = lhs.from.y.CompareTo(rhs.from.y);
+                if (comparison != 0)
+                {
+                    return comparison;
+                }
+
+                comparison = lhs.to.x.CompareTo(rhs.to.x);
+                if (comparison != 0)
+                {
+                    return comparison;
+                }
+
+                return lhs.to.y.CompareTo(rhs.to.y);
+            }
         }
 
         /// <summary>

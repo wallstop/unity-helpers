@@ -299,7 +299,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             if (Application.isEditor && !Application.isPlaying)
             {
                 // If this is an asset object, unload it so a fresh instance can be loaded next time.
-                string assetPath = UnityEditor.AssetDatabase.GetAssetPath(obj);
+                string assetPath = AssetDatabase.GetAssetPath(obj);
                 if (!string.IsNullOrEmpty(assetPath))
                 {
                     Resources.UnloadAsset(obj);

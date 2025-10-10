@@ -215,69 +215,54 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             source1 ??= string.Empty;
             source2 ??= string.Empty;
 
-            int source1Length = source1.Length;
-            int source2Length = source2.Length;
+            int len1 = source1.Length;
+            int len2 = source2.Length;
 
-            if (source1Length == 0)
+            if (len1 == 0)
             {
-                return source2Length;
+                return len2;
             }
 
-            if (source2Length == 0)
+            if (len2 == 0)
             {
-                return source1Length;
+                return len1;
             }
 
-            using PooledResource<int[][]> matrixResource = WallstopFastArrayPool<int[]>.Get(
-                source1Length + 1
+            using PooledResource<int[]> prevLease = WallstopFastArrayPool<int>.Get(
+                len2 + 1,
+                out int[] prev
             );
-            using PooledResource<List<PooledResource<int[]>>> bufferedArrays = Buffers<
-                PooledResource<int[]>
-            >.List.Get();
-            List<PooledResource<int[]>> bufferedArraysList = bufferedArrays.resource;
-            try
+            using PooledResource<int[]> currLease = WallstopFastArrayPool<int>.Get(
+                len2 + 1,
+                out int[] curr
+            );
+
+            for (int j = 0; j <= len2; ++j)
             {
-                int[][] matrix = matrixResource.resource;
-                for (int index = 0; index < source1Length + 1; ++index)
-                {
-                    PooledResource<int[]> innerResource = WallstopFastArrayPool<int>.Get(
-                        source2Length + 1
-                    );
-                    bufferedArraysList.Add(innerResource);
-                    matrix[index] = innerResource.resource;
-                }
-
-                for (int i = 0; i <= source1Length; ++i)
-                {
-                    matrix[i][0] = i;
-                }
-
-                for (int j = 0; j <= source2Length; ++j)
-                {
-                    matrix[0][j] = j;
-                }
-
-                for (int i = 1; i <= source1Length; ++i)
-                {
-                    for (int j = 1; j <= source2Length; ++j)
-                    {
-                        int cost = source2[j - 1] == source1[i - 1] ? 0 : 1;
-                        matrix[i][j] = Mathf.Min(
-                            Mathf.Min(matrix[i - 1][j] + 1, matrix[i][j - 1] + 1),
-                            matrix[i - 1][j - 1] + cost
-                        );
-                    }
-                }
-
-                return matrix[source1Length][source2Length];
+                prev[j] = j;
             }
-            finally
+
+            for (int i = 1; i <= len1; ++i)
             {
-                foreach (PooledResource<int[]> bufferedArray in bufferedArraysList)
+                curr[0] = i;
+                char c1 = source1[i - 1];
+                for (int j = 1; j <= len2; ++j)
                 {
-                    bufferedArray.Dispose();
+                    int cost = source2[j - 1] == c1 ? 0 : 1;
+                    int deletion = prev[j] + 1;
+                    int insertion = curr[j - 1] + 1;
+                    int substitution = prev[j - 1] + cost;
+                    int min = deletion < insertion ? deletion : insertion;
+                    curr[j] = min < substitution ? min : substitution;
                 }
+
+                // swap prev and curr
+                int[] tmp = prev;
+                prev = curr;
+                curr = tmp;
             }
+
+            return prev[len2];
         }
 
         private static List<CaseToken> TokenizeForCase(string value)
@@ -288,9 +273,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return tokens;
             }
 
-            using PooledResource<StringBuilder> bufferResource = Buffers.StringBuilder.Get();
-            StringBuilder buffer = bufferResource.resource;
-            buffer.Clear();
+            using PooledResource<StringBuilder> bufferResource = Buffers.GetStringBuilder(
+                value.Length,
+                out StringBuilder buffer
+            );
 
             CaseTokenKind? currentKind = null;
             CharacterCategory lastCategory = CharacterCategory.None;
@@ -501,9 +487,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return value;
             }
 
-            using PooledResource<StringBuilder> builderResource = Buffers.StringBuilder.Get();
-            StringBuilder builder = builderResource.resource;
-            builder.Clear();
+            using PooledResource<StringBuilder> builderResource = Buffers.GetStringBuilder(
+                value.Length,
+                out StringBuilder builder
+            );
 
             for (int i = 0; i < value.Length; ++i)
             {
@@ -555,9 +542,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return string.Empty;
             }
 
-            using PooledResource<StringBuilder> stringBuilderBuffer = Buffers.StringBuilder.Get();
-            StringBuilder stringBuilder = stringBuilderBuffer.resource;
-            stringBuilder.Clear();
+            using PooledResource<StringBuilder> stringBuilderBuffer = Buffers.GetStringBuilder(
+                value.Length,
+                out StringBuilder stringBuilder
+            );
 
             bool previousWasWord = false;
             bool previousWasNumeric = false;
@@ -775,9 +763,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return string.Empty;
             }
 
-            using PooledResource<StringBuilder> builderResource = Buffers.StringBuilder.Get();
-            StringBuilder builder = builderResource.resource;
-            builder.Clear();
+            using PooledResource<StringBuilder> builderResource = Buffers.GetStringBuilder(
+                value.Length,
+                out StringBuilder builder
+            );
 
             bool previousWasSpace = false;
             for (int i = 0; i < value.Length; ++i)
@@ -816,9 +805,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
             bool startsWithLowerWord = StartsWithLowercaseWord(value);
 
-            using PooledResource<StringBuilder> stringBuilderBuffer = Buffers.StringBuilder.Get();
-            StringBuilder stringBuilder = stringBuilderBuffer.resource;
-            stringBuilder.Clear();
+            using PooledResource<StringBuilder> stringBuilderBuffer = Buffers.GetStringBuilder(
+                value.Length,
+                out StringBuilder stringBuilder
+            );
 
             CaseTokenKind? previousTokenKind = null;
             int previousWordLength = 0;
@@ -911,9 +901,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return string.Empty;
             }
 
-            using PooledResource<StringBuilder> stringBuilderBuffer = Buffers.StringBuilder.Get();
-            StringBuilder stringBuilder = stringBuilderBuffer.resource;
-            stringBuilder.Clear();
+            using PooledResource<StringBuilder> stringBuilderBuffer = Buffers.GetStringBuilder(
+                value.Length,
+                out StringBuilder stringBuilder
+            );
 
             bool isFirstWord = true;
             foreach (CaseToken token in tokens)
@@ -1061,9 +1052,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return char.ToLowerInvariant(pascalCase[0]).ToString();
             }
 
-            using PooledResource<StringBuilder> stringBuilderBuffer = Buffers.StringBuilder.Get();
-            StringBuilder stringBuilder = stringBuilderBuffer.resource;
-            stringBuilder.Clear();
+            using PooledResource<StringBuilder> stringBuilderBuffer = Buffers.GetStringBuilder(
+                value.Length,
+                out StringBuilder stringBuilder
+            );
             _ = stringBuilder.Append(char.ToLowerInvariant(pascalCase[0]));
 
             for (int i = 1; i < pascalCase.Length; ++i)
@@ -1106,14 +1098,23 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
         public static string Reverse(this string input)
         {
-            if (string.IsNullOrEmpty(input))
+            if (input == null || input.Length <= 1)
             {
                 return input;
             }
 
-            char[] chars = input.ToCharArray();
-            Array.Reverse(chars);
-            return new string(chars);
+            int len = input.Length;
+            return string.Create(
+                len,
+                input,
+                static (span, src) =>
+                {
+                    for (int i = 0; i < span.Length; ++i)
+                    {
+                        span[i] = src[src.Length - 1 - i];
+                    }
+                }
+            );
         }
 
         public static string RemoveWhitespace(this string input)
@@ -1123,8 +1124,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return input;
             }
 
-            using PooledResource<StringBuilder> stringBuilderBuffer = Buffers.StringBuilder.Get();
-            StringBuilder stringBuilder = stringBuilderBuffer.resource;
+            using PooledResource<StringBuilder> stringBuilderBuffer = Buffers.GetStringBuilder(
+                input.Length,
+                out StringBuilder stringBuilder
+            );
 
             foreach (char c in input)
             {
@@ -1247,15 +1250,146 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return string.Empty;
             }
 
-            try
+            if (TryDecodeBase64Utf8(input, out string decoded))
             {
-                byte[] bytes = Convert.FromBase64String(input);
-                return Encoding.UTF8.GetString(bytes);
+                return decoded;
             }
-            catch (FormatException)
+
+            return string.Empty;
+        }
+
+        private static bool IsLikelyBase64(string s)
+        {
+            int len = s.Length;
+            if (len == 0 || (len & 3) != 0)
             {
-                return string.Empty;
+                return false;
             }
+
+            // Count '=' padding at end (0..2), and ensure it only appears at the end
+            int padding = 0;
+            if (s[len - 1] == '=')
+            {
+                padding = 1;
+                if (s[len - 2] == '=')
+                {
+                    padding = 2;
+                }
+            }
+
+            int effectiveLen = len - padding;
+            for (int i = 0; i < effectiveLen; ++i)
+            {
+                char c = s[i];
+                bool isAlphaUpper = c >= 'A' && c <= 'Z';
+                bool isAlphaLower = c >= 'a' && c <= 'z';
+                bool isDigit = c >= '0' && c <= '9';
+                bool isPlusSlash = c == '+' || c == '/';
+                if (!(isAlphaUpper || isAlphaLower || isDigit || isPlusSlash))
+                {
+                    return false;
+                }
+            }
+
+            // Ensure no '=' appears before the padding region
+            for (int i = 0; i < effectiveLen; ++i)
+            {
+                if (s[i] == '=')
+                {
+                    return false;
+                }
+            }
+
+            // Basic checks passed
+            return true;
+        }
+
+        private static bool TryDecodeBase64Utf8(string s, out string result)
+        {
+            result = string.Empty;
+            if (!IsLikelyBase64(s))
+            {
+                return false;
+            }
+
+            int len = s.Length;
+            int padding = 0;
+            if (len > 0 && s[len - 1] == '=')
+            {
+                padding = 1;
+                if (len > 1 && s[len - 2] == '=')
+                {
+                    padding = 2;
+                }
+            }
+
+            int outputLen = (len >> 2) * 3 - padding;
+            if (outputLen < 0)
+            {
+                return false;
+            }
+
+            using PooledResource<byte[]> lease = WallstopFastArrayPool<byte>.Get(
+                outputLen,
+                out byte[] buffer
+            );
+
+            int k = 0;
+            for (int i = 0; i < len; i += 4)
+            {
+                int v0 = Base64Map(s[i]);
+                int v1 = Base64Map(s[i + 1]);
+                char c2 = s[i + 2];
+                char c3 = s[i + 3];
+                int v2 = c2 == '=' ? 0 : Base64Map(c2);
+                int v3 = c3 == '=' ? 0 : Base64Map(c3);
+
+                if (v0 < 0 || v1 < 0 || (c2 != '=' && v2 < 0) || (c3 != '=' && v3 < 0))
+                {
+                    return false;
+                }
+
+                if (k < outputLen)
+                {
+                    buffer[k++] = (byte)((v0 << 2) | (v1 >> 4));
+                }
+                if (k < outputLen)
+                {
+                    buffer[k++] = (byte)((v1 << 4) | (v2 >> 2));
+                }
+                if (k < outputLen)
+                {
+                    buffer[k++] = (byte)((v2 << 6) | v3);
+                }
+            }
+
+            result = Encoding.UTF8.GetString(buffer, 0, outputLen);
+            return true;
+        }
+
+        private static int Base64Map(char c)
+        {
+            if (c >= 'A' && c <= 'Z')
+            {
+                return c - 'A';
+            }
+            if (c >= 'a' && c <= 'z')
+            {
+                return c - 'a' + 26;
+            }
+            if (c >= '0' && c <= '9')
+            {
+                return c - '0' + 52;
+            }
+            if (c == '+')
+            {
+                return 62;
+            }
+            if (c == '/')
+            {
+                return 63;
+            }
+            return -1;
         }
 
         public static string Repeat(this string input, int count)
@@ -1270,8 +1404,20 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return input;
             }
 
-            using PooledResource<StringBuilder> stringBuilderBuffer = Buffers.StringBuilder.Get();
-            StringBuilder stringBuilder = stringBuilderBuffer.resource;
+            int estimated = 0;
+            if (count > 1 && input.Length > 0)
+            {
+                int maxMultiplier = int.MaxValue / input.Length;
+                if (count <= maxMultiplier)
+                {
+                    estimated = input.Length * count;
+                }
+                // else leave estimated = 0 to let the builder grow dynamically
+            }
+            using PooledResource<StringBuilder> stringBuilderBuffer = Buffers.GetStringBuilder(
+                estimated,
+                out StringBuilder stringBuilder
+            );
 
             for (int i = 0; i < count; ++i)
             {
@@ -1290,8 +1436,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
             using PooledResource<List<string>> listBuffer = Buffers<string>.List.Get();
             List<string> words = listBuffer.resource;
-            using PooledResource<StringBuilder> stringBuilderBuffer = Buffers.StringBuilder.Get();
-            StringBuilder currentWord = stringBuilderBuffer.resource;
+            using PooledResource<StringBuilder> stringBuilderBuffer = Buffers.GetStringBuilder(
+                input.Length,
+                out StringBuilder currentWord
+            );
 
             for (int i = 0; i < input.Length; ++i)
             {
@@ -1352,9 +1500,23 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return input;
             }
 
-            return input.Substring(0, index)
-                + (newValue ?? string.Empty)
-                + input.Substring(index + oldValue.Length);
+            int oldLen = oldValue.Length;
+            int newLen = input.Length - oldLen + (newValue?.Length ?? 0);
+            return string.Create(
+                newLen,
+                (input, index, oldLen, newValue),
+                static (dst, state) =>
+                {
+                    state.input.AsSpan(0, state.index).CopyTo(dst);
+                    int pos = state.index;
+                    if (state.newValue != null)
+                    {
+                        state.newValue.AsSpan().CopyTo(dst.Slice(pos));
+                        pos += state.newValue.Length;
+                    }
+                    state.input.AsSpan(state.index + state.oldLen).CopyTo(dst.Slice(pos));
+                }
+            );
         }
 
         public static string ReplaceLast(this string input, string oldValue, string newValue)
@@ -1370,9 +1532,23 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return input;
             }
 
-            return input.Substring(0, index)
-                + (newValue ?? string.Empty)
-                + input.Substring(index + oldValue.Length);
+            int oldLen = oldValue.Length;
+            int newLen = input.Length - oldLen + (newValue?.Length ?? 0);
+            return string.Create(
+                newLen,
+                (input, index, oldLen, newValue),
+                static (dst, state) =>
+                {
+                    state.input.AsSpan(0, state.index).CopyTo(dst);
+                    int pos = state.index;
+                    if (state.newValue != null)
+                    {
+                        state.newValue.AsSpan().CopyTo(dst.Slice(pos));
+                        pos += state.newValue.Length;
+                    }
+                    state.input.AsSpan(state.index + state.oldLen).CopyTo(dst.Slice(pos));
+                }
+            );
         }
 
         private static string RemoveCombiningDotAboveIfPresent(string value)
@@ -1398,9 +1574,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return value;
             }
 
-            using PooledResource<StringBuilder> builderResource = Buffers.StringBuilder.Get();
-            StringBuilder builder = builderResource.resource;
-            builder.Clear();
+            using PooledResource<StringBuilder> builderResource = Buffers.GetStringBuilder(
+                value.Length,
+                out StringBuilder builder
+            );
 
             for (int i = 0; i < value.Length; ++i)
             {

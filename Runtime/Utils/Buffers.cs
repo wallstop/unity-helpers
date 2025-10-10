@@ -50,6 +50,22 @@ namespace WallstopStudios.UnityHelpers.Utils
         );
 
         /// <summary>
+        /// Gets a pooled StringBuilder with at least the requested capacity.
+        /// </summary>
+        public static PooledResource<StringBuilder> GetStringBuilder(
+            int capacity,
+            out StringBuilder builder
+        )
+        {
+            PooledResource<StringBuilder> pooled = StringBuilder.Get(out builder);
+            if (builder.Capacity < capacity)
+            {
+                builder.Capacity = capacity;
+            }
+            return pooled;
+        }
+
+        /// <summary>
         /// Gets a cached WaitForSeconds instance for the specified duration.
         /// This method caches instances to avoid repeated allocations in coroutines.
         /// </summary>
@@ -98,6 +114,19 @@ namespace WallstopStudios.UnityHelpers.Utils
             () => new List<T>(),
             onRelease: list => list.Clear()
         );
+
+        /// <summary>
+        /// Gets a pooled List with at least the requested capacity.
+        /// </summary>
+        public static PooledResource<List<T>> GetList(int capacity, out List<T> list)
+        {
+            PooledResource<List<T>> pooled = List.Get(out list);
+            if (list.Capacity < capacity)
+            {
+                list.Capacity = capacity;
+            }
+            return pooled;
+        }
 
         /// <summary>
         /// Generic pool for HashSet&lt;T&gt; instances. Sets are automatically cleared when returned to the pool.

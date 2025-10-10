@@ -114,20 +114,327 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             float alphaCutoff = 0.01f
         )
         {
-            return GetAverageColor(
-                sprites
-                    .Where(value => value != null)
-                    .Select(sprite => sprite.texture)
-                    .Where(value => value != null)
-                    .SelectMany(texture =>
+            if (sprites == null)
+            {
+                return Color.black;
+            }
+
+            switch (method)
+            {
+                case ColorAveragingMethod.LAB:
+                    return AverageSpritesLAB(sprites, alphaCutoff);
+                case ColorAveragingMethod.HSV:
+                    return AverageSpritesHSV(sprites, alphaCutoff);
+                case ColorAveragingMethod.Weighted:
+                    return AverageSpritesWeighted(sprites, alphaCutoff);
+                case ColorAveragingMethod.Dominant:
+                    return DominantColorFromSprites(sprites, alphaCutoff);
+                default:
+                    return Color.black;
+            }
+
+            static Color AverageSpritesLAB(IEnumerable<Sprite> sprites, float alphaCutoff)
+            {
+                double l = 0,
+                    a = 0,
+                    b = 0;
+                int count = 0;
+                foreach (var sprite in sprites)
+                {
+                    if (sprite == null)
                     {
-                        texture.MakeReadable();
-                        Color[] pixels = texture.GetPixels();
-                        return pixels;
-                    }),
-                method,
-                alphaCutoff
-            );
+                        continue;
+                    }
+                    Texture2D texture = sprite.texture;
+                    if (texture == null)
+                    {
+                        continue;
+                    }
+                    texture.MakeReadable();
+                    int expectedBytes = texture.width * texture.height * 4;
+                    var rawBytes = texture.GetRawTextureData<byte>();
+                    if (rawBytes.Length == expectedBytes)
+                    {
+                        var raw = texture.GetRawTextureData<Color32>();
+                        int n = raw.Length;
+                        for (int i = 0; i < n; ++i)
+                        {
+                            Color32 c = raw[i];
+                            if (c.a / 255f <= alphaCutoff)
+                            {
+                                continue;
+                            }
+                            Color cf = c;
+                            LABColor lab = RGBToLAB(cf);
+                            l += lab.l;
+                            a += lab.a;
+                            b += lab.b;
+                            ++count;
+                        }
+                    }
+                    else
+                    {
+                        Color32[] px = texture.GetPixels32();
+                        for (int i = 0; i < px.Length; ++i)
+                        {
+                            Color32 c = px[i];
+                            if (c.a / 255f <= alphaCutoff)
+                            {
+                                continue;
+                            }
+                            Color cf = c;
+                            LABColor lab = RGBToLAB(cf);
+                            l += lab.l;
+                            a += lab.a;
+                            b += lab.b;
+                            ++count;
+                        }
+                    }
+                }
+
+                count = Mathf.Max(count, 1);
+                return LABToRGB(l / count, a / count, b / count);
+            }
+
+            static Color AverageSpritesHSV(IEnumerable<Sprite> sprites, float alphaCutoff)
+            {
+                float sumCos = 0f,
+                    sumSin = 0f,
+                    sumS = 0f,
+                    sumV = 0f;
+                int count = 0;
+                foreach (var sprite in sprites)
+                {
+                    if (sprite == null)
+                    {
+                        continue;
+                    }
+                    Texture2D texture = sprite.texture;
+                    if (texture == null)
+                    {
+                        continue;
+                    }
+                    texture.MakeReadable();
+                    int expectedBytes = texture.width * texture.height * 4;
+                    var rawBytes = texture.GetRawTextureData<byte>();
+                    if (rawBytes.Length == expectedBytes)
+                    {
+                        var raw = texture.GetRawTextureData<Color32>();
+                        int n = raw.Length;
+                        for (int i = 0; i < n; ++i)
+                        {
+                            Color32 c = raw[i];
+                            if (c.a / 255f <= alphaCutoff)
+                            {
+                                continue;
+                            }
+                            Color cf = c;
+                            Color.RGBToHSV(cf, out float h, out float s, out float v);
+                            float hueRad = h * 2f * Mathf.PI;
+                            sumCos += Mathf.Cos(hueRad);
+                            sumSin += Mathf.Sin(hueRad);
+                            sumS += s;
+                            sumV += v;
+                            ++count;
+                        }
+                    }
+                    else
+                    {
+                        Color32[] px = texture.GetPixels32();
+                        for (int i = 0; i < px.Length; ++i)
+                        {
+                            Color32 c = px[i];
+                            if (c.a / 255f <= alphaCutoff)
+                            {
+                                continue;
+                            }
+                            Color cf = c;
+                            Color.RGBToHSV(cf, out float h, out float s, out float v);
+                            float hueRad = h * 2f * Mathf.PI;
+                            sumCos += Mathf.Cos(hueRad);
+                            sumSin += Mathf.Sin(hueRad);
+                            sumS += s;
+                            sumV += v;
+                            ++count;
+                        }
+                    }
+                }
+
+                if (count == 0)
+                {
+                    return Color.black;
+                }
+
+                float avgHueRad = Mathf.Atan2(sumSin / count, sumCos / count);
+                if (avgHueRad < 0f)
+                {
+                    avgHueRad += 2f * Mathf.PI;
+                }
+                float avgHue = avgHueRad / (2f * Mathf.PI);
+                float avgS = sumS / count;
+                float avgV = sumV / count;
+                return Color.HSVToRGB(avgHue, avgS, avgV);
+            }
+
+            static Color AverageSpritesWeighted(IEnumerable<Sprite> sprites, float alphaCutoff)
+            {
+                const float rW = 0.299f,
+                    gW = 0.587f,
+                    bW = 0.114f;
+                float total = 0f;
+                float r = 0f,
+                    g = 0f,
+                    b = 0f,
+                    a = 0f;
+                foreach (var sprite in sprites)
+                {
+                    if (sprite == null)
+                    {
+                        continue;
+                    }
+                    Texture2D texture = sprite.texture;
+                    if (texture == null)
+                    {
+                        continue;
+                    }
+                    texture.MakeReadable();
+                    int expectedBytes = texture.width * texture.height * 4;
+                    var rawBytes = texture.GetRawTextureData<byte>();
+                    if (rawBytes.Length == expectedBytes)
+                    {
+                        var raw = texture.GetRawTextureData<Color32>();
+                        int n = raw.Length;
+                        for (int i = 0; i < n; ++i)
+                        {
+                            Color32 c = raw[i];
+                            if (c.a / 255f <= alphaCutoff)
+                            {
+                                continue;
+                            }
+                            float rf = c.r / 255f,
+                                gf = c.g / 255f,
+                                bf = c.b / 255f,
+                                af = c.a / 255f;
+                            float w = rf * rW + gf * gW + bf * bW;
+                            r += rf * w;
+                            g += gf * w;
+                            b += bf * w;
+                            a += af * w;
+                            total += w;
+                        }
+                    }
+                    else
+                    {
+                        Color32[] px = texture.GetPixels32();
+                        for (int i = 0; i < px.Length; ++i)
+                        {
+                            Color32 c = px[i];
+                            if (c.a / 255f <= alphaCutoff)
+                            {
+                                continue;
+                            }
+                            float rf = c.r / 255f,
+                                gf = c.g / 255f,
+                                bf = c.b / 255f,
+                                af = c.a / 255f;
+                            float w = rf * rW + gf * gW + bf * bW;
+                            r += rf * w;
+                            g += gf * w;
+                            b += bf * w;
+                            a += af * w;
+                            total += w;
+                        }
+                    }
+                }
+                if (total > 0f)
+                {
+                    r /= total;
+                    g /= total;
+                    b /= total;
+                    a /= total;
+                }
+                return new Color(r, g, b, a);
+            }
+
+            static Color DominantColorFromSprites(IEnumerable<Sprite> sprites, float alphaCutoff)
+            {
+                using PooledResource<Dictionary<FastVector3Int, int>> bucketsLease =
+                    DictionaryBuffer<FastVector3Int, int>.Dictionary.Get(out var buckets);
+                const int bucketSize = 32;
+
+                foreach (var sprite in sprites)
+                {
+                    if (sprite == null)
+                    {
+                        continue;
+                    }
+                    Texture2D texture = sprite.texture;
+                    if (texture == null)
+                    {
+                        continue;
+                    }
+                    texture.MakeReadable();
+                    int expectedBytes = texture.width * texture.height * 4;
+                    var rawBytes = texture.GetRawTextureData<byte>();
+                    if (rawBytes.Length == expectedBytes)
+                    {
+                        var raw = texture.GetRawTextureData<Color32>();
+                        int n = raw.Length;
+                        for (int i = 0; i < n; ++i)
+                        {
+                            Color32 c = raw[i];
+                            if (c.a / 255f <= alphaCutoff)
+                            {
+                                continue;
+                            }
+                            FastVector3Int bucket = new(
+                                Mathf.RoundToInt(c.r / (float)bucketSize),
+                                Mathf.RoundToInt(c.g / (float)bucketSize),
+                                Mathf.RoundToInt(c.b / (float)bucketSize)
+                            );
+                            buckets.AddOrUpdate(bucket, _ => 0, (_, value) => value + 1);
+                        }
+                    }
+                    else
+                    {
+                        Color32[] px = texture.GetPixels32();
+                        for (int i = 0; i < px.Length; ++i)
+                        {
+                            Color32 c = px[i];
+                            if (c.a / 255f <= alphaCutoff)
+                            {
+                                continue;
+                            }
+                            FastVector3Int bucket = new(
+                                Mathf.RoundToInt(c.r / (float)bucketSize),
+                                Mathf.RoundToInt(c.g / (float)bucketSize),
+                                Mathf.RoundToInt(c.b / (float)bucketSize)
+                            );
+                            buckets.AddOrUpdate(bucket, _ => 0, (_, value) => value + 1);
+                        }
+                    }
+                }
+
+                KeyValuePair<FastVector3Int, int>? largest = null;
+                foreach (var kv in buckets)
+                {
+                    largest ??= kv;
+                    if (largest.Value.Value < kv.Value)
+                    {
+                        largest = kv;
+                    }
+                }
+                if (largest == null)
+                {
+                    return default;
+                }
+                FastVector3Int dominant = largest.Value.Key;
+                return new Color(
+                    (dominant.x * bucketSize) / 255f,
+                    (dominant.y * bucketSize) / 255f,
+                    (dominant.z * bucketSize) / 255f
+                );
+            }
         }
 
         /// <summary>

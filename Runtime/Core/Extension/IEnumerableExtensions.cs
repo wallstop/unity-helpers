@@ -280,12 +280,18 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// </remarks>
         public static IEnumerable<IEnumerable<T>> Partition<T>(this IEnumerable<T> items, int size)
         {
+            if (size <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(size), size, "Size must be positive.");
+            }
             using IEnumerator<T> enumerator = items.GetEnumerator();
-            using PooledResource<List<T>> listBuffer = Buffers<T>.List.Get();
-            List<T> partition = listBuffer.resource;
 
             while (enumerator.MoveNext())
             {
+                // Allocate one independent list per partition to ensure the yielded value
+                // is not mutated by subsequent iterations.
+                List<T> partition = new(size);
+
                 int count = 0;
                 do
                 {
@@ -293,7 +299,42 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 } while (++count < size && enumerator.MoveNext());
 
                 yield return partition;
-                partition.Clear();
+            }
+        }
+
+        /// <summary>
+        /// Splits an enumerable into partitions of the specified size, returning pooled lists.
+        /// Each yielded value must be disposed by the consumer to return the list to the pool.
+        /// </summary>
+        /// <typeparam name="T">Element type.</typeparam>
+        /// <param name="items">Sequence to partition.</param>
+        /// <param name="size">Maximum elements per partition.</param>
+        /// <returns>Sequence of pooled list resources; dispose each to return to pool.</returns>
+        public static IEnumerable<PooledResource<List<T>>> PartitionPooled<T>(
+            this IEnumerable<T> items,
+            int size
+        )
+        {
+            if (size <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(size), size, "Size must be positive.");
+            }
+            using IEnumerator<T> enumerator = items.GetEnumerator();
+
+            while (enumerator.MoveNext())
+            {
+                using PooledResource<List<T>> pooled = Buffers<T>.GetList(
+                    size,
+                    out List<T> partition
+                );
+                int count = 0;
+                do
+                {
+                    partition.Add(enumerator.Current);
+                } while (++count < size && enumerator.MoveNext());
+
+                // Transfer ownership to the caller by yielding without disposing here.
+                yield return pooled;
             }
         }
     }

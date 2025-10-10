@@ -157,17 +157,35 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 Vector3 position = elementTransformer(element);
                 _entries[i] = new Entry(element, position);
                 if (position.x < minX)
+                {
                     minX = position.x;
+                }
+
                 if (position.y < minY)
+                {
                     minY = position.y;
+                }
+
                 if (position.z < minZ)
+                {
                     minZ = position.z;
+                }
+
                 if (position.x > maxX)
+                {
                     maxX = position.x;
+                }
+
                 if (position.y > maxY)
+                {
                     maxY = position.y;
+                }
+
                 if (position.z > maxZ)
+                {
                     maxZ = position.z;
+                }
+
                 if (anyPoints)
                 {
                     bounds = bounds.ExpandToInclude(position);
