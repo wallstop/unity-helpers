@@ -510,7 +510,10 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 return true;
             }
 
-            candidateGameObject ??= candidate.gameObject;
+            if (candidateGameObject == null)
+            {
+                candidateGameObject = candidate.gameObject;
+            }
 
             if (filters._checkTag && !candidateGameObject.CompareTag(filters._tag))
             {

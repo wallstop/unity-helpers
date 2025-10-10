@@ -161,11 +161,21 @@ namespace WallstopStudios.UnityHelpers.Core.Helper.Logging
         }
 
         [HideInCallstack]
+        private static string ToSafeString(object arg)
+        {
+            if (arg is Object unityObj)
+            {
+                return unityObj != null ? unityObj.ToString() : string.Empty;
+            }
+            return arg?.ToString() ?? string.Empty;
+        }
+
+        [HideInCallstack]
         public string Format(string format, object arg, IFormatProvider formatProvider)
         {
             if (string.IsNullOrWhiteSpace(format))
             {
-                return arg?.ToString() ?? string.Empty;
+                return ToSafeString(arg);
             }
 
             _cachedDecorators.Clear();
@@ -242,7 +252,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper.Logging
                 return formattable.ToString(format, this);
             }
 
-            return arg?.ToString() ?? string.Empty;
+            return ToSafeString(arg);
         }
 
         [HideInCallstack]

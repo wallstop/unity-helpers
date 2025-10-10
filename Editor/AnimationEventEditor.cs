@@ -14,6 +14,93 @@ namespace WallstopStudios.UnityHelpers.Editor
     using WallstopStudios.UnityHelpers.Utils;
 
     // https://gist.githubusercontent.com/yujen/5e1cd78e2a341260b38029de08a449da/raw/ac60c1002e0e14375de5b2b0a167af00df3f74b4/SeniaAnimationEventEditor.cs
+    /// <summary>
+    /// Interactive editor window for inspecting, creating, editing, validating, and reordering
+    /// <see cref="AnimationEvent"/> entries on an <see cref="AnimationClip"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Problems this solves:
+    /// </para>
+    /// <para>
+    /// - Discoverability: Quickly lists all methods on <see cref="MonoBehaviour"/>s that are valid
+    ///   animation event handlers. In Explicit Mode, only methods decorated with
+    ///   <c>[AnimationEvent]</c> are shown, keeping choices intentional and type-safe.
+    /// </para>
+    /// <para>
+    /// - Efficiency: Add, duplicate, re-order, and bulk edit events with frame snapping, optional
+    ///   precise time control, keyboard shortcuts, and sprite previews for quick visual context.
+    /// </para>
+    /// <para>
+    /// - Safety: Validates method existence, parameter compatibility, and warns for mismatches.
+    /// </para>
+    /// <para>
+    /// How it works:
+    /// </para>
+    /// <para>
+    /// - Uses <see cref="UnityEditor.TypeCache"/> to scan <see cref="MonoBehaviour"/> types and find
+    ///   viable event handlers via <see cref="Editor.Core.Helper.AnimationEventHelpers"/>. In
+    ///   Explicit Mode, only methods with <c>[AnimationEvent]</c> are included; it respects
+    ///   <c>ignoreDerived</c> to limit inherited exposure.
+    /// </para>
+    /// <para>
+    /// - Presents a searchable clip list from the current Animator, then renders each event with
+    ///   method/type selection and parameter editors matching the selected signature.
+    /// </para>
+    /// <para>
+    /// - Supports keyboard shortcuts: Delete (remove), Ctrl+D (duplicate), Up/Down (navigate).
+    /// </para>
+    /// <para>
+    /// Usage scenarios:
+    /// </para>
+    /// <list type="bullet">
+    /// <item>
+    /// <description>Authoring complex 2D/3D animation behaviors with strongly-typed methods.</description>
+    /// </item>
+    /// <item>
+    /// <description>Retrofitting existing clips with validated events and consistent frame timing.</description>
+    /// </item>
+    /// <item>
+    /// <description>Bulk reviewing events across clips to catch missing handlers.</description>
+    /// </item>
+    /// </list>
+    /// <para>
+    /// Pros:
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>Fast discovery of valid methods and signatures.</description></item>
+    /// <item><description>Explicit Mode reduces accidental misuse.</description></item>
+    /// <item><description>Sprite previews aid visual alignment.</description></item>
+    /// </list>
+    /// <para>
+    /// Cons / Caveats:
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>Only scans assemblies available to the editor domain.</description></item>
+    /// <item><description>Methods must have void return and a supported single parameter or none.</description></item>
+    /// <item><description>Changing frame rate affects timing; save to persist.</description></item>
+    /// </list>
+    /// <example>
+    /// <![CDATA[
+    /// using WallstopStudios.UnityHelpers.Core.Attributes;
+    /// using UnityEngine;
+    ///
+    /// public class EnemyEvents : MonoBehaviour
+    /// {
+    ///     [AnimationEvent] // Will show in Explicit Mode
+    ///     private void Footstep() { /* play SFX */ }
+    ///
+    ///     [AnimationEvent(ignoreDerived: true)]
+    ///     private void AttackFrame(int damageFrame) { /* trigger damage */ }
+    ///
+    ///     // Supported signatures: (), (int), (float), (string), (Enum), (UnityEngine.Object)
+    /// }
+    ///
+    /// // Open from menu: Tools/Wallstop Studios/Unity Helpers/AnimationEvent Editor
+    /// // Or from code:
+    /// UnityEditor.EditorWindow.GetWindow<WallstopStudios.UnityHelpers.Editor.AnimationEventEditor>();
+    /// ]]>
+    /// </example>
     public sealed class AnimationEventEditor : EditorWindow
     {
         private static IReadOnlyDictionary<Type, IReadOnlyList<MethodInfo>> _cachedTypesToMethods;

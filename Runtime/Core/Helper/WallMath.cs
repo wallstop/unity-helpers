@@ -616,5 +616,57 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         {
             return !float.IsNaN(value) && !float.IsInfinity(value);
         }
+
+        /// <summary>
+        /// Compares two float values for total equality with special handling for NaN and infinity.
+        /// Unlike standard equality, this treats NaN == NaN as true and properly compares infinities.
+        /// Based on IEEE 754 totalOrder semantics.
+        /// </summary>
+        /// <param name="lhs">The first value</param>
+        /// <param name="rhs">The second value</param>
+        /// <returns>True if the values are equal, including special cases where both are NaN or the same infinity</returns>
+        public static bool TotalEquals(this float lhs, float rhs)
+        {
+            if (float.IsNaN(lhs) && float.IsNaN(rhs))
+            {
+                return true;
+            }
+            if (float.IsPositiveInfinity(lhs) && float.IsPositiveInfinity(rhs))
+            {
+                return true;
+            }
+            if (float.IsNegativeInfinity(lhs) && float.IsNegativeInfinity(rhs))
+            {
+                return true;
+            }
+            // ReSharper disable once CompareOfFloatsByEqualityOperator
+            return lhs == rhs;
+        }
+
+        /// <summary>
+        /// Compares two double values for total equality with special handling for NaN and infinity.
+        /// Unlike standard equality, this treats NaN == NaN as true and properly compares infinities.
+        /// Based on IEEE 754 totalOrder semantics.
+        /// </summary>
+        /// <param name="lhs">The first value</param>
+        /// <param name="rhs">The second value</param>
+        /// <returns>True if the values are equal, including special cases where both are NaN or the same infinity</returns>
+        public static bool TotalEquals(this double lhs, double rhs)
+        {
+            if (double.IsNaN(lhs) && double.IsNaN(rhs))
+            {
+                return true;
+            }
+            if (double.IsPositiveInfinity(lhs) && double.IsPositiveInfinity(rhs))
+            {
+                return true;
+            }
+            if (double.IsNegativeInfinity(lhs) && double.IsNegativeInfinity(rhs))
+            {
+                return true;
+            }
+            // ReSharper disable once CompareOfFloatsByEqualityOperator
+            return lhs == rhs;
+        }
     }
 }

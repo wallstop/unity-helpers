@@ -26,6 +26,35 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         public bool loop;
     }
 
+    /// <summary>
+    /// Builds AnimationClips from sprites using flexible grouping and naming rules. Supports
+    /// auto-parsing by folders, regex-based grouping, duplicate-resolution, dry-run previews, and
+    /// optional case-insensitive grouping.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Problems this solves: turning folder(s) of sprites into one or many consistent
+    /// <see cref="AnimationClip"/> assets with predictable names and frame rates.
+    /// </para>
+    /// <para>
+    /// How it works: choose directories and a sprite name regex; optionally supply custom group
+    /// regex with named groups <c>base</c>/<c>index</c> or rely on common patterns
+    /// (e.g., name_01, name (2), name3). Configure per-animation FPS, loop flag, and naming
+    /// prefixes/suffixes. Use Calculate/Dry-Run sections to preview results before generating.
+    /// </para>
+    /// <para>
+    /// Pros: reproducible clip creation, battle-tested grouping heuristics, detailed previews.
+    /// Caveats: ensure regex correctness; strict numeric ordering can be toggled when mixed digits
+    /// produce undesired lexicographic ordering.
+    /// </para>
+    /// <example>
+    /// <![CDATA[
+    /// // Open via menu: Tools/Wallstop Studios/Unity Helpers/Animation Creator
+    /// // Example filter: ^Enemy_(?<base>Walk)_(?<index>\d+)$
+    /// // Add folders, enable "Resolve Duplicate Animation Names" to avoid conflicts,
+    /// // then Generate to create .anim files under a chosen folder.
+    /// ]]>
+    /// </example>
     public sealed class AnimationCreatorWindow : EditorWindow
     {
         private static readonly char[] WhiteSpaceSplitters = { ' ', '\t', '\n', '\r' };
@@ -348,7 +377,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 using (new EditorGUI.IndentLevelScope())
                 {
                     int shown = 0;
-                    foreach (var rec in _autoParsePreview)
+                    foreach (AutoParsePreviewRecord rec in _autoParsePreview)
                     {
                         EditorGUILayout.LabelField(
                             $"{rec.folder} / {rec.baseName}",
@@ -373,7 +402,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 using (new EditorGUI.IndentLevelScope())
                 {
                     int shown = 0;
-                    foreach (var rec in _autoParseDryRun)
+                    foreach (AutoParseDryRunRecord rec in _autoParseDryRun)
                     {
                         string info =
                             $"Name: {rec.finalName} | Frames: {rec.count} | Numeric: {(rec.hasIndex ? "Yes" : "No")}";
@@ -1206,7 +1235,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     continue;
                 }
 
-                if (!spritesByBaseAndAssetPath.TryGetValue(directoryPath, out var byBase))
+                if (
+                    !spritesByBaseAndAssetPath.TryGetValue(
+                        directoryPath,
+                        out Dictionary<string, List<(int index, Sprite sprite)>> byBase
+                    )
+                )
                 {
                     byBase = new Dictionary<string, List<(int index, Sprite sprite)>>(
                         groupingCaseInsensitive
@@ -1229,7 +1263,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         {
             int addedCount = 0;
 
-            HashSet<string> usedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            HashSet<string> usedNames = new(StringComparer.OrdinalIgnoreCase);
             foreach (AnimationData data in animationData)
             {
                 if (!data.isCreatedFromAutoParse && !string.IsNullOrWhiteSpace(data.animationName))
@@ -1278,8 +1312,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         }
                     }
 
-                    List<Sprite> framesForAnim = new List<Sprite>(entries.Count);
-                    foreach (var e in entries)
+                    List<Sprite> framesForAnim = new(entries.Count);
+                    foreach ((int index, Sprite sprite) e in entries)
                     {
                         framesForAnim.Add(e.sprite);
                     }
@@ -1390,7 +1424,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             Dictionary<string, Dictionary<string, List<(int index, Sprite sprite)>>> groups =
                 GroupFilteredSprites(withProgress: false);
 
-            HashSet<string> usedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            HashSet<string> usedNames = new(StringComparer.OrdinalIgnoreCase);
             foreach (AnimationData data in animationData)
             {
                 if (!data.isCreatedFromAutoParse && !string.IsNullOrWhiteSpace(data.animationName))

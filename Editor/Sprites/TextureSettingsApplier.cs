@@ -12,6 +12,22 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
+    /// <summary>
+    /// ScriptableWizard to apply texture importer settings (readability, mipmaps, wrap/filter,
+    /// compression, platform resize algorithm/format/size) to individual textures or recursively
+    /// to all textures under selected directories.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Usage: open via menu, pick explicit textures and/or directories, set which options to apply
+    /// (e.g., toggle <c>applyWrapMode</c>), and press Set to write importer changes.
+    /// </para>
+    /// <para>
+    /// Pros: fast bulk consistency; platform settings in one place.
+    /// Caveats: triggers reimports; ensure file extension filters list (<c>spriteFileExtensions</c>)
+    /// is accurate for your project; destructive to importer state—commit to VCS.
+    /// </para>
+    /// </remarks>
     public sealed class TextureSettingsApplier : ScriptableWizard
     {
         public bool applyReadOnly;

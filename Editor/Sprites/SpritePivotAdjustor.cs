@@ -16,6 +16,26 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
+    /// <summary>
+    /// Computes and applies a new sprite pivot based on an alpha-weighted center-of-mass
+    /// calculation, with optional regex filtering, fuzzy skip of unchanged results, and a force
+    /// reimport override.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Problems this solves: aligning sprites around a perceptual center (ignoring transparent
+    /// pixels below a cutoff) to simplify positioning and animation.
+    /// </para>
+    /// <para>
+    /// How it works: for each single-sprite texture in the selected folders (filtered by optional
+    /// regex), computes the pixel-weighted centroid using <c>alpha &gt;= cutoff</c> and writes the
+    /// pivot into the importer settings.
+    /// </para>
+    /// <para>
+    /// Pros: predictable pivots for varied silhouettes; skip unchanged to speed runs.
+    /// Caveats: multi-sprite textures are not supported; importer may be dirtied frequently.
+    /// </para>
+    /// </remarks>
     public class SpritePivotAdjuster : EditorWindow
     {
         private const float PivotEpsilon = 1e-3f;
@@ -44,13 +64,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         private bool _skipUnchanged = true;
 
         [SerializeField]
-        private bool _forceReimport = false;
+        private bool _forceReimport;
 
         private SerializedObject _serializedObject;
         private SerializedProperty _directoryPathsProperty;
-
-        // private SerializedProperty _spriteNameRegexProperty; // unused, removed
-
         private List<string> _filesToProcess;
         private Regex _regex;
         private string _regexError;
@@ -321,6 +338,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
             try
             {
+                if (_filesToProcess == null)
+                {
+                    return;
+                }
+
                 for (int i = 0; i < _filesToProcess.Count; i++)
                 {
                     string assetPath = _filesToProcess[i];
@@ -328,6 +350,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     {
                         continue;
                     }
+
                     if (
                         AssetImporter.GetAtPath(assetPath)
                         is not TextureImporter { textureType: TextureImporterType.Sprite } importer
@@ -367,6 +390,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                             this.LogWarn($"Skipping non-readable texture: {assetPath}");
                             continue;
                         }
+
                         Vector2 newPivot = CalculateCenterOfMassPivot(sprite, _alphaCutoff);
                         Vector2 currentPivot = importer.spritePivot;
                         bool unchanged =
@@ -377,6 +401,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                             skippedUnchanged++;
                             continue; // no meaningful change and not forced
                         }
+
                         if (!dryRun)
                         {
                             TextureImporterSettings settings = new();
@@ -387,6 +412,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                             importer.spritePivot = newPivot;
                             importers.Add(importer);
                         }
+
                         changed++;
                     }
                     else
@@ -413,12 +439,14 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     out StringBuilder sb
                 );
                 sb.AppendLine(
-                    canceled ? "Canceled by user." : (dryRun ? "Dry run completed." : "Completed.")
+                    canceled ? "Canceled by user."
+                    : dryRun ? "Dry run completed."
+                    : "Completed."
                 );
                 sb.AppendLine($"Total candidates: {totalCandidates}");
                 sb.AppendLine($"Single sprites processed: {processedSingles}");
                 sb.AppendLine(
-                    $"Changed pivots" + (dryRun ? " (would change)" : "") + $": {changed}"
+                    "Changed pivots" + (dryRun ? " (would change)" : "") + $": {changed}"
                 );
                 sb.AppendLine($"Skipped unchanged: {skippedUnchanged}");
                 sb.AppendLine($"Skipped non-readable: {skippedNonReadable}");

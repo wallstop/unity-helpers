@@ -16,6 +16,26 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     using WallstopStudios.UnityHelpers.Core.Helper;
     using Object = UnityEngine.Object;
 
+    /// <summary>
+    /// Creates one or more AnimationClips from a single sprite sheet by selecting sprite ranges,
+    /// defining loop/cycle offset, and configuring per-animation constant or curve-based frame
+    /// rates. Includes live preview and per-definition controls.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Problems this solves: turning a sliced sprite sheet into multiple clips (e.g., Idle, Walk,
+    /// Attack) with minimal friction and previewing playback before saving.
+    /// </para>
+    /// <para>
+    /// How it works: load a Texture2D with multiple sprites (sliced), pick index ranges to form an
+    /// animation definition, and optionally use an <see cref="AnimationCurve"/> for variable frame
+    /// rate. Preview playback with transport controls; save generated clips to assets.
+    /// </para>
+    /// <para>
+    /// Pros: rapid clip creation from a single sheet; visual selection and iteration.
+    /// Caveats: relies on existing sprite slicing; saving overwrites/creates .anim assets.
+    /// </para>
+    /// </remarks>
     public sealed class SpriteSheetAnimationCreator : EditorWindow
     {
         private const float ThumbnailSize = 64f;

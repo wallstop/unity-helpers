@@ -74,11 +74,11 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                 state1,
                 state2,
                 _cachedGaussian,
-                payload,
-                _bitBuffer,
-                _bitCount,
-                _byteBuffer,
-                _byteCount
+                payload: payload,
+                bitBuffer: _bitBuffer,
+                bitCount: _bitCount,
+                byteBuffer: _byteBuffer,
+                byteCount: _byteCount
             );
         }
 

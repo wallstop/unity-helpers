@@ -17,6 +17,35 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     using WallstopStudios.UnityHelpers.Visuals.UIToolkit;
     using Object = UnityEngine.Object;
 
+    /// <summary>
+    /// UI Toolkit-based multi-clip 2D animation viewer and lightweight editor. Load multiple
+    /// AnimationClips, preview layered sprite animation, reorder frames via drag & drop, adjust
+    /// preview FPS, and save an updated clip back to disk.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Problems this solves: quickly auditing and tweaking sprite-based clips without opening the
+    /// full Animation window workflow; comparing multiple clips; and adjusting timing visually.
+    /// </para>
+    /// <para>
+    /// How it works: for a selected clip, the tool resolves the <see cref="SpriteRenderer"/>
+    /// binding path and extracts its frames. The frames list supports reordering via drag & drop
+    /// with placeholders for clarity. Preview uses an in-editor <c>LayeredImage</c> to animate the
+    /// sprite sequence at the chosen FPS.
+    /// </para>
+    /// <para>
+    /// Usage:
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>Open via menu: Tools/Wallstop Studios/Unity Helpers/Sprite Animation Editor.</description></item>
+    /// <item><description>Add clips (object field or project selection button).</description></item>
+    /// <item><description>Drag frames to reorder, then Save to write an updated clip.</description></item>
+    /// </list>
+    /// <para>
+    /// Pros: intuitive drag/drop, live preview, handles multiple clips in a session.
+    /// Caveats: operates on SpriteRenderer curves only; saving overwrites the target clip asset.
+    /// </para>
+    /// </remarks>
     public sealed class AnimationViewerWindow : EditorWindow
     {
         private const string PackageId = "com.wallstop-studios.unity-helpers";
@@ -528,13 +557,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         {
             try
             {
-                DirectoryUsageData[] paths = PersistentDirectorySettings.Instance?.GetPaths(
-                    DirToolName,
-                    DirContextKey,
-                    topOnly: true,
-                    topN: 1
-                );
-                string candidate = (paths != null && paths.Length > 0) ? paths[0]?.path : null;
+                PersistentDirectorySettings settings = PersistentDirectorySettings.Instance;
+                DirectoryUsageData[] paths =
+                    settings != null
+                        ? settings.GetPaths(DirToolName, DirContextKey, topOnly: true, topN: 1)
+                        : Array.Empty<DirectoryUsageData>();
+                string candidate = paths is { Length: > 0 } ? paths[0]?.path : null;
 
                 if (string.IsNullOrWhiteSpace(candidate))
                 {
@@ -579,14 +607,19 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 }
             }
 
-            PersistentDirectorySettings.Instance?.RecordPath(DirToolName, DirContextKey, path);
+            PersistentDirectorySettings settings = PersistentDirectorySettings.Instance;
+            if (settings != null)
+            {
+                settings.RecordPath(DirToolName, DirContextKey, path);
+            }
         }
 
         private void AddEditorLayer(AnimationClip clip)
         {
             if (clip == null || _loadedEditorLayers.Any(layer => layer.SourceClip == clip))
             {
-                this.LogWarn($"Clip '{clip?.name}' is null or already loaded.");
+                string clipName = clip != null ? clip.name : "<null>";
+                this.LogWarn($"Clip '{clipName}' is null or already loaded.");
                 return;
             }
 
@@ -742,9 +775,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     "DraggedLoadedClipIndex",
                     _draggedLoadedClipOriginalIndex
                 );
-                Object dragContextObject =
-                    _loadedEditorLayers[_draggedLoadedClipOriginalIndex]?.SourceClip
-                    ?? (Object)CreateInstance<ScriptableObject>();
+                Object dragContextObject = _loadedEditorLayers[
+                    _draggedLoadedClipOriginalIndex
+                ]?.SourceClip;
+                if (dragContextObject == null)
+                {
+                    dragContextObject = CreateInstance<ScriptableObject>();
+                }
                 DragAndDrop.objectReferences = new[] { dragContextObject };
                 DragAndDrop.StartDrag(
                     _loadedEditorLayers[_draggedLoadedClipOriginalIndex].ClipName
@@ -1396,8 +1433,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 DragAndDrop.PrepareStartDrag();
                 DragAndDrop.SetGenericData("DraggedFrameDataIndex", _draggedFrameOriginalDataIndex);
 
-                Object dragContextObject =
-                    _activeEditorLayer.SourceClip ?? (Object)CreateInstance<ScriptableObject>();
+                Object dragContextObject = _activeEditorLayer.SourceClip;
+                if (dragContextObject == null)
+                {
+                    dragContextObject = CreateInstance<ScriptableObject>();
+                }
                 if (dragContextObject == null)
                 {
                     this.LogError($"Failed to create dragContextObject for frame drag.");

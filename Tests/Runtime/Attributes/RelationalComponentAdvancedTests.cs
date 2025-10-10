@@ -101,7 +101,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             tester.AssignParentComponents();
 
             // depth1Only should find only level3 (immediate parent)
-            Assert.IsNotNull(tester.depth1Only);
+            Assert.IsTrue(tester.depth1Only != null);
             Assert.AreSame(level3.GetComponent<SpriteRenderer>(), tester.depth1Only);
 
             // depth2Array should find level3 and level2
@@ -131,7 +131,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             tester.AssignChildComponents();
 
             // depth1Only should find only level1 (immediate child)
-            Assert.IsNotNull(tester.depth1Only);
+            Assert.IsTrue(tester.depth1Only != null);
             Assert.AreSame(level1.GetComponent<SpriteRenderer>(), tester.depth1Only);
 
             // depth2Array should find level1 and level2
@@ -162,7 +162,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             tester.AssignParentComponents();
 
             // Should only find the Player-tagged parent
-            Assert.IsNotNull(tester.playerTaggedParent);
+            Assert.IsTrue(tester.playerTaggedParent != null);
             Assert.AreSame(root.GetComponent<SpriteRenderer>(), tester.playerTaggedParent);
 
             // Should find all parents when no filter
@@ -214,7 +214,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             tester.AssignSiblingComponents();
 
             // Should find both siblings since they're on the same GameObject with Player tag
-            Assert.IsNotNull(tester.playerTaggedCollider);
+            Assert.IsTrue(tester.playerTaggedCollider != null);
             Assert.AreEqual(1, tester.playerTaggedRenderers.Length);
 
             yield break;
@@ -236,7 +236,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             tester.AssignParentComponents();
 
             // Should only find parents with "Player" in name
-            Assert.IsNotNull(tester.playerNamedParent);
+            Assert.IsTrue(tester.playerNamedParent != null);
             Assert.AreSame(root.GetComponent<SpriteRenderer>(), tester.playerNamedParent);
 
             // Should find all parents when no filter
@@ -285,7 +285,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             tester.AssignParentComponents();
 
             // Should find component implementing ITestInterface
-            Assert.IsNotNull(tester.interfaceParent);
+            Assert.IsTrue((UnityEngine.Object)tester.interfaceParent != null);
             Assert.IsInstanceOf<ITestInterface>(tester.interfaceParent);
 
             // Should find in array too
@@ -309,7 +309,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             tester.AssignChildComponents();
 
             // Should find component implementing ITestInterface
-            Assert.IsNotNull(tester.interfaceChild);
+            Assert.IsTrue((UnityEngine.Object)tester.interfaceChild != null);
             Assert.IsInstanceOf<ITestInterface>(tester.interfaceChild);
 
             // Should find in list too
@@ -330,7 +330,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             tester.AssignSiblingComponents();
 
             // Should find component implementing ITestInterface
-            Assert.IsNotNull(tester.interfaceSibling);
+            Assert.IsTrue((UnityEngine.Object)tester.interfaceSibling != null);
             Assert.IsInstanceOf<ITestInterface>(tester.interfaceSibling);
 
             yield break;

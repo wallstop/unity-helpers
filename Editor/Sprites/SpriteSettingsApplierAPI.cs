@@ -53,9 +53,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     patternLower = string.IsNullOrEmpty(trimmedPattern)
                         ? null
                         : trimmedPattern.ToLowerInvariant(),
-                    extWithDot = string.IsNullOrEmpty(trimmedPattern)
-                        ? null
-                        : (trimmedPattern.StartsWith(".") ? trimmedPattern : "." + trimmedPattern),
+                    extWithDot =
+                        string.IsNullOrEmpty(trimmedPattern) ? null
+                        : trimmedPattern.StartsWith(".") ? trimmedPattern
+                        : "." + trimmedPattern,
                     priority = s.priority,
                 };
                 if (

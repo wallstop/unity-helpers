@@ -55,7 +55,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             AssetDatabase.ImportAsset(path);
 
             TextureImporter ti = AssetImporter.GetAtPath(path) as TextureImporter;
-            Assert.IsNotNull(ti);
+            Assert.IsTrue(ti != null);
             if (asSprite)
             {
                 ti.textureType = TextureImporterType.Sprite;
@@ -109,7 +109,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 changed,
                 $"Expected TryUpdateTextureSettings to apply settings. Path={path}"
             );
-            Assert.IsNotNull(importer, $"Importer was null for path: {path}");
+            Assert.IsTrue(importer != null, $"Importer was null for path: {path}");
             importer.SaveAndReimport();
 
             // Verify final filter mode is from higher priority profile
@@ -152,7 +152,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 changed,
                 $"Expected TryUpdateTextureSettings to update importer for path: {path}"
             );
-            Assert.IsNotNull(importer, $"Importer was null for path: {path}");
+            Assert.IsTrue(importer != null, $"Importer was null for path: {path}");
             importer.SaveAndReimport();
             Assert.AreEqual(TextureImporterType.Sprite, importer.textureType);
         }

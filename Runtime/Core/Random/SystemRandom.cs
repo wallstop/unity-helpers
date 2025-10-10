@@ -121,7 +121,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                 _inextp = (int)internalState.State2;
             }
             RestoreCommonState(internalState);
-            _seedArray = ArrayConverter.ByteArrayToIntArrayBlockCopy(internalState.Payload);
+            _seedArray = ArrayConverter.ByteArrayToIntArrayBlockCopy(internalState._payload);
         }
 
         public override int Next()

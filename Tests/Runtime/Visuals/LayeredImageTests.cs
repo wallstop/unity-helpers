@@ -41,7 +41,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
 
             Texture2D[] computed = VisualsTestHelpers.GetComputedTextures(image, _trackedObjects);
             Assert.That(computed, Has.Length.EqualTo(1));
-            Assert.IsNull(computed[0]);
+            Assert.IsTrue(computed[0] == null);
         }
 
         [Test]
@@ -60,7 +60,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
 
             Texture2D[] computed = VisualsTestHelpers.GetComputedTextures(image, _trackedObjects);
             Assert.That(computed, Has.Length.EqualTo(1));
-            Assert.IsNotNull(computed[0]);
+            Assert.IsTrue(computed[0] != null);
             Texture2D frame = computed[0];
             Assert.That(frame.width, Is.EqualTo(1));
             Assert.That(frame.height, Is.EqualTo(1));
@@ -86,7 +86,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
             Texture2D[] computed = VisualsTestHelpers.GetComputedTextures(image, _trackedObjects);
             Assert.That(computed, Has.Length.EqualTo(1));
             Texture2D frame = computed[0];
-            Assert.IsNotNull(frame);
+            Assert.IsTrue(frame != null);
             Assert.That(
                 frame.width,
                 Is.EqualTo(2),
@@ -137,7 +137,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
             Texture2D[] computed = VisualsTestHelpers.GetComputedTextures(image, _trackedObjects);
             Assert.That(computed, Has.Length.EqualTo(1));
             Texture2D frame = computed[0];
-            Assert.IsNotNull(frame);
+            Assert.IsTrue(frame != null);
             Assert.That(frame.width, Is.EqualTo(3));
             Assert.That(frame.height, Is.EqualTo(1));
             Assert.IsTrue(
@@ -177,7 +177,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
             Texture2D[] computed = VisualsTestHelpers.GetComputedTextures(image, _trackedObjects);
             Assert.That(computed, Has.Length.EqualTo(1));
             Texture2D frame = computed[0];
-            Assert.IsNotNull(frame);
+            Assert.IsTrue(frame != null);
             Assert.IsTrue(
                 VisualsTestHelpers
                     .GetPixel(frame, 0, 0)
@@ -220,8 +220,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
             Assert.That(computed, Has.Length.EqualTo(2));
             Texture2D frame0 = computed[0];
             Texture2D frame1 = computed[1];
-            Assert.IsNotNull(frame0);
-            Assert.IsNotNull(frame1);
+            Assert.IsTrue(frame0 != null);
+            Assert.IsTrue(frame1 != null);
             Assert.IsTrue(
                 VisualsTestHelpers
                     .GetPixel(frame0, 0, 0)
@@ -262,7 +262,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
             Texture2D[] computed = VisualsTestHelpers.GetComputedTextures(image, _trackedObjects);
             Assert.That(computed, Has.Length.EqualTo(1));
             Texture2D frame = computed[0];
-            Assert.IsNotNull(frame);
+            Assert.IsTrue(frame != null);
             Assert.IsTrue(
                 VisualsTestHelpers.GetPixel(frame, 0, 0).Approximately(new Color32(0, 0, 255, 51))
             );
@@ -288,7 +288,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
 
             Texture2D[] computed = VisualsTestHelpers.GetComputedTextures(image, _trackedObjects);
             Assert.That(computed, Has.Length.EqualTo(1));
-            Assert.IsNull(computed[0], "Expected frame to be null when alpha equals cutoff.");
+            Assert.IsTrue(
+                computed[0] == null,
+                "Expected frame to be null when alpha equals cutoff."
+            );
         }
 
         [Test]
@@ -320,7 +323,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
             Texture2D[] computed = VisualsTestHelpers.GetComputedTextures(image, _trackedObjects);
             Assert.That(computed, Has.Length.EqualTo(1));
             Texture2D frame = computed[0];
-            Assert.IsNotNull(frame);
+            Assert.IsTrue(frame != null);
             Assert.IsTrue(
                 VisualsTestHelpers.GetPixel(frame, 0, 0).Approximately(new Color32(0, 255, 0, 255))
             );
@@ -358,7 +361,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
             Texture2D[] computed = VisualsTestHelpers.GetComputedTextures(image, _trackedObjects);
             Assert.That(computed, Has.Length.EqualTo(1));
             Texture2D frame = computed[0];
-            Assert.IsNotNull(frame);
+            Assert.IsTrue(frame != null);
             Assert.That(frame.width, Is.EqualTo(3));
             Assert.IsTrue(
                 VisualsTestHelpers.GetPixel(frame, 0, 0).Approximately(new Color32(0, 0, 255, 255))
@@ -390,7 +393,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
             Texture2D[] computed = VisualsTestHelpers.GetComputedTextures(image, _trackedObjects);
             Assert.That(computed, Has.Length.EqualTo(1));
             Texture2D frame = computed[0];
-            Assert.IsNotNull(frame);
+            Assert.IsTrue(frame != null);
             Assert.That(frame.width, Is.EqualTo(50));
             Assert.That(frame.height, Is.EqualTo(50));
             Assert.IsTrue(

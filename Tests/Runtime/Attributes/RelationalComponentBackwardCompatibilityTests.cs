@@ -25,7 +25,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             BasicParentTester tester = child.GetComponent<BasicParentTester>();
             tester.AssignParentComponents();
 
-            Assert.IsNotNull(tester.parent);
+            Assert.IsTrue(tester.parent != null);
             Assert.AreSame(root.GetComponent<SpriteRenderer>(), tester.parent);
 
             yield break;
@@ -72,7 +72,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             // Should NOT log error
             tester.AssignParentComponents();
 
-            Assert.IsNull(tester.optionalRenderer);
+            Assert.IsTrue(tester.optionalRenderer == null);
 
             yield break;
         }
@@ -112,11 +112,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             tester.AssignParentComponents();
 
             // Should find inactive parent
-            Assert.IsNotNull(tester.inactiveOnly);
+            Assert.IsTrue(tester.inactiveOnly != null);
             Assert.AreSame(inactive.GetComponent<SpriteRenderer>(), tester.inactiveOnly);
 
             // Should skip inactive parent
-            Assert.IsNotNull(tester.activeOnly);
+            Assert.IsTrue(tester.activeOnly != null);
             Assert.AreSame(root.GetComponent<SpriteRenderer>(), tester.activeOnly);
 
             yield break;
@@ -133,7 +133,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
             tester.AssignChildComponents();
 
-            Assert.IsNotNull(tester.child);
+            Assert.IsTrue(tester.child != null);
             Assert.AreSame(child.GetComponent<SpriteRenderer>(), tester.child);
 
             yield break;
@@ -239,7 +239,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
             tester.AssignSiblingComponents();
 
-            Assert.IsNotNull(tester.sibling);
+            Assert.IsTrue(tester.sibling != null);
 
             yield break;
         }
@@ -287,10 +287,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             tester.AssignSiblingComponents();
 
             // Should find disabled component with IncludeInactive=true
-            Assert.IsNotNull(tester.includeInactive);
+            Assert.IsTrue(tester.includeInactive != null);
 
             // Should not find disabled component with IncludeInactive=false
-            Assert.IsNull(tester.excludeInactive);
+            Assert.IsTrue(tester.excludeInactive == null);
 
             yield break;
         }
@@ -311,15 +311,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             tester.AssignRelationalComponents();
 
             // Parent should be assigned
-            Assert.IsNotNull(tester.parentRenderer);
+            Assert.IsTrue(tester.parentRenderer != null);
             Assert.AreSame(root.GetComponent<SpriteRenderer>(), tester.parentRenderer);
 
             // Self should be assigned as child
-            Assert.IsNotNull(tester.childRenderer);
+            Assert.IsTrue(tester.childRenderer != null);
             Assert.AreSame(child.GetComponent<SpriteRenderer>(), tester.childRenderer);
 
             // Sibling should be assigned
-            Assert.IsNotNull(tester.siblingCollider);
+            Assert.IsTrue(tester.siblingCollider != null);
             Assert.AreSame(child.GetComponent<BoxCollider>(), tester.siblingCollider);
 
             yield break;

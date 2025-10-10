@@ -3,7 +3,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 #if UNITY_EDITOR
     using System;
     using System.Collections.Generic;
-    using System.ComponentModel;
     using System.IO;
     using System.Linq;
     using System.Text.RegularExpressions;
@@ -16,6 +15,29 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
+    /// <summary>
+    /// Editor window for managing <c>ScriptableSpriteAtlas</c> configuration assets and generating
+    /// corresponding <c>.spriteatlas</c> assets. Supports scanning for adds/removals, bulk generate,
+    /// and optional packing after generation.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Problems this solves: keeping <c>SpriteAtlas</c> assets in sync with curated rules and sets
+    /// of sprites, with visibility into pending additions/removals before writing.
+    /// </para>
+    /// <para>
+    /// How it works: loads all <c>ScriptableSpriteAtlas</c> assets in the project, caches scan
+    /// results (to add/remove), and drives generation of the <c>.spriteatlas</c> assets. Optionally
+    /// invokes <see cref="SpriteAtlasUtility.PackAllAtlases"/> to repack.
+    /// </para>
+    /// <para>
+    /// Usage: open via menu, refresh config list, create new configs in a target folder, then
+    /// Generate/Pack as needed.
+    /// </para>
+    /// <para>
+    /// Caveats: generation modifies/creates assets; ensure correct output paths and VCS.
+    /// </para>
+    /// </remarks>
     public sealed class ScriptableSpriteAtlasEditor : EditorWindow
     {
         private readonly Dictionary<ScriptableSpriteAtlas, SerializedObject> _serializedConfigs =

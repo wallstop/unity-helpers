@@ -164,13 +164,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             GameObject go = Track(new GameObject("Helpers_GetComponent", typeof(SpriteRenderer)));
 
             SpriteRenderer renderer = go.GetComponent<SpriteRenderer>();
-            Assert.IsNotNull(renderer);
+            Assert.IsTrue(renderer != null);
 
             Assert.AreSame(renderer, Helpers.GetComponent<SpriteRenderer>(go));
             Assert.AreSame(renderer, Helpers.GetComponent<SpriteRenderer>(renderer));
 
-            Assert.IsNull(Helpers.GetComponent<SpriteRenderer>(null));
-            Assert.IsNull(Helpers.GetComponent<SpriteRenderer>(null));
+            Assert.IsTrue(Helpers.GetComponent<SpriteRenderer>(null) == null);
+            Assert.IsTrue(Helpers.GetComponent<SpriteRenderer>(null) == null);
             yield break;
         }
 
@@ -212,7 +212,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             );
 
             Assert.IsTrue(Helpers.TryGetComponent(go, out SpriteRenderer renderer));
-            Assert.IsNotNull(renderer);
+            Assert.IsTrue(renderer != null);
 
             Assert.IsFalse(Helpers.TryGetComponent<BoxCollider2D>(go, out _));
             Assert.IsFalse(Helpers.TryGetComponent<SpriteRenderer>(null, out _));
@@ -253,12 +253,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 }
                 else
                 {
-                    Assert.IsNull(foundPlayer);
+                    Assert.IsTrue(foundPlayer == null);
                 }
 
                 // Whether the tag "NonExistentTag" exists or not, there should be no matching child
                 GameObject foundNonExistent = parent.FindChildGameObjectWithTag("NonExistentTag");
-                Assert.IsNull(foundNonExistent);
+                Assert.IsTrue(foundNonExistent == null);
             }
             finally
             {
@@ -475,12 +475,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 }
                 else
                 {
-                    Assert.IsNull(foundPlayerDirect);
-                    Assert.IsNull(foundPlayerTag);
+                    Assert.IsTrue(foundPlayerDirect == null);
+                    Assert.IsTrue(foundPlayerTag == null);
                 }
 
                 GameObject foundNonExistent = parent.GetTagObjectInChildHierarchy("NonExistent");
-                Assert.IsNull(foundNonExistent);
+                Assert.IsTrue(foundNonExistent == null);
             }
             finally
             {
@@ -564,7 +564,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 leaf.TryGetClosestParentWithComponentIncludingSelf<CopyProbeComponent>()
             );
 
-            Assert.IsNull(root.TryGetClosestParentWithComponentIncludingSelf<CopyProbeComponent>());
+            Assert.IsTrue(
+                root.TryGetClosestParentWithComponentIncludingSelf<CopyProbeComponent>() == null
+            );
             yield break;
         }
 

@@ -1,5 +1,8 @@
-﻿namespace WallstopStudios.UnityHelpers.Tests.Helper
+﻿// ReSharper disable EqualExpressionComparison
+// ReSharper disable CompareOfFloatsByEqualityOperator
+namespace WallstopStudios.UnityHelpers.Tests.Helper
 {
+    using System;
     using NUnit.Framework;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Extension;
@@ -1543,6 +1546,340 @@
                 int manualResult = (value + increment).PositiveMod(max);
 
                 Assert.AreEqual(manualResult, wrappedResult);
+            }
+        }
+
+        [Test]
+        public void TotalEqualsFloatNaNBothNaN()
+        {
+            Assert.IsTrue(float.NaN.TotalEquals(float.NaN));
+        }
+
+        [Test]
+        public void TotalEqualsFloatNaNOneNaN()
+        {
+            Assert.IsFalse(float.NaN.TotalEquals(0f));
+            Assert.IsFalse(0f.TotalEquals(float.NaN));
+            Assert.IsFalse(float.NaN.TotalEquals(float.PositiveInfinity));
+            Assert.IsFalse(float.PositiveInfinity.TotalEquals(float.NaN));
+        }
+
+        [Test]
+        public void TotalEqualsFloatPositiveInfinityBoth()
+        {
+            Assert.IsTrue(float.PositiveInfinity.TotalEquals(float.PositiveInfinity));
+        }
+
+        [Test]
+        public void TotalEqualsFloatNegativeInfinityBoth()
+        {
+            Assert.IsTrue(float.NegativeInfinity.TotalEquals(float.NegativeInfinity));
+        }
+
+        [Test]
+        public void TotalEqualsFloatInfinityMismatch()
+        {
+            Assert.IsFalse(float.PositiveInfinity.TotalEquals(float.NegativeInfinity));
+            Assert.IsFalse(float.NegativeInfinity.TotalEquals(float.PositiveInfinity));
+            Assert.IsFalse(float.PositiveInfinity.TotalEquals(0f));
+            Assert.IsFalse(0f.TotalEquals(float.PositiveInfinity));
+            Assert.IsFalse(float.NegativeInfinity.TotalEquals(0f));
+            Assert.IsFalse(0f.TotalEquals(float.NegativeInfinity));
+        }
+
+        [Test]
+        public void TotalEqualsFloatRegularValues()
+        {
+            Assert.IsTrue(0f.TotalEquals(0f));
+            Assert.IsTrue(1.5f.TotalEquals(1.5f));
+            Assert.IsTrue((-10.25f).TotalEquals(-10.25f));
+            Assert.IsTrue(float.MaxValue.TotalEquals(float.MaxValue));
+            Assert.IsTrue(float.MinValue.TotalEquals(float.MinValue));
+            Assert.IsTrue(float.Epsilon.TotalEquals(float.Epsilon));
+        }
+
+        [Test]
+        public void TotalEqualsFloatRegularValuesMismatch()
+        {
+            Assert.IsFalse(0f.TotalEquals(1f));
+            Assert.IsFalse(1f.TotalEquals(0f));
+            Assert.IsFalse(1.5f.TotalEquals(1.50001f));
+            Assert.IsFalse((-5f).TotalEquals(5f));
+            Assert.IsFalse(float.MaxValue.TotalEquals(float.MinValue));
+        }
+
+        [Test]
+        public void TotalEqualsFloatZeroPositiveAndNegative()
+        {
+            Assert.IsTrue(0f.TotalEquals(-0f));
+            Assert.IsTrue((-0f).TotalEquals(0f));
+        }
+
+        [Test]
+        public void TotalEqualsDoubleNaNBothNaN()
+        {
+            Assert.IsTrue(double.NaN.TotalEquals(double.NaN));
+        }
+
+        [Test]
+        public void TotalEqualsDoubleNaNOneNaN()
+        {
+            Assert.IsFalse(double.NaN.TotalEquals(0.0));
+            Assert.IsFalse(0.0.TotalEquals(double.NaN));
+            Assert.IsFalse(double.NaN.TotalEquals(double.PositiveInfinity));
+            Assert.IsFalse(double.PositiveInfinity.TotalEquals(double.NaN));
+        }
+
+        [Test]
+        public void TotalEqualsDoublePositiveInfinityBoth()
+        {
+            Assert.IsTrue(double.PositiveInfinity.TotalEquals(double.PositiveInfinity));
+        }
+
+        [Test]
+        public void TotalEqualsDoubleNegativeInfinityBoth()
+        {
+            Assert.IsTrue(double.NegativeInfinity.TotalEquals(double.NegativeInfinity));
+        }
+
+        [Test]
+        public void TotalEqualsDoubleInfinityMismatch()
+        {
+            Assert.IsFalse(double.PositiveInfinity.TotalEquals(double.NegativeInfinity));
+            Assert.IsFalse(double.NegativeInfinity.TotalEquals(double.PositiveInfinity));
+            Assert.IsFalse(double.PositiveInfinity.TotalEquals(0.0));
+            Assert.IsFalse(0.0.TotalEquals(double.PositiveInfinity));
+            Assert.IsFalse(double.NegativeInfinity.TotalEquals(0.0));
+            Assert.IsFalse(0.0.TotalEquals(double.NegativeInfinity));
+        }
+
+        [Test]
+        public void TotalEqualsDoubleRegularValues()
+        {
+            Assert.IsTrue(0.0.TotalEquals(0.0));
+            Assert.IsTrue(1.5.TotalEquals(1.5));
+            Assert.IsTrue((-10.25).TotalEquals(-10.25));
+            Assert.IsTrue(double.MaxValue.TotalEquals(double.MaxValue));
+            Assert.IsTrue(double.MinValue.TotalEquals(double.MinValue));
+            Assert.IsTrue(double.Epsilon.TotalEquals(double.Epsilon));
+        }
+
+        [Test]
+        public void TotalEqualsDoubleRegularValuesMismatch()
+        {
+            Assert.IsFalse(0.0.TotalEquals(1.0));
+            Assert.IsFalse(1.0.TotalEquals(0.0));
+            Assert.IsFalse(1.5.TotalEquals(1.50001));
+            Assert.IsFalse((-5.0).TotalEquals(5.0));
+            Assert.IsFalse(double.MaxValue.TotalEquals(double.MinValue));
+        }
+
+        [Test]
+        public void TotalEqualsDoubleZeroPositiveAndNegative()
+        {
+            Assert.IsTrue(0.0.TotalEquals(-0.0));
+            Assert.IsTrue((-0.0).TotalEquals(0.0));
+        }
+
+        [Test]
+        public void TotalEqualsFloatVeryCloseValues()
+        {
+            float value = 1.234567f;
+            float nextValue = BitConverter.Int32BitsToSingle(
+                BitConverter.SingleToInt32Bits(value) + 1
+            );
+            Assert.IsFalse(value.TotalEquals(nextValue));
+        }
+
+        [Test]
+        public void TotalEqualsDoubleVeryCloseValues()
+        {
+            double value = 1.234567890123456;
+            double nextValue = BitConverter.Int64BitsToDouble(
+                BitConverter.DoubleToInt64Bits(value) + 1
+            );
+            Assert.IsFalse(value.TotalEquals(nextValue));
+        }
+
+        [Test]
+        public void TotalEqualsFloatSymmetric()
+        {
+            float[] values =
+            {
+                0f,
+                1f,
+                -1f,
+                float.MaxValue,
+                float.MinValue,
+                float.Epsilon,
+                float.NaN,
+                float.PositiveInfinity,
+                float.NegativeInfinity,
+            };
+
+            foreach (float a in values)
+            {
+                foreach (float b in values)
+                {
+                    Assert.AreEqual(
+                        a.TotalEquals(b),
+                        b.TotalEquals(a),
+                        $"TotalEquals should be symmetric for {a} and {b}"
+                    );
+                }
+            }
+        }
+
+        [Test]
+        public void TotalEqualsDoubleSymmetric()
+        {
+            double[] values =
+            {
+                0.0,
+                1.0,
+                -1.0,
+                double.MaxValue,
+                double.MinValue,
+                double.Epsilon,
+                double.NaN,
+                double.PositiveInfinity,
+                double.NegativeInfinity,
+            };
+
+            foreach (double a in values)
+            {
+                foreach (double b in values)
+                {
+                    Assert.AreEqual(
+                        a.TotalEquals(b),
+                        b.TotalEquals(a),
+                        $"TotalEquals should be symmetric for {a} and {b}"
+                    );
+                }
+            }
+        }
+
+        [Test]
+        public void TotalEqualsFloatTransitive()
+        {
+            float a = 5.5f;
+            float b = 5.5f;
+            float c = 5.5f;
+
+            Assert.IsTrue(a.TotalEquals(b));
+            Assert.IsTrue(b.TotalEquals(c));
+            Assert.IsTrue(a.TotalEquals(c));
+
+            float nan1 = float.NaN;
+            float nan2 = float.NaN;
+            float nan3 = float.NaN;
+
+            Assert.IsTrue(nan1.TotalEquals(nan2));
+            Assert.IsTrue(nan2.TotalEquals(nan3));
+            Assert.IsTrue(nan1.TotalEquals(nan3));
+        }
+
+        [Test]
+        public void TotalEqualsDoubleTransitive()
+        {
+            double a = 5.5;
+            double b = 5.5;
+            double c = 5.5;
+
+            Assert.IsTrue(a.TotalEquals(b));
+            Assert.IsTrue(b.TotalEquals(c));
+            Assert.IsTrue(a.TotalEquals(c));
+
+            double nan1 = double.NaN;
+            double nan2 = double.NaN;
+            double nan3 = double.NaN;
+
+            Assert.IsTrue(nan1.TotalEquals(nan2));
+            Assert.IsTrue(nan2.TotalEquals(nan3));
+            Assert.IsTrue(nan1.TotalEquals(nan3));
+        }
+
+        [Test]
+        public void TotalEqualsFloatReflexive()
+        {
+            float[] values =
+            {
+                0f,
+                1f,
+                -1f,
+                float.MaxValue,
+                float.MinValue,
+                float.Epsilon,
+                float.NaN,
+                float.PositiveInfinity,
+                float.NegativeInfinity,
+            };
+
+            foreach (float value in values)
+            {
+                Assert.IsTrue(value.TotalEquals(value), $"{value} should equal itself");
+            }
+        }
+
+        [Test]
+        public void TotalEqualsDoubleReflexive()
+        {
+            double[] values =
+            {
+                0.0,
+                1.0,
+                -1.0,
+                double.MaxValue,
+                double.MinValue,
+                double.Epsilon,
+                double.NaN,
+                double.PositiveInfinity,
+                double.NegativeInfinity,
+            };
+
+            foreach (double value in values)
+            {
+                Assert.IsTrue(value.TotalEquals(value), $"{value} should equal itself");
+            }
+        }
+
+        [Test]
+        public void TotalEqualsFloatDifferentFromStandardEquals()
+        {
+            Assert.AreNotEqual(float.NaN, float.NaN);
+            Assert.IsTrue(float.NaN.TotalEquals(float.NaN));
+        }
+
+        [Test]
+        public void TotalEqualsDoubleDifferentFromStandardEquals()
+        {
+            Assert.AreNotEqual(double.NaN, double.NaN);
+            Assert.IsTrue(double.NaN.TotalEquals(double.NaN));
+        }
+
+        [Test]
+        public void TotalEqualsFloatRandomNormalValues()
+        {
+            for (int i = 0; i < TestIterations; ++i)
+            {
+                float value = PRNG.Instance.NextFloat(-1000f, 1000f);
+                Assert.IsTrue(value.TotalEquals(value));
+
+                float different = value + PRNG.Instance.NextFloat(0.001f, 10f);
+                Assert.IsFalse(value.TotalEquals(different));
+            }
+        }
+
+        [Test]
+        public void TotalEqualsDoubleRandomNormalValues()
+        {
+            for (int i = 0; i < TestIterations; ++i)
+            {
+                double value = PRNG.Instance.NextDouble(-1000.0, 1000.0);
+                Assert.IsTrue(value.TotalEquals(value));
+
+                double different = value + PRNG.Instance.NextDouble(0.001, 10.0);
+                Assert.IsFalse(value.TotalEquals(different));
             }
         }
     }

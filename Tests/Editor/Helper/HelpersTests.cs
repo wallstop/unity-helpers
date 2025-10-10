@@ -32,7 +32,7 @@
             try
             {
                 GameObject prefab = PrefabUtility.SaveAsPrefabAsset(prefabSource, assetPath);
-                Assert.IsNotNull(prefab);
+                Assert.IsTrue(prefab != null);
 
                 HashSet<string> names = Helpers
                     .EnumeratePrefabs(new[] { folder })

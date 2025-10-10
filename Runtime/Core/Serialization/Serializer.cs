@@ -33,13 +33,8 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                 IncludeFields = true,
                 PropertyNameCaseInsensitive = true,
                 NumberHandling =
-                    System
-                        .Text
-                        .Json
-                        .Serialization
-                        .JsonNumberHandling
-                        .AllowNamedFloatingPointLiterals
-                    | System.Text.Json.Serialization.JsonNumberHandling.AllowReadingFromString,
+                    JsonNumberHandling.AllowNamedFloatingPointLiterals
+                    | JsonNumberHandling.AllowReadingFromString,
                 ReadCommentHandling = JsonCommentHandling.Skip,
                 AllowTrailingCommas = true,
                 Converters =
@@ -63,13 +58,8 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                 PropertyNameCaseInsensitive = true,
                 IncludeFields = true,
                 NumberHandling =
-                    System
-                        .Text
-                        .Json
-                        .Serialization
-                        .JsonNumberHandling
-                        .AllowNamedFloatingPointLiterals
-                    | System.Text.Json.Serialization.JsonNumberHandling.AllowReadingFromString,
+                    JsonNumberHandling.AllowNamedFloatingPointLiterals
+                    | JsonNumberHandling.AllowReadingFromString,
                 ReadCommentHandling = JsonCommentHandling.Skip,
                 AllowTrailingCommas = true,
                 Converters =

@@ -104,7 +104,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
             tester.AssignChildComponents();
 
-            Assert.IsNotNull(tester.selfRenderer);
+            Assert.IsTrue(tester.selfRenderer != null);
             Assert.AreSame(root.GetComponent<SpriteRenderer>(), tester.selfRenderer);
 
             yield break;
@@ -128,7 +128,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
             tester.AssignChildComponents();
 
-            Assert.IsNull(tester.iface);
+            Assert.IsTrue((UnityEngine.Object)tester.iface == null);
             yield break;
         }
 
@@ -140,7 +140,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
             tester.AssignSiblingComponents();
 
-            Assert.IsNull(tester.missingOptional);
+            Assert.IsTrue(tester.missingOptional == null);
             LogAssert.NoUnexpectedReceived();
             yield break;
         }
@@ -162,7 +162,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             );
 
             tester.AssignSiblingComponents();
-            Assert.IsNull(tester.siblingCollider);
+            Assert.IsTrue(tester.siblingCollider == null);
 
             yield break;
         }

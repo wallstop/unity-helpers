@@ -53,7 +53,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             CreatorPathSingleton asset = AssetDatabase.LoadAssetAtPath<CreatorPathSingleton>(
                 TargetAssetPath
             );
-            Assert.IsNotNull(asset);
+            Assert.IsTrue(asset != null);
         }
 
         [Test]
@@ -72,8 +72,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             CreatorPathSingleton relocated = AssetDatabase.LoadAssetAtPath<CreatorPathSingleton>(
                 TargetAssetPath
             );
-            Assert.IsNotNull(relocated);
-            Assert.IsNull(AssetDatabase.LoadAssetAtPath<CreatorPathSingleton>(WrongAssetPath));
+            Assert.IsTrue(relocated != null);
+            Assert.IsTrue(
+                AssetDatabase.LoadAssetAtPath<CreatorPathSingleton>(WrongAssetPath) == null
+            );
         }
 
         private static void EnsureFolder(string folderPath)

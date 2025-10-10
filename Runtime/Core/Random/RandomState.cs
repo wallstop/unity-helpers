@@ -14,10 +14,13 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     [ProtoContract]
     public readonly struct RandomState : IEquatable<RandomState>
     {
+        [JsonInclude]
         public ulong State1 => _state1;
 
+        [JsonInclude]
         public ulong State2 => _state2;
 
+        [JsonInclude]
         public double? Gaussian
         {
             get
@@ -31,47 +34,65 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             }
         }
 
-        [JsonPropertyName("Payload")]
+        [JsonIgnore]
         public IReadOnlyList<byte> PayloadBytes => _payload;
 
-        [JsonIgnore]
-        internal byte[] Payload => _payload;
+        [JsonInclude]
+        [JsonPropertyName("Payload")]
+        public IReadOnlyList<byte> Payload => _payload;
 
         // Reservoir state (for AbstractRandom bit/byte reservoirs)
+        [JsonInclude]
         public uint BitBuffer => _bitBuffer;
+
+        [JsonInclude]
         public int BitCount => _bitCount;
+
+        [JsonInclude]
         public uint ByteBuffer => _byteBuffer;
+
+        [JsonInclude]
         public int ByteCount => _byteCount;
 
         [ProtoMember(1)]
+        [JsonIgnore]
         private readonly ulong _state1;
 
         [ProtoMember(2)]
+        [JsonIgnore]
         private readonly ulong _state2;
 
         [ProtoMember(3)]
+        [JsonIgnore]
         private readonly bool _hasGaussian;
 
         [ProtoMember(4)]
+        [JsonIgnore]
         private readonly double _gaussian;
 
         [ProtoMember(5)]
-        private readonly byte[] _payload;
+        [JsonIgnore]
+        internal readonly byte[] _payload;
 
         // Added fields for reservoir serialization
         [ProtoMember(6)]
+        [JsonIgnore]
         private readonly uint _bitBuffer;
 
         [ProtoMember(7)]
+        [JsonIgnore]
         private readonly int _bitCount;
 
         [ProtoMember(8)]
+        [JsonIgnore]
         private readonly uint _byteBuffer;
 
         [ProtoMember(9)]
+        [JsonIgnore]
         private readonly int _byteCount;
 
         [ProtoMember(10)]
+        [JsonIgnore]
         private readonly int _hashCode;
 
         [JsonConstructor]
@@ -90,7 +111,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             _state2 = state2;
             _hasGaussian = gaussian.HasValue;
             _gaussian = gaussian ?? 0;
-            _payload = payload?.ToArray();
+            _payload = (payload as byte[]) ?? payload?.ToArray();
             _bitBuffer = bitBuffer;
             _bitCount = bitCount;
             _byteBuffer = byteBuffer;
@@ -140,12 +161,11 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         public bool Equals(RandomState other)
         {
-            // ReSharper disable once CompareOfFloatsByEqualityOperator
             bool equivalent =
                 _state1 == other._state1
                 && _state2 == other._state2
                 && _hasGaussian == other._hasGaussian
-                && (!_hasGaussian || _gaussian == other._gaussian)
+                && (!_hasGaussian || _gaussian.TotalEquals(other._gaussian))
                 && _bitBuffer == other._bitBuffer
                 && _bitCount == other._bitCount
                 && _byteBuffer == other._byteBuffer

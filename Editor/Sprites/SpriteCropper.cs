@@ -14,6 +14,36 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
+    /// <summary>
+    /// Finds and crops single-sprite textures to their minimal bounding rectangle based on alpha
+    /// coverage, with optional padding and output controls. Can overwrite originals or write to a
+    /// separate folder, and optionally copy default platform import settings.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Problems this solves: trimming transparent margins around sprites to reduce overdraw and
+    /// improve packing; standardizing sprite bounds for consistent layout.
+    /// </para>
+    /// <para>
+    /// How it works: scans provided folders for supported image extensions and single-sprite
+    /// textures, computes an alpha-threshold-based tight rect, applies optional padding, and
+    /// writes the cropped PNG. Provides a "Danger Zone" utility to replace references to originals
+    /// with their <c>Cropped_*</c> counterparts across assets.
+    /// </para>
+    /// <para>
+    /// Usage:
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>Open via menu: Tools/Wallstop Studios/Unity Helpers/Sprite Cropper.</description></item>
+    /// <item><description>Select input folders, optional name regex, and padding.</description></item>
+    /// <item><description>Choose overwrite vs output directory, then Find/Process sprites.</description></item>
+    /// </list>
+    /// <para>
+    /// Pros: reduces texture waste, quick batch processing, preserves importer options when chosen.
+    /// Caveats: Multi-sprite textures are skipped; overwriting is destructive—use VCS; reference
+    /// replacement is potentially dangerous and should be reviewed carefully.
+    /// </para>
+    /// </remarks>
     public sealed class SpriteCropper : EditorWindow
     {
         private const string Name = "Sprite Cropper";
@@ -357,7 +387,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 }
 
                 string[] allAssets = AssetDatabase.GetAllAssetPaths();
-                string[] candidateExts = new[]
+                string[] candidateExts =
                 {
                     ".prefab",
                     ".unity",
@@ -523,10 +553,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                                 break;
                             }
 
-                            ProcessOutcome outcome;
                             TextureImporter newImporter = ProcessSprite(
                                 file,
-                                out outcome,
+                                out ProcessOutcome outcome,
                                 originalReadable
                             );
                             switch (outcome)
@@ -569,10 +598,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     {
                         foreach (string file in needReprocessing)
                         {
-                            ProcessOutcome outcome;
                             TextureImporter newImporter = ProcessSprite(
                                 file,
-                                out outcome,
+                                out ProcessOutcome outcome,
                                 originalReadable
                             );
                             if (outcome == ProcessOutcome.Success && newImporter != null)
@@ -677,16 +705,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             // Make readable if needed and remember original state to restore after processing
             if (!importer.isReadable)
             {
-                if (!originalReadable.ContainsKey(assetPath))
-                {
-                    originalReadable[assetPath] = false;
-                }
+                originalReadable.TryAdd(assetPath, false);
                 importer.isReadable = true;
                 importer.SaveAndReimport();
             }
-            else if (!originalReadable.ContainsKey(assetPath))
+            else
             {
-                originalReadable[assetPath] = true;
+                originalReadable.TryAdd(assetPath, true);
             }
         }
 
@@ -782,11 +807,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 }
             );
 
-            int origMinX = minX;
-            int origMinY = minY;
-            int origMaxX = maxX;
-            int origMaxY = maxY;
-
             int visibleMinX = minX;
             int visibleMinY = minY;
             int visibleMaxX = maxX;
@@ -881,7 +901,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             string outputFileName = _overwriteOriginals
                 ? Path.GetFileName(assetPath)
-                : (CroppedPrefix + Path.GetFileName(assetPath));
+                : CroppedPrefix + Path.GetFileName(assetPath);
             string newPath = Path.Combine(outputDirectory, outputFileName);
 
             byte[] pngBytes = cropped.EncodeToPNG();
@@ -915,8 +935,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             Vector4 border = newSettings.spriteBorder;
             int deltaLeft = visibleMinX; // pixels trimmed from left of full image
             int deltaBottom = visibleMinY; // trimmed from bottom
-            int deltaRight = (width - 1) - visibleMaxX; // trimmed from right
-            int deltaTop = (height - 1) - visibleMaxY; // trimmed from top
+            int deltaRight = width - 1 - visibleMaxX; // trimmed from right
+            int deltaTop = height - 1 - visibleMaxY; // trimmed from top
             border.x = Mathf.Max(0, border.x - deltaLeft);
             border.y = Mathf.Max(0, border.y - deltaBottom);
             border.z = Mathf.Max(0, border.z - deltaRight);

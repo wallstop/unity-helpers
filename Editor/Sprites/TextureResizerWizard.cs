@@ -14,6 +14,35 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
+    /// <summary>
+    /// ScriptableWizard to batch resize textures by a computed delta using a chosen algorithm.
+    /// Useful for adjusting imported assets to target pixel density or scale without external tools.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// How it works: for each selected texture (or those discovered under provided directories), the
+    /// tool ensures readability, clones the texture, computes a size increment from
+    /// <c>pixelsPerUnit</c> and the width/height multipliers, resizes via bilinear or point, and
+    /// writes the PNG back to the original asset path. It refreshes the AssetDatabase between
+    /// passes for multi-iteration resizing.
+    /// </para>
+    /// <para>
+    /// Pros: fast iteration inside Unity, supports multiple discovery paths, preserves import
+    /// settings, and can be run multiple times (<c>numResizes</c>) for step changes.
+    /// </para>
+    /// <para>
+    /// Caveats: overwrites files in-place; ensure version control. If textures are non-readable,
+    /// importer is temporarily toggled which may dirties the asset. Consider backing up.
+    /// </para>
+    /// <example>
+    /// <![CDATA[
+    /// // Open from menu: Tools/Wallstop Studios/Unity Helpers/Texture Resizer
+    /// // Typical settings for retro pixel art:
+    /// //   scalingResizeAlgorithm = Point
+    /// //   pixelsPerUnit = 100
+    /// //   widthMultiplier = 1.0f, heightMultiplier = 1.0f (double by setting numResizes=1 and multipliers)
+    /// ]]>
+    /// </example>
     public sealed class TextureResizerWizard : ScriptableWizard
     {
         public enum ResizeAlgorithm

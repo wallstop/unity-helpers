@@ -385,6 +385,29 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         }
     }
 
+    /// <summary>
+    /// Batch-applies configurable sprite importer settings to selected sprites and/or recursively
+    /// through selected directories using prioritized profiles with multiple match modes.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Problems this solves: keeping large sets of sprites consistent (PPU, pivot, mode, filter,
+    /// wrap, compression, etc.) without manual per-asset editing.
+    /// </para>
+    /// <para>
+    /// How it works: define one or more <c>SpriteSettings</c> profiles with match mode
+    /// (Any/NameContains/PathContains/Regex/Extension) and an optional priority. Calculate stats to
+    /// preview which assets will be affected, then apply settings in one pass.
+    /// </para>
+    /// <para>
+    /// Usage: add sprites and/or directories; configure profiles; click "Calculate Stats" to see
+    /// impact and preview up to 200 paths; then "Apply Settings" to write importer changes.
+    /// </para>
+    /// <para>
+    /// Caveats: importer changes trigger reimports; ensure regex patterns are correct; for very
+    /// large trees prefer running in batches.
+    /// </para>
+    /// </remarks>
     public sealed class SpriteSettingsApplierWindow : EditorWindow
     {
         public List<Sprite> sprites = new();
@@ -583,37 +606,34 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             // Search in folders via AssetDatabase
             if (folderAssetPaths.Count > 0)
             {
-                using (
-                    PooledResource<string[]> pooled = WallstopFastArrayPool<string>.Get(
-                        folderAssetPaths.Count,
-                        out string[] folders
-                    )
-                )
+                using PooledResource<string[]> bufferResource = WallstopFastArrayPool<string>.Get(
+                    folderAssetPaths.Count,
+                    out string[] folders
+                );
+
+                for (int i = 0; i < folderAssetPaths.Count; i++)
                 {
-                    for (int i = 0; i < folderAssetPaths.Count; i++)
+                    folders[i] = folderAssetPaths[i];
+                }
+
+                string[] guids = AssetDatabase.FindAssets("t:Texture2D", folders);
+                for (int i = 0; i < guids.Length; i++)
+                {
+                    string assetPath = AssetDatabase.GUIDToAssetPath(guids[i]);
+                    if (string.IsNullOrWhiteSpace(assetPath))
                     {
-                        folders[i] = folderAssetPaths[i];
+                        continue;
                     }
 
-                    string[] guids = AssetDatabase.FindAssets("t:Texture2D", folders);
-                    for (int i = 0; i < guids.Length; i++)
+                    string ext = Path.GetExtension(assetPath);
+                    if (allowedExtensions.Count > 0 && !allowedExtensions.Contains(ext))
                     {
-                        string assetPath = AssetDatabase.GUIDToAssetPath(guids[i]);
-                        if (string.IsNullOrWhiteSpace(assetPath))
-                        {
-                            continue;
-                        }
+                        continue;
+                    }
 
-                        string ext = Path.GetExtension(assetPath);
-                        if (allowedExtensions.Count > 0 && !allowedExtensions.Contains(ext))
-                        {
-                            continue;
-                        }
-
-                        if (uniqueRelativePaths.Add(assetPath))
-                        {
-                            filePaths.Add((string.Empty, assetPath));
-                        }
+                    if (uniqueRelativePaths.Add(assetPath))
+                    {
+                        filePaths.Add((string.Empty, assetPath));
                     }
                 }
             }
@@ -845,9 +865,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     patternLower = string.IsNullOrEmpty(s.matchPattern)
                         ? null
                         : s.matchPattern.ToLowerInvariant(),
-                    extWithDot = string.IsNullOrEmpty(s.matchPattern)
-                        ? null
-                        : (s.matchPattern.StartsWith(".") ? s.matchPattern : "." + s.matchPattern),
+                    extWithDot =
+                        string.IsNullOrEmpty(s.matchPattern) ? null
+                        : s.matchPattern.StartsWith(".") ? s.matchPattern
+                        : "." + s.matchPattern,
                     priority = s.priority,
                 };
                 if (
@@ -1292,419 +1313,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 spriteSettings.Add(JsonUtility.FromJson<SpriteSettings>(json));
             }
             this.Log($"Loaded {spriteSettings.Count} profiles from {projectRelative}");
-        }
-
-        private static SpriteSettings FindMatchingSettings(
-            string filePath,
-            List<SpriteSettings> settingsProfiles
-        )
-        {
-            if (settingsProfiles == null || settingsProfiles.Count == 0)
-            {
-                return null;
-            }
-
-            string fileName = Path.GetFileName(filePath);
-            SpriteSettings best = null;
-            int bestPriority = int.MinValue;
-
-            foreach (SpriteSettings s in settingsProfiles)
-            {
-                if (s == null)
-                {
-                    continue;
-                }
-
-                bool matches = false;
-                switch (s.matchBy)
-                {
-#pragma warning disable CS0618 // Type or member is obsolete
-                    case SpriteSettings.MatchMode.None:
-#pragma warning restore CS0618 // Type or member is obsolete
-                        // Invalid config; ignore
-                        matches = false;
-                        break;
-                    case SpriteSettings.MatchMode.Any:
-                        if (!string.IsNullOrWhiteSpace(s.name))
-                        {
-                            matches =
-                                fileName.IndexOf(s.name, StringComparison.OrdinalIgnoreCase) >= 0;
-                        }
-                        else
-                        {
-                            matches = true; // catch-all
-                        }
-                        break;
-                    case SpriteSettings.MatchMode.NameContains:
-                        if (!string.IsNullOrWhiteSpace(s.matchPattern))
-                        {
-                            matches =
-                                fileName.IndexOf(s.matchPattern, StringComparison.OrdinalIgnoreCase)
-                                >= 0;
-                        }
-                        break;
-                    case SpriteSettings.MatchMode.PathContains:
-                        if (!string.IsNullOrWhiteSpace(s.matchPattern))
-                        {
-                            matches =
-                                filePath.IndexOf(s.matchPattern, StringComparison.OrdinalIgnoreCase)
-                                >= 0;
-                        }
-                        break;
-                    case SpriteSettings.MatchMode.Extension:
-                        if (!string.IsNullOrWhiteSpace(s.matchPattern))
-                        {
-                            string ext = s.matchPattern.StartsWith(".")
-                                ? s.matchPattern
-                                : "." + s.matchPattern;
-                            matches = string.Equals(
-                                Path.GetExtension(filePath),
-                                ext,
-                                StringComparison.OrdinalIgnoreCase
-                            );
-                        }
-                        break;
-                    case SpriteSettings.MatchMode.Regex:
-                        if (!string.IsNullOrWhiteSpace(s.matchPattern))
-                        {
-                            try
-                            {
-                                matches = Regex.IsMatch(
-                                    filePath,
-                                    s.matchPattern,
-                                    RegexOptions.IgnoreCase
-                                );
-                            }
-                            catch (Exception)
-                            {
-                                // ignore invalid regex; no match
-                            }
-                        }
-                        break;
-                }
-
-                if (!matches)
-                {
-                    continue;
-                }
-
-                int prio = s.priority;
-                if (best == null || prio > bestPriority)
-                {
-                    best = s;
-                    bestPriority = prio;
-                }
-            }
-
-            return best;
-        }
-
-        private bool WillTextureSettingsChange(
-            string filePath,
-            List<SpriteSettings> settingsProfiles
-        )
-        {
-            if (string.IsNullOrWhiteSpace(filePath))
-            {
-                return false;
-            }
-
-            TextureImporter textureImporter = AssetImporter.GetAtPath(filePath) as TextureImporter;
-            if (textureImporter == null)
-            {
-                this.LogWarn($"Could not get TextureImporter for asset: {filePath}");
-                return false;
-            }
-
-            SpriteSettings spriteData = FindMatchingSettings(filePath, settingsProfiles);
-            if (spriteData == null)
-            {
-                this.LogWarn($"No matching SpriteSettings profile found for: {filePath}");
-                return false;
-            }
-
-            bool changed = false;
-            if (spriteData.applyPixelsPerUnit)
-            {
-                changed |= textureImporter.spritePixelsPerUnit != spriteData.pixelsPerUnit;
-            }
-
-            if (spriteData.applyPivot)
-            {
-                changed |= textureImporter.spritePivot != spriteData.pivot;
-            }
-
-            if (spriteData.applyGenerateMipMaps)
-            {
-                changed |= textureImporter.mipmapEnabled != spriteData.generateMipMaps;
-            }
-
-            if (spriteData.applyCrunchCompression)
-            {
-                changed |= textureImporter.crunchedCompression != spriteData.useCrunchCompression;
-            }
-
-            if (spriteData.applyCompression)
-            {
-                changed |= textureImporter.textureCompression != spriteData.compressionLevel;
-            }
-
-            TextureImporterSettings settings = new();
-            textureImporter.ReadTextureSettings(settings);
-            if (spriteData.applyTextureType)
-            {
-                changed |= textureImporter.textureType != spriteData.textureType;
-            }
-            if (spriteData.applyPivot)
-            {
-                changed |= settings.spriteAlignment != (int)SpriteAlignment.Custom;
-            }
-
-            if (spriteData.applyAlphaIsTransparency)
-            {
-                changed |= settings.alphaIsTransparency != spriteData.alphaIsTransparency;
-            }
-
-            if (spriteData.applyReadWriteEnabled)
-            {
-                changed |= settings.readable != spriteData.readWriteEnabled;
-            }
-
-            if (spriteData.applySpriteMode)
-            {
-                changed |= settings.spriteMode != (int)spriteData.spriteMode;
-            }
-
-            if (spriteData.applyExtrudeEdges)
-            {
-                changed |= settings.spriteExtrude != spriteData.extrudeEdges;
-            }
-
-            if (spriteData.applyWrapMode)
-            {
-                changed |= settings.wrapMode != spriteData.wrapMode;
-            }
-
-            if (spriteData.applyFilterMode)
-            {
-                changed |= settings.filterMode != spriteData.filterMode;
-            }
-
-            return changed;
-        }
-
-        private bool TryUpdateTextureSettings(
-            string filePath,
-            List<SpriteSettings> settingsProfiles,
-            out TextureImporter textureImporter
-        )
-        {
-            textureImporter = default;
-            if (string.IsNullOrWhiteSpace(filePath))
-            {
-                return false;
-            }
-
-            textureImporter = AssetImporter.GetAtPath(filePath) as TextureImporter;
-            if (textureImporter == null)
-            {
-                this.LogWarn($"Could not get TextureImporter for asset: {filePath}");
-                return false;
-            }
-
-            SpriteSettings spriteData = FindMatchingSettings(filePath, settingsProfiles);
-
-            if (spriteData == null)
-            {
-                this.LogWarn($"No matching SpriteSettings profile found for: {filePath}");
-                return false;
-            }
-
-            bool changed = false;
-            bool settingsChanged = false;
-            TextureImporterSettings settings = new();
-            textureImporter.ReadTextureSettings(settings);
-
-            if (spriteData.applyTextureType)
-            {
-                if (textureImporter.textureType != spriteData.textureType)
-                {
-                    textureImporter.textureType = spriteData.textureType;
-                    changed = true;
-                }
-            }
-            else
-            {
-                if (
-                    (
-                        spriteData.applyPivot
-                        || spriteData.applySpriteMode
-                        || spriteData.applyPixelsPerUnit
-                    )
-                    && textureImporter.textureType != TextureImporterType.Sprite
-                )
-                {
-                    this.LogWarn(
-                        $"Applying sprite settings on a non-Sprite texture type for: {filePath}"
-                    );
-                }
-            }
-
-            if (spriteData.applySpriteMode)
-            {
-                if (textureImporter.spriteImportMode != spriteData.spriteMode)
-                {
-                    textureImporter.spriteImportMode = spriteData.spriteMode;
-                    changed = true;
-                }
-
-                if (settings.spriteMode != (int)spriteData.spriteMode)
-                {
-                    settings.spriteMode = (int)spriteData.spriteMode;
-                    settingsChanged = true;
-                }
-            }
-
-            if (spriteData.applyPixelsPerUnit)
-            {
-                if (textureImporter.spritePixelsPerUnit != spriteData.pixelsPerUnit)
-                {
-                    textureImporter.spritePixelsPerUnit = spriteData.pixelsPerUnit;
-                    changed = true;
-                }
-
-                if (settings.spritePixelsPerUnit != spriteData.pixelsPerUnit)
-                {
-                    settings.spritePixelsPerUnit = spriteData.pixelsPerUnit;
-                    settingsChanged = true;
-                }
-            }
-
-            if (spriteData.applyPivot)
-            {
-                if (textureImporter.spritePivot != spriteData.pivot)
-                {
-                    textureImporter.spritePivot = spriteData.pivot;
-                    changed = true;
-                }
-
-                if (settings.spriteAlignment != (int)SpriteAlignment.Custom)
-                {
-                    settings.spriteAlignment = (int)SpriteAlignment.Custom;
-                    settingsChanged = true;
-                }
-
-                if (settings.spritePivot != spriteData.pivot)
-                {
-                    settings.spritePivot = spriteData.pivot;
-                    settingsChanged = true;
-                }
-            }
-
-            if (spriteData.applyGenerateMipMaps)
-            {
-                if (textureImporter.mipmapEnabled != spriteData.generateMipMaps)
-                {
-                    textureImporter.mipmapEnabled = spriteData.generateMipMaps;
-                    changed = true;
-                }
-                if (settings.mipmapEnabled != spriteData.generateMipMaps)
-                {
-                    settings.mipmapEnabled = spriteData.generateMipMaps;
-                    settingsChanged = true;
-                }
-            }
-
-            if (spriteData.applyCrunchCompression)
-            {
-                if (textureImporter.crunchedCompression != spriteData.useCrunchCompression)
-                {
-                    textureImporter.crunchedCompression = spriteData.useCrunchCompression;
-                    changed = true;
-                }
-            }
-
-            if (spriteData.applyCompression)
-            {
-                if (textureImporter.textureCompression != spriteData.compressionLevel)
-                {
-                    textureImporter.textureCompression = spriteData.compressionLevel;
-                    changed = true;
-                }
-            }
-
-            if (spriteData.applyAlphaIsTransparency)
-            {
-                if (textureImporter.alphaIsTransparency != spriteData.alphaIsTransparency)
-                {
-                    textureImporter.alphaIsTransparency = spriteData.alphaIsTransparency;
-                    changed = true;
-                }
-                if (settings.alphaIsTransparency != spriteData.alphaIsTransparency)
-                {
-                    settings.alphaIsTransparency = spriteData.alphaIsTransparency;
-                    settingsChanged = true;
-                }
-            }
-
-            if (spriteData.applyReadWriteEnabled)
-            {
-                if (textureImporter.isReadable != spriteData.readWriteEnabled)
-                {
-                    textureImporter.isReadable = spriteData.readWriteEnabled;
-                    changed = true;
-                }
-
-                if (settings.readable != spriteData.readWriteEnabled)
-                {
-                    settings.readable = spriteData.readWriteEnabled;
-                    settingsChanged = true;
-                }
-            }
-
-            if (spriteData.applyExtrudeEdges)
-            {
-                if (settings.spriteExtrude != spriteData.extrudeEdges)
-                {
-                    settings.spriteExtrude = spriteData.extrudeEdges;
-                    settingsChanged = true;
-                }
-            }
-
-            if (spriteData.applyWrapMode)
-            {
-                if (textureImporter.wrapMode != spriteData.wrapMode)
-                {
-                    textureImporter.wrapMode = spriteData.wrapMode;
-                    changed = true;
-                }
-                if (settings.wrapMode != spriteData.wrapMode)
-                {
-                    settings.wrapMode = spriteData.wrapMode;
-                    settingsChanged = true;
-                }
-            }
-
-            if (spriteData.applyFilterMode)
-            {
-                if (textureImporter.filterMode != spriteData.filterMode)
-                {
-                    textureImporter.filterMode = spriteData.filterMode;
-                    changed = true;
-                }
-                if (settings.filterMode != spriteData.filterMode)
-                {
-                    settings.filterMode = spriteData.filterMode;
-                    settingsChanged = true;
-                }
-            }
-
-            if (settingsChanged)
-            {
-                textureImporter.SetTextureSettings(settings);
-            }
-
-            return changed || settingsChanged;
         }
     }
 #endif
