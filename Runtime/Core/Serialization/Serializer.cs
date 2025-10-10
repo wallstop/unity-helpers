@@ -165,6 +165,93 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
     /// </example>
     public static class Serializer
     {
+        // Small protobuf payloads benefit from protobuf-net's MemoryStream fast-path (TryGetBuffer).
+        // Larger payloads see wins from our pooled read-only stream to avoid per-iteration allocations.
+        private const int ProtobufMemoryStreamThreshold = 4096; // bytes
+
+        // Optional zero-copy path if protobuf-net supports ReadOnlyMemory<byte>/ReadOnlySequence<byte> overloads
+        private static readonly System.Reflection.MethodInfo ProtoDeserializeTypeFromROM;
+        private static readonly System.Reflection.MethodInfo ProtoDeserializeTypeFromROS;
+        private static readonly Func<
+            Type,
+            ReadOnlyMemory<byte>,
+            object
+        > ProtoDeserializeTypeFromROMFast;
+        private static readonly Func<
+            Type,
+            System.Buffers.ReadOnlySequence<byte>,
+            object
+        > ProtoDeserializeTypeFromROSFast;
+
+        static Serializer()
+        {
+            try
+            {
+                var methods = typeof(ProtoBuf.Serializer).GetMethods(
+                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static
+                );
+                foreach (var mi in methods)
+                {
+                    if (mi.Name != "Deserialize")
+                        continue;
+                    var pars = mi.GetParameters();
+                    if (pars.Length != 2)
+                        continue;
+                    if (pars[0].ParameterType != typeof(Type))
+                        continue;
+
+                    var p1 = pars[1].ParameterType;
+                    if (
+                        p1.IsGenericType
+                        && p1.GetGenericTypeDefinition() == typeof(ReadOnlyMemory<>)
+                    )
+                    {
+                        var genArg = p1.GetGenericArguments()[0];
+                        if (genArg == typeof(byte))
+                        {
+                            ProtoDeserializeTypeFromROM ??= mi;
+                            try
+                            {
+                                ProtoDeserializeTypeFromROMFast =
+                                    ReflectionHelpers.GetStaticMethodInvoker<
+                                        Type,
+                                        ReadOnlyMemory<byte>,
+                                        object
+                                    >(mi);
+                            }
+                            catch { }
+                        }
+                    }
+                    else if (
+                        p1.IsGenericType
+                        && p1.GetGenericTypeDefinition()
+                            == typeof(System.Buffers.ReadOnlySequence<>)
+                    )
+                    {
+                        var genArg = p1.GetGenericArguments()[0];
+                        if (genArg == typeof(byte))
+                        {
+                            ProtoDeserializeTypeFromROS ??= mi;
+                            try
+                            {
+                                ProtoDeserializeTypeFromROSFast =
+                                    ReflectionHelpers.GetStaticMethodInvoker<
+                                        Type,
+                                        System.Buffers.ReadOnlySequence<byte>,
+                                        object
+                                    >(mi);
+                            }
+                            catch { }
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // Reflection probing failed; keep nulls and fall back to streams
+            }
+        }
+
         private static readonly ConcurrentDictionary<Type, Type> ProtobufRootCache = new();
         private static readonly Type NoRootMarker = typeof(void);
 
@@ -520,24 +607,110 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             {
                 throw new ProtoException("No data provided for Protobuf deserialization.");
             }
-
-            using Utils.PooledResource<PooledReadOnlyMemoryStream> lease =
-                PooledReadOnlyMemoryStream.Rent(out PooledReadOnlyMemoryStream stream);
-            stream.SetBuffer(data);
             try
             {
-                Type declared = typeof(T);
-                if (ShouldUseRuntimeTypeForProtobuf<T>(declared, default, forceRuntimeType: false))
+                // Prefer zero-copy ROM/ROS overloads when available
+                if (ProtoDeserializeTypeFromROMFast != null)
                 {
-                    Type root = ResolveProtobufRootType(declared);
+                    var rom = new ReadOnlyMemory<byte>(data);
+                    Type declared = typeof(T);
+                    if (
+                        ShouldUseRuntimeTypeForProtobuf<T>(
+                            declared,
+                            default,
+                            forceRuntimeType: false
+                        )
+                    )
+                    {
+                        Type root = ResolveProtobufRootType(declared);
+                        if (root != null)
+                        {
+                            return (T)ProtoDeserializeTypeFromROMFast(root, rom);
+                        }
+
+                        throw new ProtoException(
+                            $"Unable to resolve a unique protobuf root for declared type {declared.FullName}. Register a root via RegisterProtobufRoot or annotate a shared abstract base with [ProtoInclude]s."
+                        );
+                    }
+
+                    return (T)ProtoDeserializeTypeFromROMFast(declared, rom);
+                }
+
+                if (ProtoDeserializeTypeFromROSFast != null)
+                {
+                    var ros = new System.Buffers.ReadOnlySequence<byte>(data);
+                    Type declared = typeof(T);
+                    if (
+                        ShouldUseRuntimeTypeForProtobuf<T>(
+                            declared,
+                            default,
+                            forceRuntimeType: false
+                        )
+                    )
+                    {
+                        Type root = ResolveProtobufRootType(declared);
+                        if (root != null)
+                        {
+                            return (T)ProtoDeserializeTypeFromROSFast(root, ros);
+                        }
+
+                        throw new ProtoException(
+                            $"Unable to resolve a unique protobuf root for declared type {declared.FullName}. Register a root via RegisterProtobufRoot or annotate a shared abstract base with [ProtoInclude]s."
+                        );
+                    }
+
+                    return (T)ProtoDeserializeTypeFromROSFast(declared, ros);
+                }
+
+                // For small payloads, allow protobuf-net to use MemoryStream's non-copy buffer access
+                if (data.Length <= ProtobufMemoryStreamThreshold)
+                {
+                    using MemoryStream ms = new MemoryStream(data, writable: false);
+                    Type declared = typeof(T);
+                    if (
+                        ShouldUseRuntimeTypeForProtobuf<T>(
+                            declared,
+                            default,
+                            forceRuntimeType: false
+                        )
+                    )
+                    {
+                        Type root = ResolveProtobufRootType(declared);
+                        if (root != null)
+                        {
+                            return (T)ProtoBuf.Serializer.Deserialize(root, ms);
+                        }
+
+                        throw new ProtoException(
+                            $"Unable to resolve a unique protobuf root for declared type {declared.FullName}. Register a root via RegisterProtobufRoot or annotate a shared abstract base with [ProtoInclude]s."
+                        );
+                    }
+
+                    return ProtoBuf.Serializer.Deserialize<T>(ms);
+                }
+
+                // For larger payloads, prefer pooled stream to avoid per-iteration allocations
+                using Utils.PooledResource<PooledReadOnlyMemoryStream> lease =
+                    PooledReadOnlyMemoryStream.Rent(out PooledReadOnlyMemoryStream stream);
+                stream.SetBuffer(data);
+
+                Type declaredLarge = typeof(T);
+                if (
+                    ShouldUseRuntimeTypeForProtobuf<T>(
+                        declaredLarge,
+                        default,
+                        forceRuntimeType: false
+                    )
+                )
+                {
+                    Type root = ResolveProtobufRootType(declaredLarge);
                     if (root != null)
                     {
                         return (T)ProtoBuf.Serializer.Deserialize(root, stream);
                     }
 
-                    // Ambiguous or unknown root for interface/abstract/object; require registration
                     throw new ProtoException(
-                        $"Unable to resolve a unique protobuf root for declared type {declared.FullName}. Register a root via RegisterProtobufRoot or annotate a shared abstract base with [ProtoInclude]s."
+                        $"Unable to resolve a unique protobuf root for declared type {declaredLarge.FullName}. Register a root via RegisterProtobufRoot or annotate a shared abstract base with [ProtoInclude]s."
                     );
                 }
 
@@ -591,6 +764,53 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                 return cached == NoRootMarker ? null : cached;
             }
 
+            // Try to resolve a unique abstract [ProtoContract] base that implements the declared interface.
+            // This allows scenarios like: IRandom -> AbstractRandom (annotated with [ProtoContract] + [ProtoInclude]).
+            // We deliberately keep the search local to the declaring assembly to avoid brittle cross-assembly heuristics.
+            if (declared.IsInterface && declared != typeof(object))
+            {
+                try
+                {
+                    var types = declared.Assembly.GetTypes();
+                    var candidates = types
+                        .Where(t =>
+                            t.IsClass
+                            && t.IsAbstract
+                            && declared.IsAssignableFrom(t)
+                            && ReflectionHelpers.HasAttributeSafe<ProtoContractAttribute>(t)
+                        )
+                        .ToArray();
+
+                    if (candidates.Length == 1)
+                    {
+                        var root = candidates[0];
+                        ProtobufRootCache[declared] = root;
+                        return root;
+                    }
+
+                    if (candidates.Length > 1)
+                    {
+                        // Prefer a candidate that explicitly declares [ProtoInclude]s if this disambiguates
+                        var includeCandidates = candidates
+                            .Where(t =>
+                                ReflectionHelpers.HasAttributeSafe<ProtoIncludeAttribute>(t)
+                            )
+                            .ToArray();
+
+                        if (includeCandidates.Length == 1)
+                        {
+                            var root = includeCandidates[0];
+                            ProtobufRootCache[declared] = root;
+                            return root;
+                        }
+                    }
+                }
+                catch
+                {
+                    // Reflection may fail in some restricted environments; fall through to marker/null
+                }
+            }
+
             ProtobufRootCache[declared] = NoRootMarker;
             return null;
         }
@@ -614,11 +834,29 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                 throw new ArgumentNullException(nameof(type));
             }
 
-            using Utils.PooledResource<PooledReadOnlyMemoryStream> lease =
-                PooledReadOnlyMemoryStream.Rent(out PooledReadOnlyMemoryStream stream);
-            stream.SetBuffer(data);
             try
             {
+                // Prefer zero-copy ROM/ROS overloads when available
+                if (ProtoDeserializeTypeFromROMFast != null)
+                {
+                    var rom = new ReadOnlyMemory<byte>(data);
+                    return (T)ProtoDeserializeTypeFromROMFast(type, rom);
+                }
+                if (ProtoDeserializeTypeFromROSFast != null)
+                {
+                    var ros = new System.Buffers.ReadOnlySequence<byte>(data);
+                    return (T)ProtoDeserializeTypeFromROSFast(type, ros);
+                }
+
+                if (data.Length <= ProtobufMemoryStreamThreshold)
+                {
+                    using MemoryStream ms = new MemoryStream(data, writable: false);
+                    return (T)ProtoBuf.Serializer.Deserialize(type, ms);
+                }
+
+                using Utils.PooledResource<PooledReadOnlyMemoryStream> lease =
+                    PooledReadOnlyMemoryStream.Rent(out PooledReadOnlyMemoryStream stream);
+                stream.SetBuffer(data);
                 return (T)ProtoBuf.Serializer.Deserialize(type, stream);
             }
             catch (ProtoException)

@@ -536,8 +536,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     continue;
                 }
 
-                Bounds nodeBounds = currentNode.boundary.ToBounds();
-                if (queryBounds.Contains(nodeBounds.min) && queryBounds.Contains(nodeBounds.max))
+                // Fully contained if the node's closed bounds fit inside the query
+                Bounds nodeClosed = ToClosedBounds(currentNode.boundary);
+                if (queryBounds.Contains(nodeClosed.min) && queryBounds.Contains(nodeClosed.max))
                 {
                     int start = currentNode._startIndex;
                     int end = start + currentNode._count;
@@ -556,6 +557,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     for (int i = start; i < end; ++i)
                     {
                         Entry entry = entries[indices[i]];
+                        // Per-point checks use Unity's closed Contains to match KDTree semantics
                         if (queryBounds.Contains(entry.position))
                         {
                             elementsInBounds.Add(entry.value);
@@ -574,7 +576,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                         continue;
                     }
 
-                    if (queryBounds.Intersects(child.boundary.ToBounds()))
+                    // Traverse children whose closed representation intersects the query
+                    Bounds childClosed = ToClosedBounds(child.boundary);
+                    if (queryBounds.Intersects(childClosed))
                     {
                         nodesToVisit.Push(child);
                     }
@@ -582,6 +586,41 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
 
             return elementsInBounds;
+        }
+
+        private static Bounds ToClosedBounds(BoundingBox3D box)
+        {
+            Vector3 min = box.min;
+            Vector3 maxClosed = new Vector3(
+                PrevFloat(box.max.x),
+                PrevFloat(box.max.y),
+                PrevFloat(box.max.z)
+            );
+            Vector3 center = (min + maxClosed) * 0.5f;
+            Vector3 size = maxClosed - min;
+            return new Bounds(center, size);
+        }
+
+        private static float PrevFloat(float value)
+        {
+            if (float.IsNaN(value) || float.IsInfinity(value))
+            {
+                return value;
+            }
+
+            if (value == float.MinValue)
+            {
+                return value;
+            }
+
+            if (value == 0f)
+            {
+                return -float.Epsilon;
+            }
+
+            int bits = BitConverter.SingleToInt32Bits(value);
+            bits = value > 0f ? bits - 1 : bits + 1;
+            return BitConverter.Int32BitsToSingle(bits);
         }
 
         // No additional helpers; use Unity Bounds methods to mirror KDTree behavior

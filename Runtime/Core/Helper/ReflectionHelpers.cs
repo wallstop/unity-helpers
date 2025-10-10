@@ -24,12 +24,25 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
     /// <summary>
     /// High-performance reflection helpers for field/property access, method/constructor invocation,
-    /// and dynamic collection creation with caching and optional IL emission.
+    /// dynamic collection creation, and type/attribute scanning with caching and optional IL emission.
     /// </summary>
     /// <remarks>
-    /// Uses expression compilation or dynamic IL where supported; falls back to reflection otherwise.
-    /// Caches delegates to avoid per-call reflection overhead.
+    /// - Uses expression compilation or dynamic IL where supported; falls back to reflection otherwise.
+    /// - Caches generated delegates to avoid per-call reflection overhead.
+    /// - Designed for hot paths (serialization, UI binding, ECS-style systems).
     /// </remarks>
+    /// <example>
+    /// <code>
+    /// // Get and set a field without repeated reflection costs
+    /// public sealed class Player { public int Score; }
+    /// var field = typeof(Player).GetField("Score");
+    /// var getter = ReflectionHelpers.GetFieldGetter(field);   // object -> object
+    /// var setter = ReflectionHelpers.GetFieldSetter(field);   // (object, object) -> void
+    /// var p = new Player();
+    /// setter(p, 42);
+    /// UnityEngine.Debug.Log(getter(p)); // 42
+    /// </code>
+    /// </example>
     public static class ReflectionHelpers
     {
 #if SINGLE_THREADED
@@ -71,13 +84,30 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             ConstructorInfo,
             Func<object[], object>
         > Constructors = new();
+
+        // Cache for typed static method invokers with 2 parameters to avoid object[] allocations
+        private static readonly ConcurrentDictionary<MethodInfo, Delegate> TypedStaticInvoker2 =
+            new();
 #endif
 
         private static readonly bool CanCompileExpressions = CheckExpressionCompilationSupport();
 
         /// <summary>
         /// Tries to get an attribute of type <typeparamref name="T"/> and indicates whether it is present.
+        /// Safe: returns false on any reflection errors.
         /// </summary>
+        /// <param name="provider">Any member, type, or assembly supporting attributes.</param>
+        /// <param name="attribute">Output attribute instance if found, otherwise default.</param>
+        /// <param name="inherit">Whether to search base types.</param>
+        /// <returns>True if attribute exists; otherwise false.</returns>
+        /// <example>
+        /// <code>
+        /// if (typeof(MyComponent).IsAttributeDefined(out ObsoleteAttribute attr))
+        /// {
+        ///     UnityEngine.Debug.Log($"Marked obsolete: {attr.Message}");
+        /// }
+        /// </code>
+        /// </example>
         public static bool IsAttributeDefined<T>(
             this ICustomAttributeProvider provider,
             out T attribute,
@@ -109,8 +139,19 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         }
 
         /// <summary>
-        /// Loads all public static properties whose type matches <typeparamref name="T"/> keyed by property name (case-insensitive).
+        /// Loads all public static properties whose property type is exactly <typeparamref name="T"/>,
+        /// keyed by property name (case-insensitive).
         /// </summary>
+        /// <remarks>
+        /// Use when enumerating well-known static instances or singletons of a type.
+        /// </remarks>
+        /// <example>
+        /// <code>
+        /// // Finds all: public static T SomeProperty { get; }
+        /// var props = ReflectionHelpers.LoadStaticPropertiesForType<MyType>();
+        /// foreach (var kvp in props) UnityEngine.Debug.Log($"{kvp.Key} -> {kvp.Value}");
+        /// </code>
+        /// </example>
         public static Dictionary<string, PropertyInfo> LoadStaticPropertiesForType<T>()
         {
             Type type = typeof(T);
@@ -124,8 +165,18 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         }
 
         /// <summary>
-        /// Loads all public static fields whose type matches <typeparamref name="T"/> keyed by field name (case-insensitive).
+        /// Loads all public static fields whose field type is exactly <typeparamref name="T"/>,
+        /// keyed by field name (case-insensitive).
         /// </summary>
+        /// <remarks>
+        /// Use when mapping constant instances or static registries.
+        /// </remarks>
+        /// <example>
+        /// <code>
+        /// var fields = ReflectionHelpers.LoadStaticFieldsForType<MyType>();
+        /// // Access FieldInfo directly to get or set values
+        /// </code>
+        /// </example>
         public static Dictionary<string, FieldInfo> LoadStaticFieldsForType<T>()
         {
             Type type = typeof(T);
@@ -140,8 +191,13 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         /// <summary>
-        /// Creates a new array instance of <paramref name="type"/> with the specified length.
+        /// Creates a new array instance of element <paramref name="type"/> with the specified length.
         /// </summary>
+        /// <example>
+        /// <code>
+        /// Array ints = ReflectionHelpers.CreateArray(typeof(int), 16); // int[16]
+        /// </code>
+        /// </example>
         public static Array CreateArray(Type type, int length)
         {
             return ArrayCreators
@@ -154,6 +210,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// <summary>
         /// Creates a new <see cref="List{T}"/> instance for <paramref name="elementType"/> with the specified capacity.
         /// </summary>
+        /// <example>
+        /// <code>
+        /// IList list = ReflectionHelpers.CreateList(typeof(string), 128); // List<string> with Capacity=128
+        /// </code>
+        /// </example>
         public static IList CreateList(Type elementType, int length)
         {
             return ListWithCapacityCreators
@@ -166,6 +227,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// <summary>
         /// Creates a new <see cref="List{T}"/> instance for <paramref name="elementType"/>.
         /// </summary>
+        /// <example>
+        /// <code>
+        /// IList list = ReflectionHelpers.CreateList(typeof(UnityEngine.Vector3));
+        /// </code>
+        /// </example>
         public static IList CreateList(Type elementType)
         {
             // ReSharper disable once ConvertClosureToMethodGroup
@@ -173,8 +239,18 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         }
 
         /// <summary>
-        /// Builds a cached delegate that returns the value of an instance field as <see cref="object"/>.
+        /// Builds a cached delegate that returns the value of a field as <see cref="object"/>.
+        /// Supports instance and static fields.
         /// </summary>
+        /// <param name="field">Field to read.</param>
+        /// <returns>Delegate: <c>object instance =&gt; object value</c></returns>
+        /// <example>
+        /// <code>
+        /// var fi = typeof(Player).GetField("Score");
+        /// var getter = ReflectionHelpers.GetFieldGetter(fi);
+        /// object value = getter(myPlayer);
+        /// </code>
+        /// </example>
         public static Func<object, object> GetFieldGetter(FieldInfo field)
         {
 #if !EMIT_DYNAMIC_IL
@@ -213,6 +289,15 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// Builds a cached delegate that returns the value of a property as <see cref="object"/>.
         /// Supports static and instance properties.
         /// </summary>
+        /// <param name="property">Property to read.</param>
+        /// <returns>Delegate: <c>object instanceOrNull =&gt; object value</c></returns>
+        /// <example>
+        /// <code>
+        /// var pi = typeof(Settings).GetProperty("Instance"); // static property
+        /// var getter = ReflectionHelpers.GetPropertyGetter(pi);
+        /// object inst = getter(null);
+        /// </code>
+        /// </example>
         public static Func<object, object> GetPropertyGetter(PropertyInfo property)
         {
 #if !EMIT_DYNAMIC_IL
@@ -260,6 +345,22 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #endif
         }
 
+        /// <summary>
+        /// Builds a strongly-typed property getter delegate.
+        /// Supports static and instance properties; for static, the instance argument is ignored.
+        /// </summary>
+        /// <typeparam name="TInstance">Declaring type or compatible type.</typeparam>
+        /// <typeparam name="TValue">Expected property value type.</typeparam>
+        /// <param name="property">Property to read.</param>
+        /// <returns>Delegate: <c>TInstance instance =&gt; TValue value</c></returns>
+        /// <example>
+        /// <code>
+        /// var pi = typeof(TestPropertyClass).GetProperty(nameof(TestPropertyClass.InstanceProperty));
+        /// var getter = ReflectionHelpers.GetPropertyGetter<TestPropertyClass, int>(pi);
+        /// var obj = new TestPropertyClass { InstanceProperty = 123 };
+        /// int value = getter(obj); // 123
+        /// </code>
+        /// </example>
         public static Func<TInstance, TValue> GetPropertyGetter<TInstance, TValue>(
             PropertyInfo property
         )
@@ -345,8 +446,19 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         }
 
         /// <summary>
-        /// Builds a boxed setter delegate for an instance property (object instance, object value).
+        /// Builds a boxed setter delegate for a property.
+        /// Supports instance and static properties. Throws if property has no setter.
         /// </summary>
+        /// <param name="property">Property to set.</param>
+        /// <returns>Delegate: <c>(object instanceOrNull, object value) =&gt; void</c></returns>
+        /// <example>
+        /// <code>
+        /// var pi = typeof(TestPropertyClass).GetProperty(nameof(TestPropertyClass.InstanceProperty));
+        /// var setter = ReflectionHelpers.GetPropertySetter(pi);
+        /// object obj = new TestPropertyClass();
+        /// setter(obj, 321);
+        /// </code>
+        /// </example>
         public static Action<object, object> GetPropertySetter(PropertyInfo property)
         {
             MethodInfo setMethod = property.GetSetMethod(true);
@@ -396,8 +508,18 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         }
 
         /// <summary>
-        /// Returns a compiled parameterless constructor delegate for a given System.Type producing object.
+        /// Returns a compiled parameterless constructor delegate for a given <see cref="Type"/>.
         /// </summary>
+        /// <param name="type">Type with a public parameterless constructor.</param>
+        /// <returns>Delegate: <c>() =&gt; object instance</c></returns>
+        /// <exception cref="ArgumentNullException">If <paramref name="type"/> is null.</exception>
+        /// <exception cref="ArgumentException">If the type lacks a parameterless constructor.</exception>
+        /// <example>
+        /// <code>
+        /// var ctor = ReflectionHelpers.GetParameterlessConstructor(typeof(List<int>));
+        /// object list = ctor();
+        /// </code>
+        /// </example>
         public static Func<object> GetParameterlessConstructor(Type type)
         {
             if (type == null)
@@ -433,8 +555,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         }
 
         /// <summary>
-        /// Builds a cached delegate that returns the value of a static field as object.
+        /// Builds a cached delegate that returns the value of a static field as <see cref="object"/>.
         /// </summary>
+        /// <param name="field">Static field to read.</param>
+        /// <returns>Delegate: <c>() =&gt; object value</c></returns>
+        /// <exception cref="ArgumentException">If <paramref name="field"/> is not static.</exception>
         public static Func<object> GetStaticFieldGetter(FieldInfo field)
         {
             if (!field.IsStatic)
@@ -546,6 +671,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// <summary>
         /// Builds a cached delegate that returns the value of a static property as TValue.
         /// </summary>
+        /// <summary>
+        /// Builds a strongly-typed static property getter.
+        /// </summary>
+        /// <typeparam name="TValue">Property value type.</typeparam>
+        /// <param name="property">Static property to read.</param>
+        /// <returns>Delegate: <c>() =&gt; TValue</c></returns>
         public static Func<TValue> GetStaticPropertyGetter<TValue>(PropertyInfo property)
         {
             MethodInfo getMethod = property.GetGetMethod(true);
@@ -599,6 +730,13 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// <summary>
         /// Builds a cached delegate that returns the value of a static field as TValue.
         /// </summary>
+        /// <summary>
+        /// Builds a strongly-typed static field getter.
+        /// </summary>
+        /// <typeparam name="TValue">Field value type.</typeparam>
+        /// <param name="field">Static field.</param>
+        /// <returns>Delegate: <c>() =&gt; TValue</c></returns>
+        /// <exception cref="ArgumentException">If the field is not static.</exception>
         public static Func<TValue> GetStaticFieldGetter<TValue>(FieldInfo field)
         {
             if (!field.IsStatic)
@@ -700,6 +838,13 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// <summary>
         /// Builds a delegate that sets a static field to a value (boxed types supported).
         /// </summary>
+        /// <summary>
+        /// Builds a delegate that sets a static field to a value.
+        /// </summary>
+        /// <typeparam name="TValue">Field value type.</typeparam>
+        /// <param name="field">Static field to write.</param>
+        /// <returns>Delegate: <c>(TValue value) =&gt; void</c></returns>
+        /// <exception cref="ArgumentException">If the field is not static.</exception>
         public static Action<TValue> GetStaticFieldSetter<TValue>(FieldInfo field)
         {
             if (!field.IsStatic)
@@ -733,6 +878,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// <summary>
         /// Builds a field setter for instance fields with boxed parameters (object instance, object value).
         /// </summary>
+        /// <summary>
+        /// Builds a field setter for fields with boxed parameters.
+        /// Supports instance and static fields.
+        /// </summary>
+        /// <param name="field">Field to write.</param>
+        /// <returns>Delegate: <c>(object instance, object value) =&gt; void</c></returns>
         public static Action<object, object> GetFieldSetter(FieldInfo field)
         {
 #if !EMIT_DYNAMIC_IL
@@ -769,6 +920,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// <summary>
         /// Builds a static field setter with boxed parameter (object value).
         /// </summary>
+        /// <summary>
+        /// Builds a static field setter with boxed parameter.
+        /// </summary>
+        /// <param name="field">Static field to write.</param>
+        /// <returns>Delegate: <c>(object value) =&gt; void</c></returns>
+        /// <exception cref="ArgumentException">If the field is not static.</exception>
         public static Action<object> GetStaticFieldSetter(FieldInfo field)
         {
             if (!field.IsStatic)
@@ -806,6 +963,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// <summary>
         /// Gets (or caches) an array creator function for the given element type and length.
         /// </summary>
+        /// <summary>
+        /// Gets (or caches) an array creator function for the given element type.
+        /// </summary>
+        /// <param name="elementType">Array element type.</param>
+        /// <returns>Delegate: <c>(int length) =&gt; Array</c></returns>
         public static Func<int, Array> GetArrayCreator(Type elementType)
         {
 #if !EMIT_DYNAMIC_IL
@@ -829,6 +991,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// <summary>
         /// Gets (or caches) a List<T> creator function for the given element type.
         /// </summary>
+        /// <summary>
+        /// Gets (or caches) a <see cref="List{T}"/> creator function for the given element type.
+        /// </summary>
+        /// <param name="elementType">List element type.</param>
+        /// <returns>Delegate: <c>() =&gt; IList</c> where the instance is a <c>List&lt;T&gt;</c>.</returns>
         public static Func<IList> GetListCreator(Type elementType)
         {
             Type listType = typeof(List<>).MakeGenericType(elementType);
@@ -860,6 +1027,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// <summary>
         /// Gets (or caches) a List<T> creator function with capacity for the given element type.
         /// </summary>
+        /// <summary>
+        /// Gets (or caches) a <see cref="List{T}"/> creator function with capacity for the given element type.
+        /// </summary>
+        /// <param name="elementType">List element type.</param>
+        /// <returns>Delegate: <c>(int capacity) =&gt; IList</c> where the instance is a <c>List&lt;T&gt;</c>.</returns>
         public static Func<int, IList> GetListWithCapacityCreator(Type elementType)
         {
             Type listType = typeof(List<>).MakeGenericType(elementType);
@@ -891,8 +1063,16 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         /// <summary>
-        /// Creates a HashSet<T> instance for the given element type with capacity.
+        /// Creates a <see cref="HashSet{T}"/> instance for the given element type with capacity.
         /// </summary>
+        /// <param name="elementType">Element type for the set.</param>
+        /// <param name="capacity">Initial capacity.</param>
+        /// <returns>A boxed <c>HashSet&lt;T&gt;</c> as <see cref="object"/>.</returns>
+        /// <example>
+        /// <code>
+        /// object set = ReflectionHelpers.CreateHashSet(typeof(string), 64); // HashSet<string>
+        /// </code>
+        /// </example>
         public static object CreateHashSet(Type elementType, int capacity)
         {
             return HashSetWithCapacityCreators
@@ -902,8 +1082,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         }
 
         /// <summary>
-        /// Gets (or caches) a HashSet<T> creator with capacity for the given element type.
+        /// Gets (or caches) a <see cref="HashSet{T}"/> creator with capacity for the given element type.
         /// </summary>
+        /// <param name="elementType">Element type for the set.</param>
+        /// <returns>Delegate: <c>(int capacity) =&gt; object</c> producing a boxed <c>HashSet&lt;T&gt;</c>.</returns>
         public static Func<int, object> GetHashSetWithCapacityCreator(Type elementType)
         {
             Type hashSetType = typeof(HashSet<>).MakeGenericType(elementType);
@@ -934,8 +1116,17 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         }
 
         /// <summary>
-        /// Gets (or caches) an adder delegate for HashSet<T>.Add.
+        /// Gets (or caches) an adder delegate for <c>HashSet&lt;T&gt;.Add</c>.
         /// </summary>
+        /// <param name="elementType">Element type for the target <c>HashSet&lt;T&gt;</c>.</param>
+        /// <returns>Delegate: <c>(object hashSet, object item) =&gt; void</c></returns>
+        /// <example>
+        /// <code>
+        /// object set = ReflectionHelpers.CreateHashSet(typeof(int), 0);
+        /// var add = ReflectionHelpers.GetHashSetAdder(typeof(int));
+        /// add(set, 5);
+        /// </code>
+        /// </example>
         public static Action<object, object> GetHashSetAdder(Type elementType)
         {
             if (elementType == null)
@@ -998,6 +1189,13 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// <param name="parameters">Optional parameters.</param>
         /// <returns>The return value from the method, or null for void.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        /// <summary>
+        /// Invokes an instance method using a cached delegate when possible.
+        /// </summary>
+        /// <param name="method">Instance method to invoke.</param>
+        /// <param name="instance">Target instance.</param>
+        /// <param name="parameters">Method parameters (optional).</param>
+        /// <returns>Boxed return value or null for void methods.</returns>
         public static object InvokeMethod(
             MethodInfo method,
             object instance,
@@ -1016,6 +1214,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// <param name="parameters">Optional parameters.</param>
         /// <returns>The return value from the method, or null for void.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        /// <summary>
+        /// Invokes a static method using a cached delegate when possible.
+        /// </summary>
+        /// <param name="method">Static method.</param>
+        /// <param name="parameters">Method parameters.</param>
+        /// <returns>Boxed return value or null for void methods.</returns>
         public static object InvokeStaticMethod(MethodInfo method, params object[] parameters)
         {
             return StaticMethodInvokers
@@ -1027,6 +1231,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// Constructs an instance using a cached constructor invoker.
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        /// <summary>
+        /// Creates an instance using a constructor via a cached delegate.
+        /// </summary>
+        /// <param name="constructor">Constructor to invoke.</param>
+        /// <param name="parameters">Constructor parameters.</param>
+        /// <returns>Created instance.</returns>
         public static object CreateInstance(ConstructorInfo constructor, params object[] parameters)
         {
             return Constructors
@@ -1041,6 +1251,17 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// <summary>
         /// Constructs an instance using a cached constructor invoker and returns it as T.
         /// </summary>
+        /// <summary>
+        /// Creates an instance of <typeparamref name="T"/> using the best-matching constructor.
+        /// </summary>
+        /// <param name="parameters">Constructor parameters.</param>
+        /// <typeparam name="T">Type to create.</typeparam>
+        /// <returns>New instance of <typeparamref name="T"/>.</returns>
+        /// <example>
+        /// <code>
+        /// var p = ReflectionHelpers.CreateInstance<Player>(name, level);
+        /// </code>
+        /// </example>
         public static T CreateInstance<T>(params object[] parameters)
         {
             Type type = typeof(T);
@@ -1251,6 +1472,88 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
             return (Func<object[], object>)
                 dynamicMethod.CreateDelegate(typeof(Func<object[], object>));
+#endif
+        }
+
+        /// <summary>
+        /// Gets (or caches) a strongly-typed static method invoker with two parameters to avoid object[] allocations.
+        /// Signature: Func&lt;T1, T2, TReturn&gt;
+        /// </summary>
+        /// <typeparam name="T1">First parameter type.</typeparam>
+        /// <typeparam name="T2">Second parameter type.</typeparam>
+        /// <typeparam name="TReturn">Return type.</typeparam>
+        /// <param name="method">Static method info.</param>
+        /// <returns>Compiled delegate matching the method signature.</returns>
+        public static Func<T1, T2, TReturn> GetStaticMethodInvoker<T1, T2, TReturn>(
+            MethodInfo method
+        )
+        {
+            if (method == null)
+            {
+                throw new ArgumentNullException(nameof(method));
+            }
+            if (!method.IsStatic)
+            {
+                throw new ArgumentException("Method must be static", nameof(method));
+            }
+
+            ParameterInfo[] ps = method.GetParameters();
+            if (
+                ps.Length != 2
+                || ps[0].ParameterType != typeof(T1)
+                || ps[1].ParameterType != typeof(T2)
+            )
+            {
+                throw new ArgumentException("Method signature does not match <T1,T2,TReturn>.");
+            }
+
+#if SINGLE_THREADED
+            if (!TypedStaticInvoker2.TryGetValue(method, out Delegate del))
+            {
+                del = BuildTypedStaticInvoker2<T1, T2, TReturn>(method);
+                TypedStaticInvoker2[method] = del;
+            }
+            return (Func<T1, T2, TReturn>)del;
+#else
+            Delegate del = TypedStaticInvoker2.GetOrAdd(
+                method,
+                m => BuildTypedStaticInvoker2<T1, T2, TReturn>(m)
+            );
+            return (Func<T1, T2, TReturn>)del;
+#endif
+        }
+
+        private static Delegate BuildTypedStaticInvoker2<T1, T2, TReturn>(MethodInfo method)
+        {
+#if !EMIT_DYNAMIC_IL
+            try
+            {
+                return method.CreateDelegate(typeof(Func<T1, T2, TReturn>));
+            }
+            catch
+            {
+                // Fallback to expression compilation
+                var p1 = Expression.Parameter(typeof(T1), "a");
+                var p2 = Expression.Parameter(typeof(T2), "b");
+                MethodCallExpression call = Expression.Call(method, p1, p2);
+                return Expression
+                    .Lambda<Func<T1, T2, TReturn>>(call, p1, p2)
+                    .Compile();
+            }
+#else
+            DynamicMethod dm = new(
+                $"InvokeStatic2_{method.DeclaringType?.Name}_{method.Name}",
+                typeof(TReturn),
+                new[] { typeof(T1), typeof(T2) },
+                method.Module,
+                true
+            );
+            ILGenerator il = dm.GetILGenerator();
+            il.Emit(OpCodes.Ldarg_0);
+            il.Emit(OpCodes.Ldarg_1);
+            il.Emit(OpCodes.Call, method);
+            il.Emit(OpCodes.Ret);
+            return dm.CreateDelegate(typeof(Func<T1, T2, TReturn>));
 #endif
         }
 

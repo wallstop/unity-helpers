@@ -269,5 +269,38 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             tree.GetElementsInBounds(bounds, results);
             Assert.AreEqual(1000, results.Count);
         }
+
+        [Test]
+        [Timeout(15000)]
+        public void FullBoundsOnHundredGridReturnsAllElements()
+        {
+            List<Vector3> points = new();
+            for (int z = 0; z < 100; ++z)
+            {
+                for (int y = 0; y < 100; ++y)
+                {
+                    for (int x = 0; x < 100; ++x)
+                    {
+                        points.Add(new Vector3(x, y, z));
+                    }
+                }
+            }
+
+            KdTree3D<Vector3> tree = CreateTree(points);
+            Bounds bounds = new UnityEngine.Bounds(
+                new Vector3(49.5f, 49.5f, 49.5f),
+                new Vector3(99f, 99f, 99f)
+            );
+
+            List<Vector3> results = new();
+            tree.GetElementsInBounds(bounds, results);
+
+            Assert.AreEqual(
+                1_000_000,
+                results.Count,
+                "Expected full dataset bounds to return all elements, but received {0}.",
+                results.Count
+            );
+        }
     }
 }

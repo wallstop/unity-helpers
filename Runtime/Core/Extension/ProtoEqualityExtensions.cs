@@ -58,8 +58,26 @@
             using PooledResource<PooledBufferStream> bLease = PooledBufferStream.Rent(
                 out PooledBufferStream b
             );
-            PbSerializer.Serialize(a, self);
-            PbSerializer.Serialize(b, other);
+
+            // Mirror Serializer's decision logic to prefer runtime type for interface/abstract/object
+            Type declared = typeof(T);
+            bool useRuntime = Serializer.ShouldUseRuntimeTypeForProtobuf(
+                declared,
+                self,
+                forceRuntimeType: false
+            );
+
+            if (useRuntime)
+            {
+                PbSerializer.NonGeneric.Serialize(a, self);
+                PbSerializer.NonGeneric.Serialize(b, other);
+            }
+            else
+            {
+                PbSerializer.Serialize(a, self);
+                PbSerializer.Serialize(b, other);
+            }
+
             return ProtoBufferComparer.StreamContentEquals(a, b);
         }
 
@@ -139,8 +157,24 @@
             using PooledResource<PooledBufferStream> bLease = PooledBufferStream.Rent(
                 out PooledBufferStream b
             );
-            PbSerializer.Serialize(a, x);
-            PbSerializer.Serialize(b, y);
+
+            Type declared = typeof(T);
+            bool useRuntime = Serializer.ShouldUseRuntimeTypeForProtobuf(
+                declared,
+                x,
+                forceRuntimeType: false
+            );
+            if (useRuntime)
+            {
+                PbSerializer.NonGeneric.Serialize(a, x);
+                PbSerializer.NonGeneric.Serialize(b, y);
+            }
+            else
+            {
+                PbSerializer.Serialize(a, x);
+                PbSerializer.Serialize(b, y);
+            }
+
             return ProtoBufferComparer.StreamContentEquals(a, b);
         }
 
@@ -162,7 +196,22 @@
             using PooledResource<PooledBufferStream> sLease = PooledBufferStream.Rent(
                 out PooledBufferStream s
             );
-            PbSerializer.Serialize(s, obj);
+
+            Type declared = typeof(T);
+            bool useRuntime = Serializer.ShouldUseRuntimeTypeForProtobuf(
+                declared,
+                obj,
+                forceRuntimeType: false
+            );
+            if (useRuntime)
+            {
+                PbSerializer.NonGeneric.Serialize(s, obj);
+            }
+            else
+            {
+                PbSerializer.Serialize(s, obj);
+            }
+
             return ProtoBufferComparer.Fnv1A32(s);
         }
     }

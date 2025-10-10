@@ -238,6 +238,18 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     {
         private const int NumTries = 1_000;
 
+        private sealed class NoParameterlessCtor
+        {
+            public int V { get; }
+
+            public NoParameterlessCtor(int v)
+            {
+                V = v;
+            }
+        }
+
+        public sealed class EnabledProbe : UnityEngine.MonoBehaviour { }
+
         [Test]
         public void GetFieldGetterClassMemberField()
         {
@@ -1202,6 +1214,175 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             Assert.IsNotNull(types);
             Assert.Greater(types.Length, 0);
             Assert.IsTrue(types.All(t => t != null));
+        }
+
+        [Test]
+        public void GetPropertySetterInstanceAndStatic()
+        {
+            var instance = new TestPropertyClass();
+
+            // Instance setter
+            PropertyInfo instProp = typeof(TestPropertyClass).GetProperty(
+                nameof(TestPropertyClass.InstanceProperty)
+            );
+            var instSetter = ReflectionHelpers.GetPropertySetter(instProp);
+            instSetter(instance, 555);
+            Assert.AreEqual(555, instance.InstanceProperty);
+
+            // Static setter
+            PropertyInfo staticProp = typeof(TestPropertyClass).GetProperty(
+                nameof(TestPropertyClass.StaticProperty)
+            );
+            var staticSetter = ReflectionHelpers.GetPropertySetter(staticProp);
+            staticSetter(null, 777);
+            Assert.AreEqual(777, TestPropertyClass.StaticProperty);
+        }
+
+        [Test]
+        public void GetPropertySetterThrowsOnReadOnly()
+        {
+            PropertyInfo roInstance = typeof(TestPropertyClass).GetProperty(
+                nameof(TestPropertyClass.InstanceReadOnlyProperty)
+            );
+            Assert.Throws<ArgumentException>(
+                () => ReflectionHelpers.GetPropertySetter(roInstance),
+                "Property InstanceReadOnlyProperty has no setter should throw"
+            );
+
+            PropertyInfo roStatic = typeof(TestPropertyClass).GetProperty(
+                nameof(TestPropertyClass.StaticReadOnlyProperty)
+            );
+            Assert.Throws<ArgumentException>(
+                () => ReflectionHelpers.GetPropertySetter(roStatic),
+                "Property StaticReadOnlyProperty has no setter should throw"
+            );
+        }
+
+        [Test]
+        public void GetPropertyGetterGenericCoversInstanceAndStatic()
+        {
+            var obj = new TestPropertyClass { InstanceProperty = 123 };
+
+            var instGetter = ReflectionHelpers.GetPropertyGetter<TestPropertyClass, int>(
+                typeof(TestPropertyClass).GetProperty(nameof(TestPropertyClass.InstanceProperty))
+            );
+            Assert.AreEqual(123, instGetter(obj));
+
+            TestPropertyClass.StaticProperty = 246;
+            var staticGetter = ReflectionHelpers.GetPropertyGetter<TestPropertyClass, int>(
+                typeof(TestPropertyClass).GetProperty(nameof(TestPropertyClass.StaticProperty))
+            );
+            Assert.AreEqual(246, staticGetter(obj)); // instance arg ignored for static
+        }
+
+        [Test]
+        public void HashSetCreatorAndAdder()
+        {
+            object intSetObj = ReflectionHelpers.CreateHashSet(typeof(int), 0);
+            Assert.IsInstanceOf<HashSet<int>>(intSetObj);
+            var addInt = ReflectionHelpers.GetHashSetAdder(typeof(int));
+            addInt(intSetObj, 1);
+            addInt(intSetObj, 1);
+            addInt(intSetObj, 2);
+            Assert.That((HashSet<int>)intSetObj, Is.EquivalentTo(new[] { 1, 2 }));
+
+            object strSetObj = ReflectionHelpers.CreateHashSet(typeof(string), 0);
+            Assert.IsInstanceOf<HashSet<string>>(strSetObj);
+            var addStr = ReflectionHelpers.GetHashSetAdder(typeof(string));
+            addStr(strSetObj, null);
+            addStr(strSetObj, "a");
+            addStr(strSetObj, "a");
+            Assert.IsTrue(((HashSet<string>)strSetObj).Contains(null));
+            Assert.That((HashSet<string>)strSetObj, Is.EquivalentTo(new string[] { null, "a" }));
+        }
+
+        [Test]
+        public void GetStaticMethodInvokerTypedTwoParams()
+        {
+            MethodInfo concat = typeof(string).GetMethod(
+                nameof(string.Concat),
+                new[] { typeof(string), typeof(string) }
+            );
+            var invoker = ReflectionHelpers.GetStaticMethodInvoker<string, string, string>(concat);
+            Assert.AreEqual("ab", invoker("a", "b"));
+        }
+
+        [Test]
+        public void GetStaticMethodInvokerTypedThrowsOnSignatureMismatch()
+        {
+            MethodInfo concat = typeof(string).GetMethod(
+                nameof(string.Concat),
+                new[] { typeof(string), typeof(string) }
+            );
+            Assert.Throws<ArgumentException>(
+                () => ReflectionHelpers.GetStaticMethodInvoker<int, int, int>(concat),
+                "Mismatched generic signature should throw"
+            );
+
+            MethodInfo instanceToString = typeof(object).GetMethod(nameof(object.ToString));
+            Assert.Throws<ArgumentException>(
+                () =>
+                    ReflectionHelpers.GetStaticMethodInvoker<object, object, string>(
+                        instanceToString
+                    ),
+                "Non-static method should throw"
+            );
+        }
+
+        [Test]
+        public void GetParameterlessConstructorTypeOverload()
+        {
+            var ctor = ReflectionHelpers.GetParameterlessConstructor(typeof(TestConstructorClass));
+            object instance = ctor();
+            Assert.IsInstanceOf<TestConstructorClass>(instance);
+
+            Assert.Throws<ArgumentException>(
+                () => ReflectionHelpers.GetParameterlessConstructor(typeof(NoParameterlessCtor)),
+                "Type without parameterless constructor should throw"
+            );
+        }
+
+        [Test]
+        public void BuildParameterlessInstanceMethodIfExists()
+        {
+            var action =
+                ReflectionHelpers.BuildParameterlessInstanceMethodIfExists<TestMethodClass>(
+                    "Reset"
+                );
+            Assert.IsNotNull(action);
+            var obj = new TestMethodClass();
+            TestMethodClass.StaticMethodCallCount = 5;
+            obj.instanceMethodCallCount = 4;
+            action(obj);
+            Assert.AreEqual(0, TestMethodClass.StaticMethodCallCount);
+            Assert.AreEqual(0, obj.instanceMethodCallCount);
+
+            var missing =
+                ReflectionHelpers.BuildParameterlessInstanceMethodIfExists<TestMethodClass>(
+                    "DoesNotExist"
+                );
+            Assert.IsNull(missing);
+        }
+
+        [Test]
+        public void IsComponentEnabledCoversMonoBehaviourAndScriptableObject()
+        {
+            var go = new UnityEngine.GameObject("probe");
+            try
+            {
+                var probe = go.AddComponent<EnabledProbe>();
+                Assert.IsTrue(probe.IsComponentEnabled());
+                probe.enabled = false;
+                Assert.IsFalse(probe.IsComponentEnabled());
+
+                var so =
+                    UnityEngine.ScriptableObject.CreateInstance<UnityEngine.ScriptableObject>();
+                Assert.IsTrue(so.IsComponentEnabled());
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
         }
 
         [Test]
