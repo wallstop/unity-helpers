@@ -9,6 +9,11 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
     {
         public static readonly Vector4Converter Instance = new();
 
+        private static readonly JsonEncodedText XProp = JsonEncodedText.Encode("x");
+        private static readonly JsonEncodedText YProp = JsonEncodedText.Encode("y");
+        private static readonly JsonEncodedText ZProp = JsonEncodedText.Encode("z");
+        private static readonly JsonEncodedText WProp = JsonEncodedText.Encode("w");
+
         private Vector4Converter() { }
 
         public override Vector4 Read(
@@ -36,34 +41,29 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
 
                 if (reader.TokenType == JsonTokenType.PropertyName)
                 {
-                    string propertyName = reader.GetString();
-                    reader.Read();
-                    switch (propertyName)
+                    if (reader.ValueTextEquals("x"))
                     {
-                        case "x":
-                        {
-                            x = reader.GetSingle();
-                            break;
-                        }
-                        case "y":
-                        {
-                            y = reader.GetSingle();
-                            break;
-                        }
-                        case "z":
-                        {
-                            z = reader.GetSingle();
-                            break;
-                        }
-                        case "w":
-                        {
-                            w = reader.GetSingle();
-                            break;
-                        }
-                        default:
-                        {
-                            throw new JsonException($"Unknown property: {propertyName}");
-                        }
+                        reader.Read();
+                        x = reader.GetSingle();
+                    }
+                    else if (reader.ValueTextEquals("y"))
+                    {
+                        reader.Read();
+                        y = reader.GetSingle();
+                    }
+                    else if (reader.ValueTextEquals("z"))
+                    {
+                        reader.Read();
+                        z = reader.GetSingle();
+                    }
+                    else if (reader.ValueTextEquals("w"))
+                    {
+                        reader.Read();
+                        w = reader.GetSingle();
+                    }
+                    else
+                    {
+                        throw new JsonException("Unknown property for Vector4");
                     }
                 }
             }
@@ -78,10 +78,10 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
         )
         {
             writer.WriteStartObject();
-            writer.WriteNumber("x", value.x);
-            writer.WriteNumber("y", value.y);
-            writer.WriteNumber("z", value.z);
-            writer.WriteNumber("w", value.w);
+            writer.WriteNumber(XProp, value.x);
+            writer.WriteNumber(YProp, value.y);
+            writer.WriteNumber(ZProp, value.z);
+            writer.WriteNumber(WProp, value.w);
             writer.WriteEndObject();
         }
     }

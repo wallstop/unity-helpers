@@ -704,6 +704,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return elementsInBounds;
             }
 
+            // Convert query to half-open semantics for node containment checks
+            BoundingBox3D queryHalfOpen = BoundingBox3D.FromClosedBounds(bounds);
+
             using PooledResource<Stack<KdTreeNode>> stackResource = Buffers<KdTreeNode>.Stack.Get(
                 out Stack<KdTreeNode> nodesToVisit
             );
@@ -719,10 +722,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     continue;
                 }
 
-                if (
-                    bounds.Contains(currentNode.boundary.min)
-                    && bounds.Contains(currentNode.boundary.max)
-                )
+                // Check if node is fully contained using half-open semantics
+                BoundingBox3D nodeHalfOpen = BoundingBox3D.FromClosedBounds(currentNode.boundary);
+                if (queryHalfOpen.Contains(nodeHalfOpen))
                 {
                     int start = currentNode._startIndex;
                     int end = start + currentNode._count;
@@ -741,6 +743,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     for (int i = start; i < end; ++i)
                     {
                         Entry entry = entries[indices[i]];
+                        // Use Unity's closed Contains for final point checks to match OctTree
                         if (bounds.Contains(entry.position))
                         {
                             elementsInBounds.Add(entry.value);

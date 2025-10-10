@@ -10,6 +10,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     [Serializable]
     public sealed class OctTree3D<T> : ISpatialTree3D<T>
     {
+        private const float MinimumNodeSize = 0.001f;
         private const int NumChildren = 8;
 
         [Serializable]
@@ -33,13 +34,15 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             internal readonly int _startIndex;
             internal readonly int _count;
             public readonly bool isTerminal;
+            public readonly Bounds unityBoundary;
 
             private OctTreeNode(
                 BoundingBox3D boundary,
                 int startIndex,
                 int count,
                 bool isTerminal,
-                OctTreeNode[] children
+                OctTreeNode[] children,
+                Bounds unityBoundary
             )
             {
                 this.boundary = boundary;
@@ -47,12 +50,14 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 _count = count;
                 this.isTerminal = isTerminal;
                 _children = children ?? Array.Empty<OctTreeNode>();
+                this.unityBoundary = unityBoundary;
             }
 
             internal static OctTreeNode CreateLeaf(
                 BoundingBox3D boundary,
                 int startIndex,
-                int count
+                int count,
+                Bounds unityBoundary
             )
             {
                 return new OctTreeNode(
@@ -60,7 +65,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     startIndex,
                     count,
                     true,
-                    Array.Empty<OctTreeNode>()
+                    Array.Empty<OctTreeNode>(),
+                    unityBoundary
                 );
             }
 
@@ -68,10 +74,11 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 BoundingBox3D boundary,
                 OctTreeNode[] children,
                 int startIndex,
-                int count
+                int count,
+                Bounds unityBoundary
             )
             {
-                return new OctTreeNode(boundary, startIndex, count, false, children);
+                return new OctTreeNode(boundary, startIndex, count, false, children, unityBoundary);
             }
         }
 
@@ -221,7 +228,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             if (elementCount == 0)
             {
-                _head = OctTreeNode.CreateLeaf(_bounds, 0, 0);
+                _head = OctTreeNode.CreateLeaf(_bounds, 0, 0, new Bounds());
                 return;
             }
 
@@ -247,12 +254,13 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         {
             if (count <= 0)
             {
-                return OctTreeNode.CreateLeaf(boundary, startIndex, 0);
+                return OctTreeNode.CreateLeaf(boundary, startIndex, 0, new Bounds());
             }
 
             if (count <= bucketSize)
             {
-                return OctTreeNode.CreateLeaf(boundary, startIndex, count);
+                Bounds leafUnity = CalculateUnityBounds(startIndex, count);
+                return OctTreeNode.CreateLeaf(boundary, startIndex, count, leafUnity);
             }
 
             Span<int> counts = stackalloc int[NumChildren];
@@ -296,7 +304,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             if (maxChildCount == count)
             {
-                return OctTreeNode.CreateLeaf(boundary, startIndex, count);
+                Bounds degenerateUnity = CalculateUnityBounds(startIndex, count);
+                return OctTreeNode.CreateLeaf(boundary, startIndex, count, degenerateUnity);
             }
 
             for (int i = 0; i < count; ++i)
@@ -369,7 +378,28 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 children[q] = BuildNode(octants[q], childStart, childCount, bucketSize, scratch);
             }
 
-            return OctTreeNode.CreateInternal(boundary, children, startIndex, count);
+            // Combine children Unity bounds to mirror KDTree behavior
+            Bounds nodeUnity = default;
+            bool initialized = false;
+            for (int q = 0; q < NumChildren; ++q)
+            {
+                OctTreeNode child = children[q];
+                if (child is null || child._count <= 0)
+                {
+                    continue;
+                }
+                if (!initialized)
+                {
+                    nodeUnity = child.unityBoundary;
+                    initialized = true;
+                }
+                else
+                {
+                    nodeUnity.Encapsulate(child.unityBoundary);
+                }
+            }
+            EnsureMinimumUnityBounds(ref nodeUnity);
+            return OctTreeNode.CreateInternal(boundary, children, startIndex, count, nodeUnity);
         }
 
         public List<T> GetElementsInRange(
@@ -516,7 +546,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         public List<T> GetElementsInBounds(Bounds queryBounds, List<T> elementsInBounds)
         {
             elementsInBounds.Clear();
-            if (_head._count <= 0 || !queryBounds.Intersects(_boundary))
+            BoundingBox3D queryHalfOpen = BoundingBox3D.FromClosedBounds(queryBounds);
+            if (_head._count <= 0 || !queryHalfOpen.Intersects(_bounds))
             {
                 return elementsInBounds;
             }
@@ -536,9 +567,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     continue;
                 }
 
-                // Fully contained if the node's closed bounds fit inside the query
-                Bounds nodeClosed = ToClosedBounds(currentNode.boundary);
-                if (queryBounds.Contains(nodeClosed.min) && queryBounds.Contains(nodeClosed.max))
+                // Fully contained under half-open semantics
+                if (queryHalfOpen.Contains(currentNode.boundary))
                 {
                     int start = currentNode._startIndex;
                     int end = start + currentNode._count;
@@ -576,9 +606,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                         continue;
                     }
 
-                    // Traverse children whose closed representation intersects the query
-                    Bounds childClosed = ToClosedBounds(child.boundary);
-                    if (queryBounds.Intersects(childClosed))
+                    // Traverse children that intersect under half-open semantics
+                    if (queryHalfOpen.Intersects(child.boundary))
                     {
                         nodesToVisit.Push(child);
                     }
@@ -586,6 +615,84 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
 
             return elementsInBounds;
+        }
+
+        private Bounds CalculateUnityBounds(int startIndex, int count)
+        {
+            if (count <= 0)
+            {
+                return new Bounds();
+            }
+
+            Entry[] entries = _entries;
+            int[] indices = _indices;
+            float minX = float.PositiveInfinity;
+            float minY = float.PositiveInfinity;
+            float minZ = float.PositiveInfinity;
+            float maxX = float.NegativeInfinity;
+            float maxY = float.NegativeInfinity;
+            float maxZ = float.NegativeInfinity;
+
+            int end = startIndex + count;
+            for (int i = startIndex; i < end; ++i)
+            {
+                Vector3 p = entries[indices[i]].position;
+                if (p.x < minX)
+                {
+                    minX = p.x;
+                }
+
+                if (p.y < minY)
+                {
+                    minY = p.y;
+                }
+
+                if (p.z < minZ)
+                {
+                    minZ = p.z;
+                }
+
+                if (p.x > maxX)
+                {
+                    maxX = p.x;
+                }
+
+                if (p.y > maxY)
+                {
+                    maxY = p.y;
+                }
+
+                if (p.z > maxZ)
+                {
+                    maxZ = p.z;
+                }
+            }
+
+            Vector3 min = new Vector3(minX, minY, minZ);
+            Vector3 max = new Vector3(maxX, maxY, maxZ);
+            Vector3 center = (min + max) * 0.5f;
+            Vector3 size = max - min;
+            Bounds b = new Bounds(center, size);
+            EnsureMinimumUnityBounds(ref b);
+            return b;
+        }
+
+        private static void EnsureMinimumUnityBounds(ref Bounds bounds)
+        {
+            Vector3 size = bounds.size;
+            if (size.x < MinimumNodeSize)
+            {
+                size.x = MinimumNodeSize;
+            }
+            if (size.y < MinimumNodeSize)
+            {
+                size.y = MinimumNodeSize;
+            }
+            if (size.z < MinimumNodeSize)
+            {
+                size.z = MinimumNodeSize;
+            }
+            bounds.size = size;
         }
 
         private static Bounds ToClosedBounds(BoundingBox3D box)

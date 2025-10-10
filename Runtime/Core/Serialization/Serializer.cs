@@ -6,6 +6,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
     using System.ComponentModel;
     using System.IO;
     using System.Linq;
+    using System.Reflection;
     using System.Runtime.Serialization.Formatters.Binary;
     using System.Text;
     using System.Text.Json;
@@ -21,11 +22,11 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
         public static readonly Encoding Encoding;
         public static readonly JsonSerializerOptions NormalJsonOptions;
         public static readonly JsonSerializerOptions PrettyJsonOptions;
+        public static readonly JsonSerializerOptions FastJsonOptions;
 
-        static SerializerEncoding()
+        public static JsonSerializerOptions GetNormalJsonOptions()
         {
-            Encoding = Encoding.UTF8;
-            NormalJsonOptions = new JsonSerializerOptions
+            return new JsonSerializerOptions
             {
                 IgnoreReadOnlyFields = false,
                 IgnoreReadOnlyProperties = false,
@@ -49,8 +50,12 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                     ColorConverter.Instance,
                 },
             };
+            ;
+        }
 
-            PrettyJsonOptions = new JsonSerializerOptions
+        public static JsonSerializerOptions GetPrettyJsonOptions()
+        {
+            return new JsonSerializerOptions
             {
                 IgnoreReadOnlyFields = false,
                 IgnoreReadOnlyProperties = false,
@@ -75,6 +80,39 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                 },
                 WriteIndented = true,
             };
+        }
+
+        public static JsonSerializerOptions GetFastJsonOptions()
+        {
+            return new JsonSerializerOptions
+            {
+                IgnoreReadOnlyFields = false,
+                IgnoreReadOnlyProperties = false,
+                ReferenceHandler = null,
+                PropertyNameCaseInsensitive = false,
+                IncludeFields = false,
+                NumberHandling = JsonNumberHandling.Strict,
+                ReadCommentHandling = JsonCommentHandling.Disallow,
+                AllowTrailingCommas = false,
+                Converters =
+                {
+                    Vector3Converter.Instance,
+                    Vector2Converter.Instance,
+                    Vector4Converter.Instance,
+                    Matrix4x4Converter.Instance,
+                    TypeConverter.Instance,
+                    GameObjectConverter.Instance,
+                    ColorConverter.Instance,
+                },
+            };
+        }
+
+        static SerializerEncoding()
+        {
+            Encoding = Encoding.UTF8;
+            NormalJsonOptions = GetNormalJsonOptions();
+            PrettyJsonOptions = GetPrettyJsonOptions();
+            FastJsonOptions = GetFastJsonOptions();
         }
     }
 
@@ -165,13 +203,34 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
     /// </example>
     public static class Serializer
     {
+        /// <summary>
+        /// Returns a copy of the package's Normal JSON options. The returned instance is independent
+        /// of internal defaults, so modifying it won't affect global behavior. Cache and reuse the
+        /// returned instance across calls to benefit from System.Text.Json metadata caches.
+        /// </summary>
+        public static JsonSerializerOptions CreateNormalJsonOptions() =>
+            SerializerEncoding.GetNormalJsonOptions();
+
+        /// <summary>
+        /// Returns a copy of the package's Pretty (indented) JSON options.
+        /// </summary>
+        public static JsonSerializerOptions CreatePrettyJsonOptions() =>
+            SerializerEncoding.GetPrettyJsonOptions();
+
+        /// <summary>
+        /// Returns a copy of the package's Fast JSON options, tuned for hot paths with reduced validation
+        /// and features to minimize allocations and branching. See docs for trade-offs.
+        /// </summary>
+        public static JsonSerializerOptions CreateFastJsonOptions() =>
+            SerializerEncoding.GetFastJsonOptions();
+
         // Small protobuf payloads benefit from protobuf-net's MemoryStream fast-path (TryGetBuffer).
         // Larger payloads see wins from our pooled read-only stream to avoid per-iteration allocations.
         private const int ProtobufMemoryStreamThreshold = 4096; // bytes
 
         // Optional zero-copy path if protobuf-net supports ReadOnlyMemory<byte>/ReadOnlySequence<byte> overloads
-        private static readonly System.Reflection.MethodInfo ProtoDeserializeTypeFromROM;
-        private static readonly System.Reflection.MethodInfo ProtoDeserializeTypeFromROS;
+        private static readonly MethodInfo ProtoDeserializeTypeFromROM;
+        private static readonly MethodInfo ProtoDeserializeTypeFromROS;
         private static readonly Func<
             Type,
             ReadOnlyMemory<byte>,
@@ -179,7 +238,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
         > ProtoDeserializeTypeFromROMFast;
         private static readonly Func<
             Type,
-            System.Buffers.ReadOnlySequence<byte>,
+            ReadOnlySequence<byte>,
             object
         > ProtoDeserializeTypeFromROSFast;
 
@@ -187,61 +246,69 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
         {
             try
             {
-                var methods = typeof(ProtoBuf.Serializer).GetMethods(
-                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static
+                MethodInfo[] methods = typeof(ProtoBuf.Serializer).GetMethods(
+                    BindingFlags.Public | BindingFlags.Static
                 );
-                foreach (var mi in methods)
+                foreach (MethodInfo mi in methods)
                 {
                     if (mi.Name != "Deserialize")
-                        continue;
-                    var pars = mi.GetParameters();
-                    if (pars.Length != 2)
-                        continue;
-                    if (pars[0].ParameterType != typeof(Type))
-                        continue;
-
-                    var p1 = pars[1].ParameterType;
-                    if (
-                        p1.IsGenericType
-                        && p1.GetGenericTypeDefinition() == typeof(ReadOnlyMemory<>)
-                    )
                     {
-                        var genArg = p1.GetGenericArguments()[0];
-                        if (genArg == typeof(byte))
-                        {
-                            ProtoDeserializeTypeFromROM ??= mi;
-                            try
-                            {
-                                ProtoDeserializeTypeFromROMFast =
-                                    ReflectionHelpers.GetStaticMethodInvoker<
-                                        Type,
-                                        ReadOnlyMemory<byte>,
-                                        object
-                                    >(mi);
-                            }
-                            catch { }
-                        }
+                        continue;
                     }
-                    else if (
-                        p1.IsGenericType
-                        && p1.GetGenericTypeDefinition()
-                            == typeof(System.Buffers.ReadOnlySequence<>)
-                    )
+
+                    ParameterInfo[] pars = mi.GetParameters();
+                    if (pars.Length != 2)
                     {
-                        var genArg = p1.GetGenericArguments()[0];
-                        if (genArg == typeof(byte))
+                        continue;
+                    }
+
+                    if (pars[0].ParameterType != typeof(Type))
+                    {
+                        continue;
+                    }
+
+                    Type p1 = pars[1].ParameterType;
+                    switch (p1.IsGenericType)
+                    {
+                        case true when p1.GetGenericTypeDefinition() == typeof(ReadOnlyMemory<>):
                         {
-                            ProtoDeserializeTypeFromROS ??= mi;
-                            try
+                            Type genArg = p1.GetGenericArguments()[0];
+                            if (genArg == typeof(byte))
                             {
-                                ProtoDeserializeTypeFromROSFast =
-                                    ReflectionHelpers.GetStaticMethodInvoker<
-                                        Type,
-                                        System.Buffers.ReadOnlySequence<byte>,
-                                        object
-                                    >(mi);
+                                ProtoDeserializeTypeFromROM ??= mi;
+                                try
+                                {
+                                    ProtoDeserializeTypeFromROMFast =
+                                        ReflectionHelpers.GetStaticMethodInvoker<
+                                            Type,
+                                            ReadOnlyMemory<byte>,
+                                            object
+                                        >(mi);
+                                }
+                                catch { }
                             }
-                            catch { }
+
+                            break;
+                        }
+                        case true when p1.GetGenericTypeDefinition() == typeof(ReadOnlySequence<>):
+                        {
+                            Type genArg = p1.GetGenericArguments()[0];
+                            if (genArg == typeof(byte))
+                            {
+                                ProtoDeserializeTypeFromROS ??= mi;
+                                try
+                                {
+                                    ProtoDeserializeTypeFromROSFast =
+                                        ReflectionHelpers.GetStaticMethodInvoker<
+                                            Type,
+                                            ReadOnlySequence<byte>,
+                                            object
+                                        >(mi);
+                                }
+                                catch { }
+                            }
+
+                            break;
                         }
                     }
                 }
@@ -291,7 +358,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             new(() => new BinaryFormatter());
 
         private static readonly Utils.WallstopGenericPool<Utf8JsonWriter> JsonWriterPool = new(
-            () => new Utf8JsonWriter(Stream.Null),
+            () => new Utf8JsonWriter(Stream.Null, new JsonWriterOptions { SkipValidation = true }),
             onRelease: writer =>
             {
                 writer.Reset(Stream.Null);
@@ -409,8 +476,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                 }
                 case SerializationType.Json:
                 {
-                    string serializedString = SerializerEncoding.Encoding.GetString(serialized);
-                    return JsonDeserialize<T>(serializedString);
+                    return JsonDeserialize<T>(serialized);
                 }
                 default:
                 {
@@ -612,7 +678,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                 // Prefer zero-copy ROM/ROS overloads when available
                 if (ProtoDeserializeTypeFromROMFast != null)
                 {
-                    var rom = new ReadOnlyMemory<byte>(data);
+                    ReadOnlyMemory<byte> rom = new ReadOnlyMemory<byte>(data);
                     Type declared = typeof(T);
                     if (
                         ShouldUseRuntimeTypeForProtobuf<T>(
@@ -638,7 +704,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
 
                 if (ProtoDeserializeTypeFromROSFast != null)
                 {
-                    var ros = new System.Buffers.ReadOnlySequence<byte>(data);
+                    ReadOnlySequence<byte> ros = new ReadOnlySequence<byte>(data);
                     Type declared = typeof(T);
                     if (
                         ShouldUseRuntimeTypeForProtobuf<T>(
@@ -771,8 +837,8 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             {
                 try
                 {
-                    var types = declared.Assembly.GetTypes();
-                    var candidates = types
+                    Type[] types = declared.Assembly.GetTypes();
+                    Type[] candidates = types
                         .Where(t =>
                             t.IsClass
                             && t.IsAbstract
@@ -781,27 +847,31 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                         )
                         .ToArray();
 
-                    if (candidates.Length == 1)
+                    switch (candidates.Length)
                     {
-                        var root = candidates[0];
-                        ProtobufRootCache[declared] = root;
-                        return root;
-                    }
-
-                    if (candidates.Length > 1)
-                    {
-                        // Prefer a candidate that explicitly declares [ProtoInclude]s if this disambiguates
-                        var includeCandidates = candidates
-                            .Where(t =>
-                                ReflectionHelpers.HasAttributeSafe<ProtoIncludeAttribute>(t)
-                            )
-                            .ToArray();
-
-                        if (includeCandidates.Length == 1)
+                        case 1:
                         {
-                            var root = includeCandidates[0];
+                            Type root = candidates[0];
                             ProtobufRootCache[declared] = root;
                             return root;
+                        }
+                        case > 1:
+                        {
+                            // Prefer a candidate that explicitly declares [ProtoInclude]s if this disambiguates
+                            Type[] includeCandidates = candidates
+                                .Where(t =>
+                                    ReflectionHelpers.HasAttributeSafe<ProtoIncludeAttribute>(t)
+                                )
+                                .ToArray();
+
+                            if (includeCandidates.Length == 1)
+                            {
+                                Type root = includeCandidates[0];
+                                ProtobufRootCache[declared] = root;
+                                return root;
+                            }
+
+                            break;
                         }
                     }
                 }
@@ -839,12 +909,12 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                 // Prefer zero-copy ROM/ROS overloads when available
                 if (ProtoDeserializeTypeFromROMFast != null)
                 {
-                    var rom = new ReadOnlyMemory<byte>(data);
+                    ReadOnlyMemory<byte> rom = new ReadOnlyMemory<byte>(data);
                     return (T)ProtoDeserializeTypeFromROMFast(type, rom);
                 }
                 if (ProtoDeserializeTypeFromROSFast != null)
                 {
-                    var ros = new System.Buffers.ReadOnlySequence<byte>(data);
+                    ReadOnlySequence<byte> ros = new ReadOnlySequence<byte>(data);
                     return (T)ProtoDeserializeTypeFromROSFast(type, ros);
                 }
 
@@ -963,6 +1033,48 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
         }
 
         /// <summary>
+        /// Deserializes JSON bytes (UTF-8) to <typeparamref name="T"/> using Unity-aware converters.
+        /// Avoids intermediate string allocation by using span-based System.Text.Json APIs.
+        /// </summary>
+        /// <typeparam name="T">Target type.</typeparam>
+        /// <param name="data">UTF-8 JSON bytes.</param>
+        /// <param name="type">Optional concrete target type (defaults to <typeparamref name="T"/>).</param>
+        /// <param name="options">Serializer options; defaults include Unity converters.</param>
+        /// <returns>The decoded instance.</returns>
+        public static T JsonDeserialize<T>(
+            byte[] data,
+            Type type = null,
+            JsonSerializerOptions options = null
+        )
+        {
+            if (data == null)
+            {
+                throw new ArgumentNullException(nameof(data));
+            }
+
+            ReadOnlySpan<byte> span = new ReadOnlySpan<byte>(data);
+            return (T)
+                JsonSerializer.Deserialize(
+                    span,
+                    type ?? typeof(T),
+                    options ?? SerializerEncoding.NormalJsonOptions
+                );
+        }
+
+        /// <summary>
+        /// Fast-path JSON deserialize using strict, allocation-lean options.
+        /// </summary>
+        public static T JsonDeserializeFast<T>(byte[] data)
+        {
+            if (data == null)
+            {
+                throw new ArgumentNullException(nameof(data));
+            }
+            ReadOnlySpan<byte> span = new ReadOnlySpan<byte>(data);
+            return JsonSerializer.Deserialize<T>(span, SerializerEncoding.FastJsonOptions);
+        }
+
+        /// <summary>
         /// Serializes an instance to JSON bytes (UTF‑8) using Unity‑aware converters.
         /// </summary>
         /// <typeparam name="T">Instance type.</typeparam>
@@ -970,12 +1082,24 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
         /// <returns>UTF‑8 JSON bytes.</returns>
         public static byte[] JsonSerialize<T>(T input)
         {
-            using Utils.PooledResource<PooledBufferStream> lease = PooledBufferStream.Rent(
-                out PooledBufferStream stream
-            );
-            WriteJsonToStream(input, SerializerEncoding.NormalJsonOptions, stream);
+            using Utils.PooledResource<PooledArrayBufferWriter> lease =
+                PooledArrayBufferWriter.Rent(out PooledArrayBufferWriter bufferWriter);
+            WriteJsonToBuffer(input, SerializerEncoding.NormalJsonOptions, bufferWriter);
             byte[] buffer = null;
-            stream.ToArrayExact(ref buffer);
+            bufferWriter.ToArrayExact(ref buffer);
+            return buffer;
+        }
+
+        /// <summary>
+        /// Serializes an instance to JSON bytes (UTF-8) using caller-provided options.
+        /// </summary>
+        public static byte[] JsonSerialize<T>(T input, JsonSerializerOptions options)
+        {
+            using Utils.PooledResource<PooledArrayBufferWriter> lease =
+                PooledArrayBufferWriter.Rent(out PooledArrayBufferWriter bufferWriter);
+            WriteJsonToBuffer(input, options ?? SerializerEncoding.NormalJsonOptions, bufferWriter);
+            byte[] buffer = null;
+            bufferWriter.ToArrayExact(ref buffer);
             return buffer;
         }
 
@@ -988,11 +1112,49 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
         /// <returns>Number of bytes written.</returns>
         public static int JsonSerialize<T>(T input, ref byte[] buffer)
         {
-            using Utils.PooledResource<PooledBufferStream> lease = PooledBufferStream.Rent(
-                out PooledBufferStream stream
-            );
-            WriteJsonToStream(input, SerializerEncoding.NormalJsonOptions, stream);
-            return stream.ToArrayExact(ref buffer);
+            using Utils.PooledResource<PooledArrayBufferWriter> lease =
+                PooledArrayBufferWriter.Rent(out PooledArrayBufferWriter bufferWriter);
+            WriteJsonToBuffer(input, SerializerEncoding.NormalJsonOptions, bufferWriter);
+            return bufferWriter.ToArrayExact(ref buffer);
+        }
+
+        /// <summary>
+        /// Serializes into a caller-provided buffer using caller options.
+        /// </summary>
+        public static int JsonSerialize<T>(
+            T input,
+            JsonSerializerOptions options,
+            ref byte[] buffer
+        )
+        {
+            using Utils.PooledResource<PooledArrayBufferWriter> lease =
+                PooledArrayBufferWriter.Rent(out PooledArrayBufferWriter bufferWriter);
+            WriteJsonToBuffer(input, options ?? SerializerEncoding.NormalJsonOptions, bufferWriter);
+            return bufferWriter.ToArrayExact(ref buffer);
+        }
+
+        /// <summary>
+        /// Fast-path JSON serialize using strict, allocation-lean options.
+        /// </summary>
+        public static byte[] JsonSerializeFast<T>(T input)
+        {
+            using Utils.PooledResource<PooledArrayBufferWriter> lease =
+                PooledArrayBufferWriter.Rent(out PooledArrayBufferWriter bufferWriter);
+            WriteJsonToBuffer(input, SerializerEncoding.FastJsonOptions, bufferWriter);
+            byte[] buffer = null;
+            bufferWriter.ToArrayExact(ref buffer);
+            return buffer;
+        }
+
+        /// <summary>
+        /// Fast-path JSON serialize into a caller-provided buffer.
+        /// </summary>
+        public static int JsonSerializeFast<T>(T input, ref byte[] buffer)
+        {
+            using Utils.PooledResource<PooledArrayBufferWriter> lease =
+                PooledArrayBufferWriter.Rent(out PooledArrayBufferWriter bufferWriter);
+            WriteJsonToBuffer(input, SerializerEncoding.FastJsonOptions, bufferWriter);
+            return bufferWriter.ToArrayExact(ref buffer);
         }
 
         private static void WriteJsonToStream<T>(
@@ -1104,8 +1266,57 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
         /// <returns>Decoded instance.</returns>
         public static T ReadFromJsonFile<T>(string path)
         {
-            string settingsAsText = File.ReadAllText(path, SerializerEncoding.Encoding);
-            return JsonDeserialize<T>(settingsAsText);
+            byte[] settingsAsBytes = File.ReadAllBytes(path);
+            return JsonDeserialize<T>(settingsAsBytes);
+        }
+
+        private static void WriteJsonToBuffer<T>(
+            T input,
+            JsonSerializerOptions options,
+            PooledArrayBufferWriter buffer
+        )
+        {
+            if (options == null)
+            {
+                throw new ArgumentNullException(nameof(options));
+            }
+            if (buffer == null)
+            {
+                throw new ArgumentNullException(nameof(buffer));
+            }
+
+            using (
+                Utf8JsonWriter writer = new Utf8JsonWriter(
+                    buffer,
+                    new JsonWriterOptions { SkipValidation = true }
+                )
+            )
+            {
+                Type parameterType = typeof(T);
+                if (
+                    parameterType.IsAbstract
+                    || parameterType.IsInterface
+                    || parameterType == typeof(object)
+                )
+                {
+                    object data = input;
+                    if (data == null)
+                    {
+                        writer.WriteStartObject();
+                        writer.WriteEndObject();
+                        writer.Flush();
+                        return;
+                    }
+
+                    Type type = data.GetType();
+                    JsonSerializer.Serialize(writer, data, type, options);
+                }
+                else
+                {
+                    JsonSerializer.Serialize(writer, input, options);
+                }
+                writer.Flush();
+            }
         }
 
         /// <summary>
@@ -1116,8 +1327,8 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
         /// <returns>Decoded instance.</returns>
         public static async Task<T> ReadFromJsonFileAsync<T>(string path)
         {
-            string settingsAsText = await File.ReadAllTextAsync(path, SerializerEncoding.Encoding);
-            return JsonDeserialize<T>(settingsAsText);
+            byte[] settingsAsBytes = await File.ReadAllBytesAsync(path);
+            return JsonDeserialize<T>(settingsAsBytes);
         }
 
         /// <summary>
@@ -1374,6 +1585,117 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             // Delegate to synchronous span-based path; callers expect a fast in-memory stream
             Write(source.Span);
             return new ValueTask();
+        }
+    }
+
+    // Internal pooled ArrayBufferWriter-like implementation to enable zero-copy JSON writing via IBufferWriter<byte>
+    internal sealed class PooledArrayBufferWriter : IBufferWriter<byte>, IDisposable
+    {
+        private const int DefaultInitialCapacity = 256;
+        private byte[] _buffer;
+        private int _written;
+        private bool _disposed;
+
+        private static readonly Utils.WallstopGenericPool<PooledArrayBufferWriter> Pool = new(
+            producer: () => new PooledArrayBufferWriter(),
+            onRelease: w =>
+            {
+                w.Reset();
+            }
+        );
+
+        public static Utils.PooledResource<PooledArrayBufferWriter> Rent(
+            out PooledArrayBufferWriter writer
+        ) => Pool.Get(out writer);
+
+        private PooledArrayBufferWriter(int initialCapacity = DefaultInitialCapacity)
+        {
+            _buffer = ArrayPool<byte>.Shared.Rent(initialCapacity);
+            _written = 0;
+        }
+
+        private void EnsureCapacity(int sizeHint)
+        {
+            if (sizeHint <= 0)
+            {
+                sizeHint = 1;
+            }
+            int required = _written + sizeHint;
+            if (_buffer.Length >= required)
+            {
+                return;
+            }
+
+            int newSize = _buffer.Length;
+            while (newSize < required)
+            {
+                newSize = newSize < 1024 ? newSize * 2 : newSize + (newSize >> 1);
+            }
+
+            byte[] newBuf = ArrayPool<byte>.Shared.Rent(newSize);
+            if (_written > 0)
+            {
+                Buffer.BlockCopy(_buffer, 0, newBuf, 0, _written);
+            }
+            ArrayPool<byte>.Shared.Return(_buffer);
+            _buffer = newBuf;
+        }
+
+        public void Advance(int count)
+        {
+            _written += count;
+        }
+
+        public Memory<byte> GetMemory(int sizeHint = 0)
+        {
+            EnsureCapacity(sizeHint);
+            return _buffer.AsMemory(_written);
+        }
+
+        public Span<byte> GetSpan(int sizeHint = 0)
+        {
+            EnsureCapacity(sizeHint);
+            return _buffer.AsSpan(_written);
+        }
+
+        public int WrittenCount => _written;
+
+        public int ToArrayExact(ref byte[] buffer)
+        {
+            if (buffer == null || buffer.Length < _written)
+            {
+                buffer = new byte[_written];
+            }
+            if (_written > 0)
+            {
+                Buffer.BlockCopy(_buffer, 0, buffer, 0, _written);
+            }
+            return _written;
+        }
+
+        private void Reset()
+        {
+            // Keep the rented buffer to avoid churn; just reset write cursor.
+            if (_buffer == null || _buffer.Length == 0)
+            {
+                _buffer = ArrayPool<byte>.Shared.Rent(DefaultInitialCapacity);
+            }
+            _written = 0;
+            _disposed = false;
+        }
+
+        public void Dispose()
+        {
+            if (!_disposed)
+            {
+                if (_buffer != null)
+                {
+                    ArrayPool<byte>.Shared.Return(_buffer);
+                }
+                _buffer = Array.Empty<byte>();
+                _written = 0;
+                _disposed = true;
+            }
         }
     }
 

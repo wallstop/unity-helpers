@@ -356,7 +356,7 @@
         public void DeserializeNullStringThrowsException()
         {
             Assert.Throws<ArgumentNullException>(() =>
-                Serializer.JsonDeserialize<SimpleMessage>(null)
+                Serializer.JsonDeserialize<SimpleMessage>((string)null)
             );
         }
 

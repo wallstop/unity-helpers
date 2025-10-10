@@ -82,28 +82,12 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                     List<Vector3> octResults = new();
                     oct.GetElementsInBounds(b, octResults);
 
-                    Assert.AreEqual(
-                        kdResults.Count,
-                        octResults.Count,
-                        "Bounds mismatch on grid {0}: center={1}, size={2}. KD={3}, Oct={4}",
-                        size,
-                        b.center,
-                        b.size,
-                        kdResults.Count,
-                        octResults.Count
+                    SpatialDiagnostics.AssertMatchingResults(
+                        $"Bounds mismatch on grid {size}",
+                        b,
+                        kdResults,
+                        octResults
                     );
-
-                    if (kdResults.Count <= 20000)
-                    {
-                        CollectionAssert.AreEquivalent(
-                            kdResults,
-                            octResults,
-                            "Element mismatch on grid {0}: center={1}, size={2}",
-                            size,
-                            b.center,
-                            b.size
-                        );
-                    }
                 }
             }
         }
@@ -191,26 +175,12 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 List<Vector3> octResults = new();
                 oct.GetElementsInBounds(b, octResults);
 
-                Assert.AreEqual(
-                    kdResults.Count,
-                    octResults.Count,
-                    "Bounds mismatch at center={0}, size={1}. KD={2}, Oct={3}",
-                    center,
-                    clampedSize,
-                    kdResults.Count,
-                    octResults.Count
+                SpatialDiagnostics.AssertMatchingResults(
+                    "Various centers and sizes mismatch",
+                    b,
+                    kdResults,
+                    octResults
                 );
-
-                if (kdResults.Count <= 20000)
-                {
-                    CollectionAssert.AreEquivalent(
-                        kdResults,
-                        octResults,
-                        "Element mismatch at center={0}, size={1}",
-                        center,
-                        clampedSize
-                    );
-                }
             }
         }
 
@@ -237,26 +207,12 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                     List<Vector3> octResults = new();
                     oct.GetElementsInBounds(b, octResults);
 
-                    Assert.AreEqual(
-                        kdResults.Count,
-                        octResults.Count,
-                        "Sliding mismatch at center={0}, size={1}. KD={2}, Oct={3}",
-                        b.center,
-                        b.size,
-                        kdResults.Count,
-                        octResults.Count
+                    SpatialDiagnostics.AssertMatchingResults(
+                        "Sliding window mismatch",
+                        b,
+                        kdResults,
+                        octResults
                     );
-
-                    if (kdResults.Count <= 20000)
-                    {
-                        CollectionAssert.AreEquivalent(
-                            kdResults,
-                            octResults,
-                            "Sliding elements mismatch at center={0}, size={1}",
-                            b.center,
-                            b.size
-                        );
-                    }
                 }
             }
         }
@@ -275,18 +231,12 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             List<Vector3> octResults = new();
             oct.GetElementsInBounds(b, octResults);
 
-            Assert.AreEqual(
-                kdResults.Count,
-                octResults.Count,
-                "Unit bounds at grid center mismatch. KD={0}, Oct={1}",
-                kdResults.Count,
-                octResults.Count
+            SpatialDiagnostics.AssertMatchingResults(
+                "Unit bounds at grid center mismatch",
+                b,
+                kdResults,
+                octResults
             );
-
-            if (kdResults.Count <= 20000)
-            {
-                CollectionAssert.AreEquivalent(kdResults, octResults);
-            }
 
             Assert.AreEqual(
                 5,
@@ -321,26 +271,12 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 List<Vector3> octResults = new();
                 oct.GetElementsInBounds(b, octResults);
 
-                Assert.AreEqual(
-                    kdResults.Count,
-                    octResults.Count,
-                    "Edge touching bounds mismatch at center={0}, size={1}. KD={2}, Oct={3}",
-                    b.center,
-                    b.size,
-                    kdResults.Count,
-                    octResults.Count
+                SpatialDiagnostics.AssertMatchingResults(
+                    "Edge touching bounds mismatch",
+                    b,
+                    kdResults,
+                    octResults
                 );
-
-                if (kdResults.Count <= 20000)
-                {
-                    CollectionAssert.AreEquivalent(
-                        kdResults,
-                        octResults,
-                        "Edge touching elements mismatch at center={0}, size={1}",
-                        b.center,
-                        b.size
-                    );
-                }
             }
         }
     }
