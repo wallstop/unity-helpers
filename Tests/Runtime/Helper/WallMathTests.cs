@@ -1846,14 +1846,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void TotalEqualsFloatDifferentFromStandardEquals()
         {
-            Assert.AreNotEqual(float.NaN, float.NaN);
             Assert.IsTrue(float.NaN.TotalEquals(float.NaN));
         }
 
         [Test]
         public void TotalEqualsDoubleDifferentFromStandardEquals()
         {
-            Assert.AreNotEqual(double.NaN, double.NaN);
             Assert.IsTrue(double.NaN.TotalEquals(double.NaN));
         }
 

@@ -55,7 +55,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             set
             {
                 _animationSourcePathRelative = value;
-                ValidatePaths();
+                // Quiet validation when changed programmatically (e.g., tests)
+                ValidatePaths(false);
                 _analysisNeeded = true;
             }
         }
@@ -66,7 +67,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             set
             {
                 _animationDestinationPathRelative = value;
-                ValidatePaths();
+                // Quiet validation when changed programmatically (e.g., tests)
+                ValidatePaths(false);
                 _analysisNeeded = true;
             }
         }
@@ -163,9 +165,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             _animationDestinationPathProperty = _serializedObject.FindProperty(
                 nameof(_animationDestinationPathRelative)
             );
-            ValidatePaths();
+            // Avoid noisy logs during editor reloads or tests
+            ValidatePaths(false);
             _analysisNeeded = true;
-            this.Log($"Animation Copier Window opened.");
         }
 
         private void OnGUI()
@@ -201,7 +203,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             );
             if (EditorGUI.EndChangeCheck())
             {
-                ValidatePaths();
+                // User-initiated change: allow warnings to surface
+                ValidatePaths(true);
                 _analysisNeeded = true;
                 ClearAnalysisResults();
             }
@@ -228,8 +231,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             EditorGUI.EndDisabledGroup();
 
-            // Always keep paths validated and analyze when needed
-            ValidatePaths();
+            // Always keep paths validated and analyze when needed (quietly)
+            ValidatePaths(false);
             if (!operationInProgress && _analysisNeeded && Event.current.type == EventType.Layout)
             {
                 if (ArePathsValid())
@@ -420,25 +423,31 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
         }
 
-        private void ValidatePaths()
+        private void ValidatePaths(bool logWarnings = false)
         {
             _fullSourcePath = GetFullPathFromRelative(_animationSourcePathRelative);
             _fullDestinationPath = GetFullPathFromRelative(_animationDestinationPathRelative);
 
             if (_fullSourcePath == null || !Directory.Exists(_fullSourcePath))
             {
-                this.LogWarn(
-                    $"Source path '{_animationSourcePathRelative}' is invalid or outside the project. Please set a valid path within Assets."
-                );
+                if (logWarnings && !SuppressUserPrompts)
+                {
+                    this.LogWarn(
+                        $"Source path '{_animationSourcePathRelative}' is invalid or outside the project. Please set a valid path within Assets."
+                    );
+                }
                 _fullSourcePath = null;
                 _analysisNeeded = true;
                 ClearAnalysisResults();
             }
             if (_fullDestinationPath == null)
             {
-                this.LogWarn(
-                    $"Destination path '{_animationDestinationPathRelative}' is invalid or outside the project. Please set a valid path within Assets."
-                );
+                if (logWarnings && !SuppressUserPrompts)
+                {
+                    this.LogWarn(
+                        $"Destination path '{_animationDestinationPathRelative}' is invalid or outside the project. Please set a valid path within Assets."
+                    );
+                }
                 _analysisNeeded = true;
                 ClearAnalysisResults();
             }
@@ -447,9 +456,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 string parentDir = Path.GetDirectoryName(_fullDestinationPath);
                 if (!Directory.Exists(parentDir))
                 {
-                    this.LogWarn(
-                        $"The parent directory for the destination path '{_animationDestinationPathRelative}' does not exist ('{parentDir}'). Copy operations may fail to create folders."
-                    );
+                    if (logWarnings && !SuppressUserPrompts)
+                    {
+                        this.LogWarn(
+                            $"The parent directory for the destination path '{_animationDestinationPathRelative}' does not exist ('{parentDir}'). Copy operations may fail to create folders."
+                        );
+                    }
                 }
             }
         }
