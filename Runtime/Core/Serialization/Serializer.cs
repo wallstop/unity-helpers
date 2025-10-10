@@ -1046,21 +1046,6 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             }
         }
 
-#if NETSTANDARD2_1 || NET5_0_OR_GREATER
-        public override void Write(ReadOnlySpan<byte> buffer)
-        {
-            int count = buffer.Length;
-            int endPos = _position + count;
-            EnsureCapacity(endPos);
-            buffer.CopyTo(new Span<byte>(_buffer, _position, count));
-            _position = endPos;
-            if (endPos > _length)
-            {
-                _length = endPos;
-            }
-        }
-#endif
-
         public override void WriteByte(byte value)
         {
             int endPos = _position + 1;
@@ -1128,6 +1113,29 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             }
 
             return _length;
+        }
+
+        public override void Write(ReadOnlySpan<byte> buffer)
+        {
+            int count = buffer.Length;
+            int endPos = _position + count;
+            EnsureCapacity(endPos);
+            buffer.CopyTo(new Span<byte>(_buffer, _position, count));
+            _position = endPos;
+            if (endPos > _length)
+            {
+                _length = endPos;
+            }
+        }
+
+        public override ValueTask WriteAsync(
+            ReadOnlyMemory<byte> source,
+            System.Threading.CancellationToken cancellationToken = default
+        )
+        {
+            // Delegate to synchronous span-based path; callers expect a fast in-memory stream
+            Write(source.Span);
+            return new ValueTask();
         }
     }
 
@@ -1206,6 +1214,36 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             Array.Copy(_buffer, _position, buffer, offset, count);
             _position += count;
             return count;
+        }
+
+        // Span-based fast-path used by modern callers (e.g., protobuf-net)
+        public override int Read(Span<byte> destination)
+        {
+            int remaining = _length - _position;
+            if (remaining <= 0)
+            {
+                return 0;
+            }
+
+            int toCopy = destination.Length;
+            if (toCopy > remaining)
+            {
+                toCopy = remaining;
+            }
+
+            new ReadOnlySpan<byte>(_buffer, _position, toCopy).CopyTo(destination);
+            _position += toCopy;
+            return toCopy;
+        }
+
+        public override ValueTask<int> ReadAsync(
+            Memory<byte> destination,
+            System.Threading.CancellationToken cancellationToken = default
+        )
+        {
+            // Delegate to synchronous span-based path; this stream is purely in-memory
+            int read = Read(destination.Span);
+            return new ValueTask<int>(read);
         }
 
         public override int ReadByte()
