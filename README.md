@@ -142,15 +142,49 @@ Unity Helpers was built to solve common game development challenges with **perfo
 
 ## Compatibility
 
-| Platform | Status |
-| --- | --- |
-| Unity 2021 | Likely, but untested |
-| Unity 2022 | ✅ Supported |
-| Unity 2023 | ✅ Supported |
-| Unity 6 | ✅ Supported |
-| URP | ✅ Compatible |
-| HDRP | ✅ Compatible |
+| Unity Version | Built-In | URP | HDRP |
+| --- | --- | --- | --- |
+| 2021 | Likely, but untested | Likely, but untested | Likely, but untested |
+| 2022 | ✅ Compatible | ✅ Compatible | ✅ Compatible |
+| 2023 | ✅ Compatible | ✅ Compatible | ✅ Compatible |
+| Unity 6 | ✅ Compatible | ✅ Compatible | ✅ Compatible |
 
+## Serialization
+
+- Formats: JSON (System.Text.Json), Protobuf (protobuf-net), SystemBinary (legacy)
+- Unity-aware JSON converters (Vector2/3/4, Color, Matrix4x4, Type, GameObject)
+- Pooled buffers to minimize GC; byte[] APIs for hot paths
+
+JSON profiles
+
+- Normal — robust defaults (case-insensitive, includes fields, comments/trailing commas allowed)
+- Pretty — human-friendly, indented
+- Fast — strict, minimal with Unity converters (case-sensitive, strict numbers, no comments/trailing commas, IncludeFields=false)
+- FastPOCO — strict, minimal, no Unity converters; best for pure POCO graphs
+
+Usage
+
+```csharp
+using WallstopStudios.UnityHelpers.Core.Serialization;
+
+var normal   = Serializer.CreateNormalJsonOptions();
+var pretty   = Serializer.CreatePrettyJsonOptions();
+var fast     = Serializer.CreateFastJsonOptions();
+var fastPOCO = Serializer.CreateFastPocoJsonOptions();
+
+byte[] buf = null;
+Serializer.JsonSerialize(model, fast, ref buf);                    // pooled, minimal allocs
+Serializer.JsonSerialize(model, fast, sizeHint: 512*1024, ref buf); // preallocate for large outputs
+var rt = Serializer.JsonDeserialize<MyType>(buf, null, fast);      // span-based; no string alloc
+```
+
+When to use what
+
+- Save/configs: Normal or Pretty
+- Hot loops/large arrays: Fast or FastPOCO (POCO-only graphs)
+- Mixed graphs with Unity types: Fast
+
+See the full guide for trade-offs, tips, and examples: SERIALIZATION.md
 ## Quick Start Guide
 
 ### Random Number Generation

@@ -243,8 +243,14 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             SerializerEncoding.GetFastJsonOptions();
 
         /// <summary>
-        /// Returns a copy of the package's Fast POCO JSON options: strict, minimal, and with no Unity-specific
-        /// converters. Use for pure POCO graphs when you want the fastest possible serialization/deserialization.
+        /// Returns a copy of the package's Fast POCO JSON options.
+        /// Strict, minimal, and with no Unity-specific converters.
+        /// Use for pure POCO graphs when you want the fastest possible serialization/deserialization.
+        /// Notes:
+        /// - Case-sensitive property names (faster matching)
+        /// - No comments/trailing commas; strict numbers only
+        /// - IncludeFields = false (prefer properties for performance)
+        /// - Returns a new instance each call; cache and reuse within your app to leverage STJ metadata caches
         /// </summary>
         public static JsonSerializerOptions CreateFastPocoJsonOptions() =>
             new JsonSerializerOptions(SerializerEncoding.FastPocoJsonOptions);
@@ -1117,6 +1123,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
 
         /// <summary>
         /// Serializes an instance to JSON bytes (UTF-8) using caller-provided options.
+        /// Tip: Reuse the same options instance across calls to benefit from metadata caches.
         /// </summary>
         public static byte[] JsonSerialize<T>(T input, JsonSerializerOptions options)
         {
@@ -1145,6 +1152,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
 
         /// <summary>
         /// Serializes into a caller-provided buffer using caller options.
+        /// Reuses the provided buffer when large enough to avoid allocations; resizes if necessary.
         /// </summary>
         public static int JsonSerialize<T>(
             T input,
@@ -1160,6 +1168,8 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
 
         /// <summary>
         /// Serializes into a caller-provided buffer using caller options and a size hint to reduce growth copies.
+        /// Provide an approximate size of the final payload to minimize buffer growth/copy churn for large outputs.
+        /// Example: for large int[] payloads, estimate (count * 12) + overhead.
         /// </summary>
         public static int JsonSerialize<T>(
             T input,
