@@ -38,7 +38,6 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         private static readonly ConcurrentDictionary<Type, Array> EnumTypeCache = new();
 #endif
 
-        protected const uint HalfwayUint = uint.MaxValue / 2;
         protected const float MagicFloat = 5.960465E-008F;
         private const ulong LongBias = 1UL << 63;
         private const int MaxRejectionAttempts32 = 1 << 16;
