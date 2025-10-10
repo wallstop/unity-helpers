@@ -11,7 +11,7 @@
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Utils;
 
-    public sealed class HelpersTests : WallstopStudios.UnityHelpers.Tests.Utils.CommonTestBase
+    public sealed class HelpersTests : Utils.CommonTestBase
     {
         [Test]
         public void EnumeratePrefabsFindsGeneratedPrefab()

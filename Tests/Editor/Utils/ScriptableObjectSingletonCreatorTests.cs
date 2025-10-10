@@ -9,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Tags;
     using WallstopStudios.UnityHelpers.Utils;
 
     [ScriptableSingletonPath("Tests/Singletons")]
@@ -45,7 +46,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils
             SetIncludeTestAssemblies(true);
             InvokeEnsureSingletonAssets();
 
-            var asset = AssetDatabase.LoadAssetAtPath<MyTestSingleton>(TargetAsset);
+            MyTestSingleton asset = AssetDatabase.LoadAssetAtPath<MyTestSingleton>(TargetAsset);
             Assert.IsNotNull(asset, "Expected singleton asset to be created at target path");
         }
 
@@ -55,8 +56,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils
             string wrongFolder = "Assets/SomeOther";
             EnsureFolder(wrongFolder);
 
-            var inst =
-                ScriptableObject.CreateInstance<WallstopStudios.UnityHelpers.Tags.AttributeMetadataCache>();
+            AttributeMetadataCache inst = ScriptableObject.CreateInstance<AttributeMetadataCache>();
             string wrongPath = wrongFolder + "/AttributeMetadataCache.asset";
             AssetDatabase.CreateAsset(inst, wrongPath);
             AssetDatabase.SaveAssets();
@@ -68,15 +68,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils
             string target =
                 ResourcesRoot
                 + "/Wallstop Studios/AttributeMetadataCache/AttributeMetadataCache.asset";
-            var moved =
-                AssetDatabase.LoadAssetAtPath<WallstopStudios.UnityHelpers.Tags.AttributeMetadataCache>(
-                    target
-                );
+            AttributeMetadataCache moved = AssetDatabase.LoadAssetAtPath<AttributeMetadataCache>(
+                target
+            );
             Assert.IsNotNull(moved, "Expected asset to be moved to target path");
             Assert.IsNull(
-                AssetDatabase.LoadAssetAtPath<WallstopStudios.UnityHelpers.Tags.AttributeMetadataCache>(
-                    wrongPath
-                ),
+                AssetDatabase.LoadAssetAtPath<AttributeMetadataCache>(wrongPath),
                 "Old location should no longer contain asset"
             );
         }

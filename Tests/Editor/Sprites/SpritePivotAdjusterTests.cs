@@ -7,6 +7,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Editor.Sprites;
 
     public sealed class SpritePivotAdjusterTests
     {
@@ -41,8 +42,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             imp.spritePivot = new Vector2(0.5f, 0.5f);
             imp.SaveAndReimport();
 
-            var window =
-                ScriptableObject.CreateInstance<WallstopStudios.UnityHelpers.Editor.Sprites.SpritePivotAdjuster>();
+            SpritePivotAdjuster window = ScriptableObject.CreateInstance<SpritePivotAdjuster>();
             window._directoryPaths = new System.Collections.Generic.List<UnityEngine.Object>
             {
                 AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(Root),
@@ -70,7 +70,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             {
                 alphaIsTransparency = true,
             };
-            var pix = new Color[w * h];
+            Color[] pix = new Color[w * h];
             // Make an L-shape: full bottom row and full left column opaque; rest transparent
             for (int y = 0; y < h; ++y)
             for (int x = 0; x < w; ++x)

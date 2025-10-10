@@ -35,7 +35,12 @@
             }
 
             RandomState stateAfterGeneration = original.InternalState;
-            Assert.AreEqual(initialState, stateAfterGeneration, "Initial state should not change");
+            // Generating values should advance the RNG state
+            Assert.AreNotEqual(
+                initialState,
+                stateAfterGeneration,
+                "State should change after generation"
+            );
 
             // Serialize and deserialize
             T deserialized = SerializeDeserialize(original);

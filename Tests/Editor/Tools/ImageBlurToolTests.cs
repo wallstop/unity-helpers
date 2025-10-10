@@ -2,12 +2,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Tools
 {
 #if UNITY_EDITOR
     using System;
+    using System.Collections.Generic;
     using System.IO;
     using System.Linq;
     using System.Reflection;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
+    using Object = UnityEngine.Object;
 
     public sealed class ImageBlurToolTests
     {
@@ -73,10 +75,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Tools
             CreatePng(texPath, 8, 8, Color.red);
 
             AssetDatabase.Refresh();
-            var folderObj = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(TempRoot);
+            Object folderObj = AssetDatabase.LoadAssetAtPath<Object>(TempRoot);
             Assert.IsNotNull(folderObj, "Temp folder not found as asset");
 
-            var list = new System.Collections.Generic.List<Texture2D>();
+            List<Texture2D> list = new List<Texture2D>();
             WallstopStudios.UnityHelpers.Editor.Tools.ImageBlurTool.TrySyncDirectory(
                 TempRoot,
                 list
@@ -112,7 +114,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Tools
             string dir = Path.GetDirectoryName(relPath).Replace('\\', '/');
             EnsureFolder(dir);
             Texture2D t = new Texture2D(w, h, TextureFormat.RGBA32, false);
-            var pix = Enumerable.Repeat(c, w * h).ToArray();
+            Color[] pix = Enumerable.Repeat(c, w * h).ToArray();
             t.SetPixels(pix);
             t.Apply();
             byte[] data = t.EncodeToPNG();

@@ -72,13 +72,12 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             {
                 ulong stateA = ((ulong)_a << UintByteCount) | _b;
                 ulong stateB = ((ulong)_c << UintByteCount) | _d;
-                byte[] eBytes = BitConverter.GetBytes(_e);
-                Array.Resize(ref eBytes, sizeof(double));
-                Array.Fill<byte>(eBytes, 0, sizeof(uint), sizeof(double) - sizeof(uint));
+                // Pack _e into the low 32 bits of a double's bit pattern without allocations
+                double packedE = BitConverter.Int64BitsToDouble((long)(ulong)_e);
                 return new RandomState(
                     stateA,
                     stateB,
-                    BitConverter.ToDouble(eBytes, 0),
+                    packedE,
                     payload: null,
                     bitBuffer: _bitBuffer,
                     bitCount: _bitCount,
@@ -108,11 +107,12 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         public IllusionFlow(Guid guid, uint? extraSeed = null)
         {
-            byte[] guidArray = guid.ToByteArray();
-            _a = BitConverter.ToUInt32(guidArray, 0);
-            _b = BitConverter.ToUInt32(guidArray, sizeof(uint));
-            _c = BitConverter.ToUInt32(guidArray, sizeof(uint) * 2);
-            _d = BitConverter.ToUInt32(guidArray, sizeof(uint) * 3);
+            (uint a, uint b, uint c, uint d) = RandomUtilities.GuidToUInt32Quad(guid);
+            _a = a;
+            _b = b;
+            _b = b;
+            _c = c;
+            _d = d;
             _e = extraSeed ?? unchecked((uint)guid.GetHashCode());
         }
 
@@ -128,9 +128,8 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                 double? gaussian = internalState.Gaussian;
                 if (gaussian != null)
                 {
-                    byte[] eBytes = BitConverter.GetBytes(gaussian.Value);
-                    Array.Resize(ref eBytes, sizeof(uint));
-                    _e = BitConverter.ToUInt32(eBytes, 0);
+                    long bits = BitConverter.DoubleToInt64Bits(gaussian.Value);
+                    _e = (uint)(unchecked((ulong)bits) & 0xFFFFFFFFUL);
                 }
                 else
                 {

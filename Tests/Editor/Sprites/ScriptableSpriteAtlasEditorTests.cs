@@ -36,7 +36,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             AssetDatabase.Refresh();
 
             // Create config asset
-            var config = ScriptableObject.CreateInstance<ScriptableSpriteAtlas>();
+            ScriptableSpriteAtlas config = ScriptableObject.CreateInstance<ScriptableSpriteAtlas>();
             config.name = "TestAtlasConfig";
             config.spritesToPack.Add(AssetDatabase.LoadAssetAtPath<Sprite>(spritePath));
             config.outputSpriteAtlasDirectory = Root;
@@ -47,15 +47,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             AssetDatabase.Refresh();
 
             // Open window and generate all atlases
-            var window =
-                ScriptableObject.CreateInstance<WallstopStudios.UnityHelpers.Editor.Sprites.ScriptableSpriteAtlasEditor>();
+            ScriptableSpriteAtlasEditor window =
+                ScriptableObject.CreateInstance<ScriptableSpriteAtlasEditor>();
             window.LoadAtlasConfigs();
             window.GenerateAllAtlases();
 
             AssetDatabase.Refresh();
 
             string atlasPath = Path.Combine(Root, "TestAtlas.spriteatlas").Replace('\\', '/');
-            var atlas = AssetDatabase.LoadAssetAtPath<SpriteAtlas>(atlasPath);
+            SpriteAtlas atlas = AssetDatabase.LoadAssetAtPath<SpriteAtlas>(atlasPath);
             Assert.IsNotNull(atlas, ".spriteatlas should be generated");
         }
 
@@ -79,7 +79,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             string dir = Path.GetDirectoryName(relPath).Replace('\\', '/');
             EnsureFolder(dir);
             Texture2D t = new Texture2D(w, h, TextureFormat.RGBA32, false);
-            var pix = new Color[w * h];
+            Color[] pix = new Color[w * h];
             for (int i = 0; i < pix.Length; i++)
                 pix[i] = c;
             t.SetPixels(pix);

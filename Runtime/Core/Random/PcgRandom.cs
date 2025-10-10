@@ -122,9 +122,9 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         public PcgRandom(Guid guid)
         {
-            byte[] guidArray = guid.ToByteArray();
-            _state = BitConverter.ToUInt64(guidArray, 0);
-            _increment = NormalizeIncrement(BitConverter.ToUInt64(guidArray, sizeof(ulong)));
+            (ulong a, ulong b) = RandomUtilities.GuidToUInt64Pair(guid);
+            _state = a;
+            _increment = NormalizeIncrement(b);
         }
 
         [JsonConstructor]

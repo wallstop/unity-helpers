@@ -19,6 +19,38 @@ namespace WallstopStudios.UnityHelpers.Editor
 
     public sealed class FitTextureSizeWindow : EditorWindow
     {
+        private static bool SuppressUserPrompts { get; set; }
+
+        static FitTextureSizeWindow()
+        {
+            try
+            {
+                if (Application.isBatchMode || IsInvokedByTestRunner())
+                {
+                    SuppressUserPrompts = true;
+                }
+            }
+            catch { }
+        }
+
+        private static bool IsInvokedByTestRunner()
+        {
+            string[] args = System.Environment.GetCommandLineArgs();
+            for (int i = 0; i < args.Length; ++i)
+            {
+                string a = args[i];
+                if (
+                    a.IndexOf("runTests", System.StringComparison.OrdinalIgnoreCase) >= 0
+                    || a.IndexOf("testResults", System.StringComparison.OrdinalIgnoreCase) >= 0
+                    || a.IndexOf("testPlatform", System.StringComparison.OrdinalIgnoreCase) >= 0
+                )
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         internal FitMode _fitMode = FitMode.GrowAndShrink;
 
         [SerializeField]
@@ -204,11 +236,13 @@ namespace WallstopStudios.UnityHelpers.Editor
                     string progressBarTitle = applyChanges
                         ? "Fitting Texture Size"
                         : "Calculating Changes";
-                    bool cancel = EditorUtility.DisplayCancelableProgressBar(
-                        progressBarTitle,
-                        $"Checking: {Path.GetFileName(assetPath)} ({i + 1}/{texturesToProcess.Count})",
-                        progress
-                    );
+                    bool cancel = SuppressUserPrompts
+                        ? false
+                        : EditorUtility.DisplayCancelableProgressBar(
+                            progressBarTitle,
+                            $"Checking: {Path.GetFileName(assetPath)} ({i + 1}/{texturesToProcess.Count})",
+                            progress
+                        );
 
                     if (cancel)
                     {

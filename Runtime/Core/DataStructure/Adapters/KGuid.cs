@@ -326,5 +326,35 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 _k,
             };
         }
+
+        public bool TryWriteBytes(Span<byte> destination)
+        {
+            if (destination.Length < 16)
+            {
+                return false;
+            }
+
+            destination[0] = (byte)_a;
+            destination[1] = (byte)(_a >> 8);
+            destination[2] = (byte)(_a >> 16);
+            destination[3] = (byte)(_a >> 24);
+
+            destination[4] = (byte)_b;
+            destination[5] = (byte)((uint)_b >> 8);
+
+            destination[6] = (byte)_c;
+            destination[7] = (byte)((uint)_c >> 8);
+
+            destination[8] = _d;
+            destination[9] = _e;
+            destination[10] = _f;
+            destination[11] = _g;
+            destination[12] = _h;
+            destination[13] = _i;
+            destination[14] = _j;
+            destination[15] = _k;
+
+            return true;
+        }
     }
 }

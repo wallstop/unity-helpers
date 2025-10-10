@@ -131,9 +131,9 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         public RandomState(Guid guid)
         {
-            byte[] guidBytes = guid.ToByteArray();
-            _state1 = BitConverter.ToUInt64(guidBytes, 0);
-            _state2 = BitConverter.ToUInt64(guidBytes, sizeof(ulong));
+            (ulong s1, ulong s2) = RandomUtilities.GuidToUInt64Pair(guid);
+            _state1 = s1;
+            _state2 = s2;
             _hasGaussian = false;
             _gaussian = 0;
             _payload = null;

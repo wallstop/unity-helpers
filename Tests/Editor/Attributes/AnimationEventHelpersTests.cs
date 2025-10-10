@@ -10,8 +10,7 @@
     using WallstopStudios.UnityHelpers.Editor.Core.Helper;
 
     [TestFixture]
-    public sealed class AnimationEventHelpersTests
-        : WallstopStudios.UnityHelpers.Tests.Utils.CommonTestBase
+    public sealed class AnimationEventHelpersTests : Utils.CommonTestBase
     {
         [Test]
         public void TypesToMethodsIncludesDeclaringTypeAndFiltersEmptyEntries()

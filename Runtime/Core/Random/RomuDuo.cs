@@ -77,9 +77,9 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         public RomuDuo(Guid guid)
         {
-            byte[] bytes = guid.ToByteArray();
-            _x = BitConverter.ToUInt64(bytes, 0);
-            _y = BitConverter.ToUInt64(bytes, sizeof(ulong));
+            (ulong a, ulong b) = RandomUtilities.GuidToUInt64Pair(guid);
+            _x = a;
+            _y = b;
             EnsureNonZeroState();
         }
 

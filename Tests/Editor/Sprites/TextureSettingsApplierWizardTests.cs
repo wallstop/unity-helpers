@@ -7,6 +7,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Editor.Sprites;
 
     public sealed class TextureSettingsApplierWizardTests
     {
@@ -36,8 +37,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             CreatePng(b, 32, 32, Color.white);
             AssetDatabase.Refresh();
 
-            var wizard =
-                ScriptableObject.CreateInstance<WallstopStudios.UnityHelpers.Editor.Sprites.TextureSettingsApplier>();
+            TextureSettingsApplier wizard =
+                ScriptableObject.CreateInstance<TextureSettingsApplier>();
 
             // Set explicit texture list
             wizard.textures = new System.Collections.Generic.List<Texture2D>
@@ -104,7 +105,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             string dir = Path.GetDirectoryName(relPath).Replace('\\', '/');
             EnsureFolder(dir);
             Texture2D t = new Texture2D(w, h, TextureFormat.RGBA32, false);
-            var pix = new Color[w * h];
+            Color[] pix = new Color[w * h];
             for (int i = 0; i < pix.Length; i++)
                 pix[i] = c;
             t.SetPixels(pix);

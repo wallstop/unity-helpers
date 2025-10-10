@@ -7,6 +7,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Editor;
 
     public sealed class FitTextureSizeWindowTests
     {
@@ -37,9 +38,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             imp.maxTextureSize = 128;
             imp.SaveAndReimport();
 
-            var window =
-                ScriptableObject.CreateInstance<WallstopStudios.UnityHelpers.Editor.FitTextureSizeWindow>();
-            window._fitMode = WallstopStudios.UnityHelpers.Editor.FitMode.GrowOnly;
+            FitTextureSizeWindow window = ScriptableObject.CreateInstance<FitTextureSizeWindow>();
+            window._fitMode = FitMode.GrowOnly;
             window._textureSourcePaths = new System.Collections.Generic.List<UnityEngine.Object>
             {
                 AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(Root),
@@ -69,9 +69,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             imp.maxTextureSize = 2048;
             imp.SaveAndReimport();
 
-            var window =
-                ScriptableObject.CreateInstance<WallstopStudios.UnityHelpers.Editor.FitTextureSizeWindow>();
-            window._fitMode = WallstopStudios.UnityHelpers.Editor.FitMode.ShrinkOnly;
+            FitTextureSizeWindow window = ScriptableObject.CreateInstance<FitTextureSizeWindow>();
+            window._fitMode = FitMode.ShrinkOnly;
             window._textureSourcePaths = new System.Collections.Generic.List<UnityEngine.Object>
             {
                 AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(Root),
@@ -101,9 +100,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             imp.maxTextureSize = 1024;
             imp.SaveAndReimport();
 
-            var window =
-                ScriptableObject.CreateInstance<WallstopStudios.UnityHelpers.Editor.FitTextureSizeWindow>();
-            window._fitMode = WallstopStudios.UnityHelpers.Editor.FitMode.ShrinkOnly;
+            FitTextureSizeWindow window = ScriptableObject.CreateInstance<FitTextureSizeWindow>();
+            window._fitMode = FitMode.ShrinkOnly;
             window._textureSourcePaths = new System.Collections.Generic.List<UnityEngine.Object>
             {
                 AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(Root),
@@ -128,9 +126,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             imp.maxTextureSize = 2048;
             imp.SaveAndReimport();
 
-            var window =
-                ScriptableObject.CreateInstance<WallstopStudios.UnityHelpers.Editor.FitTextureSizeWindow>();
-            window._fitMode = WallstopStudios.UnityHelpers.Editor.FitMode.ShrinkOnly;
+            FitTextureSizeWindow window = ScriptableObject.CreateInstance<FitTextureSizeWindow>();
+            window._fitMode = FitMode.ShrinkOnly;
             window._textureSourcePaths = new System.Collections.Generic.List<UnityEngine.Object>
             {
                 AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(Root),
@@ -155,9 +152,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             imp.maxTextureSize = 2048;
             imp.SaveAndReimport();
 
-            var window =
-                ScriptableObject.CreateInstance<WallstopStudios.UnityHelpers.Editor.FitTextureSizeWindow>();
-            window._fitMode = WallstopStudios.UnityHelpers.Editor.FitMode.GrowOnly;
+            FitTextureSizeWindow window = ScriptableObject.CreateInstance<FitTextureSizeWindow>();
+            window._fitMode = FitMode.GrowOnly;
             window._textureSourcePaths = new System.Collections.Generic.List<UnityEngine.Object>
             {
                 AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(Root),
@@ -191,7 +187,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             string dir = Path.GetDirectoryName(relPath).Replace('\\', '/');
             EnsureFolder(dir);
             Texture2D t = new Texture2D(w, h, TextureFormat.RGBA32, false);
-            var pix = new Color[w * h];
+            Color[] pix = new Color[w * h];
             for (int i = 0; i < pix.Length; i++)
                 pix[i] = c;
             t.SetPixels(pix);

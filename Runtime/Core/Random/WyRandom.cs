@@ -62,8 +62,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         public WyRandom(Guid guid)
         {
-            byte[] guidArray = guid.ToByteArray();
-            _state = BitConverter.ToUInt64(guidArray, 0);
+            _state = RandomUtilities.GuidToUInt64Pair(guid).First;
         }
 
         [JsonConstructor]

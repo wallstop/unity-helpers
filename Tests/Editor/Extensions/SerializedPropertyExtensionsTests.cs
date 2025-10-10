@@ -14,8 +14,7 @@
     /// arrays/lists, and nested objects. These tests focus on validating current,
     /// documented behavior of the extension methods.
     /// </summary>
-    public sealed class SerializedPropertyExtensionsTests
-        : WallstopStudios.UnityHelpers.Tests.Utils.CommonTestBase
+    public sealed class SerializedPropertyExtensionsTests : Utils.CommonTestBase
     {
         [Serializable]
         private class Inner

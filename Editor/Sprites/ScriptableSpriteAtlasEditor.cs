@@ -40,6 +40,38 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     /// </remarks>
     public sealed class ScriptableSpriteAtlasEditor : EditorWindow
     {
+        private static bool SuppressUserPrompts { get; set; }
+
+        static ScriptableSpriteAtlasEditor()
+        {
+            try
+            {
+                if (Application.isBatchMode || IsInvokedByTestRunner())
+                {
+                    SuppressUserPrompts = true;
+                }
+            }
+            catch { }
+        }
+
+        private static bool IsInvokedByTestRunner()
+        {
+            string[] args = System.Environment.GetCommandLineArgs();
+            for (int i = 0; i < args.Length; ++i)
+            {
+                string a = args[i];
+                if (
+                    a.IndexOf("runTests", System.StringComparison.OrdinalIgnoreCase) >= 0
+                    || a.IndexOf("testResults", System.StringComparison.OrdinalIgnoreCase) >= 0
+                    || a.IndexOf("testPlatform", System.StringComparison.OrdinalIgnoreCase) >= 0
+                )
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         private readonly Dictionary<ScriptableSpriteAtlas, SerializedObject> _serializedConfigs =
             new();
         private List<ScriptableSpriteAtlas> _atlasConfigs = new();

@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Editor.Sprites;
 
     public sealed class TextureResizerWizardTests
     {
@@ -32,8 +33,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             CreatePng(path, 16, 10, Color.green);
             AssetDatabase.Refresh();
 
-            var wizard =
-                ScriptableObject.CreateInstance<WallstopStudios.UnityHelpers.Editor.Sprites.TextureResizerWizard>();
+            TextureResizerWizard wizard = ScriptableObject.CreateInstance<TextureResizerWizard>();
             wizard.textures = new System.Collections.Generic.List<Texture2D>
             {
                 AssetDatabase.LoadAssetAtPath<Texture2D>(path),
@@ -42,17 +42,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             wizard.pixelsPerUnit = 1;
             wizard.widthMultiplier = 1f;
             wizard.heightMultiplier = 1f;
-            wizard.scalingResizeAlgorithm = WallstopStudios
-                .UnityHelpers
-                .Editor
-                .Sprites
-                .TextureResizerWizard
-                .ResizeAlgorithm
-                .Point;
+            wizard.scalingResizeAlgorithm = TextureResizerWizard.ResizeAlgorithm.Point;
             wizard.OnWizardCreate();
 
             AssetDatabase.Refresh();
-            var tex = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+            Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
             Assert.IsNotNull(tex, "Texture should exist after resize");
             Assert.That(tex.width, Is.EqualTo(32), "Width should double");
             Assert.That(tex.height, Is.EqualTo(20), "Height should double");
@@ -67,13 +61,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             int w0 = AssetDatabase.LoadAssetAtPath<Texture2D>(path).width;
             int h0 = AssetDatabase.LoadAssetAtPath<Texture2D>(path).height;
 
-            var wizard =
-                ScriptableObject.CreateInstance<WallstopStudios.UnityHelpers.Editor.Sprites.TextureResizerWizard>();
+            TextureResizerWizard wizard = ScriptableObject.CreateInstance<TextureResizerWizard>();
             wizard.numResizes = 0;
             wizard.OnWizardCreate();
 
             AssetDatabase.Refresh();
-            var tex = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+            Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
             Assert.That(tex.width, Is.EqualTo(w0), "Width should remain unchanged");
             Assert.That(tex.height, Is.EqualTo(h0), "Height should remain unchanged");
         }
@@ -85,8 +78,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             CreatePng(path, 10, 6, Color.white);
             AssetDatabase.Refresh();
 
-            var wizard =
-                ScriptableObject.CreateInstance<WallstopStudios.UnityHelpers.Editor.Sprites.TextureResizerWizard>();
+            TextureResizerWizard wizard = ScriptableObject.CreateInstance<TextureResizerWizard>();
             wizard.textures = new System.Collections.Generic.List<Texture2D>
             {
                 AssetDatabase.LoadAssetAtPath<Texture2D>(path),
@@ -96,17 +88,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             wizard.widthMultiplier = 1f;
             wizard.heightMultiplier = 1f;
             wizard.dryRun = true;
-            wizard.scalingResizeAlgorithm = WallstopStudios
-                .UnityHelpers
-                .Editor
-                .Sprites
-                .TextureResizerWizard
-                .ResizeAlgorithm
-                .Point;
+            wizard.scalingResizeAlgorithm = TextureResizerWizard.ResizeAlgorithm.Point;
             wizard.OnWizardCreate();
 
             AssetDatabase.Refresh();
-            var tex = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+            Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
             Assert.That(tex.width, Is.EqualTo(10));
             Assert.That(tex.height, Is.EqualTo(6));
         }
@@ -118,8 +104,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             CreatePng(path, 8, 4, Color.black);
             AssetDatabase.Refresh();
 
-            var wizard =
-                ScriptableObject.CreateInstance<WallstopStudios.UnityHelpers.Editor.Sprites.TextureResizerWizard>();
+            TextureResizerWizard wizard = ScriptableObject.CreateInstance<TextureResizerWizard>();
             wizard.textures = new System.Collections.Generic.List<Texture2D>
             {
                 AssetDatabase.LoadAssetAtPath<Texture2D>(path),
@@ -128,25 +113,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             wizard.pixelsPerUnit = 1;
             wizard.widthMultiplier = 1f;
             wizard.heightMultiplier = 1f;
-            wizard.scalingResizeAlgorithm = WallstopStudios
-                .UnityHelpers
-                .Editor
-                .Sprites
-                .TextureResizerWizard
-                .ResizeAlgorithm
-                .Point;
-            var outAsset = AssetDatabase.LoadAssetAtPath<DefaultAsset>(OutRoot);
+            wizard.scalingResizeAlgorithm = TextureResizerWizard.ResizeAlgorithm.Point;
+            DefaultAsset outAsset = AssetDatabase.LoadAssetAtPath<DefaultAsset>(OutRoot);
             Assert.IsNotNull(outAsset, "Output folder asset missing");
             wizard.outputFolder = outAsset;
             wizard.OnWizardCreate();
 
             AssetDatabase.Refresh();
-            var orig = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+            Texture2D orig = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
             Assert.That(orig.width, Is.EqualTo(8));
             Assert.That(orig.height, Is.EqualTo(4));
 
             string outPath = Path.Combine(OutRoot, "out.png").Replace('\\', '/');
-            var outTex = AssetDatabase.LoadAssetAtPath<Texture2D>(outPath);
+            Texture2D outTex = AssetDatabase.LoadAssetAtPath<Texture2D>(outPath);
             Assert.IsNotNull(outTex, "Expected resized texture in output folder");
             Assert.That(outTex.width, Is.EqualTo(16));
             Assert.That(outTex.height, Is.EqualTo(8));
@@ -159,8 +138,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             CreatePng(path, 16, 10, Color.gray);
             AssetDatabase.Refresh();
 
-            var wizard =
-                ScriptableObject.CreateInstance<WallstopStudios.UnityHelpers.Editor.Sprites.TextureResizerWizard>();
+            TextureResizerWizard wizard = ScriptableObject.CreateInstance<TextureResizerWizard>();
             wizard.textures = new System.Collections.Generic.List<Texture2D>
             {
                 AssetDatabase.LoadAssetAtPath<Texture2D>(path),
@@ -169,17 +147,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             wizard.pixelsPerUnit = 1;
             wizard.widthMultiplier = 1f;
             wizard.heightMultiplier = 1f;
-            wizard.scalingResizeAlgorithm = WallstopStudios
-                .UnityHelpers
-                .Editor
-                .Sprites
-                .TextureResizerWizard
-                .ResizeAlgorithm
-                .Point;
+            wizard.scalingResizeAlgorithm = TextureResizerWizard.ResizeAlgorithm.Point;
             wizard.OnWizardCreate();
 
             AssetDatabase.Refresh();
-            var tex = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+            Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
             Assert.That(tex.width, Is.EqualTo(64));
             Assert.That(tex.height, Is.EqualTo(40));
         }
@@ -191,13 +163,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             CreatePng(path, 8, 8, Color.red);
             AssetDatabase.Refresh();
 
-            var importer = AssetImporter.GetAtPath(path) as TextureImporter;
+            TextureImporter importer = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsNotNull(importer);
             importer.isReadable = false;
             importer.SaveAndReimport();
 
-            var wizard =
-                ScriptableObject.CreateInstance<WallstopStudios.UnityHelpers.Editor.Sprites.TextureResizerWizard>();
+            TextureResizerWizard wizard = ScriptableObject.CreateInstance<TextureResizerWizard>();
             wizard.textures = new System.Collections.Generic.List<Texture2D>
             {
                 AssetDatabase.LoadAssetAtPath<Texture2D>(path),
@@ -206,13 +177,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             wizard.pixelsPerUnit = 1000;
             wizard.widthMultiplier = 1000f;
             wizard.heightMultiplier = 1000f;
-            wizard.scalingResizeAlgorithm = WallstopStudios
-                .UnityHelpers
-                .Editor
-                .Sprites
-                .TextureResizerWizard
-                .ResizeAlgorithm
-                .Point;
+            wizard.scalingResizeAlgorithm = TextureResizerWizard.ResizeAlgorithm.Point;
             wizard.OnWizardCreate();
 
             AssetDatabase.Refresh();
@@ -241,7 +206,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             string dir = Path.GetDirectoryName(relPath).Replace('\\', '/');
             EnsureFolder(dir);
             Texture2D t = new Texture2D(w, h, TextureFormat.RGBA32, false);
-            var pix = new Color[w * h];
+            Color[] pix = new Color[w * h];
             for (int i = 0; i < pix.Length; i++)
                 pix[i] = c;
             t.SetPixels(pix);

@@ -20,14 +20,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         {
             EnsureFolder(SrcRoot);
             EnsureFolder(DstRoot);
-            _prevPrompt = WallstopStudios
-                .UnityHelpers
-                .Editor
-                .Sprites
-                .AnimationCopierWindow
-                .SuppressUserPrompts;
-            WallstopStudios.UnityHelpers.Editor.Sprites.AnimationCopierWindow.SuppressUserPrompts =
-                true;
+            _prevPrompt = AnimationCopierWindow.SuppressUserPrompts;
+            AnimationCopierWindow.SuppressUserPrompts = true;
         }
 
         [TearDown]
@@ -35,8 +29,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         {
             AssetDatabase.DeleteAsset("Assets/Temp/AnimationCopierTests");
             AssetDatabase.Refresh();
-            WallstopStudios.UnityHelpers.Editor.Sprites.AnimationCopierWindow.SuppressUserPrompts =
-                _prevPrompt;
+            AnimationCopierWindow.SuppressUserPrompts = _prevPrompt;
         }
 
         [Test]
@@ -47,7 +40,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
 
-            var window = CreateWindow();
+            AnimationCopierWindow window = CreateWindow();
             window.AnimationSourcePathRelative = SrcRoot;
             window.AnimationDestinationPathRelative = DstRoot;
             window.AnalyzeAnimations();
@@ -109,7 +102,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
 
-            var window = CreateWindow();
+            AnimationCopierWindow window = CreateWindow();
             window.AnimationSourcePathRelative = SrcRoot;
             window.AnimationDestinationPathRelative = DstRoot;
             window.DryRun = false;
@@ -135,7 +128,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
 
-            var window = CreateWindow();
+            AnimationCopierWindow window = CreateWindow();
             window.AnimationSourcePathRelative = SrcRoot;
             window.AnimationDestinationPathRelative = DstRoot;
             window.DryRun = false;
@@ -191,7 +184,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
 
         private static void ModifyClip(string relPath)
         {
-            var clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(relPath);
+            AnimationClip clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(relPath);
             Assert.IsNotNull(clip);
             clip.frameRate = clip.frameRate + 1f;
             EditorUtility.SetDirty(clip);

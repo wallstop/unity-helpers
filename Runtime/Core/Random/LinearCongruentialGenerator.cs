@@ -63,7 +63,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         public LinearCongruentialGenerator(Guid seed)
         {
-            _state = unchecked((uint)seed.GetHashCode());
+            _state = unchecked((uint)RandomUtilities.GuidToInt32(seed));
         }
 
         [JsonConstructor]

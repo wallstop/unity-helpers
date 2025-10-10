@@ -85,9 +85,9 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         public XoroShiroRandom(Guid guid)
         {
-            byte[] bytes = guid.ToByteArray();
-            _s0 = BitConverter.ToUInt64(bytes, 0);
-            _s1 = BitConverter.ToUInt64(bytes, 8);
+            (ulong a, ulong b) = RandomUtilities.GuidToUInt64Pair(guid);
+            _s0 = a;
+            _s1 = b;
             EnsureNonZeroState();
         }
 

@@ -66,13 +66,8 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         public DotNetRandom(Guid guid)
         {
-            // Derive a deterministic 32-bit seed from GUID bytes rather than GetHashCode()
-            // to avoid runtime/platform hash differences.
-            unchecked
-            {
-                byte[] gb = guid.ToByteArray();
-                _seed = gb[0] | (gb[1] << 8) | (gb[2] << 16) | (gb[3] << 24);
-            }
+            // Derive a deterministic 32-bit seed from GUID bytes without allocations
+            _seed = RandomUtilities.GuidToInt32(guid);
             _random = new Random(_seed);
         }
 

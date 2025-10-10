@@ -62,7 +62,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
         private const float AlphaThreshold = 0.01f;
 
-        private enum OutputReadability
+        internal enum OutputReadability
         {
             MirrorSource = 0,
             Readable = 1,
@@ -73,22 +73,22 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         internal List<Object> _inputDirectories = new();
 
         [SerializeField]
-        private string _spriteNameRegex = ".*";
+        internal string _spriteNameRegex = ".*";
 
         [SerializeField]
-        private bool _onlyNecessary;
+        internal bool _onlyNecessary;
 
         [SerializeField]
-        private int _leftPadding;
+        internal int _leftPadding;
 
         [SerializeField]
-        private int _rightPadding;
+        internal int _rightPadding;
 
         [SerializeField]
-        private int _topPadding;
+        internal int _topPadding;
 
         [SerializeField]
-        private int _bottomPadding;
+        internal int _bottomPadding;
 
         [SerializeField]
         internal bool _overwriteOriginals;
@@ -97,10 +97,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         internal Object _outputDirectory;
 
         [SerializeField]
-        private OutputReadability _outputReadability = OutputReadability.MirrorSource;
+        internal OutputReadability _outputReadability = OutputReadability.MirrorSource;
 
         [SerializeField]
-        private bool _copyDefaultPlatformSettings = true;
+        internal bool _copyDefaultPlatformSettings = true;
 
         private List<string> _filesToProcess;
         private SerializedObject _serializedObject;

@@ -62,7 +62,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             : this(Guid.NewGuid()) { }
 
         public SplitMix64(Guid guid)
-            : this(BitConverter.ToUInt64(guid.ToByteArray(), 0)) { }
+            : this(RandomUtilities.GuidToUInt64Pair(guid).First) { }
 
         public SplitMix64(ulong seed)
         {

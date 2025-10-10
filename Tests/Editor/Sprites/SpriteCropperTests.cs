@@ -7,6 +7,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Editor.Sprites;
 
     public sealed class SpriteCropperTests
     {
@@ -42,8 +43,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             imp.isReadable = true;
             imp.SaveAndReimport();
 
-            var window =
-                ScriptableObject.CreateInstance<WallstopStudios.UnityHelpers.Editor.Sprites.SpriteCropper>();
+            SpriteCropper window = ScriptableObject.CreateInstance<SpriteCropper>();
             window._overwriteOriginals = true;
             window._inputDirectories = new System.Collections.Generic.List<UnityEngine.Object>
             {
@@ -55,7 +55,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             AssetDatabase.Refresh();
 
             // Source should be overwritten and cropped to 10x10
-            var tex = AssetDatabase.LoadAssetAtPath<Texture2D>(src);
+            Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(src);
             Assert.IsNotNull(tex);
             Assert.That(tex.width, Is.EqualTo(10));
             Assert.That(tex.height, Is.EqualTo(10));
@@ -84,8 +84,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             imp.isReadable = true;
             imp.SaveAndReimport();
 
-            var window =
-                ScriptableObject.CreateInstance<WallstopStudios.UnityHelpers.Editor.Sprites.SpriteCropper>();
+            SpriteCropper window = ScriptableObject.CreateInstance<SpriteCropper>();
             window._overwriteOriginals = false;
             window._outputDirectory = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(outDir);
             window._inputDirectories = new System.Collections.Generic.List<UnityEngine.Object>
@@ -100,7 +99,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             string dst = Path.Combine(outDir, "Cropped_src2.png").Replace('\\', '/');
             Assert.That(File.Exists(RelToFull(dst)), Is.True, "Cropped output should exist");
 
-            var tex = AssetDatabase.LoadAssetAtPath<Texture2D>(dst);
+            Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(dst);
             Assert.IsNotNull(tex);
             Assert.That(tex.width, Is.EqualTo(4));
             Assert.That(tex.height, Is.EqualTo(4));
@@ -123,7 +122,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             {
                 alphaIsTransparency = true,
             };
-            var pix = new Color[w * h];
+            Color[] pix = new Color[w * h];
             for (int y = 0; y < h; ++y)
             for (int x = 0; x < w; ++x)
             {

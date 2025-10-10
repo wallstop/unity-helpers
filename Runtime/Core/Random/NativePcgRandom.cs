@@ -49,9 +49,9 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         public NativePcgRandom(Guid seed)
         {
-            byte[] guidArray = seed.ToByteArray();
-            _state = BitConverter.ToUInt64(guidArray, 0);
-            _increment = BitConverter.ToUInt64(guidArray, sizeof(ulong));
+            (ulong a, ulong b) = RandomUtilities.GuidToUInt64Pair(seed);
+            _state = a;
+            _increment = b;
         }
 
         public NativePcgRandom(int seed)

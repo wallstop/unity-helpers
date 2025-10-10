@@ -14,6 +14,38 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools
 
     public sealed class ImageBlurTool : EditorWindow
     {
+        private static bool SuppressUserPrompts { get; set; }
+
+        static ImageBlurTool()
+        {
+            try
+            {
+                if (Application.isBatchMode || IsInvokedByTestRunner())
+                {
+                    SuppressUserPrompts = true;
+                }
+            }
+            catch { }
+        }
+
+        private static bool IsInvokedByTestRunner()
+        {
+            string[] args = Environment.GetCommandLineArgs();
+            for (int i = 0; i < args.Length; ++i)
+            {
+                string a = args[i];
+                if (
+                    a.IndexOf("runTests", StringComparison.OrdinalIgnoreCase) >= 0
+                    || a.IndexOf("testResults", StringComparison.OrdinalIgnoreCase) >= 0
+                    || a.IndexOf("testPlatform", StringComparison.OrdinalIgnoreCase) >= 0
+                )
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         public List<Object> imageSources = new();
 
         private readonly List<Texture2D> _orderedTextures = new();
@@ -194,11 +226,14 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools
             foreach (Texture2D originalTexture in toProcess)
             {
                 string assetPath = AssetDatabase.GetAssetPath(originalTexture);
-                EditorUtility.DisplayProgressBar(
-                    "Applying Blur",
-                    $"Processing {originalTexture.name}...",
-                    (float)processedCount / toProcess.Length
-                );
+                if (!SuppressUserPrompts)
+                {
+                    EditorUtility.DisplayProgressBar(
+                        "Applying Blur",
+                        $"Processing {originalTexture.name}...",
+                        (float)processedCount / toProcess.Length
+                    );
+                }
                 try
                 {
                     TextureImporter importer =
@@ -299,11 +334,14 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools
                 finally
                 {
                     EditorUtility.ClearProgressBar();
-                    EditorUtility.DisplayDialog(
-                        "Blur Operation Complete",
-                        $"Successfully blurred {processedCount} images.",
-                        "OK"
-                    );
+                    if (!SuppressUserPrompts)
+                    {
+                        EditorUtility.DisplayDialog(
+                            "Blur Operation Complete",
+                            $"Successfully blurred {processedCount} images.",
+                            "OK"
+                        );
+                    }
                 }
             }
         }

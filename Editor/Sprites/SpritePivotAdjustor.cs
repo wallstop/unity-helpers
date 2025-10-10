@@ -80,6 +80,44 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             GetWindow<SpritePivotAdjuster>("Sprite Pivot Adjuster");
         }
 
+        static SpritePivotAdjuster()
+        {
+            // Auto-suppress UI prompts in batch mode and test runs
+            try
+            {
+                if (
+                    Application.isBatchMode
+                    || WallstopStudios.UnityHelpers.Editor.Utils.EditorUi.Suppress
+                )
+                {
+                    SuppressUserPrompts = true;
+                }
+            }
+            catch
+            {
+                // Ignore environment probing failures
+            }
+        }
+
+        private static bool IsInvokedByTestRunner()
+        {
+            // Heuristic: Unity test runs pass -runTests/-testResults on the command line
+            string[] args = Environment.GetCommandLineArgs();
+            for (int i = 0; i < args.Length; ++i)
+            {
+                string a = args[i];
+                if (
+                    a.IndexOf("runTests", StringComparison.OrdinalIgnoreCase) >= 0
+                    || a.IndexOf("testResults", StringComparison.OrdinalIgnoreCase) >= 0
+                    || a.IndexOf("testPlatform", StringComparison.OrdinalIgnoreCase) >= 0
+                )
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         private void OnEnable()
         {
             _serializedObject = new SerializedObject(this);
@@ -463,25 +501,21 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
         private static bool ShowCancelableProgress(string title, string info, float progress)
         {
-            if (SuppressUserPrompts)
-            {
-                return false;
-            }
-            return EditorUtility.DisplayCancelableProgressBar(title, info, progress);
+            return WallstopStudios.UnityHelpers.Editor.Utils.EditorUi.CancelableProgress(
+                title,
+                info,
+                progress
+            );
         }
 
         private static void ClearProgress()
         {
-            EditorUtility.ClearProgressBar();
+            WallstopStudios.UnityHelpers.Editor.Utils.EditorUi.ClearProgress();
         }
 
         private static void Info(string title, string message)
         {
-            if (SuppressUserPrompts)
-            {
-                return;
-            }
-            EditorUtility.DisplayDialog(title, message, "OK");
+            WallstopStudios.UnityHelpers.Editor.Utils.EditorUi.Info(title, message);
         }
 
         private static Vector2 CalculateCenterOfMassPivot(Sprite sprite, float alphaCutoff)

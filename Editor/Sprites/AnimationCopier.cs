@@ -19,6 +19,36 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         // Test-friendly: allow suppressing modal prompts and progress UI
         internal static bool SuppressUserPrompts { get; set; }
 
+        static AnimationCopierWindow()
+        {
+            try
+            {
+                if (Application.isBatchMode || IsInvokedByTestRunner())
+                {
+                    SuppressUserPrompts = true;
+                }
+            }
+            catch { }
+        }
+
+        private static bool IsInvokedByTestRunner()
+        {
+            string[] args = Environment.GetCommandLineArgs();
+            for (int i = 0; i < args.Length; ++i)
+            {
+                string a = args[i];
+                if (
+                    a.IndexOf("runTests", StringComparison.OrdinalIgnoreCase) >= 0
+                    || a.IndexOf("testResults", StringComparison.OrdinalIgnoreCase) >= 0
+                    || a.IndexOf("testPlatform", StringComparison.OrdinalIgnoreCase) >= 0
+                )
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         internal string AnimationSourcePathRelative
         {
             get => _animationSourcePathRelative;
@@ -488,11 +518,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     float total = sourceGuids.Length * 2;
                     int current = 0;
 
-                    EditorUtility.DisplayProgressBar(
-                        "Analyzing Animations",
-                        "Gathering source files...",
-                        0f
-                    );
+                    ShowProgress("Analyzing Animations", "Gathering source files...", 0f);
 
                     int throttleCounter = 0;
                     foreach (string guid in sourceGuids)
@@ -543,7 +569,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         // Throttle progress updates
                         if (++throttleCounter % 10 == 0)
                         {
-                            EditorUtility.DisplayProgressBar(
+                            ShowProgress(
                                 "Analyzing Animations",
                                 $"Hashing: {fileInfo.FileName}",
                                 current / total
@@ -561,7 +587,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         current++;
                         if (i % 10 == 0 || i == _sourceAnimations.Count - 1)
                         {
-                            EditorUtility.DisplayProgressBar(
+                            ShowProgress(
                                 "Analyzing Animations",
                                 $"Comparing: {sourceInfo.FileName}",
                                 current / total
