@@ -546,7 +546,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         public List<T> GetElementsInBounds(Bounds queryBounds, List<T> elementsInBounds)
         {
             elementsInBounds.Clear();
-            BoundingBox3D queryHalfOpen = BoundingBox3D.FromClosedBounds(queryBounds);
+            // Use inclusive-max conversion to align with KDTree semantics at max edges
+            BoundingBox3D queryHalfOpen = BoundingBox3D.FromClosedBoundsInclusiveMax(queryBounds);
             if (_head._count <= 0 || !queryHalfOpen.Intersects(_bounds))
             {
                 return elementsInBounds;
@@ -570,14 +571,35 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 // Fully contained under half-open semantics
                 if (queryHalfOpen.Contains(currentNode.boundary))
                 {
-                    int start = currentNode._startIndex;
-                    int end = start + currentNode._count;
-                    for (int i = start; i < end; ++i)
+                    // Conservative guard for leaves: ensure the leaf's closed Unity bounds
+                    // are fully contained by the closed query before fast-adding.
+                    // For internal nodes, inclusive half-open containment is sufficient.
+                    if (currentNode.isTerminal)
                     {
-                        elementsInBounds.Add(entries[indices[i]].value);
+                        Bounds u = currentNode.unityBoundary;
+                        // If fully contained under closed semantics, fast-add all entries.
+                        if (queryBounds.Contains(u.min) && queryBounds.Contains(u.max))
+                        {
+                            int start = currentNode._startIndex;
+                            int end = start + currentNode._count;
+                            for (int i = start; i < end; ++i)
+                            {
+                                elementsInBounds.Add(entries[indices[i]].value);
+                            }
+                            continue;
+                        }
+                        // Otherwise, fall through to the terminal per-point closed checks below.
                     }
-
-                    continue;
+                    else
+                    {
+                        int start = currentNode._startIndex;
+                        int end = start + currentNode._count;
+                        for (int i = start; i < end; ++i)
+                        {
+                            elementsInBounds.Add(entries[indices[i]].value);
+                        }
+                        continue;
+                    }
                 }
 
                 if (currentNode.isTerminal)
