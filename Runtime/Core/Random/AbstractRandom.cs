@@ -18,6 +18,46 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     [Serializable]
     [DataContract]
     [ProtoContract]
+    /// <summary>
+    /// Common abstract base for all <see cref="IRandom"/> implementations with protobuf support.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This type is annotated with [ProtoContract] and explicitly lists all known concrete
+    /// implementations via [ProtoInclude]. This enables polymorphic protobuf serialization when
+    /// the declared type is AbstractRandom (or another abstract base that carries the
+    /// [ProtoInclude] annotations).
+    /// </para>
+    /// <para>
+    /// Adding a new PRNG: implement <see cref="IRandom"/>, derive from <see cref="AbstractRandom"/>,
+    /// and add a new [ProtoInclude(tag, typeof(YourRandom))] entry here with a unique, stable
+    /// field number. Never renumber existing tags once published.
+    /// </para>
+    /// <example>
+    /// <code>
+    /// // 1) Implement your generator
+    /// [ProtoContract]
+    /// public sealed class MyCustomRandom : AbstractRandom { /* state + [ProtoMember]s... */ }
+    ///
+    /// // 2) Add a ProtoInclude tag below, e.g.
+    /// // [ProtoInclude(112, typeof(MyCustomRandom))]
+    ///
+    /// // 3) Use AbstractRandom as your declared type in protobuf models for seamless polymorphism
+    /// [ProtoContract]
+    /// class RNGHolder { [ProtoMember(1)] public AbstractRandom rng; }
+    /// </code>
+    /// </example>
+    /// <para>
+    /// Interfaces: protobuf-net cannot infer a concrete type when deserializing to an interface such as
+    /// <see cref="IRandom"/>. You can still serialize an IRandom value (we use the runtime type), but for
+    /// deserialization you must either:
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>Declare the field/property as AbstractRandom (recommended), or</description></item>
+    /// <item><description>Call Serializer.RegisterProtobufRoot&lt;IRandom, SomeConcreteRandom&gt;() at startup and
+    /// then use Serializer.ProtoDeserialize&lt;IRandom&gt;.</description></item>
+    /// </list>
+    /// </remarks>
     [ProtoInclude(100, typeof(DotNetRandom))]
     [ProtoInclude(101, typeof(PcgRandom))]
     [ProtoInclude(102, typeof(XorShiftRandom))]

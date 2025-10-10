@@ -123,6 +123,67 @@ public class NetworkMessage
 - Prefer optional/repeated instead of required.
 - Use sensible defaults to minimize payloads.
 
+**Protobuf Polymorphism (Inheritance + Interfaces)**
+- Abstract base with [ProtoInclude] (recommended)
+  - Protobuf-net does not infer subtype graphs unless you tell it. The recommended pattern is to put `[ProtoContract]` on an abstract base and list all concrete subtypes with `[ProtoInclude(tag, typeof(Subtype))]`.
+  - Declare your fields/properties as the abstract base so protobuf can deserialize to the correct subtype.
+```csharp
+using ProtoBuf;
+
+[ProtoContract]
+public abstract class Message { }
+
+[ProtoContract]
+public sealed class Ping : Message { [ProtoMember(1)] public int id; }
+
+[ProtoContract]
+[ProtoInclude(100, typeof(Ping))]
+public abstract class MessageBase : Message { }
+
+[ProtoContract]
+public sealed class Envelope { [ProtoMember(1)] public MessageBase payload; }
+
+// round-trip works: Envelope.payload will be Ping at runtime
+byte[] bytes = Serializer.ProtoSerialize(new Envelope { payload = new Ping { id = 7 } });
+Envelope again = Serializer.ProtoDeserialize<Envelope>(bytes);
+```
+
+- Interfaces require a root mapping
+  - Protobuf cannot deserialize directly to an interface because it needs a concrete root. You have three options:
+    - Use an abstract base with `[ProtoInclude]` and declare fields as that base (preferred).
+    - Register a mapping from the interface to a concrete root type at startup:
+```csharp
+Serializer.RegisterProtobufRoot<IMsg, Ping>();
+IMsg msg = Serializer.ProtoDeserialize<IMsg>(bytes);
+```
+    - Or specify the concrete type with the overload:
+```csharp
+IMsg msg = Serializer.ProtoDeserialize<IMsg>(bytes, typeof(Ping));
+```
+
+- Random system example
+  - All PRNGs derive from `AbstractRandom`, which is `[ProtoContract]` and declares each implementation via `[ProtoInclude]`.
+  - Do this in your models:
+```csharp
+[ProtoContract]
+public class RNGHolder { [ProtoMember(1)] public AbstractRandom rng; }
+
+// Serialize any implementation without surprises
+RNGHolder holder = new RNGHolder { rng = new PcgRandom(seed: 123) };
+byte[] buf = Serializer.ProtoSerialize(holder);
+RNGHolder rt = Serializer.ProtoDeserialize<RNGHolder>(buf);
+```
+  - If you truly need an `IRandom` field, register a root or pass the concrete type when deserializing:
+```csharp
+Serializer.RegisterProtobufRoot<IRandom, PcgRandom>();
+IRandom r = Serializer.ProtoDeserialize<IRandom>(bytes);
+// or
+IRandom r2 = Serializer.ProtoDeserialize<IRandom>(bytes, typeof(PcgRandom));
+```
+
+- Tag numbers are API surface
+  - Tags in `[ProtoInclude(tag, ...)]` and `[ProtoMember(tag)]` are part of your schema. Add new numbers for new types/fields; never reuse or renumber existing tags once shipped.
+
 **SystemBinary Examples (Legacy/Trusted Only)**
 ```csharp
 using WallstopStudios.UnityHelpers.Core.Serialization;

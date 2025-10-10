@@ -5,6 +5,20 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     using DataStructure.Adapters;
     using UnityEngine;
 
+    /// <summary>
+    /// Unified random number generator interface implemented by all PRNGs in this package.
+    /// </summary>
+    /// <remarks>
+    /// Serialization guidance:
+    /// - JSON: Works out of the box using runtime type information in the serializer entry points.
+    /// - Protobuf: You can serialize an IRandom instance (the runtime type is used), but when
+    ///   deserializing to IRandom you must either register a concrete root via
+    ///   <c>Serializer.RegisterProtobufRoot&lt;IRandom, ConcreteRandom&gt;()</c> or declare your model
+    ///   field as <see cref="AbstractRandom"/>, which is annotated with [ProtoInclude] for all
+    ///   known implementations.
+    ///   Alternatively, use the overload <c>Serializer.ProtoDeserialize&lt;T&gt;(byte[], Type)</c> and
+    ///   pass the concrete type.
+    /// </remarks>
     public interface IRandom
     {
         RandomState InternalState { get; }

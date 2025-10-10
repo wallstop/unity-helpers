@@ -487,9 +487,32 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
         /// <param name="data">Encoded protobuf payload.</param>
         /// <returns>The decoded instance.</returns>
         /// <remarks>
-        /// Supports interface/abstract/object targets by attempting to infer a concrete root type marked with
-        /// [ProtoContract]. For deterministic behavior, prefer annotating a shared abstract base with
-        /// [ProtoInclude]s or call <see cref="RegisterProtobufRoot{TDeclared, TRoot}()"/>.
+        /// Polymorphism and interfaces:
+        /// - If <typeparamref name="T"/> is an interface, abstract type, or <see cref="object"/>, deserialization
+        ///   requires a concrete root type. We resolve this by either using an abstract base that is marked with
+        ///   <c>[ProtoContract]</c> and <c>[ProtoInclude]</c> for all subtypes (e.g.,
+        ///   <c>AbstractRandom</c> in the random package) or by a previously registered mapping via
+        ///   <see cref="RegisterProtobufRoot{TDeclared, TRoot}()"/>. If no unique root is found, a
+        ///   <see cref="ProtoException"/> is thrown to avoid ambiguous heuristics.
+        ///
+        /// Examples
+        /// <code>
+        /// // 1) Using an abstract base with [ProtoInclude]s
+        /// [ProtoContract]
+        /// abstract class Message { }
+        /// [ProtoContract] class Ping : Message { [ProtoMember(1)] public int Id { get; set; } }
+        /// // Deserialize to the abstract base; protobuf-net resolves to Ping
+        /// Message m = Serializer.ProtoDeserialize<Message>(bytes);
+        ///
+        /// // 2) Using an interface by registering a root
+        /// interface IEvent { }
+        /// [ProtoContract] class PlayerJoined : IEvent { [ProtoMember(1)] public string Name { get; set; } }
+        /// Serializer.RegisterProtobufRoot<IEvent, PlayerJoined>();
+        /// IEvent evt = Serializer.ProtoDeserialize<IEvent>(bytes);
+        ///
+        /// // 3) Overload that specifies the concrete type explicitly
+        /// IEvent evt2 = Serializer.ProtoDeserialize<IEvent>(bytes, typeof(PlayerJoined));
+        /// </code>
         /// </remarks>
         public static T ProtoDeserialize<T>(byte[] data)
         {
