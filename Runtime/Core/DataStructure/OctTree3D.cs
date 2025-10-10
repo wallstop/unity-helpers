@@ -577,8 +577,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     if (currentNode.isTerminal)
                     {
                         Bounds u = currentNode.unityBoundary;
-                        // If fully contained under closed semantics, fast-add all entries.
-                        if (queryBounds.Contains(u.min) && queryBounds.Contains(u.max))
+                        // If fully contained under closed semantics (via inclusive half-open), fast-add all entries.
+                        if (queryHalfOpen.Contains(u.min) && queryHalfOpen.Contains(u.max))
                         {
                             int start = currentNode._startIndex;
                             int end = start + currentNode._count;
@@ -609,8 +609,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     for (int i = start; i < end; ++i)
                     {
                         Entry entry = entries[indices[i]];
-                        // Per-point checks use Unity's closed Contains to match KDTree semantics
-                        if (queryBounds.Contains(entry.position))
+                        // Per-point checks use inclusive half-open semantics for closed behavior
+                        if (queryHalfOpen.Contains(entry.position))
                         {
                             elementsInBounds.Add(entry.value);
                         }

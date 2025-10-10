@@ -704,14 +704,15 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return elementsInBounds;
             }
 
-            // Convert to BoundingBox3D for consistent half-open intersection semantics with OctTree
-            // Use InclusiveMax to properly convert closed Unity Bounds to half-open BoundingBox3D
-            BoundingBox3D queryBox = BoundingBox3D.FromClosedBoundsInclusiveMax(bounds);
-            BoundingBox3D rootBox = BoundingBox3D.FromClosedBoundsInclusiveMax(_bounds);
-            if (!queryBox.Intersects(rootBox))
+            // Use closed Unity Bounds intersection for traversal to avoid pruning
+            // legitimate edge cases; final per-point checks use closed semantics.
+            if (!bounds.Intersects(_bounds))
             {
                 return elementsInBounds;
             }
+
+            // Build inclusive half-open query box for robust per-point checks
+            BoundingBox3D queryBox = BoundingBox3D.FromClosedBoundsInclusiveMax(bounds);
 
             using PooledResource<Stack<KdTreeNode>> stackResource = Buffers<KdTreeNode>.Stack.Get(
                 out Stack<KdTreeNode> nodesToVisit
@@ -735,8 +736,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     for (int i = start; i < end; ++i)
                     {
                         Entry entry = entries[indices[i]];
-                        // Use Unity's closed Contains for point checks to match OctTree
-                        if (bounds.Contains(entry.position))
+                        // Use inclusive half-open check for robust closed semantics
+                        if (queryBox.Contains(entry.position))
                         {
                             elementsInBounds.Add(entry.value);
                         }
@@ -745,28 +746,18 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     continue;
                 }
 
+                // Once we've reached an internal node that intersects the query,
+                // visit both non-empty children and rely on per-point checks.
                 KdTreeNode left = currentNode.left;
                 if (left is not null && left._count > 0)
                 {
-                    BoundingBox3D leftBox = BoundingBox3D.FromClosedBoundsInclusiveMax(
-                        left.boundary
-                    );
-                    if (queryBox.Intersects(leftBox))
-                    {
-                        nodesToVisit.Push(left);
-                    }
+                    nodesToVisit.Push(left);
                 }
 
                 KdTreeNode right = currentNode.right;
                 if (right is not null && right._count > 0)
                 {
-                    BoundingBox3D rightBox = BoundingBox3D.FromClosedBoundsInclusiveMax(
-                        right.boundary
-                    );
-                    if (queryBox.Intersects(rightBox))
-                    {
-                        nodesToVisit.Push(right);
-                    }
+                    nodesToVisit.Push(right);
                 }
             }
 
