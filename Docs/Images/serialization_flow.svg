@@ -1,7 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="820" height="380" viewBox="0 0 820 380">
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="380" viewBox="0 0 820 380" version="1.1">
+  <title>Serialization — Flow &amp; Profiles</title>
+  <desc>Shows the serialization pipeline: Model → Profile → Serializer → Bytes/Stream, with notes on profiles and pooled buffers.</desc>
   <rect x="0" y="0" width="820" height="380" fill="#0f0f13"/>
   <g font-family="Verdana,Arial,sans-serif" font-size="14" fill="#c8d1dc">
-    <text x="16" y="26">Serialization — Flow & Profiles</text>
+    <text x="16" y="26">Serialization — Flow &amp; Profiles</text>
   </g>
   <!-- flow boxes -->
   <g fill="#1d2330" stroke="#7aa2ff" stroke-width="2">
@@ -45,4 +48,3 @@
     <text x="460" y="194">- Size hints</text>
   </g>
 </svg>
-

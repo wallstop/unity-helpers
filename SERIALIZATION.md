@@ -4,8 +4,6 @@ Visuals
 
 ![Serialization Flow](Docs/Images/serialization_flow.svg)
 
-![Unity Converters Map](Docs/Images/serialization_converters.svg)
-
 This package provides fast, compact serialization for save systems, configuration, and networking with a unified API.
 
 - Json — System.Text.Json with Unity-aware converters
