@@ -20,10 +20,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
         public override void OnInspectorGUI()
         {
             serializedObject.Update();
-            if (EditorGUILayout.PropertyField(_tolerance))
-            {
-                serializedObject.ApplyModifiedProperties();
-            }
+            EditorGUILayout.PropertyField(_tolerance);
 
             if (GUILayout.Button("Optimize"))
             {
@@ -32,8 +29,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
                 {
                     optimizer.Refresh();
                 }
-                serializedObject.ApplyModifiedProperties();
             }
+
+            serializedObject.ApplyModifiedProperties();
         }
     }
 #endif

@@ -6,6 +6,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
     using UnityEngine;
     using Utils;
 
+    /// <summary>
+    /// Thread-safe dispatcher that enqueues work to run on Unity's main thread.
+    /// </summary>
+    /// <remarks>
+    /// Works in both edit mode and play mode. Use for marshalling callbacks from tasks/threads to main thread.
+    /// </remarks>
     [ExecuteAlways]
     public sealed class UnityMainThreadDispatcher : RuntimeSingleton<UnityMainThreadDispatcher>
     {
@@ -25,6 +31,18 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #endif
         }
 
+        /// <summary>
+        /// Enqueues an action to be executed on the main thread during the next Update.
+        /// </summary>
+        /// <example>
+        /// <code>
+        /// Task.Run(async () =>
+        /// {
+        ///     var data = await FetchAsync();
+        ///     UnityMainThreadDispatcher.Instance.RunOnMainThread(() => Apply(data));
+        /// });
+        /// </code>
+        /// </example>
         public void RunOnMainThread(Action action)
         {
             _actions.Enqueue(action);

@@ -1,8 +1,8 @@
 namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 {
-    using Core.Attributes;
     using UnityEditor;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Attributes;
 
     [CustomPropertyDrawer(typeof(IntDropdownAttribute))]
     public sealed class IntDropdownDrawer : PropertyDrawer

@@ -71,86 +71,105 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
                 {
                     throw new JsonException("Expected property name in Matrix4x4 JSON.");
                 }
-                string propertyName = reader.GetString();
-                if (!reader.Read())
+                if (reader.ValueTextEquals("m00"))
                 {
-                    throw new JsonException($"Expected value for property '{propertyName}'.");
+                    reader.Read();
+                    m00 = reader.GetSingle();
+                    found[0] = true;
                 }
-                float value;
-                try
+                else if (reader.ValueTextEquals("m01"))
                 {
-                    value = reader.GetSingle();
+                    reader.Read();
+                    m01 = reader.GetSingle();
+                    found[1] = true;
                 }
-                catch (Exception ex)
+                else if (reader.ValueTextEquals("m02"))
                 {
-                    throw new JsonException($"Invalid value for property '{propertyName}'.", ex);
+                    reader.Read();
+                    m02 = reader.GetSingle();
+                    found[2] = true;
                 }
-                switch (propertyName)
+                else if (reader.ValueTextEquals("m03"))
                 {
-                    case "m00":
-                        m00 = value;
-                        found[0] = true;
-                        break;
-                    case "m01":
-                        m01 = value;
-                        found[1] = true;
-                        break;
-                    case "m02":
-                        m02 = value;
-                        found[2] = true;
-                        break;
-                    case "m03":
-                        m03 = value;
-                        found[3] = true;
-                        break;
-                    case "m10":
-                        m10 = value;
-                        found[4] = true;
-                        break;
-                    case "m11":
-                        m11 = value;
-                        found[5] = true;
-                        break;
-                    case "m12":
-                        m12 = value;
-                        found[6] = true;
-                        break;
-                    case "m13":
-                        m13 = value;
-                        found[7] = true;
-                        break;
-                    case "m20":
-                        m20 = value;
-                        found[8] = true;
-                        break;
-                    case "m21":
-                        m21 = value;
-                        found[9] = true;
-                        break;
-                    case "m22":
-                        m22 = value;
-                        found[10] = true;
-                        break;
-                    case "m23":
-                        m23 = value;
-                        found[11] = true;
-                        break;
-                    case "m30":
-                        m30 = value;
-                        found[12] = true;
-                        break;
-                    case "m31":
-                        m31 = value;
-                        found[13] = true;
-                        break;
-                    case "m32":
-                        m32 = value;
-                        found[14] = true;
-                        break;
-                    case "m33":
-                        m33 = value;
-                        found[15] = true;
-                        break;
+                    reader.Read();
+                    m03 = reader.GetSingle();
+                    found[3] = true;
+                }
+                else if (reader.ValueTextEquals("m10"))
+                {
+                    reader.Read();
+                    m10 = reader.GetSingle();
+                    found[4] = true;
+                }
+                else if (reader.ValueTextEquals("m11"))
+                {
+                    reader.Read();
+                    m11 = reader.GetSingle();
+                    found[5] = true;
+                }
+                else if (reader.ValueTextEquals("m12"))
+                {
+                    reader.Read();
+                    m12 = reader.GetSingle();
+                    found[6] = true;
+                }
+                else if (reader.ValueTextEquals("m13"))
+                {
+                    reader.Read();
+                    m13 = reader.GetSingle();
+                    found[7] = true;
+                }
+                else if (reader.ValueTextEquals("m20"))
+                {
+                    reader.Read();
+                    m20 = reader.GetSingle();
+                    found[8] = true;
+                }
+                else if (reader.ValueTextEquals("m21"))
+                {
+                    reader.Read();
+                    m21 = reader.GetSingle();
+                    found[9] = true;
+                }
+                else if (reader.ValueTextEquals("m22"))
+                {
+                    reader.Read();
+                    m22 = reader.GetSingle();
+                    found[10] = true;
+                }
+                else if (reader.ValueTextEquals("m23"))
+                {
+                    reader.Read();
+                    m23 = reader.GetSingle();
+                    found[11] = true;
+                }
+                else if (reader.ValueTextEquals("m30"))
+                {
+                    reader.Read();
+                    m30 = reader.GetSingle();
+                    found[12] = true;
+                }
+                else if (reader.ValueTextEquals("m31"))
+                {
+                    reader.Read();
+                    m31 = reader.GetSingle();
+                    found[13] = true;
+                }
+                else if (reader.ValueTextEquals("m32"))
+                {
+                    reader.Read();
+                    m32 = reader.GetSingle();
+                    found[14] = true;
+                }
+                else if (reader.ValueTextEquals("m33"))
+                {
+                    reader.Read();
+                    m33 = reader.GetSingle();
+                    found[15] = true;
+                }
+                else
+                {
+                    throw new JsonException("Unknown property for Matrix4x4.");
                 }
             }
 

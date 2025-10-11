@@ -8,9 +8,9 @@ namespace WallstopStudios.UnityHelpers.Core.OneOf
     // Like OneOf, except that Equals doesn't allocate
     public readonly struct FastOneOf<T0, T1, T2> : IEquatable<FastOneOf<T0, T1, T2>>
     {
-        private static readonly EqualityComparer<T0> _t0Comparer = EqualityComparer<T0>.Default;
-        private static readonly EqualityComparer<T1> _t1Comparer = EqualityComparer<T1>.Default;
-        private static readonly EqualityComparer<T2> _t2Comparer = EqualityComparer<T2>.Default;
+        private static readonly EqualityComparer<T0> T0Comparer = EqualityComparer<T0>.Default;
+        private static readonly EqualityComparer<T1> T1Comparer = EqualityComparer<T1>.Default;
+        private static readonly EqualityComparer<T2> T2Comparer = EqualityComparer<T2>.Default;
 
         private readonly T0 _value0;
         private readonly T1 _value1;
@@ -85,6 +85,45 @@ namespace WallstopStudios.UnityHelpers.Core.OneOf
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool TryGetT0(out T0 value)
+        {
+            if (_index == 0)
+            {
+                value = _value0;
+                return true;
+            }
+
+            value = default;
+            return false;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool TryGetT1(out T1 value)
+        {
+            if (_index == 1)
+            {
+                value = _value1;
+                return true;
+            }
+
+            value = default;
+            return false;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool TryGetT2(out T2 value)
+        {
+            if (_index == 2)
+            {
+                value = _value2;
+                return true;
+            }
+
+            value = default;
+            return false;
+        }
+
         private FastOneOf(int index, T0 value0 = default, T1 value1 = default, T2 value2 = default)
         {
             _index = index;
@@ -110,11 +149,11 @@ namespace WallstopStudios.UnityHelpers.Core.OneOf
             switch (_index)
             {
                 case 0:
-                    return _t0Comparer.Equals(_value0, other._value0);
+                    return T0Comparer.Equals(_value0, other._value0);
                 case 1:
-                    return _t1Comparer.Equals(_value1, other._value1);
+                    return T1Comparer.Equals(_value1, other._value1);
                 case 2:
-                    return _t2Comparer.Equals(_value2, other._value2);
+                    return T2Comparer.Equals(_value2, other._value2);
                 default:
                     throw new ArgumentException($"Index {_index} out of range");
             }
@@ -138,6 +177,38 @@ namespace WallstopStudios.UnityHelpers.Core.OneOf
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public TResult Match<TResult>(
+            Func<T0, TResult> f0,
+            Func<T1, TResult> f1,
+            Func<T2, TResult> f2
+        )
+        {
+            return _index switch
+            {
+                0 => f0(_value0),
+                1 => f1(_value1),
+                2 => f2(_value2),
+                _ => throw new InvalidOperationException($"Invalid index {_index}"),
+            };
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public FastOneOf<TResult0, TResult1, TResult2> Map<TResult0, TResult1, TResult2>(
+            Func<T0, TResult0> f0,
+            Func<T1, TResult1> f1,
+            Func<T2, TResult2> f2
+        )
+        {
+            return _index switch
+            {
+                0 => new FastOneOf<TResult0, TResult1, TResult2>(0, value0: f0(_value0)),
+                1 => new FastOneOf<TResult0, TResult1, TResult2>(1, value1: f1(_value1)),
+                2 => new FastOneOf<TResult0, TResult1, TResult2>(2, value2: f2(_value2)),
+                _ => throw new InvalidOperationException($"Invalid index {_index}"),
+            };
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public override bool Equals(object obj)
         {
             return obj is FastOneOf<T0, T1, T2> other && Equals(other);
@@ -146,7 +217,36 @@ namespace WallstopStudios.UnityHelpers.Core.OneOf
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public override int GetHashCode()
         {
-            return Objects.HashCode(_value0, _value1, _value2, _index);
+            return _index switch
+            {
+                0 => Objects.HashCode(_index, _value0),
+                1 => Objects.HashCode(_index, _value1),
+                2 => Objects.HashCode(_index, _value2),
+                _ => _index,
+            };
+        }
+
+        public override string ToString()
+        {
+            return _index switch
+            {
+                0 => $"T0({_value0})",
+                1 => $"T1({_value1})",
+                2 => $"T2({_value2})",
+                _ => $"Invalid({_index})",
+            };
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool operator ==(FastOneOf<T0, T1, T2> left, FastOneOf<T0, T1, T2> right)
+        {
+            return left.Equals(right);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool operator !=(FastOneOf<T0, T1, T2> left, FastOneOf<T0, T1, T2> right)
+        {
+            return !left.Equals(right);
         }
     }
 }

@@ -3,16 +3,35 @@ namespace WallstopStudios.UnityHelpers.Utils
     using System;
     using System.Collections.Generic;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Helper;
 
+    /// <summary>
+    /// Provides value and ordering comparisons for <see cref="AnimationEvent"/> instances and
+    /// offers helpers for duplicating them without mutating the original event.
+    /// </summary>
+    /// <remarks>
+    /// Unity does not expose an <see cref="EqualityComparer{T}"/> implementation for
+    /// <see cref="AnimationEvent"/>. This comparer inspects the fields Unity uses for dispatching
+    /// events (time, function name, parameters, and message options) and treats two events as equal
+    /// only when all of those values match.
+    /// </remarks>
     public sealed class AnimationEventEqualityComparer
         : EqualityComparer<AnimationEvent>,
             IComparer<AnimationEvent>
     {
+        /// <summary>
+        /// Gets a globally shared comparer instance to avoid unnecessary allocations.
+        /// </summary>
         public static readonly AnimationEventEqualityComparer Instance = new();
 
         private AnimationEventEqualityComparer() { }
 
-        // Returns a shallow copy with equatable values propagated
+        /// <summary>
+        /// Creates a shallow copy of the supplied <paramref name="instance"/> by cloning its
+        /// equatable values.
+        /// </summary>
+        /// <param name="instance">Event instance to duplicate, or <c>null</c> to skip copying.</param>
+        /// <returns>A new <see cref="AnimationEvent"/> carrying the same values, or <c>null</c>.</returns>
         public AnimationEvent Copy(AnimationEvent instance)
         {
             if (instance == null)
@@ -25,6 +44,12 @@ namespace WallstopStudios.UnityHelpers.Utils
             return copy;
         }
 
+        /// <summary>
+        /// Copies all equatable values from <paramref name="parameters"/> into
+        /// <paramref name="into"/> without creating a new <see cref="AnimationEvent"/>.
+        /// </summary>
+        /// <param name="into">Destination instance that receives the values.</param>
+        /// <param name="parameters">Source instance that provides the values.</param>
         public void CopyInto(AnimationEvent into, AnimationEvent parameters)
         {
             if (into == null || parameters == null)
@@ -41,6 +66,7 @@ namespace WallstopStudios.UnityHelpers.Utils
             into.messageOptions = parameters.messageOptions;
         }
 
+        /// <inheritdoc />
         public override bool Equals(AnimationEvent lhs, AnimationEvent rhs)
         {
             if (ReferenceEquals(lhs, rhs))
@@ -93,9 +119,10 @@ namespace WallstopStudios.UnityHelpers.Utils
             return true;
         }
 
+        /// <inheritdoc />
         public override int GetHashCode(AnimationEvent instance)
         {
-            return HashCode.Combine(
+            return Objects.HashCode(
                 instance.time,
                 instance.functionName,
                 instance.intParameter,
@@ -106,6 +133,16 @@ namespace WallstopStudios.UnityHelpers.Utils
             );
         }
 
+        /// <summary>
+        /// Orders two <see cref="AnimationEvent"/> instances using their firing time followed by the
+        /// textual and numeric parameters.
+        /// </summary>
+        /// <param name="lhs">First event to compare.</param>
+        /// <param name="rhs">Second event to compare.</param>
+        /// <returns>
+        /// An integer less than zero when <paramref name="lhs"/> should come before
+        /// <paramref name="rhs"/>, zero when they are equivalent, or greater than zero otherwise.
+        /// </returns>
         public int Compare(AnimationEvent lhs, AnimationEvent rhs)
         {
             if (ReferenceEquals(lhs, rhs))

@@ -161,11 +161,21 @@ namespace WallstopStudios.UnityHelpers.Core.Helper.Logging
         }
 
         [HideInCallstack]
+        private static string ToSafeString(object arg)
+        {
+            if (arg is Object unityObj)
+            {
+                return unityObj != null ? unityObj.ToString() : string.Empty;
+            }
+            return arg?.ToString() ?? string.Empty;
+        }
+
+        [HideInCallstack]
         public string Format(string format, object arg, IFormatProvider formatProvider)
         {
             if (string.IsNullOrWhiteSpace(format))
             {
-                return arg?.ToString() ?? string.Empty;
+                return ToSafeString(arg);
             }
 
             _cachedDecorators.Clear();
@@ -242,7 +252,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper.Logging
                 return formattable.ToString(format, this);
             }
 
-            return arg?.ToString() ?? string.Empty;
+            return ToSafeString(arg);
         }
 
         [HideInCallstack]
@@ -312,7 +322,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper.Logging
         /// Attempts to add a decoration.
         /// </summary>
         /// <param name="match">An exact match for tag ("a" would correspond to ${value:a})</param>
-        /// <param name="format">A formatter to apply to the matched object (typically something like value => $"<newFormat>{value}</newFormat>"){</param>
+        /// <param name="format">A formatter to apply to the matched object (typically something like <c>value =&gt; $"&lt;newFormat&gt;{value}&lt;/newFormat&gt;"</c>).</param>
         /// <param name="tag">A descriptive, unique identifier for the decoration (for example, "Bold", or "Color")</param>
         /// <param name="priority">The priority to register the decoration at. Lower values will be evaluated first.</param>
         /// <param name="editorOnly">If true, will only be applied when the game is running in the Unity Editor.</param>

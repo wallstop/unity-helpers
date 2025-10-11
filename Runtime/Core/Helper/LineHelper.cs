@@ -1,9 +1,11 @@
 namespace WallstopStudios.UnityHelpers.Core.Helper
 {
     using System.Collections.Generic;
-    using System.Linq;
     using UnityEngine;
 
+    /// <summary>
+    /// Polyline simplification and distance helpers.
+    /// </summary>
     public static class LineHelper
     {
         private static float PerpendicularDistance(
@@ -36,7 +38,24 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
         // c# implementation of the Ramer-Douglas-Peucker-Algorithm by Craig Selbert slightly adapted for Unity Vector Types
         //http://www.codeproject.com/Articles/18936/A-Csharp-Implementation-of-Douglas-Peucker-Line-Ap
-        public static List<Vector2> SimplifyPrecise(List<Vector2> points, double tolerance)
+        /// <summary>
+        /// Douglas–Peucker simplification that preserves extreme points with high precision (double tolerance).
+        /// </summary>
+        /// <param name="points">Input polyline points.</param>
+        /// <param name="tolerance">Maximum allowable deviation.</param>
+        /// <param name="buffer">Optional destination list (reused if provided).</param>
+        /// <returns>Output simplified points (in buffer if provided).</returns>
+        /// <example>
+        /// <code>
+        /// // Keep tighter shape fidelity
+        /// var precise = LineHelper.SimplifyPrecise(rawPoints, tolerance: 0.01);
+        /// </code>
+        /// </example>
+        public static List<Vector2> SimplifyPrecise(
+            List<Vector2> points,
+            double tolerance,
+            List<Vector2> buffer = null
+        )
         {
             if (points == null || points.Count < 3)
             {
@@ -50,9 +69,18 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             List<int> pointIndexsToKeep = new() { firstPoint, lastPoint };
 
             //The first and the last point cannot be the same
-            while (points[firstPoint] == points[lastPoint])
+            while (lastPoint > firstPoint && points[firstPoint] == points[lastPoint])
             {
                 lastPoint--;
+            }
+
+            // If all points are the same, return just the first point
+            if (lastPoint <= firstPoint)
+            {
+                buffer ??= new List<Vector2>(1);
+                buffer.Clear();
+                buffer.Add(points[firstPoint]);
+                return buffer;
             }
 
             DouglasPeuckerReductionRecursive(
@@ -63,14 +91,15 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 ref pointIndexsToKeep
             );
 
-            List<Vector2> returnPoints = new();
+            buffer ??= new List<Vector2>(pointIndexsToKeep.Count);
+            buffer.Clear();
             pointIndexsToKeep.Sort();
             foreach (int index in pointIndexsToKeep)
             {
-                returnPoints.Add(points[index]);
+                buffer.Add(points[index]);
             }
 
-            return returnPoints;
+            return buffer;
         }
 
         private static void DouglasPeuckerReductionRecursive(
@@ -81,7 +110,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             ref List<int> pointIndexesToKeep
         )
         {
-            while (true)
+            do
             {
                 double maxDistance = 0;
                 int indexFarthest = 0;
@@ -118,7 +147,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 }
 
                 break;
-            }
+            } while (true);
 
             return;
 
@@ -148,47 +177,83 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
         }
 
-        public static List<Vector2> Simplify(List<Vector2> points, float epsilon)
+        /// <summary>
+        /// Fast Douglas–Peucker simplification using float epsilon.
+        /// </summary>
+        /// <param name="points">Input polyline points.</param>
+        /// <param name="epsilon">Maximum allowable deviation.</param>
+        /// <param name="buffer">Optional destination list (reused if provided).</param>
+        /// <returns>Output simplified points (in buffer if provided).</returns>
+        /// <example>
+        /// <code>
+        /// // Faster, good for on-frame simplification
+        /// var simplified = LineHelper.Simplify(rawPoints, epsilon: 0.1f);
+        /// </code>
+        /// </example>
+        public static List<Vector2> Simplify(
+            List<Vector2> points,
+            float epsilon,
+            List<Vector2> buffer = null
+        )
         {
-            if (points == null || points.Count < 3 || epsilon <= 0)
+            buffer ??= new List<Vector2>();
+            buffer.Clear();
+            if (points == null)
             {
-                return new List<Vector2>(points ?? Enumerable.Empty<Vector2>());
+                return buffer;
+            }
+
+            if (points.Count < 3 || epsilon <= 0)
+            {
+                buffer.AddRange(points);
+                return buffer;
+            }
+
+            SimplifyRecursive(points, 0, points.Count - 1, epsilon, buffer);
+            buffer.Add(points[points.Count - 1]);
+            return buffer;
+        }
+
+        private static void SimplifyRecursive(
+            List<Vector2> points,
+            int startIndex,
+            int endIndex,
+            float epsilon,
+            List<Vector2> buffer
+        )
+        {
+            if (endIndex <= startIndex + 1)
+            {
+                buffer.Add(points[startIndex]);
+                return;
             }
 
             float maxDistance = 0;
-            int index = 0;
-            int end = points.Count - 1;
+            int maxIndex = startIndex;
 
-            for (int i = 1; i < end; ++i)
+            for (int i = startIndex + 1; i < endIndex; ++i)
             {
-                float distance = PerpendicularDistance(points[i], points[0], points[end]);
+                float distance = PerpendicularDistance(
+                    points[i],
+                    points[startIndex],
+                    points[endIndex]
+                );
                 if (distance > maxDistance)
                 {
-                    index = i;
+                    maxIndex = i;
                     maxDistance = distance;
                 }
             }
 
-            List<Vector2> result = new();
-
             if (maxDistance > epsilon)
             {
-                List<Vector2> recResults1 = Simplify(points.GetRange(0, index + 1), epsilon);
-                List<Vector2> recResults2 = Simplify(
-                    points.GetRange(index, points.Count - index),
-                    epsilon
-                );
-
-                result.AddRange(recResults1.Take(recResults1.Count - 1));
-                result.AddRange(recResults2);
+                SimplifyRecursive(points, startIndex, maxIndex, epsilon, buffer);
+                SimplifyRecursive(points, maxIndex, endIndex, epsilon, buffer);
             }
             else
             {
-                result.Add(points[0]);
-                result.Add(points[end]);
+                buffer.Add(points[startIndex]);
             }
-
-            return result;
         }
     }
 }

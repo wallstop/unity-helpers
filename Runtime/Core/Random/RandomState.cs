@@ -1,6 +1,7 @@
 namespace WallstopStudios.UnityHelpers.Core.Random
 {
     using System;
+    using System.Collections.Generic;
     using System.Linq;
     using System.Runtime.Serialization;
     using System.Text.Json.Serialization;
@@ -11,12 +12,15 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     [Serializable]
     [DataContract]
     [ProtoContract]
-    public struct RandomState : IEquatable<RandomState>
+    public readonly struct RandomState : IEquatable<RandomState>
     {
+        [JsonInclude]
         public ulong State1 => _state1;
 
+        [JsonInclude]
         public ulong State2 => _state2;
 
+        [JsonInclude]
         public double? Gaussian
         {
             get
@@ -30,68 +34,124 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             }
         }
 
-        public byte[] Payload => _payload;
+        [JsonIgnore]
+        public IReadOnlyList<byte> PayloadBytes => _payload;
+
+        [JsonInclude]
+        [JsonPropertyName("Payload")]
+        public IReadOnlyList<byte> Payload => _payload;
+
+        // Reservoir state (for AbstractRandom bit/byte reservoirs)
+        [JsonInclude]
+        public uint BitBuffer => _bitBuffer;
+
+        [JsonInclude]
+        public int BitCount => _bitCount;
+
+        [JsonInclude]
+        public uint ByteBuffer => _byteBuffer;
+
+        [JsonInclude]
+        public int ByteCount => _byteCount;
 
         [ProtoMember(1)]
-        private ulong _state1;
+        [JsonIgnore]
+        private readonly ulong _state1;
 
         [ProtoMember(2)]
-        private ulong _state2;
+        [JsonIgnore]
+        private readonly ulong _state2;
 
         [ProtoMember(3)]
-        private bool _hasGaussian;
+        [JsonIgnore]
+        private readonly bool _hasGaussian;
 
         [ProtoMember(4)]
-        private double _gaussian;
+        [JsonIgnore]
+        private readonly double _gaussian;
 
         [ProtoMember(5)]
-        private byte[] _payload;
+        [JsonIgnore]
+        internal readonly byte[] _payload;
 
-        private int _hashCode;
+        // Added fields for reservoir serialization
+        [ProtoMember(6)]
+        [JsonIgnore]
+        private readonly uint _bitBuffer;
+
+        [ProtoMember(7)]
+        [JsonIgnore]
+        private readonly int _bitCount;
+
+        [ProtoMember(8)]
+        [JsonIgnore]
+        private readonly uint _byteBuffer;
+
+        [ProtoMember(9)]
+        [JsonIgnore]
+        private readonly int _byteCount;
+
+        [ProtoMember(10)]
+        [JsonIgnore]
+        private readonly int _hashCode;
 
         [JsonConstructor]
         public RandomState(
             ulong state1,
             ulong state2 = 0,
             double? gaussian = null,
-            byte[] payload = null
+            IReadOnlyList<byte> payload = null,
+            uint bitBuffer = 0,
+            int bitCount = 0,
+            uint byteBuffer = 0,
+            int byteCount = 0
         )
         {
             _state1 = state1;
             _state2 = state2;
             _hasGaussian = gaussian.HasValue;
             _gaussian = gaussian ?? 0;
-            _payload = payload?.ToArray();
-            _hashCode = Objects.ValueTypeHashCode(
-                state1,
-                state2,
+            _payload = (payload as byte[]) ?? payload?.ToArray();
+            _bitBuffer = bitBuffer;
+            _bitCount = bitCount;
+            _byteBuffer = byteBuffer;
+            _byteCount = byteCount;
+            _hashCode = Objects.HashCode(
+                _state1,
+                _state2,
                 _hasGaussian,
                 _gaussian,
-                _payload != null
+                _payload?.Length,
+                _bitBuffer,
+                _bitCount,
+                _byteBuffer,
+                _byteCount
             );
         }
 
         public RandomState(Guid guid)
         {
-            byte[] guidBytes = guid.ToByteArray();
-            _state1 = BitConverter.ToUInt64(guidBytes, 0);
-            _state2 = BitConverter.ToUInt64(guidBytes, sizeof(ulong));
+            (ulong s1, ulong s2) = RandomUtilities.GuidToUInt64Pair(guid);
+            _state1 = s1;
+            _state2 = s2;
             _hasGaussian = false;
             _gaussian = 0;
             _payload = null;
-            _hashCode = Objects.ValueTypeHashCode(
+            _bitBuffer = 0;
+            _bitCount = 0;
+            _byteBuffer = 0;
+            _byteCount = 0;
+            _hashCode = Objects.HashCode(
                 _state1,
                 _state2,
                 _hasGaussian,
                 _gaussian,
-                _payload != null
+                _payload?.Length,
+                _bitBuffer,
+                _bitCount,
+                _byteBuffer,
+                _byteCount
             );
-        }
-
-        [ProtoAfterDeserialization]
-        private void OnProtoDeserialize()
-        {
-            _hashCode = Objects.ValueTypeHashCode(_state1, _state2, _hasGaussian, _gaussian);
         }
 
         public override bool Equals(object other)
@@ -101,25 +161,40 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         public bool Equals(RandomState other)
         {
-            // ReSharper disable once CompareOfFloatsByEqualityOperator
-            return _state1 == other._state1
+            bool equivalent =
+                _state1 == other._state1
                 && _state2 == other._state2
                 && _hasGaussian == other._hasGaussian
-                && (!_hasGaussian || _gaussian == other._gaussian);
+                && (!_hasGaussian || _gaussian.TotalEquals(other._gaussian))
+                && _bitBuffer == other._bitBuffer
+                && _bitCount == other._bitCount
+                && _byteBuffer == other._byteBuffer
+                && _byteCount == other._byteCount;
+            if (!equivalent)
+            {
+                return false;
+            }
+
+            if (_payload == null && other._payload == null)
+            {
+                return true;
+            }
+
+            if (_payload == null || other._payload == null)
+            {
+                return false;
+            }
+
+            if (_payload.Length != other._payload.Length)
+            {
+                return false;
+            }
+
+            return _payload.AsSpan().SequenceEqual(other._payload);
         }
 
         public override int GetHashCode()
         {
-            if (_hashCode == 0)
-            {
-                return _hashCode = Objects.ValueTypeHashCode(
-                    _state1,
-                    _state2,
-                    _hasGaussian,
-                    _gaussian
-                );
-            }
-
             return _hashCode;
         }
 

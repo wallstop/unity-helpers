@@ -4,6 +4,7 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
     using System.Collections.Generic;
     using System.Diagnostics;
     using System.Linq;
+    using System.Runtime.CompilerServices;
     using System.Threading.Tasks;
     using UnityEditor;
     using UnityEngine;
@@ -13,6 +14,19 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
 
     public sealed class LayeredImage : VisualElement
     {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool IsAlphaEffectivelyInvisible(float alpha, float cutoff)
+        {
+            // Account for two sources of error:
+            // 1) Float math drift (scale with magnitude)
+            // 2) RGBA32 quantization (alpha stored in 8-bit, ~1/255 steps)
+            float maxMagnitude = Mathf.Max(Mathf.Abs(alpha), Mathf.Abs(cutoff));
+            float floatFudge = Mathf.Max(1e-6f * maxMagnitude, Mathf.Epsilon * 8f);
+            float quantizationFudge = 0.5f / 255f; // half-step tolerance for 8-bit alpha
+            float fudge = Mathf.Max(floatFudge, quantizationFudge);
+            return alpha <= cutoff + fudge;
+        }
+
         public float Fps
         {
             get => _fps;
@@ -50,6 +64,8 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
             }
         }
 
+        private const int ParallelBlendThreshold = 2048;
+
         private readonly AnimatedSpriteLayer[] _layers;
         private readonly Texture2D[] _computed;
         private readonly Color _backgroundColor;
@@ -75,7 +91,7 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
             _pixelCutoff = pixelCutoff;
             _layers = inputSpriteLayers.ToArray();
             _backgroundColor = backgroundColor ?? Color.white;
-            _computed = ComputeTextures().ToArray();
+            _computed = ComputeTextures();
             _largestArea = null;
             _updatesSelf = updatesSelf;
 
@@ -173,299 +189,325 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
             }
         }
 
-        private IEnumerable<Texture2D> ComputeTextures()
+        private Texture2D[] ComputeTextures()
         {
-            if (_layers is not { Length: > 0 })
+            AnimatedSpriteLayer[] layers = _layers;
+            if (layers == null || layers.Length == 0)
             {
-                yield break;
+                return Array.Empty<Texture2D>();
             }
 
             int frameCount = 0;
-            foreach (AnimatedSpriteLayer layer in _layers)
+            for (int layerIndex = 0; layerIndex < layers.Length; ++layerIndex)
             {
-                if (layer.frames != null)
+                Sprite[] layerFrames = layers[layerIndex].frames;
+                if (layerFrames == null)
                 {
-                    frameCount = Mathf.Max(frameCount, layer.frames.Length);
+                    continue;
+                }
+
+                int layerFrameCount = layerFrames.Length;
+                if (layerFrameCount > frameCount)
+                {
+                    frameCount = layerFrameCount;
                 }
             }
+
             if (frameCount == 0)
             {
-                yield break;
+                return Array.Empty<Texture2D>();
             }
+
+            FrameCompositor compositor = new(layers, _backgroundColor, _pixelCutoff);
+            Texture2D[] computed = new Texture2D[frameCount];
 
             for (int frameIndex = 0; frameIndex < frameCount; ++frameIndex)
             {
+                computed[frameIndex] = compositor.ComposeFrame(frameIndex);
+            }
+
+            return computed;
+        }
+
+        private readonly struct FrameCompositor
+        {
+            private readonly AnimatedSpriteLayer[] _layers;
+            private readonly Color _backgroundColor;
+            private readonly float _pixelCutoff;
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public FrameCompositor(
+                AnimatedSpriteLayer[] layers,
+                Color backgroundColor,
+                float pixelCutoff
+            )
+            {
+                _layers = layers;
+                _backgroundColor = backgroundColor;
+                _pixelCutoff = pixelCutoff;
+            }
+
+            public Texture2D ComposeFrame(int frameIndex)
+            {
+                AnimatedSpriteLayer[] layers = _layers;
+                int layerCount = layers.Length;
+
+                using PooledResource<LayerFrameInfo[]> frameInfoLease =
+                    WallstopFastArrayPool<LayerFrameInfo>.Get(
+                        layerCount,
+                        out LayerFrameInfo[] frameInfos
+                    );
+
+                int infoCount = 0;
                 float overallMinX = float.MaxValue;
                 float overallMaxX = float.MinValue;
                 float overallMinY = float.MaxValue;
                 float overallMaxY = float.MinValue;
-                bool hasVisibleSpriteThisFrame = false;
+                bool hasVisibleSprite = false;
+                bool hasFractionalPlacement = false;
 
-                foreach (AnimatedSpriteLayer layer in _layers)
+                for (int layerIndex = 0; layerIndex < layerCount; ++layerIndex)
                 {
-                    if (layer.frames == null || frameIndex >= layer.frames.Length)
-                    {
-                        continue;
-                    }
-
-                    Sprite sprite = layer.frames[frameIndex];
-                    if (sprite == null)
-                    {
-                        continue;
-                    }
-
-                    hasVisibleSpriteThisFrame = true;
-                    Rect spriteGeomRect = sprite.rect;
-                    Vector2 pivot = sprite.pivot;
-
-                    Vector2 additionalPixelOffset = Vector2.zero;
-                    if (
-                        layer.perFramePixelOffsets != null
-                        && frameIndex < layer.perFramePixelOffsets.Length
-                    )
-                    {
-                        additionalPixelOffset = layer.perFramePixelOffsets[frameIndex];
-                    }
-
-                    float spriteWorldMinX = -pivot.x + additionalPixelOffset.x;
-                    float spriteWorldMaxX =
-                        spriteGeomRect.width - pivot.x + additionalPixelOffset.x;
-                    float spriteWorldMinY = -pivot.y + additionalPixelOffset.y;
-                    float spriteWorldMaxY =
-                        spriteGeomRect.height - pivot.y + additionalPixelOffset.y;
-
-                    overallMinX = Mathf.Min(overallMinX, spriteWorldMinX);
-                    overallMaxX = Mathf.Max(overallMaxX, spriteWorldMaxX);
-                    overallMinY = Mathf.Min(overallMinY, spriteWorldMinY);
-                    overallMaxY = Mathf.Max(overallMaxY, spriteWorldMaxY);
-                }
-
-                if (!hasVisibleSpriteThisFrame)
-                {
-                    yield return null;
-                    continue;
-                }
-
-                int compositeBufferOriginX = Mathf.FloorToInt(overallMinX);
-                int compositeBufferOriginY = Mathf.FloorToInt(overallMinY);
-                int compositeBufferWidth = Mathf.CeilToInt(overallMaxX) - compositeBufferOriginX;
-                int compositeBufferHeight = Mathf.CeilToInt(overallMaxY) - compositeBufferOriginY;
-
-                if (compositeBufferWidth <= 0 || compositeBufferHeight <= 0)
-                {
-                    yield return null;
-                    continue;
-                }
-
-                Color[] bufferPixels = new Color[compositeBufferWidth * compositeBufferHeight];
-
-                Array.Fill(bufferPixels, Color.clear);
-
-                foreach (AnimatedSpriteLayer layer in _layers)
-                {
-                    if (layer.frames == null || frameIndex >= layer.frames.Length)
-                    {
-                        continue;
-                    }
-
-                    Sprite sprite = layer.frames[frameIndex];
-                    if (sprite == null)
-                    {
-                        continue;
-                    }
-
+                    ref readonly AnimatedSpriteLayer layer = ref layers[layerIndex];
                     float layerAlpha = layer.alpha;
-                    Texture2D spriteTexture = sprite.texture;
-                    Rect spriteGeomRect = sprite.rect;
-                    Vector2 pivot = sprite.pivot;
-
-                    Vector2 additionalPixelOffset = Vector2.zero;
-                    if (
-                        layer.perFramePixelOffsets != null
-                        && frameIndex < layer.perFramePixelOffsets.Length
-                    )
+                    if (layerAlpha <= 0f || !TryGetLayerFrame(layer, frameIndex, out Sprite sprite))
                     {
-                        additionalPixelOffset = layer.perFramePixelOffsets[frameIndex];
+                        continue;
                     }
 
-                    int spriteRectX = Mathf.FloorToInt(spriteGeomRect.x);
-                    int spriteRectY = Mathf.FloorToInt(spriteGeomRect.y);
-                    int spriteRectWidth = Mathf.FloorToInt(spriteGeomRect.width);
-                    int spriteRectHeight = Mathf.FloorToInt(spriteGeomRect.height);
+                    Texture2D texture = sprite.texture;
+                    if (texture == null || !texture.isReadable)
+                    {
+                        continue;
+                    }
 
+                    Rect spriteRect = sprite.rect;
+                    int spriteRectWidth = Mathf.FloorToInt(spriteRect.width);
+                    int spriteRectHeight = Mathf.FloorToInt(spriteRect.height);
                     if (spriteRectWidth <= 0 || spriteRectHeight <= 0)
                     {
                         continue;
                     }
 
-                    Color[] spriteRawPixels = spriteTexture.GetPixels(
-                        spriteRectX,
-                        spriteRectY,
+                    Vector2 pixelOffset = GetPixelOffset(layer, frameIndex);
+                    Vector2 pivot = sprite.pivot;
+
+                    float baseX = pixelOffset.x - pivot.x;
+                    float baseY = pixelOffset.y - pivot.y;
+
+                    // Track if any layer uses fractional placement (e.g., centered pivot)
+                    if (!hasFractionalPlacement)
+                    {
+                        // Consider values effectively integral within a tiny epsilon
+                        bool baseXIsIntegral = Mathf.Abs(baseX - Mathf.Round(baseX)) <= 1e-5f;
+                        bool baseYIsIntegral = Mathf.Abs(baseY - Mathf.Round(baseY)) <= 1e-5f;
+                        hasFractionalPlacement = !(baseXIsIntegral && baseYIsIntegral);
+                    }
+                    float spriteMinX = baseX;
+                    float spriteMaxX = baseX + spriteRect.width;
+                    float spriteMinY = baseY;
+                    float spriteMaxY = baseY + spriteRect.height;
+
+                    if (spriteMinX < overallMinX)
+                    {
+                        overallMinX = spriteMinX;
+                    }
+
+                    if (spriteMaxX > overallMaxX)
+                    {
+                        overallMaxX = spriteMaxX;
+                    }
+
+                    if (spriteMinY < overallMinY)
+                    {
+                        overallMinY = spriteMinY;
+                    }
+
+                    if (spriteMaxY > overallMaxY)
+                    {
+                        overallMaxY = spriteMaxY;
+                    }
+
+                    frameInfos[infoCount++] = new LayerFrameInfo(
+                        texture,
+                        Mathf.FloorToInt(spriteRect.x),
+                        Mathf.FloorToInt(spriteRect.y),
                         spriteRectWidth,
-                        spriteRectHeight
-                    );
-
-                    Parallel.For(
-                        0,
                         spriteRectHeight,
-                        sySprite =>
-                        {
-                            for (int sxSprite = 0; sxSprite < spriteRectWidth; ++sxSprite)
-                            {
-                                Color spritePixelColor = spriteRawPixels[
-                                    sySprite * spriteRectWidth + sxSprite
-                                ];
+                        baseX,
+                        baseY,
+                        layerAlpha
+                    );
 
-                                if (spritePixelColor.a < _pixelCutoff)
-                                {
-                                    continue;
-                                }
+                    hasVisibleSprite = true;
+                }
 
-                                float pixelWorldX = sxSprite - pivot.x + additionalPixelOffset.x;
-                                float pixelWorldY = sySprite - pivot.y + additionalPixelOffset.y;
-                                int bufferX = Mathf.FloorToInt(
-                                    pixelWorldX - compositeBufferOriginX
-                                );
-                                int bufferY = Mathf.FloorToInt(
-                                    pixelWorldY - compositeBufferOriginY
-                                );
+                if (!hasVisibleSprite)
+                {
+                    return null;
+                }
 
-                                if (
-                                    bufferX < 0
-                                    || bufferX >= compositeBufferWidth
-                                    || bufferY < 0
-                                    || bufferY >= compositeBufferHeight
-                                )
-                                {
-                                    continue;
-                                }
+                int compositeOriginX = Mathf.FloorToInt(overallMinX);
+                int compositeOriginY = Mathf.FloorToInt(overallMinY);
+                int compositeWidth = Mathf.CeilToInt(overallMaxX) - compositeOriginX;
+                int compositeHeight = Mathf.CeilToInt(overallMaxY) - compositeOriginY;
 
-                                int bufferIndex = bufferY * compositeBufferWidth + bufferX;
-                                Color existingColor = bufferPixels[bufferIndex];
-                                if (existingColor.a < _pixelCutoff)
-                                {
-                                    existingColor = _backgroundColor;
-                                }
+                if (compositeWidth <= 0 || compositeHeight <= 0)
+                {
+                    return null;
+                }
 
-                                Color blendedColor = Color.Lerp(
-                                    existingColor,
-                                    spritePixelColor,
-                                    layerAlpha
-                                );
+                int compositeLength = compositeWidth * compositeHeight;
+                using PooledResource<Color[]> compositeLease = WallstopFastArrayPool<Color>.Get(
+                    compositeLength,
+                    out Color[] bufferPixels
+                );
 
-                                bufferPixels[bufferIndex] = blendedColor;
-                            }
-                        }
+                bufferPixels.AsSpan(0, compositeLength).Clear();
+
+                float pixelCutoff = _pixelCutoff;
+
+                for (int infoIndex = 0; infoIndex < infoCount; ++infoIndex)
+                {
+                    ref readonly LayerFrameInfo info = ref frameInfos[infoIndex];
+
+                    Color[] spritePixels = info.Texture.GetPixels(
+                        info.SourceX,
+                        info.SourceY,
+                        info.Width,
+                        info.Height
+                    );
+
+                    ComposeSpriteOntoBuffer(
+                        bufferPixels,
+                        compositeWidth,
+                        compositeHeight,
+                        spritePixels,
+                        info.Width,
+                        info.Height,
+                        info.BaseX - compositeOriginX,
+                        info.BaseY - compositeOriginY,
+                        info.Alpha,
+                        pixelCutoff
                     );
                 }
 
-                int globalMinX = int.MaxValue;
-                int globalMaxX = int.MinValue;
-                int globalMinY = int.MaxValue;
-                int globalMaxY = int.MinValue;
-                object sync = new();
+                return FinalizeTexture(
+                    bufferPixels,
+                    compositeWidth,
+                    compositeHeight,
+                    pixelCutoff,
+                    hasFractionalPlacement
+                );
+            }
 
-                Parallel.For(
-                    0,
-                    compositeBufferHeight,
-                    () =>
-                        (
-                            minX: int.MaxValue,
-                            maxX: int.MinValue,
-                            minY: int.MaxValue,
-                            maxY: int.MinValue
-                        ),
-                    (y, _, local) =>
+            private Texture2D FinalizeTexture(
+                Color[] bufferPixels,
+                int compositeWidth,
+                int compositeHeight,
+                float pixelCutoff,
+                bool preserveCompositeBounds
+            )
+            {
+                int minX = compositeWidth;
+                int maxX = -1;
+                int minY = compositeHeight;
+                int maxY = -1;
+                bool anyVisible = false;
+
+                for (int y = 0; y < compositeHeight; ++y)
+                {
+                    int rowOffset = y * compositeWidth;
+                    int rowMin = compositeWidth;
+                    int rowMax = -1;
+
+                    for (int x = 0; x < compositeWidth; ++x)
                     {
-                        int baseIndex = y * compositeBufferWidth;
-                        for (int x = 0; x < compositeBufferWidth; ++x)
+                        // Treat pixels with alpha equal to cutoff as invisible
+                        if (IsAlphaEffectivelyInvisible(bufferPixels[rowOffset + x].a, pixelCutoff))
                         {
-                            if (bufferPixels[baseIndex + x].a < _pixelCutoff)
-                            {
-                                continue;
-                            }
-
-                            if (x < local.minX)
-                            {
-                                local.minX = x;
-                            }
-
-                            if (x > local.maxX)
-                            {
-                                local.maxX = x;
-                            }
-
-                            if (y < local.minY)
-                            {
-                                local.minY = y;
-                            }
-
-                            if (y > local.maxY)
-                            {
-                                local.maxY = y;
-                            }
+                            continue;
                         }
-                        return local;
-                    },
-                    local =>
-                    {
-                        lock (sync)
+
+                        anyVisible = true;
+                        if (x < rowMin)
                         {
-                            if (local.minX < globalMinX)
-                            {
-                                globalMinX = local.minX;
-                            }
+                            rowMin = x;
+                        }
 
-                            if (local.maxX > globalMaxX)
-                            {
-                                globalMaxX = local.maxX;
-                            }
-
-                            if (local.minY < globalMinY)
-                            {
-                                globalMinY = local.minY;
-                            }
-
-                            if (local.maxY > globalMaxY)
-                            {
-                                globalMaxY = local.maxY;
-                            }
+                        if (x > rowMax)
+                        {
+                            rowMax = x;
                         }
                     }
-                );
 
-                if (globalMinX == int.MaxValue)
-                {
-                    yield return null;
-                    continue;
+                    if (rowMax < rowMin)
+                    {
+                        continue;
+                    }
+
+                    if (y < minY)
+                    {
+                        minY = y;
+                    }
+
+                    if (y > maxY)
+                    {
+                        maxY = y;
+                    }
+
+                    if (rowMin < minX)
+                    {
+                        minX = rowMin;
+                    }
+
+                    if (rowMax > maxX)
+                    {
+                        maxX = rowMax;
+                    }
                 }
 
-                int finalWidth = globalMaxX - globalMinX + 1;
-                int finalHeight = globalMaxY - globalMinY + 1;
+                if (!anyVisible || maxX < minX || maxY < minY)
+                {
+                    return null;
+                }
 
-                Color[] finalPixels = new Color[finalWidth * finalHeight];
+                if (preserveCompositeBounds)
+                {
+                    // Keep full composite bounds when fractional placement (e.g., centered pivot)
+                    minX = 0;
+                    minY = 0;
+                    maxX = compositeWidth - 1;
+                    maxY = compositeHeight - 1;
+                }
 
-                Array.Fill(finalPixels, _backgroundColor);
-                Parallel.For(
-                    0,
-                    finalHeight,
-                    yFinal =>
+                int finalWidth = maxX - minX + 1;
+                int finalHeight = maxY - minY + 1;
+                int finalLength = finalWidth * finalHeight;
+
+                using PooledResource<Color[]> finalLease = WallstopFastArrayPool<Color>.Get(
+                    finalLength,
+                    out Color[] finalPixels
+                );
+
+                Span<Color> finalSpan = finalPixels.AsSpan(0, finalLength);
+                finalSpan.Fill(_backgroundColor);
+
+                for (int y = 0; y < finalHeight; ++y)
+                {
+                    int destinationRow = y * finalWidth;
+                    int sourceRow = (minY + y) * compositeWidth + minX;
+
+                    for (int x = 0; x < finalWidth; ++x)
                     {
-                        for (int xFinal = 0; xFinal < finalWidth; ++xFinal)
+                        Color pixel = bufferPixels[sourceRow + x];
+                        // Exclude pixels with alpha equal to cutoff
+                        if (!IsAlphaEffectivelyInvisible(pixel.a, pixelCutoff))
                         {
-                            int bufferX = globalMinX + xFinal;
-                            int bufferY = globalMinY + yFinal;
-                            Color pixelColor = bufferPixels[
-                                bufferY * compositeBufferWidth + bufferX
-                            ];
-
-                            if (pixelColor.a >= _pixelCutoff)
-                            {
-                                finalPixels[yFinal * finalWidth + xFinal] = pixelColor;
-                            }
+                            finalPixels[destinationRow + x] = pixel;
                         }
                     }
-                );
+                }
 
                 Texture2D finalTexture = new(
                     finalWidth,
@@ -473,12 +515,267 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
                     TextureFormat.RGBA32,
                     mipChain: false,
                     linear: false
-                );
+                )
+                {
+                    filterMode = FilterMode.Point,
+                    wrapMode = TextureWrapMode.Clamp,
+                };
 
                 finalTexture.SetPixels(finalPixels);
                 finalTexture.Apply(updateMipmaps: false, makeNoLongerReadable: false);
-                yield return finalTexture;
+                return finalTexture;
             }
+
+            private readonly struct LayerFrameInfo
+            {
+                public readonly Texture2D Texture;
+                public readonly int SourceX;
+                public readonly int SourceY;
+                public readonly int Width;
+                public readonly int Height;
+                public readonly float BaseX;
+                public readonly float BaseY;
+                public readonly float Alpha;
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public LayerFrameInfo(
+                    Texture2D texture,
+                    int sourceX,
+                    int sourceY,
+                    int width,
+                    int height,
+                    float baseX,
+                    float baseY,
+                    float alpha
+                )
+                {
+                    Texture = texture;
+                    SourceX = sourceX;
+                    SourceY = sourceY;
+                    Width = width;
+                    Height = height;
+                    BaseX = baseX;
+                    BaseY = baseY;
+                    Alpha = alpha;
+                }
+            }
+        }
+
+        private static void ComposeSpriteOntoBuffer(
+            Color[] bufferPixels,
+            int bufferWidth,
+            int bufferHeight,
+            Color[] spritePixels,
+            int spriteWidth,
+            int spriteHeight,
+            float baseX,
+            float baseY,
+            float layerAlpha,
+            float pixelCutoff
+        )
+        {
+            if (spriteWidth == 0 || spriteHeight == 0)
+            {
+                return;
+            }
+
+            BlendSpriteRowJob job = new(
+                bufferPixels,
+                bufferWidth,
+                bufferHeight,
+                spritePixels,
+                spriteWidth,
+                baseX,
+                baseY,
+                layerAlpha,
+                pixelCutoff
+            );
+
+            if (spriteWidth * spriteHeight >= ParallelBlendThreshold)
+            {
+                Parallel.For(0, spriteHeight, job.Execute);
+                return;
+            }
+
+            job.RunSequential(spriteHeight);
+        }
+
+        private readonly struct BlendSpriteRowJob
+        {
+            private readonly Color[] _bufferPixels;
+            private readonly int _bufferWidth;
+            private readonly int _bufferHeight;
+            private readonly Color[] _spritePixels;
+            private readonly int _spriteWidth;
+            private readonly float _baseX;
+            private readonly float _baseY;
+            private readonly float _layerAlpha;
+            private readonly float _pixelCutoff;
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public BlendSpriteRowJob(
+                Color[] bufferPixels,
+                int bufferWidth,
+                int bufferHeight,
+                Color[] spritePixels,
+                int spriteWidth,
+                float baseX,
+                float baseY,
+                float layerAlpha,
+                float pixelCutoff
+            )
+            {
+                _bufferPixels = bufferPixels;
+                _bufferWidth = bufferWidth;
+                _bufferHeight = bufferHeight;
+                _spritePixels = spritePixels;
+                _spriteWidth = spriteWidth;
+                _baseX = baseX;
+                _baseY = baseY;
+                _layerAlpha = layerAlpha;
+                _pixelCutoff = pixelCutoff;
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void Execute(int spriteRow)
+            {
+                BlendSpriteRow(
+                    _bufferPixels,
+                    _bufferWidth,
+                    _bufferHeight,
+                    _spritePixels,
+                    _spriteWidth,
+                    _baseX,
+                    _baseY,
+                    _layerAlpha,
+                    _pixelCutoff,
+                    spriteRow
+                );
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void RunSequential(int spriteHeight)
+            {
+                for (int spriteRow = 0; spriteRow < spriteHeight; ++spriteRow)
+                {
+                    Execute(spriteRow);
+                }
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void BlendSpriteRow(
+            Color[] bufferPixels,
+            int bufferWidth,
+            int bufferHeight,
+            Color[] spritePixels,
+            int spriteWidth,
+            float baseX,
+            float baseY,
+            float layerAlpha,
+            float pixelCutoff,
+            int spriteRow
+        )
+        {
+            int spriteRowOffset = spriteRow * spriteWidth;
+            float targetY = baseY + spriteRow;
+            int bufferY = Mathf.FloorToInt(targetY);
+            if (bufferY < 0 || bufferY >= bufferHeight)
+            {
+                return;
+            }
+
+            int bufferRowOffset = bufferY * bufferWidth;
+
+            for (int spriteColumn = 0; spriteColumn < spriteWidth; ++spriteColumn)
+            {
+                Color spritePixel = spritePixels[spriteRowOffset + spriteColumn];
+                float spriteAlpha = spritePixel.a * layerAlpha;
+                if (IsAlphaEffectivelyInvisible(spriteAlpha, pixelCutoff))
+                {
+                    continue;
+                }
+
+                if (spriteAlpha > 1f)
+                {
+                    spriteAlpha = 1f;
+                }
+
+                int bufferX = Mathf.FloorToInt(baseX + spriteColumn);
+                if (bufferX < 0 || bufferX >= bufferWidth)
+                {
+                    continue;
+                }
+
+                int bufferIndex = bufferRowOffset + bufferX;
+                ref Color destination = ref bufferPixels[bufferIndex];
+
+                float destinationAlpha = destination.a;
+                if (IsAlphaEffectivelyInvisible(destinationAlpha, pixelCutoff))
+                {
+                    destination.r = spritePixel.r;
+                    destination.g = spritePixel.g;
+                    destination.b = spritePixel.b;
+                    destination.a = spriteAlpha;
+                    continue;
+                }
+
+                float inverseSourceAlpha = 1f - spriteAlpha;
+                float outAlpha = spriteAlpha + destinationAlpha * inverseSourceAlpha;
+                if (IsAlphaEffectivelyInvisible(outAlpha, pixelCutoff))
+                {
+                    destination = Color.clear;
+                    continue;
+                }
+
+                if (outAlpha > 1f)
+                {
+                    outAlpha = 1f;
+                }
+
+                float invOutAlpha = 1f / outAlpha;
+                float sourceWeight = spriteAlpha * invOutAlpha;
+                float destinationWeight = destinationAlpha * inverseSourceAlpha * invOutAlpha;
+
+                float destR = destination.r;
+                float destG = destination.g;
+                float destB = destination.b;
+
+                destination.r = spritePixel.r * sourceWeight + destR * destinationWeight;
+                destination.g = spritePixel.g * sourceWeight + destG * destinationWeight;
+                destination.b = spritePixel.b * sourceWeight + destB * destinationWeight;
+                destination.a = outAlpha;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool TryGetLayerFrame(
+            in AnimatedSpriteLayer layer,
+            int frameIndex,
+            out Sprite sprite
+        )
+        {
+            Sprite[] frames = layer.frames;
+            if (frames == null || frameIndex < 0 || frameIndex >= frames.Length)
+            {
+                sprite = null;
+                return false;
+            }
+
+            sprite = frames[frameIndex];
+            return sprite != null;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static Vector2 GetPixelOffset(in AnimatedSpriteLayer layer, int frameIndex)
+        {
+            Vector2[] offsets = layer.perFramePixelOffsets;
+            if (offsets == null || frameIndex < 0 || frameIndex >= offsets.Length)
+            {
+                return Vector2.zero;
+            }
+
+            return offsets[frameIndex];
         }
     }
 }

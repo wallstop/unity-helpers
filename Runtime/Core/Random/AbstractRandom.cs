@@ -1,27 +1,135 @@
 namespace WallstopStudios.UnityHelpers.Core.Random
 {
     using System;
-    using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Runtime.CompilerServices;
     using System.Runtime.Serialization;
     using DataStructure.Adapters;
+    using ProtoBuf;
     using UnityEngine;
+    using Utils;
+#if !SINGLE_THREADED
+    using System.Collections.Concurrent;
+#else
+    using Extension;
+#endif
 
     [Serializable]
     [DataContract]
+    [ProtoContract]
+    /// <summary>
+    /// Common abstract base for all <see cref="IRandom"/> implementations with protobuf support.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This type is annotated with [ProtoContract] and explicitly lists all known concrete
+    /// implementations via [ProtoInclude]. This enables polymorphic protobuf serialization when
+    /// the declared type is AbstractRandom (or another abstract base that carries the
+    /// [ProtoInclude] annotations).
+    /// </para>
+    /// <para>
+    /// Adding a new PRNG: implement <see cref="IRandom"/>, derive from <see cref="AbstractRandom"/>,
+    /// and add a new [ProtoInclude(tag, typeof(YourRandom))] entry here with a unique, stable
+    /// field number. Never renumber existing tags once published.
+    /// </para>
+    /// <example>
+    /// <code>
+    /// // 1) Implement your generator
+    /// [ProtoContract]
+    /// public sealed class MyCustomRandom : AbstractRandom { /* state + [ProtoMember]s... */ }
+    ///
+    /// // 2) Add a ProtoInclude tag below, e.g.
+    /// // [ProtoInclude(112, typeof(MyCustomRandom))]
+    ///
+    /// // 3) Use AbstractRandom as your declared type in protobuf models for seamless polymorphism
+    /// [ProtoContract]
+    /// class RNGHolder { [ProtoMember(1)] public AbstractRandom rng; }
+    /// </code>
+    /// </example>
+    /// <para>
+    /// Interfaces: protobuf-net cannot infer a concrete type when deserializing to an interface such as
+    /// <see cref="IRandom"/>. You can still serialize an IRandom value (we use the runtime type), but for
+    /// deserialization you must either:
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>Declare the field/property as AbstractRandom (recommended), or</description></item>
+    /// <item><description>Call Serializer.RegisterProtobufRoot&lt;IRandom, SomeConcreteRandom&gt;() at startup and
+    /// then use Serializer.ProtoDeserialize&lt;IRandom&gt;.</description></item>
+    /// </list>
+    /// </remarks>
+    [ProtoInclude(100, typeof(DotNetRandom))]
+    [ProtoInclude(101, typeof(PcgRandom))]
+    [ProtoInclude(102, typeof(XorShiftRandom))]
+    [ProtoInclude(103, typeof(WyRandom))]
+    [ProtoInclude(104, typeof(XoroShiroRandom))]
+    [ProtoInclude(105, typeof(UnityRandom))]
+    [ProtoInclude(106, typeof(SystemRandom))]
+    [ProtoInclude(107, typeof(LinearCongruentialGenerator))]
+    [ProtoInclude(108, typeof(SquirrelRandom))]
+    [ProtoInclude(109, typeof(RomuDuo))]
+    [ProtoInclude(110, typeof(SplitMix64))]
+    [ProtoInclude(111, typeof(IllusionFlow))]
     public abstract class AbstractRandom : IRandom
     {
+#if SINGLE_THREADED
+        private static readonly Dictionary<Type, Array> EnumTypeCache = new();
+#else
         private static readonly ConcurrentDictionary<Type, Array> EnumTypeCache = new();
+#endif
 
-        protected const uint HalfwayUint = uint.MaxValue / 2;
         protected const float MagicFloat = 5.960465E-008F;
+        private const ulong LongBias = 1UL << 63;
+        private const int MaxRejectionAttempts32 = 1 << 16;
+        private const int MaxRejectionAttempts64 = 1 << 20;
+        private const int MaxGaussianAttempts = 1 << 20;
+        private const int MaxDoubleBitAttempts = 1 << 20;
 
+        [ProtoMember(1)]
         protected double? _cachedGaussian;
 
         public abstract RandomState InternalState { get; }
 
         private readonly byte[] _guidBytes = new byte[16];
+
+        // Bit/byte reservoirs to accelerate small requests
+        // Note: included in protobuf to preserve exact generator state across round-trips
+        [ProtoMember(2)]
+        protected uint _bitBuffer;
+
+        [ProtoMember(3)]
+        protected int _bitCount;
+
+        [ProtoMember(4)]
+        protected uint _byteBuffer;
+
+        [ProtoMember(5)]
+        protected int _byteCount;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected RandomState BuildState(ulong state1, ulong state2 = 0, byte[] payload = null)
+        {
+            return new RandomState(
+                state1,
+                state2,
+                _cachedGaussian,
+                payload: payload,
+                bitBuffer: _bitBuffer,
+                bitCount: _bitCount,
+                byteBuffer: _byteBuffer,
+                byteCount: _byteCount
+            );
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected void RestoreCommonState(RandomState state)
+        {
+            _cachedGaussian = state.Gaussian;
+            _bitBuffer = state.BitBuffer;
+            _bitCount = state.BitCount;
+            _byteBuffer = state.ByteBuffer;
+            _byteCount = state.ByteCount;
+        }
 
         public virtual int Next()
         {
@@ -29,6 +137,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             return unchecked((int)NextUint() & 0x7FFFFFFF);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Next(int max)
         {
             if (max <= 0)
@@ -60,6 +169,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         // Internal sampler
         public abstract uint NextUint();
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public uint NextUint(uint max)
         {
             if (max == 0)
@@ -67,13 +177,33 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                 throw new ArgumentException("Max cannot be zero");
             }
 
-            uint result = (uint)(NextDouble() * max);
-            if (result == max)
+            // Power-of-two fast path
+            if ((max & (max - 1)) == 0)
             {
-                return result - 1;
+                return NextUint() & (max - 1);
             }
 
-            return result;
+            // Lemire's method (32-bit): take high 32 bits of r*max
+            uint r = NextUint();
+            ulong m = (ulong)r * max;
+            uint lo = (uint)m;
+            if (lo < max)
+            {
+                uint t = unchecked((0u - max) % max);
+                int attempts = 0;
+                while (lo < t)
+                {
+                    if (++attempts > MaxRejectionAttempts32)
+                    {
+                        // Prevent infinite loop: fall back to modulo (small bias) rather than hang
+                        return r % max;
+                    }
+                    r = NextUint();
+                    m = (ulong)r * max;
+                    lo = (uint)m;
+                }
+            }
+            return (uint)(m >> 32);
         }
 
         public uint NextUint(uint min, uint max)
@@ -105,7 +235,15 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         public byte NextByte()
         {
-            return NextByte(byte.MaxValue);
+            if (_byteCount == 0)
+            {
+                _byteBuffer = NextUint();
+                _byteCount = 4;
+            }
+            byte b = (byte)_byteBuffer;
+            _byteBuffer >>= 8;
+            _byteCount--;
+            return b;
         }
 
         public byte NextByte(byte max)
@@ -135,13 +273,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                 throw new ArgumentException($"Max {max} cannot be less-than or equal-to 0");
             }
 
-            long result = (long)(NextDouble() * max);
-            if (result == max)
-            {
-                return result - 1;
-            }
-
-            return result;
+            return unchecked((long)NextUlong(unchecked((ulong)max)));
         }
 
         public long NextLong(long min, long max)
@@ -153,19 +285,13 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                 );
             }
 
-            ulong range = (ulong)(max - min);
-            if (range == 0)
-            {
-                return unchecked((long)NextUlong());
-            }
+            ulong biasedMin = BiasLong(min);
+            ulong biasedMax = BiasLong(max);
+            ulong range = biasedMax - biasedMin;
 
-            long result = unchecked((long)(NextDouble() * range + min));
-            if (result == max)
-            {
-                return result - 1;
-            }
-
-            return result;
+            ulong sample = NextUlong(range);
+            ulong biasedResult = biasedMin + sample;
+            return UnbiasLong(biasedResult);
         }
 
         public ulong NextUlong()
@@ -175,14 +301,17 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             return ((ulong)upper << 32) | lower;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ulong NextUlong(ulong max)
         {
-            ulong result = (ulong)(NextDouble() * max);
-            if (result == max)
+            if (max == 0)
             {
-                return result - 1;
+                throw new ArgumentException("Max cannot be zero");
             }
-            return result;
+
+            // 64-bit Lemire method via high 64 bits of 128-bit product
+            // Produces uniform values in [0, max) without rejection
+            return MulHi64(NextUlong(), max);
         }
 
         public ulong NextUlong(ulong min, ulong max)
@@ -197,56 +326,94 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             return NextUlong(max - min) + min;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public virtual bool NextBool()
         {
-            return NextUint() < HalfwayUint;
+            if (_bitCount == 0)
+            {
+                _bitBuffer = NextUint();
+                _bitCount = 32;
+            }
+            bool bit = (_bitBuffer & 1u) == 0;
+            _bitBuffer >>= 1;
+            _bitCount--;
+            return bit;
         }
 
-        public void NextBytes(byte[] buffer)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public virtual void NextBytes(byte[] buffer)
         {
             if (buffer == null)
             {
-                throw new ArgumentException(nameof(buffer));
+                throw new ArgumentNullException(nameof(buffer));
+            }
+            NextBytes(buffer.AsSpan());
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public virtual void NextBytes(Span<byte> buffer)
+        {
+            int i = 0;
+            int len = buffer.Length;
+
+            // 16-byte unrolled blocks
+            for (; i <= len - 16; i += 16)
+            {
+                uint r0 = NextUint();
+                uint r1 = NextUint();
+                uint r2 = NextUint();
+                uint r3 = NextUint();
+
+                buffer[i + 0] = (byte)r0;
+                buffer[i + 1] = (byte)(r0 >> 8);
+                buffer[i + 2] = (byte)(r0 >> 16);
+                buffer[i + 3] = (byte)(r0 >> 24);
+
+                buffer[i + 4] = (byte)r1;
+                buffer[i + 5] = (byte)(r1 >> 8);
+                buffer[i + 6] = (byte)(r1 >> 16);
+                buffer[i + 7] = (byte)(r1 >> 24);
+
+                buffer[i + 8] = (byte)r2;
+                buffer[i + 9] = (byte)(r2 >> 8);
+                buffer[i + 10] = (byte)(r2 >> 16);
+                buffer[i + 11] = (byte)(r2 >> 24);
+
+                buffer[i + 12] = (byte)r3;
+                buffer[i + 13] = (byte)(r3 >> 8);
+                buffer[i + 14] = (byte)(r3 >> 16);
+                buffer[i + 15] = (byte)(r3 >> 24);
             }
 
-            const int sizeOfInt = 4; // May differ on some platforms
-
-            // See how many ints we can slap into it.
-            int chunks = buffer.Length / sizeOfInt;
-            int spare = buffer.Length - chunks * sizeOfInt;
-            for (int i = 0; i < chunks; ++i)
+            // 4-byte chunks
+            for (; i <= len - 4; i += 4)
             {
-                int offset = i * sizeOfInt;
-                uint random = NextUint();
-                for (int j = 0; j < sizeOfInt; ++j)
-                {
-                    buffer[offset + j] = unchecked(
-                        (byte)((random >> (j * sizeOfInt)) & 0x000000FF)
-                    );
-                }
+                uint r = NextUint();
+                buffer[i + 0] = (byte)r;
+                buffer[i + 1] = (byte)(r >> 8);
+                buffer[i + 2] = (byte)(r >> 16);
+                buffer[i + 3] = (byte)(r >> 24);
             }
 
-            if (0 < spare)
+            // Tail
+            if (i < len)
             {
-                uint spareRandom = NextUint();
-                for (int i = 0; i < spare; ++i)
+                uint r = NextUint();
+                int j = 0;
+                for (; i < len; ++i, ++j)
                 {
-                    buffer[buffer.Length - 1 - i] = unchecked(
-                        (byte)((spareRandom >> (i * sizeOfInt)) & 0x000000FF)
-                    );
+                    buffer[i] = (byte)(r >> (j * 8));
                 }
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public virtual double NextDouble()
         {
-            double value;
-            do
-            {
-                value = NextUint() * (1.0 / uint.MaxValue);
-            } while (1.0 <= value);
-
-            return value;
+            // 53 random bits from a 64-bit sample
+            const double scale = 1.0 / 9007199254740992.0; // 2^53
+            ulong combined = NextUlong() >> 11;
+            return combined * scale;
         }
 
         public double NextDouble(double max)
@@ -279,41 +446,69 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         protected double NextDoubleWithInfiniteRange(double min, double max)
         {
-            double random;
-            do
-            {
-                random = NextDoubleFullRange();
-            } while (random < min || max <= random);
+            ulong orderedMin = ToOrderedDouble(min);
+            ulong orderedMax = ToOrderedDouble(max);
 
-            return random;
+            if (orderedMax <= orderedMin)
+            {
+                throw new ArgumentException(
+                    $"Invalid range [{min}, {max}) for infinite-range sampling."
+                );
+            }
+
+            ulong range = orderedMax - orderedMin;
+            int attempts = 0;
+            while (true)
+            {
+                ulong sample = orderedMin + NextUlong(range);
+                double value = FromOrderedDouble(sample);
+
+                if (!double.IsNaN(value) && !double.IsInfinity(value))
+                {
+                    return value;
+                }
+                if (++attempts > MaxRejectionAttempts64)
+                {
+                    // Transparent fallback: pick a finite value inside [min, max)
+                    if (double.IsPositiveInfinity(max))
+                    {
+                        return FromOrderedDouble(orderedMax - 1);
+                    }
+                    if (double.IsNegativeInfinity(min))
+                    {
+                        return FromOrderedDouble(orderedMin + 1);
+                    }
+
+                    ulong midpoint = orderedMin + (range >> 1);
+                    double midValue = FromOrderedDouble(midpoint);
+                    if (!double.IsNaN(midValue) && !double.IsInfinity(midValue))
+                    {
+                        return midValue;
+                    }
+
+                    // Final safeguard: nudge just above min in ordered space
+                    return FromOrderedDouble(orderedMin + 1);
+                }
+            }
         }
 
         protected double NextDoubleFullRange()
         {
-            double value = double.NaN;
+            const ulong exponentMask = 0x7FF0000000000000;
+            ulong randomBits;
+            int attempts = 0;
             do
             {
-                ulong randomBits = NextUlong();
-
-                // Extract exponent (bits 52-62)
-                const ulong exponentMask = 0x7FF0000000000000;
-
-                ulong exponent = (randomBits & exponentMask) >> 52;
-
-                // Ensure exponent is not all 1's to avoid Inf and NaN
-                if (exponent == 0x7FF)
+                randomBits = NextUlong();
+                if (++attempts > MaxDoubleBitAttempts)
                 {
-                    continue; // Regenerate
+                    // Force a finite value by clearing exponent bits
+                    randomBits &= ~exponentMask;
+                    break;
                 }
+            } while ((randomBits & exponentMask) == exponentMask);
 
-                /*
-                    For uniform distribution over all finite doubles, no further masking is necessary,
-                    reassemble the bits
-                 */
-                value = BitConverter.Int64BitsToDouble(unchecked((long)randomBits));
-            } while (double.IsInfinity(value) || double.IsNaN(value));
-
-            return value;
+            return BitConverter.Int64BitsToDouble(unchecked((long)randomBits));
         }
 
         public double NextGaussian(double mean = 0, double stdDev = 1)
@@ -334,11 +529,27 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             double x;
             double y;
             double square;
+            int attempts = 0;
             do
             {
                 x = 2 * NextDouble() - 1;
                 y = 2 * NextDouble() - 1;
                 square = x * x + y * y;
+                if (++attempts > MaxGaussianAttempts)
+                {
+                    // Fallback to Box-Muller without rejection to avoid infinite loop
+                    double u1 = NextDouble();
+                    if (u1 <= double.Epsilon)
+                    {
+                        u1 = double.Epsilon;
+                    }
+                    double u2 = NextDouble();
+                    double mag = Math.Sqrt(-2.0 * Math.Log(u1));
+                    double z0 = mag * Math.Cos(2.0 * Math.PI * u2);
+                    double z1 = mag * Math.Sin(2.0 * Math.PI * u2);
+                    _cachedGaussian = z1;
+                    return z0;
+                }
             } while (square is 0 or > 1);
 
             double fac = Math.Sqrt(-2 * Math.Log(square) / square);
@@ -346,15 +557,11 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             return y * fac;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public virtual float NextFloat()
         {
-            float value;
-            do
-            {
-                value = NextUint() / (1f * uint.MaxValue);
-            } while (1f <= value);
-
-            return value;
+            // Use 24 random bits for float mantissa
+            return (NextUint() >> 8) * (1f / (1 << 24));
         }
 
         public float NextFloat(float max)
@@ -387,12 +594,16 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         public T NextOf<T>(IEnumerable<T> enumerable)
         {
+            if (enumerable is null)
+            {
+                throw new ArgumentNullException(nameof(enumerable));
+            }
+
             return enumerable switch
             {
                 IReadOnlyList<T> list => NextOf(list),
                 IReadOnlyCollection<T> collection => NextOf(collection),
-                null => throw new ArgumentNullException(nameof(enumerable)),
-                _ => NextOf(enumerable.ToArray()),
+                _ => NextFromEnumerable(enumerable),
             };
         }
 
@@ -405,7 +616,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
             if (collection is IReadOnlyList<T> list)
             {
-                return NextOf(list);
+                return RandomOf(list);
             }
             int index = Next(collection.Count);
 
@@ -486,28 +697,454 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         {
             if (list is not { Count: > 0 })
             {
-                throw new ArgumentNullException(nameof(list));
+                throw new ArgumentException("Collection cannot be empty", nameof(list));
             }
 
             /*
                 For small lists, it's much more efficient to simply return one of their elements
                 instead of trying to generate a random number within bounds (which is implemented as a while(true) loop)
              */
-            return list.Count switch
+            return RandomOf(list);
+        }
+
+        public T NextOfParams<T>(params T[] elements)
+        {
+            if (elements.Length == 0)
             {
-                1 => list[0],
-                2 => NextBool() ? list[0] : list[1],
-                _ => list[Next(list.Count)],
-            };
+                throw new ArgumentException(nameof(elements));
+            }
+
+            return RandomOf(elements);
+        }
+
+        private T NextFromEnumerable<T>(IEnumerable<T> enumerable)
+        {
+            using IEnumerator<T> enumerator = enumerable.GetEnumerator();
+            if (!enumerator.MoveNext())
+            {
+                throw new ArgumentException("Collection cannot be empty", nameof(enumerable));
+            }
+
+            T selection = enumerator.Current;
+            ulong seen = 1;
+
+            while (enumerator.MoveNext())
+            {
+                seen++;
+                if (NextUlong(seen) == 0)
+                {
+                    selection = enumerator.Current;
+                }
+            }
+
+            return selection;
+        }
+
+        private static T[] GetEnumValues<T>()
+            where T : unmanaged, Enum
+        {
+            Type enumType = typeof(T);
+            Array boxedValues = EnumTypeCache.GetOrAdd(enumType, type => Enum.GetValues(type));
+            return Unsafe.As<Array, T[]>(ref boxedValues);
+        }
+
+        private static void EnsureEnumHasAvailableValues<T>(
+            T[] enumValues,
+            ReadOnlySpan<T> exclusions
+        )
+            where T : unmanaged, Enum
+        {
+            if (enumValues.Length == 0)
+            {
+                throw new InvalidOperationException(
+                    $"Enum {typeof(T).Name} does not define any values."
+                );
+            }
+
+            if (exclusions.IsEmpty)
+            {
+                return;
+            }
+
+            int enumCount = enumValues.Length;
+            const int StackThreshold = 8;
+
+            if (exclusions.Length <= StackThreshold)
+            {
+                Span<T> unique = stackalloc T[StackThreshold];
+                int uniqueCount = 0;
+
+                foreach (T exclusion in exclusions)
+                {
+                    if (Array.IndexOf(enumValues, exclusion) < 0)
+                    {
+                        continue;
+                    }
+
+                    bool seen = false;
+                    for (int i = 0; i < uniqueCount; ++i)
+                    {
+                        if (EqualityComparer<T>.Default.Equals(unique[i], exclusion))
+                        {
+                            seen = true;
+                            break;
+                        }
+                    }
+
+                    if (seen)
+                    {
+                        continue;
+                    }
+
+                    unique[uniqueCount++] = exclusion;
+                    if (uniqueCount >= enumCount)
+                    {
+                        ThrowAllEnumValuesExcluded<T>(enumCount);
+                    }
+                }
+
+                return;
+            }
+
+            using PooledResource<HashSet<T>> pooledSet = Buffers<T>.HashSet.Get();
+            HashSet<T> set = pooledSet.resource;
+            foreach (T exclusion in exclusions)
+            {
+                if (Array.IndexOf(enumValues, exclusion) < 0)
+                {
+                    continue;
+                }
+
+                set.Add(exclusion);
+                if (set.Count >= enumCount)
+                {
+                    set.Clear();
+                    ThrowAllEnumValuesExcluded<T>(enumCount);
+                }
+            }
+
+            set.Clear();
+        }
+
+        private T NextEnumExceptInternal<T>(ReadOnlySpan<T> exclusions)
+            where T : unmanaged, Enum
+        {
+            T[] enumValues = GetEnumValues<T>();
+            EnsureEnumHasAvailableValues(enumValues, exclusions);
+            return SelectEnumValue(enumValues, exclusions);
+        }
+
+        private T SelectEnumValue<T>(T[] enumValues, ReadOnlySpan<T> exclusions)
+            where T : unmanaged, Enum
+        {
+            if (exclusions.IsEmpty)
+            {
+                return RandomOf(enumValues);
+            }
+
+            const int StackThreshold = 128;
+            int enumCount = enumValues.Length;
+            Span<T> buffer = enumCount <= StackThreshold ? stackalloc T[enumCount] : default;
+
+            if (!buffer.IsEmpty)
+            {
+                int count = PopulateAllowedValues(enumValues, exclusions, buffer);
+                if (count == 0)
+                {
+                    ThrowAllEnumValuesExcluded<T>(enumCount);
+                }
+
+                return count == 1 ? buffer[0] : buffer[Next(count)];
+            }
+
+            using PooledResource<T[]> pooled = WallstopFastArrayPool<T>.Get(
+                enumCount,
+                out T[] temp
+            );
+            Span<T> tempSpan = temp.AsSpan(0, enumCount);
+            int index = PopulateAllowedValues(enumValues, exclusions, tempSpan);
+            if (index == 0)
+            {
+                ThrowAllEnumValuesExcluded<T>(enumCount);
+            }
+
+            return index == 1 ? temp[0] : temp[Next(index)];
+        }
+
+        private T SelectEnumValue<T>(T[] enumValues, HashSet<T> exclusions)
+            where T : unmanaged, Enum
+        {
+            if (exclusions == null || exclusions.Count == 0)
+            {
+                return RandomOf(enumValues);
+            }
+
+            const int StackThreshold = 128;
+            int enumCount = enumValues.Length;
+            Span<T> buffer = enumCount <= StackThreshold ? stackalloc T[enumCount] : default;
+
+            if (!buffer.IsEmpty)
+            {
+                int count = PopulateAllowedValues(enumValues, exclusions, buffer);
+                if (count == 0)
+                {
+                    ThrowAllEnumValuesExcluded<T>(enumCount);
+                }
+
+                return count == 1 ? buffer[0] : buffer[Next(count)];
+            }
+
+            using PooledResource<T[]> pooled = WallstopFastArrayPool<T>.Get(
+                enumCount,
+                out T[] temp
+            );
+            Span<T> tempSpan = temp.AsSpan(0, enumCount);
+            int index = PopulateAllowedValues(enumValues, exclusions, tempSpan);
+            if (index == 0)
+            {
+                ThrowAllEnumValuesExcluded<T>(enumCount);
+            }
+
+            return index == 1 ? temp[0] : temp[Next(index)];
+        }
+
+        private static void EnsureEnumHasAvailableValues<T>(T[] enumValues, HashSet<T> exclusions)
+            where T : struct, Enum
+        {
+            if (enumValues.Length == 0)
+            {
+                exclusions.Clear();
+                throw new InvalidOperationException(
+                    $"Enum {typeof(T).Name} does not define any values."
+                );
+            }
+
+            if (exclusions.Count == 0)
+            {
+                return;
+            }
+
+            int excludedCount = 0;
+            foreach (T value in enumValues)
+            {
+                if (exclusions.Contains(value))
+                {
+                    excludedCount++;
+                }
+            }
+
+            if (excludedCount >= enumValues.Length)
+            {
+                exclusions.Clear();
+                ThrowAllEnumValuesExcluded<T>(enumValues.Length);
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool SpanContains<T>(ReadOnlySpan<T> span, T value)
+        {
+            for (int i = 0; i < span.Length; ++i)
+            {
+                if (EqualityComparer<T>.Default.Equals(span[i], value))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static int PopulateAllowedValues<T>(
+            T[] enumValues,
+            ReadOnlySpan<T> exclusions,
+            Span<T> destination
+        )
+            where T : unmanaged, Enum
+        {
+            int count = 0;
+            foreach (T value in enumValues)
+            {
+                if (!SpanContains(exclusions, value))
+                {
+                    destination[count++] = value;
+                }
+            }
+
+            return count;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static int PopulateAllowedValues<T>(
+            T[] enumValues,
+            HashSet<T> exclusions,
+            Span<T> destination
+        )
+            where T : unmanaged, Enum
+        {
+            int count = 0;
+            foreach (T value in enumValues)
+            {
+                if (!exclusions.Contains(value))
+                {
+                    destination[count++] = value;
+                }
+            }
+
+            return count;
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void ThrowAllEnumValuesExcluded<T>(int enumCount)
+            where T : struct, Enum
+        {
+            throw new InvalidOperationException(
+                $"Cannot select a value from enum {typeof(T).Name} because all {enumCount} defined values are excluded."
+            );
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static ulong BiasLong(long value)
+        {
+            return unchecked((ulong)value + LongBias);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static long UnbiasLong(ulong value)
+        {
+            return unchecked((long)(value - LongBias));
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static ulong MulHi64(ulong x, ulong y)
+        {
+#if NET7_0_OR_GREATER
+            if (System.Runtime.Intrinsics.X86.Bmi2.X64.IsSupported)
+            {
+                unsafe
+                {
+                    ulong lo;
+                    ulong hi = System.Runtime.Intrinsics.X86.Bmi2.X64.MultiplyNoFlags(x, y, &lo);
+                    return hi;
+                }
+            }
+#endif
+            ulong x0 = (uint)x;
+            ulong x1 = x >> 32;
+            ulong y0 = (uint)y;
+            ulong y1 = y >> 32;
+
+            ulong p11 = x1 * y1;
+            ulong p01 = x0 * y1;
+            ulong p10 = x1 * y0;
+            ulong p00 = x0 * y0;
+
+            ulong middle = p10 + (p00 >> 32) + (uint)p01;
+            ulong hi = p11 + (middle >> 32) + (p01 >> 32);
+            return hi;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static ulong ToOrderedDouble(double value)
+        {
+            if (double.IsNaN(value))
+            {
+                throw new ArgumentException(
+                    "NaN is not a valid bound for random sampling.",
+                    nameof(value)
+                );
+            }
+
+            ulong bits = unchecked((ulong)BitConverter.DoubleToInt64Bits(value));
+            const ulong signBit = 1UL << 63;
+            return (bits & signBit) != 0 ? ~bits : bits | signBit;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static double FromOrderedDouble(ulong value)
+        {
+            const ulong signBit = 1UL << 63;
+            ulong bits = (value & signBit) != 0 ? value & ~signBit : ~value;
+            return BitConverter.Int64BitsToDouble(unchecked((long)bits));
         }
 
         public T NextEnum<T>()
-            where T : struct, Enum
+            where T : unmanaged, Enum
         {
-            Type enumType = typeof(T);
-            T[] enumValues = (T[])EnumTypeCache.GetOrAdd(enumType, type => Enum.GetValues(type));
+            T[] enumValues = GetEnumValues<T>();
+            if (enumValues.Length == 0)
+            {
+                throw new InvalidOperationException(
+                    $"Enum {typeof(T).Name} does not define any values."
+                );
+            }
 
             return RandomOf(enumValues);
+        }
+
+        public T NextEnumExcept<T>(T exception1)
+            where T : unmanaged, Enum
+        {
+            Span<T> exclusions = stackalloc T[1];
+            exclusions[0] = exception1;
+            return NextEnumExceptInternal<T>(exclusions);
+        }
+
+        public T NextEnumExcept<T>(T exception1, T exception2)
+            where T : unmanaged, Enum
+        {
+            Span<T> exclusions = stackalloc T[2];
+            exclusions[0] = exception1;
+            exclusions[1] = exception2;
+            return NextEnumExceptInternal<T>(exclusions);
+        }
+
+        public T NextEnumExcept<T>(T exception1, T exception2, T exception3)
+            where T : unmanaged, Enum
+        {
+            Span<T> exclusions = stackalloc T[3];
+            exclusions[0] = exception1;
+            exclusions[1] = exception2;
+            exclusions[2] = exception3;
+            return NextEnumExceptInternal<T>(exclusions);
+        }
+
+        public T NextEnumExcept<T>(T exception1, T exception2, T exception3, T exception4)
+            where T : unmanaged, Enum
+        {
+            Span<T> exclusions = stackalloc T[4];
+            exclusions[0] = exception1;
+            exclusions[1] = exception2;
+            exclusions[2] = exception3;
+            exclusions[3] = exception4;
+            return NextEnumExceptInternal<T>(exclusions);
+        }
+
+        public T NextEnumExcept<T>(
+            T exception1,
+            T exception2,
+            T exception3,
+            T exception4,
+            params T[] exceptions
+        )
+            where T : unmanaged, Enum
+        {
+            T[] enumValues = GetEnumValues<T>();
+
+            using PooledResource<HashSet<T>> bufferResource = Buffers<T>.HashSet.Get();
+            HashSet<T> set = bufferResource.resource;
+            set.Add(exception1);
+            set.Add(exception2);
+            set.Add(exception3);
+            set.Add(exception4);
+            foreach (T exception in exceptions)
+            {
+                set.Add(exception);
+            }
+
+            EnsureEnumHasAvailableValues(enumValues, set);
+
+            return SelectEnumValue(enumValues, set);
         }
 
         public Guid NextGuid()
@@ -547,24 +1184,21 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             bytes[8] = value;
         }
 
-        // Advances the RNG
-        // https://code2d.wordpress.com/2020/07/21/perlin-noise/
         public float[,] NextNoiseMap(
-            int width,
-            int height,
+            float[,] noiseMap,
             PerlinNoise noise = null,
             float scale = 2.5f,
-            int octaves = 8
+            int octaves = 8,
+            float persistence = 0.5f,
+            float lacunarity = 2f,
+            Vector2 baseOffset = default,
+            float octaveOffsetRange = 100000f,
+            bool normalize = true
         )
         {
-            if (width <= 0)
+            if (noiseMap is null)
             {
-                throw new ArgumentException(nameof(width));
-            }
-
-            if (height <= 0)
-            {
-                throw new ArgumentException(nameof(height));
+                throw new ArgumentNullException(nameof(noiseMap));
             }
 
             if (scale <= 0)
@@ -577,14 +1211,33 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                 throw new ArgumentException(nameof(octaves));
             }
 
-            noise ??= PerlinNoise.Instance;
-            float[,] noiseMap = new float[width, height];
+            if (persistence <= 0)
+            {
+                throw new ArgumentException(nameof(persistence));
+            }
 
-            Vector2[] octaveOffsets = new Vector2[octaves];
+            if (lacunarity <= 0)
+            {
+                throw new ArgumentException(nameof(lacunarity));
+            }
+
+            if (octaveOffsetRange <= 0)
+            {
+                throw new ArgumentException(nameof(octaveOffsetRange));
+            }
+
+            noise ??= PerlinNoise.Instance;
+
+            int width = noiseMap.GetLength(0);
+            int height = noiseMap.GetLength(1);
+            using PooledResource<Vector2[]> octaveOffsetBuffer = WallstopFastArrayPool<Vector2>.Get(
+                octaves,
+                out Vector2[] octaveOffsets
+            );
             for (int i = 0; i < octaves; i++)
             {
-                float offsetX = Next(-100000, 100000);
-                float offsetY = Next(-100000, 100000);
+                float offsetX = NextFloat(-octaveOffsetRange, octaveOffsetRange);
+                float offsetY = NextFloat(-octaveOffsetRange, octaveOffsetRange);
                 octaveOffsets[i] = new Vector2(offsetX, offsetY);
             }
 
@@ -603,11 +1256,17 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                     float noiseHeight = 0;
                     for (int i = 0; i < octaves; i++)
                     {
-                        float sampleX = (x - halfWidth) / scale * frequency + octaveOffsets[i].x;
-                        float sampleY = (y - halfHeight) / scale * frequency + octaveOffsets[i].y;
+                        float sampleX =
+                            (x - halfWidth) / scale * frequency + octaveOffsets[i].x + baseOffset.x;
+                        float sampleY =
+                            (y - halfHeight) / scale * frequency
+                            + octaveOffsets[i].y
+                            + baseOffset.y;
 
                         float perlinValue = noise.Noise(sampleX, sampleY) * 2 - 1;
                         noiseHeight += perlinValue * amplitude;
+                        amplitude *= persistence;
+                        frequency *= lacunarity;
                     }
 
                     if (noiseHeight > maxNoiseHeight)
@@ -623,30 +1282,34 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                 }
             }
 
-            for (int x = 0; x < width; ++x)
+            if (normalize)
             {
-                for (int y = 0; y < height; ++y)
+                for (int x = 0; x < width; ++x)
                 {
-                    // Returns a value between 0f and 1f based on noiseMap value
-                    // minNoiseHeight being 0f, and maxNoiseHeight being 1f
-                    noiseMap[x, y] = Mathf.InverseLerp(
-                        minNoiseHeight,
-                        maxNoiseHeight,
-                        noiseMap[x, y]
-                    );
+                    for (int y = 0; y < height; ++y)
+                    {
+                        // Returns a value between 0f and 1f based on noiseMap value
+                        // minNoiseHeight being 0f, and maxNoiseHeight being 1f
+                        noiseMap[x, y] = Mathf.InverseLerp(
+                            minNoiseHeight,
+                            maxNoiseHeight,
+                            noiseMap[x, y]
+                        );
+                    }
                 }
             }
             return noiseMap;
         }
 
-        protected T RandomOf<T>(T[] values)
+        protected T RandomOf<T>(IReadOnlyList<T> values)
         {
-            return values.Length switch
+            int count = values.Count;
+            return count switch
             {
                 0 => default,
                 1 => values[0],
                 2 => NextBool() ? values[0] : values[1],
-                _ => values[Next(values.Length)],
+                _ => values[Next(count)],
             };
         }
 

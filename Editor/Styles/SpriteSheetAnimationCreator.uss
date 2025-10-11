@@ -1,0 +1,10 @@
+.default-thumbnail {
+    background-color: rgba(0, 0, 0, 0);
+    border-color: rgba(0, 0, 0, 0);
+}
+
+.selected-thumbnail {
+    background-color: rgba(51, 128, 204, 0.4);
+    border-color: rgba(76, 192, 255, 1);
+    border-width: 1px;
+}

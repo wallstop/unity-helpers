@@ -2,10 +2,10 @@ namespace WallstopStudios.UnityHelpers.Visuals
 {
     using System;
     using System.Collections.Generic;
-    using System.Linq;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Utils;
 
     public readonly struct AnimatedSpriteLayer : IEquatable<AnimatedSpriteLayer>
     {
@@ -21,51 +21,9 @@ namespace WallstopStudios.UnityHelpers.Visuals
             float alpha = 1
         )
         {
-            frames = sprites?.ToArray() ?? Array.Empty<Sprite>();
-            foreach (Sprite frame in frames)
-            {
-                if (frame == null)
-                {
-                    continue;
-                }
-
-                frame.texture.MakeReadable();
-                try
-                {
-                    frame.texture.GetPixel(0, 0);
-                }
-                catch (UnityException e)
-                {
-                    Debug.LogError(
-                        $"Texture '{frame.texture.name}' for sprite '{frame.name}' is not readable. Please enable Read/Write in its import settings. Error: {e.Message}"
-                    );
-                }
-            }
-
-            if (worldSpaceOffsets != null && frames is { Length: > 0 })
-            {
-                perFramePixelOffsets = worldSpaceOffsets
-                    .Zip(
-                        frames,
-                        (offset, frame) =>
-                            frame != null && frame.pixelsPerUnit > 0
-                                ? frame.pixelsPerUnit * offset
-                                : Vector2.zero
-                    )
-                    .ToArray();
-                if (Debug.isDebugBuild)
-                {
-                    Debug.Assert(
-                        perFramePixelOffsets.Length == frames.Length,
-                        $"Expected {frames.Length} sprite frames to match {perFramePixelOffsets.Length} offsets after processing."
-                    );
-                }
-            }
-            else
-            {
-                perFramePixelOffsets = null;
-            }
-
+            frames = CreateFrameArray(sprites);
+            EnsureFramesReadable(frames);
+            perFramePixelOffsets = CreatePixelOffsets(worldSpaceOffsets, frames);
             this.alpha = Mathf.Clamp01(alpha);
         }
 
@@ -76,11 +34,13 @@ namespace WallstopStudios.UnityHelpers.Visuals
         )
             : this(
 #if UNITY_EDITOR
-                clip.GetSpritesFromClip(),
+                clip != null ? clip.GetSpritesFromClip() : Array.Empty<Sprite>(),
 #else
-                Enumerable.Empty<Sprite>(),
+                Array.Empty<Sprite>(),
 #endif
-                worldSpaceOffsets, alpha) { }
+                worldSpaceOffsets,
+                alpha
+            ) { }
 
         public static bool operator ==(AnimatedSpriteLayer left, AnimatedSpriteLayer right)
         {
@@ -94,14 +54,17 @@ namespace WallstopStudios.UnityHelpers.Visuals
 
         public bool Equals(AnimatedSpriteLayer other)
         {
-            bool equal = perFramePixelOffsets.AsSpan().SequenceEqual(other.perFramePixelOffsets);
-            if (!equal)
+            if (!alpha.Equals(other.alpha))
             {
                 return false;
             }
 
-            equal = frames.Length == other.frames.Length;
-            if (!equal)
+            if (!perFramePixelOffsets.AsSpan().SequenceEqual(other.perFramePixelOffsets))
+            {
+                return false;
+            }
+
+            if (frames.Length != other.frames.Length)
             {
                 return false;
             }
@@ -114,7 +77,7 @@ namespace WallstopStudios.UnityHelpers.Visuals
                 }
             }
 
-            return alpha.Equals(other.alpha);
+            return true;
         }
 
         public override bool Equals(object obj)
@@ -124,7 +87,131 @@ namespace WallstopStudios.UnityHelpers.Visuals
 
         public override int GetHashCode()
         {
-            return Objects.ValueTypeHashCode(perFramePixelOffsets.Length, frames.Length, alpha);
+            return Objects.HashCode(alpha, perFramePixelOffsets?.Length, frames?.Length);
+        }
+
+        private static Sprite[] CreateFrameArray(IEnumerable<Sprite> sprites)
+        {
+            if (sprites == null)
+            {
+                return Array.Empty<Sprite>();
+            }
+
+            switch (sprites)
+            {
+                case Sprite[] spriteArray:
+                {
+                    if (spriteArray.Length == 0)
+                    {
+                        return Array.Empty<Sprite>();
+                    }
+
+                    Sprite[] copy = new Sprite[spriteArray.Length];
+                    Array.Copy(spriteArray, copy, spriteArray.Length);
+                    return copy;
+                }
+                case ICollection<Sprite> collection:
+                {
+                    if (collection.Count == 0)
+                    {
+                        return Array.Empty<Sprite>();
+                    }
+
+                    Sprite[] copy = new Sprite[collection.Count];
+                    collection.CopyTo(copy, 0);
+                    return copy;
+                }
+                default:
+                {
+                    using PooledResource<List<Sprite>> lease = Buffers<Sprite>.List.Get(
+                        out List<Sprite> list
+                    );
+                    list.AddRange(sprites);
+
+                    if (list.Count == 0)
+                    {
+                        return Array.Empty<Sprite>();
+                    }
+
+                    Sprite[] copy = new Sprite[list.Count];
+                    list.CopyTo(copy, 0);
+                    return copy;
+                }
+            }
+        }
+
+        private static void EnsureFramesReadable(Sprite[] frames)
+        {
+            for (int i = 0; i < frames.Length; ++i)
+            {
+                Sprite frame = frames[i];
+                if (frame == null)
+                {
+                    continue;
+                }
+
+                Texture2D texture = frame.texture;
+                if (texture == null)
+                {
+                    continue;
+                }
+
+                texture.MakeReadable();
+                if (!texture.isReadable)
+                {
+                    Debug.LogError(
+                        $"Texture '{texture.name}' for sprite '{frame.name}' is not readable. Please enable Read/Write in its import settings."
+                    );
+                }
+            }
+        }
+
+        private static Vector2[] CreatePixelOffsets(
+            IEnumerable<Vector2> worldSpaceOffsets,
+            Sprite[] frames
+        )
+        {
+            if (worldSpaceOffsets == null || frames.Length == 0)
+            {
+                return null;
+            }
+
+            using PooledResource<List<Vector2>> lease = Buffers<Vector2>.List.Get(
+                out List<Vector2> offsets
+            );
+            int index = 0;
+            foreach (Vector2 offset in worldSpaceOffsets)
+            {
+                if (index >= frames.Length)
+                {
+                    break;
+                }
+
+                Sprite frame = frames[index];
+                if (frame != null && frame.pixelsPerUnit > 0f)
+                {
+                    offsets.Add(offset * frame.pixelsPerUnit);
+                }
+                else
+                {
+                    offsets.Add(Vector2.zero);
+                }
+
+                ++index;
+            }
+
+            if (offsets.Count == 0)
+            {
+                return null;
+            }
+
+            Vector2[] result = new Vector2[offsets.Count];
+            offsets.CopyTo(result);
+
+            // Do not assert on count mismatch; callers may provide fewer offsets
+            // than frames and expect remaining frames to default to zero during use.
+
+            return result;
         }
     }
 }

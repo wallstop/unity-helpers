@@ -4,7 +4,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using System;
     using UnityEditor;
     using UnityEngine;
-    using Core.Helper;
+    using WallstopStudios.UnityHelpers.Core.Helper;
 
     [CustomPropertyDrawer(typeof(StringInList))]
     public sealed class StringInListDrawer : PropertyDrawer

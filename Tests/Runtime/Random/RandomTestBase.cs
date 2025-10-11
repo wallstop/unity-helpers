@@ -533,6 +533,56 @@ namespace WallstopStudios.UnityHelpers.Tests.Random
 
         [Test]
         [Parallelizable]
+        public void ProtobufSerialization()
+        {
+            IRandom random = NewRandom();
+            byte[] serialized = Serializer.ProtoSerialize(random);
+            IRandom deserialized = Serializer.ProtoDeserialize<IRandom>(serialized);
+            Assert.AreEqual(random.InternalState, deserialized.InternalState);
+
+            if (random is not UnityRandom)
+            {
+                for (int i = 0; i < NumGeneratorChecks; ++i)
+                {
+                    Assert.AreEqual(random.Next(), deserialized.Next());
+                    Assert.AreEqual(random.InternalState, deserialized.InternalState);
+                }
+            }
+        }
+
+        [Test]
+        [Parallelizable]
+        public void ProtobufSerializationWithMix()
+        {
+            for (int preMix = 1; preMix < 10; ++preMix)
+            {
+                IRandom random = NewRandom();
+                for (int j = 0; j < preMix; ++j)
+                {
+                    _ = random.Next();
+                }
+
+                byte[] serialized = Serializer.ProtoSerialize(random);
+                IRandom deserialized = Serializer.ProtoDeserialize<IRandom>(serialized);
+                Assert.AreEqual(random.InternalState, deserialized.InternalState);
+
+                if (random is not UnityRandom)
+                {
+                    for (int i = 0; i < NumGeneratorChecks; ++i)
+                    {
+                        Assert.AreEqual(random.Next(), deserialized.Next(), "Iteration: " + i);
+                        Assert.AreEqual(
+                            random.InternalState,
+                            deserialized.InternalState,
+                            "Iteration: " + i
+                        );
+                    }
+                }
+            }
+        }
+
+        [Test]
+        [Parallelizable]
         public void NextEnumerable()
         {
             IRandom random = NewRandom();
@@ -682,9 +732,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Random
             {
                 int width = random.Next(1, 75);
                 int height = random.Next(1, 75);
-                float[,] noise = random.NextNoiseMap(width, height);
-                Assert.IsNotNull(noise);
-                Assert.AreEqual(width * height, noise.Length);
+                float[,] noise = new float[width, height];
+                random.NextNoiseMap(noise);
                 foreach (float value in noise)
                 {
                     Assert.LessOrEqual(0f, value);

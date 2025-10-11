@@ -9,6 +9,11 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
     {
         public static readonly ColorConverter Instance = new();
 
+        private static readonly JsonEncodedText RProp = JsonEncodedText.Encode("r");
+        private static readonly JsonEncodedText GProp = JsonEncodedText.Encode("g");
+        private static readonly JsonEncodedText BProp = JsonEncodedText.Encode("b");
+        private static readonly JsonEncodedText AProp = JsonEncodedText.Encode("a");
+
         private ColorConverter() { }
 
         public override Color Read(
@@ -36,34 +41,29 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
 
                 if (reader.TokenType == JsonTokenType.PropertyName)
                 {
-                    string propertyName = reader.GetString();
-                    reader.Read();
-                    switch (propertyName)
+                    if (reader.ValueTextEquals("r"))
                     {
-                        case "r":
-                        {
-                            r = reader.GetSingle();
-                            break;
-                        }
-                        case "g":
-                        {
-                            g = reader.GetSingle();
-                            break;
-                        }
-                        case "b":
-                        {
-                            b = reader.GetSingle();
-                            break;
-                        }
-                        case "a":
-                        {
-                            a = reader.GetSingle();
-                            break;
-                        }
-                        default:
-                        {
-                            throw new JsonException($"Unknown property: {propertyName}");
-                        }
+                        reader.Read();
+                        r = reader.GetSingle();
+                    }
+                    else if (reader.ValueTextEquals("g"))
+                    {
+                        reader.Read();
+                        g = reader.GetSingle();
+                    }
+                    else if (reader.ValueTextEquals("b"))
+                    {
+                        reader.Read();
+                        b = reader.GetSingle();
+                    }
+                    else if (reader.ValueTextEquals("a"))
+                    {
+                        reader.Read();
+                        a = reader.GetSingle();
+                    }
+                    else
+                    {
+                        throw new JsonException("Unknown property for Color");
                     }
                 }
             }
@@ -78,10 +78,10 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
         )
         {
             writer.WriteStartObject();
-            writer.WriteNumber("r", value.r);
-            writer.WriteNumber("g", value.g);
-            writer.WriteNumber("b", value.b);
-            writer.WriteNumber("a", value.a);
+            writer.WriteNumber(RProp, value.r);
+            writer.WriteNumber(GProp, value.g);
+            writer.WriteNumber(BProp, value.b);
+            writer.WriteNumber(AProp, value.a);
             writer.WriteEndObject();
         }
     }

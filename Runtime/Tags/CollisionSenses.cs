@@ -5,10 +5,36 @@ namespace WallstopStudios.UnityHelpers.Tags
     using Core.Attributes;
     using UnityEngine;
 
+    /// <summary>
+    /// Monitors the TagHandler for a specific tag that disables/enables colliders on this GameObject.
+    /// When the "CollisionDisabledTag" is applied, all enabled colliders are disabled and tracked.
+    /// When the tag is removed, the colliders are re-enabled.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This component provides a tag-based way to temporarily disable collision detection,
+    /// useful for effects like invulnerability, phasing, or ghost mode.
+    /// </para>
+    /// <para>
+    /// Example usage:
+    /// <code>
+    /// // Apply an effect with the CollisionDisabledTag
+    /// AttributeEffect ghostMode = ...;
+    /// ghostMode.effectTags.Add(CollisionSenses.CollisionDisabledTag);
+    /// gameObject.ApplyEffect(ghostMode);
+    ///
+    /// // Colliders are now disabled
+    /// // When the effect expires, colliders are automatically re-enabled
+    /// </code>
+    /// </para>
+    /// </remarks>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(TagHandler))]
     public sealed class CollisionSenses : MonoBehaviour
     {
+        /// <summary>
+        /// The tag name that triggers collision disable/enable behavior.
+        /// </summary>
         public const string CollisionDisabledTag = nameof(CollisionDisabledTag);
 
         [SiblingComponent]

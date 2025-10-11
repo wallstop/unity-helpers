@@ -3,10 +3,52 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     using System;
     using System.Runtime.Serialization;
     using System.Text.Json.Serialization;
+    using ProtoBuf;
 
     // https://youtu.be/LWFzPP8ZbdU?t=2673
     [DataContract]
     [Serializable]
+    [ProtoContract]
+    /// <summary>
+    /// A hash-based PRNG inspired by Squirrel Eiserloh's "Squirrel Noise" approach for deterministic noise.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Squirrel-style generators are simple, stateless transformations that can produce deterministic pseudo-noise
+    /// values from integer coordinates or an advancing internal position. This implementation exposes both a sequential
+    /// <see cref="NextUint()"/> and coordinate-based noise via <see cref="NextNoise(int, int)"/> without advancing state.
+    /// </para>
+    /// <para>Pros:</para>
+    /// <list type="bullet">
+    /// <item><description>Great for deterministic spatial noise (e.g., tiles, grid sampling) with no stored sequence.</description></item>
+    /// <item><description>Fast and simple; ideal for repeatable content by position.</description></item>
+    /// </list>
+    /// <para>Cons:</para>
+    /// <list type="bullet">
+    /// <item><description>Statistical properties are good for noise but not designed for all PRNG use-cases.</description></item>
+    /// <item><description>Not cryptographically secure.</description></item>
+    /// </list>
+    /// <para>When to use:</para>
+    /// <list type="bullet">
+    /// <item><description>Procedural textures, terrain, per-cell randomness where the same input produces the same output.</description></item>
+    /// </list>
+    /// <para>When not to use:</para>
+    /// <list type="bullet">
+    /// <item><description>When you need a classic stream-based PRNG for sequences or shuffles; prefer PCG/Xoroshiro/RomuDuo.</description></item>
+    /// </list>
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// using WallstopStudios.UnityHelpers.Core.Random;
+    ///
+    /// var rng = new SquirrelRandom(seed: 12345);
+    /// // Deterministic by coordinate (does not advance RNG):
+    /// float noise = rng.NextNoise(x: 10, y: 42);
+    ///
+    /// // Sequential usage:
+    /// int val = rng.Next(0, 100);
+    /// </code>
+    /// </example>
     public sealed class SquirrelRandom : AbstractRandom
     {
         private const uint BitNoise1 = 0xB5297A4D;
@@ -16,8 +58,9 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         public static readonly SquirrelRandom Instance = ThreadLocalRandom<SquirrelRandom>.Instance;
 
-        public override RandomState InternalState => new(_position, gaussian: _cachedGaussian);
+        public override RandomState InternalState => BuildState(_position);
 
+        [ProtoMember(6)]
         private uint _position;
 
         public SquirrelRandom()
@@ -32,7 +75,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         public SquirrelRandom(RandomState internalState)
         {
             _position = unchecked((uint)internalState.State1);
-            _cachedGaussian = internalState.Gaussian;
+            RestoreCommonState(internalState);
         }
 
         public override uint NextUint()

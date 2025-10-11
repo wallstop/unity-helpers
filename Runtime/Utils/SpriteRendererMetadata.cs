@@ -212,15 +212,9 @@ namespace WallstopStudios.UnityHelpers.Utils
             }
 
             InternalPushColor(this, _spriteRenderer.color);
-            foreach ((Component component, Color color) entry in _colorStack)
-            {
-                _colorStackCache.Add(entry);
-            }
+            _colorStackCache.AddRange(_colorStack);
             _ = InternalPushMaterial(this, _spriteRenderer.material);
-            foreach ((Component component, Material material) entry in _materialStack)
-            {
-                _materialStackCache.Add(entry);
-            }
+            _materialStackCache.AddRange(_materialStack);
         }
 
         private void OnEnable()
@@ -241,10 +235,7 @@ namespace WallstopStudios.UnityHelpers.Utils
             using PooledResource<List<(Component component, Color color)>> colorBufferResource =
                 Buffers<(Component component, Color color)>.List.Get();
             List<(Component component, Color color)> colorBuffer = colorBufferResource.resource;
-            foreach ((Component component, Color color) entry in _colorStackCache)
-            {
-                colorBuffer.Add(entry);
-            }
+            colorBuffer.AddRange(_colorStackCache);
             for (int i = 1; i < colorBuffer.Count; ++i)
             {
                 (Component component, Color color) entry = colorBuffer[i];
@@ -262,10 +253,7 @@ namespace WallstopStudios.UnityHelpers.Utils
             > materialBufferResource = Buffers<(Component component, Material material)>.List.Get();
             List<(Component component, Material material)> materialBuffer =
                 materialBufferResource.resource;
-            foreach ((Component component, Material material) entry in _materialStackCache)
-            {
-                materialBuffer.Add(entry);
-            }
+            materialBuffer.AddRange(_materialStackCache);
             for (int i = 1; i < materialBuffer.Count; ++i)
             {
                 (Component component, Material material) entry = materialBuffer[i];
@@ -278,30 +266,21 @@ namespace WallstopStudios.UnityHelpers.Utils
             using PooledResource<List<(Component component, Color color)>> colorBufferResource =
                 Buffers<(Component component, Color color)>.List.Get();
             List<(Component component, Color color)> colorBuffer = colorBufferResource.resource;
-            foreach ((Component component, Color color) entry in _colorStack)
-            {
-                colorBuffer.Add(entry);
-            }
+            colorBuffer.AddRange(_colorStack);
             for (int i = colorBuffer.Count - 1; 1 <= i; --i)
             {
                 PopColor(colorBuffer[i].component);
             }
 
             _colorStackCache.Clear();
-            foreach ((Component component, Color color) entry in colorBuffer)
-            {
-                _colorStackCache.Add(entry);
-            }
+            _colorStackCache.AddRange(colorBuffer);
 
             using PooledResource<
                 List<(Component component, Material material)>
             > materialBufferResource = Buffers<(Component component, Material material)>.List.Get();
             List<(Component component, Material material)> materialBuffer =
                 materialBufferResource.resource;
-            foreach ((Component component, Material material) entry in _materialStack)
-            {
-                materialBuffer.Add(entry);
-            }
+            materialBuffer.AddRange(_materialStack);
 
             for (int i = materialBuffer.Count - 1; 1 <= i; --i)
             {
@@ -309,10 +288,7 @@ namespace WallstopStudios.UnityHelpers.Utils
             }
 
             _materialStackCache.Clear();
-            foreach ((Component component, Material material) entry in materialBuffer)
-            {
-                _materialStackCache.Add(entry);
-            }
+            _materialStackCache.AddRange(materialBuffer);
         }
 
         private void RemoveColor(Component component)

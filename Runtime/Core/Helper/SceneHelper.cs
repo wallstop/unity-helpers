@@ -14,8 +14,14 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
     using UnityEditor.SceneManagement;
 #endif
 
+    /// <summary>
+    /// Utilities for scene discovery, loading, and object retrieval in editor and runtime.
+    /// </summary>
     public static class SceneHelper
     {
+        /// <summary>
+        /// Returns true if a scene with the given name or path is currently loaded.
+        /// </summary>
         public static bool IsSceneLoaded(string sceneNameOrPath)
         {
             for (int i = 0; i < SceneManager.sceneCount; ++i)
@@ -32,6 +38,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             return false;
         }
 
+        /// <summary>
+        /// Finds all scene asset paths under the specified search folders (Editor only).
+        /// </summary>
         public static string[] GetAllScenePaths(string[] searchFolders = null)
         {
 #if UNITY_EDITOR
@@ -45,6 +54,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #endif
         }
 
+        /// <summary>
+        /// Returns all enabled scenes included in Build Settings (Editor only).
+        /// </summary>
         public static string[] GetScenesInBuild()
         {
 #if UNITY_EDITOR
@@ -57,6 +69,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #endif
         }
 
+        /// <summary>
+        /// Loads a scene additively if needed and returns the first object of type <typeparamref name="T"/> along with a disposal callback to unload the scene.
+        /// </summary>
         public static async ValueTask<DeferredDisposalResult<T>> GetObjectOfTypeInScene<T>(
             string scenePath
         )
@@ -67,6 +82,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             return new DeferredDisposalResult<T>(value, result.DisposeAsync);
         }
 
+        /// <summary>
+        /// Loads a scene additively if needed and returns all objects of type <typeparamref name="T"/> along with a disposal callback to unload the scene.
+        /// </summary>
         public static async ValueTask<DeferredDisposalResult<T[]>> GetAllObjectsOfTypeInScene<T>(
             string scenePath
         )
@@ -118,6 +136,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
         }
 
+        /// <summary>
+        /// A helper scope that ensures a target scene is loaded and provides an async disposal to unload it.
+        /// </summary>
         public sealed class SceneLoadScope
         {
             private
@@ -128,6 +149,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             private readonly UnityAction<Scene, LoadSceneMode> _onSceneLoaded;
             private readonly bool _eventAdded;
 
+            /// <summary>
+            /// Creates the scope and ensures the target scene is loaded. If the active scene already matches, no loading occurs.
+            /// </summary>
             public SceneLoadScope(string scenePath, UnityAction<Scene, LoadSceneMode> onSceneLoaded)
             {
                 _onSceneLoaded = onSceneLoaded;
@@ -183,6 +207,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 }
             }
 
+            /// <summary>
+            /// Unloads the scene if it was opened by this scope; otherwise no-ops.
+            /// </summary>
             public async ValueTask DisposeAsync()
             {
                 if (_eventAdded)

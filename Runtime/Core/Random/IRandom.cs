@@ -3,7 +3,22 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     using System;
     using System.Collections.Generic;
     using DataStructure.Adapters;
+    using UnityEngine;
 
+    /// <summary>
+    /// Unified random number generator interface implemented by all PRNGs in this package.
+    /// </summary>
+    /// <remarks>
+    /// Serialization guidance:
+    /// - JSON: Works out of the box using runtime type information in the serializer entry points.
+    /// - Protobuf: You can serialize an IRandom instance (the runtime type is used), but when
+    ///   deserializing to IRandom you must either register a concrete root via
+    ///   <c>Serializer.RegisterProtobufRoot&lt;IRandom, ConcreteRandom&gt;()</c> or declare your model
+    ///   field as <see cref="AbstractRandom"/>, which is annotated with [ProtoInclude] for all
+    ///   known implementations.
+    ///   Alternatively, use the overload <c>Serializer.ProtoDeserialize&lt;T&gt;(byte[], Type)</c> and
+    ///   pass the concrete type.
+    /// </remarks>
     public interface IRandom
     {
         RandomState InternalState { get; }
@@ -145,15 +160,42 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         T NextOf<T>(IReadOnlyCollection<T> collection);
         T NextOf<T>(IReadOnlyList<T> list);
 
+        T NextOfParams<T>(params T[] elements);
+
         T NextEnum<T>()
-            where T : struct, Enum;
+            where T : unmanaged, Enum;
+
+        T NextEnumExcept<T>(T exception1)
+            where T : unmanaged, Enum;
+
+        T NextEnumExcept<T>(T exception1, T exception2)
+            where T : unmanaged, Enum;
+
+        T NextEnumExcept<T>(T exception1, T exception2, T exception3)
+            where T : unmanaged, Enum;
+
+        T NextEnumExcept<T>(T exception1, T exception2, T exception3, T exception4)
+            where T : unmanaged, Enum;
+
+        T NextEnumExcept<T>(
+            T exception1,
+            T exception2,
+            T exception3,
+            T exception4,
+            params T[] exceptions
+        )
+            where T : unmanaged, Enum;
 
         float[,] NextNoiseMap(
-            int width,
-            int height,
+            float[,] noiseMap,
             PerlinNoise noise = null,
             float scale = 2.5f,
-            int octaves = 8
+            int octaves = 8,
+            float persistence = 0.5f,
+            float lacunarity = 2f,
+            Vector2 baseOffset = default,
+            float octaveOffsetRange = 100000f,
+            bool normalize = true
         );
 
         IRandom Copy();

@@ -5,6 +5,9 @@ namespace WallstopStudios.UnityHelpers.Utils
     using Core.Attributes;
     using Core.Helper;
     using UnityEngine;
+#if UNITY_EDITOR
+    using UnityEditor;
+#endif
 
     /// <summary>
     /// Polygon collider optimizer. Removes points from the collider polygon with
@@ -56,7 +59,19 @@ namespace WallstopStudios.UnityHelpers.Utils
             {
                 for (int i = 0; i < _collider.pathCount; ++i)
                 {
-                    List<Vector2> points = new(_collider.GetPath(i));
+                    Vector2[] current = _collider.GetPath(i);
+                    List<Vector2> points = new(current);
+                    // Preserve closed-loop paths as originally authored by ensuring the last point
+                    // matches the first when applicable (Unity may omit the duplicate end point).
+                    if (points.Count > 0)
+                    {
+                        Vector2 first = points[0];
+                        Vector2 last = points[points.Count - 1];
+                        if (first != last)
+                        {
+                            points.Add(first);
+                        }
+                    }
                     Path path = new(points);
                     _originalPaths.Add(path);
                 }
@@ -78,6 +93,12 @@ namespace WallstopStudios.UnityHelpers.Utils
                 List<Vector2> updatedPath = LineHelper.SimplifyPrecise(path, tolerance);
                 _collider.SetPath(i, updatedPath.ToArray());
             }
+#if UNITY_EDITOR
+            if (!Application.isPlaying)
+            {
+                EditorUtility.SetDirty(this);
+            }
+#endif
         }
     }
 }

@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="520" height="320" viewBox="0 0 520 320">
+  <rect x="0" y="0" width="520" height="320" fill="#0f0f13"/>
+  <g font-family="Verdana,Arial,sans-serif" font-size="12" fill="#c8d1dc">
+    <text x="16" y="24">Concave Hull (k-NN / Alpha-Shape)</text>
+  </g>
+  <!-- points -->
+  <g fill="#7aa2ff">
+    <circle cx="80" cy="240" r="4"/>
+    <circle cx="130" cy="220" r="4"/>
+    <circle cx="180" cy="260" r="4"/>
+    <circle cx="230" cy="200" r="4"/>
+    <circle cx="280" cy="150" r="4"/>
+    <circle cx="330" cy="210" r="4"/>
+    <circle cx="410" cy="230" r="4"/>
+    <circle cx="460" cy="120" r="4"/>
+    <circle cx="120" cy="100" r="4"/>
+    <circle cx="250" cy="120" r="4"/>
+    <circle cx="210" cy="160" r="4"/>
+    <circle cx="310" cy="260" r="4"/>
+    <circle cx="420" cy="80" r="4"/>
+  </g>
+  <!-- concave hull polygon with an inward indentation (simple, non-self-intersecting; includes all points) -->
+  <g fill="rgba(102, 217, 168, 0.12)" stroke="#66d9a8" stroke-width="2.5">
+    <!-- Non-self-intersecting, more concave; closes from middle-left to upper-left -->
+    <polygon points="120,100 420,80 460,120 410,230 330,210 310,260 180,260 80,240 130,220"/>
+  </g>
+  <g font-family="Verdana,Arial,sans-serif" font-size="11" fill="#9fb3c8">
+    <text x="300" y="300">Concave hull captures shape detail</text>
+  </g>
+</svg>

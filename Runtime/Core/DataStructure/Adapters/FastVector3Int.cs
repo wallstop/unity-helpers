@@ -8,30 +8,38 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
     [Serializable]
     [ProtoContract]
-    public struct FastVector3Int
+    public readonly struct FastVector3Int
         : IEquatable<FastVector3Int>,
+            IEquatable<FastVector2Int>,
+            IEquatable<Vector3Int>,
+            IEquatable<Vector2Int>,
             IComparable<FastVector3Int>,
+            IComparable<FastVector2Int>,
+            IComparable<Vector3Int>,
+            IComparable<Vector2Int>,
             IComparable
     {
         public static readonly FastVector3Int zero = new(0, 0, 0);
 
         [ProtoMember(1)]
-        public int x;
+        public readonly int x;
 
         [ProtoMember(2)]
-        public int y;
+        public readonly int y;
 
+        [ProtoMember(4)]
+        public readonly int z;
+
+        // Out of order proto is expected
         [ProtoMember(3)]
-        public int z;
-
-        private int _hash;
+        private readonly int _hash;
 
         public FastVector3Int(int x, int y, int z)
         {
             this.x = x;
             this.y = y;
             this.z = z;
-            _hash = Objects.ValueTypeHashCode(x, y, z);
+            _hash = Objects.HashCode(x, y, z);
         }
 
         public FastVector3Int(Vector3Int vector)
@@ -110,17 +118,59 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public override int GetHashCode()
         {
-            if (_hash == 0)
-            {
-                _hash = Objects.ValueTypeHashCode(x, y, z);
-            }
             return _hash;
+        }
+
+        public int CompareTo(Vector3Int other)
+        {
+            int comparison = x.CompareTo(other.x);
+            if (comparison != 0)
+            {
+                return comparison;
+            }
+
+            comparison = y.CompareTo(other.y);
+            if (comparison != 0)
+            {
+                return comparison;
+            }
+
+            return z.CompareTo(other.z);
+        }
+
+        public bool Equals(Vector2Int other)
+        {
+            return x == other.x && y == other.y;
+        }
+
+        public int CompareTo(Vector2Int other)
+        {
+            int comparison = x.CompareTo(other.x);
+            if (comparison != 0)
+            {
+                return comparison;
+            }
+
+            return y.CompareTo(other.y);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public override bool Equals(object obj)
         {
-            return obj is FastVector3Int other && Equals(other);
+            return obj switch
+            {
+                FastVector3Int vector => Equals(vector),
+                Vector3Int vector => Equals(vector),
+                FastVector2Int vector => Equals(vector),
+                Vector2Int vector => Equals(vector),
+                _ => false,
+            };
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool Equals(Vector3Int other)
+        {
+            return x == other.x && y == other.y && z == other.z;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -130,6 +180,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 && x == other.x
                 && y == other.y
                 && z == other.z;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool Equals(FastVector2Int other)
+        {
+            return x == other.x && y == other.y;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -151,14 +207,28 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int CompareTo(object other)
+        public int CompareTo(FastVector2Int other)
         {
-            if (other is FastVector3Int vector)
+            int comparison = x.CompareTo(other.x);
+            if (comparison != 0)
             {
-                return CompareTo(vector);
+                return comparison;
             }
 
-            return -1;
+            return y.CompareTo(other.y);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int CompareTo(object other)
+        {
+            return other switch
+            {
+                FastVector3Int vector => CompareTo(vector),
+                Vector3Int vector => CompareTo(vector),
+                FastVector2Int vector => CompareTo(vector),
+                Vector2Int vector => CompareTo(vector),
+                _ => -1,
+            };
         }
 
         public override string ToString()
@@ -166,18 +236,17 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             return $"({x}, {y}, {z})";
         }
 
-        [ProtoAfterDeserialization]
-        private void AfterDeserialize()
+        public FastVector2Int FastVector2Int()
         {
-            _hash = Objects.ValueTypeHashCode(x, y, z);
+            return new FastVector2Int(x, y);
         }
 
-        public readonly Vector2 AsVector2()
+        public Vector2 AsVector2()
         {
             return new Vector2(x, y);
         }
 
-        public readonly Vector3 AsVector3()
+        public Vector3 AsVector3()
         {
             return new Vector3(x, y, z);
         }

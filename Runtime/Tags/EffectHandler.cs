@@ -8,18 +8,58 @@ namespace WallstopStudios.UnityHelpers.Tags
     using UnityEngine;
     using Utils;
 
+    /// <summary>
+    /// Manages the application and removal of AttributeEffects on a GameObject.
+    /// Handles effect duration tracking, tag application, cosmetic effects, and attribute modifications.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The EffectHandler is the central component for the effect system. It:
+    /// - Applies effects and creates handles for tracking
+    /// - Manages effect durations and automatic expiration
+    /// - Coordinates with TagHandler for tag-based effects
+    /// - Manages cosmetic effect instantiation and cleanup
+    /// - Distributes attribute modifications to AttributesComponents
+    /// </para>
+    /// <para>
+    /// Example usage:
+    /// <code>
+    /// EffectHandler effectHandler = gameObject.GetComponent&lt;EffectHandler&gt;();
+    ///
+    /// // Apply an effect
+    /// AttributeEffect poisonEffect = ...;
+    /// EffectHandle? handle = effectHandler.ApplyEffect(poisonEffect);
+    ///
+    /// // Remove a specific effect
+    /// if (handle.HasValue)
+    /// {
+    ///     effectHandler.RemoveEffect(handle.Value);
+    /// }
+    ///
+    /// // Remove all effects
+    /// effectHandler.RemoveAllEffects();
+    /// </code>
+    /// </para>
+    /// </remarks>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(TagHandler))]
     public sealed class EffectHandler : MonoBehaviour
     {
+        /// <summary>
+        /// Invoked when an effect is successfully applied.
+        /// </summary>
         public event Action<EffectHandle> OnEffectApplied;
+
+        /// <summary>
+        /// Invoked when an effect is removed (either manually or through expiration).
+        /// </summary>
         public event Action<EffectHandle> OnEffectRemoved;
 
         [SiblingComponent]
         private TagHandler _tagHandler;
 
-        [SiblingComponent(optional = true)]
-        private AttributesComponent[] _attributes;
+        [SiblingComponent(Optional = true)]
+        private HashSet<AttributesComponent> _attributes;
 
         // Stores instanced cosmetic effect data for associated effects.
         private readonly Dictionary<
@@ -43,6 +83,39 @@ namespace WallstopStudios.UnityHelpers.Tags
             _initialized = true;
         }
 
+        /// <summary>
+        /// Registers an AttributesComponent to receive effect modifications.
+        /// Called automatically by AttributesComponent during Awake.
+        /// </summary>
+        /// <param name="attributesComponent">The component to register.</param>
+        internal void Register(AttributesComponent attributesComponent)
+        {
+            _attributes ??= new HashSet<AttributesComponent>();
+            _ = _attributes.Add(attributesComponent);
+        }
+
+        /// <summary>
+        /// Unregisters an AttributesComponent from receiving effect modifications.
+        /// Called automatically by AttributesComponent during OnDestroy.
+        /// </summary>
+        /// <param name="attributesComponent">The component to unregister.</param>
+        internal void Remove(AttributesComponent attributesComponent)
+        {
+            _attributes?.Remove(attributesComponent);
+        }
+
+        /// <summary>
+        /// Applies an AttributeEffect to this GameObject, handling tags, cosmetic effects, and attribute modifications.
+        /// </summary>
+        /// <param name="effect">The effect to apply.</param>
+        /// <returns>
+        /// An EffectHandle if the effect is non-instant (Duration or Infinite), allowing later removal.
+        /// Null for instant effects that permanently modify base values.
+        /// </returns>
+        /// <remarks>
+        /// For Duration effects with the same name, reapplying can either reset the timer (if resetDurationOnReapplication is true)
+        /// or be ignored if already active.
+        /// </remarks>
         public EffectHandle? ApplyEffect(AttributeEffect effect)
         {
             EffectHandle? maybeHandle = null;
@@ -92,6 +165,10 @@ namespace WallstopStudios.UnityHelpers.Tags
             return maybeHandle;
         }
 
+        /// <summary>
+        /// Removes a specific effect by its handle, cleaning up tags, cosmetic effects, and attribute modifications.
+        /// </summary>
+        /// <param name="handle">The handle of the effect to remove.</param>
         public void RemoveEffect(EffectHandle handle)
         {
             InternalRemoveEffect(handle);
