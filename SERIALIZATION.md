@@ -29,14 +29,65 @@ All formats are exposed via `WallstopStudios.UnityHelpers.Core.Serialization.Ser
   - Only for legacy or trusted, same-version, local data. Avoid for long-term persistence or untrusted input.
 
 **When To Use What**
-- Use Json for:
-  - Player/tool settings, human-readable saves, serverless workflows, text diffs.
-  - Quick iteration and debugging.
-- Use Protobuf for:
-  - Network payloads and large, bandwidth-sensitive saves.
-  - Cases where schema evolves across versions.
-- Use SystemBinary only for:
-  - Transient caches in trusted environments with exact version match.
+
+Use this decision flowchart to pick the right serialization format:
+
+```
+START: What are you serializing?
+  │
+  ├─ Game settings / Config files
+  │   │
+  │   ├─ Need human-readable / Git-friendly?
+  │   │   → JSON (Normal or Pretty) ✓
+  │   │
+  │   └─ Performance critical (large files)?
+  │       → JSON (Fast or FastPOCO) ✓
+  │
+  ├─ Save game data
+  │   │
+  │   ├─ First save system / Need debugging?
+  │   │   → JSON (Pretty) ✓
+  │   │
+  │   ├─ Mobile / Size matters?
+  │   │   → Protobuf ✓
+  │   │
+  │   └─ Need cross-version compatibility?
+  │       → Protobuf ✓
+  │
+  ├─ Network messages (multiplayer)
+  │   │
+  │   └─ Bandwidth is critical
+  │       → Protobuf ✓
+  │
+  ├─ Editor-only / Temporary cache (trusted environment)
+  │   │
+  │   └─ Same Unity version, local only
+  │       → SystemBinary (⚠️ legacy, consider JSON Fast)
+  │
+  └─ Hot path / Per-frame serialization
+      │
+      ├─ Pure C# objects (no Unity types)?
+      │   → JSON (FastPOCO) ✓
+      │
+      └─ Mixed with Unity types?
+          → JSON (Fast) ✓
+```
+
+### Quick Reference
+
+- **Use JSON for:**
+  - Player/tool settings, human-readable saves, serverless workflows, text diffs
+  - Quick iteration and debugging
+  - First-time save system implementation
+
+- **Use Protobuf for:**
+  - Network payloads and large, bandwidth-sensitive saves
+  - Cases where schema evolves across versions
+  - Mobile games where save file size matters
+
+- **Use SystemBinary only for:**
+  - Transient caches in trusted environments with exact version match
+  - ⚠️ Consider JSON Fast instead - SystemBinary is legacy
 
 **JSON Examples (Unity-aware)**
 - Serialize/deserialize and write/read files

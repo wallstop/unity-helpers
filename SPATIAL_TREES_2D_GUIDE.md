@@ -102,10 +102,44 @@ Diagram: ![RTree2D](Docs/Images/rtree_2d.svg)
 
 ## Choosing a Structure
 
-- Many moving points, rebuild or frequent updates: QuadTree2D
-- Nearest neighbors on static points: KDTree2D (Balanced)
-- Fast builds with good-enough queries: KDTree2D (Unbalanced)
-- Objects with area; bounds queries primary: RTree2D
+Use this decision flowchart to pick the right spatial tree:
+
+```
+START: Do your objects move frequently?
+  │
+  ├─ YES → Consider SpatialHash2D instead (see README)
+  │         (Spatial trees require rebuild on movement)
+  │
+  └─ NO → Continue to next question
+      │
+      └─ What type of queries do you need?
+          │
+          ├─ Primarily nearest neighbor (k-NN)
+          │   │
+          │   ├─ Static data, want consistent performance
+          │   │   → KDTree2D (Balanced) ✓
+          │   │
+          │   └─ Data changes occasionally, need fast rebuilds
+          │       → KDTree2D (Unbalanced) ✓
+          │
+          ├─ Do objects have size/bounds (not just points)?
+          │   │
+          │   ├─ YES → Need bounds intersection queries
+          │   │   → RTree2D ✓
+          │   │
+          │   └─ NO → Continue
+          │
+          └─ General range/circular queries, broad-phase
+              → QuadTree2D ✓ (best all-around choice)
+```
+
+### Quick Reference
+
+- **Many moving points, rebuild or frequent updates:** QuadTree2D
+- **Nearest neighbors on static points:** KDTree2D (Balanced)
+- **Fast builds with good-enough queries:** KDTree2D (Unbalanced)
+- **Objects with area; bounds queries primary:** RTree2D
+- **Very frequent movement (every frame):** SpatialHash2D (see [README](README.md#choosing-spatial-structures))
 
 ## Query Semantics
 

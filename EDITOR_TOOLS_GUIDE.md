@@ -10,6 +10,44 @@ Comprehensive documentation for all editor wizards, windows, and automation tool
 
 ---
 
+## What Do You Want To Do? (Task-Based Index)
+
+**Optimize Sprite Memory & Performance**
+- Remove transparent padding → [Sprite Cropper](#sprite-cropper)
+- Adjust texture sizes automatically → [Fit Texture Size](#fit-texture-size)
+- Batch apply import settings → [Texture Settings Applier](#texture-settings-applier)
+- Standardize sprite settings → [Sprite Settings Applier](#sprite-settings-applier)
+- Adjust sprite pivots → [Sprite Pivot Adjuster](#sprite-pivot-adjuster)
+
+**Create & Edit Animations**
+- Edit animation timing/frames visually → [Sprite Animation Editor](#sprite-animation-editor-animation-viewer-window)
+- Bulk-create animations from sprites → [Animation Creator](#animation-creator)
+- Convert sprite sheets to clips → [Sprite Sheet Animation Creator](#sprite-sheet-animation-creator)
+- Add/edit animation events → [Animation Event Editor](#animation-event-editor)
+- Copy/sync animations between folders → [Animation Copier](#animation-copier)
+
+**Build Sprite Atlases**
+- Create atlases with regex/labels → [Sprite Atlas Generator](#sprite-atlas-generator)
+
+**Validate & Fix Prefabs**
+- Check prefabs for errors → [Prefab Checker](#prefab-checker)
+
+**Apply Visual Effects**
+- Blur textures (backgrounds, DOF) → [Image Blur Tool](#image-blur-tool)
+- Resize textures with filtering → [Texture Resizer](#texture-resizer)
+
+**Automate Setup & Maintenance**
+- Auto-create singleton assets → [ScriptableObject Singleton Creator](#scriptableobject-singleton-creator)
+- Cache attribute metadata → [Attribute Metadata Cache Generator](#attribute-metadata-cache-generator)
+- Track sprite labels → [Sprite Label Processor](#sprite-label-processor)
+
+**Enhance Inspector Workflows**
+- Conditional field display → [WShowIf Property Drawer](#wshowif-property-drawer)
+- Dropdown for strings/ints → [StringInList](#stringinlist-property-drawer) | [IntDropdown](#intdropdown-property-drawer)
+- Read-only inspector fields → [DxReadOnly Property Drawer](#dxreadonly-property-drawer)
+
+---
+
 ## Table of Contents
 
 1. [Texture & Sprite Tools](#texture--sprite-tools)
@@ -90,6 +128,11 @@ Comprehensive documentation for all editor wizards, windows, and automation tool
 
 **Performance Impact:** Can reduce texture memory by 30-70% on padded sprites.
 
+**Related Tools:**
+- After cropping, use [Texture Settings Applier](#texture-settings-applier) to batch apply import settings
+- Before creating atlases, run Sprite Cropper → [Sprite Atlas Generator](#sprite-atlas-generator)
+- Use [Sprite Pivot Adjuster](#sprite-pivot-adjuster) after cropping to fix pivot points
+
 ---
 
 ### Texture Settings Applier
@@ -149,6 +192,11 @@ Generate Mip Maps: false
 - Fixing texture quality issues across directories
 - Maintaining performance standards
 - Team consistency enforcement
+
+**Related Tools:**
+- After setting texture settings, use [Sprite Settings Applier](#sprite-settings-applier) for sprite-specific options
+- Use [Sprite Cropper](#sprite-cropper) first to optimize memory before applying settings
+- Combine with [Fit Texture Size](#fit-texture-size) to auto-adjust max texture sizes
 
 ---
 
@@ -464,6 +512,12 @@ Mage/Attack (0).png, Mage/Attack (1).png        // base: Mage_Attack, index: 0..
 - One‑click bulk clip creation from sprite folders
 - Converting exported frame sequences into clips
 - Large projects standardizing animation naming and FPS/loop
+
+**Related Tools:**
+- After creating animations, edit timing with [Sprite Animation Editor](#sprite-animation-editor-animation-viewer-window)
+- Add events to created animations with [Animation Event Editor](#animation-event-editor)
+- Organize animations between folders with [Animation Copier](#animation-copier)
+- For sprite sheets (not sequences), use [Sprite Sheet Animation Creator](#sprite-sheet-animation-creator)
 
 ---
 

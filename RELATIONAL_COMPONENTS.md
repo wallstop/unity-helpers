@@ -80,6 +80,73 @@ Decorate private (or public) fields on a `MonoBehaviour` with a relational attri
 
 Assignments happen at runtime (e.g., `Awake`/`OnEnable`), not at edit-time serialization.
 
+### Visual Search Patterns
+
+```
+ParentComponent (searches UP the hierarchy):
+
+  Grandparent ←────────── (included unless OnlyAncestors = true)
+      ↑
+      │
+    Parent ←────────────── (always included)
+      ↑
+      │
+   [YOU] ←────────────────  Component with [ParentComponent]
+      │
+    Child
+      │
+   Grandchild
+
+
+ChildComponent (searches DOWN the hierarchy, breadth-first):
+
+  Grandparent
+      │
+    Parent
+      │
+   [YOU] ←─────────────────  Component with [ChildComponent]
+      ↓
+      ├─ Child 1 ←────────── (depth = 1)
+      │    ├─ Grandchild 1  (depth = 2)
+      │    └─ Grandchild 2  (depth = 2)
+      │
+      └─ Child 2 ←────────── (depth = 1)
+           └─ Grandchild 3  (depth = 2)
+
+  Breadth-first means all Children (depth 1) are checked
+  before any Grandchildren (depth 2).
+
+
+SiblingComponent (searches same GameObject):
+
+  Parent
+    │
+    └─ [GameObject] ←────── All components on this GameObject
+         ├─ [YOU] ←─────── Component with [SiblingComponent]
+         ├─ Component A
+         ├─ Component B
+         └─ Component C
+```
+
+### Key Options
+
+**OnlyAncestors / OnlyDescendants:**
+- `OnlyAncestors = true` → Excludes self, searches only parents/grandparents
+- `OnlyDescendants = true` → Excludes self, searches only children/grandchildren
+- Default (false) → Includes self in search
+
+**MaxDepth:**
+- Limits how far up/down the hierarchy to search
+- `MaxDepth = 1` with `OnlyDescendants = true` → immediate children only
+- `MaxDepth = 2` → children + grandchildren (or parents + grandparents)
+
+---
+
+> 💡 **Having Issues?** Components not being assigned? Fields staying null?
+> Jump to [Troubleshooting](#troubleshooting) for solutions to common problems.
+
+---
+
 ## Attribute Reference
 
 ### SiblingComponent
