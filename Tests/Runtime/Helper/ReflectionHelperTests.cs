@@ -111,6 +111,34 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             return a + (b?.Length ?? 0) + (c ? 1 : 0);
         }
 
+        public static int StaticMethodFourParams(int a, int b, int c, int d)
+        {
+            StaticMethodCallCount++;
+            return a + b + c + d;
+        }
+
+        public static void StaticActionThree(int a, int b, int c)
+        {
+            StaticMethodCallCount = a + b + c;
+        }
+
+        public int InstanceSum(int a, int b)
+        {
+            instanceMethodCallCount++;
+            return a + b;
+        }
+
+        public void InstanceSetThree(int a, int b, int c)
+        {
+            instanceMethodCallCount = a + b + c;
+        }
+
+        public int InstanceSumFour(int a, int b, int c, int d)
+        {
+            instanceMethodCallCount++;
+            return a + b + c + d;
+        }
+
         public void Reset()
         {
             StaticMethodCallCount = 0;
@@ -187,6 +215,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         // Read-only properties
         public static int StaticReadOnlyProperty => 999;
         public int InstanceReadOnlyProperty => 888;
+    }
+
+    public sealed class IndexerClass
+    {
+        private readonly int[] data = new int[10];
+        public int this[int i]
+        {
+            get => data[i];
+            set => data[i] = value;
+        }
+    }
+
+    public static class RefOutMethods
+    {
+        public static void RefInc(ref int x)
+        {
+            x++;
+        }
+
+        public static void OutSet(out int x)
+        {
+            x = 7;
+        }
     }
 
     [Description("Test class for attribute testing")]
@@ -1679,6 +1730,205 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             Type methodType = typeof(TestMethodClass);
             Assert.IsFalse(methodType.IsAttributeDefined(out ReflectionTestAttribute noAttr));
             Assert.IsNull(noAttr);
+        }
+
+        [Test]
+        public void TypedPropertySetters()
+        {
+            var pi = typeof(TestPropertyClass).GetProperty(
+                nameof(TestPropertyClass.InstanceProperty)
+            );
+            var set = ReflectionHelpers.GetPropertySetter<TestPropertyClass, int>(pi);
+            var obj = new TestPropertyClass();
+            set(obj, 123);
+            Assert.AreEqual(123, obj.InstanceProperty);
+
+            var spi = typeof(TestPropertyClass).GetProperty(
+                nameof(TestPropertyClass.StaticProperty)
+            );
+            var sset = ReflectionHelpers.GetStaticPropertySetter<int>(spi);
+            sset(456);
+            Assert.AreEqual(456, TestPropertyClass.StaticProperty);
+        }
+
+        [Test]
+        public void TypedStaticMethodInvokersFuncAndAction()
+        {
+            MethodInfo m0 = typeof(TestMethodClass).GetMethod(
+                nameof(TestMethodClass.StaticIntMethod)
+            );
+            var f0 = ReflectionHelpers.GetStaticMethodInvoker<int>(m0);
+            Assert.AreEqual(42, f0());
+
+            MethodInfo m1 = typeof(TestMethodClass).GetMethod(
+                nameof(TestMethodClass.StaticMethodWithParam)
+            );
+            var f1 = ReflectionHelpers.GetStaticMethodInvoker<int, int>(m1);
+            Assert.AreEqual(10, f1(5));
+
+            MethodInfo m3 = typeof(TestMethodClass).GetMethod(
+                nameof(TestMethodClass.StaticMethodMultipleParams)
+            );
+            var f3 = ReflectionHelpers.GetStaticMethodInvoker<int, string, bool, int>(m3);
+            Assert.AreEqual(1 + 3 + 1, f3(1, "hey", true));
+
+            MethodInfo m4 = typeof(TestMethodClass).GetMethod(
+                nameof(TestMethodClass.StaticMethodFourParams)
+            );
+            var f4 = ReflectionHelpers.GetStaticMethodInvoker<int, int, int, int, int>(m4);
+            Assert.AreEqual(10, f4(1, 2, 3, 4));
+
+            MethodInfo a0 = typeof(TestMethodClass).GetMethod(
+                nameof(TestMethodClass.StaticVoidMethod)
+            );
+            TestMethodClass.StaticMethodCallCount = 0;
+            var a0i = ReflectionHelpers.GetStaticActionInvoker(a0);
+            a0i();
+            Assert.AreEqual(1, TestMethodClass.StaticMethodCallCount);
+
+            MethodInfo a3 = typeof(TestMethodClass).GetMethod(
+                nameof(TestMethodClass.StaticActionThree)
+            );
+            var a3i = ReflectionHelpers.GetStaticActionInvoker<int, int, int>(a3);
+            a3i(1, 2, 3);
+            Assert.AreEqual(6, TestMethodClass.StaticMethodCallCount);
+        }
+
+        [Test]
+        public void TypedInstanceMethodInvokersFuncAndAction()
+        {
+            TestMethodClass o = new();
+            o.Reset();
+
+            MethodInfo i0 = typeof(TestMethodClass).GetMethod(
+                nameof(TestMethodClass.InstanceIntMethod)
+            );
+            var fi0 = ReflectionHelpers.GetInstanceMethodInvoker<TestMethodClass, int>(i0);
+            Assert.AreEqual(100, fi0(o));
+            Assert.AreEqual(1, o.instanceMethodCallCount);
+
+            MethodInfo i1 = typeof(TestMethodClass).GetMethod(
+                nameof(TestMethodClass.InstanceMethodWithParam)
+            );
+            var fi1 = ReflectionHelpers.GetInstanceMethodInvoker<TestMethodClass, string, int>(i1);
+            Assert.AreEqual(4, fi1(o, "four"));
+
+            MethodInfo i2 = typeof(TestMethodClass).GetMethod(nameof(TestMethodClass.InstanceSum));
+            var fi2 = ReflectionHelpers.GetInstanceMethodInvoker<TestMethodClass, int, int, int>(
+                i2
+            );
+            Assert.AreEqual(7, fi2(o, 3, 4));
+
+            MethodInfo ia3 = typeof(TestMethodClass).GetMethod(
+                nameof(TestMethodClass.InstanceSetThree)
+            );
+            var ai3 = ReflectionHelpers.GetInstanceActionInvoker<TestMethodClass, int, int, int>(
+                ia3
+            );
+            ai3(o, 1, 2, 3);
+            Assert.AreEqual(6, o.instanceMethodCallCount);
+
+            MethodInfo i4 = typeof(TestMethodClass).GetMethod(
+                nameof(TestMethodClass.InstanceSumFour)
+            );
+            var fi4 = ReflectionHelpers.GetInstanceMethodInvoker<
+                TestMethodClass,
+                int,
+                int,
+                int,
+                int,
+                int
+            >(i4);
+            Assert.AreEqual(10, fi4(o, 1, 2, 3, 4));
+        }
+
+        [Test]
+        public void RefOutTypedInvokersThrow()
+        {
+            MethodInfo refm = typeof(RefOutMethods).GetMethod(nameof(RefOutMethods.RefInc));
+            Assert.Throws<NotSupportedException>(() =>
+                ReflectionHelpers.GetStaticActionInvoker<int>(refm)
+            );
+
+            MethodInfo outm = typeof(RefOutMethods).GetMethod(nameof(RefOutMethods.OutSet));
+            Assert.Throws<NotSupportedException>(() =>
+                ReflectionHelpers.GetStaticActionInvoker<int>(outm)
+            );
+        }
+
+        [Test]
+        public void IndexerGetterAndSetter()
+        {
+            var idxProp = typeof(IndexerClass).GetProperty("Item");
+            var getter = ReflectionHelpers.GetIndexerGetter(idxProp);
+            var setter = ReflectionHelpers.GetIndexerSetter(idxProp);
+            IndexerClass obj = new();
+            setter(obj, 5, new object[] { 2 });
+            Assert.AreEqual(5, getter(obj, new object[] { 2 }));
+        }
+
+        [Test]
+        public void DictionaryCreators()
+        {
+            int capacity = 32;
+            object dictObj = ReflectionHelpers.CreateDictionary(
+                typeof(int),
+                typeof(string),
+                capacity
+            );
+            Assert.IsInstanceOf<Dictionary<int, string>>(dictObj);
+            var typed = ReflectionHelpers.GetDictionaryCreator<int, string>();
+            Dictionary<int, string> d2 = typed(capacity);
+            Assert.IsNotNull(d2);
+            Assert.AreEqual(0, d2.Count);
+        }
+
+        [Test]
+        public void TypedCollectionCreators()
+        {
+            var makeArray = ReflectionHelpers.GetArrayCreator<int>();
+            int[] arr = makeArray(5);
+            Assert.AreEqual(5, arr.Length);
+
+            var makeList = ReflectionHelpers.GetListCreator<string>();
+            IList list = makeList();
+            Assert.IsInstanceOf<List<string>>(list);
+
+            var makeListCap = ReflectionHelpers.GetListWithCapacityCreator<float>();
+            IList listCap = makeListCap(16);
+            Assert.IsInstanceOf<List<float>>(listCap);
+            Assert.AreEqual(16, ((List<float>)listCap).Capacity);
+
+            var makeSet = ReflectionHelpers.GetHashSetWithCapacityCreator<int>();
+            HashSet<int> set = makeSet(8);
+            var add = ReflectionHelpers.GetHashSetAdder<int>();
+            add(set, 3);
+            add(set, 3);
+            add(set, 4);
+            Assert.IsTrue(set.Contains(3));
+            Assert.IsTrue(set.Contains(4));
+            Assert.AreEqual(2, set.Count);
+        }
+
+        [Test]
+        public void IsActiveAndEnabledChecksGameObjectState()
+        {
+            GameObject go = new("probe2");
+            try
+            {
+                EnabledProbe probe = go.AddComponent<EnabledProbe>();
+                go.SetActive(false);
+                Assert.IsFalse(probe.IsActiveAndEnabled());
+                go.SetActive(true);
+                probe.enabled = true;
+                Assert.IsTrue(probe.IsActiveAndEnabled());
+                probe.enabled = false;
+                Assert.IsFalse(probe.IsActiveAndEnabled());
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
         }
     }
 }
