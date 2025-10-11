@@ -3,6 +3,13 @@
   <g font-family="Verdana,Arial,sans-serif" font-size="14" fill="#c8d1dc">
     <text x="16" y="26">Query Boundaries — Closed vs Half-Open</text>
   </g>
+  <!-- legend: green=included, red=excluded -->
+  <g font-family="Verdana,Arial,sans-serif" font-size="12">
+    <circle cx="560" cy="22" r="5" fill="#66d9a8"/>
+    <text x="572" y="26" fill="#c8d1dc">included</text>
+    <circle cx="650" cy="22" r="5" fill="#d57a7a"/>
+    <text x="662" y="26" fill="#c8d1dc">excluded</text>
+  </g>
   <!-- bounds A -->
   <g fill="none" stroke="#7aa2ff" stroke-width="2">
     <rect x="60" y="80" width="260" height="160"/>
@@ -29,4 +36,3 @@
     <text x="60" y="260">Tip: add small epsilon when comparing boundaries across structures.</text>
   </g>
 </svg>
-
