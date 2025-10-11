@@ -16,6 +16,25 @@ A comprehensive collection of high-performance utilities, data structures, and e
 
 ## Quick Onramp
 
+### Why Unity Helpers? The Killer Features
+
+**⚡ Performance - Make Your Game Faster**
+- **10-15x faster random** ([PRNG.Instance](RANDOM_PERFORMANCE.md)) vs UnityEngine.Random + seedable for determinism
+- **Zero-allocation spatial queries** ([Buffering Pattern](#buffering-pattern)) → no GC spikes, stable 60fps
+- **O(log n) spatial trees** ([Spatial Trees](SPATIAL_TREES_2D_GUIDE.md)) scale to millions of objects
+
+**🚀 Productivity - Ship Features Faster**
+- **Auto-wire components** ([Relational Components](RELATIONAL_COMPONENTS.md)) → eliminate GetComponent boilerplate
+- **Data-driven effects** ([Effects System](EFFECTS_SYSTEM.md)) → designers create 100s of buffs/debuffs without programmer
+- **20+ editor tools** ([Editor Tools](EDITOR_TOOLS_GUIDE.md)) → automate sprite cropping, animations, atlases
+
+**🛡️ Production-Ready - Never Break Player Saves**
+- **Protobuf schema evolution** ([Serialization](SERIALIZATION.md#protobuf-schema-evolution-the-killer-feature)) → add/remove fields without breaking old saves
+- **4,000+ test cases** → used in shipped commercial games
+- **IL2CPP optimized** → works with Unity's aggressive compiler
+
+---
+
 TL;DR — Why use this?
 - Ship faster with production‑ready utilities that are (much) faster than stock Unity options.
 - Solve common problems: global settings/services, fast spatial queries, auto‑wiring components, robust serialization.

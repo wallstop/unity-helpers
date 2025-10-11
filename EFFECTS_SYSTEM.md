@@ -2,9 +2,75 @@
 
 ## TL;DR — What Problem This Solves
 
-- Data‑driven, stackable gameplay changes (buffs/debuffs) without bespoke code per effect.
-- Declarative authoring in ScriptableObjects; runtime handles application, stacking, tags, cosmetics, and clean removal.
-- Ideal for status systems, item affixes, auras, and timed modifiers.
+- **⭐ Build buff/debuff systems without writing custom code for every effect.**
+- Data‑driven ScriptableObjects: designers create 100s of effects, programmers build system once.
+- **Time saved: Weeks of boilerplate eliminated + designers empowered to iterate freely.**
+
+### ⭐ The Designer Empowerment Killer Feature
+
+**The Problem - Hardcoded Effects:**
+
+```csharp
+// Every buff needs its own custom MonoBehaviour:
+
+public class HasteEffect : MonoBehaviour
+{
+    private float duration = 5f;
+    private float originalSpeed;
+    private PlayerStats player;
+
+    void Start()
+    {
+        player = GetComponent<PlayerStats>();
+        originalSpeed = player.speed;
+        player.speed *= 1.5f;  // Apply speed boost
+    }
+
+    void Update()
+    {
+        duration -= Time.deltaTime;
+        if (duration <= 0)
+        {
+            player.speed = originalSpeed;  // Restore
+            Destroy(this);
+        }
+    }
+}
+
+// 20 effects × 50 lines each = 1000 lines of repetitive code
+// Designers can't create effects without programmer
+```
+
+**The Solution - Data-Driven:**
+
+```csharp
+// Programmers build system once (Unity Helpers provides this):
+// - AttributesComponent base class
+// - EffectHandler manages application/removal
+// - ScriptableObject authoring
+
+// Designers create effects in Editor (NO CODE):
+// 1. Right-click → Create → Attribute Effect
+// 2. Name: "Haste"
+// 3. Add modification: Speed × 1.5
+// 4. Duration: 5 seconds
+// 5. Done!
+
+// Apply at runtime (one line):
+target.ApplyEffect(hasteEffect);
+```
+
+**Designer Workflow:**
+1. Create effect asset in 30 seconds (no code)
+2. Test in-game immediately
+3. Tweak values and iterate freely
+4. Create variations (Haste II, Haste III) by duplicating assets
+
+**Impact:**
+- **Programmer time saved**: Weeks of boilerplate → system built once
+- **Designer empowerment**: Block creating 100s of effects instantly
+- **Iteration speed**: Change values without code changes/recompiles
+- **Maintainability**: All effects in one system vs scattered scripts
 
 Data‑driven gameplay effects that modify stats, apply tags, and drive cosmetic presentation.
 

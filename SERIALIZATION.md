@@ -23,10 +23,12 @@ All formats are exposed via `WallstopStudios.UnityHelpers.Core.Serialization.Ser
   - Human-readable; ideal for settings, debug, modding, and Git diffs.
   - Includes converters for Unity types (Vector2/3/4, Color, Matrix4x4, GameObject, Type, enums as strings), ignores cycles, includes fields, case-insensitive.
 - Protobuf (protobuf-net)
+  - **⭐ Killer Feature: Schema Evolution** — Players can load saves from older game versions without breaking! Add new fields, remove old ones, rename types—all while maintaining compatibility.
   - Small and fast; best for networking and large save payloads.
-  - Forward/backward compatible message evolution (see tips below).
+  - Forward/backward compatible message evolution (see [Schema Evolution Guide](#protobuf-schema-evolution-the-killer-feature) below).
 - SystemBinary (BinaryFormatter)
   - Only for legacy or trusted, same-version, local data. Avoid for long-term persistence or untrusted input.
+  - ⚠️ **Cannot handle version changes** - a single field addition breaks all existing saves.
 
 **When To Use What**
 
@@ -177,14 +179,247 @@ public class NetworkMessage
 }
 ```
 
-**Protobuf Compatibility Tips**
+## Protobuf Schema Evolution: The Killer Feature
+
+**The Problem Protobuf Solves:**
+
+You ship your game with this save format:
+```csharp
+[ProtoContract]
+public class PlayerSave
+{
+    [ProtoMember(1)] public int level;
+    [ProtoMember(2)] public string name;
+}
+```
+
+A month later, you want to add a new feature and change the format:
+```csharp
+[ProtoContract]
+public class PlayerSave
+{
+    [ProtoMember(1)] public int level;
+    [ProtoMember(2)] public string name;
+    [ProtoMember(3)] public int gold;        // NEW FIELD
+    [ProtoMember(4)] public bool isPremium;  // NEW FIELD
+}
+```
+
+**With JSON or BinaryFormatter:** Players' existing saves break. You must write migration code or wipe their progress.
+
+**With Protobuf:** It just works! Old saves load perfectly with `gold = 0` and `isPremium = false` defaults.
+
+### Real-World Save Game Evolution Example 🟡 Intermediate
+
+**Version 1.0 (Launch):**
+```csharp
+[ProtoContract]
+public class PlayerSave
+{
+    [ProtoMember(1)] public string playerId;
+    [ProtoMember(2)] public int level;
+    [ProtoMember(3)] public Vector3DTO position;
+}
+```
+
+**Version 1.5 (Inventory System Added):**
+```csharp
+[ProtoContract]
+public class PlayerSave
+{
+    [ProtoMember(1)] public string playerId;
+    [ProtoMember(2)] public int level;
+    [ProtoMember(3)] public Vector3DTO position;
+    [ProtoMember(4)] public List<string> inventory = new();  // NEW: defaults to empty
+}
+```
+
+**Version 2.0 (Stats Overhaul - level renamed to xp):**
+```csharp
+[ProtoContract]
+public class PlayerSave
+{
+    [ProtoMember(1)] public string playerId;
+    // [ProtoMember(2)] int level - REMOVED, but tag 2 is NEVER reused
+    [ProtoMember(3)] public Vector3DTO position;
+    [ProtoMember(4)] public List<string> inventory = new();
+    [ProtoMember(5)] public int xp;              // NEW: experience points
+    [ProtoMember(6)] public int skillPoints;     // NEW: unspent skill points
+}
+```
+
+**Result:** Players who saved in v1.0 can load their save in v2.0:
+- Old `level` value (tag 2) is ignored
+- New `xp` and `skillPoints` default to 0
+- All existing data (`playerId`, `position`, `inventory`) loads correctly
+- **Zero migration code required!**
+
+### Schema Evolution Rules
+
+**✅ Safe Changes (Always Compatible):**
+- Add new fields with new tag numbers
+- Remove fields (but never reuse their tag numbers)
+- Change field names (tags are what matter, not names)
+- Add new message types
+- Change default values (only affects new saves)
+
+**⚠️ Requires Care:**
+- Changing field types (e.g., `int` → `long` works, `int` → `string` doesn't)
+- Changing `repeated` to singular or vice versa (usually breaks)
+- Renumbering existing tags (breaks everything!)
+
+**❌ Never Do This:**
+- Reuse deleted field tag numbers
+- Change the meaning of an existing tag
+- Remove required fields (avoid `required` entirely - use validation instead)
+
+### Multi-Version Compatibility Pattern 🔴 Advanced
+
+Handle breaking changes across major versions gracefully:
+
+```csharp
+[ProtoContract]
+public class SaveFile
+{
+    [ProtoMember(1)] public int version = 3;  // Track your save version
+
+    // Version 1-3 fields
+    [ProtoMember(2)] public string playerId;
+    [ProtoMember(3)] public Vector3DTO position;
+
+    // Version 2+ fields
+    [ProtoMember(10)] public List<string> inventory;
+
+    // Version 3+ fields
+    [ProtoMember(20)] public PlayerStats stats;
+
+    public void PostDeserialize()
+    {
+        if (version < 2)
+        {
+            // Migrate v1 saves: initialize empty inventory
+            inventory ??= new List<string>();
+        }
+
+        if (version < 3)
+        {
+            // Migrate v2 saves: create default stats
+            stats ??= new PlayerStats { xp = 0, level = 1 };
+        }
+
+        version = 3; // Update to current version
+    }
+}
+```
+
+> ⚠️ **Common Mistake:** Don't put migration logic in the constructor. Use `PostDeserialize()`
+> or a dedicated method called after loading. Constructors don't run during deserialization.
+
+### Testing Schema Evolution 🟢 Beginner
+
+**Recommended Testing Pattern:**
+
+```csharp
+// 1. Save a file with version N:
+var oldSave = new PlayerSave { level = 10, name = "Hero" };
+byte[] bytes = Serializer.ProtoSerialize(oldSave);
+File.WriteAllBytes("test_v1.save", bytes);
+
+// 2. Update your schema (add new fields)
+
+// 3. Load the old file with new schema:
+byte[] oldBytes = File.ReadAllBytes("test_v1.save");
+var loaded = Serializer.ProtoDeserialize<PlayerSave>(oldBytes);
+
+// New fields have defaults, old fields are preserved
+Assert.AreEqual(10, loaded.level);
+Assert.AreEqual("Hero", loaded.name);
+Assert.AreEqual(0, loaded.gold);  // New field defaults to 0
+```
+
+**Best Practice:** Keep regression test files — Store save files from each version in your test suite.
+
+### Common Save System Patterns
+
+**Pattern 1: Version-Aware Loading** 🟡 Intermediate
+```csharp
+public SaveFile LoadSave(string path)
+{
+    byte[] bytes = File.ReadAllBytes(path);
+    SaveFile save = Serializer.ProtoDeserialize<SaveFile>(bytes);
+
+    // Perform any version-specific migrations
+    save.PostDeserialize();
+
+    return save;
+}
+```
+
+**Pattern 2: Gradual Migration (preserve old format for rollback)** 🔴 Advanced
+```csharp
+public class SaveManager
+{
+    public void SaveGame(PlayerData data)
+    {
+        var protobuf = ConvertToProtobuf(data);
+        byte[] bytes = Serializer.ProtoSerialize(protobuf);
+
+        // Write both formats during transition period
+        File.WriteAllBytes("save.dat", bytes);
+        Serializer.WriteToJsonFile(data, "save.json.backup");
+    }
+}
+```
+
+**Pattern 3: Automatic Backup Before Save** 🟡 Intermediate
+```csharp
+public void SaveGame(SaveFile save)
+{
+    string path = "player.save";
+    string backup = $"player.save.backup_{DateTime.Now:yyyyMMdd_HHmmss}";
+
+    // Backup existing save before overwriting
+    if (File.Exists(path))
+    {
+        File.Copy(path, backup);
+    }
+
+    byte[] bytes = Serializer.ProtoSerialize(save);
+    File.WriteAllBytes(path, bytes);
+
+    // Keep only last 3 backups
+    CleanupOldBackups("player.save.backup_*", keepCount: 3);
+}
+```
+
+### Why This Matters for Live Games
+
+**Without schema evolution (JSON/BinaryFormatter):**
+- ❌ Every update risks breaking player saves
+- ❌ Must write complex migration code for every version
+- ❌ Players lose progress if migration fails
+- ❌ Can't roll back broken updates (saves are corrupted)
+- ❌ Hotfixes that change save format are terrifying
+
+**With Protobuf schema evolution:**
+- ✅ Add features freely without breaking existing saves
+- ✅ Graceful degradation (old clients ignore new fields)
+- ✅ Can roll back game versions without data loss
+- ✅ Hotfixes are safe (just add new optional fields)
+- ✅ Reduces QA burden (less migration testing needed)
+
+### Protobuf Compatibility Tips
+
 - Add fields with new numbers; old clients ignore unknown fields; new clients default missing fields.
 - Never reuse or renumber existing field tags; reserve removed numbers if needed.
 - Avoid changing scalar types on the same number.
 - Prefer optional/repeated instead of required.
 - Use sensible defaults to minimize payloads.
+- **Group field numbers by version** (e.g., v1: 1-10, v2: 11-20, v3: 21-30) for clarity.
 
-**Protobuf Polymorphism (Inheritance + Interfaces)**
+---
+
+## Protobuf Polymorphism (Inheritance + Interfaces)
 - Abstract base with [ProtoInclude] (recommended)
   - Protobuf-net does not infer subtype graphs unless you tell it. The recommended pattern is to put `[ProtoContract]` on an abstract base and list all concrete subtypes with `[ProtoInclude(tag, typeof(Subtype))]`.
   - Declare your fields/properties as the abstract base so protobuf can deserialize to the correct subtype.

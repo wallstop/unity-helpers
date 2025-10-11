@@ -459,17 +459,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         private bool _applyCanceled;
         private readonly TextureImporterSettings _settingsBuffer = new();
 
-        private sealed class PreparedProfile
-        {
-            public SpriteSettings settings;
-            public SpriteSettings.MatchMode mode;
-            public string nameLower;
-            public string patternLower;
-            public string extWithDot;
-            public Regex regex;
-            public int priority;
-        }
-
         [MenuItem("Tools/Wallstop Studios/Unity Helpers/Sprite Settings Applier", priority = -2)]
         public static void ShowWindow()
         {
@@ -726,8 +715,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 _assetsThatWillChange.Capacity = targetFiles.Count;
             }
 
-            // Prepare matchers once
-            List<PreparedProfile> prepared = PrepareProfiles(currentSettings);
+            // Prepare matchers once using public API
+            List<SpriteSettingsApplierAPI.PreparedProfile> prepared =
+                SpriteSettingsApplierAPI.PrepareProfiles(currentSettings);
 
             double lastUpdateTime = EditorApplication.timeSinceStartup;
             for (int i = 0; i < targetFiles.Count; i++)
@@ -750,7 +740,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     lastUpdateTime = now;
                 }
 
-                if (WillTextureSettingsChangePrepared(relativePath, prepared))
+                if (
+                    SpriteSettingsApplierAPI.WillTextureSettingsChange(
+                        relativePath,
+                        prepared,
+                        _settingsBuffer
+                    )
+                )
                 {
                     _spritesThatWillChange++;
                     _assetsThatWillChange.Add(relativePath);
@@ -792,8 +788,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             AssetDatabase.StartAssetEditing();
             try
             {
-                // Prepare profile matchers once
-                List<PreparedProfile> prepared = PrepareProfiles(currentSettings);
+                // Prepare profile matchers once via API for unification
+                List<SpriteSettingsApplierAPI.PreparedProfile> prepared =
+                    SpriteSettingsApplierAPI.PrepareProfiles(currentSettings);
                 double lastUpdateTime = EditorApplication.timeSinceStartup;
 
                 for (int i = 0; i < targetFiles.Count; i++)
@@ -823,10 +820,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     }
 
                     if (
-                        TryUpdateTextureSettingsPrepared(
+                        SpriteSettingsApplierAPI.TryUpdateTextureSettings(
                             filePath,
                             prepared,
-                            out TextureImporter textureImporter
+                            out TextureImporter textureImporter,
+                            _settingsBuffer
                         )
                     )
                     {
@@ -871,9 +869,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
         }
 
-        private static List<PreparedProfile> PrepareProfiles(List<SpriteSettings> profiles)
+        private static List<SpriteSettingsApplierAPI.PreparedProfile> PrepareProfiles(
+            List<SpriteSettings> profiles
+        )
         {
-            List<PreparedProfile> result = new(profiles?.Count ?? 0);
+            List<SpriteSettingsApplierAPI.PreparedProfile> result = new(profiles?.Count ?? 0);
             if (profiles == null)
             {
                 return result;
@@ -887,7 +887,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     continue;
                 }
 
-                PreparedProfile p = new()
+                SpriteSettingsApplierAPI.PreparedProfile p = new()
                 {
                     settings = s,
                     mode = s.matchBy,
@@ -925,7 +925,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
         private static SpriteSettings FindMatchingSettingsPrepared(
             string filePath,
-            List<PreparedProfile> prepared
+            List<SpriteSettingsApplierAPI.PreparedProfile> prepared
         )
         {
             if (prepared == null || prepared.Count == 0)
@@ -942,7 +942,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             int bestPriority = int.MinValue;
             for (int i = 0; i < prepared.Count; i++)
             {
-                PreparedProfile p = prepared[i];
+                SpriteSettingsApplierAPI.PreparedProfile p = prepared[i];
                 bool matches = false;
                 switch (p.mode)
                 {
@@ -1005,7 +1005,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
         private bool WillTextureSettingsChangePrepared(
             string filePath,
-            List<PreparedProfile> prepared
+            List<SpriteSettingsApplierAPI.PreparedProfile> prepared
         )
         {
             if (string.IsNullOrWhiteSpace(filePath))
@@ -1086,7 +1086,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
         private bool TryUpdateTextureSettingsPrepared(
             string filePath,
-            List<PreparedProfile> prepared,
+            List<SpriteSettingsApplierAPI.PreparedProfile> prepared,
             out TextureImporter textureImporter
         )
         {
