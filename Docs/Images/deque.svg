@@ -12,6 +12,7 @@
     <line x1="320" y1="80" x2="320" y2="140"/>
     <line x1="380" y1="80" x2="380" y2="140"/>
     <line x1="440" y1="80" x2="440" y2="140"/>
+    <line x1="500" y1="80" x2="500" y2="140"/>
   </g>
   <!-- arrows indicating push/pop at both ends -->
   <g stroke="#5ec69a" fill="#5ec69a">
