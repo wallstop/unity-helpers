@@ -26,8 +26,8 @@
     <text x="80" y="170" text-anchor="middle" fill="#5ec69a">enqueue</text>
     <text x="200" y="170" text-anchor="middle" fill="#d57a7a">dequeue</text>
   </g>
-  <g font-family="Verdana,Arial,sans-serif" font-size="11" fill="#9fb3c8">
-    <text x="60" y="62">queue</text>
+  <g font-family="Verdana,Arial,sans-serif" font-size="11">
+    <text x="60" y="62" fill="#7aa2ff">queue</text>
   </g>
   <!-- queue: example occupied cells -->
   <g fill="rgba(122,162,255,0.22)" stroke="#7aa2ff">
@@ -72,11 +72,11 @@
   </g>
   <!-- side hints -->
   <g font-family="Verdana,Arial,sans-serif" font-size="10" fill="#9fb3c8">
-    <text x="350" y="64">front</text>
-    <text x="560" y="64">back</text>
+    <text x="340" y="48">front</text>
+    <text x="580" y="48">back</text>
   </g>
-  <g font-family="Verdana,Arial,sans-serif" font-size="11" fill="#9fb3c8">
-    <text x="360" y="62">deque</text>
+  <g font-family="Verdana,Arial,sans-serif" font-size="11">
+    <text x="360" y="62" fill="#c792ea">deque</text>
   </g>
   <!-- deque: example occupied cells -->
   <g fill="rgba(122,162,255,0.22)" stroke="#7aa2ff">
