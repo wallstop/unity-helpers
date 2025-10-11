@@ -34,12 +34,13 @@
     <text x="412" y="196">z-split</text>
   </g>
 
-  <!-- Y-split (depth-aligned plane parallel to front) -->
+  <!-- Y-split (depth-aligned plane parallel to front, contained within box) -->
   <g fill="rgba(122, 162, 255, 0.10)" stroke="#7aa2ff" stroke-width="2" stroke-dasharray="6 6">
-    <polygon points="260,140 300,110 500,110 460,140 260,140 260,320 300,290 500,290 460,320 260,320"/>
+    <!-- front intersection: (260,140)-(400,140) and (260,320)-(400,320); back intersection: (300,110)-(440,110) and (300,290)-(440,290) -->
+    <polygon points="260,140 300,110 440,110 400,140 260,140 260,320 300,290 440,290 400,320 260,320"/>
   </g>
   <g font-family="Verdana,Arial,sans-serif" font-size="11" fill="#c8d1dc">
-    <text x="470" y="132">y-split</text>
+    <text x="410" y="132">y-split</text>
   </g>
 
   <!-- sample points (projected into the volume) -->
