@@ -3,18 +3,61 @@
   <g font-family="Verdana,Arial,sans-serif" font-size="14" fill="#c8d1dc">
     <text x="16" y="26">R-Tree (3D) — MBR Hierarchy</text>
   </g>
-  <!-- object boxes (projected) -->
-  <g fill="rgba(122,162,255,0.15)" stroke="#7aa2ff" stroke-width="2">
-    <rect x="120" y="120" width="40" height="28"/>
-    <rect x="180" y="150" width="30" height="30"/>
-    <rect x="240" y="110" width="45" height="35"/>
-    <rect x="300" y="200" width="50" height="40"/>
-    <rect x="360" y="140" width="50" height="30"/>
+  <!-- object boxes (3D cuboids, projected) -->
+  <g stroke="#7aa2ff" stroke-width="2" fill="rgba(122,162,255,0.12)">
+    <!-- helper: dx=20, dy=-15 for back face offset -->
+    <!-- box 1 -->
+    <rect x="140" y="180" width="40" height="30"/>
+    <rect x="160" y="165" width="40" height="30"/>
+    <line x1="140" y1="180" x2="160" y2="165"/>
+    <line x1="180" y1="180" x2="200" y2="165"/>
+    <line x1="140" y1="210" x2="160" y2="195"/>
+    <line x1="180" y1="210" x2="200" y2="195"/>
+    <!-- box 2 -->
+    <rect x="210" y="210" width="35" height="26"/>
+    <rect x="230" y="195" width="35" height="26"/>
+    <line x1="210" y1="210" x2="230" y2="195"/>
+    <line x1="245" y1="210" x2="265" y2="195"/>
+    <line x1="210" y1="236" x2="230" y2="221"/>
+    <line x1="245" y1="236" x2="265" y2="221"/>
+    <!-- box 3 -->
+    <rect x="280" y="160" width="45" height="35"/>
+    <rect x="300" y="145" width="45" height="35"/>
+    <line x1="280" y1="160" x2="300" y2="145"/>
+    <line x1="325" y1="160" x2="345" y2="145"/>
+    <line x1="280" y1="195" x2="300" y2="180"/>
+    <line x1="325" y1="195" x2="345" y2="180"/>
+    <!-- box 4 -->
+    <rect x="340" y="240" width="50" height="38"/>
+    <rect x="360" y="225" width="50" height="38"/>
+    <line x1="340" y1="240" x2="360" y2="225"/>
+    <line x1="390" y1="240" x2="410" y2="225"/>
+    <line x1="340" y1="278" x2="360" y2="263"/>
+    <line x1="390" y1="278" x2="410" y2="263"/>
+    <!-- box 5 -->
+    <rect x="400" y="190" width="40" height="28"/>
+    <rect x="420" y="175" width="40" height="28"/>
+    <line x1="400" y1="190" x2="420" y2="175"/>
+    <line x1="440" y1="190" x2="460" y2="175"/>
+    <line x1="400" y1="218" x2="420" y2="203"/>
+    <line x1="440" y1="218" x2="460" y2="203"/>
   </g>
-  <!-- MBR groups -->
+  <!-- MBR groups (3D dashed cuboids) -->
   <g fill="none" stroke="#66d9a8" stroke-width="2.5" stroke-dasharray="8 6">
-    <rect x="110" y="100" width="190" height="100"/>
-    <rect x="290" y="130" width="140" height="130"/>
+    <!-- left group -->
+    <rect x="120" y="160" width="220" height="110"/>
+    <rect x="140" y="145" width="220" height="110"/>
+    <line x1="120" y1="160" x2="140" y2="145"/>
+    <line x1="340" y1="160" x2="360" y2="145"/>
+    <line x1="120" y1="270" x2="140" y2="255"/>
+    <line x1="340" y1="270" x2="360" y2="255"/>
+    <!-- right group -->
+    <rect x="320" y="180" width="140" height="120"/>
+    <rect x="340" y="165" width="140" height="120"/>
+    <line x1="320" y1="180" x2="340" y2="165"/>
+    <line x1="460" y1="180" x2="480" y2="165"/>
+    <line x1="320" y1="300" x2="340" y2="285"/>
+    <line x1="460" y1="300" x2="480" y2="285"/>
   </g>
   <!-- axis hints (outside); consistent with KD/Octree -->
   <g stroke="#9fb3c8" stroke-width="1.5" fill="none" opacity="0.85">
