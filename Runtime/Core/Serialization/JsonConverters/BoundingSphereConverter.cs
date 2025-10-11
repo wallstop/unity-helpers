@@ -27,8 +27,8 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
 
             Vector3 p = default;
             float r = 0f;
-            bool haveP = false,
-                haveR = false;
+            bool haveP = false;
+            bool haveR = false;
             while (reader.Read())
             {
                 if (reader.TokenType == JsonTokenType.EndObject)

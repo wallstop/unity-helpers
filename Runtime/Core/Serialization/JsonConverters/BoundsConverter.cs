@@ -42,13 +42,13 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
                     if (reader.ValueTextEquals("center"))
                     {
                         reader.Read();
-                        center = JsonSerializer.Deserialize<Vector3>(ref reader, options);
+                        center = ReadVector3Strict(ref reader);
                         haveCenter = true;
                     }
                     else if (reader.ValueTextEquals("size"))
                     {
                         reader.Read();
-                        size = JsonSerializer.Deserialize<Vector3>(ref reader, options);
+                        size = ReadVector3Strict(ref reader);
                         haveSize = true;
                     }
                     else
@@ -59,6 +59,60 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
             }
 
             throw new JsonException("Incomplete JSON for Bounds");
+        }
+
+        private static Vector3 ReadVector3Strict(ref Utf8JsonReader reader)
+        {
+            if (reader.TokenType != JsonTokenType.StartObject)
+            {
+                throw new JsonException("Vector3 must be an object");
+            }
+
+            bool haveX = false,
+                haveY = false,
+                haveZ = false;
+            float x = 0,
+                y = 0,
+                z = 0;
+            while (reader.Read())
+            {
+                if (reader.TokenType == JsonTokenType.EndObject)
+                {
+                    if (!haveX || !haveY || !haveZ)
+                    {
+                        throw new JsonException("Incomplete JSON for Vector3");
+                    }
+                    return new Vector3(x, y, z);
+                }
+
+                if (reader.TokenType == JsonTokenType.PropertyName)
+                {
+                    if (reader.ValueTextEquals("x"))
+                    {
+                        reader.Read();
+                        x = reader.GetSingle();
+                        haveX = true;
+                    }
+                    else if (reader.ValueTextEquals("y"))
+                    {
+                        reader.Read();
+                        y = reader.GetSingle();
+                        haveY = true;
+                    }
+                    else if (reader.ValueTextEquals("z"))
+                    {
+                        reader.Read();
+                        z = reader.GetSingle();
+                        haveZ = true;
+                    }
+                    else
+                    {
+                        throw new JsonException("Unknown property for Vector3");
+                    }
+                }
+            }
+
+            throw new JsonException("Incomplete JSON for Vector3");
         }
 
         public override void Write(

@@ -1,5 +1,6 @@
 namespace WallstopStudios.UnityHelpers.Tests.Serialization
 {
+    using System.Text.Json;
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.DataStructure;
     using WallstopStudios.UnityHelpers.Core.Serialization;
@@ -38,7 +39,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
             original.Add(2);
             original.Add(3);
             original.Add(4);
-            var options = Serializer.CreateFastJsonOptions();
+            JsonSerializerOptions options = Serializer.CreateFastJsonOptions();
             string json = Serializer.JsonStringify(original, options);
             CyclicBuffer<int> deserialized = Serializer.JsonDeserialize<CyclicBuffer<int>>(
                 json,

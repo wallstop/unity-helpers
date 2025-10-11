@@ -38,12 +38,12 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
                 throw new JsonException($"Invalid token type {reader.TokenType}");
             }
 
-            int width = 0,
-                height = 0,
-                refreshHz = 0;
+            int width = 0;
+            int height = 0;
+            int refreshHz = 0;
 #if UNITY_2022_2_OR_NEWER
-            int ratioNum = 0,
-                ratioDen = 0;
+            int ratioNum = 0;
+            int ratioDen = 0;
             bool haveRatio = false;
 #endif
 
@@ -142,13 +142,15 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
             writer.WriteNumber(WidthProp, value.width);
             writer.WriteNumber(HeightProp, value.height);
 #if UNITY_2022_2_OR_NEWER
-            int hz = (int)System.Math.Round(value.refreshRateRatio.value);
+            uint num = value.refreshRateRatio.numerator;
+            uint den = value.refreshRateRatio.denominator;
+            int hz = den != 0 ? (int)System.Math.Round((double)num / den) : 0;
             writer.WriteNumber(RefreshRateProp, hz);
             writer.WritePropertyName(RefreshRatioProp);
             writer.WriteStartObject();
-            writer.WriteNumber(RatioNumProp, value.refreshRateRatio.numerator);
-            writer.WriteNumber(RatioDenProp, value.refreshRateRatio.denominator);
-            writer.WriteNumber(RatioValProp, value.refreshRateRatio.value);
+            writer.WriteNumber(RatioNumProp, num);
+            writer.WriteNumber(RatioDenProp, den);
+            // Omit "value" to avoid NaN/Infinity writes; consumers can compute from num/den
             writer.WriteEndObject();
 #else
             writer.WriteNumber(RefreshRateProp, value.refreshRate);

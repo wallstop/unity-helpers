@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.Rendering;
+    using UnityEngine.SceneManagement;
     using WallstopStudios.UnityHelpers.Core.Serialization;
 
     [TestFixture]
@@ -1119,9 +1120,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         [Test]
         public void SceneConverterSerializeAndDeserializeSuccess()
         {
-            var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+            Scene scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
             string json = Serializer.JsonStringify(scene);
-            var deserialized = Serializer.JsonDeserialize<UnityEngine.SceneManagement.Scene>(json);
+            Scene deserialized = Serializer.JsonDeserialize<UnityEngine.SceneManagement.Scene>(
+                json
+            );
             Assert.IsTrue(deserialized.IsValid());
             Assert.AreEqual(scene.name, deserialized.name);
         }

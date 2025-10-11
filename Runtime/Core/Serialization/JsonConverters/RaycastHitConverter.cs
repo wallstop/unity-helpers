@@ -29,12 +29,12 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
                 throw new JsonException($"Invalid token type {reader.TokenType}");
             }
 
-            Vector3 point = default,
-                normal = default;
+            Vector3 point = default;
+            Vector3 normal = default;
             float distance = 0f;
-            bool havePoint = false,
-                haveNormal = false,
-                haveDistance = false;
+            bool havePoint = false;
+            bool haveNormal = false;
+            bool haveDistance = false;
 
             while (reader.Read())
             {

@@ -665,8 +665,8 @@ namespace SevenZip.Compression.LZMA
             }
             _optimumCurrentIndex = _optimumEndIndex = 0;
 
-            UInt32 lenMain,
-                numDistancePairs;
+            UInt32 lenMain;
+            UInt32 numDistancePairs;
             if (!_longestMatchWasFound)
             {
                 ReadMatchDistances(out lenMain, out numDistancePairs);

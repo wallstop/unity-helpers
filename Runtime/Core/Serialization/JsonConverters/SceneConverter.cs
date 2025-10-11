@@ -28,8 +28,8 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
                 throw new JsonException($"Invalid token type {reader.TokenType}");
             }
 
-            string name = null,
-                path = null;
+            string name = null;
+            string path = null;
             int buildIndex = -1;
             while (reader.Read())
             {

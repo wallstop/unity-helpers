@@ -218,7 +218,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
 
             writer.WritePropertyName(ColorKeysProp);
             writer.WriteStartArray();
-            foreach (var ck in value.colorKeys)
+            foreach (GradientColorKey ck in value.colorKeys)
             {
                 writer.WriteStartObject();
                 writer.WritePropertyName(ColorProp);
@@ -230,7 +230,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
 
             writer.WritePropertyName(AlphaKeysProp);
             writer.WriteStartArray();
-            foreach (var ak in value.alphaKeys)
+            foreach (GradientAlphaKey ak in value.alphaKeys)
             {
                 writer.WriteStartObject();
                 writer.WriteNumber(AlphaProp, ak.alpha);

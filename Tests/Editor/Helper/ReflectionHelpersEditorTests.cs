@@ -4,6 +4,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Helper
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Reflection;
     using NUnit.Framework;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
@@ -55,9 +56,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Helper
         [Test]
         public void EditorGetTypesWithAttributeUsesTypeCache()
         {
-            var types = ReflectionHelpers.GetTypesWithAttribute<EditorMarkerAttribute>(
-                includeAbstract: false
-            );
+            IEnumerable<Type> types =
+                ReflectionHelpers.GetTypesWithAttribute<EditorMarkerAttribute>(
+                    includeAbstract: false
+                );
             Assert.IsTrue(
                 types.Any(t => t == typeof(EditorMarkerTarget)),
                 "Expected EditorMarkerTarget discovered via TypeCache."
@@ -67,17 +69,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Helper
         [Test]
         public void EditorGetMethodsAndFieldsWithAttributeUseTypeCache()
         {
-            var methods = ReflectionHelpers.GetMethodsWithAttribute<EditorMarkerAttribute>(
-                typeof(EditorMarkerTarget)
-            );
+            IEnumerable<MethodInfo> methods =
+                ReflectionHelpers.GetMethodsWithAttribute<EditorMarkerAttribute>(
+                    typeof(EditorMarkerTarget)
+                );
             Assert.IsTrue(
                 methods.Any(m => m.Name == nameof(EditorMarkerTarget.MarkedMethod)),
                 "Expected MarkedMethod discovered via TypeCache."
             );
 
-            var fields = ReflectionHelpers.GetFieldsWithAttribute<EditorMarkerAttribute>(
-                typeof(EditorMarkerTarget)
-            );
+            IEnumerable<FieldInfo> fields =
+                ReflectionHelpers.GetFieldsWithAttribute<EditorMarkerAttribute>(
+                    typeof(EditorMarkerTarget)
+                );
             Assert.IsTrue(
                 fields.Any(f => f.Name == nameof(EditorMarkerTarget.markedField)),
                 "Expected MarkedField discovered via TypeCache."
@@ -87,9 +91,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Helper
         [Test]
         public void EditorGetPropertiesWithAttributeFallsBackToReflection()
         {
-            var props = ReflectionHelpers.GetPropertiesWithAttribute<EditorMarkerAttribute>(
-                typeof(EditorMarkerTarget)
-            );
+            IEnumerable<PropertyInfo> props =
+                ReflectionHelpers.GetPropertiesWithAttribute<EditorMarkerAttribute>(
+                    typeof(EditorMarkerTarget)
+                );
             Assert.IsTrue(
                 props.Any(p => p.Name == nameof(EditorMarkerTarget.MarkedProperty)),
                 "Expected MarkedProperty discovered via reflection fallback."

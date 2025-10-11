@@ -1,6 +1,7 @@
 namespace WallstopStudios.UnityHelpers.Tests.Serialization
 {
     using System.Collections.Generic;
+    using System.Text.Json;
     using NUnit.Framework;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure;
@@ -48,7 +49,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
             Deque<int> original = new(2);
             original.PushBack(10);
             original.PushFront(5);
-            var options = Serializer.CreateFastJsonOptions();
+            JsonSerializerOptions options = Serializer.CreateFastJsonOptions();
             string json = Serializer.JsonStringify(original, options);
             Deque<int> deserialized = Serializer.JsonDeserialize<Deque<int>>(json, null, options);
             Assert.AreEqual(

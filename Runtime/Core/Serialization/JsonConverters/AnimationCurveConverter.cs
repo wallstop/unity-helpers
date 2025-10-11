@@ -47,8 +47,8 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
             List<Keyframe> keys = null;
             WrapMode pre = WrapMode.ClampForever;
             WrapMode post = WrapMode.ClampForever;
-            bool havePre = false,
-                havePost = false;
+            bool havePre = false;
+            bool havePost = false;
 
             while (reader.Read())
             {
@@ -118,16 +118,16 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
                 throw new JsonException("Invalid keyframe token");
             }
 
-            float time = 0f,
-                value = 0f,
-                inTan = 0f,
-                outTan = 0f,
-                inW = 0f,
-                outW = 0f;
+            float time = 0f;
+            float value = 0f;
+            float inTan = 0f;
+            float outTan = 0f;
+            float inW = 0f;
+            float outW = 0f;
             int weightedMode = 0;
-            bool hasInW = false,
-                hasOutW = false,
-                hasWeighted = false;
+            bool hasInW = false;
+            bool hasOutW = false;
+            bool hasWeighted = false;
 
             while (reader.Read())
             {

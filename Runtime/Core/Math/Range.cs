@@ -43,9 +43,16 @@ namespace WallstopStudios.UnityHelpers.Core.Math
         [ProtoMember(4)]
         public bool endInclusive;
 
+        [JsonIgnore]
         public readonly T Min => min;
+
+        [JsonIgnore]
         public readonly T Max => max;
+
+        [JsonIgnore]
         public readonly bool StartInclusive => startInclusive;
+
+        [JsonIgnore]
         public readonly bool EndInclusive => endInclusive;
 
         [JsonConstructor]

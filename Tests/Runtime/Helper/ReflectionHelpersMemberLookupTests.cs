@@ -1,6 +1,7 @@
 namespace WallstopStudios.UnityHelpers.Tests.Helper
 {
     using System;
+    using System.Collections.Generic;
     using System.Linq;
     using System.Reflection;
     using NUnit.Framework;
@@ -41,9 +42,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void GetTypesWithAttributeRuntimeMarkerIncludesType()
         {
-            var types = ReflectionHelpers.GetTypesWithAttribute<RuntimeMarkerAttribute>(
-                includeAbstract: false
-            );
+            IEnumerable<Type> types =
+                ReflectionHelpers.GetTypesWithAttribute<RuntimeMarkerAttribute>(
+                    includeAbstract: false
+                );
             Assert.IsTrue(
                 types.Any(t => t == typeof(RuntimeMarkerTarget)),
                 "Expected RuntimeMarkerTarget to be discovered."
@@ -53,9 +55,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void GetFieldsWithAttributeWithinReturnsField()
         {
-            var fields = ReflectionHelpers.GetFieldsWithAttribute<RuntimeMarkerAttribute>(
-                typeof(RuntimeMarkerTarget)
-            );
+            IEnumerable<FieldInfo> fields =
+                ReflectionHelpers.GetFieldsWithAttribute<RuntimeMarkerAttribute>(
+                    typeof(RuntimeMarkerTarget)
+                );
             FieldInfo fi = fields.FirstOrDefault(f =>
                 f.Name == nameof(RuntimeMarkerTarget.MarkedField)
             );
@@ -65,9 +68,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void GetMethodsWithAttributeWithinReturnsMethod()
         {
-            var methods = ReflectionHelpers.GetMethodsWithAttribute<RuntimeMarkerAttribute>(
-                typeof(RuntimeMarkerTarget)
-            );
+            IEnumerable<MethodInfo> methods =
+                ReflectionHelpers.GetMethodsWithAttribute<RuntimeMarkerAttribute>(
+                    typeof(RuntimeMarkerTarget)
+                );
             MethodInfo mi = methods.FirstOrDefault(m =>
                 m.Name == nameof(RuntimeMarkerTarget.MarkedMethod)
             );
@@ -77,9 +81,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void GetPropertiesWithAttributeWithinReturnsProperty()
         {
-            var props = ReflectionHelpers.GetPropertiesWithAttribute<RuntimeMarkerAttribute>(
-                typeof(RuntimeMarkerTarget)
-            );
+            IEnumerable<PropertyInfo> props =
+                ReflectionHelpers.GetPropertiesWithAttribute<RuntimeMarkerAttribute>(
+                    typeof(RuntimeMarkerTarget)
+                );
             PropertyInfo pi = props.FirstOrDefault(p =>
                 p.Name == nameof(RuntimeMarkerTarget.MarkedProperty)
             );
@@ -146,11 +151,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void GetComponentAndScriptableTypesIncludeTargets()
         {
-            var components = ReflectionHelpers.GetComponentTypes();
+            IEnumerable<Type> components = ReflectionHelpers.GetComponentTypes();
             bool hasTester = components.Any(t => t == typeof(PrewarmTesterComponent));
             Assert.IsTrue(hasTester, "Expected PrewarmTesterComponent among component types.");
 
-            var sos = ReflectionHelpers.GetScriptableObjectTypes();
+            IEnumerable<Type> sos = ReflectionHelpers.GetScriptableObjectTypes();
             bool hasSO = sos.Any(t => t == typeof(RuntimeScriptableObjectTarget));
             Assert.IsTrue(
                 hasSO,
@@ -161,7 +166,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void GetTypesWithAttributeNonGenericFindsRuntimeMarker()
         {
-            var types = ReflectionHelpers.GetTypesWithAttribute(typeof(RuntimeMarkerAttribute));
+            IEnumerable<Type> types = ReflectionHelpers.GetTypesWithAttribute(
+                typeof(RuntimeMarkerAttribute)
+            );
             Assert.IsTrue(
                 types.Any(t => t == typeof(RuntimeMarkerTarget)),
                 "Expected RuntimeMarkerTarget discovered via non-generic attribute query."

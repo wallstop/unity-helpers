@@ -1,5 +1,6 @@
 namespace WallstopStudios.UnityHelpers.Tests.Serialization
 {
+    using System.Text.Json;
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.DataStructure;
     using WallstopStudios.UnityHelpers.Core.Serialization;
@@ -28,7 +29,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
             BitSet original = new(8);
             original.TrySet(1);
             original.TrySet(6);
-            var options = Serializer.CreateFastJsonOptions();
+            JsonSerializerOptions options = Serializer.CreateFastJsonOptions();
             string json = Serializer.JsonStringify(original, options);
             BitSet deserialized = Serializer.JsonDeserialize<BitSet>(json, null, options);
             Assert.AreEqual(

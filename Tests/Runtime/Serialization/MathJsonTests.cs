@@ -65,14 +65,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         [Test]
         public void RangeIntAndFloatRoundTrips()
         {
-            var ri = new Range<int>(1, 10, true, false);
+            Range<int> ri = new Range<int>(1, 10, true, false);
             string riJson = Serializer.JsonStringify(ri);
-            var riAgain = Serializer.JsonDeserialize<Range<int>>(riJson);
+            Range<int> riAgain = Serializer.JsonDeserialize<Range<int>>(riJson);
             Assert.AreEqual(ri, riAgain, "Range<int> should round-trip");
 
-            var rf = new Range<float>(-1.25f, 3.5f, false, true);
+            Range<float> rf = new Range<float>(-1.25f, 3.5f, false, true);
             string rfJson = Serializer.JsonStringify(rf);
-            var rfAgain = Serializer.JsonDeserialize<Range<float>>(rfJson);
+            Range<float> rfAgain = Serializer.JsonDeserialize<Range<float>>(rfJson);
             Assert.AreEqual(rf, rfAgain, "Range<float> should round-trip");
         }
     }
