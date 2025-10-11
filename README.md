@@ -42,7 +42,7 @@ Unity Helpers was built to solve common game development challenges with **perfo
 - 🔧 **20+ editor tools** to streamline your workflow
 - 📦 **Zero dependencies** - just import and use
 - ✅ **Production-tested** in shipped games
-- 🧪 **3500+ test cases** cover most of the public API and run before each release to catch regressions and prevent bugs
+- 🧪 **4000+ test cases** cover most of the public API and run before each release to catch regressions and prevent bugs
 
 ## Key Features
 
@@ -105,6 +105,9 @@ Unity Helpers was built to solve common game development challenges with **perfo
 - Spatial Tree 2D Performance — [SPATIAL_TREE_2D_PERFORMANCE.md](SPATIAL_TREE_2D_PERFORMANCE.md)
 - Spatial Tree 3D Performance — [SPATIAL_TREE_3D_PERFORMANCE.md](SPATIAL_TREE_3D_PERFORMANCE.md)
  - Spatial Tree Semantics — [SPATIAL_TREE_SEMANTICS.md](SPATIAL_TREE_SEMANTICS.md)
+ - 2D Spatial Trees Guide — [SPATIAL_TREES_2D_GUIDE.md](SPATIAL_TREES_2D_GUIDE.md)
+ - Hulls (Convex vs Concave) — [HULLS.md](HULLS.md)
+ - Data Structures — [DATA_STRUCTURES.md](DATA_STRUCTURES.md)
 - Random Performance — [RANDOM_PERFORMANCE.md](RANDOM_PERFORMANCE.md)
 - Changelog — [CHANGELOG.md](CHANGELOG.md)
 - License — [LICENSE.md](LICENSE.md)

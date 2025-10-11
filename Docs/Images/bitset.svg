@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="220" viewBox="0 0 720 220">
+  <rect x="0" y="0" width="720" height="220" fill="#0f0f13"/>
+  <g font-family="Verdana,Arial,sans-serif" font-size="12" fill="#c8d1dc">
+    <text x="16" y="24">Bitset</text>
+  </g>
+  <!-- bit cells -->
+  <g fill="none" stroke="#9fb3c8" stroke-width="2">
+    <rect x="60" y="80" width="600" height="40"/>
+    <line x1="120" y1="80" x2="120" y2="120"/>
+    <line x1="180" y1="80" x2="180" y2="120"/>
+    <line x1="240" y1="80" x2="240" y2="120"/>
+    <line x1="300" y1="80" x2="300" y2="120"/>
+    <line x1="360" y1="80" x2="360" y2="120"/>
+    <line x1="420" y1="80" x2="420" y2="120"/>
+    <line x1="480" y1="80" x2="480" y2="120"/>
+    <line x1="540" y1="80" x2="540" y2="120"/>
+    <line x1="600" y1="80" x2="600" y2="120"/>
+    <line x1="660" y1="80" x2="660" y2="120"/>
+  </g>
+  <!-- values -->
+  <g font-family="Verdana,Arial,sans-serif" font-size="14" fill="#c8d1dc" text-anchor="middle">
+    <text x="90" y="105">1</text>
+    <text x="150" y="105">0</text>
+    <text x="210" y="105">1</text>
+    <text x="270" y="105">1</text>
+    <text x="330" y="105">0</text>
+    <text x="390" y="105">0</text>
+    <text x="450" y="105">1</text>
+    <text x="510" y="105">0</text>
+    <text x="570" y="105">1</text>
+    <text x="630" y="105">1</text>
+  </g>
+  <!-- indices -->
+  <g font-family="Verdana,Arial,sans-serif" font-size="10" fill="#9fb3c8" text-anchor="middle">
+    <text x="90" y="138">0</text>
+    <text x="150" y="138">1</text>
+    <text x="210" y="138">2</text>
+    <text x="270" y="138">3</text>
+    <text x="330" y="138">4</text>
+    <text x="390" y="138">5</text>
+    <text x="450" y="138">6</text>
+    <text x="510" y="138">7</text>
+    <text x="570" y="138">8</text>
+    <text x="630" y="138">9</text>
+  </g>
+</svg>
+

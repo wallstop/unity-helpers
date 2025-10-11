@@ -1,11 +1,42 @@
 # Spatial Tree Semantics
 
-This page explains how the 2D and 3D spatial structures compare in terms of correctness and why some 3D variants may produce different results for identical inputs and queries.
+This page explains how the 2D and 3D spatial structures compare in terms of correctness, when to use each structure, and why some 3D variants may produce different results for identical inputs and queries.
+
+## Structures At A Glance
+
+- QuadTree2D — Recursive 4-way partitioning of space. Good general-purpose point queries.
+- KDTree2D — Alternating axis splits. Strong for nearest neighbor and range queries on points.
+- RTree2D — Groups rectangles (AABBs) by minimum bounding rectangles (MBRs). Best when items have size.
+
+Illustrations:
+
+![QuadTree2D](Docs/Images/quadtree_2d.svg)
+
+![KDTree2D](Docs/Images/kdtree_2d.svg)
+
+![RTree2D](Docs/Images/rtree_2d.svg)
 
 ## 2D: Consistent Results Across QuadTree2D and KdTree2D
 
 - QuadTree2D and KdTree2D (balanced and unbalanced) index points and use equivalent per‑point checks for range and bounds queries. For the same input data and the same queries, they return the same results. Differences are limited to construction/query performance and memory layout.
 - RTree2D differs by design: it indexes rectangles (AABBs). If your elements have size, intersection/containment semantics involve those sizes, so results will differ from point‑based trees.
+
+### When To Use (2D)
+
+- QuadTree2D
+  - Use for broad-phase neighbor checks, visibility, and general spatial buckets where balanced performance and simplicity help.
+  - Pros: Simple mental model, predictable, easy to rebuild or update.
+  - Cons: Hotspots can create deeper trees; nearest-neighbor not optimal vs KDTree.
+
+- KDTree2D
+  - Use for nearest-neighbor and precise point range queries at scale.
+  - Pros: Excellent for NN queries, balanced variant gives consistent query time.
+  - Cons: Balanced build costs; dynamic updates more expensive than QuadTree.
+
+- RTree2D
+  - Use for geometry with area (AABBs), e.g., sprites, colliders, map tiles.
+  - Pros: Querying by bounds is very fast; items with size are first-class.
+  - Cons: Overlap between MBRs may increase query visits; tuned for bounds, not points.
 
 ## 3D: Why KdTree3D and OctTree3D Can Differ
 
@@ -38,4 +69,11 @@ Key reasons and scenarios:
 - In 3D, prefer KdTree3D for nearest‑neighbor point queries and OctTree3D for general‑purpose spatial partitioning. Be mindful of edge cases on query boundaries; add small epsilons if needed.
 - Use RTree2D/RTree3D for sized elements where bounds intersection is the primary concern.
 - For many moving objects with broad‑phase neighbor checks, prefer SpatialHash3D (stable) or SpatialHash2D.
+
+## Cheat Sheet
+
+- Many moving points, frequent rebuilds: QuadTree2D
+- Nearest neighbors on static points: KDTree2D (Balanced)
+- Fast builds with okay query performance: KDTree2D (Unbalanced)
+- Objects with size, bounds queries: RTree2D
 

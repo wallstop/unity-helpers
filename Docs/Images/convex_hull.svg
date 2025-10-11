@@ -20,7 +20,8 @@
   </g>
   <!-- hull polygon -->
   <g fill="none" stroke="#66d9a8" stroke-width="2.5">
-    <polygon points="90,240 160,220 300,260 420,220 460,110 420,80 120,100"/>
+    <!-- Include colinear/lower extreme point on the hull -->
+    <polygon points="90,240 160,220 210,260 300,260 420,220 460,110 420,80 120,100"/>
   </g>
   <!-- labels -->
   <g font-family="Verdana,Arial,sans-serif" font-size="11" fill="#9fb3c8">
