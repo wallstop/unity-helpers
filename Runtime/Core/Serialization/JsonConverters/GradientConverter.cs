@@ -43,9 +43,15 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
                 {
                     Gradient g = new();
                     if (cks != null)
+                    {
                         g.colorKeys = cks.ToArray();
+                    }
+
                     if (aks != null)
+                    {
                         g.alphaKeys = aks.ToArray();
+                    }
+
                     g.mode = haveMode ? mode : GradientMode.Blend;
                     return g;
                 }
@@ -72,7 +78,10 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
                             while (reader.Read())
                             {
                                 if (reader.TokenType == JsonTokenType.EndArray)
+                                {
                                     break;
+                                }
+
                                 list.Add(ReadColorKey(ref reader, options));
                             }
                             cks = new List<GradientColorKey>(list.Count);
@@ -94,7 +103,10 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
                             while (reader.Read())
                             {
                                 if (reader.TokenType == JsonTokenType.EndArray)
+                                {
                                     break;
+                                }
+
                                 list.Add(ReadAlphaKey(ref reader));
                             }
                             aks = new List<GradientAlphaKey>(list.Count);
@@ -117,7 +129,10 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
         )
         {
             if (reader.TokenType != JsonTokenType.StartObject)
+            {
                 throw new JsonException("Invalid colorKey token");
+            }
+
             Color c = default;
             float t = 0f;
             bool haveColor = false,
@@ -154,7 +169,10 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
         private static GradientAlphaKey ReadAlphaKey(ref Utf8JsonReader reader)
         {
             if (reader.TokenType != JsonTokenType.StartObject)
+            {
                 throw new JsonException("Invalid alphaKey token");
+            }
+
             float a = 0f,
                 t = 0f;
             bool haveA = false,

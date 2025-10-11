@@ -4,7 +4,6 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
     using System.Text.Json;
     using System.Text.Json.Serialization;
     using UnityEngine;
-    using UnityEngine.Rendering;
 
     public sealed class BoundingSphereConverter : JsonConverter<BoundingSphere>
     {

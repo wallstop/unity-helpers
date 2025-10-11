@@ -84,7 +84,10 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
                             while (reader.Read())
                             {
                                 if (reader.TokenType == JsonTokenType.EndObject)
+                                {
                                     break;
+                                }
+
                                 if (reader.TokenType == JsonTokenType.PropertyName)
                                 {
                                     if (reader.ValueTextEquals("numerator"))

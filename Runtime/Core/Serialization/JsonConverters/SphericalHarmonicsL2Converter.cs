@@ -66,11 +66,17 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
                             while (reader.Read())
                             {
                                 if (reader.TokenType == JsonTokenType.EndArray)
+                                {
                                     break;
+                                }
+
                                 if (i >= 27)
+                                {
                                     throw new JsonException(
                                         "Too many coefficients for SphericalHarmonicsL2"
                                     );
+                                }
+
                                 tmp[i++] = reader.GetSingle();
                             }
                             if (i != 27)

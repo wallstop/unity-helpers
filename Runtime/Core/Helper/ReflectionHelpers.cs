@@ -3962,7 +3962,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         {
             field = null;
             if (type == null || string.IsNullOrEmpty(name))
+            {
                 return false;
+            }
+
             (Type type, string name, BindingFlags flags) key = (type, name, flags);
 #if SINGLE_THREADED
             if (!FieldLookup.TryGetValue(key, out field))
@@ -3989,7 +3992,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         {
             property = null;
             if (type == null || string.IsNullOrEmpty(name))
+            {
                 return false;
+            }
+
             (Type type, string name, BindingFlags flags) key = (type, name, flags);
 #if SINGLE_THREADED
             if (!PropertyLookup.TryGetValue(key, out property))
@@ -4017,7 +4023,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         {
             method = null;
             if (type == null || string.IsNullOrEmpty(name))
+            {
                 return false;
+            }
+
             string sig = BuildMethodSignatureKey(name, paramTypes);
             (Type type, string sig, BindingFlags flags) key = (type, sig, flags);
 #if SINGLE_THREADED
@@ -4060,7 +4069,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         private static string BuildMethodSignatureKey(string name, Type[] paramTypes)
         {
             if (paramTypes == null || paramTypes.Length == 0)
+            {
                 return name + "()";
+            }
+
             return name
                 + "("
                 + string.Join(",", paramTypes.Select(t => t?.FullName ?? "null"))

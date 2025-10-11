@@ -23,12 +23,15 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         public static readonly FastVector3Int zero = new(0, 0, 0);
 
         [ProtoMember(1)]
+        [JsonIgnore]
         public readonly int x;
 
         [ProtoMember(2)]
+        [JsonIgnore]
         public readonly int y;
 
         [ProtoMember(4)]
+        [JsonIgnore]
         public readonly int z;
 
         // Out of order proto is expected

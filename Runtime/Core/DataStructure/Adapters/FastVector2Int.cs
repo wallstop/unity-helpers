@@ -23,9 +23,11 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         public static readonly FastVector2Int zero = new(0, 0);
 
         [ProtoMember(1)]
+        [JsonIgnore]
         public readonly int x;
 
         [ProtoMember(2)]
+        [JsonIgnore]
         public readonly int y;
 
         [ProtoMember(3)]
