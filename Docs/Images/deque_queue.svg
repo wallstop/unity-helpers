@@ -10,13 +10,15 @@
     <line x1="140" y1="70" x2="140" y2="120"/>
     <line x1="180" y1="70" x2="180" y2="120"/>
   </g>
-  <g stroke="#66d9a8" fill="#66d9a8">
+  <g stroke="#5ec69a" fill="#5ec69a">
     <line x1="60" y1="130" x2="60" y2="150"/>
     <polygon points="54,148 66,148 60,158"/>
-    <text x="40" y="170" font-size="11" fill="#9fb3c8">enqueue</text>
     <line x1="260" y1="60" x2="260" y2="40"/>
     <polygon points="254,42 266,42 260,32"/>
-    <text x="230" y="30" font-size="11" fill="#9fb3c8">dequeue</text>
+  </g>
+  <g font-family="Verdana,Arial,sans-serif" font-size="11" fill="#c8d1dc">
+    <text x="36" y="170">enqueue</text>
+    <text x="224" y="30">dequeue</text>
   </g>
   <g font-family="Verdana,Arial,sans-serif" font-size="11" fill="#9fb3c8">
     <text x="60" y="62">queue</text>
@@ -28,16 +30,17 @@
     <line x1="440" y1="70" x2="440" y2="120"/>
     <line x1="480" y1="70" x2="480" y2="120"/>
   </g>
-  <g stroke="#66d9a8" fill="#66d9a8">
+  <g stroke="#5ec69a" fill="#5ec69a">
     <line x1="360" y1="130" x2="360" y2="150"/>
     <polygon points="354,148 366,148 360,158"/>
-    <text x="332" y="170" font-size="11" fill="#9fb3c8">push_front</text>
     <line x1="580" y1="60" x2="580" y2="40"/>
     <polygon points="574,42 586,42 580,32"/>
-    <text x="552" y="30" font-size="11" fill="#9fb3c8">pop_back</text>
+  </g>
+  <g font-family="Verdana,Arial,sans-serif" font-size="11" fill="#c8d1dc">
+    <text x="320" y="170">push_front</text>
+    <text x="540" y="30">pop_back</text>
   </g>
   <g font-family="Verdana,Arial,sans-serif" font-size="11" fill="#9fb3c8">
     <text x="360" y="62">deque</text>
   </g>
 </svg>
-

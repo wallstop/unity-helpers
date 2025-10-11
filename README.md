@@ -192,7 +192,7 @@ When to use what
 - Hot loops/large arrays: Fast or FastPOCO (POCO-only graphs)
 - Mixed graphs with Unity types: Fast
 
-See the full guide for trade-offs, tips, and examples: SERIALIZATION.md
+See the full guide for trade-offs, tips, and examples: [SERIALIZATION.md](SERIALIZATION.md)
 ## Quick Start Guide
 
 ### Random Number Generation
@@ -563,7 +563,7 @@ Tips:
 - Prefer `%`-style changes with Multiplication and small flat changes with Addition.
 - Keep tag strings consistent; centralize in constants to avoid mistakes.
 
-Further reading: see the full guide EFFECTS_SYSTEM.md.
+Further reading: see the full guide [EFFECTS_SYSTEM.md](EFFECTS_SYSTEM.md).
 
 ### Component Attributes
 

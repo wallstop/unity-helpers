@@ -18,10 +18,9 @@
     <circle cx="300" cy="260" r="4"/>
     <circle cx="420" cy="80" r="4"/>
   </g>
-  <!-- hull polygon -->
+  <!-- hull polygon (strictly convex, CCW) -->
   <g fill="none" stroke="#66d9a8" stroke-width="2.5">
-    <!-- Include colinear/lower extreme point on the hull -->
-    <polygon points="90,240 160,220 210,260 300,260 420,220 460,110 420,80 120,100"/>
+    <polygon points="120,100 420,80 460,110 420,220 300,260 210,260 90,240"/>
   </g>
   <!-- labels -->
   <g font-family="Verdana,Arial,sans-serif" font-size="11" fill="#9fb3c8">

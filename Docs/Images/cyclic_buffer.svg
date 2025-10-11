@@ -17,19 +17,21 @@
   </g>
   <!-- head/tail pointers -->
   <g fill="#66d9a8" stroke="#66d9a8">
-    <polygon points="150,150 160,140 170,150 160,148"/>
-    <polygon points="500,58 510,68 520,58 510,60"/>
+    <!-- tail at first filled slot -->
+    <polygon points="145,58 155,68 165,58 155,60"/>
+    <!-- head at last filled slot -->
+    <polygon points="325,150 335,140 345,150 335,148"/>
   </g>
-  <g font-family="Verdana,Arial,sans-serif" font-size="11" fill="#9fb3c8">
-    <text x="138" y="170">head</text>
-    <text x="490" y="54">tail</text>
-    <text x="60" y="150">wrap-around on increment</text>
+  <g font-family="Verdana,Arial,sans-serif" font-size="11" fill="#c8d1dc">
+    <text x="140" y="54">tail</text>
+    <text x="318" y="170">head</text>
+    <text x="60" y="152">contiguous occupied region</text>
   </g>
-  <!-- a few filled cells to indicate data -->
+  <!-- contiguous filled cells to indicate data -->
   <g fill="rgba(122,162,255,0.22)" stroke="#7aa2ff">
-    <rect x="40" y="70" width="70" height="60"/>
     <rect x="110" y="70" width="70" height="60"/>
-    <rect x="460" y="70" width="70" height="60"/>
+    <rect x="180" y="70" width="70" height="60"/>
+    <rect x="250" y="70" width="70" height="60"/>
+    <rect x="320" y="70" width="70" height="60"/>
   </g>
 </svg>
-

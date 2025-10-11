@@ -19,12 +19,11 @@
     <circle cx="310" cy="260" r="4"/>
     <circle cx="420" cy="80" r="4"/>
   </g>
-  <!-- concave hull polygon with an inward indentation -->
+  <!-- concave hull polygon with an inward indentation (simple, non-self-intersecting; includes all points) -->
   <g fill="rgba(102, 217, 168, 0.12)" stroke="#66d9a8" stroke-width="2.5">
-    <polygon points="80,240 130,220 180,260 310,260 410,230 460,120 420,80 120,100 230,200 280,150 330,210"/>
+    <polygon points="120,100 420,80 460,120 420,220 360,230 300,260 210,260 80,240"/>
   </g>
   <g font-family="Verdana,Arial,sans-serif" font-size="11" fill="#9fb3c8">
     <text x="340" y="280">Concave hull captures shape detail</text>
   </g>
 </svg>
-

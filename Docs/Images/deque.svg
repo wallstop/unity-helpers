@@ -14,13 +14,16 @@
     <line x1="440" y1="80" x2="440" y2="140"/>
   </g>
   <!-- arrows indicating push/pop at both ends -->
-  <g stroke="#66d9a8" fill="#66d9a8">
+  <g stroke="#5ec69a" fill="#5ec69a">
     <line x1="80" y1="70" x2="80" y2="50"/>
     <polygon points="74,52 86,52 80,42"/>
-    <text x="60" y="40" font-size="11" fill="#9fb3c8">push_front/pop_front</text>
     <line x1="560" y1="150" x2="560" y2="170"/>
     <polygon points="554,168 566,168 560,178"/>
-    <text x="480" y="196" font-size="11" fill="#9fb3c8">push_back/pop_back</text>
+  </g>
+  <!-- labels (lighter, separate for readability) -->
+  <g font-family="Verdana,Arial,sans-serif" font-size="11" fill="#c8d1dc">
+    <text x="36" y="38">push_front / pop_front</text>
+    <text x="468" y="196">push_back / pop_back</text>
   </g>
   <!-- filled elements -->
   <g fill="rgba(122,162,255,0.22)" stroke="#7aa2ff">
@@ -30,4 +33,3 @@
     <rect x="260" y="80" width="60" height="60"/>
   </g>
 </svg>
-

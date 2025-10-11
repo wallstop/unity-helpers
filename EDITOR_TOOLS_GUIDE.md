@@ -1571,4 +1571,4 @@ All tools are designed to work together seamlessly and follow consistent design 
 ---
 
 For questions, issues, or feature requests, please contact the Wallstop Studios team.
-- Integration note: The cache powers editor dropdowns and reflection shortcuts for the Effects system’s `AttributeModification.attribute` field. See EFFECTS_SYSTEM.md for how attributes, effects, and tags fit together.
+- Integration note: The cache powers editor dropdowns and reflection shortcuts for the Effects system’s `AttributeModification.attribute` field. See [EFFECTS_SYSTEM.md](EFFECTS_SYSTEM.md) for how attributes, effects, and tags fit together.
