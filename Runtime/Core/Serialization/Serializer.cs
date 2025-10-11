@@ -680,7 +680,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
         ///   <see cref="ProtoException"/> is thrown to avoid ambiguous heuristics.
         ///
         /// Examples
-        /// <code>
+        /// <code><![CDATA[
         /// // 1) Using an abstract base with [ProtoInclude]s
         /// [ProtoContract]
         /// abstract class Message { }
@@ -696,7 +696,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
         ///
         /// // 3) Overload that specifies the concrete type explicitly
         /// IEvent evt2 = Serializer.ProtoDeserialize<IEvent>(bytes, typeof(PlayerJoined));
-        /// </code>
+        /// ]]></code>
         /// </remarks>
         public static T ProtoDeserialize<T>(byte[] data)
         {

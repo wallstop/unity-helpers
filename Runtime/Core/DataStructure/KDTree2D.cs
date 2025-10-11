@@ -15,6 +15,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     /// <remarks>
     /// Pros: Very fast nearest neighbor performance; good for static or batched updates.
     /// Cons: Immutable structure by design; rebuild when positions change frequently.
+    /// Semantics: For identical input data and queries, KdTree2D (balanced or unbalanced)
+    /// returns the same set of results as QuadTree2D; they differ only in performance characteristics.
     /// </remarks>
     [Serializable]
     public sealed class KdTree2D<T> : ISpatialTree2D<T>

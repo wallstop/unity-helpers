@@ -1,15 +1,17 @@
 # 3D Spatial Tree Performance Benchmarks
 
-> **⚠️ EXPERIMENTAL**: The 3D spatial tree implementations (OctTree3D, KDTree3D, RTree3D, SpatialHash3D) are currently experimental and under active development. APIs may change, and performance characteristics may vary. Use with caution in production environments.
+Note: KdTree3D, OctTree3D, and RTree3D are under active development and their APIs/performance may evolve. SpatialHash3D is stable and recommended for broad‑phase neighbor queries with many moving objects.
+
+For boundary and result semantics across structures, see Spatial Tree Semantics — SPATIAL_TREE_SEMANTICS.md
 
 This document contains performance benchmarks for the 3D spatial tree implementations in Unity Helpers.
 
 ## Available 3D Spatial Trees
 
-- **OctTree3D** - Easiest to use, good all-around performance for 3D *(Experimental)*
-- **KDTree3D** - Balanced and unbalanced variants available *(Experimental)*
-- **RTree3D** - Optimized for 3D bounding box queries *(Experimental)*
-- **SpatialHash3D** - Efficient for uniformly distributed moving objects *(Experimental)*
+- **OctTree3D** - Easiest to use, good all-around performance for 3D
+- **KDTree3D** - Balanced and unbalanced variants available
+- **RTree3D** - Optimized for 3D bounding box queries
+- **SpatialHash3D** - Efficient for uniformly distributed moving objects (stable)
 
 ## Performance Benchmarks
 

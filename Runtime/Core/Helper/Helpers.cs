@@ -22,7 +22,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
     /// <remarks>
     /// Scope: Cross-cutting helpers for gameplay, math, pooling, scene, sprites, and layers.
     /// Threading: Unless noted otherwise, methods that touch Unity APIs must run on the main thread.
-    /// Performance: Many methods use pooled buffers (see Buffers<T>) to avoid allocations.
+    /// Performance: Many methods use pooled buffers (see Buffers&lt;T&gt;) to avoid allocations.
     /// </remarks>
     public static partial class Helpers
     {

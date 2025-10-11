@@ -8,6 +8,11 @@ This document contains performance benchmarks for the 2D spatial tree implementa
 - **KDTree2D** - Balanced and unbalanced variants available
 - **RTree2D** - Optimized for bounding box queries
 
+### Correctness & Semantics
+
+- QuadTree2D and KdTree2D (balanced and unbalanced) guarantee the same results for the same input data and the same queries. They are both point-based trees and differ only in construction/query performance characteristics.
+- RTree2D is bounds-based (stores rectangles/AABBs), not points. Its spatial knowledge and query semantics operate on rectangles, so its results will intentionally differ for sized objects and bounds intersection queries.
+
 ## Performance Benchmarks
 
 <!-- SPATIAL_TREE_BENCHMARKS_START -->

@@ -42,6 +42,7 @@ Unity Helpers was built to solve common game development challenges with **perfo
 - 🔧 **20+ editor tools** to streamline your workflow
 - 📦 **Zero dependencies** - just import and use
 - ✅ **Production-tested** in shipped games
+- 🧪 **3500+ test cases** cover most of the public API and run before each release to catch regressions and prevent bugs
 
 ## Key Features
 
@@ -56,7 +57,9 @@ Unity Helpers was built to solve common game development challenges with **perfo
 - Perfect for collision detection, AI, visibility culling
 - **Massive performance gains** for games with many objects
 - Immutable trees with O(log n) query performance
-- **Note**: 3D variants are experimental and under active development
+- Note on stability and semantics:
+  - 2D: QuadTree2D and KdTree2D (balanced/unbalanced) return the same results for the same inputs/queries; they differ only in performance characteristics. RTree2D indexes rectangles (bounds), so results differ for sized objects.
+  - 3D: KdTree3D (balanced/unbalanced) and OctTree3D can yield different results for the same inputs/queries due to boundary, tie‑breaking, and traversal semantics. RTree3D indexes 3D bounds and differs by design. See Spatial Tree Semantics for details.
 
 ### Powerful Component Attributes
 - `[ParentComponent]`, `[ChildComponent]`, `[SiblingComponent]` - Auto-wire components
@@ -101,6 +104,7 @@ Unity Helpers was built to solve common game development challenges with **perfo
 - Effects System — [EFFECTS_SYSTEM.md](EFFECTS_SYSTEM.md)
 - Spatial Tree 2D Performance — [SPATIAL_TREE_2D_PERFORMANCE.md](SPATIAL_TREE_2D_PERFORMANCE.md)
 - Spatial Tree 3D Performance — [SPATIAL_TREE_3D_PERFORMANCE.md](SPATIAL_TREE_3D_PERFORMANCE.md)
+ - Spatial Tree Semantics — [SPATIAL_TREE_SEMANTICS.md](SPATIAL_TREE_SEMANTICS.md)
 - Random Performance — [RANDOM_PERFORMANCE.md](RANDOM_PERFORMANCE.md)
 - Changelog — [CHANGELOG.md](CHANGELOG.md)
 - License — [LICENSE.md](LICENSE.md)
@@ -454,14 +458,14 @@ tree.GetElementsInBounds(searchArea, nearby);
 tree.GetApproximateNearestNeighbors(playerPos, count: 5, nearby);
 ```
 
-#### 3D Spatial Trees *(Experimental)*
+#### 3D Spatial Trees
 
-> **⚠️ EXPERIMENTAL**: 3D spatial trees are under active development. APIs and performance may change.
+Note: KdTree3D, OctTree3D, and RTree3D are under active development. SpatialHash3D is stable and production‑ready.
 
 - **OctTree3D** - Best general-purpose choice for 3D
 - **KDTree3D** - Fast 3D nearest-neighbor queries
 - **RTree3D** - Optimized for 3D bounding volumes
-- **SpatialHash3D** - Efficient for uniformly distributed moving objects
+- **SpatialHash3D** - Efficient for uniformly distributed moving objects (stable)
 
 ```csharp
 // Same API as 2D, but with Vector3
@@ -489,6 +493,8 @@ tree.GetElementsInRange(center, radius: 50f, results);
 - Already using Unity's physics system
 
 [📊 2D Benchmarks](SPATIAL_TREE_2D_PERFORMANCE.md) | [📊 3D Benchmarks](SPATIAL_TREE_3D_PERFORMANCE.md)
+
+For behavior details and edge cases, see: [Spatial Tree Semantics](SPATIAL_TREE_SEMANTICS.md)
 
 ### Effects, Attributes, and Tags
 

@@ -12,8 +12,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     /// Simpler and more efficient than octrees for uniformly distributed objects and frequently moving items.
     /// </summary>
     /// <remarks>
-    /// <para><b>⚠️ EXPERIMENTAL:</b> This 3D spatial hash implementation is currently experimental and under active development.</para>
-    /// <para>APIs may change, and performance characteristics may vary. Use with caution in production environments.</para>
+    /// This structure is stable and production-ready. It supports distinct or non-distinct queries,
+    /// exact-distance filtering, and efficient incremental updates for moving items.
     /// </remarks>
     [Serializable]
     public sealed class SpatialHash3D<T> : IDisposable

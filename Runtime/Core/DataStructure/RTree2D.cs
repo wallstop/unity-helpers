@@ -15,6 +15,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     /// <remarks>
     /// Pros: Great for sized objects (sprites, colliders) with area; supports fast rectangle and radius queries.
     /// Cons: Immutable; rebuild when element bounds change.
+    /// Semantics: RTree2D indexes rectangles (AABBs) rather than points; as such its query results intentionally
+    /// differ from point-based structures like QuadTree2D/KdTree2D for the same scene when elements have size.
     /// </remarks>
     [Serializable]
     public sealed class RTree2D<T> : ISpatialTree2D<T>

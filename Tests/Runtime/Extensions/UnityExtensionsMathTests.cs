@@ -887,7 +887,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         public void FastIntersects3DAlmostTouchingBoundsReturnsFalse()
         {
             Bounds bounds1 = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
-            Bounds bounds2 = new(new Vector3(5.01f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            // Place bounds2 just beyond touching so there's a gap on X
+            Bounds bounds2 = new(new Vector3(10.01f, 0f, 0f), new Vector3(10f, 10f, 10f));
             Assert.IsFalse(bounds1.FastIntersects(bounds2));
         }
 
@@ -1497,7 +1498,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         public void FastContainsHalfOpen3DFullyContainedReturnsTrue()
         {
             Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(100f, 100f, 100f));
-            Bounds inner = new(new Vector3(25f, 25f, 25f), new Vector3(50f, 50f, 50f));
+            // Inner.max must be strictly below outer.max for half-open semantics
+            Bounds inner = new(new Vector3(25f, 25f, 25f), new Vector3(49.99f, 49.99f, 49.99f));
             Assert.IsTrue(outer.FastContainsHalfOpen3D(inner));
         }
 
@@ -1529,7 +1531,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         public void FastContainsHalfOpen3DInnerMinAtOuterMinReturnsTrue()
         {
             Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(20f, 20f, 20f));
-            Bounds inner = new(new Vector3(-10f, -10f, -10f), new Vector3(15f, 15f, 15f));
+            // Set inner so inner.min == outer.min (-10) and inner.max < outer.max (10)
+            Bounds inner = new(new Vector3(-2.5f, -2.5f, -2.5f), new Vector3(15f, 15f, 15f));
             Assert.IsTrue(outer.FastContainsHalfOpen3D(inner));
         }
 
@@ -1602,7 +1605,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         public void FastContainsHalfOpen3DVerySmallInnerReturnsTrue()
         {
             Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
-            Bounds inner = new(new Vector3(5f, 5f, 5f), new Vector3(0.01f, 0.01f, 0.01f));
+            // Place tiny inner strictly inside (not at max)
+            Bounds inner = new(new Vector3(0f, 0f, 0f), new Vector3(0.01f, 0.01f, 0.01f));
             Assert.IsTrue(outer.FastContainsHalfOpen3D(inner));
         }
 
@@ -1618,8 +1622,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         public void FastContainsHalfOpen3DZeroVolumeInnerReturnsTrue()
         {
             Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
-            Bounds inner = new(new Vector3(5f, 5f, 5f), new Vector3(0f, 0f, 0f));
-            // Degenerate inner point not at max is allowed by half-open semantics
+            // Degenerate inner point must not be at max; place at center
+            Bounds inner = new(new Vector3(0f, 0f, 0f), new Vector3(0f, 0f, 0f));
             Assert.IsTrue(outer.FastContainsHalfOpen3D(inner));
         }
 

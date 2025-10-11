@@ -3827,10 +3827,24 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// Performance: O(1) - Optimized to cache min/max values. Faster than Unity's built-in Bounds.Intersects.
         /// Allocations: None.
         /// Unity Behavior: Uses bounds.min and bounds.max properties.
-        /// Edge Cases: Bounds that touch but don't overlap return false. Zero-size bounds can intersect.
+        /// Edge Cases: Bounds that touch but don't overlap return false. Zero-size bounds do not intersect.
         /// </remarks>
         public static bool FastIntersects(this Bounds bounds, Bounds other)
         {
+            // Degenerate bounds (zero volume) do not intersect
+            Vector3 sizeA = bounds.size;
+            Vector3 sizeB = other.size;
+            if (
+                sizeA.x <= 0f
+                || sizeA.y <= 0f
+                || sizeA.z <= 0f
+                || sizeB.x <= 0f
+                || sizeB.y <= 0f
+                || sizeB.z <= 0f
+            )
+            {
+                return false;
+            }
             Vector3 boundsMin = bounds.min;
             Vector3 otherMax = other.max;
             if (otherMax.x < boundsMin.x || otherMax.y < boundsMin.y || otherMax.z < boundsMin.z)
@@ -3880,7 +3894,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// Allocations: None.
         /// Unity Behavior: Uses BoundsInt min/max properties.
         /// Edge Cases: Zero-size bounds (size <= 0 in X or Y) cannot intersect and return false.
-        /// Bounds that touch but don't overlap return false. Z axis is ignored.
+        /// Bounds that touch at an edge are considered intersecting (inclusive). Z axis is ignored.
         /// </remarks>
         public static bool FastIntersects2D(this BoundsInt bounds, BoundsInt other)
         {
@@ -3964,7 +3978,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// Performance: O(1) - Optimized to cache min/max values.
         /// Allocations: None.
         /// Unity Behavior: Uses Bounds min/max properties.
-        /// Edge Cases: Bounds that touch but don't overlap return false. Z axis is ignored.
+        /// Edge Cases: Bounds that touch at edges are considered intersecting (inclusive). Z axis is ignored.
         /// </remarks>
         public static bool FastIntersects2D(this Bounds bounds, Bounds other)
         {
@@ -4056,11 +4070,25 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         // =========================
 
         /// <summary>
-        /// Fast 3D bounds intersection with optional tolerance and half-open semantics at max edges.
-        /// Touching at max faces is not considered intersection; touching at min faces is considered intersection.
+        /// Fast 3D bounds intersection with optional tolerance.
+        /// Touching at faces is considered intersection (inclusive at boundaries).
         /// </summary>
         public static bool FastIntersects3D(this Bounds a, Bounds b, float tolerance = 0f)
         {
+            // Degenerate bounds (zero volume) do not intersect
+            Vector3 asize = a.size;
+            Vector3 bsize = b.size;
+            if (
+                asize.x <= 0f
+                || asize.y <= 0f
+                || asize.z <= 0f
+                || bsize.x <= 0f
+                || bsize.y <= 0f
+                || bsize.z <= 0f
+            )
+            {
+                return false;
+            }
             Vector3 amin = a.min;
             Vector3 bmax = b.max;
             if (

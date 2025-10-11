@@ -32,7 +32,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
     /// - Designed for hot paths (serialization, UI binding, ECS-style systems).
     /// </remarks>
     /// <example>
-    /// <code>
+    /// <code><![CDATA[
     /// // Get and set a field without repeated reflection costs
     /// public sealed class Player { public int Score; }
     /// var field = typeof(Player).GetField("Score");
@@ -41,7 +41,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
     /// var p = new Player();
     /// setter(p, 42);
     /// UnityEngine.Debug.Log(getter(p)); // 42
-    /// </code>
+    /// ]]></code>
     /// </example>
     public static class ReflectionHelpers
     {
@@ -101,12 +101,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// <param name="inherit">Whether to search base types.</param>
         /// <returns>True if attribute exists; otherwise false.</returns>
         /// <example>
-        /// <code>
+        /// <code><![CDATA[
         /// if (typeof(MyComponent).IsAttributeDefined(out ObsoleteAttribute attr))
         /// {
         ///     UnityEngine.Debug.Log($"Marked obsolete: {attr.Message}");
         /// }
-        /// </code>
+        /// ]]></code>
         /// </example>
         public static bool IsAttributeDefined<T>(
             this ICustomAttributeProvider provider,
@@ -146,11 +146,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// Use when enumerating well-known static instances or singletons of a type.
         /// </remarks>
         /// <example>
-        /// <code>
+        /// <code><![CDATA[
         /// // Finds all: public static T SomeProperty { get; }
         /// var props = ReflectionHelpers.LoadStaticPropertiesForType<MyType>();
         /// foreach (var kvp in props) UnityEngine.Debug.Log($"{kvp.Key} -> {kvp.Value}");
-        /// </code>
+        /// ]]></code>
         /// </example>
         public static Dictionary<string, PropertyInfo> LoadStaticPropertiesForType<T>()
         {
@@ -172,10 +172,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// Use when mapping constant instances or static registries.
         /// </remarks>
         /// <example>
-        /// <code>
+        /// <code><![CDATA[
         /// var fields = ReflectionHelpers.LoadStaticFieldsForType<MyType>();
         /// // Access FieldInfo directly to get or set values
-        /// </code>
+        /// ]]></code>
         /// </example>
         public static Dictionary<string, FieldInfo> LoadStaticFieldsForType<T>()
         {
@@ -194,9 +194,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// Creates a new array instance of element <paramref name="type"/> with the specified length.
         /// </summary>
         /// <example>
-        /// <code>
+        /// <code><![CDATA[
         /// Array ints = ReflectionHelpers.CreateArray(typeof(int), 16); // int[16]
-        /// </code>
+        /// ]]></code>
         /// </example>
         public static Array CreateArray(Type type, int length)
         {
@@ -211,9 +211,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// Creates a new <see cref="List{T}"/> instance for <paramref name="elementType"/> with the specified capacity.
         /// </summary>
         /// <example>
-        /// <code>
+        /// <code><![CDATA[
         /// IList list = ReflectionHelpers.CreateList(typeof(string), 128); // List<string> with Capacity=128
-        /// </code>
+        /// ]]></code>
         /// </example>
         public static IList CreateList(Type elementType, int length)
         {
@@ -228,9 +228,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// Creates a new <see cref="List{T}"/> instance for <paramref name="elementType"/>.
         /// </summary>
         /// <example>
-        /// <code>
+        /// <code><![CDATA[
         /// IList list = ReflectionHelpers.CreateList(typeof(UnityEngine.Vector3));
-        /// </code>
+        /// ]]></code>
         /// </example>
         public static IList CreateList(Type elementType)
         {
@@ -245,11 +245,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// <param name="field">Field to read.</param>
         /// <returns>Delegate: <c>object instance =&gt; object value</c></returns>
         /// <example>
-        /// <code>
+        /// <code><![CDATA[
         /// var fi = typeof(Player).GetField("Score");
         /// var getter = ReflectionHelpers.GetFieldGetter(fi);
         /// object value = getter(myPlayer);
-        /// </code>
+        /// ]]></code>
         /// </example>
         public static Func<object, object> GetFieldGetter(FieldInfo field)
         {
@@ -292,11 +292,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// <param name="property">Property to read.</param>
         /// <returns>Delegate: <c>object instanceOrNull =&gt; object value</c></returns>
         /// <example>
-        /// <code>
+        /// <code><![CDATA[
         /// var pi = typeof(Settings).GetProperty("Instance"); // static property
         /// var getter = ReflectionHelpers.GetPropertyGetter(pi);
         /// object inst = getter(null);
-        /// </code>
+        /// ]]></code>
         /// </example>
         public static Func<object, object> GetPropertyGetter(PropertyInfo property)
         {
@@ -354,12 +354,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// <param name="property">Property to read.</param>
         /// <returns>Delegate: <c>TInstance instance =&gt; TValue value</c></returns>
         /// <example>
-        /// <code>
+        /// <code><![CDATA[
         /// var pi = typeof(TestPropertyClass).GetProperty(nameof(TestPropertyClass.InstanceProperty));
         /// var getter = ReflectionHelpers.GetPropertyGetter<TestPropertyClass, int>(pi);
         /// var obj = new TestPropertyClass { InstanceProperty = 123 };
         /// int value = getter(obj); // 123
-        /// </code>
+        /// ]]></code>
         /// </example>
         public static Func<TInstance, TValue> GetPropertyGetter<TInstance, TValue>(
             PropertyInfo property
@@ -452,12 +452,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// <param name="property">Property to set.</param>
         /// <returns>Delegate: <c>(object instanceOrNull, object value) =&gt; void</c></returns>
         /// <example>
-        /// <code>
+        /// <code><![CDATA[
         /// var pi = typeof(TestPropertyClass).GetProperty(nameof(TestPropertyClass.InstanceProperty));
         /// var setter = ReflectionHelpers.GetPropertySetter(pi);
         /// object obj = new TestPropertyClass();
         /// setter(obj, 321);
-        /// </code>
+        /// ]]></code>
         /// </example>
         public static Action<object, object> GetPropertySetter(PropertyInfo property)
         {
@@ -527,10 +527,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// <exception cref="ArgumentNullException">If <paramref name="type"/> is null.</exception>
         /// <exception cref="ArgumentException">If the type lacks a parameterless constructor.</exception>
         /// <example>
-        /// <code>
+        /// <code><![CDATA[
         /// var ctor = ReflectionHelpers.GetParameterlessConstructor(typeof(List<int>));
         /// object list = ctor();
-        /// </code>
+        /// ]]></code>
         /// </example>
         public static Func<object> GetParameterlessConstructor(Type type)
         {
@@ -1001,7 +1001,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         }
 
         /// <summary>
-        /// Gets (or caches) a List<T> creator function for the given element type.
+        /// Gets (or caches) a List&lt;T&gt; creator function for the given element type.
         /// </summary>
         /// <summary>
         /// Gets (or caches) a <see cref="List{T}"/> creator function for the given element type.
@@ -1037,7 +1037,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         }
 
         /// <summary>
-        /// Gets (or caches) a List<T> creator function with capacity for the given element type.
+        /// Gets (or caches) a List&lt;T&gt; creator function with capacity for the given element type.
         /// </summary>
         /// <summary>
         /// Gets (or caches) a <see cref="List{T}"/> creator function with capacity for the given element type.
@@ -1081,9 +1081,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// <param name="capacity">Initial capacity.</param>
         /// <returns>A boxed <c>HashSet&lt;T&gt;</c> as <see cref="object"/>.</returns>
         /// <example>
-        /// <code>
+        /// <code><![CDATA[
         /// object set = ReflectionHelpers.CreateHashSet(typeof(string), 64); // HashSet<string>
-        /// </code>
+        /// ]]></code>
         /// </example>
         public static object CreateHashSet(Type elementType, int capacity)
         {
@@ -1133,11 +1133,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// <param name="elementType">Element type for the target <c>HashSet&lt;T&gt;</c>.</param>
         /// <returns>Delegate: <c>(object hashSet, object item) =&gt; void</c></returns>
         /// <example>
-        /// <code>
+        /// <code><![CDATA[
         /// object set = ReflectionHelpers.CreateHashSet(typeof(int), 0);
         /// var add = ReflectionHelpers.GetHashSetAdder(typeof(int));
         /// add(set, 5);
-        /// </code>
+        /// ]]></code>
         /// </example>
         public static Action<object, object> GetHashSetAdder(Type elementType)
         {
@@ -1270,9 +1270,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// <typeparam name="T">Type to create.</typeparam>
         /// <returns>New instance of <typeparamref name="T"/>.</returns>
         /// <example>
-        /// <code>
+        /// <code><![CDATA[
         /// var p = ReflectionHelpers.CreateInstance<Player>(name, level);
-        /// </code>
+        /// ]]></code>
         /// </example>
         public static T CreateInstance<T>(params object[] parameters)
         {

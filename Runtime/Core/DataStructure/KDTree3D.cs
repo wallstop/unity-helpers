@@ -12,10 +12,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     /// </summary>
     /// <typeparam name="T">Element type contained in the tree.</typeparam>
     /// <remarks>
-    /// <para><b>⚠️ EXPERIMENTAL:</b> This 3D spatial tree implementation is currently experimental and under active development.</para>
-    /// <para>APIs may change, and performance characteristics may vary. Use with caution in production environments.</para>
     /// <para>Pros: Very fast nearest neighbor performance; good for static or batched updates.</para>
     /// <para>Cons: Immutable structure by design; rebuild when positions change frequently.</para>
+    /// <para>Semantics: Due to algorithmic choices (axis-aligned splitting, half-open containment checks,
+    /// minimum node-size enforcement, and tie-handling on split planes), KdTree3D (balanced and unbalanced)
+    /// may return different edge-case results compared to OctTree3D for identical inputs/queries—especially for
+    /// points lying exactly on query boundaries or split planes. See SPATIAL_TREE_SEMANTICS.md for details.</para>
     /// </remarks>
     [Serializable]
     public sealed class KdTree3D<T> : ISpatialTree3D<T>

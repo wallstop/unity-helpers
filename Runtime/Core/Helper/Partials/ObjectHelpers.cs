@@ -24,9 +24,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// <param name="log">If true, logs a warning when not found.</param>
         /// <returns>The component instance if found; otherwise default.</returns>
         /// <example>
-        /// <code>
+        /// <code><![CDATA[
         /// var audio = this.Find<AudioManager>("AudioManager");
-        /// </code>
+        /// ]]></code>
         /// </example>
         public static T Find<T>(this Object component, string tag, bool log = true)
             where T : Object

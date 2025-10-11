@@ -10,12 +10,12 @@ namespace WallstopStudios.UnityHelpers.Core.Math
     /// Inclusive Range [min,max] with configurable endpoint inclusivity.
     /// </summary>
     /// <example>
-    /// <code>
+    /// <code><![CDATA[
     /// var r = Range<int>.Inclusive(0, 10);
     /// bool yes = r.Contains(10); // true (inclusive end)
     /// var re = Range<int>.Exclusive(0, 10);
     /// bool no = re.Contains(10); // false (exclusive end)
-    /// </code>
+    /// ]]></code>
     /// </example>
     [Serializable]
     [DataContract]

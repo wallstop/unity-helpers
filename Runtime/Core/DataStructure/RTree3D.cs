@@ -12,10 +12,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     /// </summary>
     /// <typeparam name="T">Element type.</typeparam>
     /// <remarks>
-    /// <para><b>⚠️ EXPERIMENTAL:</b> This 3D spatial tree implementation is currently experimental and under active development.</para>
-    /// <para>APIs may change, and performance characteristics may vary. Use with caution in production environments.</para>
     /// <para>Pros: Great for sized 3D objects (meshes, volumes) with fast box and radius intersection queries.</para>
     /// <para>Cons: Immutable; rebuild when element bounds change.</para>
+    /// <para>Semantics: RTree3D indexes 3D bounds (AABBs), not points, and aggregates at node level using bounding volumes.
+    /// As such, results differ by design from point-based structures like KdTree3D/OctTree3D for the same scene.</para>
     /// </remarks>
     [Serializable]
     public sealed class RTree3D<T> : ISpatialTree3D<T>

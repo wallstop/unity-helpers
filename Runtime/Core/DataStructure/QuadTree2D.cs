@@ -15,6 +15,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     /// <remarks>
     /// Pros: Excellent query performance for static data, low allocations for repeated queries, deterministic iteration.
     /// Cons: Immutable structure; rebuild when positions change. Prefer <c>SpatialHash2D</c> for frequently moving, uniformly distributed data.
+    /// Semantics: For identical input data and queries, QuadTree2D and KdTree2D (balanced/unbalanced)
+    /// produce the same results; the primary difference is performance and memory layout. RTree2D differs by indexing rectangles.
     /// Usage: Build once from points, then call <see cref="GetElementsInRange(UnityEngine.Vector2,float,System.Collections.Generic.List{T},float)"/> or <see cref="GetElementsInBounds(UnityEngine.Bounds,System.Collections.Generic.List{T})"/>.
     /// </remarks>
     [Serializable]
@@ -415,10 +417,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         /// <param name="minimumRange">Optional inner exclusion radius.</param>
         /// <returns>The destination list, for chaining.</returns>
         /// <example>
-        /// <code>
+        /// <code><![CDATA[
         /// var tree = new QuadTree2D<Enemy>(enemies, e => e.transform.position);
         /// tree.GetElementsInRange(playerPos, 10f, results);
-        /// </code>
+        /// ]]></code>
         /// </example>
         public List<T> GetElementsInRange(
             Vector2 position,
