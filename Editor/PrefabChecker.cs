@@ -319,50 +319,75 @@ namespace WallstopStudios.UnityHelpers.Editor
 
         private void AddFolder()
         {
-            string projectPath = Directory.GetParent(Application.dataPath)?.FullName;
-            if (string.IsNullOrWhiteSpace(projectPath))
-            {
-                this.LogError($"Failed to find project path!");
-                return;
-            }
             string absolutePath = EditorUtility.OpenFolderPanel(
                 "Select Prefab Folder",
                 "Assets",
-                ""
+                string.Empty
             );
 
-            if (!string.IsNullOrEmpty(absolutePath))
+            if (string.IsNullOrWhiteSpace(absolutePath))
             {
-                if (absolutePath.StartsWith(projectPath, StringComparison.Ordinal))
-                {
-                    string relativePath =
-                        "Assets" + absolutePath.Substring(projectPath.Length).Replace('\\', '/');
+                return;
+            }
 
-                    if (AssetDatabase.IsValidFolder(relativePath))
-                    {
-                        if (!_assetPaths.Contains(relativePath))
-                        {
-                            _assetPaths.Add(relativePath);
-                        }
-                        else
-                        {
-                            this.LogWarn($"Folder '{relativePath}' is already in the list.");
-                        }
-                    }
-                    else
-                    {
-                        this.LogWarn(
-                            $"Selected path '{relativePath}' is not a valid Unity folder."
-                        );
-                    }
+            if (!TryGetUnityFolderFromAbsolute(absolutePath, out string relativePath))
+            {
+                this.LogError(
+                    $"Selected folder must be inside the Unity project's Assets folder. Selected path: {absolutePath}"
+                );
+                return;
+            }
+
+            if (
+                relativePath.Equals("Assets", StringComparison.Ordinal)
+                || AssetDatabase.IsValidFolder(relativePath)
+            )
+            {
+                if (!_assetPaths.Contains(relativePath))
+                {
+                    _assetPaths.Add(relativePath);
                 }
                 else
                 {
-                    this.LogError(
-                        $"Selected folder must be inside the Unity project's Assets folder. Project path: {projectPath}, Selected path: {absolutePath}"
-                    );
+                    this.LogWarn($"Folder '{relativePath}' is already in the list.");
                 }
             }
+            else
+            {
+                this.LogWarn($"Selected path '{relativePath}' is not a valid Unity folder.");
+            }
+        }
+
+        internal static bool TryGetUnityFolderFromAbsolute(
+            string absolutePath,
+            out string unityRelative
+        )
+        {
+            unityRelative = string.Empty;
+            if (string.IsNullOrWhiteSpace(absolutePath))
+            {
+                return false;
+            }
+
+            string rel = DirectoryHelper.AbsoluteToUnityRelativePath(absolutePath);
+            if (string.IsNullOrWhiteSpace(rel))
+            {
+                return false;
+            }
+
+            // Normalize slashes and casing for consistency
+            rel = rel.Replace('\\', '/');
+            if (rel.StartsWith("assets/", StringComparison.OrdinalIgnoreCase))
+            {
+                rel = "Assets/" + rel.Substring("assets/".Length);
+            }
+            else if (string.Equals(rel, "assets", StringComparison.OrdinalIgnoreCase))
+            {
+                rel = "Assets";
+            }
+
+            unityRelative = rel;
+            return true;
         }
 
         private void RunChecks()

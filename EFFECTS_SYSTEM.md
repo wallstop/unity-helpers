@@ -4,6 +4,12 @@ Data‑driven gameplay effects that modify stats, apply tags, and drive cosmetic
 
 This guide explains the concepts, how they work together, authoring patterns, recipes, best practices, and FAQs.
 
+Visuals
+
+![Effects Pipeline](Docs/Images/effects_pipeline.svg)
+
+![Attribute Resolution](Docs/Images/attribute_resolution.svg)
+
 ## Concepts
 
 - `Attribute` — A dynamic numeric value with a base and a calculated current value. Current value applies all active modifications.
@@ -144,4 +150,3 @@ Q: When should I use tags vs checking stats?
 Related:
 - README section: “Effects, Attributes, and Tags”
 - Attribute Metadata Cache (Editor Tools) for dropdowns and performance
-

@@ -1,5 +1,9 @@
 # Random Number Generator Performance Benchmarks
 
+Visual
+
+![Random Generators](Docs/Images/random_generators.svg)
+
 This document contains performance benchmarks for the various random number generators included in Unity Helpers.
 
 ## Performance (Operations per Second)

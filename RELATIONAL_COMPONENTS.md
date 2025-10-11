@@ -1,5 +1,9 @@
 # Relational Component Attributes
 
+Visual
+
+![Relational Wiring](Docs/Images/relational_wiring.svg)
+
 Auto-wire components in your hierarchy without `GetComponent` boilerplate. These attributes make common relationships explicit, robust, and easy to maintain.
 
 - `SiblingComponent` — same GameObject

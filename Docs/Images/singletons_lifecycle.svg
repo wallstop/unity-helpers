@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="360" viewBox="0 0 820 360">
+  <rect x="0" y="0" width="820" height="360" fill="#0f0f13"/>
+  <g font-family="Verdana,Arial,sans-serif" font-size="14" fill="#c8d1dc">
+    <text x="16" y="26">Singletons — Runtime vs ScriptableObject</text>
+  </g>
+  <!-- runtime singleton -->
+  <g fill="#1d2330" stroke="#7aa2ff" stroke-width="2">
+    <rect x="40" y="60" width="340" height="70" rx="8"/>
+  </g>
+  <g font-family="Verdana,Arial,sans-serif" font-size="12" fill="#e0e6ee">
+    <text x="50" y="86">RuntimeSingleton&lt;T&gt;: GetInstance()</text>
+    <text x="50" y="104">- Create if missing</text>
+    <text x="50" y="122">- DontDestroyOnLoad (optional)</text>
+  </g>
+  <!-- so singleton -->
+  <g fill="#1d2330" stroke="#7aa2ff" stroke-width="2">
+    <rect x="440" y="60" width="340" height="70" rx="8"/>
+  </g>
+  <g font-family="Verdana,Arial,sans-serif" font-size="12" fill="#e0e6ee">
+    <text x="450" y="86">ScriptableObjectSingleton&lt;T&gt;: Instance</text>
+    <text x="450" y="104">- Load from Resources</text>
+    <text x="450" y="122">- Editor auto-create helper</text>
+  </g>
+  <!-- SO singleton: DB/lookup usage -->
+  <g fill="none" stroke="#9fb3c8" stroke-dasharray="6 6" stroke-width="2">
+    <rect x="440" y="140" width="340" height="130" rx="8"/>
+  </g>
+  <g font-family="Verdana,Arial,sans-serif" font-size="11" fill="#c8d1dc">
+    <text x="450" y="160">Use as single source of truth (DB/registry)</text>
+    <text x="450" y="178">- Fast lookups: dictionaries, indices</text>
+    <text x="450" y="196">- Editor-friendly data authoring</text>
+    <text x="450" y="214">- Deterministic loads via Resources path</text>
+    <text x="450" y="232">- Great for items, abilities, localization</text>
+  </g>
+  <!-- scene transition timeline -->
+  <g font-family="Verdana,Arial,sans-serif" font-size="12" fill="#c8d1dc">
+    <text x="40" y="170">Scene A</text>
+    <text x="180" y="170">→</text>
+    <text x="210" y="170">Scene B</text>
+    <text x="350" y="170">→</text>
+    <text x="380" y="170">Scene C</text>
+  </g>
+  <g stroke="#9fb3c8" stroke-width="2">
+    <line x1="40" y1="180" x2="420" y2="180"/>
+  </g>
+  <g stroke="#5ec69a" stroke-width="2">
+    <line x1="100" y1="180" x2="100" y2="220"/>
+    <line x1="260" y1="180" x2="260" y2="220"/>
+    <line x1="380" y1="180" x2="380" y2="220"/>
+  </g>
+  <g font-family="Verdana,Arial,sans-serif" font-size="11" fill="#9fb3c8">
+    <text x="60" y="235">DontDestroyOnLoad keeps RuntimeSingleton alive</text>
+  </g>
+</svg>

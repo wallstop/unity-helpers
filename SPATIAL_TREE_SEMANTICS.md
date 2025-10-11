@@ -16,6 +16,14 @@ Illustrations:
 
 ![RTree2D](Docs/Images/rtree_2d.svg)
 
+3D Variants
+
+![Octree3D](Docs/Images/octree_3d.svg)
+
+![KDTree3D](Docs/Images/kdtree_3d.svg)
+
+![RTree3D](Docs/Images/rtree_3d.svg)
+
 ## 2D: Consistent Results Across QuadTree2D and KdTree2D
 
 - QuadTree2D and KdTree2D (balanced and unbalanced) index points and use equivalent per‑point checks for range and bounds queries. For the same input data and the same queries, they return the same results. Differences are limited to construction/query performance and memory layout.
@@ -70,10 +78,17 @@ Key reasons and scenarios:
 - Use RTree2D/RTree3D for sized elements where bounds intersection is the primary concern.
 - For many moving objects with broad‑phase neighbor checks, prefer SpatialHash3D (stable) or SpatialHash2D.
 
+## Boundary Semantics
+
+![Query Boundaries](Docs/Images/query_boundaries.svg)
+
+Tips
+- Normalize to closed or half‑open intervals across your codebase.
+- Add a small epsilon where necessary to handle ties at split planes.
+
 ## Cheat Sheet
 
 - Many moving points, frequent rebuilds: QuadTree2D
 - Nearest neighbors on static points: KDTree2D (Balanced)
 - Fast builds with okay query performance: KDTree2D (Unbalanced)
 - Objects with size, bounds queries: RTree2D
-

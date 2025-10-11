@@ -1,5 +1,9 @@
 # Singleton Utilities (Runtime + ScriptableObject)
 
+Visual
+
+![Singletons Lifecycle](Docs/Images/singletons_lifecycle.svg)
+
 This package includes two lightweight, production‑ready singleton helpers that make global access patterns safe, consistent, and testable:
 
 - `RuntimeSingleton<T>` — a component singleton that ensures one instance exists in play mode, optionally persists across scenes, and self‑initializes when first accessed.
@@ -167,6 +171,184 @@ Assets/
 - Global dispatcher: See `UnityMainThreadDispatcher` which derives from `RuntimeSingleton<UnityMainThreadDispatcher>`.
 - Global data caches or registries: Use `ScriptableObjectSingleton<T>` so data lives in a single editable asset and loads fast.
 - Cross‑scene managers: Keep `Preserve = true` to avoid duplicates across scene loads.
+
+### Data Registries & Lookups (Single Source of Truth)
+
+ScriptableObject singletons excel as in‑project “databases” for content/config:
+
+- Centralize definitions (items, abilities, buffs, NPCs, localization) in one asset.
+- Build fast lookup indices (by ID/tag/category) at load or validation time.
+- Keep workflows simple: edit in Inspector, no runtime bootstrapping needed.
+
+Example: Items DB with indices
+
+```csharp
+using System.Collections.Generic;
+using UnityEngine;
+using WallstopStudios.UnityHelpers.Utils;
+
+[CreateAssetMenu(menuName = "Game/Items DB")]
+[ScriptableSingletonPath("DB")] // Assets/Resources/DB/ItemsDb.asset
+public sealed class ItemsDb : ScriptableObjectSingleton<ItemsDb>
+{
+    [System.Serializable]
+    public sealed class ItemDef { public int id; public string name; public Sprite icon; }
+
+    public List<ItemDef> items = new();
+
+    // Non-serialized runtime indices
+    private readonly Dictionary<int, ItemDef> _byId = new();
+    private readonly Dictionary<string, List<ItemDef>> _byName = new();
+
+    private void OnEnable() => RebuildIndices();
+    private void OnValidate() => RebuildIndices();
+
+    private void RebuildIndices()
+    {
+        _byId.Clear();
+        _byName.Clear();
+        foreach (var it in items)
+        {
+            if (it == null) continue;
+            _byId[it.id] = it;
+            (_byName.TryGetValue(it.name, out var list) ? list : (_byName[it.name] = new())).Add(it);
+        }
+    }
+
+    public static bool TryGetById(int id, out ItemDef def) => Instance._byId.TryGetValue(id, out def);
+}
+
+// Usage
+if (ItemsDb.TryGetById(42, out var sword)) { /* equip sword */ }
+```
+
+Tips
+- Keep serialized lists as your source of truth; build dictionaries at load/validate.
+- Use `[ScriptableSingletonPath]` to place the asset predictably under `Resources/`.
+- Split huge DBs into themed sub‑assets and cross‑reference via indices.
+- Consider GUIDs or string IDs for modding; validate uniqueness in `OnValidate`.
+
+#### Example: Content DB with tags, categories, GUIDs (Addressables)
+
+```csharp
+using System.Collections.Generic;
+using UnityEngine;
+using WallstopStudios.UnityHelpers.Utils;
+#if UNITY_EDITOR
+using UnityEditor;
+using UnityEditor.AddressableAssets;
+using UnityEditor.AddressableAssets.Settings;
+#endif
+using UnityEngine.AddressableAssets;
+
+public enum ContentCategory { Weapon, Armor, Consumable, Quest }
+
+[CreateAssetMenu(menuName = "Game/Content DB")]
+[ScriptableSingletonPath("DB")] // Assets/Resources/DB/ContentDb.asset
+public sealed class ContentDb : ScriptableObjectSingleton<ContentDb>
+{
+    [System.Serializable]
+    public sealed class ContentDef
+    {
+        public string guid;                 // stable ID for saves/mods
+        public string displayName;
+        public ContentCategory category;
+        public string[] tags;               // e.g., "fire", "ranged"
+        public AssetReferenceGameObject prefab; // addressable ref (optional)
+    }
+
+    public List<ContentDef> entries = new();
+
+    // Indices (runtime only)
+    private readonly Dictionary<string, ContentDef> _byGuid = new();
+    private readonly Dictionary<ContentCategory, List<ContentDef>> _byCategory = new();
+    private readonly Dictionary<string, List<ContentDef>> _byTag = new();
+
+    private void OnEnable() => RebuildIndices();
+    private void OnValidate() { RebuildIndices(); ValidateEditor(); }
+
+    private void RebuildIndices()
+    {
+        _byGuid.Clear(); _byCategory.Clear(); _byTag.Clear();
+        foreach (var e in entries)
+        {
+            if (e == null || string.IsNullOrEmpty(e.guid)) continue;
+            _byGuid[e.guid] = e;
+            (_byCategory.TryGetValue(e.category, out var listCat) ? listCat : (_byCategory[e.category] = new())).Add(e);
+            if (e.tags != null)
+                foreach (var t in e.tags)
+                    if (!string.IsNullOrEmpty(t))
+                        (_byTag.TryGetValue(t, out var listTag) ? listTag : (_byTag[t] = new())).Add(e);
+        }
+    }
+
+    public static bool TryGetByGuid(string guid, out ContentDef def) => Instance._byGuid.TryGetValue(guid, out def);
+    public static IReadOnlyList<ContentDef> GetByCategory(ContentCategory cat) =>
+        Instance._byCategory.TryGetValue(cat, out var list) ? list : (IReadOnlyList<ContentDef>)System.Array.Empty<ContentDef>();
+    public static IReadOnlyList<ContentDef> GetByTag(string tag) =>
+        Instance._byTag.TryGetValue(tag, out var list) ? list : (IReadOnlyList<ContentDef>)System.Array.Empty<ContentDef>();
+
+#if UNITY_EDITOR
+    private void ValidateEditor()
+    {
+        // Validate GUID uniqueness
+        var seen = new HashSet<string>();
+        foreach (var e in entries)
+        {
+            if (e == null) continue;
+            if (string.IsNullOrEmpty(e.guid))
+                Debug.LogWarning($"[ContentDb] Entry '{e?.displayName}' has empty GUID", this);
+            else if (!seen.Add(e.guid))
+                Debug.LogError($"[ContentDb] Duplicate GUID '{e.guid}' detected", this);
+        }
+
+        // Validate Addressables (if package installed and editor context)
+        var settings = AddressableAssetSettingsDefaultObject.Settings;
+        if (settings != null)
+        {
+            foreach (var e in entries)
+            {
+                if (e?.prefab == null) continue;
+                var guid = e.prefab.AssetGUID;
+                if (string.IsNullOrEmpty(guid) || settings.FindAssetEntry(guid) == null)
+                    Debug.LogWarning($"[ContentDb] Prefab for '{e.displayName}' is not marked Addressable", this);
+            }
+        }
+    }
+#endif
+}
+```
+
+Why this works well
+- One authoritative asset; code reads through stable APIs.
+- Deterministic load path via Resources; Addressables used only for content references.
+- Indices rebuilt automatically to keep lookups fast and in sync while editing.
+
+### When Not To Use ScriptableObject Singletons as DBs
+
+Use alternatives when one or more of these apply:
+
+- Very large datasets (tens of thousands of records or >10–20 MB serialized)
+  - Prefer Addressables catalogs, binary blobs, streaming assets, or an external store; load by page or on demand.
+- Frequent live updates/patches without app updates
+  - External data sources (remote JSON/Protobuf), Addressables content updates, or platform DBs are better suited.
+- Strong need for async/background loading or partial paging
+  - Addressables + async APIs give finer loading control versus a monolithic Resources asset.
+- Cross‑team/content pipelines that generate data at build time
+  - Import raw data into Addressables or assets at build; consider codegen for IDs and indices.
+- Complex versioning/migrations of data formats
+  - Store version tags and migrate on load, or keep data outside Resources where migrations are simpler to stage.
+- Sensitive/untrusted inputs
+  - Don’t deserialize untrusted data into SOs; use validated formats and sandboxed loaders.
+- Save data
+  - Keep save/progression separate from the content DB; reference content by GUID/ID in saves.
+
+### Choosing a Data Distribution Strategy
+
+Use this chart to pick an approach based on constraints:
+
+![Data Distribution Strategy](Docs/Images/data_distribution_decision.svg)
+
 
 <a id="troubleshooting"></a>
 ## Troubleshooting

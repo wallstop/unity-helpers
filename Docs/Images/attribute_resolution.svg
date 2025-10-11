@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="780" height="320" viewBox="0 0 780 320">
+  <rect x="0" y="0" width="780" height="320" fill="#0f0f13"/>
+  <g font-family="Verdana,Arial,sans-serif" font-size="14" fill="#c8d1dc">
+    <text x="16" y="26">Attribute Resolution Order</text>
+  </g>
+  <!-- stages -->
+  <g fill="#1d2330" stroke="#7aa2ff" stroke-width="2">
+    <rect x="40" y="60" width="140" height="50" rx="8"/>
+    <rect x="200" y="60" width="140" height="50" rx="8"/>
+    <rect x="360" y="60" width="140" height="50" rx="8"/>
+    <rect x="520" y="60" width="140" height="50" rx="8"/>
+  </g>
+  <g font-family="Verdana,Arial,sans-serif" font-size="12" fill="#e0e6ee" text-anchor="middle">
+    <text x="110" y="92">Base</text>
+    <text x="270" y="92">Additive</text>
+    <text x="430" y="92">Multiplicative</text>
+    <text x="590" y="92">Override/Clamp</text>
+  </g>
+  <g stroke="#5ec69a" fill="#5ec69a" stroke-width="2">
+    <line x1="180" y1="85" x2="200" y2="85"/>
+    <polygon points="194,79 194,91 204,85"/>
+    <line x1="340" y1="85" x2="360" y2="85"/>
+    <polygon points="354,79 354,91 364,85"/>
+    <line x1="500" y1="85" x2="520" y2="85"/>
+    <polygon points="514,79 514,91 524,85"/>
+  </g>
+  <!-- detail notes -->
+  <g font-family="Verdana,Arial,sans-serif" font-size="11" fill="#c8d1dc">
+    <text x="50" y="140">baseValue</text>
+    <text x="210" y="140">+ sum(addMods)</text>
+    <text x="370" y="140">× product(mulMods)</text>
+    <text x="530" y="140">→ clamp(min,max), override?</text>
+  </g>
+  <!-- example -->
+  <g font-family="Verdana,Arial,sans-serif" font-size="11" fill="#9fb3c8">
+    <text x="40" y="180">Example: base=100, add=[+10,+5], mul=[×1.2], clamp=[0..200]</text>
+    <text x="40" y="198">Resolved: ((100+15)×1.2)=138 → clamp=138</text>
+  </g>
+</svg>
+

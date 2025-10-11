@@ -168,6 +168,15 @@ namespace WallstopStudios.UnityHelpers.Utils
             () => new SortedSet<T>(),
             onRelease: set => set.Clear()
         );
+
+        /// <summary>
+        /// Generic pool for HashSet&lt;T&gt; instances using the default comparer.
+        /// Sets are automatically cleared when returned to the pool.
+        /// </summary>
+        public static readonly WallstopGenericPool<HashSet<T>> HashSet = new(
+            () => new HashSet<T>(),
+            onRelease: set => set.Clear()
+        );
 #if SINGLE_THREADED
         private static readonly Dictionary<
             IComparer<T>,

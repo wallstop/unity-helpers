@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="320" viewBox="0 0 820 320">
+  <rect x="0" y="0" width="820" height="320" fill="#0f0f13"/>
+  <g font-family="Verdana,Arial,sans-serif" font-size="14" fill="#c8d1dc">
+    <text x="16" y="26">Unity Converters Map</text>
+  </g>
+  <g fill="#1d2330" stroke="#7aa2ff" stroke-width="2">
+    <rect x="40" y="60" width="180" height="50" rx="8"/>
+    <rect x="240" y="60" width="180" height="50" rx="8"/>
+    <rect x="440" y="60" width="180" height="50" rx="8"/>
+    <rect x="640" y="60" width="140" height="50" rx="8"/>
+  </g>
+  <g font-family="Verdana,Arial,sans-serif" font-size="12" fill="#e0e6ee" text-anchor="middle">
+    <text x="130" y="92">Vector2/3/4</text>
+    <text x="330" y="92">Color / Color32</text>
+    <text x="530" y="92">Matrix4x4 / Quaternion</text>
+    <text x="710" y="92">Bounds/Rect</text>
+  </g>
+  <g stroke="#5ec69a" stroke-width="2">
+    <line x1="130" y1="110" x2="130" y2="140"/>
+    <line x1="330" y1="110" x2="330" y2="140"/>
+    <line x1="530" y1="110" x2="530" y2="140"/>
+    <line x1="710" y1="110" x2="710" y2="140"/>
+  </g>
+  <g fill="none" stroke="#9fb3c8" stroke-dasharray="6 6" stroke-width="2">
+    <rect x="60" y="140" width="700" height="120" rx="8"/>
+  </g>
+  <g font-family="Verdana,Arial,sans-serif" font-size="11" fill="#c8d1dc">
+    <text x="70" y="160">Notes:</text>
+    <text x="90" y="178">- Enabled in Normal/Pretty/Fast profiles as configured</text>
+    <text x="90" y="196">- FastPOCO excludes Unity converters for pure POCO graphs</text>
+    <text x="90" y="214">- Fallback to numeric arrays if converters disabled</text>
+  </g>
+</svg>
+

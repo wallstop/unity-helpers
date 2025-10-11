@@ -147,6 +147,10 @@ Hull:     ┌───────────┐
 Visual:
 ![Convex Hull](Docs/Images/convex_hull.svg)
 
+Edge Cases Gallery
+
+![Geometry Edge Cases](Docs/Images/geometry_edge_cases.svg)
+
 <a id="unity-extensions"></a>
 ## Unity Extensions
 

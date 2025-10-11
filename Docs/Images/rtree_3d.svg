@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="420" viewBox="0 0 560 420">
+  <rect x="0" y="0" width="560" height="420" fill="#0f0f13"/>
+  <g font-family="Verdana,Arial,sans-serif" font-size="14" fill="#c8d1dc">
+    <text x="16" y="26">R-Tree (3D) — MBR Hierarchy</text>
+  </g>
+  <!-- object boxes (projected) -->
+  <g fill="rgba(122,162,255,0.15)" stroke="#7aa2ff" stroke-width="2">
+    <rect x="120" y="120" width="40" height="28"/>
+    <rect x="180" y="150" width="30" height="30"/>
+    <rect x="240" y="110" width="45" height="35"/>
+    <rect x="300" y="200" width="50" height="40"/>
+    <rect x="360" y="140" width="50" height="30"/>
+  </g>
+  <!-- MBR groups -->
+  <g fill="none" stroke="#66d9a8" stroke-width="2.5" stroke-dasharray="8 6">
+    <rect x="110" y="100" width="190" height="100"/>
+    <rect x="290" y="130" width="140" height="130"/>
+  </g>
+</svg>
+

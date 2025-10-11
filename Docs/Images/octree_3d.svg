@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="420" viewBox="0 0 560 420">
+  <rect x="0" y="0" width="560" height="420" fill="#0f0f13"/>
+  <g font-family="Verdana,Arial,sans-serif" font-size="14" fill="#c8d1dc">
+    <text x="16" y="26">Octree (3D)</text>
+  </g>
+  <!-- cube wireframe -->
+  <g fill="none" stroke="#9fb3c8" stroke-width="2">
+    <rect x="80" y="80" width="300" height="220"/>
+    <polyline points="80,80 120,60 420,60 380,80"/>
+    <polyline points="380,300 420,280 420,60"/>
+    <line x1="120" y1="60" x2="120" y2="280"/>
+  </g>
+  <!-- split planes (suggested) -->
+  <g stroke="#3a7bd5" stroke-dasharray="6 6" stroke-width="2">
+    <line x1="230" y1="80" x2="270" y2="60"/>
+    <line x1="230" y1="300" x2="270" y2="280"/>
+    <line x1="80" y1="190" x2="380" y2="190"/>
+  </g>
+  <!-- points -->
+  <g fill="#7aa2ff">
+    <circle cx="160" cy="200" r="4"/>
+    <circle cx="300" cy="140" r="4"/>
+    <circle cx="240" cy="260" r="4"/>
+  </g>
+</svg>
+

@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="780" height="360" viewBox="0 0 780 360">
+  <rect x="0" y="0" width="780" height="360" fill="#0f0f13"/>
+  <g font-family="Verdana,Arial,sans-serif" font-size="14" fill="#c8d1dc">
+    <text x="16" y="26">Relational Components — Discovery & Wiring</text>
+  </g>
+  <!-- scene graph -->
+  <g fill="#1d2330" stroke="#7aa2ff" stroke-width="2">
+    <rect x="80" y="70" width="120" height="40" rx="6"/>
+    <rect x="40" y="140" width="120" height="40" rx="6"/>
+    <rect x="160" y="140" width="120" height="40" rx="6"/>
+  </g>
+  <g font-family="Verdana,Arial,sans-serif" font-size="11" fill="#e0e6ee" text-anchor="middle">
+    <text x="140" y="95">Parent</text>
+    <text x="100" y="165">Child A</text>
+    <text x="220" y="165">Child B</text>
+  </g>
+  <!-- relations -->
+  <g stroke="#9fb3c8" stroke-width="2">
+    <line x1="140" y1="110" x2="100" y2="140"/>
+    <line x1="140" y1="110" x2="220" y2="140"/>
+  </g>
+  <!-- wiring flow -->
+  <g fill="#1d2330" stroke="#7aa2ff" stroke-width="2">
+    <rect x="420" y="70" width="300" height="40" rx="6"/>
+    <rect x="420" y="130" width="300" height="40" rx="6"/>
+    <rect x="420" y="190" width="300" height="40" rx="6"/>
+  </g>
+  <g font-family="Verdana,Arial,sans-serif" font-size="12" fill="#e0e6ee">
+    <text x="430" y="95">OnValidate/Awake → scan components with [ParentComponent]/[ChildComponent]/[SiblingComponent]</text>
+    <text x="430" y="155">Resolve references via Transform hierarchy and cached lookups</text>
+    <text x="430" y="215">Bind fields/properties; rebind on hierarchy changes</text>
+  </g>
+  <g stroke="#5ec69a" fill="#5ec69a" stroke-width="2">
+    <line x1="340" y1="90" x2="420" y2="90"/>
+    <polygon points="414,84 414,96 424,90"/>
+    <line x1="570" y1="110" x2="570" y2="130"/>
+    <polygon points="564,124 576,124 570,134"/>
+    <line x1="570" y1="170" x2="570" y2="190"/>
+    <polygon points="564,184 576,184 570,194"/>
+  </g>
+</svg>
+
