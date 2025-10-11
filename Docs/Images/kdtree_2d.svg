@@ -26,10 +26,13 @@
     <circle cx="420" cy="180" r="4"/>
     <circle cx="470" cy="320" r="4"/>
   </g>
-  <g font-family="Verdana,Arial,sans-serif" font-size="11" fill="#9fb3c8">
-    <text x="205" y="76">x-split</text>
-    <text x="60" y="195">y-split</text>
-    <text x="355" y="76">x-split</text>
+  <!-- color-coded split labels with bubbles -->
+  <g font-family="Verdana,Arial,sans-serif" font-size="11">
+    <rect x="195" y="66" width="56" height="18" rx="6" ry="6" fill="#242a34" stroke="#d57a7a" stroke-width="1.5"/>
+    <text x="199" y="79" fill="#d57a7a">x-split</text>
+    <rect x="50" y="185" width="56" height="18" rx="6" ry="6" fill="#242a34" stroke="#d57a7a" stroke-width="1.5"/>
+    <text x="54" y="198" fill="#d57a7a">y-split</text>
+    <rect x="345" y="66" width="56" height="18" rx="6" ry="6" fill="#242a34" stroke="#d57a7a" stroke-width="1.5"/>
+    <text x="349" y="79" fill="#d57a7a">x-split</text>
   </g>
 </svg>
-

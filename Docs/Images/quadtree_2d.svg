@@ -27,10 +27,11 @@
     <circle cx="140" cy="260" r="4"/>
     <circle cx="250" cy="290" r="4"/>
   </g>
-  <!-- labels -->
-  <g font-family="Verdana,Arial,sans-serif" font-size="11" fill="#9fb3c8">
-    <text x="60" y="80">Level 1</text>
-    <text x="60" y="150">Level 2</text>
+  <!-- labels (color-coded to split color) -->
+  <g font-family="Verdana,Arial,sans-serif" font-size="11">
+    <rect x="56" y="68" width="58" height="18" rx="6" ry="6" fill="#242a34" stroke="#3a7bd5" stroke-width="1.5"/>
+    <text x="60" y="81" fill="#3a7bd5">Level 1</text>
+    <rect x="56" y="138" width="58" height="18" rx="6" ry="6" fill="#242a34" stroke="#3a7bd5" stroke-width="1.5"/>
+    <text x="60" y="151" fill="#3a7bd5">Level 2</text>
   </g>
 </svg>
-
