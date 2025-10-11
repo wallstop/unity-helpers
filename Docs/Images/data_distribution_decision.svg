@@ -42,18 +42,18 @@
   <g stroke-width="2">
     <!-- small dataset YES -> SO singleton (blue) -->
     <g stroke="#7aa2ff" fill="none">
-      <polyline points="340,88 380,88 380,118 410,118"/>
-      <polygon fill="#7aa2ff" points="410,112 410,124 420,118"/>
+      <polyline points="340,88 380,88 380,112 410,112"/>
+      <polygon fill="#7aa2ff" points="410,106 410,118 420,112"/>
     </g>
     <!-- low update YES -> SO singleton (red) -->
     <g stroke="#d57a7a" fill="none">
-      <polyline points="340,178 360,178 360,118 410,118"/>
-      <polygon fill="#d57a7a" points="410,112 410,124 420,118"/>
+      <polyline points="340,178 360,178 360,124 410,124"/>
+      <polygon fill="#d57a7a" points="410,118 410,130 420,124"/>
     </g>
     <!-- async/paging YES -> Addressables (green) -->
     <g stroke="#5ec69a" fill="none">
-      <polyline points="340,268 370,268 370,208 410,208"/>
-      <polygon fill="#5ec69a" points="410,202 410,214 420,208"/>
+      <polyline points="340,268 370,268 370,202 410,202"/>
+      <polygon fill="#5ec69a" points="410,196 410,208 420,202"/>
     </g>
     <!-- async/paging YES -> Streaming (green) -->
     <g stroke="#5ec69a" fill="none">
@@ -62,13 +62,13 @@
     </g>
     <!-- editor authoring YES -> SO singleton (purple) -->
     <g stroke="#c792ea" fill="none">
-      <polyline points="340,358 350,358 350,118 410,118"/>
-      <polygon fill="#c792ea" points="410,112 410,124 420,118"/>
+      <polyline points="340,358 350,358 350,136 410,136"/>
+      <polygon fill="#c792ea" points="410,130 410,142 420,136"/>
     </g>
     <!-- editor authoring YES -> Addressables (purple) -->
     <g stroke="#c792ea" fill="none">
-      <polyline points="340,358 365,358 365,208 410,208"/>
-      <polygon fill="#c792ea" points="410,202 410,214 420,208"/>
+      <polyline points="340,358 365,358 365,216 410,216"/>
+      <polygon fill="#c792ea" points="410,210 410,222 420,216"/>
     </g>
     <!-- security concerns YES -> Remote/External DB (gold) -->
     <g stroke="#e5c07b" fill="none">
