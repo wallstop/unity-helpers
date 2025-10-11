@@ -1,5 +1,10 @@
 # Core Math & Extensions
 
+## TL;DR — Why Use These
+
+- Small helpers that fix everyday math and Unity annoyances: safe modulo, wrapped indices, robust equality, fast bounds math, color utilities, and more.
+- Copy/paste examples and diagrams show intent; use as building blocks in hot paths.
+
 This guide summarizes the math primitives and extension helpers in this package and shows how to apply them effectively, with examples, performance notes, and practical scenarios.
 
 Contents

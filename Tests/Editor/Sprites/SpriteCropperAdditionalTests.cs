@@ -6,9 +6,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
+    using WallstopStudios.UnityHelpers.Tests.Utils;
     using Object = UnityEngine.Object;
 
-    public sealed class SpriteCropperAdditionalTests
+    public sealed class SpriteCropperAdditionalTests : CommonTestBase
     {
         private const string Root = "Assets/Temp/SpriteCropperAdditionalTests";
 
@@ -19,8 +20,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         }
 
         [TearDown]
-        public void TearDown()
+        public override void TearDown()
         {
+            base.TearDown();
             AssetDatabase.DeleteAsset("Assets/Temp");
             AssetDatabase.Refresh();
         }
@@ -41,7 +43,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             imp.spritePivot = new Vector2(0.5f, 0.5f); // original center at (10,10)
             imp.SaveAndReimport();
 
-            SpriteCropper window = ScriptableObject.CreateInstance<SpriteCropper>();
+            SpriteCropper window = Track(ScriptableObject.CreateInstance<SpriteCropper>());
             window._overwriteOriginals = false;
             window._inputDirectories = new System.Collections.Generic.List<Object>
             {
@@ -87,7 +89,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             imp.isReadable = true;
             imp.SaveAndReimport();
 
-            SpriteCropper window = ScriptableObject.CreateInstance<SpriteCropper>();
+            SpriteCropper window = Track(ScriptableObject.CreateInstance<SpriteCropper>());
             window._overwriteOriginals = false;
             window._onlyNecessary = true;
             window._inputDirectories = new System.Collections.Generic.List<Object>
@@ -121,7 +123,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             imp.isReadable = false; // start unreadable
             imp.SaveAndReimport();
 
-            SpriteCropper window = ScriptableObject.CreateInstance<SpriteCropper>();
+            SpriteCropper window = Track(ScriptableObject.CreateInstance<SpriteCropper>());
             window._overwriteOriginals = false; // write Cropped_*
             window._outputDirectory = AssetDatabase.LoadAssetAtPath<Object>(Root);
             window._inputDirectories = new System.Collections.Generic.List<Object>
@@ -148,7 +150,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             );
 
             // Now force output readability to Readable without reflection
-            window = ScriptableObject.CreateInstance<SpriteCropper>();
+            window = Track(ScriptableObject.CreateInstance<SpriteCropper>());
             window._overwriteOriginals = false;
             window._outputDirectory = AssetDatabase.LoadAssetAtPath<Object>(Root);
             window._inputDirectories = new System.Collections.Generic.List<Object>
@@ -180,7 +182,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             imp.isReadable = true;
             imp.SaveAndReimport();
 
-            SpriteCropper window = ScriptableObject.CreateInstance<SpriteCropper>();
+            SpriteCropper window = Track(ScriptableObject.CreateInstance<SpriteCropper>());
             window._overwriteOriginals = false;
             window._inputDirectories = new System.Collections.Generic.List<Object>
             {
@@ -216,7 +218,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             imp.spriteImportMode = SpriteImportMode.Multiple;
             imp.SaveAndReimport();
 
-            SpriteCropper window = ScriptableObject.CreateInstance<SpriteCropper>();
+            SpriteCropper window = Track(ScriptableObject.CreateInstance<SpriteCropper>());
             window._overwriteOriginals = false;
             window._inputDirectories = new System.Collections.Generic.List<Object>
             {
@@ -247,10 +249,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         )
         {
             EnsureFolder(Path.GetDirectoryName(relPath).Replace('\\', '/'));
-            Texture2D t = new Texture2D(w, h, TextureFormat.RGBA32, false)
-            {
-                alphaIsTransparency = true,
-            };
+            Texture2D t = new(w, h, TextureFormat.RGBA32, false) { alphaIsTransparency = true };
             Color[] pix = new Color[w * h];
             for (int y = 0; y < h; ++y)
             for (int x = 0; x < w; ++x)
@@ -266,10 +265,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         private static void CreatePngFilled(string relPath, int w, int h, Color c)
         {
             EnsureFolder(Path.GetDirectoryName(relPath).Replace('\\', '/'));
-            Texture2D t = new Texture2D(w, h, TextureFormat.RGBA32, false)
-            {
-                alphaIsTransparency = true,
-            };
+            Texture2D t = new(w, h, TextureFormat.RGBA32, false) { alphaIsTransparency = true };
             Color[] pix = new Color[w * h];
             for (int i = 0; i < pix.Length; i++)
                 pix[i] = c;
@@ -281,10 +277,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         private static void CreateTransparentPng(string relPath, int w, int h)
         {
             EnsureFolder(Path.GetDirectoryName(relPath).Replace('\\', '/'));
-            Texture2D t = new Texture2D(w, h, TextureFormat.RGBA32, false)
-            {
-                alphaIsTransparency = true,
-            };
+            Texture2D t = new(w, h, TextureFormat.RGBA32, false) { alphaIsTransparency = true };
             Color[] pix = new Color[w * h];
             for (int i = 0; i < pix.Length; i++)
                 pix[i] = new Color(0f, 0f, 0f, 0f);

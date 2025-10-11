@@ -1,5 +1,11 @@
 # Wallstop Studios Unity Helpers - Editor Tools Guide
 
+## TL;DR — What You Get
+
+- One‑click utilities for sprites, textures, validation, and automation.
+- Clear menus, step‑by‑step workflows, and safe previews before destructive actions.
+- Start with: Sprite Cropper, Image Blur, Animation Creator, Prefab Checker, and the ScriptableObject Singleton Creator.
+
 Comprehensive documentation for all editor wizards, windows, and automation tools.
 
 ---

@@ -1,15 +1,14 @@
 namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
 {
 #if UNITY_EDITOR
-    using System;
     using System.IO;
-    using System.Reflection;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
+    using WallstopStudios.UnityHelpers.Tests.Utils;
 
-    public sealed class TextureSettingsApplierWizardTests
+    public sealed class TextureSettingsApplierWizardTests : CommonTestBase
     {
         private const string Root = "Assets/Temp/TextureSettingsApplierWizardTests";
 
@@ -20,8 +19,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         }
 
         [TearDown]
-        public void TearDown()
+        public override void TearDown()
         {
+            base.TearDown();
             AssetDatabase.DeleteAsset("Assets/Temp");
             AssetDatabase.Refresh();
         }
@@ -37,8 +37,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             CreatePng(b, 32, 32, Color.white);
             AssetDatabase.Refresh();
 
-            TextureSettingsApplier wizard =
-                ScriptableObject.CreateInstance<TextureSettingsApplier>();
+            TextureSettingsApplier wizard = Track(
+                ScriptableObject.CreateInstance<TextureSettingsApplier>()
+            );
 
             // Set explicit texture list
             wizard.textures = new System.Collections.Generic.List<Texture2D>
@@ -104,7 +105,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         {
             string dir = Path.GetDirectoryName(relPath).Replace('\\', '/');
             EnsureFolder(dir);
-            Texture2D t = new Texture2D(w, h, TextureFormat.RGBA32, false);
+            Texture2D t = new(w, h, TextureFormat.RGBA32, false);
             Color[] pix = new Color[w * h];
             for (int i = 0; i < pix.Length; i++)
                 pix[i] = c;

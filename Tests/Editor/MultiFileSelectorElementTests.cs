@@ -4,7 +4,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;
-    using System.Reflection;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
@@ -59,11 +58,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
         [Test]
         public void FolderFirstAndSorting()
         {
-            MultiFileSelectorElement selector = new MultiFileSelectorElement(
-                _baseRel,
-                null,
-                "TestScope1"
-            );
+            MultiFileSelectorElement selector = new(_baseRel, null, "TestScope1");
             IReadOnlyList<string> names = selector.DebugGetVisibleEntryNames();
 
             Assert.That(
@@ -82,11 +77,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
         [Test]
         public void ExtensionFilterNormalizationWorks()
         {
-            MultiFileSelectorElement selector = new MultiFileSelectorElement(
-                _baseRel,
-                new[] { "txt" },
-                "TestScopeExt"
-            );
+            MultiFileSelectorElement selector = new(_baseRel, new[] { "txt" }, "TestScopeExt");
             IReadOnlyList<string> names = selector.DebugGetVisibleEntryNames();
 
             CollectionAssert.Contains(names, "a.txt");
@@ -101,8 +92,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
             EditorPrefs.SetString("WallstopStudios.MultiFileSelector.lastSearch.KeyA", "foo");
             EditorPrefs.SetString("WallstopStudios.MultiFileSelector.lastSearch.KeyB", "bar");
 
-            MultiFileSelectorElement selA = new MultiFileSelectorElement(_baseRel, null, "KeyA");
-            MultiFileSelectorElement selB = new MultiFileSelectorElement(_baseRel, null, "KeyB");
+            MultiFileSelectorElement selA = new(_baseRel, null, "KeyA");
+            MultiFileSelectorElement selB = new(_baseRel, null, "KeyB");
 
             IReadOnlyList<string> namesA = selA.DebugGetVisibleEntryNames();
             IReadOnlyList<string> namesB = selB.DebugGetVisibleEntryNames();
@@ -130,7 +121,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
         public void NoPersistenceWhenNoKey()
         {
             EditorPrefs.SetString("WallstopStudios.MultiFileSelector.lastSearch", "foo");
-            MultiFileSelectorElement selector = new MultiFileSelectorElement(_baseRel, null);
+            MultiFileSelectorElement selector = new(_baseRel, null);
             IReadOnlyList<string> names = selector.DebugGetVisibleEntryNames();
 
             // With no key, search should not be loaded; both foo and bar files should be present
@@ -147,11 +138,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
         [Test]
         public void SelectionHelpersAffectSelection()
         {
-            MultiFileSelectorElement selector = new MultiFileSelectorElement(
-                _baseRel,
-                new[] { ".txt" },
-                "SelScope"
-            );
+            MultiFileSelectorElement selector = new(_baseRel, new[] { ".txt" }, "SelScope");
 
             selector.SelectAllInView();
             IReadOnlyCollection<string> selected = selector.DebugGetSelectedFilePaths();
@@ -185,20 +172,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
         [Test]
         public void DirectoryPersistenceIsScoped()
         {
-            MultiFileSelectorElement selector = new MultiFileSelectorElement(
-                _baseRel,
-                null,
-                "DirKey"
-            );
+            MultiFileSelectorElement selector = new(_baseRel, null, "DirKey");
             // Navigate to DirA via internal method
             selector.NavigateTo(_baseRel + "/DirA");
 
             // New selector with same scope should open in DirA
-            MultiFileSelectorElement selector2 = new MultiFileSelectorElement(
-                _baseRel,
-                null,
-                "DirKey"
-            );
+            MultiFileSelectorElement selector2 = new(_baseRel, null, "DirKey");
             IReadOnlyList<string> names = selector2.DebugGetVisibleEntryNames();
             CollectionAssert.Contains(
                 names,
@@ -212,7 +191,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
         {
             // No key provided implies no persistence; pre-set a global key should not affect behavior
             EditorPrefs.SetString("WallstopStudios.MultiFileSelector.lastSearch", "foo");
-            MultiFileSelectorElement selector = new MultiFileSelectorElement(_baseRel, null);
+            MultiFileSelectorElement selector = new(_baseRel, null);
             IReadOnlyList<string> names = selector.DebugGetVisibleEntryNames();
             Assert.That(
                 names.Any(n => n.Equals("bar.txt", StringComparison.OrdinalIgnoreCase)),

@@ -1,5 +1,11 @@
 # Effects, Attributes, and Tags — Deep Dive
 
+## TL;DR — What Problem This Solves
+
+- Data‑driven, stackable gameplay changes (buffs/debuffs) without bespoke code per effect.
+- Declarative authoring in ScriptableObjects; runtime handles application, stacking, tags, cosmetics, and clean removal.
+- Ideal for status systems, item affixes, auras, and timed modifiers.
+
 Data‑driven gameplay effects that modify stats, apply tags, and drive cosmetic presentation.
 
 This guide explains the concepts, how they work together, authoring patterns, recipes, best practices, and FAQs.

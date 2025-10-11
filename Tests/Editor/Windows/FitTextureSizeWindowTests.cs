@@ -1,15 +1,14 @@
 namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
 {
 #if UNITY_EDITOR
-    using System;
     using System.IO;
-    using System.Reflection;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Editor;
+    using WallstopStudios.UnityHelpers.Tests.Utils;
 
-    public sealed class FitTextureSizeWindowTests
+    public sealed class FitTextureSizeWindowTests : CommonTestBase
     {
         private const string Root = "Assets/Temp/FitTextureSizeTests";
 
@@ -20,8 +19,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         }
 
         [TearDown]
-        public void TearDown()
+        public override void TearDown()
         {
+            base.TearDown();
             AssetDatabase.DeleteAsset("Assets/Temp");
             AssetDatabase.Refresh();
         }
@@ -38,7 +38,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             imp.maxTextureSize = 128;
             imp.SaveAndReimport();
 
-            FitTextureSizeWindow window = ScriptableObject.CreateInstance<FitTextureSizeWindow>();
+            FitTextureSizeWindow window = Track(
+                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
+            );
             window._fitMode = FitMode.GrowOnly;
             window._textureSourcePaths = new System.Collections.Generic.List<UnityEngine.Object>
             {
@@ -69,7 +71,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             imp.maxTextureSize = 2048;
             imp.SaveAndReimport();
 
-            FitTextureSizeWindow window = ScriptableObject.CreateInstance<FitTextureSizeWindow>();
+            FitTextureSizeWindow window = Track(
+                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
+            );
             window._fitMode = FitMode.ShrinkOnly;
             window._textureSourcePaths = new System.Collections.Generic.List<UnityEngine.Object>
             {
@@ -100,7 +104,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             imp.maxTextureSize = 1024;
             imp.SaveAndReimport();
 
-            FitTextureSizeWindow window = ScriptableObject.CreateInstance<FitTextureSizeWindow>();
+            FitTextureSizeWindow window = Track(
+                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
+            );
             window._fitMode = FitMode.ShrinkOnly;
             window._textureSourcePaths = new System.Collections.Generic.List<UnityEngine.Object>
             {
@@ -126,7 +132,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             imp.maxTextureSize = 2048;
             imp.SaveAndReimport();
 
-            FitTextureSizeWindow window = ScriptableObject.CreateInstance<FitTextureSizeWindow>();
+            FitTextureSizeWindow window = Track(
+                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
+            );
             window._fitMode = FitMode.ShrinkOnly;
             window._textureSourcePaths = new System.Collections.Generic.List<UnityEngine.Object>
             {
@@ -152,7 +160,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             imp.maxTextureSize = 2048;
             imp.SaveAndReimport();
 
-            FitTextureSizeWindow window = ScriptableObject.CreateInstance<FitTextureSizeWindow>();
+            FitTextureSizeWindow window = Track(
+                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
+            );
             window._fitMode = FitMode.GrowOnly;
             window._textureSourcePaths = new System.Collections.Generic.List<UnityEngine.Object>
             {
@@ -179,7 +189,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             imp.maxTextureSize = 32;
             imp.SaveAndReimport();
 
-            FitTextureSizeWindow window = ScriptableObject.CreateInstance<FitTextureSizeWindow>();
+            FitTextureSizeWindow window = Track(
+                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
+            );
             window._fitMode = FitMode.RoundToNearest;
             window._minAllowedTextureSize = 256;
             window._maxAllowedTextureSize = 8192;
@@ -209,7 +221,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             imp.maxTextureSize = 128;
             imp.SaveAndReimport();
 
-            FitTextureSizeWindow window = ScriptableObject.CreateInstance<FitTextureSizeWindow>();
+            FitTextureSizeWindow window = Track(
+                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
+            );
             window._fitMode = FitMode.GrowOnly;
             window._minAllowedTextureSize = 32;
             window._maxAllowedTextureSize = 8192;
@@ -238,7 +252,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             imp.maxTextureSize = 128;
             imp.SaveAndReimport();
 
-            FitTextureSizeWindow window = ScriptableObject.CreateInstance<FitTextureSizeWindow>();
+            FitTextureSizeWindow window = Track(
+                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
+            );
             window._fitMode = FitMode.RoundToNearest;
             window._applyToAndroid = true;
             window._textureSourcePaths = new System.Collections.Generic.List<UnityEngine.Object>
@@ -275,7 +291,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             spriteImp.SaveAndReimport();
             texImp.SaveAndReimport();
 
-            FitTextureSizeWindow window = ScriptableObject.CreateInstance<FitTextureSizeWindow>();
+            FitTextureSizeWindow window = Track(
+                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
+            );
             window._fitMode = FitMode.ShrinkOnly;
             window._onlySprites = true;
             window._textureSourcePaths = new System.Collections.Generic.List<UnityEngine.Object>
@@ -307,7 +325,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             heroImp.SaveAndReimport();
             villImp.SaveAndReimport();
 
-            FitTextureSizeWindow window = ScriptableObject.CreateInstance<FitTextureSizeWindow>();
+            FitTextureSizeWindow window = Track(
+                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
+            );
             window._fitMode = FitMode.GrowOnly;
             window._nameFilter = "hero";
             window._useRegexForName = false;
@@ -340,7 +360,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             aImp.SaveAndReimport();
             bImp.SaveAndReimport();
 
-            FitTextureSizeWindow window = ScriptableObject.CreateInstance<FitTextureSizeWindow>();
+            FitTextureSizeWindow window = Track(
+                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
+            );
             window._fitMode = FitMode.GrowOnly;
             window._nameFilter = "^item\\d{2}$";
             window._useRegexForName = true;
@@ -379,7 +401,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             labImp.SaveAndReimport();
             unlabImp.SaveAndReimport();
 
-            FitTextureSizeWindow window = ScriptableObject.CreateInstance<FitTextureSizeWindow>();
+            FitTextureSizeWindow window = Track(
+                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
+            );
             window._fitMode = FitMode.GrowOnly;
             window._labelFilterCsv = "FitMe";
             window._textureSourcePaths = new System.Collections.Generic.List<UnityEngine.Object>
@@ -414,7 +438,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             UnityEngine.Object aObj = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(aPath);
             Selection.objects = new[] { aObj };
 
-            FitTextureSizeWindow window = ScriptableObject.CreateInstance<FitTextureSizeWindow>();
+            FitTextureSizeWindow window = Track(
+                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
+            );
             window._fitMode = FitMode.GrowOnly;
             window._useSelectionOnly = true;
 
@@ -438,7 +464,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             imp.maxTextureSize = 128;
             imp.SaveAndReimport();
 
-            FitTextureSizeWindow window = ScriptableObject.CreateInstance<FitTextureSizeWindow>();
+            FitTextureSizeWindow window = Track(
+                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
+            );
             window._textureSourcePaths = new System.Collections.Generic.List<UnityEngine.Object>
             {
                 AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(Root),
@@ -474,7 +502,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             imp.maxTextureSize = 128;
             imp.SaveAndReimport();
 
-            FitTextureSizeWindow window = ScriptableObject.CreateInstance<FitTextureSizeWindow>();
+            FitTextureSizeWindow window = Track(
+                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
+            );
             window._fitMode = FitMode.GrowOnly;
             window._labelFilterCsv = "fitme";
             window._caseSensitiveNameFilter = true;
@@ -506,7 +536,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             imp.maxTextureSize = 128;
             imp.SaveAndReimport();
 
-            FitTextureSizeWindow window = ScriptableObject.CreateInstance<FitTextureSizeWindow>();
+            FitTextureSizeWindow window = Track(
+                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
+            );
             window._fitMode = FitMode.RoundToNearest;
             window._applyToStandalone = true;
             window._textureSourcePaths = new System.Collections.Generic.List<UnityEngine.Object>
@@ -533,7 +565,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             imp.maxTextureSize = 128;
             imp.SaveAndReimport();
 
-            FitTextureSizeWindow window = ScriptableObject.CreateInstance<FitTextureSizeWindow>();
+            FitTextureSizeWindow window = Track(
+                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
+            );
             window._fitMode = FitMode.RoundToNearest;
             window._applyToiOS = true;
             window._textureSourcePaths = new System.Collections.Generic.List<UnityEngine.Object>
@@ -585,7 +619,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             );
             Selection.objects = new[] { folderObj, directObj };
 
-            FitTextureSizeWindow window = ScriptableObject.CreateInstance<FitTextureSizeWindow>();
+            FitTextureSizeWindow window = Track(
+                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
+            );
             window._fitMode = FitMode.GrowOnly;
             window._useSelectionOnly = true;
             window._labelFilterCsv = "OnlyMe"; // case-insensitive path used by l: query
@@ -618,7 +654,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             aImp.SaveAndReimport();
             bImp.SaveAndReimport();
 
-            FitTextureSizeWindow window = ScriptableObject.CreateInstance<FitTextureSizeWindow>();
+            FitTextureSizeWindow window = Track(
+                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
+            );
             window._fitMode = FitMode.GrowOnly;
             window._textureSourcePaths = new System.Collections.Generic.List<UnityEngine.Object>
             {
@@ -648,7 +686,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             imp.maxTextureSize = 2048;
             imp.SaveAndReimport();
 
-            FitTextureSizeWindow window = ScriptableObject.CreateInstance<FitTextureSizeWindow>();
+            FitTextureSizeWindow window = Track(
+                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
+            );
             window._fitMode = FitMode.RoundToNearest;
             window._textureSourcePaths = new System.Collections.Generic.List<UnityEngine.Object>
             {
@@ -676,7 +716,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             imp.maxTextureSize = 128;
             imp.SaveAndReimport();
 
-            FitTextureSizeWindow window = ScriptableObject.CreateInstance<FitTextureSizeWindow>();
+            FitTextureSizeWindow window = Track(
+                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
+            );
             window._fitMode = FitMode.RoundToNearest;
             window._textureSourcePaths = new System.Collections.Generic.List<UnityEngine.Object>
             {
@@ -710,7 +752,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         {
             string dir = Path.GetDirectoryName(relPath).Replace('\\', '/');
             EnsureFolder(dir);
-            Texture2D t = new Texture2D(w, h, TextureFormat.RGBA32, false);
+            Texture2D t = new(w, h, TextureFormat.RGBA32, false);
             Color[] pix = new Color[w * h];
             for (int i = 0; i < pix.Length; i++)
                 pix[i] = c;

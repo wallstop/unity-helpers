@@ -1,5 +1,10 @@
 # Hulls (Convex vs Concave)
 
+## TL;DR — When To Use Which
+
+- Convex hull: fastest, safe outer bound; great for coarse collisions and visibility.
+- Concave hull: follows shape detail; tunable fidelity vs stability via k/alpha parameters.
+
 This guide explains convex and concave hulls, when to use each, and how they differ.
 
 ## Convex Hull
@@ -38,4 +43,3 @@ Illustration:
 - Preprocess: remove duplicate points and optionally simplify clusters.
 - Postprocess: enforce clockwise/CCW winding and run self-intersection checks for concave hulls.
 - Numerical stability: add small epsilons for colinear checks; include or exclude boundary points consistently.
-

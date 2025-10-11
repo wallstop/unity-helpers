@@ -4,8 +4,67 @@
 
 A comprehensive collection of high-performance utilities, data structures, and editor tools for Unity game development. Unity Helpers provides everything from blazing-fast random number generators and spatial trees to powerful editor wizards and component relationship management.
 
+## Quick Onramp
+
+TL;DR — Why use this?
+- Ship faster with production‑ready utilities that are (much) faster than stock Unity options.
+- Solve common problems: global settings/services, fast spatial queries, auto‑wiring components, robust serialization.
+- 4,000+ tests and diagrams make behavior and trade‑offs clear.
+
+Who is this for?
+- Unity devs who want pragmatic, high‑quality building blocks without adopting a full framework.
+- Teams that value performance, determinism, and predictable editor tooling.
+
+Install in 60 seconds
+```json
+// Packages/manifest.json
+{
+  "dependencies": {
+    "com.wallstop-studios.unity-helpers": "https://github.com/wallstop/unity-helpers.git"
+  }
+}
+```
+
+First 5 minutes: three quick wins
+- Random: swap in a faster, seedable RNG
+```csharp
+using WallstopStudios.UnityHelpers.Core.Random;
+IRandom rng = PRNG.Instance;
+int damage = rng.Next(10, 20);
+```
+
+- Relational wiring: stop writing GetComponent
+```csharp
+using WallstopStudios.UnityHelpers.Core.Attributes;
+public class Player : MonoBehaviour
+{
+  [SiblingComponent] SpriteRenderer sprite;
+  void Awake() => this.AssignRelationalComponents();
+}
+```
+
+- Spatial queries: O(log n) instead of O(n)
+```csharp
+using WallstopStudios.UnityHelpers.Core.DataStructure;
+var tree = new QuadTree2D<Vector2>(points, p => p);
+var results = new List<Vector2>();
+tree.GetElementsInRange(playerPos, 10f, results);
+```
+
+Pick the right spatial structure (2D)
+- Broad‑phase, many moving points: QuadTree2D
+- Nearest neighbors on static points: KDTree2D (Balanced)
+- Fast builds, good‑enough queries: KDTree2D (Unbalanced)
+- Objects with size, bounds queries: RTree2D
+
+Next steps
+- Browse the Guides: Singletons, Relational Components, Spatial Trees 2D/3D, Serialization
+- Skim the Performance pages for realistic expectations
+- Use the Editor Tools to automate common art/content workflows
+
 ## Table of Contents
 
+- [Quick Onramp](#quick-onramp)
 - [Why Unity Helpers?](#why-unity-helpers)
 - [Key Features](#key-features)
 - [Installation](#installation)
@@ -14,6 +73,8 @@ A comprehensive collection of high-performance utilities, data structures, and e
   - [Random Number Generation](#random-number-generation)
   - [Auto Component Discovery](#auto-component-discovery)
   - [Spatial Queries](#spatial-queries)
+  - [Effects in One Minute](#effects-in-one-minute)
+  - [Serialization in One Minute](#serialization-in-one-minute)
 - [Core Features](#core-features)
   - [Random Number Generators](#random-number-generators)
   - [Spatial Trees](#spatial-trees)
@@ -48,7 +109,7 @@ Unity Helpers was built to solve common game development challenges with **perfo
 
 ### High-Performance Random Number Generators
 - **12 different implementations** including PCG, XorShift, and more
-- **Thread-safe** and **seedable** for deterministic gameplay
+- **Thread-safe access via `PRNG.Instance`** and **seedable** for deterministic gameplay
 - **Rich API** with Gaussian distributions, noise maps, UUIDs, and more
 - Up to **15x faster** than Unity.Random ([See benchmarks](#performance))
 
@@ -106,6 +167,7 @@ Unity Helpers was built to solve common game development challenges with **perfo
  - Spatial Tree 3D Performance — [Spatial Tree 3D Performance](SPATIAL_TREE_3D_PERFORMANCE.md)
   - Spatial Tree Semantics — [Spatial Tree Semantics](SPATIAL_TREE_SEMANTICS.md)
   - 2D Spatial Trees Guide — [2D Spatial Trees Guide](SPATIAL_TREES_2D_GUIDE.md)
+  - 3D Spatial Trees Guide — [3D Spatial Trees Guide](SPATIAL_TREES_3D_GUIDE.md)
   - Hulls (Convex vs Concave) — [Hulls (Convex vs Concave)](HULLS.md)
   - Data Structures — [Data Structures](DATA_STRUCTURES.md)
  - Random Performance — [Random Performance](RANDOM_PERFORMANCE.md)
@@ -205,7 +267,7 @@ using UnityEngine;
 using WallstopStudios.UnityHelpers.Core.Random;
 using WallstopStudios.UnityHelpers.Core.Extension; // extension APIs like NextVector2(), NextWeightedIndex()
 
-// Use the recommended default (currently IllusionFlow Random)
+// Use the recommended default (currently IllusionFlow)
 IRandom random = PRNG.Instance;
 
 // Basic random values
@@ -234,7 +296,7 @@ random.NextNoiseMap(noiseMap, octaves: 4);
 **Why use PRNG.Instance?**
 - 10-15x faster than Unity.Random
 - Seedable for deterministic gameplay
-- Thread-safe for parallel operations
+- Thread-safe access (uses a thread-local instance)
 - Extensive API for common patterns
 
 [📊 View Random Performance Benchmarks](RANDOM_PERFORMANCE.md)
@@ -345,6 +407,49 @@ public class EnemyManager : MonoBehaviour
 
 For zero‑alloc queries and stable GC, see the [Buffering Pattern](#buffering-pattern).
 
+### Effects in One Minute
+
+Author stackable buffs/debuffs as assets and apply/remove at runtime.
+
+```csharp
+using WallstopStudios.UnityHelpers.Core.Effects;
+
+// ScriptableObject: AttributeEffect (create via menu)
+// Contains: modifications (e.g., Speed x1.5), tags (e.g., "Haste"), duration
+
+// Apply to a target GameObject
+EffectHandle? handle = target.ApplyEffect(hasteEffect);
+
+// Later: remove one stack or all
+if (handle.HasValue) target.RemoveEffect(handle.Value);
+target.RemoveAllEffectsWithTag("Haste");
+```
+
+Why use it
+- Declarative authoring, automatic stacking/timing/tagging, clean removal.
+- Cosmetic hooks for VFX/SFX via `CosmeticEffectData`.
+
+### Serialization in One Minute
+
+Serialize/deserialize with Unity‑aware JSON profiles; use pooled buffers for hot paths.
+
+```csharp
+using WallstopStudios.UnityHelpers.Core.Serialization;
+
+var opts = Serializer.CreateFastJsonOptions(); // or Pretty/Normal
+
+// Serialize into a pooled buffer
+byte[] buf = null;
+Serializer.JsonSerialize(model, opts, ref buf);
+
+// Deserialize directly from bytes (no string alloc)
+var model2 = Serializer.JsonDeserialize<MyType>(buf, null, opts);
+```
+
+Tips
+- Pretty/Normal for configs; Fast for hot loops; FastPOCO for pure POCO graphs.
+- Unity converters handle Vector/Color/Matrix/GameObject references.
+
 ### Choosing Spatial Structures
 
 - QuadTree2D — Static or semi-static point data in 2D. Great for circular and rectangular queries, approximate kNN. Immutable (rebuild when positions change).
@@ -366,20 +471,20 @@ Unity Helpers includes **12 high-quality random number generators**, all impleme
 
 | Generator | Speed | Quality | Use Case |
 |-----------|-------|---------|----------|
-| **PcgRandom** ⭐ | Very Fast | Excellent | Default choice (via PRNG.Instance) |
+| **IllusionFlow** ⭐ | Fast | Good | Default choice (via PRNG.Instance) |
+| **PcgRandom** | Very Fast | Excellent | Deterministic gameplay; explicit seeding |
 | **RomuDuo** | Fastest | Good | Maximum performance needed |
 | **LinearCongruentialGenerator** | Fastest | Fair | Simple, fast generation |
 | **XorShiftRandom** | Very Fast | Good | General purpose |
 | **XoroShiroRandom** | Very Fast | Good | General purpose |
 | **SplitMix64** | Very Fast | Good | Initialization, hashing |
-| **IllusionFlow** | Fast | Good | Balanced performance |
 | **SquirrelRandom** | Moderate | Good | Hash-based generation |
 | **WyRandom** | Moderate | Good | Hashing applications |
 | **DotNetRandom** | Moderate | Good | .NET compatibility |
 | **SystemRandom** | Slow | Good | Backward compatibility |
 | **UnityRandom** | Very Slow | Good | Unity compatibility |
 
-⭐ **Recommended**: Use `PRNG.Instance` which currently uses `PcgRandom`
+⭐ **Recommended**: Use `PRNG.Instance` (currently IllusionFlow)
 
 #### Rich API
 
@@ -423,12 +528,17 @@ All generators are **seedable** for replay systems:
 
 ```csharp
 // Create seeded generator for deterministic behavior
-IRandom seededRandom = new PcgRandom(seed: 12345);
+IRandom seededRandom = new IllusionFlow(seed: 12345);
 
 // Same seed = same sequence
-IRandom replay = new PcgRandom(seed: 12345);
+IRandom replay = new IllusionFlow(seed: 12345);
 // Both will generate identical values
 ```
+
+Threading
+- Do not share a single RNG instance across threads.
+- Use `PRNG.Instance` for a thread-local default, or use each generator’s `TypeName.Instance` (e.g., `IllusionFlow.Instance`, `PcgRandom.Instance`).
+- Alternatively, create one separate instance per thread.
 
 [📊 Performance Comparison](RANDOM_PERFORMANCE.md)
 
@@ -1090,7 +1200,7 @@ Unity Helpers is built with performance as a top priority. Here are some key met
 Unity Helpers' random number generators are **10-15x faster** than Unity's built-in `UnityEngine.Random`:
 
 - **UnityRandom**: 83M operations/sec
-- **PcgRandom** (PRNG.Instance): 672M operations/sec (**8x faster**)
+- **IllusionFlow** (PRNG.Instance): 609M operations/sec (**7x faster**)
 - **RomuDuo** (fastest): 877M operations/sec (**10.5x faster**)
 
 [📊 Full Random Performance Benchmarks](RANDOM_PERFORMANCE.md)

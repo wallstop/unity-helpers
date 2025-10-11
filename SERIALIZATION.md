@@ -1,5 +1,11 @@
 **Serialization Guide**
 
+## TL;DR — What Problem This Solves
+
+- Save/load data and configs reliably with JSON or Protobuf using one unified API.
+- Unity‑aware converters handle common engine types; pooled buffers keep GC low.
+- Pick Pretty/Normal for human‑readable; Fast/FastPOCO for hot paths.
+
 Visuals
 
 ![Serialization Flow](Docs/Images/serialization_flow.svg)

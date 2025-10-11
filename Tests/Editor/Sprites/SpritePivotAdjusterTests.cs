@@ -1,15 +1,14 @@
 namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
 {
 #if UNITY_EDITOR
-    using System;
     using System.IO;
-    using System.Reflection;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
+    using WallstopStudios.UnityHelpers.Tests.Utils;
 
-    public sealed class SpritePivotAdjusterTests
+    public sealed class SpritePivotAdjusterTests : CommonTestBase
     {
         private const string Root = "Assets/Temp/SpritePivotAdjusterTests";
 
@@ -20,8 +19,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         }
 
         [TearDown]
-        public void TearDown()
+        public override void TearDown()
         {
+            base.TearDown();
             AssetDatabase.DeleteAsset("Assets/Temp");
             AssetDatabase.Refresh();
         }
@@ -42,7 +42,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             imp.spritePivot = new Vector2(0.5f, 0.5f);
             imp.SaveAndReimport();
 
-            SpritePivotAdjuster window = ScriptableObject.CreateInstance<SpritePivotAdjuster>();
+            SpritePivotAdjuster window = Track(
+                ScriptableObject.CreateInstance<SpritePivotAdjuster>()
+            );
             window._directoryPaths = new System.Collections.Generic.List<UnityEngine.Object>
             {
                 AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(Root),
@@ -66,10 +68,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         {
             string dir = Path.GetDirectoryName(relPath).Replace('\\', '/');
             EnsureFolder(dir);
-            Texture2D t = new Texture2D(w, h, TextureFormat.RGBA32, false)
-            {
-                alphaIsTransparency = true,
-            };
+            Texture2D t = new(w, h, TextureFormat.RGBA32, false) { alphaIsTransparency = true };
             Color[] pix = new Color[w * h];
             // Make an L-shape: full bottom row and full left column opaque; rest transparent
             for (int y = 0; y < h; ++y)

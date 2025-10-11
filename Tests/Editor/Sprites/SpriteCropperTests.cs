@@ -1,15 +1,14 @@
 namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
 {
 #if UNITY_EDITOR
-    using System;
     using System.IO;
-    using System.Reflection;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
+    using WallstopStudios.UnityHelpers.Tests.Utils;
 
-    public sealed class SpriteCropperTests
+    public sealed class SpriteCropperTests : CommonTestBase
     {
         private const string Root = "Assets/Temp/SpriteCropperTests";
 
@@ -20,8 +19,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         }
 
         [TearDown]
-        public void TearDown()
+        public override void TearDown()
         {
+            base.TearDown();
             AssetDatabase.DeleteAsset("Assets/Temp");
             AssetDatabase.Refresh();
         }
@@ -43,7 +43,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             imp.isReadable = true;
             imp.SaveAndReimport();
 
-            SpriteCropper window = ScriptableObject.CreateInstance<SpriteCropper>();
+            SpriteCropper window = Track(ScriptableObject.CreateInstance<SpriteCropper>());
             window._overwriteOriginals = true;
             window._inputDirectories = new System.Collections.Generic.List<UnityEngine.Object>
             {
@@ -84,7 +84,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             imp.isReadable = true;
             imp.SaveAndReimport();
 
-            SpriteCropper window = ScriptableObject.CreateInstance<SpriteCropper>();
+            SpriteCropper window = Track(ScriptableObject.CreateInstance<SpriteCropper>());
             window._overwriteOriginals = false;
             window._outputDirectory = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(outDir);
             window._inputDirectories = new System.Collections.Generic.List<UnityEngine.Object>
@@ -118,10 +118,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         {
             string dir = Path.GetDirectoryName(relPath).Replace('\\', '/');
             EnsureFolder(dir);
-            Texture2D t = new Texture2D(w, h, TextureFormat.RGBA32, false)
-            {
-                alphaIsTransparency = true,
-            };
+            Texture2D t = new(w, h, TextureFormat.RGBA32, false) { alphaIsTransparency = true };
             Color[] pix = new Color[w * h];
             for (int y = 0; y < h; ++y)
             for (int x = 0; x < w; ++x)

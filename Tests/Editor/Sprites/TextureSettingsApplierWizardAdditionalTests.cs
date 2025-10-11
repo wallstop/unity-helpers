@@ -6,9 +6,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
+    using WallstopStudios.UnityHelpers.Tests.Utils;
     using Object = UnityEngine.Object;
 
-    public sealed class TextureSettingsApplierWizardAdditionalTests
+    public sealed class TextureSettingsApplierWizardAdditionalTests : CommonTestBase
     {
         private const string Root = "Assets/Temp/TextureSettingsApplierWizardAdditionalTests";
 
@@ -19,8 +20,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         }
 
         [TearDown]
-        public void TearDown()
+        public override void TearDown()
         {
+            base.TearDown();
             AssetDatabase.DeleteAsset("Assets/Temp");
             AssetDatabase.Refresh();
         }
@@ -50,8 +52,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             impOther.mipmapEnabled = true;
             impOther.SaveAndReimport();
 
-            TextureSettingsApplier wizard =
-                ScriptableObject.CreateInstance<TextureSettingsApplier>();
+            TextureSettingsApplier wizard = Track(
+                ScriptableObject.CreateInstance<TextureSettingsApplier>()
+            );
             wizard.textures = new System.Collections.Generic.List<Texture2D>
             {
                 AssetDatabase.LoadAssetAtPath<Texture2D>(included),
@@ -115,8 +118,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             impJpg.mipmapEnabled = true;
             impJpg.SaveAndReimport();
 
-            TextureSettingsApplier wizard =
-                ScriptableObject.CreateInstance<TextureSettingsApplier>();
+            TextureSettingsApplier wizard = Track(
+                ScriptableObject.CreateInstance<TextureSettingsApplier>()
+            );
             wizard.textures = new System.Collections.Generic.List<Texture2D>();
             wizard.directories = new System.Collections.Generic.List<Object>
             {
@@ -171,7 +175,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         private static void CreatePng(string relPath, int w, int h, Color c)
         {
             EnsureFolder(Path.GetDirectoryName(relPath).Replace('\\', '/'));
-            Texture2D t = new Texture2D(w, h, TextureFormat.RGBA32, false);
+            Texture2D t = new(w, h, TextureFormat.RGBA32, false);
             Color[] pix = new Color[w * h];
             for (int i = 0; i < pix.Length; i++)
                 pix[i] = c;
@@ -183,7 +187,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         private static void CreateJpg(string relPath, int w, int h, Color c)
         {
             EnsureFolder(Path.GetDirectoryName(relPath).Replace('\\', '/'));
-            Texture2D t = new Texture2D(w, h, TextureFormat.RGB24, false);
+            Texture2D t = new(w, h, TextureFormat.RGB24, false);
             Color[] pix = new Color[w * h];
             for (int i = 0; i < pix.Length; i++)
                 pix[i] = c;

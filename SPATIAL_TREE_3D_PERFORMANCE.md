@@ -1,5 +1,11 @@
 # 3D Spatial Tree Performance Benchmarks
 
+## TL;DR — What Problem This Solves
+
+- Need fast “what’s near X?” or “what’s inside this volume?” in 3D.
+- These structures avoid scanning every object; queries touch only nearby data.
+- Quick picks: OctTree3D for general 3D queries; KDTree3D for nearest‑neighbor on points; RTree3D for volumetric bounds.
+
 Note: KdTree3D, OctTree3D, and RTree3D are under active development and their APIs/performance may evolve. SpatialHash3D is stable and recommended for broad‑phase neighbor queries with many moving objects.
 
 For boundary and result semantics across structures, see [Spatial Tree Semantics](SPATIAL_TREE_SEMANTICS.md)

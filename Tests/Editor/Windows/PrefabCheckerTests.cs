@@ -2,14 +2,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
 {
 #if UNITY_EDITOR
     using System.IO;
-    using System.Reflection;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor;
+    using WallstopStudios.UnityHelpers.Tests.Utils;
 
-    public sealed class PrefabCheckerTests
+    public sealed class PrefabCheckerTests : CommonTestBase
     {
         private const string Root = "Assets/Temp/PrefabCheckerTests";
 
@@ -20,8 +20,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         }
 
         [TearDown]
-        public void TearDown()
+        public override void TearDown()
         {
+            base.TearDown();
             AssetDatabase.DeleteAsset("Assets/Temp");
             AssetDatabase.Refresh();
         }
@@ -42,25 +43,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             string prefabPath = Path.Combine(Root, "Dummy.prefab").Replace('\\', '/');
             EnsureFolder(Path.GetDirectoryName(prefabPath).Replace('\\', '/'));
 
-            GameObject go = new("DummyPrefab");
-            try
-            {
-                PrefabUtility.SaveAsPrefabAsset(go, prefabPath);
-                AssetDatabase.Refresh();
+            GameObject go = Track(new GameObject("DummyPrefab"));
+            PrefabUtility.SaveAsPrefabAsset(go, prefabPath);
+            AssetDatabase.Refresh();
 
-                PrefabChecker checker = ScriptableObject.CreateInstance<PrefabChecker>();
+            PrefabChecker checker = Track(ScriptableObject.CreateInstance<PrefabChecker>());
 
-                var list = new System.Collections.Generic.List<string> { "Assets" };
-                checker._assetPaths = list;
+            var list = new System.Collections.Generic.List<string> { "Assets" };
+            checker._assetPaths = list;
 
-                Assert.DoesNotThrow(() => checker.RunChecksImproved());
-            }
-            finally
-            {
-                Object.DestroyImmediate(go);
-                AssetDatabase.DeleteAsset(prefabPath);
-                AssetDatabase.Refresh();
-            }
+            Assert.DoesNotThrow(() => checker.RunChecksImproved());
         }
 
         private static void EnsureFolder(string relPath)

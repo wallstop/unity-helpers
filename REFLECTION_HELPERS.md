@@ -1,5 +1,10 @@
 ## ReflectionHelpers — Fast, Safe Reflection for Hot Paths
 
+### TL;DR — When To Use
+
+- You need reflection in performance‑sensitive code paths but want to avoid allocations and security pitfalls.
+- These helpers cache lookups, avoid boxing where possible, and expose safe, typed APIs.
+
 Visual
 
 ![Reflection Scan](Docs/Images/reflection_scan.svg)

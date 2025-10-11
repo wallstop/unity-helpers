@@ -28,8 +28,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         }
 
         [TearDown]
-        public void Teardown()
+        public override void TearDown()
         {
+            base.TearDown();
             if (Application.isPlaying)
             {
                 return;

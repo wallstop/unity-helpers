@@ -1,5 +1,15 @@
 # Random Number Generator Performance Benchmarks
 
+## TL;DR — What To Use
+
+- Use `PRNG.Instance` (IllusionFlow by default) for most gameplay: fast, seedable, thread‑safe.
+- Need System.Random compatibility? Use `DotNetRandom` wrapper.
+- Chasing max speed in hot loops? `LinearCongruentialGenerator`/`RomuDuo` are fastest; ensure they meet your quality needs.
+
+Threading
+- Individual RNG instances are not thread‑safe.
+- Use `PRNG.Instance` or each generator’s `TypeName.Instance` for thread‑local safety, or create one instance per thread.
+
 Visual
 
 ![Random Generators](Docs/Images/random_generators.svg)
@@ -39,7 +49,7 @@ This document contains performance benchmarks for the various random number gene
 
 Based on the benchmarks:
 
-- **For general use**: `PcgRandom` (via `PRNG.Instance`) - Great balance of speed and quality
+- **For general use**: `IllusionFlow` (via `PRNG.Instance`) - Great balance of speed and quality
 - **For maximum speed**: `RomuDuo` or `LinearCongruentialGenerator` - Fastest overall
 - **For compatibility**: `DotNetRandom` - Uses .NET's built-in Random
 - **Avoid for performance**: `UnityRandom` - Significantly slower than alternatives

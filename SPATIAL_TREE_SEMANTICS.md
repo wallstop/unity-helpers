@@ -1,5 +1,11 @@
 # Spatial Tree Semantics
 
+## TL;DR — Why Semantics Matter
+
+- Different structures make different promises about boundaries and tie‑breaks.
+- 2D point trees (QuadTree2D, KdTree2D) agree on results; RTree differs by design (bounds‑based).
+- In 3D, KdTree3D vs OctTree3D can diverge at exact boundaries; add small epsilons if edge‑cases matter.
+
 This page explains how the 2D and 3D spatial structures compare in terms of correctness, when to use each structure, and why some 3D variants may produce different results for identical inputs and queries.
 
 ## Structures At A Glance

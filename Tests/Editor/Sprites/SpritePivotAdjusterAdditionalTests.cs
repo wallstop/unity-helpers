@@ -6,9 +6,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
+    using WallstopStudios.UnityHelpers.Tests.Utils;
     using Object = UnityEngine.Object;
 
-    public sealed class SpritePivotAdjusterAdditionalTests
+    public sealed class SpritePivotAdjusterAdditionalTests : CommonTestBase
     {
         private const string Root = "Assets/Temp/SpritePivotAdjusterAdditionalTests";
 
@@ -20,8 +21,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         }
 
         [TearDown]
-        public void TearDown()
+        public override void TearDown()
         {
+            base.TearDown();
             AssetDatabase.DeleteAsset("Assets/Temp");
             AssetDatabase.Refresh();
             SpritePivotAdjuster.SuppressUserPrompts = false;
@@ -42,7 +44,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             imp.spritePivot = new Vector2(0.5f, 0.5f);
             imp.SaveAndReimport();
 
-            SpritePivotAdjuster window = ScriptableObject.CreateInstance<SpritePivotAdjuster>();
+            SpritePivotAdjuster window = Track(
+                ScriptableObject.CreateInstance<SpritePivotAdjuster>()
+            );
             window._directoryPaths = new System.Collections.Generic.List<Object>
             {
                 AssetDatabase.LoadAssetAtPath<Object>(Root),
@@ -59,7 +63,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             Vector2 pivotLow = imp.spritePivot;
 
             // High cutoff: ignore faint alpha → pivot biased to top-right block only
-            window = ScriptableObject.CreateInstance<SpritePivotAdjuster>();
+            window = Track(ScriptableObject.CreateInstance<SpritePivotAdjuster>());
             window._directoryPaths = new System.Collections.Generic.List<Object>
             {
                 AssetDatabase.LoadAssetAtPath<Object>(Root),
@@ -94,7 +98,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
 
             Vector2 before = imp.spritePivot;
 
-            SpritePivotAdjuster window = ScriptableObject.CreateInstance<SpritePivotAdjuster>();
+            SpritePivotAdjuster window = Track(
+                ScriptableObject.CreateInstance<SpritePivotAdjuster>()
+            );
             window._directoryPaths = new System.Collections.Generic.List<Object>
             {
                 AssetDatabase.LoadAssetAtPath<Object>(Root),
@@ -126,7 +132,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
 
             Vector2 before = imp.spritePivot;
 
-            SpritePivotAdjuster window = ScriptableObject.CreateInstance<SpritePivotAdjuster>();
+            SpritePivotAdjuster window = Track(
+                ScriptableObject.CreateInstance<SpritePivotAdjuster>()
+            );
             window._directoryPaths = new System.Collections.Generic.List<Object>
             {
                 AssetDatabase.LoadAssetAtPath<Object>(Root),
@@ -145,10 +153,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         private static void CreateDualAlphaPattern(string relPath, int w, int h)
         {
             EnsureFolder(Path.GetDirectoryName(relPath).Replace('\\', '/'));
-            Texture2D t = new Texture2D(w, h, TextureFormat.RGBA32, false)
-            {
-                alphaIsTransparency = true,
-            };
+            Texture2D t = new(w, h, TextureFormat.RGBA32, false) { alphaIsTransparency = true };
             Color[] pix = new Color[w * h];
             for (int y = 0; y < h; ++y)
             for (int x = 0; x < w; ++x)
@@ -172,10 +177,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         private static void CreateOpaqueLShape(string relPath, int w, int h)
         {
             EnsureFolder(Path.GetDirectoryName(relPath).Replace('\\', '/'));
-            Texture2D t = new Texture2D(w, h, TextureFormat.RGBA32, false)
-            {
-                alphaIsTransparency = true,
-            };
+            Texture2D t = new(w, h, TextureFormat.RGBA32, false) { alphaIsTransparency = true };
             Color[] pix = new Color[w * h];
             for (int y = 0; y < h; ++y)
             for (int x = 0; x < w; ++x)

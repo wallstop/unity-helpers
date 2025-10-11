@@ -3062,8 +3062,16 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 true
             );
             ILGenerator il = dm.GetILGenerator();
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit(typeof(TInstance).IsValueType ? OpCodes.Call : OpCodes.Callvirt, method);
+            if (typeof(TInstance).IsValueType)
+            {
+                il.Emit(OpCodes.Ldarga_S, (byte)0);
+                il.Emit(OpCodes.Call, method);
+            }
+            else
+            {
+                il.Emit(OpCodes.Ldarg_0);
+                il.Emit(OpCodes.Callvirt, method);
+            }
             il.Emit(OpCodes.Ret);
             return dm.CreateDelegate(typeof(Func<TInstance, TReturn>));
         }
@@ -3078,9 +3086,18 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 true
             );
             ILGenerator il = dm.GetILGenerator();
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Ldarg_1);
-            il.Emit(typeof(TInstance).IsValueType ? OpCodes.Call : OpCodes.Callvirt, method);
+            if (typeof(TInstance).IsValueType)
+            {
+                il.Emit(OpCodes.Ldarga_S, (byte)0);
+                il.Emit(OpCodes.Ldarg_1);
+                il.Emit(OpCodes.Call, method);
+            }
+            else
+            {
+                il.Emit(OpCodes.Ldarg_0);
+                il.Emit(OpCodes.Ldarg_1);
+                il.Emit(OpCodes.Callvirt, method);
+            }
             il.Emit(OpCodes.Ret);
             return dm.CreateDelegate(typeof(Func<TInstance, T1, TReturn>));
         }
@@ -3095,10 +3112,20 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 true
             );
             ILGenerator il = dm.GetILGenerator();
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Ldarg_1);
-            il.Emit(OpCodes.Ldarg_2);
-            il.Emit(typeof(TInstance).IsValueType ? OpCodes.Call : OpCodes.Callvirt, method);
+            if (typeof(TInstance).IsValueType)
+            {
+                il.Emit(OpCodes.Ldarga_S, (byte)0);
+                il.Emit(OpCodes.Ldarg_1);
+                il.Emit(OpCodes.Ldarg_2);
+                il.Emit(OpCodes.Call, method);
+            }
+            else
+            {
+                il.Emit(OpCodes.Ldarg_0);
+                il.Emit(OpCodes.Ldarg_1);
+                il.Emit(OpCodes.Ldarg_2);
+                il.Emit(OpCodes.Callvirt, method);
+            }
             il.Emit(OpCodes.Ret);
             return dm.CreateDelegate(typeof(Func<TInstance, T1, T2, TReturn>));
         }
@@ -3115,11 +3142,22 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 true
             );
             ILGenerator il = dm.GetILGenerator();
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Ldarg_1);
-            il.Emit(OpCodes.Ldarg_2);
-            il.Emit(OpCodes.Ldarg_3);
-            il.Emit(typeof(TInstance).IsValueType ? OpCodes.Call : OpCodes.Callvirt, method);
+            if (typeof(TInstance).IsValueType)
+            {
+                il.Emit(OpCodes.Ldarga_S, (byte)0);
+                il.Emit(OpCodes.Ldarg_1);
+                il.Emit(OpCodes.Ldarg_2);
+                il.Emit(OpCodes.Ldarg_3);
+                il.Emit(OpCodes.Call, method);
+            }
+            else
+            {
+                il.Emit(OpCodes.Ldarg_0);
+                il.Emit(OpCodes.Ldarg_1);
+                il.Emit(OpCodes.Ldarg_2);
+                il.Emit(OpCodes.Ldarg_3);
+                il.Emit(OpCodes.Callvirt, method);
+            }
             il.Emit(OpCodes.Ret);
             return dm.CreateDelegate(typeof(Func<TInstance, T1, T2, T3, TReturn>));
         }
@@ -3136,12 +3174,24 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 true
             );
             ILGenerator il = dm.GetILGenerator();
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Ldarg_1);
-            il.Emit(OpCodes.Ldarg_2);
-            il.Emit(OpCodes.Ldarg_3);
-            il.Emit(OpCodes.Ldarg_S, (short)4);
-            il.Emit(typeof(TInstance).IsValueType ? OpCodes.Call : OpCodes.Callvirt, method);
+            if (typeof(TInstance).IsValueType)
+            {
+                il.Emit(OpCodes.Ldarga_S, (byte)0);
+                il.Emit(OpCodes.Ldarg_1);
+                il.Emit(OpCodes.Ldarg_2);
+                il.Emit(OpCodes.Ldarg_3);
+                il.Emit(OpCodes.Ldarg_S, (byte)4);
+                il.Emit(OpCodes.Call, method);
+            }
+            else
+            {
+                il.Emit(OpCodes.Ldarg_0);
+                il.Emit(OpCodes.Ldarg_1);
+                il.Emit(OpCodes.Ldarg_2);
+                il.Emit(OpCodes.Ldarg_3);
+                il.Emit(OpCodes.Ldarg_S, (byte)4);
+                il.Emit(OpCodes.Callvirt, method);
+            }
             il.Emit(OpCodes.Ret);
             return dm.CreateDelegate(typeof(Func<TInstance, T1, T2, T3, T4, TReturn>));
         }
@@ -3156,8 +3206,16 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 true
             );
             ILGenerator il = dm.GetILGenerator();
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit(typeof(TInstance).IsValueType ? OpCodes.Call : OpCodes.Callvirt, method);
+            if (typeof(TInstance).IsValueType)
+            {
+                il.Emit(OpCodes.Ldarga_S, (byte)0);
+                il.Emit(OpCodes.Call, method);
+            }
+            else
+            {
+                il.Emit(OpCodes.Ldarg_0);
+                il.Emit(OpCodes.Callvirt, method);
+            }
             il.Emit(OpCodes.Ret);
             return dm.CreateDelegate(typeof(Action<TInstance>));
         }
@@ -3172,9 +3230,18 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 true
             );
             ILGenerator il = dm.GetILGenerator();
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Ldarg_1);
-            il.Emit(typeof(TInstance).IsValueType ? OpCodes.Call : OpCodes.Callvirt, method);
+            if (typeof(TInstance).IsValueType)
+            {
+                il.Emit(OpCodes.Ldarga_S, (byte)0);
+                il.Emit(OpCodes.Ldarg_1);
+                il.Emit(OpCodes.Call, method);
+            }
+            else
+            {
+                il.Emit(OpCodes.Ldarg_0);
+                il.Emit(OpCodes.Ldarg_1);
+                il.Emit(OpCodes.Callvirt, method);
+            }
             il.Emit(OpCodes.Ret);
             return dm.CreateDelegate(typeof(Action<TInstance, T1>));
         }
@@ -3189,10 +3256,20 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 true
             );
             ILGenerator il = dm.GetILGenerator();
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Ldarg_1);
-            il.Emit(OpCodes.Ldarg_2);
-            il.Emit(typeof(TInstance).IsValueType ? OpCodes.Call : OpCodes.Callvirt, method);
+            if (typeof(TInstance).IsValueType)
+            {
+                il.Emit(OpCodes.Ldarga_S, (byte)0);
+                il.Emit(OpCodes.Ldarg_1);
+                il.Emit(OpCodes.Ldarg_2);
+                il.Emit(OpCodes.Call, method);
+            }
+            else
+            {
+                il.Emit(OpCodes.Ldarg_0);
+                il.Emit(OpCodes.Ldarg_1);
+                il.Emit(OpCodes.Ldarg_2);
+                il.Emit(OpCodes.Callvirt, method);
+            }
             il.Emit(OpCodes.Ret);
             return dm.CreateDelegate(typeof(Action<TInstance, T1, T2>));
         }
@@ -3209,11 +3286,22 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 true
             );
             ILGenerator il = dm.GetILGenerator();
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Ldarg_1);
-            il.Emit(OpCodes.Ldarg_2);
-            il.Emit(OpCodes.Ldarg_3);
-            il.Emit(typeof(TInstance).IsValueType ? OpCodes.Call : OpCodes.Callvirt, method);
+            if (typeof(TInstance).IsValueType)
+            {
+                il.Emit(OpCodes.Ldarga_S, (byte)0);
+                il.Emit(OpCodes.Ldarg_1);
+                il.Emit(OpCodes.Ldarg_2);
+                il.Emit(OpCodes.Ldarg_3);
+                il.Emit(OpCodes.Call, method);
+            }
+            else
+            {
+                il.Emit(OpCodes.Ldarg_0);
+                il.Emit(OpCodes.Ldarg_1);
+                il.Emit(OpCodes.Ldarg_2);
+                il.Emit(OpCodes.Ldarg_3);
+                il.Emit(OpCodes.Callvirt, method);
+            }
             il.Emit(OpCodes.Ret);
             return dm.CreateDelegate(typeof(Action<TInstance, T1, T2, T3>));
         }
@@ -3230,12 +3318,24 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 true
             );
             ILGenerator il = dm.GetILGenerator();
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Ldarg_1);
-            il.Emit(OpCodes.Ldarg_2);
-            il.Emit(OpCodes.Ldarg_3);
-            il.Emit(OpCodes.Ldarg_S, (short)4);
-            il.Emit(typeof(TInstance).IsValueType ? OpCodes.Call : OpCodes.Callvirt, method);
+            if (typeof(TInstance).IsValueType)
+            {
+                il.Emit(OpCodes.Ldarga_S, (byte)0);
+                il.Emit(OpCodes.Ldarg_1);
+                il.Emit(OpCodes.Ldarg_2);
+                il.Emit(OpCodes.Ldarg_3);
+                il.Emit(OpCodes.Ldarg_S, (byte)4);
+                il.Emit(OpCodes.Call, method);
+            }
+            else
+            {
+                il.Emit(OpCodes.Ldarg_0);
+                il.Emit(OpCodes.Ldarg_1);
+                il.Emit(OpCodes.Ldarg_2);
+                il.Emit(OpCodes.Ldarg_3);
+                il.Emit(OpCodes.Ldarg_S, (byte)4);
+                il.Emit(OpCodes.Callvirt, method);
+            }
             il.Emit(OpCodes.Ret);
             return dm.CreateDelegate(typeof(Action<TInstance, T1, T2, T3, T4>));
         }

@@ -1,11 +1,9 @@
 namespace WallstopStudios.UnityHelpers.Tests.Editor.Tools
 {
 #if UNITY_EDITOR
-    using System;
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;
-    using System.Reflection;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
@@ -50,7 +48,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Tools
         [Test]
         public void CreateBlurredTextureSoftensHighContrastPixel()
         {
-            Texture2D src = new Texture2D(5, 5, TextureFormat.RGBA32, false);
+            Texture2D src = new(5, 5, TextureFormat.RGBA32, false);
             Color[] pixels = Enumerable.Repeat(Color.black, 25).ToArray();
             pixels[12] = Color.white;
             src.SetPixels(pixels);
@@ -78,7 +76,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Tools
             Object folderObj = AssetDatabase.LoadAssetAtPath<Object>(TempRoot);
             Assert.IsNotNull(folderObj, "Temp folder not found as asset");
 
-            List<Texture2D> list = new List<Texture2D>();
+            List<Texture2D> list = new();
             WallstopStudios.UnityHelpers.Editor.Tools.ImageBlurTool.TrySyncDirectory(
                 TempRoot,
                 list
@@ -113,7 +111,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Tools
         {
             string dir = Path.GetDirectoryName(relPath).Replace('\\', '/');
             EnsureFolder(dir);
-            Texture2D t = new Texture2D(w, h, TextureFormat.RGBA32, false);
+            Texture2D t = new(w, h, TextureFormat.RGBA32, false);
             Color[] pix = Enumerable.Repeat(c, w * h).ToArray();
             t.SetPixels(pix);
             t.Apply();

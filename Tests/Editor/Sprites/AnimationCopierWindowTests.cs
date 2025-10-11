@@ -1,15 +1,14 @@
 namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
 {
 #if UNITY_EDITOR
-    using System;
     using System.IO;
-    using System.Linq;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
+    using WallstopStudios.UnityHelpers.Tests.Utils;
 
-    public sealed class AnimationCopierWindowTests
+    public sealed class AnimationCopierWindowTests : CommonTestBase
     {
         private const string SrcRoot = "Assets/Temp/AnimationCopierTests/Src";
         private const string DstRoot = "Assets/Temp/AnimationCopierTests/Dst";
@@ -25,8 +24,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         }
 
         [TearDown]
-        public void TearDown()
+        public override void TearDown()
         {
+            base.TearDown();
             AssetDatabase.DeleteAsset("Assets/Temp/AnimationCopierTests");
             AssetDatabase.Refresh();
             AnimationCopierWindow.SuppressUserPrompts = _prevPrompt;
@@ -178,7 +178,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         {
             string dir = Path.GetDirectoryName(relPath).Replace('\\', '/');
             EnsureFolder(dir);
-            AnimationClip clip = new AnimationClip();
+            AnimationClip clip = new();
             AssetDatabase.CreateAsset(clip, relPath);
         }
 
@@ -190,9 +190,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             EditorUtility.SetDirty(clip);
         }
 
-        private static AnimationCopierWindow CreateWindow()
+        private AnimationCopierWindow CreateWindow()
         {
-            return ScriptableObject.CreateInstance<AnimationCopierWindow>();
+            return Track(ScriptableObject.CreateInstance<AnimationCopierWindow>());
         }
     }
 #endif

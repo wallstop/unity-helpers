@@ -6,8 +6,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
+    using WallstopStudios.UnityHelpers.Tests.Utils;
 
-    public sealed class TextureResizerWizardTests
+    public sealed class TextureResizerWizardTests : CommonTestBase
     {
         private const string Root = "Assets/Temp/TextureResizerWizardTests";
         private const string OutRoot = "Assets/Temp/TextureResizerWizardTests/Out";
@@ -20,8 +21,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         }
 
         [TearDown]
-        public void TearDown()
+        public override void TearDown()
         {
+            base.TearDown();
             AssetDatabase.DeleteAsset("Assets/Temp");
             AssetDatabase.Refresh();
         }
@@ -33,7 +35,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             CreatePng(path, 16, 10, Color.green);
             AssetDatabase.Refresh();
 
-            TextureResizerWizard wizard = ScriptableObject.CreateInstance<TextureResizerWizard>();
+            TextureResizerWizard wizard = Track(
+                ScriptableObject.CreateInstance<TextureResizerWizard>()
+            );
             wizard.textures = new System.Collections.Generic.List<Texture2D>
             {
                 AssetDatabase.LoadAssetAtPath<Texture2D>(path),
@@ -61,7 +65,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             int w0 = AssetDatabase.LoadAssetAtPath<Texture2D>(path).width;
             int h0 = AssetDatabase.LoadAssetAtPath<Texture2D>(path).height;
 
-            TextureResizerWizard wizard = ScriptableObject.CreateInstance<TextureResizerWizard>();
+            TextureResizerWizard wizard = Track(
+                ScriptableObject.CreateInstance<TextureResizerWizard>()
+            );
             wizard.numResizes = 0;
             wizard.OnWizardCreate();
 
@@ -78,7 +84,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             CreatePng(path, 10, 6, Color.white);
             AssetDatabase.Refresh();
 
-            TextureResizerWizard wizard = ScriptableObject.CreateInstance<TextureResizerWizard>();
+            TextureResizerWizard wizard = Track(
+                ScriptableObject.CreateInstance<TextureResizerWizard>()
+            );
             wizard.textures = new System.Collections.Generic.List<Texture2D>
             {
                 AssetDatabase.LoadAssetAtPath<Texture2D>(path),
@@ -104,7 +112,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             CreatePng(path, 8, 4, Color.black);
             AssetDatabase.Refresh();
 
-            TextureResizerWizard wizard = ScriptableObject.CreateInstance<TextureResizerWizard>();
+            TextureResizerWizard wizard = Track(
+                ScriptableObject.CreateInstance<TextureResizerWizard>()
+            );
             wizard.textures = new System.Collections.Generic.List<Texture2D>
             {
                 AssetDatabase.LoadAssetAtPath<Texture2D>(path),
@@ -138,7 +148,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             CreatePng(path, 16, 10, Color.gray);
             AssetDatabase.Refresh();
 
-            TextureResizerWizard wizard = ScriptableObject.CreateInstance<TextureResizerWizard>();
+            TextureResizerWizard wizard = Track(
+                ScriptableObject.CreateInstance<TextureResizerWizard>()
+            );
             wizard.textures = new System.Collections.Generic.List<Texture2D>
             {
                 AssetDatabase.LoadAssetAtPath<Texture2D>(path),
@@ -168,7 +180,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             importer.isReadable = false;
             importer.SaveAndReimport();
 
-            TextureResizerWizard wizard = ScriptableObject.CreateInstance<TextureResizerWizard>();
+            TextureResizerWizard wizard = Track(
+                ScriptableObject.CreateInstance<TextureResizerWizard>()
+            );
             wizard.textures = new System.Collections.Generic.List<Texture2D>
             {
                 AssetDatabase.LoadAssetAtPath<Texture2D>(path),
@@ -205,7 +219,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         {
             string dir = Path.GetDirectoryName(relPath).Replace('\\', '/');
             EnsureFolder(dir);
-            Texture2D t = new Texture2D(w, h, TextureFormat.RGBA32, false);
+            Texture2D t = new(w, h, TextureFormat.RGBA32, false);
             Color[] pix = new Color[w * h];
             for (int i = 0; i < pix.Length; i++)
                 pix[i] = c;

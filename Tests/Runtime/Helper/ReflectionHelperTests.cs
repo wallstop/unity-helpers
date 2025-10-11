@@ -217,6 +217,20 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public int InstanceReadOnlyProperty => 888;
     }
 
+    public sealed class SelfReferentialType
+    {
+        public static SelfReferentialType InstanceField = new SelfReferentialType();
+        public static SelfReferentialType InstanceProperty { get; } = new SelfReferentialType();
+    }
+
+    public struct ValueStruct
+    {
+        public int x;
+        public int y;
+
+        public int Sum(int a, int b) => a + b + x + y;
+    }
+
     public sealed class IndexerClass
     {
         private readonly int[] data = new int[10];
@@ -1730,6 +1744,129 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             Type methodType = typeof(TestMethodClass);
             Assert.IsFalse(methodType.IsAttributeDefined(out ReflectionTestAttribute noAttr));
             Assert.IsNull(noAttr);
+        }
+
+        [Test]
+        public void PropertySetterThrowsOnReadOnly()
+        {
+            var ro = typeof(TestPropertyClass).GetProperty(
+                nameof(TestPropertyClass.InstanceReadOnlyProperty)
+            );
+            Assert.Throws<ArgumentException>(() => ReflectionHelpers.GetPropertySetter(ro));
+            Assert.Throws<ArgumentException>(() =>
+                ReflectionHelpers.GetPropertySetter<TestPropertyClass, int>(ro)
+            );
+        }
+
+        [Test]
+        public void StaticPropertySetterThrowsOnInstanceProperty()
+        {
+            var pi = typeof(TestPropertyClass).GetProperty(
+                nameof(TestPropertyClass.InstanceProperty)
+            );
+            Assert.Throws<ArgumentException>(() =>
+                ReflectionHelpers.GetStaticPropertySetter<int>(pi)
+            );
+        }
+
+        [Test]
+        public void IndexerHelpersThrowOnNonIndexer()
+        {
+            var pi = typeof(TestPropertyClass).GetProperty(
+                nameof(TestPropertyClass.InstanceProperty)
+            );
+            Assert.Throws<ArgumentException>(() => ReflectionHelpers.GetIndexerGetter(pi));
+            Assert.Throws<ArgumentException>(() => ReflectionHelpers.GetIndexerSetter(pi));
+        }
+
+        [Test]
+        public void TypedPropertyGetterStaticIgnoresInstance()
+        {
+            var spi = typeof(TestPropertyClass).GetProperty(
+                nameof(TestPropertyClass.StaticProperty)
+            );
+            var setter = ReflectionHelpers.GetStaticPropertySetter<int>(spi);
+            setter(777);
+            var getter = ReflectionHelpers.GetPropertyGetter<TestPropertyClass, int>(spi);
+            var dummy = new TestPropertyClass();
+            Assert.AreEqual(777, getter(dummy));
+        }
+
+        [Test]
+        public void TypedStaticInvokerWrongReturnTypeThrows()
+        {
+            MethodInfo m0 = typeof(TestMethodClass).GetMethod(
+                nameof(TestMethodClass.StaticIntMethod)
+            );
+            Assert.Throws<ArgumentException>(() =>
+                ReflectionHelpers.GetStaticMethodInvoker<string>(m0)
+            );
+        }
+
+        [Test]
+        public void TypedInstanceInvokerWrongInstanceTypeThrows()
+        {
+            MethodInfo mi = typeof(TestMethodClass).GetMethod(
+                nameof(TestMethodClass.InstanceIntMethod)
+            );
+            Assert.Throws<ArgumentException>(() =>
+                ReflectionHelpers.GetInstanceMethodInvoker<string, int>(mi)
+            );
+        }
+
+        [Test]
+        public void ValueTypeInstanceTypedInvoker()
+        {
+            MethodInfo mi = typeof(ValueStruct).GetMethod(nameof(ValueStruct.Sum));
+            var inv = ReflectionHelpers.GetInstanceMethodInvoker<ValueStruct, int, int, int>(mi);
+            ValueStruct vs = new ValueStruct { x = 1, y = 2 };
+            Assert.AreEqual(1 + 2 + 3 + 1 + 2, inv(vs, 1, 2));
+        }
+
+        [Test]
+        public void HashSetAdderTypeMismatchThrows()
+        {
+            object set = ReflectionHelpers.CreateHashSet(typeof(int), 0);
+            var add = ReflectionHelpers.GetHashSetAdder(typeof(int));
+            Assert.Throws<InvalidCastException>(() => add(set, "oops"));
+        }
+
+        [Test]
+        public void ArrayCreatorNegativeLengthThrows()
+        {
+            var makeObj = ReflectionHelpers.GetArrayCreator(typeof(int));
+            Assert.Throws<OverflowException>(() => makeObj(-1));
+            var makeT = ReflectionHelpers.GetArrayCreator<int>();
+            Assert.Throws<OverflowException>(() => makeT(-1));
+        }
+
+        [Test]
+        public void LoadStaticFieldsAndPropertiesForType()
+        {
+            var fields = ReflectionHelpers.LoadStaticFieldsForType<SelfReferentialType>();
+            var props = ReflectionHelpers.LoadStaticPropertiesForType<SelfReferentialType>();
+            Assert.IsTrue(fields.ContainsKey(nameof(SelfReferentialType.InstanceField)));
+            Assert.IsTrue(fields.ContainsKey(nameof(SelfReferentialType.InstanceField).ToLower()));
+            Assert.IsTrue(props.ContainsKey(nameof(SelfReferentialType.InstanceProperty)));
+            Assert.IsTrue(
+                props.ContainsKey(nameof(SelfReferentialType.InstanceProperty).ToLower())
+            );
+        }
+
+        [Test]
+        public void IndexerSetterInvalidIndexTypeThrows()
+        {
+            var idx = typeof(IndexerClass).GetProperty("Item");
+            var setter = ReflectionHelpers.GetIndexerSetter(idx);
+            IndexerClass obj = new();
+            Assert.Throws<InvalidCastException>(() => setter(obj, 3, new object[] { "notInt" }));
+        }
+
+        [Test]
+        public void StaticActionInvokerThrowsOnNonStatic()
+        {
+            var m = typeof(TestMethodClass).GetMethod(nameof(TestMethodClass.InstanceVoidMethod));
+            Assert.Throws<ArgumentException>(() => ReflectionHelpers.GetStaticActionInvoker(m));
         }
 
         [Test]

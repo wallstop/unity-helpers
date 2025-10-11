@@ -1,16 +1,15 @@
 namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
 {
 #if UNITY_EDITOR
-    using System;
     using System.IO;
-    using System.Reflection;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
     using UnityEngine.U2D;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
+    using WallstopStudios.UnityHelpers.Tests.Utils;
 
-    public sealed class ScriptableSpriteAtlasEditorTests
+    public sealed class ScriptableSpriteAtlasEditorTests : CommonTestBase
     {
         private const string Root = "Assets/Temp/ScriptableSpriteAtlasEditorTests";
 
@@ -21,8 +20,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         }
 
         [TearDown]
-        public void TearDown()
+        public override void TearDown()
         {
+            base.TearDown();
             AssetDatabase.DeleteAsset("Assets/Temp");
             AssetDatabase.Refresh();
         }
@@ -47,8 +47,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             AssetDatabase.Refresh();
 
             // Open window and generate all atlases
-            ScriptableSpriteAtlasEditor window =
-                ScriptableObject.CreateInstance<ScriptableSpriteAtlasEditor>();
+            ScriptableSpriteAtlasEditor window = Track(
+                ScriptableObject.CreateInstance<ScriptableSpriteAtlasEditor>()
+            );
             window.LoadAtlasConfigs();
             window.GenerateAllAtlases();
 
@@ -78,7 +79,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         {
             string dir = Path.GetDirectoryName(relPath).Replace('\\', '/');
             EnsureFolder(dir);
-            Texture2D t = new Texture2D(w, h, TextureFormat.RGBA32, false);
+            Texture2D t = new(w, h, TextureFormat.RGBA32, false);
             Color[] pix = new Color[w * h];
             for (int i = 0; i < pix.Length; i++)
                 pix[i] = c;

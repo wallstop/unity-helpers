@@ -44,7 +44,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             {
                 Assert.Inconclusive("Required shader not found.");
             }
-            Material mat = new Material(shader);
+            Material mat = new(shader);
             AssetDatabase.CreateAsset(mat, _assetPath);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();

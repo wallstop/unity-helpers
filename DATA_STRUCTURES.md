@@ -1,5 +1,11 @@
 # Core Data Structures — Concepts, Usage, and Trade-offs
 
+## TL;DR — What Problem This Solves
+
+- Pick the right container for performance and clarity: ring buffers, deques, heaps, tries, sparse sets, etc.
+- Each section gives a plain‑language “Use for / Pros / Cons” and a tiny code snapshot to copy.
+- When in doubt, prefer simple .NET types; use these when you hit performance or ergonomics limits.
+
 This guide covers several foundational data structures used across the library and when to use them.
 
 ## Cyclic Buffer (Ring Buffer)
@@ -10,7 +16,7 @@ This guide covers several foundational data structures used across the library a
 - Pros: Constant-time, cache-friendly, no reallocations at steady size.
 - Cons: Fixed capacity unless resized; must handle wrap-around.
 
-Diagram: ![Cyclic Buffer](Docs/Images/cyclic_buffer.svg)
+![Cyclic Buffer](Docs/Images/cyclic_buffer.svg)
 
 When to use vs .NET queues
 - Prefer `CyclicBuffer<T>` over `Queue<T>` when you want bounded memory with O(1) push/pop at both ends and predictable behavior under backpressure (drop/overwrite oldest, or pop proactively).
@@ -49,7 +55,7 @@ Tips and pitfalls
 - Pros: Flexible ends; generalizes queue and stack behavior.
 - Cons: Implementation complexity for block-based layouts.
 
-Diagram: ![Deque](Docs/Images/deque.svg)
+![Deque](Docs/Images/deque.svg)
 
 When to use vs `Queue<T>` / `Stack<T>`
 - Prefer `Deque<T>` when you need both `push_front` and `push_back` in O(1) amortized.
@@ -83,7 +89,7 @@ Tips
 - Pros: Simple; great constant factors; contiguous memory.
 - Cons: Not ideal for decrease-key unless augmented.
 
-Diagram: ![Heap](Docs/Images/heap.svg)
+![Heap](Docs/Images/heap.svg)
 
 When to use vs `SortedSet<T>`
 - Prefer `Heap<T>`/`PriorityQueue<T>` for frequent push/pop top in O(log n) with low overhead.
@@ -124,7 +130,7 @@ Tips
 - Pros: Extremely fast for bulk unions/finds; minimal memory.
 - Cons: Not suited for deletions or enumerating members without extra indexes.
 
-Diagram: ![Disjoint Set](Docs/Images/disjoint_set.svg)
+![Disjoint Set](Docs/Images/disjoint_set.svg)
 
 When to use
 - Batch connectivity queries where the graph mutates only via unions (no deletions): MST (Kruskal), island labeling, clustering, grouping by equivalence.
@@ -163,7 +169,7 @@ Tips
 - Pros: Very fast, cache-friendly on dense array; stable indices optional.
 - Cons: Requires ID space for indices; sparse array sized by max ID.
 
-Diagram: ![Sparse Set](Docs/Images/sparse_set.svg)
+![Sparse Set](Docs/Images/sparse_set.svg)
 
 When to use vs `HashSet<T>`
 - Prefer `SparseSet` when your IDs are small integers (0..N) and you need O(1) contains with dense, cache-friendly iteration over active items.
@@ -201,7 +207,7 @@ Tips
 - Pros: Predictable per-character traversal; supports prefix enumeration.
 - Cons: Memory overhead vs hash tables; compact with radix/compressed tries.
 
-Diagram: ![Trie](Docs/Images/trie.svg)
+![Trie](Docs/Images/trie.svg)
 
 When to use vs dictionaries
 - Prefer `Trie` for lots of prefix queries and auto-complete where per-character traversal beats repeated hashing.
@@ -237,7 +243,7 @@ Tips
 - Pros: Extremely compact; very fast bitwise operations.
 - Cons: Fixed maximum size unless dynamically extended; needs index mapping.
 
-Diagram: ![Bitset](Docs/Images/bitset.svg)
+![Bitset](Docs/Images/bitset.svg)
 
 When to use vs `bool[]` / `HashSet<int>`
 - Prefer `BitSet` for dense boolean sets with fast bitwise ops (masks, layers, filters) and compact storage.

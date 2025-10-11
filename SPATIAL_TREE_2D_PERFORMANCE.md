@@ -1,5 +1,10 @@
 # 2D Spatial Tree Performance Benchmarks
 
+## TL;DR — What Problem This Solves
+
+- Fast range/bounds/nearest‑neighbor queries on 2D data without scanning everything.
+- Quick picks: QuadTree2D for broad‑phase; KDTree2D (Balanced) for NN; KDTree2D (Unbalanced) for fast rebuilds; RTree2D for bounds‑based data.
+
 This document contains performance benchmarks for the 2D spatial tree implementations in Unity Helpers.
 
 ## Available 2D Spatial Trees
