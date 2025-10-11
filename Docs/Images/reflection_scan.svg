@@ -1,7 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="820" height="320" viewBox="0 0 820 320">
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="320" viewBox="0 0 820 320" version="1.1">
+  <title>Reflection Helpers — Scan &amp; Cache</title>
+  <desc>Illustrates the scan-&gt;attributes-&gt;cache flow and notes about editor/runtime scanning, caching, and invalidation.</desc>
   <rect x="0" y="0" width="820" height="320" fill="#0f0f13"/>
   <g font-family="Verdana,Arial,sans-serif" font-size="14" fill="#c8d1dc">
-    <text x="16" y="26">Reflection Helpers — Scan & Cache</text>
+    <text x="16" y="26">Reflection Helpers — Scan &amp; Cache</text>
   </g>
   <g fill="#1d2330" stroke="#7aa2ff" stroke-width="2">
     <rect x="40" y="60" width="220" height="50" rx="8"/>
@@ -28,4 +31,3 @@
     <text x="70" y="196">- Invalidation: assembly reloads, explicit clear</text>
   </g>
 </svg>
-
