@@ -80,26 +80,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils
 
         private static void SetIncludeTestAssemblies(bool value)
         {
-            Type t =
-                typeof(WallstopStudios.UnityHelpers.Editor.Utils.ScriptableObjectSingletonCreator);
-            PropertyInfo p = t.GetProperty(
-                "IncludeTestAssemblies",
-                BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public
-            );
-            Assert.IsNotNull(p, "IncludeTestAssemblies property not found");
-            p.SetValue(null, value);
+            WallstopStudios
+                .UnityHelpers
+                .Editor
+                .Utils
+                .ScriptableObjectSingletonCreator
+                .IncludeTestAssemblies = value;
         }
 
         private static void InvokeEnsureSingletonAssets()
         {
-            Type t =
-                typeof(WallstopStudios.UnityHelpers.Editor.Utils.ScriptableObjectSingletonCreator);
-            MethodInfo m = t.GetMethod(
-                "EnsureSingletonAssets",
-                BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public
-            );
-            Assert.IsNotNull(m, "EnsureSingletonAssets not found");
-            m.Invoke(null, null);
+            WallstopStudios.UnityHelpers.Editor.Utils.ScriptableObjectSingletonCreator.EnsureSingletonAssets();
         }
 
         private static void EnsureFolder(string relPath)

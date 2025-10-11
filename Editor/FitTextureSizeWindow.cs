@@ -434,47 +434,12 @@ namespace WallstopStudios.UnityHelpers.Editor
             if (searchPaths.Count > 0)
             {
                 string typeFilter = _onlySprites ? "t:sprite" : "t:texture2D";
-
-                // If label filter is present and case-insensitive, leverage l: clauses to avoid asset loads later.
-                bool hasLabelFilter = !string.IsNullOrWhiteSpace(_labelFilterCsv);
-                if (hasLabelFilter && !_caseSensitiveNameFilter)
+                // Use type-filter search only; perform label filtering per-asset below
+                // to ensure correct case sensitivity semantics across Unity versions.
+                string[] guids = AssetDatabase.FindAssets(typeFilter, searchPaths.ToArray());
+                for (int i = 0; i < guids.Length; i++)
                 {
-                    string[] labelTokens = _labelFilterCsv
-                        .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
-                        .Select(s => s.Trim())
-                        .Where(s => s.Length > 0)
-                        .ToArray();
-                    if (labelTokens.Length > 0)
-                    {
-                        string labelClause = string.Join(" OR ", labelTokens.Select(l => $"l:{l}"));
-                        string query = $"({labelClause}) AND {typeFilter}";
-                        string[] guids = AssetDatabase.FindAssets(query, searchPaths.ToArray());
-                        for (int i = 0; i < guids.Length; i++)
-                        {
-                            string g = guids[i];
-                            _ = guidSet.Add(g);
-                            _labelQueryGuids.Add(g);
-                        }
-                    }
-                    else
-                    {
-                        string[] guids = AssetDatabase.FindAssets(
-                            typeFilter,
-                            searchPaths.ToArray()
-                        );
-                        for (int i = 0; i < guids.Length; i++)
-                        {
-                            _ = guidSet.Add(guids[i]);
-                        }
-                    }
-                }
-                else
-                {
-                    string[] guids = AssetDatabase.FindAssets(typeFilter, searchPaths.ToArray());
-                    for (int i = 0; i < guids.Length; i++)
-                    {
-                        _ = guidSet.Add(guids[i]);
-                    }
+                    _ = guidSet.Add(guids[i]);
                 }
             }
 

@@ -50,22 +50,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
 
                 PrefabChecker checker = ScriptableObject.CreateInstance<PrefabChecker>();
 
-                FieldInfo assetPathsField = typeof(PrefabChecker).GetField(
-                    "_assetPaths",
-                    BindingFlags.NonPublic | BindingFlags.Instance
-                );
-                Assert.IsNotNull(assetPathsField, "_assetPaths field not found");
-
                 var list = new System.Collections.Generic.List<string> { "Assets" };
-                assetPathsField.SetValue(checker, list);
+                checker._assetPaths = list;
 
-                MethodInfo runChecks = typeof(PrefabChecker).GetMethod(
-                    "RunChecksImproved",
-                    BindingFlags.NonPublic | BindingFlags.Instance
-                );
-                Assert.IsNotNull(runChecks, "RunChecksImproved method not found");
-
-                Assert.DoesNotThrow(() => runChecks.Invoke(checker, null));
+                Assert.DoesNotThrow(() => checker.RunChecksImproved());
             }
             finally
             {

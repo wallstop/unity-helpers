@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="640" height="220" viewBox="0 0 640 220">
-  <rect x="0" y="0" width="640" height="220" fill="#0f0f13"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="240" viewBox="0 0 640 240">
+  <rect x="0" y="0" width="640" height="240" fill="#0f0f13"/>
   <g font-family="Verdana,Arial,sans-serif" font-size="12" fill="#c8d1dc">
     <text x="16" y="24">Deque (Double-Ended Queue)</text>
   </g>
@@ -24,14 +24,14 @@
     <line x1="350" y1="210" x2="350" y2="140"/>
     <polygon points="344,150 356,150 350,140"/>
   </g>
-  <!-- pops (red) -->
+  <!-- pops (red), increase gap before labels -->
   <g stroke="#d57a7a" fill="#d57a7a">
-    <!-- pop_front: down; tip near label (y=220) -->
-    <line x1="170" y1="150" x2="170" y2="210"/>
-    <polygon points="164,210 176,210 170,220"/>
-    <!-- pop_back: down; tip near label (y=205) -->
-    <line x1="290" y1="150" x2="290" y2="195"/>
-    <polygon points="284,195 296,195 290,205"/>
+    <!-- pop_front: down; tip well above label (y=220) -->
+    <line x1="170" y1="150" x2="170" y2="200"/>
+    <polygon points="164,200 176,200 170,210"/>
+    <!-- pop_back: down; tip well above label (y=205) -->
+    <line x1="290" y1="150" x2="290" y2="187"/>
+    <polygon points="284,187 296,187 290,195"/>
   </g>
   <!-- labels (color-coded and staggered) -->
   <g font-family="Verdana,Arial,sans-serif" font-size="11" text-anchor="middle">

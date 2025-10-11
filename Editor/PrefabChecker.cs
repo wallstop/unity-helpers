@@ -32,7 +32,7 @@ namespace WallstopStudios.UnityHelpers.Editor
         private static readonly Dictionary<Type, RequireComponent[]> RequiredComponentsByType =
             new();
 
-        private readonly List<string> _assetPaths = new();
+        internal List<string> _assetPaths = new();
         private ReorderableList _pathsList;
         private Vector2 _scrollPosition;
 
@@ -382,7 +382,7 @@ namespace WallstopStudios.UnityHelpers.Editor
 
         // Removed legacy RunChecks(). Use RunChecksImproved() instead.
 
-        private void RunChecksImproved()
+        internal void RunChecksImproved()
         {
             if (_assetPaths is not { Count: > 0 })
             {

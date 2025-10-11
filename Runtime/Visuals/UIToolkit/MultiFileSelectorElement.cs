@@ -314,7 +314,7 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
             NavigateTo(validInitialPath);
         }
 
-        private void NavigateTo(string path)
+        internal void NavigateTo(string path)
         {
             string fullPath = Path.GetFullPath(Path.Combine(Application.dataPath, "..", path));
 
@@ -721,7 +721,7 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
             }
         }
 
-        private void SelectAllInView()
+        internal void SelectAllInView()
         {
             for (int i = 0; i < _items.Count; i++)
             {
@@ -735,7 +735,7 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
             UpdateConfirmButtonText();
         }
 
-        private void ClearSelectionInView()
+        internal void ClearSelectionInView()
         {
             for (int i = 0; i < _items.Count; i++)
             {
@@ -749,7 +749,7 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
             UpdateConfirmButtonText();
         }
 
-        private void InvertSelectionInView()
+        internal void InvertSelectionInView()
         {
             for (int i = 0; i < _items.Count; i++)
             {

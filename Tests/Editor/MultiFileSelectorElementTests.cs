@@ -153,20 +153,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
                 "SelScope"
             );
 
-            MethodInfo methodSelectAll = typeof(MultiFileSelectorElement).GetMethod(
-                "SelectAllInView",
-                BindingFlags.Instance | BindingFlags.NonPublic
-            );
-            MethodInfo methodInvert = typeof(MultiFileSelectorElement).GetMethod(
-                "InvertSelectionInView",
-                BindingFlags.Instance | BindingFlags.NonPublic
-            );
-            MethodInfo methodClear = typeof(MultiFileSelectorElement).GetMethod(
-                "ClearSelectionInView",
-                BindingFlags.Instance | BindingFlags.NonPublic
-            );
-
-            methodSelectAll.Invoke(selector, null);
+            selector.SelectAllInView();
             IReadOnlyCollection<string> selected = selector.DebugGetSelectedFilePaths();
             Assert.That(
                 selected.Count,
@@ -174,7 +161,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
                 "Select All should select all visible .txt files."
             );
 
-            methodInvert.Invoke(selector, null);
+            selector.InvertSelectionInView();
             selected = selector.DebugGetSelectedFilePaths();
             Assert.That(
                 selected.Count,
@@ -182,11 +169,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
                 "Invert on fully selected should deselect all in view."
             );
 
-            methodClear.Invoke(selector, null);
+            selector.ClearSelectionInView();
             selected = selector.DebugGetSelectedFilePaths();
             Assert.That(selected.Count, Is.EqualTo(0), "Clear should result in zero selection.");
 
-            methodInvert.Invoke(selector, null);
+            selector.InvertSelectionInView();
             selected = selector.DebugGetSelectedFilePaths();
             Assert.That(
                 selected.Count,
@@ -203,12 +190,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
                 null,
                 "DirKey"
             );
-            // Navigate to DirA via reflection (private method)
-            MethodInfo navigate = typeof(MultiFileSelectorElement).GetMethod(
-                "NavigateTo",
-                BindingFlags.Instance | BindingFlags.NonPublic
-            );
-            navigate.Invoke(selector, new object[] { _baseRel + "/DirA" });
+            // Navigate to DirA via internal method
+            selector.NavigateTo(_baseRel + "/DirA");
 
             // New selector with same scope should open in DirA
             MultiFileSelectorElement selector2 = new MultiFileSelectorElement(
