@@ -48,8 +48,8 @@
   <!-- pushes (green) -->
   <g stroke="#5ec69a" fill="#5ec69a">
     <!-- push_front (label y=168), angled to cell center (x=380); base near x=385 -->
-    <line x1="365" y1="150" x2="380" y2="140"/>
-    <polygon points="374,144 386,144 380,136"/>
+    <line x1="370" y1="150" x2="380" y2="124"/>
+    <polygon points="374,128 386,128 380,120"/>
     <!-- push_back (label y=188), shorter -->
     <line x1="540" y1="170" x2="540" y2="140"/>
     <polygon points="534,144 546,144 540,136"/>
