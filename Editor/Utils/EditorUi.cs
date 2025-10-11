@@ -3,6 +3,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 {
     using System;
     using UnityEditor;
+    using UnityEngine;
 
     public static class EditorUi
     {
@@ -17,11 +18,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
         {
             try
             {
-#if UNITY_INCLUDE_TESTS
-                _suppress = true;
-#else
+                // Suppress only when actually running in non-interactive contexts
+                // such as batch mode, the Unity Test Runner, or CI environments.
                 _suppress = Application.isBatchMode || IsInvokedByTestRunner() || IsCiEnv();
-#endif
             }
             catch
             {

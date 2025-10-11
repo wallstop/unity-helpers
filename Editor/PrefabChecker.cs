@@ -319,12 +319,27 @@ namespace WallstopStudios.UnityHelpers.Editor
                 return;
             }
 
+            _ = TryAddFolderFromAbsolute(absolutePath);
+        }
+
+        internal bool TryAddFolderFromAbsolute(string absolutePath)
+        {
             if (!TryGetUnityFolderFromAbsolute(absolutePath, out string relativePath))
             {
                 this.LogError(
                     $"Selected folder must be inside the Unity project's Assets folder. Selected path: {absolutePath}"
                 );
-                return;
+                return false;
+            }
+
+            return AddAssetFolder(relativePath);
+        }
+
+        internal bool AddAssetFolder(string relativePath)
+        {
+            if (string.IsNullOrWhiteSpace(relativePath))
+            {
+                return false;
             }
 
             if (
@@ -336,16 +351,15 @@ namespace WallstopStudios.UnityHelpers.Editor
                 {
                     _assetPaths.Add(relativePath);
                     TryRecordHistory(relativePath);
+                    return true;
                 }
-                else
-                {
-                    this.LogWarn($"Folder '{relativePath}' is already in the list.");
-                }
+
+                this.LogWarn($"Folder '{relativePath}' is already in the list.");
+                return false;
             }
-            else
-            {
-                this.LogWarn($"Selected path '{relativePath}' is not a valid Unity folder.");
-            }
+
+            this.LogWarn($"Selected path '{relativePath}' is not a valid Unity folder.");
+            return false;
         }
 
         private static bool TryGetUnityFolderFromAbsolute(
@@ -1102,14 +1116,7 @@ namespace WallstopStudios.UnityHelpers.Editor
                             continue;
                         }
 
-                        if (path == "Assets" || AssetDatabase.IsValidFolder(path))
-                        {
-                            if (!_assetPaths.Contains(path))
-                            {
-                                _assetPaths.Add(path);
-                                TryRecordHistory(path);
-                            }
-                        }
+                        _ = AddAssetFolder(path);
                     }
                 }
                 Event.current.Use();
