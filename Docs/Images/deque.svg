@@ -14,14 +14,14 @@
     <line x1="440" y1="80" x2="440" y2="140"/>
     <line x1="500" y1="80" x2="500" y2="140"/>
   </g>
-  <!-- arrows indicating push/pop at both ends (bottom semantics, heads touching bottom border) -->
+  <!-- arrows indicating push/pop at both ends (bottom semantics, shorter arrows) -->
   <g stroke="#5ec69a" fill="#5ec69a">
     <!-- push_front: bottom-up; arrowhead apex touches bottom border at y=140 (center x=110) -->
-    <line x1="110" y1="185" x2="110" y2="140"/>
+    <line x1="110" y1="175" x2="110" y2="140"/>
     <polygon points="104,150 116,150 110,140"/>
-    <!-- pop_back: bottom-down; arrowhead base touches bottom border at y=140 (center x=290) -->
-    <line x1="290" y1="140" x2="290" y2="185"/>
-    <polygon points="284,140 296,140 290,150"/>
+    <!-- pop_back: bottom-down; arrowhead tip at bottom, pointing toward label (center x=290) -->
+    <line x1="290" y1="140" x2="290" y2="175"/>
+    <polygon points="284,175 296,175 290,185"/>
   </g>
   <!-- labels (lighter, separate for readability) -->
   <g font-family="Verdana,Arial,sans-serif" font-size="11" fill="#c8d1dc" text-anchor="middle">
