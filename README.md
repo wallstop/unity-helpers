@@ -70,7 +70,7 @@ Unity Helpers was built to solve common game development challenges with **perfo
  See the in-depth guide: [Relational Components](RELATIONAL_COMPONENTS.md).
 
 ### 20+ Editor Tools
-- **Sprite tools**: Cropper, Atlas Generator, Animation Editor
+- **Sprite tools**: Cropper, Atlas Generator, Animation Editor, Animation Creator (one‑click bulk from naming patterns)
 - **Texture tools**: Blur, Resize, Settings Applier
 - **Validation**: Prefab Checker, Animation Event Editor
 - **Automation**: ScriptableObject Singleton Creator

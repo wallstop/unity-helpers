@@ -71,6 +71,9 @@ Comprehensive documentation for all editor wizards, windows, and automation tool
 5. Click "Find Sprites To Process" to preview
 6. Click "Process X Sprites"
 7. Replace originals with "Cropped_*" versions
+
+**Danger Zone — Reference Replacement:**
+- After cropping into `Cropped_*` outputs, you can optionally replace references to original sprites across assets with their cropped counterparts. This is powerful but destructive; review the preview output and ensure you have version control backups before applying.
 ```
 
 **Best For:**
@@ -146,37 +149,63 @@ Generate Mip Maps: false
 ### Sprite Pivot Adjuster
 **Menu:** `Tools > Wallstop Studios > Unity Helpers > Sprite Pivot Adjuster`
 
-**Purpose:** Batch adjust sprite pivot points for consistent anchor positioning.
+**Purpose:** Compute and apply alpha‑weighted center‑of‑mass pivots in bulk. Produces perceptually centered pivots (ignoring near‑transparent pixels) and speeds re‑imports by skipping unchanged results.
 
-**Common Use Cases:**
-- Centering all sprites at bottom for ground-aligned characters
-- Setting top-center pivots for hanging objects
-- Normalizing pivot points across animation frames
-- Fixing import pivot inconsistencies
+**Key Features:**
+- Alpha‑weighted center‑of‑mass pivot (configurable cutoff)
+- Optional sprite name regex filter
+- Skip unchanged (fuzzy threshold) and Force Reimport
+- Directory picker with recursive processing
+
+**Workflow:**
+```
+1) Open Sprite Pivot Adjuster
+2) Add one or more directories
+3) (Optional) Set Sprite Name Regex to filter
+4) Adjust Alpha Cutoff (e.g., 0.01 to ignore fringe pixels)
+5) Enable “Skip Unchanged” to reimport only when pivot changes
+6) (Optional) Enable “Force Reimport” to override skip
+7) Run the adjuster to write importer pivot values
+```
 
 **Best For:**
-- Character sprite alignment
-- Animation frame consistency
-- Top-down game tile alignment
+- Ground‑aligning characters while keeping lateral centering
+- Consistent pivots across varied silhouettes
+- Normalizing pivots before animation creation
 
 ---
 
 ### Sprite Settings Applier
 **Menu:** `Tools > Wallstop Studios > Unity Helpers > Sprite Settings Applier`
 
-**Purpose:** Apply sprite-specific import settings like Pixels Per Unit, mesh type, and pivot across multiple sprites.
+**Purpose:** Apply sprite‑specific importer settings in bulk, driven by matchable “profiles” (Any/NameContains/PathContains/Regex/Extension) with priorities. Great for standardizing PPU, pivots, modes, and compression rules across large folders.
 
-**Key Settings:**
-- Pixels Per Unit (PPU)
-- Sprite Mode (Single/Multiple)
-- Mesh Type (Tight/Full Rect)
-- Extrude Edges
-- Pivot Point
+**Profiles & Matching:**
+- Create a `SpriteSettingsProfileCollection` ScriptableObject
+- Add one or more profiles (with priority) and choose a match mode:
+  - Any, NameContains, PathContains, Extension, Regex
+- Higher priority wins when multiple profiles match
+
+**Key Settings (per profile):**
+- Pixels Per Unit, Pivot, Sprite Mode
+- Generate Mip Maps, Read/Write, Alpha is Transparency
+- Extrude Edges, Wrap Mode, Filter Mode
+- Compression Level and Crunch Compression
+- Texture Type override (ensure Sprite)
+
+**Workflow:**
+```
+1) Create a SpriteSettingsProfileCollection (Assets > Create > … if available) or configure profiles in the window
+2) Open Sprite Settings Applier
+3) Add directories and/or explicit sprites
+4) Choose which profile(s) to apply and click Set
+5) Unity reimports affected sprites
+```
 
 **Best For:**
-- Maintaining consistent PPU across sprite sets
-- Batch configuring imported sprite sheets
-- Fixing sprite scaling inconsistencies
+- Enforcing project‑wide sprite import standards
+- Fixing inconsistent PPU/pivots automatically
+- Applying different settings per folder/pattern (via Regex/Path)
 
 ---
 
@@ -370,36 +399,133 @@ Result: Max Size → 64 (matches source)
 ### Animation Creator
 **Menu:** `Tools > Wallstop Studios > Unity Helpers > Animation Creator`
 
-**Purpose:** Create AnimationClip assets from selected sprites with configurable timing.
+**Purpose:** Bulk‑create AnimationClips from sprite naming patterns — one‑click generation from folders of sprites. Eliminates manual clip setup and ensures consistent naming, ordering, and FPS/loop settings.
+
+**Problems Solved:**
+- Manual and error‑prone clip creation from many sprites
+- Inconsistent frame ordering (lexicographic vs numeric)
+- Collisions/duplicates when generating many clips at once
+- Repeating busywork when adding suffixes/prefixes across sets
+
+**Key Features:**
+- Folder sources with regex sprite filtering (`spriteNameRegex`)
+- Auto‑parse into clips using naming patterns (one click)
+- Custom group regex with named groups `(?<base>)(?<index>)`
+- Case‑insensitive grouping and numeric sorting toggle
+- Prefix clip names with leaf folder or full folder path
+- Auto‑parse name prefix/suffix and duplicate‑name resolution
+- Dry‑run and preview (see groups and final asset paths)
+- Per‑clip FPS and loop flag; bulk name append/remove
+- “Populate First Slot with X Matched Sprites” helper
+
+**Common Naming Patterns (auto‑detected):**
+```
+Player_Idle_0.png, Player_Idle_1.png, ...       // base: Player_Idle, index: 0..N
+slime-walk-01.png, slime-walk-02.png            // base: slime-walk, index: 1..N
+Mage/Attack (0).png, Mage/Attack (1).png        // base: Mage_Attack, index: 0..N (folder prefix optional)
+```
+
+**Custom Group Regex Examples:**
+```
+// Named groups are optional but powerful when needed
+^(?<base>.*?)(?:_|\s|-)?(?<index>\d+)\.[Pp][Nn][Gg]$   // base + trailing digits
+^Enemy_(?<base>Walk)_(?<index>\d+)$                      // narrow to specific clip type
+```
+
+**How To Use (one‑click flow):**
+```
+1) Open Animation Creator
+2) Add one or more source folders
+3) (Optional) Set sprite filter regex to narrow matches
+4) Click “Auto‑Parse Matched Sprites into Animations”
+5) Review generated Animation Data (set FPS/loop per clip)
+6) Click “Create” (Action button) to write .anim assets
+```
+
+**Preview & Safety:**
+- Use “Generate Auto‑Parse Preview” to see detected groups
+- Use “Generate Dry‑Run Apply” to see final clip names/paths
+- Toggle “Strict Numeric Ordering” to avoid `1,10,11,2,…` issues
+- Enable “Resolve Duplicate Animation Names” to auto‑rename
+
+**Tips:**
+- Keep sprite names consistent (e.g., `Name_Action_###`)
+- Use the built‑in Regex Tester before applying
+- Use folder name/path prefixing to avoid collisions across sets
+- Batch rename tokens with the “Bulk Naming Operations” section
 
 **Best For:**
-- Quick animation clip generation
-- Sprite sheet to animation conversion
-- Prototyping animation from individual frames
+- One‑click bulk clip creation from sprite folders
+- Converting exported frame sequences into clips
+- Large projects standardizing animation naming and FPS/loop
 
 ---
 
 ### Animation Copier
 **Menu:** `Tools > Wallstop Studios > Unity Helpers > Animation Copier`
 
-**Purpose:** Duplicate and manage AnimationClip assets with automatic organization.
+**Purpose:** Analyze, duplicate, and synchronize AnimationClips between source and destination folders with previews, dry‑runs, and cleanup actions.
+
+**What It Analyzes:**
+- New: exist in source but not destination
+- Changed: exist in both but differ (hash mismatch)
+- Unchanged: identical in both (duplicates)
+- Destination Orphans: only in destination
+
+**Workflow:**
+```
+1) Open Animation Copier
+2) Select Source Path (e.g., Assets/Sprites/Animations)
+3) Select Destination Path (e.g., Assets/Animations)
+4) Click “Analyze Source & Destination”
+5) Review New/Changed/Unchanged/Orphans tabs (filter/sort)
+6) Choose a copy mode:
+   - Copy New / Copy Changed / Copy All (optional force replace)
+7) (Optional) Dry Run to preview without writing
+8) Use Cleanup:
+   - Delete Unchanged Source Duplicates
+   - Delete Destination Orphans
+```
+
+**Safety & Options:**
+- Dry Run (no changes) for all copy/cleanup operations
+- “Include Unchanged in Copy All” to force overwrite duplicates
+- Open Source/Destination folder buttons for quick navigation
 
 **Best For:**
-- Creating animation variants
-- Organizing animation folders
-- Batch animation duplication
+- Creating animation variants and organizing libraries
+- Syncing generated clips into your canonical destination
+- Keeping animation folders tidy with cleanup actions
 
 ---
 
 ### Sprite Sheet Animation Creator
 **Menu:** `Tools > Wallstop Studios > Unity Helpers > Sprite Sheet Animation Creator`
 
-**Purpose:** Generate animation clips from multi-sprite texture atlases.
+**Purpose:** Turn a sliced sprite sheet into one or more AnimationClips with live preview, drag‑to‑select sprite ranges, and per‑clip FPS/loop/cycle offset.
+
+**Key Features:**
+- Load a multi‑sprite Texture2D (sliced in the Sprite Editor)
+- Drag‑select sprite ranges to define clips visually
+- Constant FPS or curve‑based frame rate per clip
+- Live preview/playback controls and scrubbing
+- Loop toggle and cycle offset per clip
+- Safe asset creation with unique file names
+
+**Usage:**
+```
+1) Open Sprite Sheet Animation Creator
+2) Drag a sliced Texture2D (or use the object field)
+3) Select frames (drag across thumbnails) to define a clip
+4) Name the clip, set FPS/curve, loop, cycle offset
+5) Repeat to add multiple definitions
+6) Click “Generate Animations” and choose output folder
+```
 
 **Best For:**
-- Converting sprite sheets to animation clips
-- Processing exported animation frames
-- Batch animation generation from atlases
+- Converting sprite sheets to animation clips with fine control
+- Mixed timings using AnimationCurves for frame pacing
+- Fast iteration via visual selection and preview
 
 ---
 
@@ -1276,7 +1402,7 @@ else
 **Animation:**
 - Sprite Animation Editor - Visual animation editing with preview
 - Animation Event Editor - Visual animation event editing with sprite preview
-- Animation Creator - Create clips from sprites
+- Animation Creator - Bulk-create clips from naming patterns
 - Animation Copier - Duplicate and manage clips
 - Sprite Sheet Animation Creator - Convert atlases to clips
 

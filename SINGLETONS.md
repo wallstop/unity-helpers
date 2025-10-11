@@ -11,6 +11,43 @@ This package includes two lightweight, production‑ready singleton helpers that
 
 > ODIN compatibility: When Odin Inspector is present (`ODIN_INSPECTOR` defined), these types derive from `SerializedMonoBehaviour` / `SerializedScriptableObject` for richer serialization. Without Odin, they fall back to Unity base types. No code changes required.
 
+## TL;DR — What Problem This Solves
+
+- Stop hand‑rolling global access. Get a single, safe instance you can call from anywhere.
+- Choose between a scene‑resident component or a project asset for settings/data.
+- No manual setup: instances auto‑create on first use; ScriptableObject assets auto‑create/move under `Resources/` in the Editor.
+
+Quick decision guide
+- Need a behaviour that runs (Update, events, coroutines) and may persist across scenes? Use `RuntimeSingleton<T>`.
+- Need global config/data you edit in the Inspector and load from any scene? Use `ScriptableObjectSingleton<T>`.
+
+## Quick Start (1 minute)
+
+RuntimeSingleton
+```csharp
+public sealed class GameServices : RuntimeSingleton<GameServices>
+{
+    // Optional: keep across scene loads
+    protected override bool Preserve => true;
+}
+
+// Use anywhere
+GameServices.Instance.DoThing();
+```
+
+ScriptableObjectSingleton
+```csharp
+[CreateAssetMenu(menuName = "Game/Audio Settings")]
+[ScriptableSingletonPath("Settings/Audio")] // Assets/Resources/Settings/Audio/AudioSettings.asset
+public sealed class AudioSettings : ScriptableObjectSingleton<AudioSettings>
+{
+    public float masterVolume = 0.8f;
+}
+
+// Use anywhere (asset auto‑created/moved by the editor tool)
+float vol = AudioSettings.Instance.masterVolume;
+```
+
 Contents
 - ODIN Compatibility
 - When To Use / Not To Use

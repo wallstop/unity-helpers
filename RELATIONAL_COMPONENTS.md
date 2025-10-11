@@ -16,6 +16,25 @@ Having issues? Jump to Troubleshooting: see [Troubleshooting](#troubleshooting).
 
 Related systems: For data‑driven gameplay effects (attributes, tags, cosmetics), see [Effects System](EFFECTS_SYSTEM.md) and the README section Effects, Attributes, and Tags (#effects-attributes-and-tags).
 
+## TL;DR — What Problem This Solves
+
+- Replace manual `GetComponent` calls with small, self‑documenting attributes on fields.
+- One method call wires everything at runtime; supports single or many (arrays/lists/sets), filters, and interfaces.
+
+Pick the right attribute
+- Same GameObject? Use `SiblingComponent`.
+- Search up the hierarchy? Use `ParentComponent`.
+- Search down the hierarchy? Use `ChildComponent`.
+
+One‑minute setup
+```csharp
+[SiblingComponent] private SpriteRenderer sprite;
+[ParentComponent(OnlyAncestors = true)] private Rigidbody2D rb;
+[ChildComponent(OnlyDescendants = true, MaxDepth = 1)] private Collider2D[] childColliders;
+
+void Awake() => this.AssignRelationalComponents();
+```
+
 ## Why Use These?
 
 - Replace repetitive `GetComponent` and fragile manual wiring

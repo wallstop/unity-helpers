@@ -41,16 +41,24 @@ Key APIs at a glance
   - `GetStaticPropertyGetter<T>(PropertyInfo)`
 - Methods and constructors
   - `GetMethodInvoker(MethodInfo)` / `GetStaticMethodInvoker(MethodInfo)` (boxed)
-  - `GetStaticMethodInvoker<T1, T2, TReturn>(MethodInfo)` (typed two‑param)
+  - `GetStaticMethodInvoker<TReturn>(MethodInfo)`, `GetStaticMethodInvoker<T1, TReturn>(MethodInfo)`, `GetStaticMethodInvoker<T1, T2, TReturn>(MethodInfo)`, `GetStaticMethodInvoker<T1, T2, T3, TReturn>(MethodInfo)`, `GetStaticMethodInvoker<T1, T2, T3, T4, TReturn>(MethodInfo)` (typed)
+  - `GetStaticActionInvoker(...)` arities 0–4 (typed, void return)
+  - `GetInstanceMethodInvoker<TInstance, ...>(MethodInfo)` and `GetInstanceActionInvoker<TInstance, ...>(MethodInfo)` arities 0–4
   - `GetConstructor(ConstructorInfo)` (boxed) and `GetParameterlessConstructor<T>()`
   - `CreateInstance<T>(params object[])` and generic type construction helpers
 - Collections
   - `CreateArray(Type, int)`; `GetArrayCreator(Type)`
+  - Typed creators: `GetArrayCreator<T>()`, `GetListCreator<T>()`, `GetListWithCapacityCreator<T>()`, `GetHashSetWithCapacityCreator<T>()`
   - `CreateList(Type)` / `CreateList(Type, int)`; `GetListCreator(Type)`; `GetListWithCapacityCreator(Type)`
-  - `CreateHashSet(Type, int)`; `GetHashSetWithCapacityCreator(Type)`; `GetHashSetAdder(Type)`
+  - `CreateHashSet(Type, int)`; `GetHashSetWithCapacityCreator(Type)`; `GetHashSetAdder(Type)`; typed adder `GetHashSetAdder<T>()`
+  - `CreateDictionary(Type, Type, int)`; `GetDictionaryWithCapacityCreator(Type, Type)`; `GetDictionaryCreator<TKey, TValue>()`
 - Scanning and attributes
   - `GetAllLoadedAssemblies()` / `GetAllLoadedTypes()`
   - Safe attribute helpers: `HasAttributeSafe`, `GetAttributeSafe`, `GetAllAttributesSafe`, etc.
+ - Indexers
+  - `GetIndexerGetter(PropertyInfo)` and `GetIndexerSetter(PropertyInfo)`
+ - Unity
+  - `IsComponentEnabled<T>(T)` and `IsActiveAndEnabled<T>(T)`
 
 Usage examples
 1) Fast field get/set (boxed)
@@ -83,6 +91,14 @@ setValue(ref s, 100);
 var prop = typeof(Camera).GetProperty("orthographicSize");
 var getSize = ReflectionHelpers.GetPropertyGetter<Camera, float>(prop);
 float size = getSize(UnityEngine.Camera.main);
+```
+
+3b) Typed property setter
+```csharp
+var prop = typeof(TestPropertyClass).GetProperty("InstanceProperty");
+var set = ReflectionHelpers.GetPropertySetter<TestPropertyClass, int>(prop);
+var obj = new TestPropertyClass();
+set(obj, 10);
 ```
 
 4) Fast static method invoker (two params, typed)
@@ -122,6 +138,20 @@ add(set, 2);
 // set contains {1, 2}
 ```
 
+6b) Typed collection creators
+```csharp
+var makeArrayT = ReflectionHelpers.GetArrayCreator<int>();
+int[] ints = makeArrayT(128);
+
+var makeListT = ReflectionHelpers.GetListCreator<string>();
+IList strings = makeListT();
+
+var makeSetT = ReflectionHelpers.GetHashSetWithCapacityCreator<int>();
+HashSet<int> intsSet = makeSetT(64);
+var addT = ReflectionHelpers.GetHashSetAdder<int>();
+addT(intsSet, 5);
+```
+
 7) Safe attribute scanning
 ```csharp
 bool hasObsolete = ReflectionHelpers.HasAttributeSafe<ObsoleteAttribute>(typeof(MyComponent));
@@ -145,6 +175,7 @@ Common pitfalls
 - Passing a non‑static `FieldInfo`/`PropertyInfo` to static getters/setters will throw clear `ArgumentException`s.
 - Read‑only properties do not have setters; using `GetPropertySetter` on those throws.
 - Struct instance field writes require the generic ref setter (`FieldSetter<TInstance, TValue>`) to mutate the original struct.
+- Typed method invokers do not support `ref`/`out` parameters and throw `NotSupportedException` for such signatures.
 
 See also
 - Runtime/Core/Helper/ReflectionHelpers.cs for full XML docs and additional examples.
