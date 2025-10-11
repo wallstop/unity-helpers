@@ -12,14 +12,16 @@
     <line x1="220" y1="70" x2="220" y2="120"/>
   </g>
   <g stroke="#5ec69a" fill="#5ec69a">
-    <line x1="60" y1="130" x2="60" y2="150"/>
-    <polygon points="54,148 66,148 60,158"/>
-    <line x1="260" y1="60" x2="260" y2="40"/>
-    <polygon points="254,42 266,42 260,32"/>
+    <!-- enqueue: arrow below, pointing up into queue -->
+    <line x1="60" y1="150" x2="60" y2="130"/>
+    <polygon points="54,138 66,138 60,128"/>
+    <!-- dequeue: arrow below, pointing up at right edge of queue -->
+    <line x1="260" y1="150" x2="260" y2="130"/>
+    <polygon points="254,138 266,138 260,128"/>
   </g>
   <g font-family="Verdana,Arial,sans-serif" font-size="11" fill="#c8d1dc">
-    <text x="36" y="170">enqueue</text>
-    <text x="260" y="30" text-anchor="end">dequeue</text>
+    <text x="60" y="170" text-anchor="middle">enqueue</text>
+    <text x="260" y="170" text-anchor="end">dequeue</text>
   </g>
   <g font-family="Verdana,Arial,sans-serif" font-size="11" fill="#9fb3c8">
     <text x="60" y="62">queue</text>
@@ -40,14 +42,16 @@
     <line x1="560" y1="70" x2="560" y2="120"/>
   </g>
   <g stroke="#5ec69a" fill="#5ec69a">
-    <line x1="360" y1="130" x2="360" y2="150"/>
-    <polygon points="354,148 366,148 360,158"/>
-    <line x1="580" y1="60" x2="580" y2="40"/>
-    <polygon points="574,42 586,42 580,32"/>
+    <!-- push_front: arrow below, pointing up into deque -->
+    <line x1="360" y1="150" x2="360" y2="130"/>
+    <polygon points="354,138 366,138 360,128"/>
+    <!-- pop_back: arrow below, aligned to right edge of deque -->
+    <line x1="560" y1="150" x2="560" y2="130"/>
+    <polygon points="554,138 566,138 560,128"/>
   </g>
   <g font-family="Verdana,Arial,sans-serif" font-size="11" fill="#c8d1dc">
-    <text x="320" y="170">push_front</text>
-    <text x="580" y="30" text-anchor="end">pop_back</text>
+    <text x="360" y="170" text-anchor="middle">push_front</text>
+    <text x="560" y="170" text-anchor="end">pop_back</text>
   </g>
   <g font-family="Verdana,Arial,sans-serif" font-size="11" fill="#9fb3c8">
     <text x="360" y="62">deque</text>
