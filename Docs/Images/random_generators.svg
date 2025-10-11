@@ -19,7 +19,7 @@
     <text x="680" y="92">System / Unity Adapters</text>
   </g>
   <g fill="none" stroke="#9fb3c8" stroke-dasharray="6 6" stroke-width="2">
-    <rect x="40" y="130" width="740" height="180" rx="8"/>
+    <rect x="40" y="130" width="740" height="200" rx="8"/>
   </g>
   <g font-family="Verdana,Arial,sans-serif" font-size="11" fill="#c8d1dc">
     <text x="50" y="150">- Streams/Seeding: per-thread/per-entity streams to avoid contention/correlation</text>
@@ -27,5 +27,64 @@
     <text x="50" y="186">- Determinism: seed management for replayability</text>
     <text x="50" y="204">- Performance: prefer PCG/Xoshiro for hot loops</text>
     <text x="50" y="222">- Threading: avoid sharing RNG across threads without locking</text>
+  </g>
+  <!-- mini visuals: histogram (uniform), gaussian curve, dice, bits -->
+  <!-- Uniform histogram -->
+  <g stroke="#7aa2ff" fill="rgba(122,162,255,0.25)">
+    <!-- baseline x=70..170, y base=300, bar width ~8 -->
+    <rect x="70" y="260" width="8" height="40"/>
+    <rect x="80" y="255" width="8" height="45"/>
+    <rect x="90" y="262" width="8" height="38"/>
+    <rect x="100" y="258" width="8" height="42"/>
+    <rect x="110" y="254" width="8" height="46"/>
+    <rect x="120" y="257" width="8" height="43"/>
+    <rect x="130" y="260" width="8" height="40"/>
+    <rect x="140" y="255" width="8" height="45"/>
+    <rect x="150" y="261" width="8" height="39"/>
+    <rect x="160" y="258" width="8" height="42"/>
+  </g>
+  <g font-family="Verdana,Arial,sans-serif" font-size="10" fill="#9fb3c8">
+    <text x="70" y="315">uniform</text>
+  </g>
+
+  <!-- Gaussian curve -->
+  <g fill="none" stroke="#5ec69a" stroke-width="2">
+    <path d="M220 300 C 235 270, 245 250, 260 250 C 275 250, 285 270, 300 300"/>
+    <path d="M300 300 C 315 330, 325 350, 340 350" opacity="0"/>
+  </g>
+  <g font-family="Verdana,Arial,sans-serif" font-size="10" fill="#9fb3c8">
+    <text x="240" y="315">gaussian</text>
+  </g>
+
+  <!-- Dice outcomes -->
+  <g stroke="#c8d1dc" fill="#1d2330">
+    <rect x="380" y="255" width="24" height="24" rx="4"/>
+    <rect x="410" y="255" width="24" height="24" rx="4"/>
+    <rect x="440" y="255" width="24" height="24" rx="4"/>
+    <rect x="470" y="255" width="24" height="24" rx="4"/>
+  </g>
+  <g fill="#e0e6ee">
+    <!-- pip patterns 1,2,5,6 -->
+    <circle cx="392" cy="267" r="2"/>
+    <circle cx="420" cy="262" r="2"/>
+    <circle cx="424" cy="276" r="2"/>
+    <circle cx="450" cy="260" r="2"/>
+    <circle cx="452" cy="268" r="2"/>
+    <circle cx="458" cy="276" r="2"/>
+    <circle cx="480" cy="260" r="2"/>
+    <circle cx="490" cy="260" r="2"/>
+    <circle cx="480" cy="276" r="2"/>
+    <circle cx="490" cy="276" r="2"/>
+  </g>
+  <g font-family="Verdana,Arial,sans-serif" font-size="10" fill="#9fb3c8">
+    <text x="390" y="315">discrete outcomes</text>
+  </g>
+
+  <!-- Random bits row -->
+  <g font-family="Consolas,Menlo,monospace" font-size="12" fill="#c8d1dc">
+    <text x="560" y="270">1011 0101 1100 0110</text>
+  </g>
+  <g font-family="Verdana,Arial,sans-serif" font-size="10" fill="#9fb3c8">
+    <text x="560" y="315">bit patterns</text>
   </g>
 </svg>
