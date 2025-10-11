@@ -116,9 +116,10 @@ namespace WallstopStudios.UnityHelpers.Editor
 
         private static void InitializeTypeCache()
         {
-            Dictionary<Type, IReadOnlyList<MethodInfo>> typesToMethods = TypeCache
-                .GetTypesDerivedFrom<MonoBehaviour>()
-                .Where(type => type.IsClass && !type.IsAbstract)
+            Dictionary<Type, IReadOnlyList<MethodInfo>> typesToMethods = WallstopStudios
+                .UnityHelpers.Core.Helper.ReflectionHelpers.GetTypesDerivedFrom<MonoBehaviour>(
+                    includeAbstract: false
+                )
                 .ToDictionary(
                     type => type,
                     type =>

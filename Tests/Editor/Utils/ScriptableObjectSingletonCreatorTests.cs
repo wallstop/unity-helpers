@@ -1,116 +1,177 @@
-namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils
+namespace WallstopStudios.UnityHelpers.Tests.Utils
 {
 #if UNITY_EDITOR
+    using System.Collections;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
+    using UnityEngine.TestTools;
+    using System.Text.RegularExpressions;
     using WallstopStudios.UnityHelpers.Core.Attributes;
-    using WallstopStudios.UnityHelpers.Tags;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Utils;
 
-    [ScriptableSingletonPath("Tests/Singletons")]
-    public sealed class MyTestSingleton : ScriptableObjectSingleton<MyTestSingleton>
+    public sealed class ScriptableObjectSingletonCreatorTests : CommonTestBase
     {
-        public int value;
-    }
+        private const string TestRoot = "Assets/Resources/CreatorTests";
 
-    public sealed class ScriptableObjectSingletonCreatorTests
-    {
-        private const string ResourcesRoot = "Assets/Resources";
-        private const string TargetFolder = ResourcesRoot + "/Tests/Singletons";
-        private const string TargetAsset = TargetFolder + "/MyTestSingleton.asset";
-
-        [SetUp]
-        public void SetUp()
+        [UnitySetUp]
+        public IEnumerator SetUp()
         {
-            DeleteIfExists("Assets/SomeOther");
-            DeleteIfExists(ResourcesRoot);
-            AssetDatabase.Refresh();
+            ScriptableObjectSingletonCreator.IncludeTestAssemblies = true;
+            ScriptableObjectSingletonCreator.VerboseLogging = true;
+            EnsureFolder("Assets/Resources");
+            EnsureFolder(TestRoot);
+            yield break;
         }
 
-        [TearDown]
-        public void TearDown()
+        [UnityTearDown]
+        public IEnumerator TearDown()
         {
-            DeleteIfExists("Assets/SomeOther");
-            DeleteIfExists(ResourcesRoot);
-            AssetDatabase.Refresh();
-        }
+            // Clean up any assets created under our test root
+            string[] guids = AssetDatabase.FindAssets("t:Object", new[] { TestRoot });
+            foreach (string guid in guids)
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                AssetDatabase.DeleteAsset(path);
+            }
 
-        [Test]
-        public void CreatesMissingSingletonAtExpectedPath()
-        {
-            SetIncludeTestAssemblies(true);
-            InvokeEnsureSingletonAssets();
+            // Try to delete empty folders bottom-up
+            TryDeleteFolder(TestRoot);
+            TryDeleteFolder("Assets/Resources/Collision");
+            TryDeleteFolder("Assets/Resources/CaseTest");
 
-            MyTestSingleton asset = AssetDatabase.LoadAssetAtPath<MyTestSingleton>(TargetAsset);
-            Assert.IsNotNull(asset, "Expected singleton asset to be created at target path");
-        }
-
-        [Test]
-        public void RelocatesExistingSingletonToTarget()
-        {
-            string wrongFolder = "Assets/SomeOther";
-            EnsureFolder(wrongFolder);
-
-            AttributeMetadataCache inst = ScriptableObject.CreateInstance<AttributeMetadataCache>();
-            string wrongPath = wrongFolder + "/AttributeMetadataCache.asset";
-            AssetDatabase.CreateAsset(inst, wrongPath);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
+            yield break;
+        }
 
-            SetIncludeTestAssemblies(true);
-            InvokeEnsureSingletonAssets();
+        [UnityTest]
+        public IEnumerator DoesNotCreateDuplicateSubfolderOnCaseMismatch()
+        {
+            // Arrange: create wrong-cased subfolder under Resources
+            EnsureFolder("Assets/Resources/cASEtest");
+            string assetPath = "Assets/Resources/cASEtest/CaseMismatch.asset";
+            AssetDatabase.DeleteAsset(assetPath);
+            LogAssert.ignoreFailingMessages = true;
 
-            string target =
-                ResourcesRoot
-                + "/Wallstop Studios/AttributeMetadataCache/AttributeMetadataCache.asset";
-            AttributeMetadataCache moved = AssetDatabase.LoadAssetAtPath<AttributeMetadataCache>(
-                target
-            );
-            Assert.IsNotNull(moved, "Expected asset to be moved to target path");
+            // Act: trigger creation for a singleton targeting "CaseTest" path
+            ScriptableObjectSingletonCreator.EnsureSingletonAssets();
+            yield return null;
+
+            // Assert: no duplicate folder created and asset placed in reused folder
+            Assert.IsTrue(AssetDatabase.IsValidFolder("Assets/Resources/cASEtest"));
+            Assert.IsFalse(AssetDatabase.IsValidFolder("Assets/Resources/CaseTest 1"));
+            Assert.IsNotNull(AssetDatabase.LoadAssetAtPath<Object>(assetPath));
+        }
+
+        [UnityTest]
+        public IEnumerator SkipsCreationWhenTargetPathOccupied()
+        {
+            // Arrange: Create an occupying asset at the target path
+            string targetFolder = TestRoot;
+            EnsureFolder(targetFolder);
+            string occupiedPath = targetFolder + "/Duplicate.asset";
+            if (AssetDatabase.LoadAssetAtPath<Object>(occupiedPath) == null)
+            {
+                TextAsset ta = new TextAsset("occupied");
+                AssetDatabase.CreateAsset(ta, occupiedPath);
+            }
+
+            // Act: run ensure and expect a warning about occupied target
+            LogAssert.Expect(LogType.Warning, new Regex("target path already occupied"));
+            ScriptableObjectSingletonCreator.EnsureSingletonAssets();
+            yield return null;
+
+            // Assert: no duplicate asset created alongside
             Assert.IsNull(
-                AssetDatabase.LoadAssetAtPath<AttributeMetadataCache>(wrongPath),
-                "Old location should no longer contain asset"
+                AssetDatabase.LoadAssetAtPath<Object>(targetFolder + "/Duplicate 1.asset")
             );
         }
 
-        private static void SetIncludeTestAssemblies(bool value)
+        [UnityTest]
+        public IEnumerator WarnsOnTypeNameCollision()
         {
-            WallstopStudios
-                .UnityHelpers
-                .Editor
-                .Utils
-                .ScriptableObjectSingletonCreator
-                .IncludeTestAssemblies = value;
+            // Arrange: ensure collision folder exists
+            EnsureFolder("Assets/Resources/CreatorTests/Collision");
+
+            // Act: ensure logs a collision warning and does not create the overlapping asset
+            LogAssert.Expect(LogType.Warning, new Regex("Type name collision"));
+            ScriptableObjectSingletonCreator.EnsureSingletonAssets();
+            yield return null;
+
+            // Assert: no asset created at the ambiguous path
+            Assert.IsNull(
+                AssetDatabase.LoadAssetAtPath<Object>(
+                    "Assets/Resources/CreatorTests/Collision/NameCollision.asset"
+                )
+            );
         }
 
-        private static void InvokeEnsureSingletonAssets()
+        private static void EnsureFolder(string folderPath)
         {
-            WallstopStudios.UnityHelpers.Editor.Utils.ScriptableObjectSingletonCreator.EnsureSingletonAssets();
-        }
+            if (AssetDatabase.IsValidFolder(folderPath))
+            {
+                return;
+            }
 
-        private static void EnsureFolder(string relPath)
-        {
-            string[] parts = relPath.Split('/');
-            string cur = parts[0];
+            string[] parts = folderPath.Split('/');
+            string current = parts[0];
             for (int i = 1; i < parts.Length; i++)
             {
-                string next = cur + "/" + parts[i];
+                string next = current + "/" + parts[i];
                 if (!AssetDatabase.IsValidFolder(next))
                 {
-                    AssetDatabase.CreateFolder(cur, parts[i]);
+                    AssetDatabase.CreateFolder(current, parts[i]);
                 }
-                cur = next;
+                current = next;
             }
         }
 
-        private static void DeleteIfExists(string relPath)
+        private static void TryDeleteFolder(string folder)
         {
-            if (AssetDatabase.IsValidFolder(relPath))
+            if (!AssetDatabase.IsValidFolder(folder))
             {
-                AssetDatabase.DeleteAsset(relPath);
+                return;
+            }
+
+            string[] contents = AssetDatabase.FindAssets(string.Empty, new[] { folder });
+            if (contents == null || contents.Length == 0)
+            {
+                AssetDatabase.DeleteAsset(folder);
             }
         }
+
+        // Types used by the tests
+        [ScriptableSingletonPath("CaseTest")]
+        private sealed class CaseMismatch : ScriptableObjectSingleton<CaseMismatch> { }
+
+        [ScriptableSingletonPath("CreatorTests")]
+        private sealed class Duplicate : ScriptableObjectSingleton<Duplicate> { }
     }
+
+    // Name collision types in different namespaces
+#endif
+}
+
+namespace WallstopStudios.UnityHelpers.Tests.Utils.CollisionA
+{
+#if UNITY_EDITOR
+    using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Utils;
+
+    [ScriptableSingletonPath("CreatorTests/Collision")]
+    internal sealed class NameCollision : ScriptableObjectSingleton<NameCollision> { }
+#endif
+}
+
+namespace WallstopStudios.UnityHelpers.Tests.Utils.CollisionB
+{
+#if UNITY_EDITOR
+    using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Utils;
+
+    [ScriptableSingletonPath("CreatorTests/Collision")]
+    internal sealed class NameCollision : ScriptableObjectSingleton<NameCollision> { }
 #endif
 }

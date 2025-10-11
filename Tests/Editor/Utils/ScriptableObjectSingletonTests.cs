@@ -12,7 +12,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
     public sealed class ScriptableObjectSingletonTests : CommonTestBase
     {
-        private static readonly System.Collections.Generic.List<string> _createdAssetPaths = new();
+        private static readonly System.Collections.Generic.List<string> CreatedAssetPaths = new();
 
         [UnitySetUp]
         public IEnumerator SetUp()
@@ -61,7 +61,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             {
                 TType instance = ScriptableObject.CreateInstance<TType>();
                 AssetDatabase.CreateAsset(instance, assetPath);
-                _createdAssetPaths.Add(assetPath);
+                CreatedAssetPaths.Add(assetPath);
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
             }
@@ -93,7 +93,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         public IEnumerator Cleanup()
         {
             // Delete any assets created during SetUp
-            foreach (string path in _createdAssetPaths)
+            foreach (string path in CreatedAssetPaths)
             {
                 if (!string.IsNullOrWhiteSpace(path))
                 {
@@ -102,7 +102,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 yield return null;
             }
 
-            _createdAssetPaths.Clear();
+            CreatedAssetPaths.Clear();
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             yield return null;

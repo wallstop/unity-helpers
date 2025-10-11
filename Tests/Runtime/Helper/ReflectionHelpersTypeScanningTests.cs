@@ -25,30 +25,26 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             IEnumerable<Type> types = ReflectionHelpers.GetTypesDerivedFrom<Component>(
                 includeAbstract: false
             );
-            bool found = types.Any(t =>
-                t == typeof(RelationalComponentInitializerTests.PrewarmTesterComponent)
-            );
+            bool found = types.Any(t => t == typeof(PrewarmTesterComponent));
             Assert.IsTrue(found, "Expected PrewarmTesterComponent to be found as a Component.");
         }
 
         [Test]
         public void TryResolveTypeFindsAssemblyQualifiedName()
         {
-            string aqn =
-                typeof(RelationalComponentInitializerTests.PrewarmTesterComponent).AssemblyQualifiedName;
+            string aqn = typeof(PrewarmTesterComponent).AssemblyQualifiedName;
             Type t = ReflectionHelpers.TryResolveType(aqn);
             Assert.IsNotNull(t, "Resolution by assembly qualified name returned null.");
-            Assert.AreEqual(typeof(RelationalComponentInitializerTests.PrewarmTesterComponent), t);
+            Assert.AreEqual(typeof(PrewarmTesterComponent), t);
         }
 
         [Test]
         public void TryResolveTypeFindsNonQualifiedName()
         {
-            string fullName =
-                typeof(RelationalComponentInitializerTests.PrewarmTesterComponent).FullName;
+            string fullName = typeof(PrewarmTesterComponent).FullName;
             Type t = ReflectionHelpers.TryResolveType(fullName);
             Assert.IsNotNull(t, "Resolution by full name returned null.");
-            Assert.AreEqual(typeof(RelationalComponentInitializerTests.PrewarmTesterComponent), t);
+            Assert.AreEqual(typeof(PrewarmTesterComponent), t);
         }
 
         [Test]

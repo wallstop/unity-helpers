@@ -11,9 +11,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
     using System.Linq;
     using System.Linq.Expressions;
     using System.Reflection;
-    using System.Reflection.Emit;
     using System.Runtime.CompilerServices;
     using UnityEditor;
+#if EMIT_DYNAMIC_IL
+    using System.Reflection.Emit;
+#endif
+
 #if !SINGLE_THREADED
     using System.Collections.Concurrent;
 #else
@@ -180,6 +183,34 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #endif
 
         private static readonly bool CanCompileExpressions = CheckExpressionCompilationSupport();
+
+#if SINGLE_THREADED
+        private static readonly Dictionary<
+            (Type type, string name, BindingFlags flags),
+            FieldInfo
+        > FieldLookup = new();
+        private static readonly Dictionary<
+            (Type type, string name, BindingFlags flags),
+            PropertyInfo
+        > PropertyLookup = new();
+        private static readonly Dictionary<
+            (Type type, string sig, BindingFlags flags),
+            MethodInfo
+        > MethodLookup = new();
+#else
+        private static readonly ConcurrentDictionary<
+            (Type type, string name, BindingFlags flags),
+            FieldInfo
+        > FieldLookup = new();
+        private static readonly ConcurrentDictionary<
+            (Type type, string name, BindingFlags flags),
+            PropertyInfo
+        > PropertyLookup = new();
+        private static readonly ConcurrentDictionary<
+            (Type type, string sig, BindingFlags flags),
+            MethodInfo
+        > MethodLookup = new();
+#endif
 
         /// <summary>
         /// Tries to get an attribute of type <typeparamref name="T"/> and indicates whether it is present.
@@ -705,30 +736,41 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #if !EMIT_DYNAMIC_IL
             if (!CanCompileExpressions)
             {
-                return (instance, indexArgs) => property.GetValue(instance, indexArgs);
+                return (instance, indexArgs) =>
+                {
+                    if (indexArgs == null || indexArgs.Length != indices.Length)
+                    {
+                        throw new IndexOutOfRangeException(
+                            $"Indexer expects {indices.Length} index argument(s); received {(indexArgs == null ? 0 : indexArgs.Length)}."
+                        );
+                    }
+                    return property.GetValue(instance, indexArgs);
+                };
             }
-            var inst = Expression.Parameter(typeof(object), "instance");
-            var args = Expression.Parameter(typeof(object[]), "args");
+            ParameterExpression inst = Expression.Parameter(typeof(object), "instance");
+            ParameterExpression args = Expression.Parameter(typeof(object[]), "args");
             Expression target = property.DeclaringType.IsValueType
                 ? Expression.Unbox(inst, property.DeclaringType)
                 : Expression.Convert(inst, property.DeclaringType);
-            var indexExprs = indices
-                .Select((p, i) =>
-                    p.ParameterType.IsValueType
-                        ? Expression.Unbox(Expression.ArrayIndex(args, Expression.Constant(i)), p.ParameterType)
-                        : Expression.Convert(
-                            Expression.ArrayIndex(args, Expression.Constant(i)),
-                            p.ParameterType
-                        )
+            UnaryExpression[] indexExprs = indices
+                .Select(
+                    (p, i) =>
+                        p.ParameterType.IsValueType
+                            ? Expression.Unbox(
+                                Expression.ArrayIndex(args, Expression.Constant(i)),
+                                p.ParameterType
+                            )
+                            : Expression.Convert(
+                                Expression.ArrayIndex(args, Expression.Constant(i)),
+                                p.ParameterType
+                            )
                 )
                 .ToArray();
             Expression call = Expression.Property(target, property, indexExprs);
             Expression ret = property.PropertyType.IsValueType
                 ? Expression.Convert(call, typeof(object))
                 : call;
-            return Expression
-                .Lambda<Func<object, object[], object>>(ret, inst, args)
-                .Compile();
+            return Expression.Lambda<Func<object, object[], object>>(ret, inst, args).Compile();
 #else
             MethodInfo getter = property.GetGetMethod(true);
             if (getter == null)
@@ -786,22 +828,56 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #if !EMIT_DYNAMIC_IL
             if (!CanCompileExpressions)
             {
-                return (instance, value, indexArgs) => property.SetValue(instance, value, indexArgs);
+                return (instance, value, indexArgs) =>
+                {
+                    if (indexArgs == null || indexArgs.Length != indices.Length)
+                    {
+                        throw new IndexOutOfRangeException(
+                            $"Indexer expects {indices.Length} index argument(s); received {(indexArgs == null ? 0 : indexArgs.Length)}."
+                        );
+                    }
+                    // Validate index argument types to mirror IL/unbox behavior
+                    for (int i = 0; i < indices.Length; i++)
+                    {
+                        object idxVal = indexArgs[i];
+                        Type pt = indices[i].ParameterType;
+                        if (idxVal == null)
+                        {
+                            if (pt.IsValueType && Nullable.GetUnderlyingType(pt) == null)
+                            {
+                                throw new InvalidCastException(
+                                    $"Object of type 'null' cannot be converted to type '{pt}'."
+                                );
+                            }
+                        }
+                        else if (!pt.IsInstanceOfType(idxVal))
+                        {
+                            throw new InvalidCastException(
+                                $"Object of type '{idxVal.GetType()}' cannot be converted to type '{pt}'."
+                            );
+                        }
+                    }
+                    property.SetValue(instance, value, indexArgs);
+                };
             }
-            var inst = Expression.Parameter(typeof(object), "instance");
-            var value = Expression.Parameter(typeof(object), "value");
-            var args = Expression.Parameter(typeof(object[]), "args");
+            ParameterExpression inst = Expression.Parameter(typeof(object), "instance");
+            ParameterExpression value = Expression.Parameter(typeof(object), "value");
+            ParameterExpression args = Expression.Parameter(typeof(object[]), "args");
             Expression target = property.DeclaringType.IsValueType
                 ? Expression.Unbox(inst, property.DeclaringType)
                 : Expression.Convert(inst, property.DeclaringType);
-            var indexExprs = indices
-                .Select((p, i) =>
-                    p.ParameterType.IsValueType
-                        ? Expression.Unbox(Expression.ArrayIndex(args, Expression.Constant(i)), p.ParameterType)
-                        : Expression.Convert(
-                            Expression.ArrayIndex(args, Expression.Constant(i)),
-                            p.ParameterType
-                        )
+            UnaryExpression[] indexExprs = indices
+                .Select(
+                    (p, i) =>
+                        p.ParameterType.IsValueType
+                            ? Expression.Unbox(
+                                Expression.ArrayIndex(args, Expression.Constant(i)),
+                                p.ParameterType
+                            )
+                            : Expression.Convert(
+                                Expression.ArrayIndex(args, Expression.Constant(i)),
+                                p.ParameterType
+                            )
                 )
                 .ToArray();
             Expression valExpr = property.PropertyType.IsValueType
@@ -1368,7 +1444,15 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         public static Func<int, Array> GetArrayCreator(Type elementType)
         {
 #if !EMIT_DYNAMIC_IL
-            return size => Array.CreateInstance(elementType, size);
+            return size =>
+            {
+                if (size < 0)
+                {
+                    // Match IL newarr behavior which throws OverflowException for negative lengths
+                    throw new OverflowException("Array length must be non-negative.");
+                }
+                return Array.CreateInstance(elementType, size);
+            };
 #else
             DynamicMethod dynamicMethod = new(
                 $"CreateArray{elementType.Name}",
@@ -1543,7 +1627,32 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
 #if !EMIT_DYNAMIC_IL
             return CreateCompiledHashSetAdder(hashSetType, elementType, addMethod)
-                ?? ((set, value) => addMethod.Invoke(set, new[] { value }));
+                ?? (
+                    (set, value) =>
+                    {
+                        // Mirror cast/unbox behavior to surface InvalidCastException for mismatches
+                        if (value == null)
+                        {
+                            if (
+                                elementType.IsValueType
+                                && Nullable.GetUnderlyingType(elementType) == null
+                            )
+                            {
+                                throw new InvalidCastException(
+                                    $"Object of type 'null' cannot be converted to type '{elementType}'."
+                                );
+                            }
+                        }
+                        else if (!elementType.IsInstanceOfType(value))
+                        {
+                            throw new InvalidCastException(
+                                $"Object of type '{value.GetType()}' cannot be converted to type '{elementType}'."
+                            );
+                        }
+
+                        addMethod.Invoke(set, new[] { value });
+                    }
+                );
 #else
             try
             {
@@ -2519,12 +2628,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             catch
             {
                 // Fallback to expression compilation
-                var p1 = Expression.Parameter(typeof(T1), "a");
-                var p2 = Expression.Parameter(typeof(T2), "b");
+                ParameterExpression p1 = Expression.Parameter(typeof(T1), "a");
+                ParameterExpression p2 = Expression.Parameter(typeof(T2), "b");
                 MethodCallExpression call = Expression.Call(method, p1, p2);
-                return Expression
-                    .Lambda<Func<T1, T2, TReturn>>(call, p1, p2)
-                    .Compile();
+                return Expression.Lambda<Func<T1, T2, TReturn>>(call, p1, p2).Compile();
             }
 #else
             DynamicMethod dm = new(
@@ -2552,7 +2659,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
             catch
             {
-                var call = Expression.Call(method);
+                MethodCallExpression call = Expression.Call(method);
                 return Expression.Lambda<Func<TReturn>>(call).Compile();
             }
 #else
@@ -2579,8 +2686,8 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
             catch
             {
-                var a = Expression.Parameter(typeof(T1), "a");
-                var call = Expression.Call(method, a);
+                ParameterExpression a = Expression.Parameter(typeof(T1), "a");
+                MethodCallExpression call = Expression.Call(method, a);
                 return Expression.Lambda<Func<T1, TReturn>>(call, a).Compile();
             }
 #else
@@ -2608,13 +2715,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
             catch
             {
-                var a = Expression.Parameter(typeof(T1), "a");
-                var b = Expression.Parameter(typeof(T2), "b");
-                var c = Expression.Parameter(typeof(T3), "c");
-                var call = Expression.Call(method, a, b, c);
-                return Expression
-                    .Lambda<Func<T1, T2, T3, TReturn>>(call, a, b, c)
-                    .Compile();
+                ParameterExpression a = Expression.Parameter(typeof(T1), "a");
+                ParameterExpression b = Expression.Parameter(typeof(T2), "b");
+                ParameterExpression c = Expression.Parameter(typeof(T3), "c");
+                MethodCallExpression call = Expression.Call(method, a, b, c);
+                return Expression.Lambda<Func<T1, T2, T3, TReturn>>(call, a, b, c).Compile();
             }
 #else
             DynamicMethod dm = new(
@@ -2643,14 +2748,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
             catch
             {
-                var a = Expression.Parameter(typeof(T1), "a");
-                var b = Expression.Parameter(typeof(T2), "b");
-                var c = Expression.Parameter(typeof(T3), "c");
-                var d = Expression.Parameter(typeof(T4), "d");
-                var call = Expression.Call(method, a, b, c, d);
-                return Expression
-                    .Lambda<Func<T1, T2, T3, T4, TReturn>>(call, a, b, c, d)
-                    .Compile();
+                ParameterExpression a = Expression.Parameter(typeof(T1), "a");
+                ParameterExpression b = Expression.Parameter(typeof(T2), "b");
+                ParameterExpression c = Expression.Parameter(typeof(T3), "c");
+                ParameterExpression d = Expression.Parameter(typeof(T4), "d");
+                MethodCallExpression call = Expression.Call(method, a, b, c, d);
+                return Expression.Lambda<Func<T1, T2, T3, T4, TReturn>>(call, a, b, c, d).Compile();
             }
 #else
             DynamicMethod dm = new(
@@ -2674,8 +2777,15 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         private static Delegate BuildStaticActionInvoker0(MethodInfo method)
         {
 #if !EMIT_DYNAMIC_IL
-            try { return method.CreateDelegate(typeof(Action)); }
-            catch { var call = Expression.Call(method); return Expression.Lambda<Action>(call).Compile(); }
+            try
+            {
+                return method.CreateDelegate(typeof(Action));
+            }
+            catch
+            {
+                MethodCallExpression call = Expression.Call(method);
+                return Expression.Lambda<Action>(call).Compile();
+            }
 #else
             DynamicMethod dm = new(
                 $"InvokeStaticA0_{method.DeclaringType?.Name}_{method.Name}",
@@ -2694,11 +2804,14 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         private static Delegate BuildStaticActionInvoker1<T1>(MethodInfo method)
         {
 #if !EMIT_DYNAMIC_IL
-            try { return method.CreateDelegate(typeof(Action<T1>)); }
+            try
+            {
+                return method.CreateDelegate(typeof(Action<T1>));
+            }
             catch
             {
-                var a = Expression.Parameter(typeof(T1), "a");
-                var call = Expression.Call(method, a);
+                ParameterExpression a = Expression.Parameter(typeof(T1), "a");
+                MethodCallExpression call = Expression.Call(method, a);
                 return Expression.Lambda<Action<T1>>(call, a).Compile();
             }
 #else
@@ -2720,12 +2833,15 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         private static Delegate BuildStaticActionInvoker2<T1, T2>(MethodInfo method)
         {
 #if !EMIT_DYNAMIC_IL
-            try { return method.CreateDelegate(typeof(Action<T1, T2>)); }
+            try
+            {
+                return method.CreateDelegate(typeof(Action<T1, T2>));
+            }
             catch
             {
-                var a = Expression.Parameter(typeof(T1), "a");
-                var b = Expression.Parameter(typeof(T2), "b");
-                var call = Expression.Call(method, a, b);
+                ParameterExpression a = Expression.Parameter(typeof(T1), "a");
+                ParameterExpression b = Expression.Parameter(typeof(T2), "b");
+                MethodCallExpression call = Expression.Call(method, a, b);
                 return Expression.Lambda<Action<T1, T2>>(call, a, b).Compile();
             }
 #else
@@ -2748,16 +2864,17 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         private static Delegate BuildStaticActionInvoker3<T1, T2, T3>(MethodInfo method)
         {
 #if !EMIT_DYNAMIC_IL
-            try { return method.CreateDelegate(typeof(Action<T1, T2, T3>)); }
+            try
+            {
+                return method.CreateDelegate(typeof(Action<T1, T2, T3>));
+            }
             catch
             {
-                var a = Expression.Parameter(typeof(T1), "a");
-                var b = Expression.Parameter(typeof(T2), "b");
-                var c = Expression.Parameter(typeof(T3), "c");
-                var call = Expression.Call(method, a, b, c);
-                return Expression
-                    .Lambda<Action<T1, T2, T3>>(call, a, b, c)
-                    .Compile();
+                ParameterExpression a = Expression.Parameter(typeof(T1), "a");
+                ParameterExpression b = Expression.Parameter(typeof(T2), "b");
+                ParameterExpression c = Expression.Parameter(typeof(T3), "c");
+                MethodCallExpression call = Expression.Call(method, a, b, c);
+                return Expression.Lambda<Action<T1, T2, T3>>(call, a, b, c).Compile();
             }
 #else
             DynamicMethod dm = new(
@@ -2780,17 +2897,18 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         private static Delegate BuildStaticActionInvoker4<T1, T2, T3, T4>(MethodInfo method)
         {
 #if !EMIT_DYNAMIC_IL
-            try { return method.CreateDelegate(typeof(Action<T1, T2, T3, T4>)); }
+            try
+            {
+                return method.CreateDelegate(typeof(Action<T1, T2, T3, T4>));
+            }
             catch
             {
-                var a = Expression.Parameter(typeof(T1), "a");
-                var b = Expression.Parameter(typeof(T2), "b");
-                var c = Expression.Parameter(typeof(T3), "c");
-                var d = Expression.Parameter(typeof(T4), "d");
-                var call = Expression.Call(method, a, b, c, d);
-                return Expression
-                    .Lambda<Action<T1, T2, T3, T4>>(call, a, b, c, d)
-                    .Compile();
+                ParameterExpression a = Expression.Parameter(typeof(T1), "a");
+                ParameterExpression b = Expression.Parameter(typeof(T2), "b");
+                ParameterExpression c = Expression.Parameter(typeof(T3), "c");
+                ParameterExpression d = Expression.Parameter(typeof(T4), "d");
+                MethodCallExpression call = Expression.Call(method, a, b, c, d);
+                return Expression.Lambda<Action<T1, T2, T3, T4>>(call, a, b, c, d).Compile();
             }
 #else
             DynamicMethod dm = new(
@@ -2921,74 +3039,88 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #if !EMIT_DYNAMIC_IL
         private static Delegate BuildInstanceInvoker0<TInstance, TReturn>(MethodInfo method)
         {
-            try { return method.CreateDelegate(typeof(Func<TInstance, TReturn>)); }
+            try
+            {
+                return method.CreateDelegate(typeof(Func<TInstance, TReturn>));
+            }
             catch
             {
-                var inst = Expression.Parameter(typeof(TInstance), "instance");
-                var call = Expression.Call(inst, method);
+                ParameterExpression inst = Expression.Parameter(typeof(TInstance), "instance");
+                MethodCallExpression call = Expression.Call(inst, method);
                 return Expression.Lambda<Func<TInstance, TReturn>>(call, inst).Compile();
             }
         }
+
         private static Delegate BuildInstanceInvoker1<TInstance, T1, TReturn>(MethodInfo method)
         {
-            try { return method.CreateDelegate(typeof(Func<TInstance, T1, TReturn>)); }
+            try
+            {
+                return method.CreateDelegate(typeof(Func<TInstance, T1, TReturn>));
+            }
             catch
             {
-                var inst = Expression.Parameter(typeof(TInstance), "instance");
-                var a = Expression.Parameter(typeof(T1), "a");
-                var call = Expression.Call(inst, method, a);
+                ParameterExpression inst = Expression.Parameter(typeof(TInstance), "instance");
+                ParameterExpression a = Expression.Parameter(typeof(T1), "a");
+                MethodCallExpression call = Expression.Call(inst, method, a);
                 return Expression.Lambda<Func<TInstance, T1, TReturn>>(call, inst, a).Compile();
             }
         }
+
         private static Delegate BuildInstanceInvoker2<TInstance, T1, T2, TReturn>(MethodInfo method)
         {
-            try { return method.CreateDelegate(typeof(Func<TInstance, T1, T2, TReturn>)); }
+            try
+            {
+                return method.CreateDelegate(typeof(Func<TInstance, T1, T2, TReturn>));
+            }
             catch
             {
-                var inst = Expression.Parameter(typeof(TInstance), "instance");
-                var a = Expression.Parameter(typeof(T1), "a");
-                var b = Expression.Parameter(typeof(T2), "b");
-                var call = Expression.Call(inst, method, a, b);
+                ParameterExpression inst = Expression.Parameter(typeof(TInstance), "instance");
+                ParameterExpression a = Expression.Parameter(typeof(T1), "a");
+                ParameterExpression b = Expression.Parameter(typeof(T2), "b");
+                MethodCallExpression call = Expression.Call(inst, method, a, b);
                 return Expression
                     .Lambda<Func<TInstance, T1, T2, TReturn>>(call, inst, a, b)
                     .Compile();
             }
         }
+
         private static Delegate BuildInstanceInvoker3<TInstance, T1, T2, T3, TReturn>(
             MethodInfo method
         )
         {
-            try { return method.CreateDelegate(typeof(Func<TInstance, T1, T2, T3, TReturn>)); }
+            try
+            {
+                return method.CreateDelegate(typeof(Func<TInstance, T1, T2, T3, TReturn>));
+            }
             catch
             {
-                var inst = Expression.Parameter(typeof(TInstance), "instance");
-                var a = Expression.Parameter(typeof(T1), "a");
-                var b = Expression.Parameter(typeof(T2), "b");
-                var c = Expression.Parameter(typeof(T3), "c");
-                var call = Expression.Call(inst, method, a, b, c);
+                ParameterExpression inst = Expression.Parameter(typeof(TInstance), "instance");
+                ParameterExpression a = Expression.Parameter(typeof(T1), "a");
+                ParameterExpression b = Expression.Parameter(typeof(T2), "b");
+                ParameterExpression c = Expression.Parameter(typeof(T3), "c");
+                MethodCallExpression call = Expression.Call(inst, method, a, b, c);
                 return Expression
                     .Lambda<Func<TInstance, T1, T2, T3, TReturn>>(call, inst, a, b, c)
                     .Compile();
             }
         }
+
         private static Delegate BuildInstanceInvoker4<TInstance, T1, T2, T3, T4, TReturn>(
             MethodInfo method
         )
         {
             try
             {
-                return method.CreateDelegate(
-                    typeof(Func<TInstance, T1, T2, T3, T4, TReturn>)
-                );
+                return method.CreateDelegate(typeof(Func<TInstance, T1, T2, T3, T4, TReturn>));
             }
             catch
             {
-                var inst = Expression.Parameter(typeof(TInstance), "instance");
-                var a = Expression.Parameter(typeof(T1), "a");
-                var b = Expression.Parameter(typeof(T2), "b");
-                var c = Expression.Parameter(typeof(T3), "c");
-                var d = Expression.Parameter(typeof(T4), "d");
-                var call = Expression.Call(inst, method, a, b, c, d);
+                ParameterExpression inst = Expression.Parameter(typeof(TInstance), "instance");
+                ParameterExpression a = Expression.Parameter(typeof(T1), "a");
+                ParameterExpression b = Expression.Parameter(typeof(T2), "b");
+                ParameterExpression c = Expression.Parameter(typeof(T3), "c");
+                ParameterExpression d = Expression.Parameter(typeof(T4), "d");
+                MethodCallExpression call = Expression.Call(inst, method, a, b, c, d);
                 return Expression
                     .Lambda<Func<TInstance, T1, T2, T3, T4, TReturn>>(call, inst, a, b, c, d)
                     .Compile();
@@ -2997,67 +3129,86 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
         private static Delegate BuildInstanceActionInvoker0<TInstance>(MethodInfo method)
         {
-            try { return method.CreateDelegate(typeof(Action<TInstance>)); }
+            try
+            {
+                return method.CreateDelegate(typeof(Action<TInstance>));
+            }
             catch
             {
-                var inst = Expression.Parameter(typeof(TInstance), "instance");
-                var call = Expression.Call(inst, method);
+                ParameterExpression inst = Expression.Parameter(typeof(TInstance), "instance");
+                MethodCallExpression call = Expression.Call(inst, method);
                 return Expression.Lambda<Action<TInstance>>(call, inst).Compile();
             }
         }
+
         private static Delegate BuildInstanceActionInvoker1<TInstance, T1>(MethodInfo method)
         {
-            try { return method.CreateDelegate(typeof(Action<TInstance, T1>)); }
+            try
+            {
+                return method.CreateDelegate(typeof(Action<TInstance, T1>));
+            }
             catch
             {
-                var inst = Expression.Parameter(typeof(TInstance), "instance");
-                var a = Expression.Parameter(typeof(T1), "a");
-                var call = Expression.Call(inst, method, a);
+                ParameterExpression inst = Expression.Parameter(typeof(TInstance), "instance");
+                ParameterExpression a = Expression.Parameter(typeof(T1), "a");
+                MethodCallExpression call = Expression.Call(inst, method, a);
                 return Expression.Lambda<Action<TInstance, T1>>(call, inst, a).Compile();
             }
         }
+
         private static Delegate BuildInstanceActionInvoker2<TInstance, T1, T2>(MethodInfo method)
         {
-            try { return method.CreateDelegate(typeof(Action<TInstance, T1, T2>)); }
+            try
+            {
+                return method.CreateDelegate(typeof(Action<TInstance, T1, T2>));
+            }
             catch
             {
-                var inst = Expression.Parameter(typeof(TInstance), "instance");
-                var a = Expression.Parameter(typeof(T1), "a");
-                var b = Expression.Parameter(typeof(T2), "b");
-                var call = Expression.Call(inst, method, a, b);
+                ParameterExpression inst = Expression.Parameter(typeof(TInstance), "instance");
+                ParameterExpression a = Expression.Parameter(typeof(T1), "a");
+                ParameterExpression b = Expression.Parameter(typeof(T2), "b");
+                MethodCallExpression call = Expression.Call(inst, method, a, b);
                 return Expression.Lambda<Action<TInstance, T1, T2>>(call, inst, a, b).Compile();
             }
         }
+
         private static Delegate BuildInstanceActionInvoker3<TInstance, T1, T2, T3>(
             MethodInfo method
         )
         {
-            try { return method.CreateDelegate(typeof(Action<TInstance, T1, T2, T3>)); }
+            try
+            {
+                return method.CreateDelegate(typeof(Action<TInstance, T1, T2, T3>));
+            }
             catch
             {
-                var inst = Expression.Parameter(typeof(TInstance), "instance");
-                var a = Expression.Parameter(typeof(T1), "a");
-                var b = Expression.Parameter(typeof(T2), "b");
-                var c = Expression.Parameter(typeof(T3), "c");
-                var call = Expression.Call(inst, method, a, b, c);
+                ParameterExpression inst = Expression.Parameter(typeof(TInstance), "instance");
+                ParameterExpression a = Expression.Parameter(typeof(T1), "a");
+                ParameterExpression b = Expression.Parameter(typeof(T2), "b");
+                ParameterExpression c = Expression.Parameter(typeof(T3), "c");
+                MethodCallExpression call = Expression.Call(inst, method, a, b, c);
                 return Expression
                     .Lambda<Action<TInstance, T1, T2, T3>>(call, inst, a, b, c)
                     .Compile();
             }
         }
+
         private static Delegate BuildInstanceActionInvoker4<TInstance, T1, T2, T3, T4>(
             MethodInfo method
         )
         {
-            try { return method.CreateDelegate(typeof(Action<TInstance, T1, T2, T3, T4>)); }
+            try
+            {
+                return method.CreateDelegate(typeof(Action<TInstance, T1, T2, T3, T4>));
+            }
             catch
             {
-                var inst = Expression.Parameter(typeof(TInstance), "instance");
-                var a = Expression.Parameter(typeof(T1), "a");
-                var b = Expression.Parameter(typeof(T2), "b");
-                var c = Expression.Parameter(typeof(T3), "c");
-                var d = Expression.Parameter(typeof(T4), "d");
-                var call = Expression.Call(inst, method, a, b, c, d);
+                ParameterExpression inst = Expression.Parameter(typeof(TInstance), "instance");
+                ParameterExpression a = Expression.Parameter(typeof(T1), "a");
+                ParameterExpression b = Expression.Parameter(typeof(T2), "b");
+                ParameterExpression c = Expression.Parameter(typeof(T3), "c");
+                ParameterExpression d = Expression.Parameter(typeof(T4), "d");
+                MethodCallExpression call = Expression.Call(inst, method, a, b, c, d);
                 return Expression
                     .Lambda<Action<TInstance, T1, T2, T3, T4>>(call, inst, a, b, c, d)
                     .Compile();
@@ -3615,6 +3766,34 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         }
 
         /// <summary>
+        /// Finds all types with a given attribute, using TypeCache in editor when available.
+        /// </summary>
+        public static IEnumerable<Type> GetTypesWithAttribute<TAttribute>(bool includeAbstract)
+            where TAttribute : Attribute
+        {
+#if UNITY_EDITOR
+            try
+            {
+                TypeCache.TypeCollection types =
+                    UnityEditor.TypeCache.GetTypesWithAttribute<TAttribute>();
+                return types.Where(t =>
+                    t != null && (includeAbstract || (t.IsClass && !t.IsAbstract))
+                );
+            }
+            catch
+            {
+                // fall through
+            }
+#endif
+            return GetAllLoadedTypes()
+                .Where(t =>
+                    t != null
+                    && (includeAbstract || (t.IsClass && !t.IsAbstract))
+                    && HasAttributeSafe<TAttribute>(t)
+                );
+        }
+
+        /// <summary>
         /// Finds all types with a given attribute across loaded assemblies (non-generic overload).
         /// </summary>
         public static IEnumerable<Type> GetTypesWithAttribute(Type attributeType)
@@ -3625,6 +3804,267 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
 
             return GetAllLoadedTypes().Where(type => HasAttributeSafe(type, attributeType));
+        }
+
+        public static IEnumerable<Type> GetComponentTypes(bool includeAbstract = false)
+        {
+            return GetTypesDerivedFrom(typeof(UnityEngine.Component), includeAbstract);
+        }
+
+        public static IEnumerable<Type> GetScriptableObjectTypes(bool includeAbstract = false)
+        {
+            return GetTypesDerivedFrom(typeof(UnityEngine.ScriptableObject), includeAbstract);
+        }
+
+        public static IEnumerable<MethodInfo> GetMethodsWithAttribute<TAttribute>(
+            Type within = null,
+            BindingFlags flags =
+                BindingFlags.Instance
+                | BindingFlags.Static
+                | BindingFlags.Public
+                | BindingFlags.NonPublic
+        )
+            where TAttribute : Attribute
+        {
+#if UNITY_EDITOR
+            try
+            {
+                TypeCache.MethodCollection methods =
+                    UnityEditor.TypeCache.GetMethodsWithAttribute<TAttribute>();
+                IEnumerable<MethodInfo> filtered = methods;
+                if (within != null)
+                {
+                    filtered = filtered.Where(m => m?.DeclaringType == within);
+                }
+                return filtered.Where(m => m != null);
+            }
+            catch
+            {
+                // fall through
+            }
+#endif
+            if (within != null)
+            {
+                return SafeGetMethods(within, flags)
+                    .Where(m => m != null && HasAttributeSafe<TAttribute>(m));
+            }
+            return GetAllLoadedTypes()
+                .SelectMany(t => SafeGetMethods(t, flags))
+                .Where(m => m != null && HasAttributeSafe<TAttribute>(m));
+        }
+
+        public static IEnumerable<FieldInfo> GetFieldsWithAttribute<TAttribute>(
+            Type within = null,
+            BindingFlags flags =
+                BindingFlags.Instance
+                | BindingFlags.Static
+                | BindingFlags.Public
+                | BindingFlags.NonPublic
+        )
+            where TAttribute : Attribute
+        {
+#if UNITY_EDITOR
+            try
+            {
+                TypeCache.FieldInfoCollection fields =
+                    UnityEditor.TypeCache.GetFieldsWithAttribute<TAttribute>();
+                IEnumerable<FieldInfo> filtered = fields;
+                if (within != null)
+                {
+                    filtered = filtered.Where(f => f?.DeclaringType == within);
+                }
+                return filtered.Where(f => f != null);
+            }
+            catch
+            {
+                // fall through
+            }
+#endif
+            if (within != null)
+            {
+                return SafeGetFields(within, flags)
+                    .Where(f => f != null && HasAttributeSafe<TAttribute>(f));
+            }
+            return GetAllLoadedTypes()
+                .SelectMany(t => SafeGetFields(t, flags))
+                .Where(f => f != null && HasAttributeSafe<TAttribute>(f));
+        }
+
+        public static IEnumerable<PropertyInfo> GetPropertiesWithAttribute<TAttribute>(
+            Type within = null,
+            BindingFlags flags =
+                BindingFlags.Instance
+                | BindingFlags.Static
+                | BindingFlags.Public
+                | BindingFlags.NonPublic
+        )
+            where TAttribute : Attribute
+        {
+            if (within != null)
+            {
+                return SafeGetProperties(within, flags)
+                    .Where(p => p != null && HasAttributeSafe<TAttribute>(p));
+            }
+            return GetAllLoadedTypes()
+                .SelectMany(t => SafeGetProperties(t, flags))
+                .Where(p => p != null && HasAttributeSafe<TAttribute>(p));
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static IEnumerable<MethodInfo> SafeGetMethods(Type t, BindingFlags flags)
+        {
+            try
+            {
+                return t?.GetMethods(flags) ?? Array.Empty<MethodInfo>();
+            }
+            catch
+            {
+                return Array.Empty<MethodInfo>();
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static IEnumerable<FieldInfo> SafeGetFields(Type t, BindingFlags flags)
+        {
+            try
+            {
+                return t?.GetFields(flags) ?? Array.Empty<FieldInfo>();
+            }
+            catch
+            {
+                return Array.Empty<FieldInfo>();
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static IEnumerable<PropertyInfo> SafeGetProperties(Type t, BindingFlags flags)
+        {
+            try
+            {
+                return t?.GetProperties(flags) ?? Array.Empty<PropertyInfo>();
+            }
+            catch
+            {
+                return Array.Empty<PropertyInfo>();
+            }
+        }
+
+        public static bool TryGetField(
+            Type type,
+            string name,
+            out FieldInfo field,
+            BindingFlags flags =
+                BindingFlags.Instance
+                | BindingFlags.Static
+                | BindingFlags.Public
+                | BindingFlags.NonPublic
+        )
+        {
+            field = null;
+            if (type == null || string.IsNullOrEmpty(name))
+                return false;
+            (Type type, string name, BindingFlags flags) key = (type, name, flags);
+#if SINGLE_THREADED
+            if (!FieldLookup.TryGetValue(key, out field))
+            {
+                field = type.GetField(name, flags);
+                FieldLookup[key] = field;
+            }
+#else
+            field = FieldLookup.GetOrAdd(key, k => k.type.GetField(k.name, k.flags));
+#endif
+            return field != null;
+        }
+
+        public static bool TryGetProperty(
+            Type type,
+            string name,
+            out PropertyInfo property,
+            BindingFlags flags =
+                BindingFlags.Instance
+                | BindingFlags.Static
+                | BindingFlags.Public
+                | BindingFlags.NonPublic
+        )
+        {
+            property = null;
+            if (type == null || string.IsNullOrEmpty(name))
+                return false;
+            (Type type, string name, BindingFlags flags) key = (type, name, flags);
+#if SINGLE_THREADED
+            if (!PropertyLookup.TryGetValue(key, out property))
+            {
+                property = type.GetProperty(name, flags);
+                PropertyLookup[key] = property;
+            }
+#else
+            property = PropertyLookup.GetOrAdd(key, k => k.type.GetProperty(k.name, k.flags));
+#endif
+            return property != null;
+        }
+
+        public static bool TryGetMethod(
+            Type type,
+            string name,
+            out MethodInfo method,
+            Type[] paramTypes = null,
+            BindingFlags flags =
+                BindingFlags.Instance
+                | BindingFlags.Static
+                | BindingFlags.Public
+                | BindingFlags.NonPublic
+        )
+        {
+            method = null;
+            if (type == null || string.IsNullOrEmpty(name))
+                return false;
+            string sig = BuildMethodSignatureKey(name, paramTypes);
+            (Type type, string sig, BindingFlags flags) key = (type, sig, flags);
+#if SINGLE_THREADED
+            if (!MethodLookup.TryGetValue(key, out method))
+            {
+                method =
+                    paramTypes == null
+                        ? type.GetMethod(name, flags)
+                        : type.GetMethod(
+                            name,
+                            flags,
+                            binder: null,
+                            types: paramTypes,
+                            modifiers: null
+                        );
+                MethodLookup[key] = method;
+            }
+#else
+            method = MethodLookup.GetOrAdd(
+                key,
+                k =>
+                {
+                    if (paramTypes == null)
+                    {
+                        return k.type.GetMethod(name, k.flags);
+                    }
+                    return k.type.GetMethod(
+                        name,
+                        k.flags,
+                        binder: null,
+                        types: paramTypes,
+                        modifiers: null
+                    );
+                }
+            );
+#endif
+            return method != null;
+        }
+
+        private static string BuildMethodSignatureKey(string name, Type[] paramTypes)
+        {
+            if (paramTypes == null || paramTypes.Length == 0)
+                return name + "()";
+            return name
+                + "("
+                + string.Join(",", paramTypes.Select(t => t?.FullName ?? "null"))
+                + ")";
         }
 
         public static bool HasAttributeSafe<TAttribute>(

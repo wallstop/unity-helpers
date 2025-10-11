@@ -16,6 +16,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
     {
         private const string ResourcesRoot = "Assets/Resources";
 
+        // Prevents re-entrant execution during domain reloads/asset refreshes
+        private static bool _isEnsuring;
+
+        // Controls whether informational logs are emitted. Warnings still always log.
+        internal static bool VerboseLogging { get; set; }
+
         internal static bool IncludeTestAssemblies { get; set; }
 
         static ScriptableObjectSingletonCreator()
@@ -25,19 +31,68 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 
         internal static void EnsureSingletonAssets()
         {
-            bool anyChanges = false;
-            foreach (
-                Type derivedType in TypeCache.GetTypesDerivedFrom(
-                    typeof(UnityHelpers.Utils.ScriptableObjectSingleton<>)
-                )
-            )
+            if (_isEnsuring)
             {
-                if (
-                    !derivedType.IsAbstract
-                    && !derivedType.IsGenericType
-                    && (IncludeTestAssemblies || !TestAssemblyHelper.IsTestType(derivedType))
+                LogVerbose(
+                    "ScriptableObjectSingletonCreator: EnsureSingletonAssets re-entrancy prevented."
+                );
+                return;
+            }
+
+            _isEnsuring = true;
+            AssetDatabase.StartAssetEditing();
+            bool anyChanges = false;
+            try
+            {
+                // Collect candidate types once and detect simple name collisions (same class name, different namespaces)
+                List<Type> allCandidates = new();
+                foreach (
+                    Type t in WallstopStudios.UnityHelpers.Core.Helper.ReflectionHelpers.GetTypesDerivedFrom(
+                        typeof(UnityHelpers.Utils.ScriptableObjectSingleton<>),
+                        includeAbstract: false
+                    )
                 )
                 {
+                    if (
+                        !t.IsGenericType
+                        && (IncludeTestAssemblies || !TestAssemblyHelper.IsTestType(t))
+                    )
+                    {
+                        allCandidates.Add(t);
+                    }
+                }
+
+                // Build collision map by simple type name
+                Dictionary<string, List<Type>> byName = new(StringComparer.OrdinalIgnoreCase);
+                foreach (Type t in allCandidates)
+                {
+                    if (!byName.TryGetValue(t.Name, out List<Type> list))
+                    {
+                        list = new List<Type>();
+                        byName[t.Name] = list;
+                    }
+                    list.Add(t);
+                }
+
+                HashSet<string> collisionLogged = new(StringComparer.OrdinalIgnoreCase);
+
+                foreach (Type derivedType in allCandidates)
+                {
+                    // Skip name-collision types to avoid creating overlapping assets like TypeName.asset
+                    if (
+                        byName.TryGetValue(derivedType.Name, out List<Type> group)
+                        && group.Count > 1
+                    )
+                    {
+                        if (collisionLogged.Add(derivedType.Name))
+                        {
+                            Debug.LogWarning(
+                                $"ScriptableObjectSingletonCreator: Type name collision detected for '{derivedType.Name}'. Conflicting types: {string.Join(", ", group.ConvertAll(x => x.FullName))}. Skipping auto-creation. Consider adding [ScriptableSingletonPath] to disambiguate."
+                            );
+                        }
+                        continue;
+                    }
+
                     EnsureFolderExists(ResourcesRoot);
 
                     string resourcesSubFolder = GetResourcesSubFolder(derivedType);
@@ -48,6 +103,19 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                         targetFolder,
                         derivedType.Name + ".asset"
                     );
+
+                    // Extra safety: if any asset exists at the exact path, do not create a duplicate.
+                    // Prefer to use/move existing assets rather than generating unique names.
+                    string existingGuid = null;
+                    Object existingAtPath = AssetDatabase.LoadAssetAtPath<Object>(targetAssetPath);
+                    if (existingAtPath != null)
+                    {
+                        AssetDatabase.TryGetGUIDAndLocalFileIdentifier(
+                            existingAtPath,
+                            out existingGuid,
+                            out long _
+                        );
+                    }
 
                     Object assetAtTarget = AssetDatabase.LoadAssetAtPath(
                         targetAssetPath,
@@ -68,19 +136,33 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                         continue;
                     }
 
+                    // If something already exists at the target path (even of another type), avoid creating another asset.
+                    if (!string.IsNullOrEmpty(existingGuid))
+                    {
+                        Debug.LogWarning(
+                            $"ScriptableObjectSingletonCreator: Singleton target path already occupied at {targetAssetPath}. Skipping creation for {derivedType.FullName}."
+                        );
+                        continue;
+                    }
+
                     ScriptableObject instance = ScriptableObject.CreateInstance(derivedType);
                     AssetDatabase.CreateAsset(instance, targetAssetPath);
-                    Debug.Log(
-                        $"Creating missing singleton for type {derivedType.Name} at {targetAssetPath}."
+                    LogVerbose(
+                        $"ScriptableObjectSingletonCreator: Created missing singleton for type {derivedType.FullName} at {targetAssetPath}."
                     );
                     anyChanges = true;
                 }
             }
-
-            if (anyChanges)
+            finally
             {
-                AssetDatabase.SaveAssets();
-                AssetDatabase.Refresh();
+                AssetDatabase.StopAssetEditing();
+                _isEnsuring = false;
+
+                if (anyChanges)
+                {
+                    AssetDatabase.SaveAssets();
+                    AssetDatabase.Refresh();
+                }
             }
         }
 
@@ -99,7 +181,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 return string.Empty;
             }
 
-            return path.SanitizePath().Trim('/');
+            return path.SanitizePath()?.Trim().Trim('/');
         }
 
         private static Object MoveExistingAssetIfNeeded(
@@ -165,7 +247,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 string moveResult = AssetDatabase.MoveAsset(alternatePath, normalizedTarget);
                 if (string.IsNullOrEmpty(moveResult))
                 {
-                    Debug.Log(
+                    LogVerbose(
                         $"Relocated singleton asset for type {type.Name} from {alternatePath} to {normalizedTarget}."
                     );
                     anyChanges = true;
@@ -206,7 +288,30 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 
         private static string NormalizePath(string path)
         {
-            return PathHelper.Sanitize(path);
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return string.Empty;
+            }
+
+            // Trim whitespace and normalize separators
+            string normalized = PathHelper.Sanitize(path.Trim());
+
+            // Collapse duplicate separators
+            while (normalized.Contains("//"))
+            {
+                normalized = normalized.Replace("//", "/");
+            }
+
+            // Remove trailing separator (except for bare "Assets")
+            if (
+                normalized.EndsWith("/")
+                && !string.Equals(normalized, "Assets", StringComparison.Ordinal)
+            )
+            {
+                normalized = normalized.TrimEnd('/');
+            }
+
+            return normalized;
         }
 
         private static void EnsureFolderExists(string folderPath)
@@ -228,8 +333,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 return;
             }
 
-            string current = parts[0];
-            if (!string.Equals(current, "Assets", StringComparison.OrdinalIgnoreCase))
+            // Always anchor to Unity's "Assets" root with correct casing
+            string current = "Assets";
+            if (!string.Equals(parts[0], current, StringComparison.OrdinalIgnoreCase))
             {
                 Debug.LogWarning(
                     $"Unable to ensure folder for path '{folderPath}' because it does not start with 'Assets'."
@@ -239,12 +345,58 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 
             for (int i = 1; i < parts.Length; i++)
             {
-                string next = current + "/" + parts[i];
-                if (!AssetDatabase.IsValidFolder(next))
+                string desiredName = parts[i];
+
+                // Find an existing subfolder that matches the desired segment, ignoring case
+                string[] subFolders = AssetDatabase.GetSubFolders(current);
+                string matchedExisting = null;
+                if (subFolders != null)
                 {
-                    AssetDatabase.CreateFolder(current, parts[i]);
+                    foreach (string sub in subFolders)
+                    {
+                        // sub is like "Assets/Resources" — compare only the terminal name
+                        int lastSlash = sub.LastIndexOf('/', sub.Length - 1);
+                        string terminal = lastSlash >= 0 ? sub.Substring(lastSlash + 1) : sub;
+                        if (
+                            string.Equals(terminal, desiredName, StringComparison.OrdinalIgnoreCase)
+                        )
+                        {
+                            matchedExisting = sub;
+                            break;
+                        }
+                    }
                 }
-                current = next;
+
+                if (string.IsNullOrEmpty(matchedExisting))
+                {
+                    AssetDatabase.CreateFolder(current, desiredName);
+                    current = current + "/" + desiredName;
+                    LogVerbose($"ScriptableObjectSingletonCreator: Created folder '{current}'.");
+                }
+                else
+                {
+                    if (
+                        !string.Equals(
+                            matchedExisting,
+                            current + "/" + desiredName,
+                            StringComparison.Ordinal
+                        )
+                    )
+                    {
+                        LogVerbose(
+                            $"ScriptableObjectSingletonCreator: Reusing existing folder '{matchedExisting}' for requested segment '{desiredName}'."
+                        );
+                    }
+                    current = matchedExisting; // reuse existing folder even if case differs
+                }
+            }
+        }
+
+        private static void LogVerbose(string message)
+        {
+            if (VerboseLogging)
+            {
+                Debug.Log(message);
             }
         }
     }

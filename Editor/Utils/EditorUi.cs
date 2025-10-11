@@ -5,7 +5,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
     using System.Diagnostics;
     using System.Reflection;
     using UnityEditor;
-    using UnityEditor.TestTools.TestRunner.Api;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
 
@@ -19,7 +18,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             // Only suppress when explicitly requested or when we know
             // the environment is non-interactive (batch/CI) or tests are actively running.
             // Avoid heuristic stack/NUnit checks that can trip when Test Runner is merely open.
-            get => _suppressManual || _suppressAuto;
+            get => _suppressManual || _suppressAuto || IsUnderTestStack();
             set => _suppressManual = value;
         }
 
@@ -36,25 +35,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 _suppressAuto = false;
             }
 
-#if UNITY_INCLUDE_TESTS
-            // Keep a static reference so callbacks remain registered and not GC'd.
-            // This avoids losing RunStarted/RunFinished notifications mid-session.
-            _testRunnerApi = null;
-            // In the Unity Test Runner (EditMode or PlayMode), actively suppress dialogs while tests run.
-            try
-            {
-                // Use fully-qualified names to avoid requiring using directives when the
-                // test framework isn't available.
-                TestRunnerApi api =
-                    ScriptableObject.CreateInstance<UnityEditor.TestTools.TestRunner.Api.TestRunnerApi>();
-                api.RegisterCallbacks(new TestRunnerSuppressCallbacks());
-                _testRunnerApi = api;
-            }
-            catch
-            {
-                // Swallow any issues; if callbacks can't register, fallback to other detection.
-            }
-#endif
+            // Note: We avoid taking a hard compile-time dependency on the TestRunner API here.
+            // If you want tighter coupling, set EditorUi.Suppress = true in your test setup.
         }
 
         private static bool IsCiEnv()
@@ -240,31 +222,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             return EditorUtility.OpenFolderPanel(title, directory, defaultName);
         }
 
-#if UNITY_INCLUDE_TESTS
-        // Callback tied into the Unity Test Runner lifecycle to gate UI prompts.
-        private class TestRunnerSuppressCallbacks : UnityEditor.TestTools.TestRunner.Api.ICallbacks
-        {
-            public void RunStarted(UnityEditor.TestTools.TestRunner.Api.ITestAdaptor testsToRun)
-            {
-                _suppressAuto = true;
-            }
-
-            public void RunFinished(UnityEditor.TestTools.TestRunner.Api.ITestResultAdaptor result)
-            {
-                // Restore to baseline automatic suppression (e.g., batch/CI), not forcibly enabling UI.
-                _suppressAuto = Application.isBatchMode || IsInvokedByTestRunner() || IsCiEnv();
-            }
-
-            public void TestStarted(UnityEditor.TestTools.TestRunner.Api.ITestAdaptor test) { }
-
-            public void TestFinished(
-                UnityEditor.TestTools.TestRunner.Api.ITestResultAdaptor result
-            ) { }
-        }
-
-        // Hold reference to the TestRunnerApi instance while editor is open.
-        private static UnityEditor.TestTools.TestRunner.Api.TestRunnerApi _testRunnerApi;
-#endif
+        // Intentionally no hard dependency on TestRunner API to keep Editor asmdef clean.
     }
 }
 #endif

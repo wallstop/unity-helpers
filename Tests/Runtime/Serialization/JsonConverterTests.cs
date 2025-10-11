@@ -10,6 +10,354 @@
     public sealed class JsonConverterTests
     {
         [Test]
+        public void QuaternionConverterSerializeAndDeserializeSuccess()
+        {
+            Quaternion original = new(0.1f, 0.2f, 0.3f, 0.9f);
+            string json = Serializer.JsonStringify(original);
+            Quaternion deserialized = Serializer.JsonDeserialize<Quaternion>(json);
+
+            Assert.AreEqual(original.x, deserialized.x);
+            Assert.AreEqual(original.y, deserialized.y);
+            Assert.AreEqual(original.z, deserialized.z);
+            Assert.AreEqual(original.w, deserialized.w);
+        }
+
+        [Test]
+        public void QuaternionConverterIdentityDefaultWSuccess()
+        {
+            string json = "{\"x\":0.0,\"y\":0.0,\"z\":0.0}";
+            Quaternion deserialized = Serializer.JsonDeserialize<Quaternion>(json);
+
+            Assert.AreEqual(0f, deserialized.x);
+            Assert.AreEqual(0f, deserialized.y);
+            Assert.AreEqual(0f, deserialized.z);
+            Assert.AreEqual(1f, deserialized.w);
+        }
+
+        [Test]
+        public void QuaternionConverterInvalidTokenTypeThrowsException()
+        {
+            string invalidJson = "\"not an object\"";
+            Assert.Throws<JsonException>(() => Serializer.JsonDeserialize<Quaternion>(invalidJson));
+        }
+
+        [Test]
+        public void QuaternionConverterUnknownPropertyThrowsException()
+        {
+            string invalidJson = "{\"x\":0,\"y\":0,\"z\":0,\"w\":1,\"extra\":0}";
+            Assert.Throws<JsonException>(() => Serializer.JsonDeserialize<Quaternion>(invalidJson));
+        }
+
+        [Test]
+        public void QuaternionConverterIncompleteJsonThrowsException()
+        {
+            string incompleteJson = "{\"x\":0.0,\"y\":0.0";
+            Assert.Throws<JsonException>(() =>
+                Serializer.JsonDeserialize<Quaternion>(incompleteJson)
+            );
+        }
+
+        [Test]
+        public void Color32ConverterSerializeAndDeserializeSuccess()
+        {
+            Color32 original = new Color32(10, 20, 30, 40);
+            string json = Serializer.JsonStringify(original);
+            Color32 deserialized = Serializer.JsonDeserialize<Color32>(json);
+
+            Assert.AreEqual(original.r, deserialized.r);
+            Assert.AreEqual(original.g, deserialized.g);
+            Assert.AreEqual(original.b, deserialized.b);
+            Assert.AreEqual(original.a, deserialized.a);
+        }
+
+        [Test]
+        public void Color32ConverterBoundaryValuesSuccess()
+        {
+            Color32 original = new Color32(0, 255, 0, 255);
+            string json = Serializer.JsonStringify(original);
+            Color32 deserialized = Serializer.JsonDeserialize<Color32>(json);
+
+            Assert.AreEqual(0, deserialized.r);
+            Assert.AreEqual(255, deserialized.g);
+            Assert.AreEqual(0, deserialized.b);
+            Assert.AreEqual(255, deserialized.a);
+        }
+
+        [Test]
+        public void Color32ConverterDefaultAlphaValueSuccess()
+        {
+            string json = "{\"r\":128,\"g\":64,\"b\":32}";
+            Color32 deserialized = Serializer.JsonDeserialize<Color32>(json);
+
+            Assert.AreEqual(128, deserialized.r);
+            Assert.AreEqual(64, deserialized.g);
+            Assert.AreEqual(32, deserialized.b);
+            Assert.AreEqual(255, deserialized.a);
+        }
+
+        [Test]
+        public void Color32ConverterInvalidTokenTypeThrowsException()
+        {
+            string invalidJson = "\"not an object\"";
+            Assert.Throws<JsonException>(() => Serializer.JsonDeserialize<Color32>(invalidJson));
+        }
+
+        [Test]
+        public void Color32ConverterUnknownPropertyThrowsException()
+        {
+            string invalidJson = "{\"r\":1,\"g\":2,\"b\":3,\"a\":4,\"x\":5}";
+            Assert.Throws<JsonException>(() => Serializer.JsonDeserialize<Color32>(invalidJson));
+        }
+
+        [Test]
+        public void Color32ConverterChannelOutOfRangeThrowsException()
+        {
+            string invalidJson = "{\"r\":-1,\"g\":0,\"b\":0,\"a\":0}";
+            Assert.Throws<JsonException>(() => Serializer.JsonDeserialize<Color32>(invalidJson));
+        }
+
+        [Test]
+        public void Color32ConverterChannelAboveRangeThrowsException()
+        {
+            string invalidJson = "{\"r\":256,\"g\":0,\"b\":0,\"a\":0}";
+            Assert.Throws<JsonException>(() => Serializer.JsonDeserialize<Color32>(invalidJson));
+        }
+
+        [Test]
+        public void Vector2IntConverterSerializeAndDeserializeSuccess()
+        {
+            Vector2Int original = new(5, -7);
+            string json = Serializer.JsonStringify(original);
+            Vector2Int deserialized = Serializer.JsonDeserialize<Vector2Int>(json);
+
+            Assert.AreEqual(original.x, deserialized.x);
+            Assert.AreEqual(original.y, deserialized.y);
+        }
+
+        [Test]
+        public void Vector2IntConverterInvalidTokenTypeThrowsException()
+        {
+            string invalidJson = "\"not an object\"";
+            Assert.Throws<JsonException>(() => Serializer.JsonDeserialize<Vector2Int>(invalidJson));
+        }
+
+        [Test]
+        public void Vector2IntConverterUnknownPropertyThrowsException()
+        {
+            string invalidJson = "{\"x\":1,\"y\":2,\"z\":3}";
+            Assert.Throws<JsonException>(() => Serializer.JsonDeserialize<Vector2Int>(invalidJson));
+        }
+
+        [Test]
+        public void Vector2IntConverterIncompleteJsonThrowsException()
+        {
+            string incompleteJson = "{\"x\":1";
+            Assert.Throws<JsonException>(() =>
+                Serializer.JsonDeserialize<Vector2Int>(incompleteJson)
+            );
+        }
+
+        [Test]
+        public void Vector3IntConverterSerializeAndDeserializeSuccess()
+        {
+            Vector3Int original = new(1, -2, 3);
+            string json = Serializer.JsonStringify(original);
+            Vector3Int deserialized = Serializer.JsonDeserialize<Vector3Int>(json);
+
+            Assert.AreEqual(original.x, deserialized.x);
+            Assert.AreEqual(original.y, deserialized.y);
+            Assert.AreEqual(original.z, deserialized.z);
+        }
+
+        [Test]
+        public void Vector3IntConverterInvalidTokenTypeThrowsException()
+        {
+            string invalidJson = "\"not an object\"";
+            Assert.Throws<JsonException>(() => Serializer.JsonDeserialize<Vector3Int>(invalidJson));
+        }
+
+        [Test]
+        public void Vector3IntConverterUnknownPropertyThrowsException()
+        {
+            string invalidJson = "{\"x\":1,\"y\":2,\"z\":3,\"w\":4}";
+            Assert.Throws<JsonException>(() => Serializer.JsonDeserialize<Vector3Int>(invalidJson));
+        }
+
+        [Test]
+        public void Vector3IntConverterIncompleteJsonThrowsException()
+        {
+            string incompleteJson = "{\"x\":1,\"y\":2";
+            Assert.Throws<JsonException>(() =>
+                Serializer.JsonDeserialize<Vector3Int>(incompleteJson)
+            );
+        }
+
+        [Test]
+        public void RectConverterSerializeAndDeserializeSuccess()
+        {
+            Rect original = new(1.5f, 2.5f, 10.0f, 20.0f);
+            string json = Serializer.JsonStringify(original);
+            Rect deserialized = Serializer.JsonDeserialize<Rect>(json);
+
+            Assert.AreEqual(original.x, deserialized.x);
+            Assert.AreEqual(original.y, deserialized.y);
+            Assert.AreEqual(original.width, deserialized.width);
+            Assert.AreEqual(original.height, deserialized.height);
+        }
+
+        [Test]
+        public void RectConverterInvalidTokenTypeThrowsException()
+        {
+            string invalidJson = "\"not an object\"";
+            Assert.Throws<JsonException>(() => Serializer.JsonDeserialize<Rect>(invalidJson));
+        }
+
+        [Test]
+        public void RectConverterUnknownPropertyThrowsException()
+        {
+            string invalidJson = "{\"x\":0,\"y\":0,\"width\":1,\"height\":1,\"extra\":0}";
+            Assert.Throws<JsonException>(() => Serializer.JsonDeserialize<Rect>(invalidJson));
+        }
+
+        [Test]
+        public void RectConverterIncompleteJsonThrowsException()
+        {
+            string incompleteJson = "{\"x\":0,\"y\":0";
+            Assert.Throws<JsonException>(() => Serializer.JsonDeserialize<Rect>(incompleteJson));
+        }
+
+        [Test]
+        public void RectConverterDefaultsWhenMissingWidthHeight()
+        {
+            string json = "{\"x\":1.0,\"y\":2.0}";
+            Rect deserialized = Serializer.JsonDeserialize<Rect>(json);
+            Assert.AreEqual(1.0f, deserialized.x);
+            Assert.AreEqual(2.0f, deserialized.y);
+            Assert.AreEqual(0.0f, deserialized.width);
+            Assert.AreEqual(0.0f, deserialized.height);
+        }
+
+        [Test]
+        public void RectIntConverterSerializeAndDeserializeSuccess()
+        {
+            RectInt original = new(1, 2, 3, 4);
+            string json = Serializer.JsonStringify(original);
+            RectInt deserialized = Serializer.JsonDeserialize<RectInt>(json);
+
+            Assert.AreEqual(original.x, deserialized.x);
+            Assert.AreEqual(original.y, deserialized.y);
+            Assert.AreEqual(original.width, deserialized.width);
+            Assert.AreEqual(original.height, deserialized.height);
+        }
+
+        [Test]
+        public void RectIntConverterInvalidTokenTypeThrowsException()
+        {
+            string invalidJson = "\"not an object\"";
+            Assert.Throws<JsonException>(() => Serializer.JsonDeserialize<RectInt>(invalidJson));
+        }
+
+        [Test]
+        public void RectIntConverterUnknownPropertyThrowsException()
+        {
+            string invalidJson = "{\"x\":0,\"y\":0,\"width\":1,\"height\":1,\"extra\":0}";
+            Assert.Throws<JsonException>(() => Serializer.JsonDeserialize<RectInt>(invalidJson));
+        }
+
+        [Test]
+        public void RectIntConverterIncompleteJsonThrowsException()
+        {
+            string incompleteJson = "{\"x\":0,\"y\":0";
+            Assert.Throws<JsonException>(() => Serializer.JsonDeserialize<RectInt>(incompleteJson));
+        }
+
+        [Test]
+        public void BoundsConverterSerializeAndDeserializeSuccess()
+        {
+            Bounds original = new(new Vector3(1, 2, 3), new Vector3(4, 5, 6));
+            string json = Serializer.JsonStringify(original);
+            Bounds deserialized = Serializer.JsonDeserialize<Bounds>(json);
+
+            Assert.AreEqual(original.center, deserialized.center);
+            Assert.AreEqual(original.size, deserialized.size);
+        }
+
+        [Test]
+        public void BoundsConverterInvalidTokenTypeThrowsException()
+        {
+            string invalidJson = "\"not an object\"";
+            Assert.Throws<JsonException>(() => Serializer.JsonDeserialize<Bounds>(invalidJson));
+        }
+
+        [Test]
+        public void BoundsConverterUnknownPropertyThrowsException()
+        {
+            string invalidJson =
+                "{\"center\":{\"x\":0,\"y\":0,\"z\":0},\"size\":{\"x\":1,\"y\":1,\"z\":1},\"extra\":1}";
+            Assert.Throws<JsonException>(() => Serializer.JsonDeserialize<Bounds>(invalidJson));
+        }
+
+        [Test]
+        public void BoundsConverterIncompleteJsonThrowsException()
+        {
+            string incompleteJson = "{\"center\":{\"x\":0}}";
+            Assert.Throws<JsonException>(() => Serializer.JsonDeserialize<Bounds>(incompleteJson));
+        }
+
+        [Test]
+        public void BoundsConverterDefaultsWhenMissingSize()
+        {
+            string json = "{\"center\":{\"x\":1,\"y\":2,\"z\":3}}";
+            Bounds deserialized = Serializer.JsonDeserialize<Bounds>(json);
+            Assert.AreEqual(new Vector3(1, 2, 3), deserialized.center);
+            Assert.AreEqual(Vector3.zero, deserialized.size);
+        }
+
+        [Test]
+        public void BoundsIntConverterSerializeAndDeserializeSuccess()
+        {
+            BoundsInt original = new(new Vector3Int(1, 2, 3), new Vector3Int(4, 5, 6));
+            string json = Serializer.JsonStringify(original);
+            BoundsInt deserialized = Serializer.JsonDeserialize<BoundsInt>(json);
+
+            Assert.AreEqual(original.position, deserialized.position);
+            Assert.AreEqual(original.size, deserialized.size);
+        }
+
+        [Test]
+        public void BoundsIntConverterInvalidTokenTypeThrowsException()
+        {
+            string invalidJson = "\"not an object\"";
+            Assert.Throws<JsonException>(() => Serializer.JsonDeserialize<BoundsInt>(invalidJson));
+        }
+
+        [Test]
+        public void BoundsIntConverterUnknownPropertyThrowsException()
+        {
+            string invalidJson =
+                "{\"position\":{\"x\":0,\"y\":0,\"z\":0},\"size\":{\"x\":1,\"y\":1,\"z\":1},\"extra\":1}";
+            Assert.Throws<JsonException>(() => Serializer.JsonDeserialize<BoundsInt>(invalidJson));
+        }
+
+        [Test]
+        public void BoundsIntConverterIncompleteJsonThrowsException()
+        {
+            string incompleteJson = "{\"position\":{\"x\":0}}";
+            Assert.Throws<JsonException>(() =>
+                Serializer.JsonDeserialize<BoundsInt>(incompleteJson)
+            );
+        }
+
+        [Test]
+        public void BoundsIntConverterDefaultsWhenMissingSize()
+        {
+            string json = "{\"position\":{\"x\":1,\"y\":2,\"z\":3}}";
+            BoundsInt deserialized = Serializer.JsonDeserialize<BoundsInt>(json);
+            Assert.AreEqual(new Vector3Int(1, 2, 3), deserialized.position);
+            Assert.AreEqual(Vector3Int.zero, deserialized.size);
+        }
+
+        [Test]
         public void Vector2ConverterSerializeAndDeserializeSuccess()
         {
             Vector2 original = new(1.5f, 2.5f);

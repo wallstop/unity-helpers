@@ -88,8 +88,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
         private static List<Type> FindAttributeComponentTypes()
         {
             // Primary: fast TypeCache-based discovery
-            List<Type> types = TypeCache
-                .GetTypesDerivedFrom<AttributesComponent>()
+            List<Type> types = WallstopStudios
+                .UnityHelpers.Core.Helper.ReflectionHelpers.GetTypesDerivedFrom<AttributesComponent>(
+                    includeAbstract: false
+                )
                 .Where(AttributeMetadataFilters.ShouldSerialize)
                 .ToList();
 
@@ -121,8 +123,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
             List<RelationalTypeMetadata> result = new();
 
             // Get all Component types using TypeCache with a reflection fallback for robustness
-            List<Type> componentTypes = TypeCache
-                .GetTypesDerivedFrom<Component>()
+            List<Type> componentTypes = WallstopStudios
+                .UnityHelpers.Core.Helper.ReflectionHelpers.GetTypesDerivedFrom<Component>(
+                    includeAbstract: false
+                )
                 .Where(type => !type.IsGenericType)
                 .Where(AttributeMetadataFilters.ShouldSerialize)
                 .ToList();
