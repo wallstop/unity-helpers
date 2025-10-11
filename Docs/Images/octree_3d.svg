@@ -16,14 +16,14 @@
     <line x1="400" y1="320" x2="440" y2="290"/>
   </g>
 
-  <!-- X-split (vertical plane) -->
+  <!-- X-split (vertical plane through center) -->
   <g fill="rgba(213, 122, 122, 0.12)" stroke="#d57a7a" stroke-width="2" stroke-dasharray="6 6">
-    <polygon points="240,140 280,110 280,290 240,320"/>
+    <polygon points="280,140 320,110 320,290 280,320"/>
   </g>
-  <!-- x-split label bubble -->
+  <!-- x-split label bubble (red, near plane) -->
   <g font-family="Verdana,Arial,sans-serif" font-size="11">
-    <rect x="216" y="120" width="56" height="18" rx="6" ry="6" fill="#242a34" stroke="#d57a7a" stroke-width="1.5"/>
-    <text x="220" y="133" fill="#d57a7a">x-split</text>
+    <rect x="268" y="120" width="56" height="18" rx="6" ry="6" fill="#242a34" stroke="#d57a7a" stroke-width="1.5"/>
+    <text x="272" y="133" fill="#d57a7a">x-split</text>
   </g>
 
   <!-- Y-split (horizontal plane) -->
