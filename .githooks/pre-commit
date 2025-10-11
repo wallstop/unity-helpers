@@ -1,0 +1,20 @@
+#!/usr/bin/env sh
+set -e
+
+run_pwsh() {
+  pwsh -NoProfile -File scripts/lint-doc-links.ps1
+}
+
+run_windows_ps() {
+  powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-doc-links.ps1
+}
+
+if command -v pwsh >/dev/null 2>&1; then
+  run_pwsh
+elif command -v powershell >/dev/null 2>&1; then
+  run_windows_ps
+else
+  echo "PowerShell not found. Please install pwsh or powershell to run docs linter." >&2
+  exit 1
+fi
+

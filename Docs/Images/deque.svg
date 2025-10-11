@@ -14,19 +14,19 @@
     <line x1="440" y1="80" x2="440" y2="140"/>
     <line x1="500" y1="80" x2="500" y2="140"/>
   </g>
-  <!-- arrows indicating push/pop at both ends (bottom semantics, shorter arrows) -->
+  <!-- arrows indicating push/pop at both ends (bottom semantics, equal height with spacing) -->
   <g stroke="#5ec69a" fill="#5ec69a">
-    <!-- push_front: bottom-up; arrowhead apex touches bottom border at y=140 (center x=110) -->
-    <line x1="110" y1="175" x2="110" y2="140"/>
-    <polygon points="104,150 116,150 110,140"/>
-    <!-- pop_back: bottom-down; arrowhead tip at bottom, pointing toward label (center x=290) -->
-    <line x1="290" y1="140" x2="290" y2="175"/>
+    <!-- push_front: bottom-up; small gap from border (y=140) to head apex (y=150) -->
+    <line x1="110" y1="185" x2="110" y2="160"/>
+    <polygon points="104,160 116,160 110,150"/>
+    <!-- pop_back: bottom-down; small gap from border (y=140) to line start (y=150) -->
+    <line x1="290" y1="150" x2="290" y2="175"/>
     <polygon points="284,175 296,175 290,185"/>
   </g>
   <!-- labels (lighter, separate for readability) -->
   <g font-family="Verdana,Arial,sans-serif" font-size="11" fill="#c8d1dc" text-anchor="middle">
-    <text x="110" y="195">push_front</text>
-    <text x="290" y="195">pop_back</text>
+    <text x="110" y="205">push_front</text>
+    <text x="290" y="205">pop_back</text>
   </g>
   <!-- filled elements -->
   <g fill="rgba(122,162,255,0.22)" stroke="#7aa2ff">
