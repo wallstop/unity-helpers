@@ -22,35 +22,45 @@
     <line x1="150" y1="106" x2="110" y2="180"/>
     <line x1="150" y1="106" x2="270" y2="180"/>
   </g>
-  <!-- wiring flow (wider, multi-line, spaced) -->
-  <g fill="#1d2330" stroke="#7aa2ff" stroke-width="2">
-    <rect x="500" y="60" width="380" height="60" rx="8"/>
-    <rect x="500" y="150" width="380" height="60" rx="8"/>
-    <rect x="500" y="240" width="380" height="60" rx="8"/>
+  <!-- wiring flow (wider, multi-line, spaced, color-coded) -->
+  <g fill="#1d2330" stroke-width="2">
+    <!-- Scan box (purple) -->
+    <rect x="480" y="60" width="400" height="64" rx="8" stroke="#c792ea"/>
+    <!-- Resolve box (gold) -->
+    <rect x="480" y="154" width="400" height="64" rx="8" stroke="#e5c07b"/>
+    <!-- Bind box (green) -->
+    <rect x="480" y="248" width="400" height="64" rx="8" stroke="#5ec69a"/>
   </g>
-  <g font-family="Verdana,Arial,sans-serif" font-size="12" fill="#e0e6ee">
-    <text x="510" y="84">
-      <tspan x="510" dy="0">OnValidate/Awake: scan components</tspan>
-      <tspan x="510" dy="18">with [ParentComponent] / [ChildComponent] / [SiblingComponent]</tspan>
+  <g font-family="Verdana,Arial,sans-serif" font-size="11" fill="#e6ebf2">
+    <text x="492" y="82">
+      <tspan x="492" dy="0">OnValidate/Awake: scan components</tspan>
+      <tspan x="492" dy="16">[Parent] / [Child] / [Sibling]</tspan>
     </text>
-    <text x="510" y="174">
-      <tspan x="510" dy="0">Resolve references via Transform hierarchy</tspan>
-      <tspan x="510" dy="18">and cached lookups</tspan>
+    <text x="492" y="176">
+      <tspan x="492" dy="0">Resolve via Transform hierarchy</tspan>
+      <tspan x="492" dy="16">and cached lookups</tspan>
     </text>
-    <text x="510" y="264">
-      <tspan x="510" dy="0">Bind fields/properties; rebind</tspan>
-      <tspan x="510" dy="18">on hierarchy changes</tspan>
+    <text x="492" y="270">
+      <tspan x="492" dy="0">Bind fields/properties; rebind</tspan>
+      <tspan x="492" dy="16">on hierarchy changes</tspan>
     </text>
   </g>
-  <!-- connectors -->
-  <g stroke="#5ec69a" fill="#5ec69a" stroke-width="2">
-    <!-- left to first box -->
-    <line x1="360" y1="100" x2="500" y2="100"/>
-    <polygon points="494,94 494,106 504,100"/>
-    <!-- between boxes (vertical) -->
-    <line x1="690" y1="120" x2="690" y2="150"/>
-    <polygon points="684,144 696,144 690,154"/>
-    <line x1="690" y1="210" x2="690" y2="240"/>
-    <polygon points="684,234 696,234 690,244"/>
+  <!-- connectors (color match next stage; adjusted positions to avoid overflow) -->
+  <g stroke-width="2">
+    <!-- left to first box (purple) -->
+    <g stroke="#c792ea" fill="#c792ea">
+      <line x1="360" y1="100" x2="480" y2="100"/>
+      <polygon points="474,94 474,106 484,100"/>
+    </g>
+    <!-- between boxes (gold) -->
+    <g stroke="#e5c07b" fill="#e5c07b">
+      <line x1="680" y1="124" x2="680" y2="154"/>
+      <polygon points="674,148 686,148 680,158"/>
+    </g>
+    <!-- between boxes (green) -->
+    <g stroke="#5ec69a" fill="#5ec69a">
+      <line x1="680" y1="218" x2="680" y2="248"/>
+      <polygon points="674,242 686,242 680,252"/>
+    </g>
   </g>
 </svg>
