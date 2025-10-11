@@ -166,11 +166,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     }
 
                     // Progress/cancel UI
-                    bool cancel = EditorUtility.DisplayCancelableProgressBar(
-                        "Resizing Textures",
-                        $"Processing {texture.name} ({idx + 1}/{textures.Count})",
-                        (float)(idx + 1) / textures.Count
-                    );
+                    bool cancel =
+                        WallstopStudios.UnityHelpers.Editor.Utils.EditorUi.CancelableProgress(
+                            "Resizing Textures",
+                            $"Processing {texture.name} ({idx + 1}/{textures.Count})",
+                            (float)(idx + 1) / textures.Count
+                        );
                     if (cancel)
                     {
                         break;
@@ -350,7 +351,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             finally
             {
                 AssetDatabase.StopAssetEditing();
-                EditorUtility.ClearProgressBar();
+                WallstopStudios.UnityHelpers.Editor.Utils.EditorUi.ClearProgress();
             }
 
             if (anyChanges)

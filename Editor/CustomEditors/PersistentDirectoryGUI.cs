@@ -630,11 +630,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
                         initialBrowsePath = Application.dataPath;
                     }
 
-                    string selectedPathSys = EditorUtility.OpenFolderPanel(
-                        dialogTitle,
-                        initialBrowsePath,
-                        ""
-                    );
+                    string selectedPathSys =
+                        WallstopStudios.UnityHelpers.Editor.Utils.EditorUi.OpenFolderPanel(
+                            dialogTitle,
+                            initialBrowsePath,
+                            ""
+                        );
 
                     if (!string.IsNullOrWhiteSpace(selectedPathSys))
                     {

@@ -10,6 +10,7 @@ namespace WallstopStudios.UnityHelpers.Editor
     using CustomEditors;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Utils;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
     using Object = UnityEngine.Object;
 
     public enum FitMode
@@ -65,7 +66,18 @@ namespace WallstopStudios.UnityHelpers.Editor
         private int _potentialGrowCount = 0;
         private int _potentialShrinkCount = 0;
         private int _potentialUnchangedCount = 0;
-        private bool _labelFilterHandledByQuery = false;
+
+        // GUIDs returned by label-based folder queries for case-insensitive label CSV filtering.
+        // For these we can skip per-asset label loads later.
+        internal HashSet<string> _labelQueryGuids = new HashSet<string>();
+
+        // Last-run summary
+        internal bool _hasLastRunSummary = false;
+        internal int _lastRunTotal = 0;
+        internal int _lastRunChanged = 0;
+        internal int _lastRunGrows = 0;
+        internal int _lastRunShrinks = 0;
+        internal int _lastRunUnchanged = 0;
 
         [SerializeField]
         internal bool _useSelectionOnly = false;
@@ -290,6 +302,23 @@ namespace WallstopStudios.UnityHelpers.Editor
                     }
                 }
 
+                if (_hasLastRunSummary)
+                {
+                    EditorGUILayout.Space();
+                    EditorGUILayout.LabelField("Last Run", EditorStyles.boldLabel);
+                    EditorGUILayout.HelpBox(
+                        $"Processed: {_lastRunTotal}. Changed: {_lastRunChanged}. Grows: {_lastRunGrows}. Shrinks: {_lastRunShrinks}. Unchanged: {_lastRunUnchanged}.",
+                        MessageType.Info
+                    );
+                    if (GUILayout.Button("Copy Last Run Summary"))
+                    {
+                        string runSummary =
+                            $"Fit Texture Size Last Run\nMode: {_fitMode}\nOnly Selection: {_useSelectionOnly}\nOnly Sprites: {_onlySprites}\nMin: {_minAllowedTextureSize}, Max: {_maxAllowedTextureSize}\nProcessed: {_lastRunTotal}\nChanged: {_lastRunChanged}\nGrows: {_lastRunGrows}\nShrinks: {_lastRunShrinks}\nUnchanged: {_lastRunUnchanged}";
+                        EditorGUIUtility.systemCopyBuffer = runSummary;
+                        this.Log($"Last run summary copied to clipboard.");
+                    }
+                }
+
                 if (GUILayout.Button("Run Fit Texture Size"))
                 {
                     int actualChanges = CalculateTextureChanges(applyChanges: true);
@@ -327,7 +356,7 @@ namespace WallstopStudios.UnityHelpers.Editor
             using PooledResource<List<string>> resultRes = Buffers<string>.List.Get(
                 out List<string> result
             );
-            _labelFilterHandledByQuery = false;
+            // legacy flag no longer used (replaced by _labelQueryGuids)
 
             if (_useSelectionOnly)
             {
@@ -377,6 +406,9 @@ namespace WallstopStudios.UnityHelpers.Editor
                 }
             }
 
+            // Reset the label-query GUIDs set for a fresh collection
+            _labelQueryGuids.Clear();
+
             if (!uniqueAssetPaths.Any())
             {
                 if (_useSelectionOnly)
@@ -418,9 +450,10 @@ namespace WallstopStudios.UnityHelpers.Editor
                         string[] guids = AssetDatabase.FindAssets(query, searchPaths.ToArray());
                         for (int i = 0; i < guids.Length; i++)
                         {
-                            _ = guidSet.Add(guids[i]);
+                            string g = guids[i];
+                            _ = guidSet.Add(g);
+                            _labelQueryGuids.Add(g);
                         }
-                        _labelFilterHandledByQuery = true;
                     }
                     else
                     {
@@ -489,7 +522,7 @@ namespace WallstopStudios.UnityHelpers.Editor
             HashSet<string> labelSet = null;
             string[] parsedLabels = null;
             bool hasLabelFilterCsv = !string.IsNullOrWhiteSpace(_labelFilterCsv);
-            if (hasLabelFilterCsv && !_labelFilterHandledByQuery)
+            if (hasLabelFilterCsv)
             {
                 parsedLabels = _labelFilterCsv
                     .Split(new[] { ',', ';' }, System.StringSplitOptions.RemoveEmptyEntries)
@@ -513,29 +546,27 @@ namespace WallstopStudios.UnityHelpers.Editor
             {
                 AssetDatabase.StartAssetEditing();
             }
+            int totalAssets = textureGuids.Count;
             try
             {
-                float totalAssets = textureGuids.Count;
                 for (int i = 0; i < textureGuids.Count; i++)
                 {
                     string guid = textureGuids[i];
                     string assetPath = AssetDatabase.GUIDToAssetPath(guid);
-                    float progress = (i + 1) / totalAssets;
+                    float progress = (i + 1) / (float)totalAssets;
                     string progressBarTitle = applyChanges
                         ? "Fitting Texture Size"
                         : "Calculating Changes";
                     bool cancel = false;
-                    if (!SuppressUserPrompts)
+                    // Throttle progress updates to reduce GC and UI overhead
+                    if ((i % 32) == 0 || i == textureGuids.Count - 1)
                     {
-                        // Throttle progress updates to reduce GC and UI overhead
-                        if ((i % 32) == 0 || i == textureGuids.Count - 1)
-                        {
-                            cancel = EditorUtility.DisplayCancelableProgressBar(
+                        cancel =
+                            WallstopStudios.UnityHelpers.Editor.Utils.EditorUi.CancelableProgress(
                                 progressBarTitle,
                                 $"Checking: {Path.GetFileName(assetPath)} ({i + 1}/{textureGuids.Count})",
                                 progress
                             );
-                        }
                     }
 
                     if (cancel)
@@ -584,8 +615,11 @@ namespace WallstopStudios.UnityHelpers.Editor
                         }
                     }
 
-                    // Label filter (load asset only when labels are requested)
-                    if (labelSet != null)
+                    // Label filter: skip per-asset loads when the guid came from the label query set (case-insensitive path)
+                    if (
+                        labelSet != null
+                        && (_caseSensitiveNameFilter || !_labelQueryGuids.Contains(guid))
+                    )
                     {
                         Object main = AssetDatabase.LoadMainAssetAtPath(assetPath);
                         if (main == null)
@@ -728,10 +762,18 @@ namespace WallstopStudios.UnityHelpers.Editor
                 {
                     AssetDatabase.StopAssetEditing();
                 }
-                EditorUtility.ClearProgressBar();
+                WallstopStudios.UnityHelpers.Editor.Utils.EditorUi.ClearProgress();
 
                 if (applyChanges)
                 {
+                    // Capture last run summary
+                    _hasLastRunSummary = true;
+                    _lastRunTotal = totalAssets;
+                    _lastRunChanged = changedCount;
+                    _lastRunGrows = growCount;
+                    _lastRunShrinks = shrinkCount;
+                    _lastRunUnchanged = unchangedCount;
+
                     if (changedCount != 0)
                     {
                         this.Log($"Updated {changedCount} textures.");

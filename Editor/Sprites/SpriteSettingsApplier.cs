@@ -742,7 +742,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     || now - lastUpdateTime > 0.2
                 )
                 {
-                    EditorUtility.DisplayProgressBar(
+                    WallstopStudios.UnityHelpers.Editor.Utils.EditorUi.ShowProgress(
                         "Calculating Stats",
                         $"Checking '{Path.GetFileName(relativePath)}' ({i + 1}/{_totalSpritesToProcess})",
                         (float)(i + 1) / _totalSpritesToProcess
@@ -757,7 +757,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 }
             }
 
-            EditorUtility.ClearProgressBar();
+            WallstopStudios.UnityHelpers.Editor.Utils.EditorUi.ClearProgress();
             this.Log(
                 $"Calculation complete. Sprites to process: {_totalSpritesToProcess}, Sprites that will change: {_spritesThatWillChange}"
             );
@@ -807,7 +807,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         || now - lastUpdateTime > 0.2;
                     if (
                         shouldUpdate
-                        && EditorUtility.DisplayCancelableProgressBar(
+                        && WallstopStudios.UnityHelpers.Editor.Utils.EditorUi.CancelableProgress(
                             "Applying Sprite Settings",
                             $"Processing '{Path.GetFileName(filePath)}' ({i + 1}/{targetFiles.Count})",
                             (float)(i + 1) / targetFiles.Count
@@ -841,7 +841,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             finally
             {
                 AssetDatabase.StopAssetEditing();
-                EditorUtility.ClearProgressBar();
+                WallstopStudios.UnityHelpers.Editor.Utils.EditorUi.ClearProgress();
                 foreach (TextureImporter importer in updatedImporters)
                 {
                     importer.SaveAndReimport();

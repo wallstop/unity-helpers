@@ -1411,43 +1411,37 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
         private static bool Confirm(string title, string message, string ok, string cancel)
         {
-            if (SuppressUserPrompts)
-            {
-                return true;
-            }
-            return EditorUtility.DisplayDialog(title, message, ok, cancel);
+            return WallstopStudios.UnityHelpers.Editor.Utils.EditorUi.Confirm(
+                title,
+                message,
+                ok,
+                cancel,
+                defaultWhenSuppressed: true
+            );
         }
 
         private static void Info(string title, string message)
         {
-            if (SuppressUserPrompts)
-            {
-                return;
-            }
-            EditorUtility.DisplayDialog(title, message, "OK");
+            WallstopStudios.UnityHelpers.Editor.Utils.EditorUi.Info(title, message);
         }
 
         private static void ShowProgress(string title, string info, float progress)
         {
-            if (SuppressUserPrompts)
-            {
-                return;
-            }
-            EditorUtility.DisplayProgressBar(title, info, progress);
+            WallstopStudios.UnityHelpers.Editor.Utils.EditorUi.ShowProgress(title, info, progress);
         }
 
         private static bool CancelableProgress(string title, string info, float progress)
         {
-            if (SuppressUserPrompts)
-            {
-                return false;
-            }
-            return EditorUtility.DisplayCancelableProgressBar(title, info, progress);
+            return WallstopStudios.UnityHelpers.Editor.Utils.EditorUi.CancelableProgress(
+                title,
+                info,
+                progress
+            );
         }
 
         private static void ClearProgress()
         {
-            EditorUtility.ClearProgressBar();
+            WallstopStudios.UnityHelpers.Editor.Utils.EditorUi.ClearProgress();
         }
 
         private void ExportPreviewReport()

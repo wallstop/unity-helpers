@@ -488,10 +488,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             if (selectedObjects == null || selectedObjects.Length == 0)
             {
-                EditorUtility.DisplayDialog(
+                WallstopStudios.UnityHelpers.Editor.Utils.EditorUi.Info(
                     "No Clips Selected",
-                    "Please select one or more AnimationClip assets in the Project window first.",
-                    "OK"
+                    "Please select one or more AnimationClip assets in the Project window first."
                 );
                 return;
             }

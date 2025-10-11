@@ -82,11 +82,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
                 if (GUI.Button(browseButtonRect, "Browse..."))
                 {
                     string initialBrowsePath = Application.dataPath; /* ... */
-                    string selectedPathSys = EditorUtility.OpenFolderPanel(
-                        "Select Source Folder",
-                        initialBrowsePath,
-                        ""
-                    );
+                    string selectedPathSys =
+                        WallstopStudios.UnityHelpers.Editor.Utils.EditorUi.OpenFolderPanel(
+                            "Select Source Folder",
+                            initialBrowsePath,
+                            ""
+                        );
                     if (!string.IsNullOrEmpty(selectedPathSys))
                     {
                         string processedPath = selectedPathSys.SanitizePath();

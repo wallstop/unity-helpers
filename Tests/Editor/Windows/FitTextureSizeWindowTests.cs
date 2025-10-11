@@ -550,6 +550,92 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         }
 
         [Test]
+        public void MixedSelectionFoldersAndFilesWithLabelCsvOnlyLabelsFromFoldersAreProcessed()
+        {
+            // Prepare: one labeled texture under a folder, one unlabeled file selected directly
+            string folder = Path.Combine(Root, "Sub").Replace('\\', '/');
+            EnsureFolder(folder);
+            string labeledUnderFolder = Path.Combine(folder, "inFolder.png").Replace('\\', '/');
+            string directFile = Path.Combine(Root, "direct.png").Replace('\\', '/');
+
+            CreatePng(labeledUnderFolder, 300, 100, Color.gray);
+            CreatePng(directFile, 300, 100, Color.gray);
+            AssetDatabase.Refresh();
+
+            UnityEngine.Object labeledObj = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(
+                labeledUnderFolder
+            );
+            AssetDatabase.SetLabels(labeledObj, new[] { "OnlyMe" });
+            AssetDatabase.SaveAssets();
+
+            TextureImporter folderImp =
+                AssetImporter.GetAtPath(labeledUnderFolder) as TextureImporter;
+            TextureImporter directImp = AssetImporter.GetAtPath(directFile) as TextureImporter;
+            folderImp.maxTextureSize = 128;
+            directImp.maxTextureSize = 128;
+            folderImp.SaveAndReimport();
+            directImp.SaveAndReimport();
+
+            // Select folder and the direct file simultaneously
+            UnityEngine.Object folderObj = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(
+                folder
+            );
+            UnityEngine.Object directObj = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(
+                directFile
+            );
+            Selection.objects = new[] { folderObj, directObj };
+
+            FitTextureSizeWindow window = ScriptableObject.CreateInstance<FitTextureSizeWindow>();
+            window._fitMode = FitMode.GrowOnly;
+            window._useSelectionOnly = true;
+            window._labelFilterCsv = "OnlyMe"; // case-insensitive path used by l: query
+            window._caseSensitiveNameFilter = false;
+
+            _ = window.CalculateTextureChanges(true);
+
+            folderImp = AssetImporter.GetAtPath(labeledUnderFolder) as TextureImporter;
+            directImp = AssetImporter.GetAtPath(directFile) as TextureImporter;
+            // Only labeled under folder changes; direct file with no label should not change
+            Assert.That(folderImp.maxTextureSize, Is.EqualTo(512));
+            Assert.That(directImp.maxTextureSize, Is.EqualTo(128));
+        }
+
+        [Test]
+        public void LastRunSummaryReflectsCounts()
+        {
+            string aPath = Path.Combine(Root, "sumA.png").Replace('\\', '/');
+            string bPath = Path.Combine(Root, "sumB.png").Replace('\\', '/');
+            // a: 300x100 -> will grow to 512 (change)
+            // b: 128x128 with max=128 -> unchanged
+            CreatePng(aPath, 300, 100, Color.white);
+            CreatePng(bPath, 128, 128, Color.white);
+            AssetDatabase.Refresh();
+
+            TextureImporter aImp = AssetImporter.GetAtPath(aPath) as TextureImporter;
+            TextureImporter bImp = AssetImporter.GetAtPath(bPath) as TextureImporter;
+            aImp.maxTextureSize = 128;
+            bImp.maxTextureSize = 128;
+            aImp.SaveAndReimport();
+            bImp.SaveAndReimport();
+
+            FitTextureSizeWindow window = ScriptableObject.CreateInstance<FitTextureSizeWindow>();
+            window._fitMode = FitMode.GrowOnly;
+            window._textureSourcePaths = new System.Collections.Generic.List<UnityEngine.Object>
+            {
+                AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(Root),
+            };
+
+            int changed = window.CalculateTextureChanges(true);
+            Assert.That(changed, Is.EqualTo(1));
+            Assert.IsTrue(window._hasLastRunSummary);
+            Assert.That(window._lastRunTotal, Is.EqualTo(2));
+            Assert.That(window._lastRunChanged, Is.EqualTo(1));
+            Assert.That(window._lastRunGrows, Is.EqualTo(1));
+            Assert.That(window._lastRunShrinks, Is.EqualTo(0));
+            Assert.That(window._lastRunUnchanged, Is.EqualTo(1));
+        }
+
+        [Test]
         public void RoundToNearestChoosesLowerWhenCloser()
         {
             string path = Path.Combine(Root, "roundLower.png").Replace('\\', '/');

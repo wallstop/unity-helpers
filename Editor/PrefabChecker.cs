@@ -8,15 +8,19 @@ namespace WallstopStudios.UnityHelpers.Editor
     using System.Linq;
     using System.Reflection;
     using UnityEditor;
+    using UnityEditorInternal;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
     public sealed class PrefabChecker : EditorWindow
     {
+        private const string ToolName = "PrefabChecker";
+        private const string TargetContextKey = "TargetFolder";
         private const float ToggleWidth = 18f;
         private const float ToggleSpacing = 4f;
 
@@ -28,6 +32,7 @@ namespace WallstopStudios.UnityHelpers.Editor
             new();
 
         private readonly List<string> _assetPaths = new();
+        private ReorderableList _pathsList;
         private Vector2 _scrollPosition;
 
         private bool _checkMissingScripts = true;
@@ -38,6 +43,13 @@ namespace WallstopStudios.UnityHelpers.Editor
         private bool _onlyCheckNullObjectsWithAttribute = true;
         private bool _checkDisabledRootGameObjects = true;
         private bool _checkDisabledComponents;
+        private bool _offerAutoFixes;
+
+        private readonly List<string> _includeLabels = new();
+        private readonly List<string> _excludeLabels = new();
+        private string _componentTypeDenyListCsv = string.Empty;
+
+        private const int MaxTransformScanForMissingOwner = 5000;
 
         private const string DefaultPrefabsFolder = "Assets/Prefabs";
 
@@ -50,6 +62,8 @@ namespace WallstopStudios.UnityHelpers.Editor
         private void OnEnable()
         {
             PopulateDefaultPaths();
+            TryRestoreFromHistory();
+            SetupReorderableList();
         }
 
         private void PopulateDefaultPaths()
@@ -75,10 +89,27 @@ namespace WallstopStudios.UnityHelpers.Editor
                     AddFolder();
                 }
 
+                HandleDragAndDropForPaths();
+
+                EditorGUILayout.Space();
+                DrawFiltersAndUtilities();
                 EditorGUILayout.Space();
                 if (GUILayout.Button("Run Checks", GUILayout.Height(30)))
                 {
-                    RunChecks();
+                    RunChecksImproved();
+                }
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    GUI.enabled = _offerAutoFixes;
+                    if (GUILayout.Button("Fix Missing Scripts"))
+                    {
+                        FixMissingScripts();
+                    }
+                    GUI.enabled = true;
+                    if (GUILayout.Button("Export Report (JSON)"))
+                    {
+                        ExportLastReport();
+                    }
                 }
             }
             finally
@@ -267,54 +298,11 @@ namespace WallstopStudios.UnityHelpers.Editor
 
         private void DrawAssetPaths()
         {
-            if (_assetPaths.Count == 0)
+            if (_pathsList == null)
             {
-                EditorGUILayout.HelpBox(
-                    "No target folders specified. Add folders containing prefabs to check.",
-                    MessageType.Info
-                );
+                SetupReorderableList();
             }
-
-            List<string> pathsToRemove = null;
-
-            foreach (string assetPath in _assetPaths)
-            {
-                using (new EditorGUILayout.HorizontalScope())
-                {
-                    string currentPath = assetPath;
-                    EditorGUILayout.LabelField(currentPath);
-
-                    DefaultAsset folderAsset = AssetDatabase.LoadAssetAtPath<DefaultAsset>(
-                        currentPath
-                    );
-                    if (folderAsset != null)
-                    {
-                        if (GUILayout.Button("Ping", GUILayout.Width(50)))
-                        {
-                            EditorGUIUtility.PingObject(folderAsset);
-                        }
-                    }
-                    else
-                    {
-                        GUILayout.Space(56);
-                    }
-
-                    if (GUILayout.Button("X", GUILayout.Width(25)))
-                    {
-                        pathsToRemove ??= new List<string>();
-                        pathsToRemove.Add(currentPath);
-                    }
-                }
-            }
-
-            if (pathsToRemove != null)
-            {
-                foreach (string path in pathsToRemove)
-                {
-                    _assetPaths.Remove(path);
-                }
-                Repaint();
-            }
+            _pathsList.DoLayoutList();
         }
 
         private void AddFolder()
@@ -346,6 +334,7 @@ namespace WallstopStudios.UnityHelpers.Editor
                 if (!_assetPaths.Contains(relativePath))
                 {
                     _assetPaths.Add(relativePath);
+                    TryRecordHistory(relativePath);
                 }
                 else
                 {
@@ -398,9 +387,15 @@ namespace WallstopStudios.UnityHelpers.Editor
                 return;
             }
 
-            List<string> validPaths = _assetPaths
-                .Where(p => !string.IsNullOrEmpty(p) && AssetDatabase.IsValidFolder(p))
-                .ToList();
+            List<string> validPaths = new List<string>(_assetPaths.Count);
+            for (int i = 0; i < _assetPaths.Count; i++)
+            {
+                string p = _assetPaths[i];
+                if (!string.IsNullOrEmpty(p) && (p == "Assets" || AssetDatabase.IsValidFolder(p)))
+                {
+                    validPaths.Add(p);
+                }
+            }
 
             if (validPaths.Count == 0)
             {
@@ -411,6 +406,10 @@ namespace WallstopStudios.UnityHelpers.Editor
             }
 
             this.Log($"Starting prefab check for folders: {string.Join(", ", validPaths)}");
+            foreach (string p in validPaths)
+            {
+                TryRecordHistory(p);
+            }
             int totalPrefabsChecked = 0;
             int totalIssuesFound = 0;
 
@@ -435,7 +434,7 @@ namespace WallstopStudios.UnityHelpers.Editor
                 {
                     if (_checkMissingScripts && !script)
                     {
-                        GameObject owner = FindOwnerOfMissingScript(prefab, componentBuffer);
+                        GameObject owner = FindOwnerOfMissingScriptBounded(prefab, componentBuffer);
                         string ownerName = owner ? owner.name : "[[Unknown GameObject]]";
                         Object context = owner ? (Object)owner : prefab;
                         context.LogError($"Detected missing script on GameObject '{ownerName}'.");
@@ -504,6 +503,244 @@ namespace WallstopStudios.UnityHelpers.Editor
                     $"Prefab check complete. No issues found in {totalPrefabsChecked} prefabs."
                 );
             }
+        }
+
+        private void RunChecksImproved()
+        {
+            if (_assetPaths is not { Count: > 0 })
+            {
+                this.LogError($"No asset paths specified. Add folders containing prefabs.");
+                return;
+            }
+
+            List<string> validPaths = new List<string>(_assetPaths.Count);
+            for (int i = 0; i < _assetPaths.Count; i++)
+            {
+                string p = _assetPaths[i];
+                if (!string.IsNullOrEmpty(p) && (p == "Assets" || AssetDatabase.IsValidFolder(p)))
+                {
+                    validPaths.Add(p);
+                }
+            }
+
+            if (validPaths.Count == 0)
+            {
+                this.LogError(
+                    $"None of the specified paths are valid folders: {string.Join(", ", _assetPaths)}"
+                );
+                return;
+            }
+
+            this.Log($"Starting prefab check for folders: {string.Join(", ", validPaths)}");
+            foreach (string p in validPaths)
+                TryRecordHistory(p);
+
+            using WallstopStudios.UnityHelpers.Utils.PooledResource<string[]> folderArrayLease =
+                WallstopStudios.UnityHelpers.Utils.WallstopFastArrayPool<string>.Get(
+                    validPaths.Count,
+                    out string[] folderArray
+                );
+            for (int i = 0; i < validPaths.Count; i++)
+                folderArray[i] = validPaths[i];
+
+            string[] guids = AssetDatabase.FindAssets("t:prefab", folderArray);
+            int totalPrefabsChecked = 0;
+            int totalIssuesFound = 0;
+
+            using WallstopStudios.UnityHelpers.Utils.PooledResource<System.Collections.Generic.HashSet<string>> includeSetLease =
+                WallstopStudios.UnityHelpers.Utils.Buffers<string>.HashSet.Get(out var includeSet);
+            includeSet.Clear();
+            for (int i = 0; i < _includeLabels.Count; i++)
+            {
+                string s = _includeLabels[i];
+                if (!string.IsNullOrWhiteSpace(s))
+                {
+                    includeSet.Add(s.Trim());
+                }
+            }
+
+            using WallstopStudios.UnityHelpers.Utils.PooledResource<System.Collections.Generic.HashSet<string>> excludeSetLease =
+                WallstopStudios.UnityHelpers.Utils.Buffers<string>.HashSet.Get(out var excludeSet);
+            excludeSet.Clear();
+            for (int i = 0; i < _excludeLabels.Count; i++)
+            {
+                string s = _excludeLabels[i];
+                if (!string.IsNullOrWhiteSpace(s))
+                {
+                    excludeSet.Add(s.Trim());
+                }
+            }
+
+            System.Diagnostics.Stopwatch sw = new();
+            sw.Start();
+            int skippedByLabel = 0;
+            _lastReport = new ScanReport { folders = validPaths.ToArray() };
+
+            for (int idx = 0; idx < guids.Length; idx++)
+            {
+                if (
+                    EditorUi.CancelableProgress(
+                        "Prefab Checker",
+                        $"Scanning prefabs... {idx + 1}/{guids.Length}",
+                        (float)(idx + 1) / Mathf.Max(1, guids.Length)
+                    )
+                )
+                {
+                    this.LogWarn($"Prefab scan canceled by user.");
+                    break;
+                }
+
+                string path = AssetDatabase.GUIDToAssetPath(guids[idx]);
+                GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                if (prefab == null)
+                    continue;
+
+                string[] labels = AssetDatabase.GetLabels(prefab);
+                if (includeSet.Count > 0)
+                {
+                    bool anyIncluded = false;
+                    for (int li = 0; li < labels.Length; li++)
+                    {
+                        if (includeSet.Contains(labels[li]))
+                        {
+                            anyIncluded = true;
+                            break;
+                        }
+                    }
+                    if (!anyIncluded)
+                    {
+                        skippedByLabel++;
+                        continue;
+                    }
+                }
+                if (excludeSet.Count > 0)
+                {
+                    bool anyExcluded = false;
+                    for (int li = 0; li < labels.Length; li++)
+                    {
+                        if (excludeSet.Contains(labels[li]))
+                        {
+                            anyExcluded = true;
+                            break;
+                        }
+                    }
+                    if (anyExcluded)
+                    {
+                        skippedByLabel++;
+                        continue;
+                    }
+                }
+
+                totalPrefabsChecked++;
+                int issuesForThisPrefab = 0;
+                using var resultLease = WallstopStudios.UnityHelpers.Utils.Buffers<string>.List.Get(
+                    out var messages
+                );
+
+                if (_checkDisabledRootGameObjects && !prefab.activeSelf)
+                {
+                    messages.Add("Prefab root GameObject is disabled.");
+                    issuesForThisPrefab++;
+                }
+
+                using PooledResource<List<MonoBehaviour>> componentBufferResource =
+                    Buffers<MonoBehaviour>.List.Get();
+                List<MonoBehaviour> componentBuffer = componentBufferResource.resource;
+                prefab.GetComponentsInChildren(true, componentBuffer);
+
+                foreach (MonoBehaviour script in componentBuffer)
+                {
+                    if (_checkMissingScripts && !script)
+                    {
+                        GameObject owner = FindOwnerOfMissingScriptBounded(prefab, componentBuffer);
+                        string ownerName = owner ? owner.name : "[[Unknown GameObject]]";
+                        messages.Add($"Detected missing script on GameObject '{ownerName}'.");
+                        issuesForThisPrefab++;
+                        continue;
+                    }
+                    if (!script)
+                        continue;
+
+                    GameObject ownerGameObject = script.gameObject;
+                    bool denied = false;
+                    if (!string.IsNullOrWhiteSpace(_componentTypeDenyListCsv))
+                    {
+                        string typeName = script.GetType().Name;
+                        string fullName = script.GetType().FullName;
+                        string[] tokens = _componentTypeDenyListCsv.Split(',');
+                        for (int ti = 0; ti < tokens.Length; ti++)
+                        {
+                            string t = tokens[ti].Trim();
+                            if (t.Length == 0)
+                            {
+                                continue;
+                            }
+                            if (
+                                string.Equals(t, typeName, StringComparison.Ordinal)
+                                || string.Equals(t, fullName, StringComparison.Ordinal)
+                            )
+                            {
+                                denied = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (denied)
+                    {
+                        continue;
+                    }
+                    if (_checkNullElementsInLists)
+                        issuesForThisPrefab += ValidateNoNullsInLists(script, ownerGameObject);
+                    if (_checkMissingRequiredComponents)
+                        issuesForThisPrefab += ValidateRequiredComponents(script, ownerGameObject);
+                    if (_checkEmptyStringFields)
+                        issuesForThisPrefab += ValidateEmptyStrings(script, ownerGameObject);
+                    if (_checkNullObjectReferences)
+                        issuesForThisPrefab += ValidateNullObjectReferences(
+                            script,
+                            ownerGameObject
+                        );
+                    if (_checkDisabledComponents && script is Behaviour { enabled: false })
+                    {
+                        messages.Add(
+                            $"Component '{script.GetType().Name}' on GameObject '{ownerGameObject.name}' is disabled."
+                        );
+                        issuesForThisPrefab++;
+                    }
+                }
+
+                if (issuesForThisPrefab > 0)
+                {
+                    int toLog = Mathf.Min(100, messages.Count);
+                    for (int m = 0; m < toLog; m++)
+                        prefab.LogWarn($"{messages[m]}");
+                    if (messages.Count > toLog)
+                        prefab.LogWarn($"... and {messages.Count - toLog} more.");
+                    this.LogWarn(
+                        $"Prefab '{prefab.name}' at path '{path}' has {issuesForThisPrefab} potential issues."
+                    );
+                    _lastReport.Add(path, messages);
+                    totalIssuesFound += issuesForThisPrefab;
+                }
+            }
+
+            if (totalIssuesFound > 0)
+            {
+                this.LogError(
+                    $"Prefab check complete. Found {totalIssuesFound} potential issues across {totalPrefabsChecked} prefabs."
+                );
+            }
+            else
+            {
+                this.Log(
+                    $"Prefab check complete. No issues found in {totalPrefabsChecked} prefabs."
+                );
+            }
+            EditorUi.ClearProgress();
+            sw.Stop();
+            this.Log(
+                $"Scanned {totalPrefabsChecked} prefabs in {sw.ElapsedMilliseconds} ms. Skipped {skippedByLabel} by label."
+            );
         }
 
         private static GameObject FindOwnerOfMissingScript(
@@ -760,6 +997,277 @@ namespace WallstopStudios.UnityHelpers.Editor
                 issueCount++;
             }
             return issueCount;
+        }
+
+        private static GameObject FindOwnerOfMissingScriptBounded(
+            GameObject prefabRoot,
+            List<MonoBehaviour> buffer
+        )
+        {
+            using PooledResource<List<Transform>> transformBufferResource =
+                Buffers<Transform>.List.Get();
+            List<Transform> transforms = transformBufferResource.resource;
+            prefabRoot.GetComponentsInChildren(true, transforms);
+            if (transforms.Count > MaxTransformScanForMissingOwner)
+            {
+                prefabRoot.LogWarn(
+                    $"Hierarchy too large to locate owner of missing script (>{MaxTransformScanForMissingOwner}). Reporting at prefab root."
+                );
+                return prefabRoot;
+            }
+            return FindOwnerOfMissingScript(prefabRoot, buffer);
+        }
+
+        private void SetupReorderableList()
+        {
+            _pathsList = new ReorderableList(_assetPaths, typeof(string), true, true, true, true);
+            _pathsList.drawHeaderCallback = rect =>
+            {
+                EditorGUI.LabelField(rect, "Folders to scan");
+            };
+            _pathsList.drawElementCallback = (rect, index, isActive, isFocused) =>
+            {
+                if (index < 0 || index >= _assetPaths.Count)
+                    return;
+                string path = _assetPaths[index];
+                Rect labelRect = new(
+                    rect.x,
+                    rect.y,
+                    rect.width - 100f,
+                    EditorGUIUtility.singleLineHeight
+                );
+                EditorGUI.LabelField(labelRect, path);
+                if (
+                    GUI.Button(
+                        new Rect(
+                            rect.x + rect.width - 95f,
+                            rect.y,
+                            45f,
+                            EditorGUIUtility.singleLineHeight
+                        ),
+                        "Ping"
+                    )
+                )
+                {
+                    DefaultAsset asset = AssetDatabase.LoadAssetAtPath<DefaultAsset>(path);
+                    if (asset)
+                        EditorGUIUtility.PingObject(asset);
+                }
+                if (
+                    GUI.Button(
+                        new Rect(
+                            rect.x + rect.width - 45f,
+                            rect.y,
+                            45f,
+                            EditorGUIUtility.singleLineHeight
+                        ),
+                        "Open"
+                    )
+                )
+                {
+                    DefaultAsset asset = AssetDatabase.LoadAssetAtPath<DefaultAsset>(path);
+                    if (asset)
+                        Selection.activeObject = asset;
+                }
+            };
+            _pathsList.onAddCallback = _ =>
+            {
+                AddFolder();
+            };
+            _pathsList.onRemoveCallback = list =>
+            {
+                if (list.index >= 0 && list.index < _assetPaths.Count)
+                {
+                    _assetPaths.RemoveAt(list.index);
+                }
+            };
+        }
+
+        private void HandleDragAndDropForPaths()
+        {
+            Rect dropArea = GUILayoutUtility.GetLastRect();
+            Event evt = Event.current;
+            if (!dropArea.Contains(evt.mousePosition))
+                return;
+            if (evt.type == EventType.DragUpdated || evt.type == EventType.DragPerform)
+            {
+                DragAndDrop.visualMode = DragAndDropVisualMode.Copy;
+                if (evt.type == EventType.DragPerform)
+                {
+                    DragAndDrop.AcceptDrag();
+                    foreach (Object obj in DragAndDrop.objectReferences)
+                    {
+                        string path = AssetDatabase.GetAssetPath(obj);
+                        if (string.IsNullOrWhiteSpace(path))
+                            continue;
+                        if (path == "Assets" || AssetDatabase.IsValidFolder(path))
+                        {
+                            if (!_assetPaths.Contains(path))
+                            {
+                                _assetPaths.Add(path);
+                                TryRecordHistory(path);
+                            }
+                        }
+                    }
+                }
+                Event.current.Use();
+            }
+        }
+
+        private void DrawFiltersAndUtilities()
+        {
+            EditorGUILayout.LabelField("Filters & Utilities", EditorStyles.boldLabel);
+            _offerAutoFixes = EditorGUILayout.ToggleLeft(
+                "Enable Auto-fix options",
+                _offerAutoFixes
+            );
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                EditorGUILayout.LabelField("Include Labels (comma)", GUILayout.Width(180));
+                string includeCsv = string.Join(",", _includeLabels);
+                string newInclude = EditorGUILayout.TextField(includeCsv);
+                if (!string.Equals(includeCsv, newInclude, StringComparison.Ordinal))
+                {
+                    _includeLabels.Clear();
+                    foreach (string s in newInclude.Split(','))
+                        if (!string.IsNullOrWhiteSpace(s))
+                            _includeLabels.Add(s.Trim());
+                }
+            }
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                EditorGUILayout.LabelField("Exclude Labels (comma)", GUILayout.Width(180));
+                string excludeCsv = string.Join(",", _excludeLabels);
+                string newExclude = EditorGUILayout.TextField(excludeCsv);
+                if (!string.Equals(excludeCsv, newExclude, StringComparison.Ordinal))
+                {
+                    _excludeLabels.Clear();
+                    foreach (string s in newExclude.Split(','))
+                        if (!string.IsNullOrWhiteSpace(s))
+                            _excludeLabels.Add(s.Trim());
+                }
+            }
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                EditorGUILayout.LabelField(
+                    "Deny Component Types (comma names)",
+                    GUILayout.Width(220)
+                );
+                _componentTypeDenyListCsv = EditorGUILayout.TextField(_componentTypeDenyListCsv);
+            }
+        }
+
+        private void TryRestoreFromHistory()
+        {
+            if (_assetPaths.Count > 0)
+                return;
+            if (PersistentDirectorySettings.Instance == null)
+                return;
+            DirectoryUsageData[] top = PersistentDirectorySettings.Instance.GetPaths(
+                ToolName,
+                TargetContextKey,
+                true,
+                1
+            );
+            if (top != null && top.Length > 0)
+            {
+                string p = top[0].path;
+                if (
+                    !string.IsNullOrWhiteSpace(p)
+                    && (p == "Assets" || AssetDatabase.IsValidFolder(p))
+                )
+                {
+                    _assetPaths.Add(p);
+                }
+            }
+        }
+
+        private static void TryRecordHistory(string relativePath)
+        {
+            if (PersistentDirectorySettings.Instance == null)
+                return;
+            try
+            {
+                PersistentDirectorySettings.Instance.RecordPath(
+                    ToolName,
+                    TargetContextKey,
+                    relativePath
+                );
+            }
+            catch { }
+        }
+
+        private void FixMissingScripts()
+        {
+            if (!_offerAutoFixes)
+                return;
+            foreach (string folder in _assetPaths)
+            {
+                string[] guids = AssetDatabase.FindAssets("t:prefab", new[] { folder });
+                for (int i = 0; i < guids.Length; i++)
+                {
+                    string path = AssetDatabase.GUIDToAssetPath(guids[i]);
+                    GameObject go = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                    if (go == null)
+                        continue;
+                    GameObjectUtility.RemoveMonoBehavioursWithMissingScript(go);
+                }
+            }
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            this.Log($"Auto-fix complete: Removed missing scripts in selected folders.");
+        }
+
+        [Serializable]
+        private sealed class ScanReport
+        {
+            public string[] folders;
+            public List<Item> items = new();
+
+            [Serializable]
+            public sealed class Item
+            {
+                public string path;
+                public string[] messages;
+            }
+
+            public void Add(string path, List<string> messages)
+            {
+                items.Add(new Item { path = path, messages = messages.ToArray() });
+            }
+        }
+
+        private ScanReport _lastReport;
+
+        private void ExportLastReport()
+        {
+            if (_lastReport == null || _lastReport.items.Count == 0)
+            {
+                EditorUi.Info("Prefab Checker", "No report data to export.");
+                return;
+            }
+            string defaultPath = Application.dataPath + "/PrefabCheckerReport.json";
+            string savePath = EditorUi.Suppress
+                ? defaultPath
+                : EditorUtility.SaveFilePanel(
+                    "Save Prefab Checker Report",
+                    Application.dataPath,
+                    "PrefabCheckerReport",
+                    "json"
+                );
+            if (string.IsNullOrWhiteSpace(savePath))
+                return;
+            try
+            {
+                string json = JsonUtility.ToJson(_lastReport, true);
+                System.IO.File.WriteAllText(savePath, json);
+                this.Log($"Saved report to: {savePath}");
+            }
+            catch (Exception e)
+            {
+                this.LogError($"Failed to save report: {e.Message}");
+            }
         }
     }
 #endif

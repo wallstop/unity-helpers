@@ -10,6 +10,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.CustomEditors;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
     using Object = UnityEngine.Object;
 
     public sealed class ImageBlurTool : EditorWindow
@@ -226,14 +227,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools
             foreach (Texture2D originalTexture in toProcess)
             {
                 string assetPath = AssetDatabase.GetAssetPath(originalTexture);
-                if (!SuppressUserPrompts)
-                {
-                    EditorUtility.DisplayProgressBar(
-                        "Applying Blur",
-                        $"Processing {originalTexture.name}...",
-                        (float)processedCount / toProcess.Length
-                    );
-                }
+                EditorUi.ShowProgress(
+                    "Applying Blur",
+                    $"Processing {originalTexture.name}...",
+                    (float)processedCount / toProcess.Length
+                );
                 try
                 {
                     TextureImporter importer =
@@ -333,15 +331,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools
                 }
                 finally
                 {
-                    EditorUtility.ClearProgressBar();
-                    if (!SuppressUserPrompts)
-                    {
-                        EditorUtility.DisplayDialog(
-                            "Blur Operation Complete",
-                            $"Successfully blurred {processedCount} images.",
-                            "OK"
-                        );
-                    }
+                    EditorUi.ClearProgress();
+                    EditorUi.Info(
+                        "Blur Operation Complete",
+                        $"Successfully blurred {processedCount} images."
+                    );
                 }
             }
         }
