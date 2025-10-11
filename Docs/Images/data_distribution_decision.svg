@@ -38,36 +38,42 @@
   </g>
 
   <!-- connectors -->
-  <!-- colored connectors grouped by question -->
-  <g stroke-width="2" fill="none">
+  <!-- colored connectors grouped by question (orthogonal routes, non-overlapping) -->
+  <g stroke-width="2">
     <!-- small dataset YES -> SO singleton (blue) -->
-    <g stroke="#7aa2ff" fill="#7aa2ff">
-      <line x1="340" y1="88" x2="420" y2="118"/>
-      <polygon points="414,112 416,124 426,118"/>
+    <g stroke="#7aa2ff" fill="none">
+      <polyline points="340,88 380,88 380,118 410,118"/>
+      <polygon fill="#7aa2ff" points="410,112 410,124 420,118"/>
     </g>
     <!-- low update YES -> SO singleton (red) -->
-    <g stroke="#d57a7a" fill="#d57a7a">
-      <line x1="340" y1="178" x2="420" y2="118"/>
-      <polygon points="414,112 416,124 426,118"/>
+    <g stroke="#d57a7a" fill="none">
+      <polyline points="340,178 360,178 360,118 410,118"/>
+      <polygon fill="#d57a7a" points="410,112 410,124 420,118"/>
     </g>
-    <!-- async/paging YES -> Addressables or Streaming (green) -->
-    <g stroke="#5ec69a" fill="#5ec69a">
-      <line x1="340" y1="268" x2="420" y2="208"/>
-      <polygon points="414,202 416,214 426,208"/>
-      <line x1="340" y1="268" x2="420" y2="298"/>
-      <polygon points="414,292 416,304 426,298"/>
+    <!-- async/paging YES -> Addressables (green) -->
+    <g stroke="#5ec69a" fill="none">
+      <polyline points="340,268 370,268 370,208 410,208"/>
+      <polygon fill="#5ec69a" points="410,202 410,214 420,208"/>
     </g>
-    <!-- editor authoring YES -> SO singleton or Addressables (purple) -->
-    <g stroke="#c792ea" fill="#c792ea">
-      <line x1="340" y1="358" x2="420" y2="118"/>
-      <polygon points="414,112 416,124 426,118"/>
-      <line x1="340" y1="358" x2="420" y2="208"/>
-      <polygon points="414,202 416,214 426,208"/>
+    <!-- async/paging YES -> Streaming (green) -->
+    <g stroke="#5ec69a" fill="none">
+      <polyline points="340,268 390,268 390,298 410,298"/>
+      <polygon fill="#5ec69a" points="410,292 410,304 420,298"/>
+    </g>
+    <!-- editor authoring YES -> SO singleton (purple) -->
+    <g stroke="#c792ea" fill="none">
+      <polyline points="340,358 350,358 350,118 410,118"/>
+      <polygon fill="#c792ea" points="410,112 410,124 420,118"/>
+    </g>
+    <!-- editor authoring YES -> Addressables (purple) -->
+    <g stroke="#c792ea" fill="none">
+      <polyline points="340,358 365,358 365,208 410,208"/>
+      <polygon fill="#c792ea" points="410,202 410,214 420,208"/>
     </g>
     <!-- security concerns YES -> Remote/External DB (gold) -->
-    <g stroke="#e5c07b" fill="#e5c07b">
-      <line x1="340" y1="448" x2="420" y2="388"/>
-      <polygon points="414,382 416,394 426,388"/>
+    <g stroke="#e5c07b" fill="none">
+      <polyline points="340,448 380,448 380,388 410,388"/>
+      <polygon fill="#e5c07b" points="410,382 410,394 420,388"/>
     </g>
   </g>
 

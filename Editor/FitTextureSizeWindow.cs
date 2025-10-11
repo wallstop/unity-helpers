@@ -65,6 +65,7 @@ namespace WallstopStudios.UnityHelpers.Editor
         private int _potentialGrowCount = 0;
         private int _potentialShrinkCount = 0;
         private int _potentialUnchangedCount = 0;
+        private bool _labelFilterHandledByQuery = false;
 
         [SerializeField]
         internal bool _useSelectionOnly = false;
@@ -326,6 +327,7 @@ namespace WallstopStudios.UnityHelpers.Editor
             using PooledResource<List<string>> resultRes = Buffers<string>.List.Get(
                 out List<string> result
             );
+            _labelFilterHandledByQuery = false;
 
             if (_useSelectionOnly)
             {
@@ -398,11 +400,47 @@ namespace WallstopStudios.UnityHelpers.Editor
 
             if (searchPaths.Count > 0)
             {
-                // Query all textures; specific filtering is performed later against importers.
-                string[] guids = AssetDatabase.FindAssets("t:texture2D", searchPaths.ToArray());
-                for (int i = 0; i < guids.Length; i++)
+                string typeFilter = _onlySprites ? "t:sprite" : "t:texture2D";
+
+                // If label filter is present and case-insensitive, leverage l: clauses to avoid asset loads later.
+                bool hasLabelFilter = !string.IsNullOrWhiteSpace(_labelFilterCsv);
+                if (hasLabelFilter && !_caseSensitiveNameFilter)
                 {
-                    _ = guidSet.Add(guids[i]);
+                    string[] labelTokens = _labelFilterCsv
+                        .Split(new[] { ',', ';' }, System.StringSplitOptions.RemoveEmptyEntries)
+                        .Select(s => s.Trim())
+                        .Where(s => s.Length > 0)
+                        .ToArray();
+                    if (labelTokens.Length > 0)
+                    {
+                        string labelClause = string.Join(" OR ", labelTokens.Select(l => $"l:{l}"));
+                        string query = $"({labelClause}) AND {typeFilter}";
+                        string[] guids = AssetDatabase.FindAssets(query, searchPaths.ToArray());
+                        for (int i = 0; i < guids.Length; i++)
+                        {
+                            _ = guidSet.Add(guids[i]);
+                        }
+                        _labelFilterHandledByQuery = true;
+                    }
+                    else
+                    {
+                        string[] guids = AssetDatabase.FindAssets(
+                            typeFilter,
+                            searchPaths.ToArray()
+                        );
+                        for (int i = 0; i < guids.Length; i++)
+                        {
+                            _ = guidSet.Add(guids[i]);
+                        }
+                    }
+                }
+                else
+                {
+                    string[] guids = AssetDatabase.FindAssets(typeFilter, searchPaths.ToArray());
+                    for (int i = 0; i < guids.Length; i++)
+                    {
+                        _ = guidSet.Add(guids[i]);
+                    }
                 }
             }
 
@@ -450,7 +488,8 @@ namespace WallstopStudios.UnityHelpers.Editor
             PooledResource<HashSet<string>> labelSetRes = default;
             HashSet<string> labelSet = null;
             string[] parsedLabels = null;
-            if (!string.IsNullOrWhiteSpace(_labelFilterCsv))
+            bool hasLabelFilterCsv = !string.IsNullOrWhiteSpace(_labelFilterCsv);
+            if (hasLabelFilterCsv && !_labelFilterHandledByQuery)
             {
                 parsedLabels = _labelFilterCsv
                     .Split(new[] { ',', ';' }, System.StringSplitOptions.RemoveEmptyEntries)
