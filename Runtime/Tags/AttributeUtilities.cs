@@ -295,7 +295,7 @@ namespace WallstopStudios.UnityHelpers.Tags
                     if (cache != null && cache.TryGetFieldNames(inputType, out string[] fieldNames))
                     {
                         // Build dictionary from cached field names
-                        Dictionary<string, FieldInfo> result = new Dictionary<string, FieldInfo>(
+                        Dictionary<string, FieldInfo> result = new(
                             fieldNames.Length,
                             StringComparer.Ordinal
                         );
@@ -337,10 +337,10 @@ namespace WallstopStudios.UnityHelpers.Tags
                     if (cache != null && cache.TryGetFieldNames(inputType, out string[] fieldNames))
                     {
                         // Build dictionary from cached field names
-                        Dictionary<string, Func<object, Attribute>> result = new Dictionary<
-                            string,
-                            Func<object, Attribute>
-                        >(fieldNames.Length, StringComparer.Ordinal);
+                        Dictionary<string, Func<object, Attribute>> result = new(
+                            fieldNames.Length,
+                            StringComparer.Ordinal
+                        );
                         foreach (string fieldName in fieldNames)
                         {
                             FieldInfo field = inputType.GetField(

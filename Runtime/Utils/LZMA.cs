@@ -24,7 +24,7 @@ namespace WallstopStudios.UnityHelpers.Utils
             {
                 inStream.SetBuffer(input);
 
-                Encoder encoder = new Encoder();
+                Encoder encoder = new();
                 encoder.WriteCoderProperties(outStream);
 
                 WriteInt64LE(outStream, inStream.Length);
@@ -84,7 +84,7 @@ namespace WallstopStudios.UnityHelpers.Utils
                     throw new Exception("Failed to decompress LZMA data. No payload present.");
                 }
 
-                Decoder decoder = new Decoder();
+                Decoder decoder = new();
                 try
                 {
                     decoder.SetDecoderProperties(properties);
@@ -133,7 +133,7 @@ namespace WallstopStudios.UnityHelpers.Utils
             using (PooledReadOnlyMemoryStream.Rent(out PooledReadOnlyMemoryStream inStream))
             {
                 inStream.SetBuffer(input ?? Array.Empty<byte>());
-                Encoder encoder = new Encoder();
+                Encoder encoder = new();
                 encoder.WriteCoderProperties(output);
 
                 WriteInt64LE(output, inStream.Length);
@@ -183,7 +183,7 @@ namespace WallstopStudios.UnityHelpers.Utils
                     throw new Exception("Failed to decompress LZMA data. No payload present.");
                 }
 
-                Decoder decoder = new Decoder();
+                Decoder decoder = new();
                 try
                 {
                     decoder.SetDecoderProperties(properties);

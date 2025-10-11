@@ -60,10 +60,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
                 assetPathsField.SetValue(checker, list);
 
                 MethodInfo runChecks = typeof(PrefabChecker).GetMethod(
-                    "RunChecks",
+                    "RunChecksImproved",
                     BindingFlags.NonPublic | BindingFlags.Instance
                 );
-                Assert.IsNotNull(runChecks, "RunChecks method not found");
+                Assert.IsNotNull(runChecks, "RunChecksImproved method not found");
 
                 Assert.DoesNotThrow(() => runChecks.Invoke(checker, null));
             }

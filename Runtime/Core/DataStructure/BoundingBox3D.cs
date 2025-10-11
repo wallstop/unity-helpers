@@ -75,21 +75,13 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             Vector3 min = bounds.min;
             Vector3 max = bounds.max;
             // Convert Unity's closed max to half-open by nudging max strictly past the provided value
-            Vector3 exclusiveMax = new Vector3(
-                NextFloat(max.x),
-                NextFloat(max.y),
-                NextFloat(max.z)
-            );
+            Vector3 exclusiveMax = new(NextFloat(max.x), NextFloat(max.y), NextFloat(max.z));
             return new BoundingBox3D(min, exclusiveMax);
         }
 
         public static BoundingBox3D FromPoint(Vector3 point)
         {
-            Vector3 exclusiveMax = new Vector3(
-                NextFloat(point.x),
-                NextFloat(point.y),
-                NextFloat(point.z)
-            );
+            Vector3 exclusiveMax = new(NextFloat(point.x), NextFloat(point.y), NextFloat(point.z));
             return new BoundingBox3D(point, exclusiveMax);
         }
 

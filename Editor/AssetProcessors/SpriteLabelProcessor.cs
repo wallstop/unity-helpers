@@ -3,7 +3,6 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
 #if UNITY_EDITOR
     using System;
     using System.Collections.Generic;
-    using Core.Helper;
     using UnityEditor;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Utils;

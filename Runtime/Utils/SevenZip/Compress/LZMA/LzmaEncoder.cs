@@ -64,7 +64,7 @@ namespace SevenZip.Compression.LZMA
             return (UInt32)(g_FastPos[pos >> 26] + 52);
         }
 
-        Base.State _state = new Base.State();
+        Base.State _state = new();
         Byte _previousByte;
         readonly UInt32[] _repDistances = new UInt32[Base.kNumRepDistances];
 
@@ -206,13 +206,13 @@ namespace SevenZip.Compression.LZMA
 
         class LenEncoder
         {
-            BitEncoder _choice = new BitEncoder();
-            BitEncoder _choice2 = new BitEncoder();
+            BitEncoder _choice = new();
+            BitEncoder _choice2 = new();
 
             readonly BitTreeEncoder[] _lowCoder = new BitTreeEncoder[Base.kNumPosStatesEncodingMax];
 
             readonly BitTreeEncoder[] _midCoder = new BitTreeEncoder[Base.kNumPosStatesEncodingMax];
-            BitTreeEncoder _highCoder = new BitTreeEncoder(Base.kNumHighLenBits);
+            BitTreeEncoder _highCoder = new(Base.kNumHighLenBits);
 
             public LenEncoder()
             {
@@ -379,7 +379,7 @@ namespace SevenZip.Compression.LZMA
 
         readonly Optimal[] _optimum = new Optimal[kNumOpts];
         LZ.IMatchFinder _matchFinder = null;
-        readonly RangeCoder.Encoder _rangeEncoder = new RangeCoder.Encoder();
+        readonly RangeCoder.Encoder _rangeEncoder = new();
 
         readonly BitEncoder[] _isMatch = new BitEncoder[
             Base.kNumStates << Base.kNumPosStatesBitsMax
@@ -399,12 +399,12 @@ namespace SevenZip.Compression.LZMA
         readonly BitEncoder[] _posEncoders = new BitEncoder[
             Base.kNumFullDistances - Base.kEndPosModelIndex
         ];
-        BitTreeEncoder _posAlignEncoder = new BitTreeEncoder(Base.kNumAlignBits);
+        BitTreeEncoder _posAlignEncoder = new(Base.kNumAlignBits);
 
-        readonly LenPriceTableEncoder _lenEncoder = new LenPriceTableEncoder();
-        readonly LenPriceTableEncoder _repMatchLenEncoder = new LenPriceTableEncoder();
+        readonly LenPriceTableEncoder _lenEncoder = new();
+        readonly LenPriceTableEncoder _repMatchLenEncoder = new();
 
-        readonly LiteralEncoder _literalEncoder = new LiteralEncoder();
+        readonly LiteralEncoder _literalEncoder = new();
 
         readonly UInt32[] _matchDistances = new UInt32[Base.kMatchMaxLen * 2 + 2];
 
@@ -454,7 +454,7 @@ namespace SevenZip.Compression.LZMA
         {
             if (_matchFinder == null)
             {
-                LZ.BinTree bt = new LZ.BinTree();
+                LZ.BinTree bt = new();
                 int numHashBytes = 4;
                 if (_matchFinderType == EMatchFinderType.BT2)
                 {

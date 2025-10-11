@@ -6,10 +6,7 @@ namespace WallstopStudios.UnityHelpers.Editor
     using System.Linq;
     using System.Reflection;
     using UnityEditor;
-    using UnityEditor.IMGUI.Controls;
     using UnityEngine;
-    using WallstopStudios.UnityHelpers.Core.Attributes;
-    using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Core.Helper;
     using WallstopStudios.UnityHelpers.Utils;
 
@@ -158,7 +155,7 @@ namespace WallstopStudios.UnityHelpers.Editor
             public MethodInfo selectedMethod;
             public string search;
             public string typeSearch;
-            public AnimationEvent animationEvent;
+            public readonly AnimationEvent animationEvent;
             public Texture2D texture;
             public bool isTextureReadable;
             public bool isInvalidTextureRect;
@@ -475,7 +472,7 @@ namespace WallstopStudios.UnityHelpers.Editor
                 return clips;
             }
 
-            List<AnimationClip> filtered = new List<AnimationClip>();
+            List<AnimationClip> filtered = new();
             foreach (AnimationClip clip in clips)
             {
                 bool matches = true;
@@ -595,8 +592,7 @@ namespace WallstopStudios.UnityHelpers.Editor
                 }
 
                 if (
-                    item.originalIndex.HasValue
-                    && item.originalIndex.Value >= 0
+                    item.originalIndex is >= 0
                     && item.originalIndex.Value < _baseClipEvents.Count
                     && !AnimationEventEqualityComparer.Instance.Equals(
                         item.animationEvent,
@@ -829,7 +825,9 @@ namespace WallstopStudios.UnityHelpers.Editor
             {
                 string searchLower = item.typeSearch.ToLowerInvariant();
                 filteredTypes = allTypes
-                    .Where(t => t.FullName.ToLowerInvariant().Contains(searchLower))
+                    .Where(t =>
+                        t.FullName != null && t.FullName.ToLowerInvariant().Contains(searchLower)
+                    )
                     .ToList();
 
                 // Always include selected type even if it doesn't match search
@@ -1049,8 +1047,7 @@ namespace WallstopStudios.UnityHelpers.Editor
                     return item.cachedLookup;
                 }
 
-                Dictionary<Type, List<MethodInfo>> filtered =
-                    new Dictionary<Type, List<MethodInfo>>();
+                Dictionary<Type, List<MethodInfo>> filtered = new();
 
                 List<string> methodSearchTerms = item
                     .search.Split(" ")
@@ -1098,7 +1095,7 @@ namespace WallstopStudios.UnityHelpers.Editor
                     // Filter by method search
                     if (methodSearchTerms.Count > 0)
                     {
-                        List<MethodInfo> filteredMethods = new List<MethodInfo>();
+                        List<MethodInfo> filteredMethods = new();
                         foreach (MethodInfo method in methodList)
                         {
                             bool methodMatches = true;

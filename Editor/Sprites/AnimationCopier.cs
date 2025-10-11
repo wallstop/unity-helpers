@@ -944,7 +944,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
 
             List<AnimationFileInfo> animationsToDelete = _unchangedAnimations
-                .Where(a => a != null && a.Selected)
+                .Where(a => a is { Selected: true })
                 .ToList();
 
             if (animationsToDelete.Count == 0)
@@ -987,7 +987,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     bool userCancelled = false;
                     if (i == 0 || i % 10 == 0 || i == animationsToDelete.Count - 1)
                     {
-                        userCancelled = EditorUtility.DisplayCancelableProgressBar(
+                        userCancelled = CancelableProgress(
                             "Deleting Source Duplicates",
                             $"Deleting: {animInfo.FileName} ({i + 1}/{animationsToDelete.Count})",
                             progress
@@ -1034,7 +1034,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     AssetDatabase.StopAssetEditing();
                     AssetDatabase.Refresh();
                 }
-                EditorUtility.ClearProgressBar();
+                ClearProgress();
                 _isDeleting = false;
                 this.Log(
                     $"Delete operation finished{(_dryRun ? " (dry run)" : string.Empty)}. Successfully processed: {successCount}, Errors: {errorCount}."
@@ -1283,7 +1283,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     {
                         Regex rx = new(_filterText, RegexOptions.IgnoreCase);
                         query = query.Where(i =>
-                            i != null && i.FileName != null && rx.IsMatch(i.FileName)
+                            i is { FileName: not null } && rx.IsMatch(i.FileName)
                         );
                     }
                     catch (Exception ex)
@@ -1295,8 +1295,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 else
                 {
                     query = query.Where(i =>
-                        i != null
-                        && i.FileName != null
+                        i is { FileName: not null }
                         && i.FileName.IndexOf(_filterText, StringComparison.OrdinalIgnoreCase) >= 0
                     );
                 }
@@ -1411,37 +1410,27 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
         private static bool Confirm(string title, string message, string ok, string cancel)
         {
-            return WallstopStudios.UnityHelpers.Editor.Utils.EditorUi.Confirm(
-                title,
-                message,
-                ok,
-                cancel,
-                defaultWhenSuppressed: true
-            );
+            return Utils.EditorUi.Confirm(title, message, ok, cancel, defaultWhenSuppressed: true);
         }
 
         private static void Info(string title, string message)
         {
-            WallstopStudios.UnityHelpers.Editor.Utils.EditorUi.Info(title, message);
+            Utils.EditorUi.Info(title, message);
         }
 
         private static void ShowProgress(string title, string info, float progress)
         {
-            WallstopStudios.UnityHelpers.Editor.Utils.EditorUi.ShowProgress(title, info, progress);
+            Utils.EditorUi.ShowProgress(title, info, progress);
         }
 
         private static bool CancelableProgress(string title, string info, float progress)
         {
-            return WallstopStudios.UnityHelpers.Editor.Utils.EditorUi.CancelableProgress(
-                title,
-                info,
-                progress
-            );
+            return Utils.EditorUi.CancelableProgress(title, info, progress);
         }
 
         private static void ClearProgress()
         {
-            WallstopStudios.UnityHelpers.Editor.Utils.EditorUi.ClearProgress();
+            Utils.EditorUi.ClearProgress();
         }
 
         private void ExportPreviewReport()

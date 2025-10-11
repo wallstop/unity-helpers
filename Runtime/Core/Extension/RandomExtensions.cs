@@ -72,7 +72,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return random.NextOf(source);
             }
 
-            HashSet<T> exclude = new HashSet<T>(exceptions);
+            HashSet<T> exclude = new(exceptions);
             using PooledResource<T[]> pooled = WallstopArrayPool<T>.Get(
                 source.Count,
                 out T[] buffer

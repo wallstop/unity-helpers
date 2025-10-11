@@ -1,6 +1,7 @@
 namespace WallstopStudios.UnityHelpers.Editor
 {
 #if UNITY_EDITOR
+    using System;
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;
@@ -39,14 +40,14 @@ namespace WallstopStudios.UnityHelpers.Editor
 
         private static bool IsInvokedByTestRunner()
         {
-            string[] args = System.Environment.GetCommandLineArgs();
+            string[] args = Environment.GetCommandLineArgs();
             for (int i = 0; i < args.Length; ++i)
             {
                 string a = args[i];
                 if (
-                    a.IndexOf("runTests", System.StringComparison.OrdinalIgnoreCase) >= 0
-                    || a.IndexOf("testResults", System.StringComparison.OrdinalIgnoreCase) >= 0
-                    || a.IndexOf("testPlatform", System.StringComparison.OrdinalIgnoreCase) >= 0
+                    a.IndexOf("runTests", StringComparison.OrdinalIgnoreCase) >= 0
+                    || a.IndexOf("testResults", StringComparison.OrdinalIgnoreCase) >= 0
+                    || a.IndexOf("testPlatform", StringComparison.OrdinalIgnoreCase) >= 0
                 )
                 {
                     return true;
@@ -63,27 +64,27 @@ namespace WallstopStudios.UnityHelpers.Editor
         private SerializedObject _serializedObject;
         private SerializedProperty _textureSourcePathsProperty;
         private int _potentialChangeCount = -1;
-        private int _potentialGrowCount = 0;
-        private int _potentialShrinkCount = 0;
-        private int _potentialUnchangedCount = 0;
+        private int _potentialGrowCount;
+        private int _potentialShrinkCount;
+        private int _potentialUnchangedCount;
 
         // GUIDs returned by label-based folder queries for case-insensitive label CSV filtering.
         // For these we can skip per-asset label loads later.
-        internal HashSet<string> _labelQueryGuids = new HashSet<string>();
+        internal readonly HashSet<string> _labelQueryGuids = new();
 
         // Last-run summary
-        internal bool _hasLastRunSummary = false;
-        internal int _lastRunTotal = 0;
-        internal int _lastRunChanged = 0;
-        internal int _lastRunGrows = 0;
-        internal int _lastRunShrinks = 0;
-        internal int _lastRunUnchanged = 0;
+        internal bool _hasLastRunSummary;
+        internal int _lastRunTotal;
+        internal int _lastRunChanged;
+        internal int _lastRunGrows;
+        internal int _lastRunShrinks;
+        internal int _lastRunUnchanged;
 
         [SerializeField]
-        internal bool _useSelectionOnly = false;
+        internal bool _useSelectionOnly;
 
         [SerializeField]
-        internal bool _onlySprites = false;
+        internal bool _onlySprites;
 
         [SerializeField]
         internal int _minAllowedTextureSize = 32;
@@ -92,22 +93,22 @@ namespace WallstopStudios.UnityHelpers.Editor
         internal int _maxAllowedTextureSize = 8192;
 
         [SerializeField]
-        internal bool _applyToStandalone = false;
+        internal bool _applyToStandalone;
 
         [SerializeField]
-        internal bool _applyToAndroid = false;
+        internal bool _applyToAndroid;
 
         [SerializeField]
-        internal bool _applyToiOS = false;
+        internal bool _applyToiOS;
 
         [SerializeField]
         internal string _nameFilter = string.Empty;
 
         [SerializeField]
-        internal bool _useRegexForName = false;
+        internal bool _useRegexForName;
 
         [SerializeField]
-        internal bool _caseSensitiveNameFilter = false;
+        internal bool _caseSensitiveNameFilter;
 
         [SerializeField]
         internal string _labelFilterCsv = string.Empty;
@@ -344,13 +345,13 @@ namespace WallstopStudios.UnityHelpers.Editor
         {
             _textureSourcePaths ??= new List<Object>();
 
-            using PooledResource<HashSet<string>> uniqRes = SetBuffers<string>.HashSet.Get(
+            using PooledResource<HashSet<string>> uniqRes = Buffers<string>.HashSet.Get(
                 out HashSet<string> uniqueAssetPaths
             );
             using PooledResource<List<string>> searchRes = Buffers<string>.List.Get(
                 out List<string> searchPaths
             );
-            using PooledResource<HashSet<string>> guidSetRes = SetBuffers<string>.HashSet.Get(
+            using PooledResource<HashSet<string>> guidSetRes = Buffers<string>.HashSet.Get(
                 out HashSet<string> guidSet
             );
             using PooledResource<List<string>> resultRes = Buffers<string>.List.Get(
@@ -439,7 +440,7 @@ namespace WallstopStudios.UnityHelpers.Editor
                 if (hasLabelFilter && !_caseSensitiveNameFilter)
                 {
                     string[] labelTokens = _labelFilterCsv
-                        .Split(new[] { ',', ';' }, System.StringSplitOptions.RemoveEmptyEntries)
+                        .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
                         .Select(s => s.Trim())
                         .Where(s => s.Length > 0)
                         .ToArray();
@@ -511,7 +512,7 @@ namespace WallstopStudios.UnityHelpers.Editor
                 {
                     nameRegex = new Regex(_nameFilter, opts);
                 }
-                catch (System.Exception ex)
+                catch (Exception ex)
                 {
                     this.LogError($"Invalid name regex '{_nameFilter}': {ex.Message}");
                     nameRegex = null;
@@ -525,13 +526,13 @@ namespace WallstopStudios.UnityHelpers.Editor
             if (hasLabelFilterCsv)
             {
                 parsedLabels = _labelFilterCsv
-                    .Split(new[] { ',', ';' }, System.StringSplitOptions.RemoveEmptyEntries)
+                    .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
                     .Select(s => s.Trim())
                     .Where(s => s.Length > 0)
                     .ToArray();
                 if (parsedLabels.Length > 0)
                 {
-                    labelSetRes = SetBuffers<string>.HashSet.Get(out labelSet);
+                    labelSetRes = Buffers<string>.HashSet.Get(out labelSet);
                     for (int i = 0; i < parsedLabels.Length; i++)
                     {
                         _ = labelSet.Add(
@@ -561,12 +562,11 @@ namespace WallstopStudios.UnityHelpers.Editor
                     // Throttle progress updates to reduce GC and UI overhead
                     if ((i % 32) == 0 || i == textureGuids.Count - 1)
                     {
-                        cancel =
-                            WallstopStudios.UnityHelpers.Editor.Utils.EditorUi.CancelableProgress(
-                                progressBarTitle,
-                                $"Checking: {Path.GetFileName(assetPath)} ({i + 1}/{textureGuids.Count})",
-                                progress
-                            );
+                        cancel = EditorUi.CancelableProgress(
+                            progressBarTitle,
+                            $"Checking: {Path.GetFileName(assetPath)} ({i + 1}/{textureGuids.Count})",
+                            progress
+                        );
                     }
 
                     if (cancel)
@@ -604,9 +604,9 @@ namespace WallstopStudios.UnityHelpers.Editor
                         }
                         else
                         {
-                            var comp = _caseSensitiveNameFilter
-                                ? System.StringComparison.Ordinal
-                                : System.StringComparison.OrdinalIgnoreCase;
+                            StringComparison comp = _caseSensitiveNameFilter
+                                ? StringComparison.Ordinal
+                                : StringComparison.OrdinalIgnoreCase;
                             nameMatch = fileName.IndexOf(_nameFilter, comp) >= 0;
                         }
                         if (!nameMatch)
@@ -762,7 +762,7 @@ namespace WallstopStudios.UnityHelpers.Editor
                 {
                     AssetDatabase.StopAssetEditing();
                 }
-                WallstopStudios.UnityHelpers.Editor.Utils.EditorUi.ClearProgress();
+                EditorUi.ClearProgress();
 
                 if (applyChanges)
                 {
@@ -798,8 +798,7 @@ namespace WallstopStudios.UnityHelpers.Editor
             bool enabled =
                 platform == "Standalone" ? _applyToStandalone
                 : platform == "Android" ? _applyToAndroid
-                : platform == "iPhone" ? _applyToiOS
-                : false;
+                : platform == "iPhone" && _applyToiOS;
             if (!enabled)
             {
                 return;

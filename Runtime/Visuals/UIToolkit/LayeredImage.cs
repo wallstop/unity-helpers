@@ -218,11 +218,7 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
                 return Array.Empty<Texture2D>();
             }
 
-            FrameCompositor compositor = new FrameCompositor(
-                layers,
-                _backgroundColor,
-                _pixelCutoff
-            );
+            FrameCompositor compositor = new(layers, _backgroundColor, _pixelCutoff);
             Texture2D[] computed = new Texture2D[frameCount];
 
             for (int frameIndex = 0; frameIndex < frameCount; ++frameIndex)
@@ -513,7 +509,7 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
                     }
                 }
 
-                Texture2D finalTexture = new Texture2D(
+                Texture2D finalTexture = new(
                     finalWidth,
                     finalHeight,
                     TextureFormat.RGBA32,
@@ -583,7 +579,7 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
                 return;
             }
 
-            BlendSpriteRowJob job = new BlendSpriteRowJob(
+            BlendSpriteRowJob job = new(
                 bufferPixels,
                 bufferWidth,
                 bufferHeight,

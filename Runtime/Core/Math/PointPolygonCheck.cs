@@ -153,7 +153,7 @@ namespace WallstopStudios.UnityHelpers.Core.Math
             Vector3 relativePoint = point - origin;
 
             // Convert to 2D coordinates in the plane's coordinate system
-            Vector2 point2D = new Vector2(
+            Vector2 point2D = new(
                 Vector3.Dot(relativePoint, tangent),
                 Vector3.Dot(relativePoint, bitangent)
             );

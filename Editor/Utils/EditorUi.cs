@@ -3,7 +3,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 {
     using System;
     using UnityEditor;
-    using UnityEngine;
 
     public static class EditorUi
     {

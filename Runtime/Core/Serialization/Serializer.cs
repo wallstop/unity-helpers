@@ -253,7 +253,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
         /// - Returns a new instance each call; cache and reuse within your app to leverage STJ metadata caches
         /// </summary>
         public static JsonSerializerOptions CreateFastPocoJsonOptions() =>
-            new JsonSerializerOptions(SerializerEncoding.FastPocoJsonOptions);
+            new(SerializerEncoding.FastPocoJsonOptions);
 
         // Small protobuf payloads benefit from protobuf-net's MemoryStream fast-path (TryGetBuffer).
         // Larger payloads see wins from our pooled read-only stream to avoid per-iteration allocations.
@@ -709,7 +709,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                 // Prefer zero-copy ROM/ROS overloads when available
                 if (ProtoDeserializeTypeFromROMFast != null)
                 {
-                    ReadOnlyMemory<byte> rom = new ReadOnlyMemory<byte>(data);
+                    ReadOnlyMemory<byte> rom = new(data);
                     Type declared = typeof(T);
                     if (
                         ShouldUseRuntimeTypeForProtobuf<T>(
@@ -735,7 +735,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
 
                 if (ProtoDeserializeTypeFromROSFast != null)
                 {
-                    ReadOnlySequence<byte> ros = new ReadOnlySequence<byte>(data);
+                    ReadOnlySequence<byte> ros = new(data);
                     Type declared = typeof(T);
                     if (
                         ShouldUseRuntimeTypeForProtobuf<T>(
@@ -762,7 +762,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                 // For small payloads, allow protobuf-net to use MemoryStream's non-copy buffer access
                 if (data.Length <= ProtobufMemoryStreamThreshold)
                 {
-                    using MemoryStream ms = new MemoryStream(data, writable: false);
+                    using MemoryStream ms = new(data, writable: false);
                     Type declared = typeof(T);
                     if (
                         ShouldUseRuntimeTypeForProtobuf<T>(
@@ -940,18 +940,18 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                 // Prefer zero-copy ROM/ROS overloads when available
                 if (ProtoDeserializeTypeFromROMFast != null)
                 {
-                    ReadOnlyMemory<byte> rom = new ReadOnlyMemory<byte>(data);
+                    ReadOnlyMemory<byte> rom = new(data);
                     return (T)ProtoDeserializeTypeFromROMFast(type, rom);
                 }
                 if (ProtoDeserializeTypeFromROSFast != null)
                 {
-                    ReadOnlySequence<byte> ros = new ReadOnlySequence<byte>(data);
+                    ReadOnlySequence<byte> ros = new(data);
                     return (T)ProtoDeserializeTypeFromROSFast(type, ros);
                 }
 
                 if (data.Length <= ProtobufMemoryStreamThreshold)
                 {
-                    using MemoryStream ms = new MemoryStream(data, writable: false);
+                    using MemoryStream ms = new(data, writable: false);
                     return (T)ProtoBuf.Serializer.Deserialize(type, ms);
                 }
 
@@ -1083,7 +1083,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                 throw new ArgumentNullException(nameof(data));
             }
 
-            ReadOnlySpan<byte> span = new ReadOnlySpan<byte>(data);
+            ReadOnlySpan<byte> span = new(data);
             return (T)
                 JsonSerializer.Deserialize(
                     span,
@@ -1101,7 +1101,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             {
                 throw new ArgumentNullException(nameof(data));
             }
-            ReadOnlySpan<byte> span = new ReadOnlySpan<byte>(data);
+            ReadOnlySpan<byte> span = new(data);
             return JsonSerializer.Deserialize<T>(span, SerializerEncoding.FastJsonOptions);
         }
 
@@ -1341,10 +1341,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             }
 
             using (
-                Utf8JsonWriter writer = new Utf8JsonWriter(
-                    buffer,
-                    new JsonWriterOptions { SkipValidation = true }
-                )
+                Utf8JsonWriter writer = new(buffer, new JsonWriterOptions { SkipValidation = true })
             )
             {
                 Type parameterType = typeof(T);

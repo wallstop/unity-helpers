@@ -56,14 +56,14 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
         private static bool IsInvokedByTestRunner()
         {
-            string[] args = System.Environment.GetCommandLineArgs();
+            string[] args = Environment.GetCommandLineArgs();
             for (int i = 0; i < args.Length; ++i)
             {
                 string a = args[i];
                 if (
-                    a.IndexOf("runTests", System.StringComparison.OrdinalIgnoreCase) >= 0
-                    || a.IndexOf("testResults", System.StringComparison.OrdinalIgnoreCase) >= 0
-                    || a.IndexOf("testPlatform", System.StringComparison.OrdinalIgnoreCase) >= 0
+                    a.IndexOf("runTests", StringComparison.OrdinalIgnoreCase) >= 0
+                    || a.IndexOf("testResults", StringComparison.OrdinalIgnoreCase) >= 0
+                    || a.IndexOf("testPlatform", StringComparison.OrdinalIgnoreCase) >= 0
                 )
                 {
                     return true;
@@ -358,7 +358,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     }
                     if (GUILayout.Button("Add New Source Folder Entry"))
                     {
-                        string folderPath = EditorUtility.OpenFolderPanel(
+                        string folderPath = Utils.EditorUi.OpenFolderPanel(
                             "Select Source Folder",
                             Application.dataPath,
                             ""
@@ -419,10 +419,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                             }
                             else
                             {
-                                EditorUtility.DisplayDialog(
+                                Utils.EditorUi.Info(
                                     "Invalid Folder",
-                                    "The selected folder must be within the project's 'Assets' directory.",
-                                    "OK"
+                                    "The selected folder must be within the project's 'Assets' directory."
                                 );
                             }
                         }
@@ -516,14 +515,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         GUILayout.Button(
                             $"Force Uncompressed for {validSpriteCount} Source Sprites in '{config.name}'"
                         )
-                        && EditorUtility.DisplayDialog(
+                        && Utils.EditorUi.Confirm(
                             "Force Uncompressed Source Sprites",
                             $"This will modify the import settings of {validSpriteCount} source sprites currently in the '{config.name}' list.\n\n"
                                 + "- Crunch compression will be disabled.\n"
                                 + "- Texture format for the 'Default' platform will be set to uncompressed (RGBA32 or RGB24).\n\n"
                                 + "This action modifies source asset import settings and may require re-packing atlases. Are you sure?",
                             "Yes, Modify Source Sprites",
-                            "Cancel"
+                            "Cancel",
+                            defaultWhenSuppressed: true
                         )
                     )
                     {
@@ -536,11 +536,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         GUILayout.Button(
                             $"Generate/Update '{config.outputSpriteAtlasName}.spriteatlas' ONLY"
                         )
-                        && EditorUtility.DisplayDialog(
+                        && Utils.EditorUi.Confirm(
                             $"Generate Atlas: {config.name}",
                             $"This will create or update '{config.outputSpriteAtlasName}.spriteatlas'. Continue?",
                             "Yes",
-                            "No"
+                            "No",
+                            defaultWhenSuppressed: true
                         )
                     )
                     {
@@ -1017,10 +1018,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         {
             if (_atlasConfigs.Count == 0)
             {
-                EditorUtility.DisplayDialog(
+                Utils.EditorUi.Info(
                     "No Configurations",
-                    "No ScriptableSpriteAtlas configurations found to generate.",
-                    "OK"
+                    "No ScriptableSpriteAtlas configurations found to generate."
                 );
                 return;
             }
@@ -1040,7 +1040,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
                     currentConfig++;
                     float progress = (float)currentConfig / totalConfigs;
-                    EditorUtility.DisplayProgressBar(
+                    Utils.EditorUi.ShowProgress(
                         "Generating Sprite Atlases",
                         $"Processing: {config.name}",
                         progress
@@ -1051,7 +1051,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             finally
             {
                 AssetDatabase.StopAssetEditing();
-                EditorUtility.ClearProgressBar();
+                Utils.EditorUi.ClearProgress();
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
             }
@@ -1268,10 +1268,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 this.LogWarn(
                     $"'{config.name}': No valid sprites with textures in the list to modify."
                 );
-                EditorUtility.DisplayDialog(
+                Utils.EditorUi.Info(
                     "No Sprites",
-                    "No valid sprites found in the configuration's list to process.",
-                    "OK"
+                    "No valid sprites found in the configuration's list to process."
                 );
                 return;
             }
@@ -1287,7 +1286,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 for (int i = 0; i < spritesToProcess.Count; ++i)
                 {
                     Sprite sprite = spritesToProcess[i];
-                    EditorUtility.DisplayProgressBar(
+                    Utils.EditorUi.ShowProgress(
                         "Modifying Source Sprite Import Settings",
                         $"Processing: {sprite.name} ({i + 1}/{spritesToProcess.Count})",
                         (float)(i + 1) / spritesToProcess.Count
@@ -1377,7 +1376,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             finally
             {
                 AssetDatabase.StopAssetEditing();
-                EditorUtility.ClearProgressBar();
+                Utils.EditorUi.ClearProgress();
             }
 
             foreach (TextureImporter importer in importers)

@@ -85,10 +85,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             // Auto-suppress UI prompts in batch mode and test runs
             try
             {
-                if (
-                    Application.isBatchMode
-                    || WallstopStudios.UnityHelpers.Editor.Utils.EditorUi.Suppress
-                )
+                if (Application.isBatchMode || Utils.EditorUi.Suppress)
                 {
                     SuppressUserPrompts = true;
                 }
@@ -501,21 +498,17 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
         private static bool ShowCancelableProgress(string title, string info, float progress)
         {
-            return WallstopStudios.UnityHelpers.Editor.Utils.EditorUi.CancelableProgress(
-                title,
-                info,
-                progress
-            );
+            return Utils.EditorUi.CancelableProgress(title, info, progress);
         }
 
         private static void ClearProgress()
         {
-            WallstopStudios.UnityHelpers.Editor.Utils.EditorUi.ClearProgress();
+            Utils.EditorUi.ClearProgress();
         }
 
         private static void Info(string title, string message)
         {
-            WallstopStudios.UnityHelpers.Editor.Utils.EditorUi.Info(title, message);
+            Utils.EditorUi.Info(title, message);
         }
 
         private static Vector2 CalculateCenterOfMassPivot(Sprite sprite, float alphaCutoff)

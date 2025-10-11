@@ -267,7 +267,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
         private static List<CaseToken> TokenizeForCase(string value)
         {
-            List<CaseToken> tokens = new List<CaseToken>();
+            List<CaseToken> tokens = new();
             if (string.IsNullOrEmpty(value))
             {
                 return tokens;

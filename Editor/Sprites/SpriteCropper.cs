@@ -418,7 +418,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         }
 
                         if (
-                            EditorUtility.DisplayCancelableProgressBar(
+                            Utils.EditorUi.CancelableProgress(
                                 "Replacing Sprite References",
                                 $"Scanning {i + 1}/{allAssets.Length}: {Path.GetFileName(path)}",
                                 i / (float)allAssets.Length
@@ -470,7 +470,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     AssetDatabase.StopAssetEditing();
                     AssetDatabase.SaveAssets();
                     AssetDatabase.Refresh();
-                    EditorUtility.ClearProgressBar();
+                    Utils.EditorUi.ClearProgress();
                 }
 
                 this.Log(
@@ -508,7 +508,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         string file = _filesToProcess[i];
                         lastProcessed = file;
                         if (
-                            EditorUtility.DisplayCancelableProgressBar(
+                            Utils.EditorUi.CancelableProgress(
                                 Name,
                                 $"Pre-processing {i + 1}/{total}: {Path.GetFileName(file)}",
                                 i / (float)total
@@ -542,7 +542,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                             }
                             lastProcessed = file;
                             if (
-                                EditorUtility.DisplayCancelableProgressBar(
+                                Utils.EditorUi.CancelableProgress(
                                     Name,
                                     $"Processing {i + 1}/{total}: {Path.GetFileName(file)}",
                                     i / (float)total
@@ -679,7 +679,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
             finally
             {
-                EditorUtility.ClearProgressBar();
+                Utils.EditorUi.ClearProgress();
             }
         }
 

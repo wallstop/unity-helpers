@@ -215,11 +215,7 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
             headerControls.Add(_pathField);
             headerControls.Add(_searchField);
 #if UNITY_EDITOR
-            Button openInExplorer = new Button(OpenInExplorer)
-            {
-                text = "Open",
-                style = { width = 60 },
-            };
+            Button openInExplorer = new(OpenInExplorer) { text = "Open", style = { width = 60 } };
             headerControls.Add(openInExplorer);
 #endif
             contentBox.Add(headerControls);
@@ -274,17 +270,17 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
                 text = "Cancel",
                 style = { marginRight = 10 },
             };
-            Button selectAllButton = new Button(SelectAllInView)
+            Button selectAllButton = new(SelectAllInView)
             {
                 text = "Select All",
                 style = { marginRight = 5 },
             };
-            Button clearButton = new Button(ClearSelectionInView)
+            Button clearButton = new(ClearSelectionInView)
             {
                 text = "Clear",
                 style = { marginRight = 5 },
             };
-            Button invertButton = new Button(InvertSelectionInView)
+            Button invertButton = new(InvertSelectionInView)
             {
                 text = "Invert",
                 style = { marginRight = 10 },
@@ -701,13 +697,13 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
             // Start with root segment
             void AddCrumb(string title, string navigateTo)
             {
-                Button b = new Button(() => NavigateTo(navigateTo))
+                Button b = new(() => NavigateTo(navigateTo))
                 {
                     text = title,
                     style = { marginRight = 4 },
                 };
                 _breadcrumbBar.Add(b);
-                Label sep = new Label("/") { style = { marginRight = 4 } };
+                Label sep = new("/") { style = { marginRight = 4 } };
                 _breadcrumbBar.Add(sep);
             }
         }
@@ -879,7 +875,7 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
                     !string.IsNullOrEmpty(lastUsedStr) && long.TryParse(lastUsedStr, out long ticks)
                 )
                 {
-                    DateTime last = new DateTime(ticks, DateTimeKind.Utc);
+                    DateTime last = new(ticks, DateTimeKind.Utc);
                     stale = last < cutoff;
                 }
 

@@ -701,11 +701,11 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 }
             }
 
-            Vector3 min = new Vector3(minX, minY, minZ);
-            Vector3 max = new Vector3(maxX, maxY, maxZ);
+            Vector3 min = new(minX, minY, minZ);
+            Vector3 max = new(maxX, maxY, maxZ);
             Vector3 center = (min + max) * 0.5f;
             Vector3 size = max - min;
-            Bounds b = new Bounds(center, size);
+            Bounds b = new(center, size);
             EnsureMinimumUnityBounds(ref b);
             return b;
         }
@@ -731,7 +731,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         private static Bounds ToClosedBounds(BoundingBox3D box)
         {
             Vector3 min = box.min;
-            Vector3 maxClosed = new Vector3(
+            Vector3 maxClosed = new(
                 PrevFloat(box.max.x),
                 PrevFloat(box.max.y),
                 PrevFloat(box.max.z)

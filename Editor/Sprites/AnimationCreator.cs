@@ -557,11 +557,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     else if (animationData[0].frames.Count > 0)
                     {
                         if (
-                            !EditorUtility.DisplayDialog(
+                            !Utils.EditorUi.Confirm(
                                 "Confirm Overwrite",
                                 "This will replace the frames currently in the first animation slot. Are you sure?",
                                 "Replace",
-                                "Cancel"
+                                "Cancel",
+                                defaultWhenSuppressed: true
                             )
                         )
                         {
@@ -582,11 +583,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 if (GUILayout.Button("Auto-Parse Matched Sprites into Animations"))
                 {
                     if (
-                        EditorUtility.DisplayDialog(
+                        Utils.EditorUi.Confirm(
                             "Confirm Auto-Parse",
                             "This will replace the current animation list with animations generated from matched sprites based on their names (e.g., 'Player_Run_0', 'Player_Run_1'). Are you sure?",
                             "Parse",
-                            "Cancel"
+                            "Cancel",
+                            defaultWhenSuppressed: true
                         )
                     )
                     {
@@ -782,7 +784,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         continue;
                     }
 
-                    EditorUtility.DisplayProgressBar(
+                    Utils.EditorUi.ShowProgress(
                         "Creating Animations",
                         $"Processing '{animationName}' ({currentAnimationIndex}/{totalAnimations})",
                         (float)currentAnimationIndex / totalAnimations
@@ -887,7 +889,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
             finally
             {
-                EditorUtility.ClearProgressBar();
+                Utils.EditorUi.ClearProgress();
                 if (!errorOccurred)
                 {
                     this.Log($"Finished creating {totalAnimations} animations.");
@@ -1010,7 +1012,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             try
             {
-                EditorUtility.DisplayProgressBar(
+                Utils.EditorUi.ShowProgress(
                     "Finding and Filtering Sprites",
                     $"Scanning {assetGuids.Length} assets...",
                     0f
@@ -1024,7 +1026,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     if (i % 20 == 0 || i == totalAssets - 1)
                     {
                         float progress = (i + 1) / (float)totalAssets;
-                        EditorUtility.DisplayProgressBar(
+                        Utils.EditorUi.ShowProgress(
                             "Finding and Filtering Sprites",
                             $"Checking: {Path.GetFileName(path)} ({i + 1}/{assetGuids.Length})",
                             progress
@@ -1052,7 +1054,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
             finally
             {
-                EditorUtility.ClearProgressBar();
+                Utils.EditorUi.ClearProgress();
             }
         }
 
@@ -1085,7 +1087,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
             finally
             {
-                EditorUtility.ClearProgressBar();
+                Utils.EditorUi.ClearProgress();
                 _serializedObject.Update();
             }
         }
@@ -1187,7 +1189,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 processed++;
                 if (withProgress && (processed % 10 == 0 || processed == total))
                 {
-                    EditorUtility.DisplayProgressBar(
+                    Utils.EditorUi.ShowProgress(
                         "Auto-Parsing Sprites",
                         $"Processing: {sprite.name} ({processed}/{total})",
                         (float)processed / total

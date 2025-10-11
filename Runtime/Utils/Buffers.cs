@@ -2,6 +2,7 @@ namespace WallstopStudios.UnityHelpers.Utils
 {
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.Text;
     using UnityEngine;
 #if !SINGLE_THREADED
@@ -153,6 +154,15 @@ namespace WallstopStudios.UnityHelpers.Utils
         );
     }
 
+    public static class StopwatchBuffers
+    {
+        public static readonly WallstopGenericPool<Stopwatch> Stopwatch = new(
+            () => System.Diagnostics.Stopwatch.StartNew(),
+            onGet: stopwatch => stopwatch.Restart(),
+            onRelease: stopwatch => stopwatch.Stop()
+        );
+    }
+
     /// <summary>
     /// Provides thread-safe generic pools for set collections with custom comparers.
     /// Includes factory methods to create pools with custom equality and comparison logic.
@@ -169,14 +179,6 @@ namespace WallstopStudios.UnityHelpers.Utils
             onRelease: set => set.Clear()
         );
 
-        /// <summary>
-        /// Generic pool for HashSet&lt;T&gt; instances using the default comparer.
-        /// Sets are automatically cleared when returned to the pool.
-        /// </summary>
-        public static readonly WallstopGenericPool<HashSet<T>> HashSet = new(
-            () => new HashSet<T>(),
-            onRelease: set => set.Clear()
-        );
 #if SINGLE_THREADED
         private static readonly Dictionary<
             IComparer<T>,

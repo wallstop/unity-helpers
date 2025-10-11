@@ -399,7 +399,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             );
             totalHeight +=
                 EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
-            if (applyTextureTypeProp != null && applyTextureTypeProp.boolValue)
+            if (applyTextureTypeProp is { boolValue: true })
             {
                 totalHeight +=
                     EditorGUI.GetPropertyHeight(textureTypeProp, true)
@@ -742,7 +742,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     || now - lastUpdateTime > 0.2
                 )
                 {
-                    WallstopStudios.UnityHelpers.Editor.Utils.EditorUi.ShowProgress(
+                    Utils.EditorUi.ShowProgress(
                         "Calculating Stats",
                         $"Checking '{Path.GetFileName(relativePath)}' ({i + 1}/{_totalSpritesToProcess})",
                         (float)(i + 1) / _totalSpritesToProcess
@@ -757,7 +757,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 }
             }
 
-            WallstopStudios.UnityHelpers.Editor.Utils.EditorUi.ClearProgress();
+            Utils.EditorUi.ClearProgress();
             this.Log(
                 $"Calculation complete. Sprites to process: {_totalSpritesToProcess}, Sprites that will change: {_spritesThatWillChange}"
             );
@@ -807,7 +807,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         || now - lastUpdateTime > 0.2;
                     if (
                         shouldUpdate
-                        && WallstopStudios.UnityHelpers.Editor.Utils.EditorUi.CancelableProgress(
+                        && Utils.EditorUi.CancelableProgress(
                             "Applying Sprite Settings",
                             $"Processing '{Path.GetFileName(filePath)}' ({i + 1}/{targetFiles.Count})",
                             (float)(i + 1) / targetFiles.Count
@@ -841,7 +841,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             finally
             {
                 AssetDatabase.StopAssetEditing();
-                WallstopStudios.UnityHelpers.Editor.Utils.EditorUi.ClearProgress();
+                Utils.EditorUi.ClearProgress();
                 foreach (TextureImporter importer in updatedImporters)
                 {
                     importer.SaveAndReimport();
@@ -1307,7 +1307,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
         private void LoadProfilesAsset()
         {
-            string path = EditorUtility.OpenFilePanel(
+            string path = Utils.EditorUi.OpenFilePanel(
                 "Load Sprite Settings Profiles",
                 "Assets",
                 "asset"

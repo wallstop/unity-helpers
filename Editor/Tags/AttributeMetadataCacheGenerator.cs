@@ -129,9 +129,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
                 foreach (Type t in loaded)
                 {
                     if (
-                        t != null
-                        && !t.IsAbstract
-                        && !t.IsGenericTypeDefinition
+                        t is { IsAbstract: false, IsGenericTypeDefinition: false }
                         && typeof(AttributesComponent).IsAssignableFrom(t)
                         && AttributeMetadataFilters.ShouldSerialize(t)
                     )
