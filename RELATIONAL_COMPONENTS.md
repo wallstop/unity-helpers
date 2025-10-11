@@ -279,6 +279,26 @@ Examples:
 - Use `MaxCount` to reduce allocations when you only need a subset
 - Mark non-critical references `Optional = true` to avoid noise
 
+## Explicit Initialization (Prewarm)
+
+Relational components build high‑performance reflection helpers on first use. To eliminate this lazy cost and avoid first‑frame stalls on large projects or IL2CPP builds, explicitly pre‑initialize caches at startup:
+
+```csharp
+// Call during bootstrap/loading
+using WallstopStudios.UnityHelpers.Core.Attributes;
+
+void Start()
+{
+    RelationalComponentInitializer.Initialize();
+}
+```
+
+Notes:
+- Uses AttributeMetadataCache when available, with reflection fallback per type if not cached.
+- Logs warnings for missing fields/types and logs errors for unexpected exceptions; processing continues.
+- Scope the work by providing specific types: `RelationalComponentInitializer.Initialize(new[]{ typeof(MyComponent) });`
+- To auto‑prewarm on app load, enable the toggle on the AttributeMetadataCache asset: “Prewarm Relational On Load”.
+
 ## Troubleshooting
 
 - Fields remain null in the Inspector

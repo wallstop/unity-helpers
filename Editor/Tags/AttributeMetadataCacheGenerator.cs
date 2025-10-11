@@ -98,47 +98,21 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
                 return types;
             }
 
-            // Fallback: reflection-based scan across loaded assemblies
+            // Fallback: reflection-based scan via ReflectionHelpers
             HashSet<Type> results = new();
-            foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
+            foreach (
+                Type t in WallstopStudios.UnityHelpers.Core.Helper.ReflectionHelpers.GetAllLoadedTypes()
+            )
             {
-                if (assembly == null || assembly.IsDynamic)
+                if (
+                    t is { IsAbstract: false, IsGenericTypeDefinition: false }
+                    && typeof(AttributesComponent).IsAssignableFrom(t)
+                    && AttributeMetadataFilters.ShouldSerialize(t)
+                )
                 {
-                    continue;
-                }
-
-                Type[] loaded;
-                try
-                {
-                    loaded = assembly.GetTypes();
-                }
-                catch (ReflectionTypeLoadException ex)
-                {
-                    loaded = ex.Types;
-                }
-                catch
-                {
-                    continue;
-                }
-
-                if (loaded == null || loaded.Length == 0)
-                {
-                    continue;
-                }
-
-                foreach (Type t in loaded)
-                {
-                    if (
-                        t is { IsAbstract: false, IsGenericTypeDefinition: false }
-                        && typeof(AttributesComponent).IsAssignableFrom(t)
-                        && AttributeMetadataFilters.ShouldSerialize(t)
-                    )
-                    {
-                        results.Add(t);
-                    }
+                    results.Add(t);
                 }
             }
-
             return results.ToList();
         }
 
@@ -156,46 +130,20 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
             if (componentTypes.Count == 0)
             {
                 HashSet<Type> results = new();
-                foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
+                foreach (
+                    Type t in WallstopStudios.UnityHelpers.Core.Helper.ReflectionHelpers.GetAllLoadedTypes()
+                )
                 {
-                    if (assembly == null || assembly.IsDynamic)
+                    if (
+                        t != null
+                        && typeof(Component).IsAssignableFrom(t)
+                        && !t.IsGenericType
+                        && AttributeMetadataFilters.ShouldSerialize(t)
+                    )
                     {
-                        continue;
-                    }
-
-                    Type[] loaded;
-                    try
-                    {
-                        loaded = assembly.GetTypes();
-                    }
-                    catch (ReflectionTypeLoadException ex)
-                    {
-                        loaded = ex.Types;
-                    }
-                    catch
-                    {
-                        continue;
-                    }
-
-                    if (loaded == null)
-                    {
-                        continue;
-                    }
-
-                    foreach (Type t in loaded)
-                    {
-                        if (
-                            t != null
-                            && typeof(Component).IsAssignableFrom(t)
-                            && !t.IsGenericType
-                            && AttributeMetadataFilters.ShouldSerialize(t)
-                        )
-                        {
-                            results.Add(t);
-                        }
+                        results.Add(t);
                     }
                 }
-
                 componentTypes = results.ToList();
             }
 

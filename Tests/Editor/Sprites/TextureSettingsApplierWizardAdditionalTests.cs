@@ -52,25 +52,25 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             impOther.mipmapEnabled = true;
             impOther.SaveAndReimport();
 
-            TextureSettingsApplier wizard = Track(
-                ScriptableObject.CreateInstance<TextureSettingsApplier>()
+            TextureSettingsApplierWindow window = Track(
+                ScriptableObject.CreateInstance<TextureSettingsApplierWindow>()
             );
-            wizard.textures = new System.Collections.Generic.List<Texture2D>
+            window.textures = new System.Collections.Generic.List<Texture2D>
             {
                 AssetDatabase.LoadAssetAtPath<Texture2D>(included),
             };
-            wizard.directories = new System.Collections.Generic.List<Object>(); // none
-            wizard.applyReadOnly = true;
-            wizard.isReadOnly = true; // expect isReadable = false
-            wizard.applyWrapMode = true;
-            wizard.wrapMode = TextureWrapMode.Clamp;
-            wizard.applyFilterMode = true;
-            wizard.filterMode = FilterMode.Bilinear;
-            wizard.applyMipMaps = true;
-            wizard.generateMipMaps = false;
-            wizard.maxTextureSize = 64;
+            window.directories = new System.Collections.Generic.List<Object>(); // none
+            window.applyReadOnly = true;
+            window.isReadOnly = true; // expect isReadable = false
+            window.applyWrapMode = true;
+            window.wrapMode = TextureWrapMode.Clamp;
+            window.applyFilterMode = true;
+            window.filterMode = FilterMode.Bilinear;
+            window.applyMipMaps = true;
+            window.generateMipMaps = false;
+            window.maxTextureSize = 64;
 
-            wizard.OnWizardCreate();
+            window.ApplySettings();
             AssetDatabase.Refresh();
 
             impIncluded = AssetImporter.GetAtPath(included) as TextureImporter;
@@ -118,26 +118,26 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             impJpg.mipmapEnabled = true;
             impJpg.SaveAndReimport();
 
-            TextureSettingsApplier wizard = Track(
-                ScriptableObject.CreateInstance<TextureSettingsApplier>()
+            TextureSettingsApplierWindow window2 = Track(
+                ScriptableObject.CreateInstance<TextureSettingsApplierWindow>()
             );
-            wizard.textures = new System.Collections.Generic.List<Texture2D>();
-            wizard.directories = new System.Collections.Generic.List<Object>
+            window2.textures = new System.Collections.Generic.List<Texture2D>();
+            window2.directories = new System.Collections.Generic.List<Object>
             {
                 AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
-            wizard.spriteFileExtensions = new System.Collections.Generic.List<string> { ".png" }; // only png
-            wizard.applyReadOnly = true;
-            wizard.isReadOnly = true;
-            wizard.applyWrapMode = true;
-            wizard.wrapMode = TextureWrapMode.Clamp;
-            wizard.applyFilterMode = true;
-            wizard.filterMode = FilterMode.Bilinear;
-            wizard.applyMipMaps = true;
-            wizard.generateMipMaps = false;
-            wizard.maxTextureSize = 32;
+            window2.spriteFileExtensions = new System.Collections.Generic.List<string> { ".png" }; // only png
+            window2.applyReadOnly = true;
+            window2.isReadOnly = true;
+            window2.applyWrapMode = true;
+            window2.wrapMode = TextureWrapMode.Clamp;
+            window2.applyFilterMode = true;
+            window2.filterMode = FilterMode.Bilinear;
+            window2.applyMipMaps = true;
+            window2.generateMipMaps = false;
+            window2.maxTextureSize = 32;
 
-            wizard.OnWizardCreate();
+            window2.ApplySettings();
             AssetDatabase.Refresh();
 
             impPng = AssetImporter.GetAtPath(png) as TextureImporter;
@@ -155,6 +155,42 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             Assert.That(impJpg.wrapMode, Is.EqualTo(TextureWrapMode.Repeat));
             Assert.That(impJpg.filterMode, Is.EqualTo(FilterMode.Point));
             Assert.That(impJpg.mipmapEnabled, Is.True);
+        }
+
+        [Test]
+        public void WizardAppliesNamedPlatformOverride()
+        {
+            string dir = Root.Replace('\\', '/');
+            string path = (dir + "/plat.png").Replace('\\', '/');
+            CreatePng(path, 16, 16, Color.white);
+            AssetDatabase.Refresh();
+
+            TextureSettingsApplierWindow window3 = Track(
+                ScriptableObject.CreateInstance<TextureSettingsApplierWindow>()
+            );
+            window3.textures = new System.Collections.Generic.List<Texture2D>
+            {
+                AssetDatabase.LoadAssetAtPath<Texture2D>(path),
+            };
+            window3.platformOverrides =
+                new System.Collections.Generic.List<TextureSettingsApplierWindow.PlatformOverrideEntry>
+                {
+                    new TextureSettingsApplierWindow.PlatformOverrideEntry
+                    {
+                        platformName = "Standalone",
+                        applyMaxTextureSize = true,
+                        maxTextureSize = 256,
+                    },
+                };
+
+            window3.ApplySettings();
+            AssetDatabase.Refresh();
+
+            TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
+            Assert.IsNotNull(imp);
+            TextureImporterPlatformSettings ops = imp.GetPlatformTextureSettings("Standalone");
+            Assert.IsTrue(ops.overridden);
+            Assert.AreEqual(256, ops.maxTextureSize);
         }
 
         private static void EnsureFolder(string relPath)

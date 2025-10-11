@@ -24,14 +24,13 @@ namespace WallstopStudios.UnityHelpers.Tags
 
         internal static bool HasTestAssembliesLoaded()
         {
-            foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
+            foreach (Assembly assembly in ReflectionHelpers.GetAllLoadedAssemblies())
             {
                 if (TestAssemblyHelper.IsTestAssembly(assembly))
                 {
                     return true;
                 }
             }
-
             return false;
         }
 
@@ -103,41 +102,7 @@ namespace WallstopStudios.UnityHelpers.Tags
 
         private static IEnumerable<Type> EnumerateLoadedTypes()
         {
-            foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
-            {
-                if (assembly == null || assembly.IsDynamic)
-                {
-                    continue;
-                }
-
-                Type[] types;
-
-                try
-                {
-                    types = assembly.GetTypes();
-                }
-                catch (ReflectionTypeLoadException ex)
-                {
-                    types = ex.Types;
-                }
-                catch
-                {
-                    continue;
-                }
-
-                if (types == null)
-                {
-                    continue;
-                }
-
-                foreach (Type type in types)
-                {
-                    if (type != null)
-                    {
-                        yield return type;
-                    }
-                }
-            }
+            return ReflectionHelpers.GetAllLoadedTypes();
         }
     }
 }

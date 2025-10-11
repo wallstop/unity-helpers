@@ -326,9 +326,9 @@ float gaussian = random.NextGaussian();      // Normal distribution
 string[] lootTable = { "Sword", "Shield", "Potion" };
 string item = random.NextOf(lootTable);
 
-// Weighted random
-float[] weights = { 0.5f, 0.3f, 0.2f };
-int index = random.NextWeightedIndex(weights); // extension method
+// Weighted bool
+float probability = 0.7f;
+bool lucky = random.NextBool(probability); 
 
 // Noise generation
 float[,] noiseMap = new float[256, 256];
@@ -1021,6 +1021,7 @@ When to use what:
 
 - Destroy patterns: Use `SmartDestroy` for editor/play safe teardown; `DestroyAllChildren*` to clear hierarchies quickly.
 - Component wiring: Prefer relational attributes (`[SiblingComponent]`, etc.) + `AssignRelationalComponents()` over manual `GetComponent` calls.
+  - To avoid first-use reflection overhead, prewarm caches at startup with `RelationalComponentInitializer.Initialize()` or enable “Prewarm Relational On Load” on the AttributeMetadataCache asset.
 - Random placement: Use `Helpers.GetRandomPointInCircle/Sphere` or `RandomExtensions.NextVector2/3(InRange)` for uniform distributions.
 - Asset/tooling: `GetAllLayerNames` and `GetAllSpriteLabelNames` power menu tooling and editor workflows.
 - Math/geometry: `WallMath.PositiveMod/Wrapped*` for robust wrap-around; `LineHelper.Simplify*` to reduce polyline complexity; `Geometry.IsAPointLeftOfVectorOrOnTheLine` for sidedness tests.
@@ -1422,7 +1423,14 @@ Why it helps
 Basics
 - Create buffers once per system and reuse them.
 - APIs that take a `List<T>` will clear it before use and return the same list for chaining.
-- Don’t share a single buffer across concurrent operations; allocate one per caller or use pooling.
+- **Ergonomic benefit**: Because these APIs return the same list you pass in, you can use them directly in `foreach` loops for maximum convenience.
+- Don't share a single buffer across concurrent operations; allocate one per caller or use pooling.
+
+**Getting buffers easily:**
+- Use `Buffers<T>.List.Get()` for pooled `List<T>` with automatic return via `Dispose`
+- Use `WallstopArrayPool<T>.Get()` for pooled arrays with automatic return
+- Use `WallstopFastArrayPool<T>.Get()` for frequently-used short-lived arrays
+- See [Pooling utilities](#pooling-utilities) below for detailed examples
 
 Examples
 
@@ -1440,6 +1448,18 @@ void Scan(QuadTree2D<Enemy> tree, Vector2 position, float radius)
     }
 }
 
+// Ergonomic pattern: use the returned list directly in foreach
+readonly List<Enemy> _nearbyBuffer = new(capacity: 128);
+
+void ProcessNearbyEnemies(QuadTree2D<Enemy> tree, Vector2 position, float radius)
+{
+    // The API returns the same buffer, so you can chain it into foreach
+    foreach (Enemy enemy in tree.GetElementsInRange(position, radius, _nearbyBuffer))
+    {
+        enemy.ApplyDamage(10f);
+    }
+}
+
 // Spatial hash with distinct results, approximate distance
 readonly List<Unit> _units = new(512);
 hash.Query(center, 10f, _units, distinct: true, exactDistance: false);
@@ -1453,6 +1473,7 @@ Using the built‑in pool (advanced)
 
 ```csharp
 using WallstopStudios.UnityHelpers.Utils;
+using WallstopStudios.UnityHelpers.Core.DataStructure;
 
 // Get a pooled List<T> and return it automatically via Dispose
 using PooledResource<List<int>> lease = Buffers<int>.List.Get(out List<int> list);
@@ -1462,12 +1483,48 @@ using PooledResource<List<int>> lease = Buffers<int>.List.Get(out List<int> list
 // On dispose, list is cleared and returned to the pool
 ```
 
+Pooling + Buffering combined
+
+```csharp
+using WallstopStudios.UnityHelpers.Utils;
+using WallstopStudios.UnityHelpers.Core.DataStructure;
+
+// Example: Use pooled buffer for spatial query
+void FindNearbyEnemies(QuadTree2D<Enemy> tree, Vector2 position)
+{
+    // Get pooled list - automatically returned when scope exits
+    using var lease = Buffers<Enemy>.List.Get(out List<Enemy> buffer);
+
+    // Use it with spatial query - combines zero-alloc query + pooled buffer!
+    foreach (Enemy enemy in tree.GetElementsInRange(position, 10f, buffer))
+    {
+        enemy.TakeDamage(5f);
+    }
+    // buffer automatically returned to pool here
+}
+
+// Array pooling example
+void ProcessLargeDataset(int size)
+{
+    using var lease = WallstopArrayPool<float>.Get(size, out float[] buffer);
+
+    // Use buffer for temporary processing
+    for (int i = 0; i < size; i++)
+    {
+        buffer[i] = ComputeValue(i);
+    }
+
+    // buffer automatically returned to pool here
+}
+```
+
 Do / Don’t
 - Do reuse buffers per system or component.
 - Do treat buffers as temporary scratch space (APIs clear them first).
 - Don’t keep references to pooled lists beyond their lease lifetime.
 - Don’t share the same buffer across overlapping async/coroutine work.
 
+<a id="pooling-utilities"></a>
 Pooling utilities
 
 - `Buffers<T>` — pooled collections (List/Stack/Queue/HashSet) with `PooledResource` leases.

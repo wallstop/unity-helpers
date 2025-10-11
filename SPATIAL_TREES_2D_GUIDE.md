@@ -133,7 +133,45 @@ void Update()
 > 💡 **Pro Tip:** Pre-size your buffers based on expected max results.
 > `new List<Enemy>(64)` avoids internal resizing for results up to 64 items.
 
-See [Buffering Pattern](README.md#buffering-pattern) for the complete guide.
+**Maximum Ergonomics:**
+
+These APIs return the buffer you pass in, so you can use them directly in `foreach` loops:
+
+```csharp
+private List<Enemy> nearbyBuffer = new(64);
+
+void Update()
+{
+    // Returns the same buffer - use it directly in foreach!
+    foreach (Enemy e in tree.GetElementsInRange(playerPos, 10f, nearbyBuffer))
+    {
+        e.ReactToPlayer();
+    }
+}
+```
+
+**Using Pooled Buffers:**
+
+Don't want to manage buffers yourself? Use the built-in pooling utilities:
+
+```csharp
+using WallstopStudios.UnityHelpers.Utils;
+
+void Update()
+{
+    // Get pooled buffer - automatically returned when scope exits
+    using var lease = Buffers<Enemy>.List.Get(out List<Enemy> buffer);
+
+    // Use it directly in foreach - combines zero-alloc query + pooled buffer!
+    foreach (Enemy e in tree.GetElementsInRange(playerPos, 10f, buffer))
+    {
+        e.ReactToPlayer();
+    }
+    // buffer automatically returned to pool here
+}
+```
+
+See [Buffering Pattern](README.md#buffering-pattern) for the complete guide and [Pooling Utilities](README.md#pooling-utilities) for more pooling options.
 
 ## Structures
 

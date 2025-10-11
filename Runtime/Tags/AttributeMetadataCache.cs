@@ -9,10 +9,19 @@ namespace WallstopStudios.UnityHelpers.Tags
     /// <summary>
     /// Serialized cache of attribute metadata to avoid runtime reflection.
     /// This asset is automatically generated in the Editor.
+    /// When the prewarm toggle is enabled, a runtime hook pre-initializes relational component
+    /// reflection helpers before the first scene loads to avoid first-use stalls.
     /// </summary>
     [ScriptableSingletonPath("Wallstop Studios/AttributeMetadataCache")]
     public sealed class AttributeMetadataCache : ScriptableObjectSingleton<AttributeMetadataCache>
     {
+        [Header("Initialization")]
+        [Tooltip(
+            "If enabled, pre-warms RelationalComponent reflection caches at runtime before the first scene loads. Useful to avoid first-use stalls on IL2CPP or slow devices."
+        )]
+        [SerializeField]
+        private bool _prewarmRelationalOnLoad = false;
+
         public enum RelationalAttributeKind : byte
         {
             [Obsolete("Default uninitialized value - should never be used")]
@@ -208,6 +217,33 @@ namespace WallstopStudios.UnityHelpers.Tags
             BuildLookup();
         }
 
+#if UNITY_2019_1_OR_NEWER
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void RuntimePrewarmRelationalIfEnabled()
+        {
+            try
+            {
+                AttributeMetadataCache inst = Instance;
+                if (inst != null && inst._prewarmRelationalOnLoad)
+                {
+                    var report = Core.Attributes.RelationalComponentInitializer.Initialize(
+                        types: null,
+                        logSummary: false
+                    );
+                    Debug.Log(
+                        $"AttributeMetadataCache: Relational prewarm enabled. TypesWarmed={report.TypesWarmed}, FieldsWarmed={report.FieldsWarmed}, Warnings={report.Warnings}, Errors={report.Errors}."
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError(
+                    $"AttributeMetadataCache: Exception during relational prewarm on load: {ex.Message}\n{ex}"
+                );
+            }
+        }
+#endif
+
         private void BuildLookup()
         {
             lock (_lookupLock)
@@ -368,9 +404,7 @@ namespace WallstopStudios.UnityHelpers.Tags
 
                 if (type == null && !typeName.Contains(','))
                 {
-                    foreach (
-                        System.Reflection.Assembly assembly in AppDomain.CurrentDomain.GetAssemblies()
-                    )
+                    foreach (var assembly in Core.Helper.ReflectionHelpers.GetAllLoadedAssemblies())
                     {
                         type = assembly.GetType(typeName, throwOnError: false, ignoreCase: false);
                         if (type != null)

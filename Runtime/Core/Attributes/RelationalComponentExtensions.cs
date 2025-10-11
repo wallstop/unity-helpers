@@ -20,6 +20,11 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         /// <see cref="ChildComponentAttribute"/> for automatic assignment.
         ///
         /// Call from <c>Awake()</c> or <c>OnEnable()</c> so dependent code has references ready.
+        ///
+        /// To avoid any first-use overhead from generating reflection helpers lazily, you can explicitly
+        /// pre-initialize all relational component reflection caches using
+        /// <see cref="RelationalComponentInitializer.Initialize(System.Collections.Generic.IEnumerable{System.Type}, bool)"/>.
+        /// Consider calling it during a loading/bootstrap phase.
         /// Null handling: If the component is null, this will cause a <see cref="System.NullReferenceException"/>.
         /// Thread-safety: Not thread-safe; Unity component access must occur on the main thread.
         /// Performance: O(n*m) where n is the number of attributed fields and m is the search space for each component.

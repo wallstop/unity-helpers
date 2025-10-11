@@ -1,0 +1,538 @@
+namespace WallstopStudios.UnityHelpers.Editor.Sprites
+{
+#if UNITY_EDITOR
+    using System;
+    using System.Collections.Generic;
+    using System.IO;
+    using System.Linq;
+    using UnityEditor;
+    using UnityEngine;
+    using CustomEditors;
+    using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Utils;
+    using Object = UnityEngine.Object;
+
+    public sealed class TextureSettingsApplierWindow : EditorWindow
+    {
+        [Serializable]
+        public sealed class PlatformOverrideEntry
+        {
+            public string platformName = string.Empty; // DefaultTexturePlatform, Standalone, iPhone, Android, WebGL, etc.
+
+            public bool applyResizeAlgorithm;
+
+            [WShowIf(nameof(applyResizeAlgorithm))]
+            public TextureResizeAlgorithm resizeAlgorithm = TextureResizeAlgorithm.Bilinear;
+
+            public bool applyMaxTextureSize;
+
+            [WShowIf(nameof(applyMaxTextureSize))]
+            public int maxTextureSize = SetTextureImportData.MaxTextureSize;
+
+            public bool applyFormat;
+
+            [WShowIf(nameof(applyFormat))]
+            public TextureImporterFormat format = TextureImporterFormat.Automatic;
+
+            public bool applyCompression;
+
+            [WShowIf(nameof(applyCompression))]
+            public TextureImporterCompression compression = TextureImporterCompression.Compressed;
+
+            public bool applyCrunchCompression;
+
+            [WShowIf(nameof(applyCrunchCompression))]
+            public bool useCrunchCompression;
+        }
+
+        // Basic importer settings
+        public bool applyReadOnly;
+        public bool isReadOnly;
+        public bool applyMipMaps;
+        public bool generateMipMaps;
+        public bool applyWrapMode;
+
+        [WShowIf(nameof(applyWrapMode))]
+        public TextureWrapMode wrapMode = TextureWrapMode.Clamp;
+        public bool applyFilterMode;
+
+        [WShowIf(nameof(applyFilterMode))]
+        public FilterMode filterMode = FilterMode.Trilinear;
+
+        // Default Platform Settings
+        public TextureImporterCompression compression = TextureImporterCompression.CompressedHQ;
+        public bool useCrunchCompression = true;
+        public TextureResizeAlgorithm textureResizeAlgorithm = TextureResizeAlgorithm.Bilinear;
+        public int maxTextureSize = SetTextureImportData.MaxTextureSize;
+        public TextureImporterFormat textureFormat = TextureImporterFormat.Automatic;
+
+        // Sources and filters
+        public List<string> spriteFileExtensions = new() { ".png" };
+        public List<Texture2D> textures = new();
+        public List<Object> directories = new();
+
+        // Optional: named per-platform overrides
+        public List<PlatformOverrideEntry> platformOverrides = new();
+        private static readonly string[] KnownPlatforms = new[]
+        {
+            "DefaultTexturePlatform",
+            "Standalone",
+            "iPhone",
+            "Android",
+            "WebGL",
+            "tvOS",
+            "XboxOne",
+            "PS4",
+            "PS5",
+            "Switch",
+        };
+        private int _addPlatformIndex;
+
+        // Flow options
+        public bool requireChangesBeforeApply = true; // If true, stats are checked and apply is skipped if nothing changes.
+
+        // UI backing
+        private SerializedObject _so;
+        private SerializedProperty _texturesProp;
+        private SerializedProperty _directoriesProp;
+        private SerializedProperty _extensionsProp;
+        private SerializedProperty _platformOverridesProp;
+        private Vector2 _scrollPos;
+
+        // Stats/preview
+        private int _totalTexturesToProcess = -1;
+        private int _texturesThatWillChange = -1;
+        private bool _showPreviewOfChanges;
+        private readonly List<string> _assetsThatWillChange = new();
+        private readonly TextureImporterSettings _settingsBuffer = new();
+
+        [MenuItem("Tools/Wallstop Studios/Unity Helpers/Texture Settings Applier", priority = -1)]
+        public static void ShowWindow()
+        {
+            TextureSettingsApplierWindow window = GetWindow<TextureSettingsApplierWindow>(
+                "Texture Settings Applier"
+            );
+            window.minSize = new Vector2(450, 320);
+            window.Show();
+        }
+
+        private void OnEnable()
+        {
+            _so = new SerializedObject(this);
+            _texturesProp = _so.FindProperty(nameof(textures));
+            _directoriesProp = _so.FindProperty(nameof(directories));
+            _extensionsProp = _so.FindProperty(nameof(spriteFileExtensions));
+            _platformOverridesProp = _so.FindProperty(nameof(platformOverrides));
+        }
+
+        private void OnGUI()
+        {
+            _so.Update();
+            _scrollPos = EditorGUILayout.BeginScrollView(_scrollPos);
+
+            EditorGUILayout.LabelField("Texture Sources", EditorStyles.boldLabel);
+            EditorGUILayout.PropertyField(_texturesProp, new GUIContent("Specific Textures"), true);
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Directory Sources", EditorStyles.boldLabel);
+            PersistentDirectoryGUI.PathSelectorObjectArray(
+                _directoriesProp,
+                nameof(TextureSettingsApplierWindow)
+            );
+            EditorGUILayout.Space();
+
+            EditorGUILayout.LabelField("Settings", EditorStyles.boldLabel);
+            EditorGUILayout.PropertyField(
+                _extensionsProp,
+                new GUIContent("Texture File Extensions"),
+                true
+            );
+
+            applyReadOnly = EditorGUILayout.Toggle("Apply Read/Write", applyReadOnly);
+            if (applyReadOnly)
+            {
+                isReadOnly = EditorGUILayout.Toggle("Is Read-Only", isReadOnly);
+            }
+            applyMipMaps = EditorGUILayout.Toggle("Apply MipMaps", applyMipMaps);
+            if (applyMipMaps)
+            {
+                generateMipMaps = EditorGUILayout.Toggle("Generate MipMaps", generateMipMaps);
+            }
+            applyWrapMode = EditorGUILayout.Toggle("Apply Wrap Mode", applyWrapMode);
+            if (applyWrapMode)
+            {
+                wrapMode = (TextureWrapMode)EditorGUILayout.EnumPopup("Wrap Mode", wrapMode);
+            }
+            applyFilterMode = EditorGUILayout.Toggle("Apply Filter Mode", applyFilterMode);
+            if (applyFilterMode)
+            {
+                filterMode = (FilterMode)EditorGUILayout.EnumPopup("Filter Mode", filterMode);
+            }
+
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Default Platform Settings", EditorStyles.boldLabel);
+            textureResizeAlgorithm = (TextureResizeAlgorithm)
+                EditorGUILayout.EnumPopup("Resize Algorithm", textureResizeAlgorithm);
+            maxTextureSize = EditorGUILayout.IntField("Max Texture Size", maxTextureSize);
+            textureFormat = (TextureImporterFormat)
+                EditorGUILayout.EnumPopup("Format", textureFormat);
+            compression = (TextureImporterCompression)
+                EditorGUILayout.EnumPopup("Compression", compression);
+            useCrunchCompression = EditorGUILayout.Toggle(
+                "Use Crunch Compression",
+                useCrunchCompression
+            );
+
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Platform Overrides", EditorStyles.boldLabel);
+            EditorGUILayout.PropertyField(_platformOverridesProp, true);
+            EditorGUILayout.BeginHorizontal();
+            _addPlatformIndex = EditorGUILayout.Popup(
+                "Add Known Platform",
+                _addPlatformIndex,
+                KnownPlatforms
+            );
+            if (GUILayout.Button("Add Selected"))
+            {
+                if (0 <= _addPlatformIndex && _addPlatformIndex < KnownPlatforms.Length)
+                {
+                    AddPlatformIfMissing(KnownPlatforms[_addPlatformIndex]);
+                }
+            }
+            EditorGUILayout.EndHorizontal();
+            for (int i = 0; i < platformOverrides.Count; i++)
+            {
+                string name = platformOverrides[i]?.platformName?.Trim();
+                if (!string.IsNullOrEmpty(name) && Array.IndexOf(KnownPlatforms, name) < 0)
+                {
+                    EditorGUILayout.HelpBox(
+                        $"Unknown platform name '{name}'. It will be passed to Unity importer as-is.",
+                        MessageType.Info
+                    );
+                }
+            }
+
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Actions", EditorStyles.boldLabel);
+            requireChangesBeforeApply = EditorGUILayout.Toggle(
+                new GUIContent(
+                    "Require Changes Before Apply",
+                    "If checked, apply will be skipped when no assets would change."
+                ),
+                requireChangesBeforeApply
+            );
+            if (GUILayout.Button("Calculate Stats"))
+            {
+                CalculateStats();
+            }
+            if (_totalTexturesToProcess >= 0 && _texturesThatWillChange >= 0)
+            {
+                EditorGUILayout.LabelField($"Textures to process: {_totalTexturesToProcess}");
+                EditorGUILayout.LabelField($"Textures that will change: {_texturesThatWillChange}");
+                _showPreviewOfChanges = EditorGUILayout.Foldout(
+                    _showPreviewOfChanges,
+                    $"Preview ({_assetsThatWillChange.Count})"
+                );
+                if (_showPreviewOfChanges)
+                {
+                    int toShow = Mathf.Min(_assetsThatWillChange.Count, 200);
+                    for (int i = 0; i < toShow; i++)
+                    {
+                        EditorGUILayout.LabelField(_assetsThatWillChange[i]);
+                    }
+                    if (_assetsThatWillChange.Count > 200)
+                    {
+                        EditorGUILayout.LabelField(
+                            $"...and {_assetsThatWillChange.Count - 200} more"
+                        );
+                    }
+                    if (GUILayout.Button("Copy List"))
+                    {
+                        EditorGUIUtility.systemCopyBuffer = string.Join(
+                            "\n",
+                            _assetsThatWillChange
+                        );
+                    }
+                }
+            }
+            else
+            {
+                EditorGUILayout.LabelField("Press 'Calculate Stats' to see processing details.");
+            }
+
+            if (GUILayout.Button("Apply Settings to Textures"))
+            {
+                ApplySettings();
+            }
+
+            EditorGUILayout.EndScrollView();
+            _so.ApplyModifiedProperties();
+        }
+
+        private void AddPlatformIfMissing(string name)
+        {
+            if (string.IsNullOrEmpty(name))
+                return;
+            if (
+                platformOverrides.Any(p =>
+                    string.Equals(p.platformName?.Trim(), name, StringComparison.Ordinal)
+                )
+            )
+            {
+                return;
+            }
+            platformOverrides.Add(new PlatformOverrideEntry { platformName = name });
+        }
+
+        private TextureSettingsApplierAPI.Config BuildConfig()
+        {
+            TextureSettingsApplierAPI.Config config = new TextureSettingsApplierAPI.Config
+            {
+                applyReadWriteEnabled = applyReadOnly,
+                readWriteEnabled = !isReadOnly,
+                applyMipMaps = applyMipMaps,
+                generateMipMaps = generateMipMaps,
+                applyWrapMode = applyWrapMode,
+                wrapMode = wrapMode,
+                applyFilterMode = applyFilterMode,
+                filterMode = filterMode,
+                applyPlatformResizeAlgorithm = true,
+                platformResizeAlgorithm = textureResizeAlgorithm,
+                applyPlatformMaxTextureSize = true,
+                platformMaxTextureSize = maxTextureSize,
+                applyPlatformFormat = true,
+                platformFormat = textureFormat,
+                applyPlatformCompression = true,
+                platformCompression = compression,
+                applyPlatformCrunchCompression = true,
+                platformUseCrunchCompression = useCrunchCompression,
+                applyCompression = false,
+                applyCrunchCompression = false,
+            };
+            if (platformOverrides != null && 0 < platformOverrides.Count)
+            {
+                TextureSettingsApplierAPI.PlatformOverride[] arr =
+                    new TextureSettingsApplierAPI.PlatformOverride[platformOverrides.Count];
+                for (int i = 0; i < platformOverrides.Count; i++)
+                {
+                    PlatformOverrideEntry e = platformOverrides[i];
+                    arr[i] = new TextureSettingsApplierAPI.PlatformOverride
+                    {
+                        name = string.IsNullOrWhiteSpace(e.platformName)
+                            ? string.Empty
+                            : e.platformName.Trim(),
+                        applyResizeAlgorithm = e.applyResizeAlgorithm,
+                        resizeAlgorithm = e.resizeAlgorithm,
+                        applyMaxTextureSize = e.applyMaxTextureSize,
+                        maxTextureSize = e.maxTextureSize,
+                        applyFormat = e.applyFormat,
+                        format = e.format,
+                        applyCompression = e.applyCompression,
+                        compression = e.compression,
+                        applyCrunchCompression = e.applyCrunchCompression,
+                        useCrunchCompression = e.useCrunchCompression,
+                    };
+                }
+                config.platformOverrides = arr;
+            }
+            return config;
+        }
+
+        private List<string> GetTargetTexturePaths()
+        {
+            // Build extension filter (normalize)
+            HashSet<string> allowedExtensions = new(StringComparer.OrdinalIgnoreCase);
+            foreach (string extRaw in spriteFileExtensions ?? Enumerable.Empty<string>())
+            {
+                if (string.IsNullOrWhiteSpace(extRaw))
+                    continue;
+                string ext = extRaw.StartsWith(".") ? extRaw : "." + extRaw;
+                _ = allowedExtensions.Add(ext);
+            }
+
+            // Collect folders
+            List<string> folderAssetPaths = new();
+            foreach (Object directory in directories ?? Enumerable.Empty<Object>())
+            {
+                if (directory == null)
+                    continue;
+                string assetPath = AssetDatabase.GetAssetPath(directory);
+                if (!string.IsNullOrWhiteSpace(assetPath) && AssetDatabase.IsValidFolder(assetPath))
+                {
+                    folderAssetPaths.Add(assetPath);
+                }
+            }
+
+            HashSet<string> unique = new(StringComparer.OrdinalIgnoreCase);
+            if (folderAssetPaths.Count > 0)
+            {
+                using PooledResource<string[]> folderLease = WallstopFastArrayPool<string>.Get(
+                    folderAssetPaths.Count,
+                    out string[] folders
+                );
+                for (int i = 0; i < folderAssetPaths.Count; i++)
+                    folders[i] = folderAssetPaths[i];
+                string[] guids = AssetDatabase.FindAssets("t:Texture2D", folders);
+                for (int i = 0; i < guids.Length; i++)
+                {
+                    string p = AssetDatabase.GUIDToAssetPath(guids[i]);
+                    if (string.IsNullOrWhiteSpace(p))
+                        continue;
+                    string ext = Path.GetExtension(p);
+                    if (allowedExtensions.Count > 0 && !allowedExtensions.Contains(ext))
+                        continue;
+                    _ = unique.Add(p);
+                }
+            }
+
+            foreach (
+                Texture2D t in textures?.Where(t => t != null).Distinct()
+                    ?? Enumerable.Empty<Texture2D>()
+            )
+            {
+                string p = AssetDatabase.GetAssetPath(t);
+                if (string.IsNullOrWhiteSpace(p))
+                    continue;
+                string ext = Path.GetExtension(p);
+                if (allowedExtensions.Count > 0 && !allowedExtensions.Contains(ext))
+                    continue;
+                _ = unique.Add(p);
+            }
+
+            return new List<string>(unique);
+        }
+
+        public void CalculateStats()
+        {
+            List<string> targets = GetTargetTexturePaths();
+            _totalTexturesToProcess = targets.Count;
+            _texturesThatWillChange = 0;
+            _assetsThatWillChange.Clear();
+            if (_assetsThatWillChange.Capacity < targets.Count)
+                _assetsThatWillChange.Capacity = targets.Count;
+
+            TextureSettingsApplierAPI.Config config = BuildConfig();
+            double last = EditorApplication.timeSinceStartup;
+            for (int i = 0; i < targets.Count; i++)
+            {
+                string rel = targets[i];
+                double now = EditorApplication.timeSinceStartup;
+                if (i == 0 || i == targets.Count - 1 || i % 50 == 0 || now - last > 0.2)
+                {
+                    Utils.EditorUi.ShowProgress(
+                        "Calculating Stats",
+                        $"Checking '{Path.GetFileName(rel)}' ({i + 1}/{_totalTexturesToProcess})",
+                        (float)(i + 1) / Math.Max(1, _totalTexturesToProcess)
+                    );
+                    last = now;
+                }
+                if (
+                    TextureSettingsApplierAPI.WillTextureSettingsChange(
+                        rel,
+                        in config,
+                        _settingsBuffer
+                    )
+                )
+                {
+                    _texturesThatWillChange++;
+                    _assetsThatWillChange.Add(rel);
+                }
+            }
+            Utils.EditorUi.ClearProgress();
+        }
+
+        public void ApplySettings()
+        {
+            // Dry-run behavior: if asked to require changes, compute stats and return early when none.
+            if (
+                requireChangesBeforeApply
+                && (_totalTexturesToProcess < 0 || _texturesThatWillChange < 0)
+            )
+            {
+                CalculateStats();
+            }
+            if (requireChangesBeforeApply && _texturesThatWillChange == 0)
+            {
+                this.Log($"No textures require changes. Skipping apply.");
+                return;
+            }
+
+            List<string> targets = GetTargetTexturePaths();
+            TextureSettingsApplierAPI.Config config = BuildConfig();
+            int count = 0;
+            using (Buffers<TextureImporter>.List.Get(out List<TextureImporter> changed))
+            {
+                AssetDatabase.StartAssetEditing();
+                try
+                {
+                    double lastUpdate = EditorApplication.timeSinceStartup;
+                    for (int i = 0; i < targets.Count; i++)
+                    {
+                        string path = targets[i];
+                        double now = EditorApplication.timeSinceStartup;
+                        bool shouldUpdate =
+                            i == 0
+                            || i == targets.Count - 1
+                            || i % 50 == 0
+                            || now - lastUpdate > 0.2;
+                        if (
+                            shouldUpdate
+                            && Utils.EditorUi.CancelableProgress(
+                                "Applying Texture Settings",
+                                $"Processing '{Path.GetFileName(path)}' ({i + 1}/{targets.Count})",
+                                (float)(i + 1) / Math.Max(1, targets.Count)
+                            )
+                        )
+                        {
+                            break;
+                        }
+                        if (shouldUpdate)
+                            lastUpdate = now;
+
+                        if (
+                            TextureSettingsApplierAPI.TryUpdateTextureSettings(
+                                path,
+                                in config,
+                                out TextureImporter importer,
+                                _settingsBuffer
+                            )
+                        )
+                        {
+                            if (importer != null)
+                            {
+                                changed.Add(importer);
+                                ++count;
+                            }
+                        }
+                    }
+                }
+                finally
+                {
+                    AssetDatabase.StopAssetEditing();
+                    Utils.EditorUi.ClearProgress();
+                    for (int j = 0; j < changed.Count; j++)
+                        changed[j].SaveAndReimport();
+                }
+            }
+
+            if (count > 0)
+            {
+                this.Log($"Processed {count} textures.");
+            }
+            else
+            {
+                this.Log($"No textures required changes.");
+            }
+            if (count > 0)
+            {
+                AssetDatabase.SaveAssets();
+                AssetDatabase.Refresh();
+            }
+
+            // Reset stats to force recalculation next time
+            _totalTexturesToProcess = -1;
+            _texturesThatWillChange = -1;
+        }
+    }
+#endif
+}

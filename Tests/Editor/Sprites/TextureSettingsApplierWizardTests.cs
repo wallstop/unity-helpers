@@ -37,34 +37,34 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             CreatePng(b, 32, 32, Color.white);
             AssetDatabase.Refresh();
 
-            TextureSettingsApplier wizard = Track(
-                ScriptableObject.CreateInstance<TextureSettingsApplier>()
+            TextureSettingsApplierWindow window = Track(
+                ScriptableObject.CreateInstance<TextureSettingsApplierWindow>()
             );
 
             // Set explicit texture list
-            wizard.textures = new System.Collections.Generic.List<Texture2D>
+            window.textures = new System.Collections.Generic.List<Texture2D>
             {
                 AssetDatabase.LoadAssetAtPath<Texture2D>(a),
             };
 
             // Set directories list
-            wizard.directories = new System.Collections.Generic.List<UnityEngine.Object>
+            window.directories = new System.Collections.Generic.List<UnityEngine.Object>
             {
                 AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(Root),
             };
 
             // Configure changes
-            wizard.applyReadOnly = true;
-            wizard.isReadOnly = true;
-            wizard.applyMipMaps = true;
-            wizard.generateMipMaps = false;
-            wizard.applyWrapMode = true;
-            wizard.wrapMode = TextureWrapMode.Clamp;
-            wizard.applyFilterMode = true;
-            wizard.filterMode = FilterMode.Bilinear;
-            wizard.maxTextureSize = 128;
+            window.applyReadOnly = true;
+            window.isReadOnly = true;
+            window.applyMipMaps = true;
+            window.generateMipMaps = false;
+            window.applyWrapMode = true;
+            window.wrapMode = TextureWrapMode.Clamp;
+            window.applyFilterMode = true;
+            window.filterMode = FilterMode.Bilinear;
+            window.maxTextureSize = 128;
 
-            wizard.OnWizardCreate();
+            window.ApplySettings();
 
             AssetDatabase.Refresh();
             TextureImporter impA = AssetImporter.GetAtPath(a) as TextureImporter;
