@@ -17,7 +17,9 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
         )
         {
             string typeName = reader.GetString();
-            return string.IsNullOrWhiteSpace(typeName) ? null : Type.GetType(typeName);
+            return string.IsNullOrWhiteSpace(typeName)
+                ? null
+                : Core.Helper.ReflectionHelpers.TryResolveType(typeName);
         }
 
         public override void Write(Utf8JsonWriter writer, Type value, JsonSerializerOptions options)

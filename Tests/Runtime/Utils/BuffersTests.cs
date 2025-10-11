@@ -737,5 +737,412 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             Assert.IsTrue(disposeCalled);
         }
+
+        [Test]
+        public void BuffersGetWaitForSecondsReturnsCachedInstance()
+        {
+            const float seconds = 1.5f;
+            UnityEngine.WaitForSeconds first = Buffers.GetWaitForSeconds(seconds);
+            UnityEngine.WaitForSeconds second = Buffers.GetWaitForSeconds(seconds);
+
+            Assert.AreSame(first, second);
+        }
+
+        [Test]
+        public void BuffersGetWaitForSecondsRealTimeReturnsCachedInstance()
+        {
+            const float seconds = 2.5f;
+            UnityEngine.WaitForSecondsRealtime first = Buffers.GetWaitForSecondsRealTime(seconds);
+            UnityEngine.WaitForSecondsRealtime second = Buffers.GetWaitForSecondsRealTime(seconds);
+
+            Assert.AreSame(first, second);
+        }
+
+        [Test]
+        public void BuffersWaitForFixedUpdateIsSingleton()
+        {
+            Assert.NotNull(Buffers.WaitForFixedUpdate);
+            Assert.AreSame(Buffers.WaitForFixedUpdate, Buffers.WaitForFixedUpdate);
+        }
+
+        [Test]
+        public void BuffersWaitForEndOfFrameIsSingleton()
+        {
+            Assert.NotNull(Buffers.WaitForEndOfFrame);
+            Assert.AreSame(Buffers.WaitForEndOfFrame, Buffers.WaitForEndOfFrame);
+        }
+
+        [Test]
+        public void BuffersStringBuilderPoolWorks()
+        {
+            using PooledResource<System.Text.StringBuilder> pooled = Buffers.StringBuilder.Get();
+
+            Assert.NotNull(pooled.resource);
+            pooled.resource.Append("test");
+            Assert.AreEqual("test", pooled.resource.ToString());
+        }
+
+        [Test]
+        public void BuffersStringBuilderPoolClearsOnRelease()
+        {
+            using (PooledResource<System.Text.StringBuilder> pooled = Buffers.StringBuilder.Get())
+            {
+                pooled.resource.Append("test content");
+            }
+
+            using PooledResource<System.Text.StringBuilder> pooledReused =
+                Buffers.StringBuilder.Get();
+            Assert.AreEqual(0, pooledReused.resource.Length);
+        }
+
+        [Test]
+        public void BuffersGenericListPoolWorks()
+        {
+            using PooledResource<List<int>> pooled = Buffers<int>.List.Get();
+
+            Assert.NotNull(pooled.resource);
+            pooled.resource.Add(42);
+            Assert.AreEqual(1, pooled.resource.Count);
+        }
+
+        [Test]
+        public void BuffersGenericHashSetPoolWorks()
+        {
+            using PooledResource<HashSet<string>> pooled = Buffers<string>.HashSet.Get();
+
+            Assert.NotNull(pooled.resource);
+            pooled.resource.Add("test");
+            Assert.AreEqual(1, pooled.resource.Count);
+        }
+
+        [Test]
+        public void BuffersGenericQueuePoolWorks()
+        {
+            using PooledResource<Queue<int>> pooled = Buffers<int>.Queue.Get();
+
+            Assert.NotNull(pooled.resource);
+            pooled.resource.Enqueue(1);
+            pooled.resource.Enqueue(2);
+            Assert.AreEqual(2, pooled.resource.Count);
+            Assert.AreEqual(1, pooled.resource.Dequeue());
+        }
+
+        [Test]
+        public void BuffersGenericStackPoolWorks()
+        {
+            using PooledResource<Stack<int>> pooled = Buffers<int>.Stack.Get();
+
+            Assert.NotNull(pooled.resource);
+            pooled.resource.Push(1);
+            pooled.resource.Push(2);
+            Assert.AreEqual(2, pooled.resource.Count);
+            Assert.AreEqual(2, pooled.resource.Pop());
+        }
+
+        [Test]
+        public void SetBuffersSortedSetPoolWorks()
+        {
+            using PooledResource<SortedSet<int>> pooled = SetBuffers<int>.SortedSet.Get();
+
+            Assert.NotNull(pooled.resource);
+            pooled.resource.Add(3);
+            pooled.resource.Add(1);
+            pooled.resource.Add(2);
+            Assert.AreEqual(3, pooled.resource.Count);
+            Assert.AreEqual(1, pooled.resource.Min);
+        }
+
+        [Test]
+        public void SetBuffersGetSortedSetPoolWithCustomComparer()
+        {
+            IComparer<int> reverseComparer = Comparer<int>.Create((a, b) => b.CompareTo(a));
+            WallstopGenericPool<SortedSet<int>> pool = SetBuffers<int>.GetSortedSetPool(
+                reverseComparer
+            );
+
+            using PooledResource<SortedSet<int>> pooled = pool.Get();
+            pooled.resource.Add(1);
+            pooled.resource.Add(2);
+            pooled.resource.Add(3);
+
+            Assert.AreEqual(3, pooled.resource.Min);
+        }
+
+        [Test]
+        public void SetBuffersGetHashSetPoolWithCustomComparer()
+        {
+            IEqualityComparer<string> caseInsensitiveComparer = StringComparer.OrdinalIgnoreCase;
+            WallstopGenericPool<HashSet<string>> pool = SetBuffers<string>.GetHashSetPool(
+                caseInsensitiveComparer
+            );
+
+            using PooledResource<HashSet<string>> pooled = pool.Get();
+            pooled.resource.Add("Test");
+            Assert.IsFalse(pooled.resource.Add("test"));
+            Assert.AreEqual(1, pooled.resource.Count);
+        }
+
+        [Test]
+        public void SetBuffersGetSortedSetPoolThrowsOnNullComparer()
+        {
+            Assert.Throws<ArgumentNullException>(() => SetBuffers<int>.GetSortedSetPool(null));
+        }
+
+        [Test]
+        public void SetBuffersGetHashSetPoolThrowsOnNullComparer()
+        {
+            Assert.Throws<ArgumentNullException>(() => SetBuffers<int>.GetHashSetPool(null));
+        }
+
+        [Test]
+        public void SetBuffersHasHashSetPoolWorks()
+        {
+            IEqualityComparer<int> comparer = EqualityComparer<int>.Default;
+            Assert.IsFalse(SetBuffers<int>.HasHashSetPool(comparer));
+
+            SetBuffers<int>.GetHashSetPool(comparer);
+            Assert.IsTrue(SetBuffers<int>.HasHashSetPool(comparer));
+        }
+
+        [Test]
+        public void SetBuffersHasSortedSetPoolWorks()
+        {
+            IComparer<int> comparer = Comparer<int>.Default;
+            Assert.IsFalse(SetBuffers<int>.HasSortedSetPool(comparer));
+
+            SetBuffers<int>.GetSortedSetPool(comparer);
+            Assert.IsTrue(SetBuffers<int>.HasSortedSetPool(comparer));
+        }
+
+        [Test]
+        public void SetBuffersDestroyHashSetPoolWorks()
+        {
+            IEqualityComparer<int> comparer = EqualityComparer<int>.Default;
+            SetBuffers<int>.GetHashSetPool(comparer);
+            Assert.IsTrue(SetBuffers<int>.HasHashSetPool(comparer));
+
+            Assert.IsTrue(SetBuffers<int>.DestroyHashSetPool(comparer));
+            Assert.IsFalse(SetBuffers<int>.HasHashSetPool(comparer));
+        }
+
+        [Test]
+        public void SetBuffersDestroySortedSetPoolWorks()
+        {
+            IComparer<int> comparer = Comparer<int>.Default;
+            SetBuffers<int>.GetSortedSetPool(comparer);
+            Assert.IsTrue(SetBuffers<int>.HasSortedSetPool(comparer));
+
+            Assert.IsTrue(SetBuffers<int>.DestroySortedSetPool(comparer));
+            Assert.IsFalse(SetBuffers<int>.HasSortedSetPool(comparer));
+        }
+
+        [Test]
+        public void LinkedListBufferWorks()
+        {
+            using PooledResource<LinkedList<int>> pooled = LinkedListBuffer<int>.LinkedList.Get();
+
+            Assert.NotNull(pooled.resource);
+            pooled.resource.AddLast(1);
+            pooled.resource.AddLast(2);
+            Assert.AreEqual(2, pooled.resource.Count);
+        }
+
+        [Test]
+        public void DictionaryBufferDictionaryPoolWorks()
+        {
+            using PooledResource<Dictionary<string, int>> pooled = DictionaryBuffer<
+                string,
+                int
+            >.Dictionary.Get();
+
+            Assert.NotNull(pooled.resource);
+            pooled.resource["key"] = 42;
+            Assert.AreEqual(1, pooled.resource.Count);
+            Assert.AreEqual(42, pooled.resource["key"]);
+        }
+
+        [Test]
+        public void DictionaryBufferSortedDictionaryPoolWorks()
+        {
+            using PooledResource<SortedDictionary<int, string>> pooled = DictionaryBuffer<
+                int,
+                string
+            >.SortedDictionary.Get();
+
+            Assert.NotNull(pooled.resource);
+            pooled.resource[3] = "three";
+            pooled.resource[1] = "one";
+            pooled.resource[2] = "two";
+            Assert.AreEqual(3, pooled.resource.Count);
+            Assert.AreEqual("one", pooled.resource.First().Value);
+        }
+
+        [Test]
+        public void DictionaryBufferGetDictionaryPoolWithCustomComparer()
+        {
+            IEqualityComparer<string> caseInsensitiveComparer = StringComparer.OrdinalIgnoreCase;
+            WallstopGenericPool<Dictionary<string, int>> pool = DictionaryBuffer<
+                string,
+                int
+            >.GetDictionaryPool(caseInsensitiveComparer);
+
+            using PooledResource<Dictionary<string, int>> pooled = pool.Get();
+            pooled.resource["Test"] = 1;
+            pooled.resource["test"] = 2;
+            Assert.AreEqual(1, pooled.resource.Count);
+            Assert.AreEqual(2, pooled.resource["TEST"]);
+        }
+
+        [Test]
+        public void DictionaryBufferGetSortedDictionaryPoolWithCustomComparer()
+        {
+            IComparer<int> reverseComparer = Comparer<int>.Create((a, b) => b.CompareTo(a));
+            WallstopGenericPool<SortedDictionary<int, string>> pool = DictionaryBuffer<
+                int,
+                string
+            >.GetSortedDictionaryPool(reverseComparer);
+
+            using PooledResource<SortedDictionary<int, string>> pooled = pool.Get();
+            pooled.resource[1] = "one";
+            pooled.resource[2] = "two";
+            pooled.resource[3] = "three";
+
+            Assert.AreEqual("three", pooled.resource.First().Value);
+        }
+
+        [Test]
+        public void DictionaryBufferHasDictionaryPoolWorks()
+        {
+            IEqualityComparer<string> comparer = EqualityComparer<string>.Default;
+            Assert.IsFalse(DictionaryBuffer<string, int>.HasDictionaryPool(comparer));
+
+            DictionaryBuffer<string, int>.GetDictionaryPool(comparer);
+            Assert.IsTrue(DictionaryBuffer<string, int>.HasDictionaryPool(comparer));
+        }
+
+        [Test]
+        public void DictionaryBufferHasSortedDictionaryPoolWorks()
+        {
+            IComparer<int> comparer = Comparer<int>.Default;
+            Assert.IsFalse(DictionaryBuffer<int, string>.HasSortedDictionaryPool(comparer));
+
+            DictionaryBuffer<int, string>.GetSortedDictionaryPool(comparer);
+            Assert.IsTrue(DictionaryBuffer<int, string>.HasSortedDictionaryPool(comparer));
+        }
+
+        [Test]
+        public void DictionaryBufferDestroyDictionaryPoolWorks()
+        {
+            IEqualityComparer<string> comparer = EqualityComparer<string>.Default;
+            DictionaryBuffer<string, int>.GetDictionaryPool(comparer);
+            Assert.IsTrue(DictionaryBuffer<string, int>.HasDictionaryPool(comparer));
+
+            Assert.IsTrue(DictionaryBuffer<string, int>.DestroyDictionaryPool(comparer));
+            Assert.IsFalse(DictionaryBuffer<string, int>.HasDictionaryPool(comparer));
+        }
+
+        [Test]
+        public void DictionaryBufferDestroySortedDictionaryPoolWorks()
+        {
+            IComparer<int> comparer = Comparer<int>.Default;
+            DictionaryBuffer<int, string>.GetSortedDictionaryPool(comparer);
+            Assert.IsTrue(DictionaryBuffer<int, string>.HasSortedDictionaryPool(comparer));
+
+            Assert.IsTrue(DictionaryBuffer<int, string>.DestroySortedDictionaryPool(comparer));
+            Assert.IsFalse(DictionaryBuffer<int, string>.HasSortedDictionaryPool(comparer));
+        }
+
+        [Test]
+        public void WallstopGenericPoolProducerNullThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() => new WallstopGenericPool<int>(null));
+        }
+
+        [Test]
+        public void WallstopGenericPoolOnGetIsCalledWhenRetrieving()
+        {
+            bool getCalled = false;
+            using WallstopGenericPool<int> pool = new(() => 42, onGet: _ => getCalled = true);
+
+            using PooledResource<int> pooled = pool.Get();
+            Assert.IsTrue(getCalled);
+        }
+
+        [Test]
+        public void WallstopGenericPoolMultipleGetReturnsDifferentInstancesWhenEmpty()
+        {
+            using WallstopGenericPool<List<int>> pool = new(() => new List<int>());
+
+            List<int> first;
+            List<int> second;
+
+            using (PooledResource<List<int>> pooled = pool.Get(out first)) { }
+
+            using (PooledResource<List<int>> pooled = pool.Get(out second)) { }
+
+            Assert.AreSame(first, second);
+        }
+
+        [Test]
+        public void PooledResourceDefaultIsNotInitialized()
+        {
+            PooledResource<int> defaultResource = default;
+            defaultResource.Dispose();
+        }
+
+        [Test]
+        public void WallstopArrayPoolArraysAreClearedOnReturn()
+        {
+            const int size = 10;
+            using (PooledResource<int[]> pooled = WallstopArrayPool<int>.Get(size))
+            {
+                for (int i = 0; i < size; i++)
+                {
+                    pooled.resource[i] = i + 1;
+                }
+            }
+
+            using PooledResource<int[]> pooledReused = WallstopArrayPool<int>.Get(size);
+            for (int i = 0; i < size; i++)
+            {
+                Assert.AreEqual(0, pooledReused.resource[i]);
+            }
+        }
+
+        [Test]
+        public void WallstopArrayPoolDifferentSizesReturnDifferentArrays()
+        {
+            using PooledResource<int[]> pooled5 = WallstopArrayPool<int>.Get(5);
+            using PooledResource<int[]> pooled10 = WallstopArrayPool<int>.Get(10);
+
+            Assert.AreNotSame(pooled5.resource, pooled10.resource);
+            Assert.AreEqual(5, pooled5.resource.Length);
+            Assert.AreEqual(10, pooled10.resource.Length);
+        }
+
+        [Test]
+        public void WallstopFastArrayPoolMultipleGetsReturnDistinctArrays()
+        {
+            const int size = 7;
+            List<int[]> arrays = new();
+
+            try
+            {
+                for (int i = 0; i < 3; i++)
+                {
+                    PooledResource<int[]> pooled = WallstopFastArrayPool<int>.Get(size);
+                    arrays.Add(pooled.resource);
+                }
+
+                Assert.AreEqual(3, arrays.Distinct().Count());
+            }
+            finally
+            {
+                foreach (int[] array in arrays)
+                {
+                    WallstopFastArrayPool<int>.Get(0).Dispose();
+                }
+            }
+        }
     }
 }

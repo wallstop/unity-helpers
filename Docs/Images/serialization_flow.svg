@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="380" viewBox="0 0 820 380" version="1.1">
+  <title>Serialization — Flow &amp; Profiles</title>
+  <desc>Shows the serialization pipeline: Model → Profile → Serializer → Bytes/Stream, with notes on profiles and pooled buffers.</desc>
+  <rect x="0" y="0" width="820" height="380" fill="#0f0f13"/>
+  <g font-family="Verdana,Arial,sans-serif" font-size="14" fill="#c8d1dc">
+    <text x="16" y="26">Serialization — Flow &amp; Profiles</text>
+  </g>
+  <!-- flow boxes -->
+  <g fill="#1d2330" stroke="#7aa2ff" stroke-width="2">
+    <rect x="30" y="60" width="170" height="60" rx="8"/>
+    <rect x="230" y="60" width="170" height="60" rx="8"/>
+    <rect x="430" y="60" width="170" height="60" rx="8"/>
+    <rect x="630" y="60" width="160" height="60" rx="8"/>
+  </g>
+  <g font-family="Verdana,Arial,sans-serif" font-size="12" fill="#e0e6ee" text-anchor="middle">
+    <text x="115" y="92">Model</text>
+    <text x="315" y="92">Profile (Options)</text>
+    <text x="515" y="92">Serializer</text>
+    <text x="710" y="92">Bytes/Stream</text>
+  </g>
+  <g stroke="#5ec69a" fill="#5ec69a" stroke-width="2">
+    <line x1="200" y1="90" x2="230" y2="90"/>
+    <polygon points="224,84 224,96 234,90"/>
+    <line x1="400" y1="90" x2="430" y2="90"/>
+    <polygon points="424,84 424,96 434,90"/>
+    <line x1="600" y1="90" x2="630" y2="90"/>
+    <polygon points="624,84 624,96 634,90"/>
+  </g>
+  <!-- profiles -->
+  <g fill="none" stroke="#9fb3c8" stroke-dasharray="6 6" stroke-width="2">
+    <rect x="260" y="140" width="130" height="150" rx="8"/>
+  </g>
+  <g font-family="Verdana,Arial,sans-serif" font-size="11" fill="#c8d1dc">
+    <text x="270" y="158">- Normal</text>
+    <text x="270" y="176">- Pretty</text>
+    <text x="270" y="194">- Fast</text>
+    <text x="270" y="212">- FastPOCO</text>
+    <text x="270" y="234">Unity Converters?</text>
+  </g>
+  <!-- pooled buffers -->
+  <g fill="none" stroke="#9fb3c8" stroke-dasharray="6 6" stroke-width="2">
+    <rect x="450" y="140" width="150" height="80" rx="8"/>
+  </g>
+  <g font-family="Verdana,Arial,sans-serif" font-size="11" fill="#c8d1dc">
+    <text x="460" y="158">- Pooled byte[]</text>
+    <text x="460" y="176">- Span-based read</text>
+    <text x="460" y="194">- Size hints</text>
+  </g>
+</svg>

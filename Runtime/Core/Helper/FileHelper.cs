@@ -6,8 +6,20 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
     using System.Threading.Tasks;
     using UnityEngine;
 
+    /// <summary>
+    /// Lightweight file I/O helpers with safe default behaviors.
+    /// </summary>
+    /// <remarks>
+    /// Focuses on project asset file management. Methods are safe to call in editor and player.
+    /// </remarks>
     public static class FileHelper
     {
+        /// <summary>
+        /// Creates a file at the specified path if it does not exist, optionally writing initial contents.
+        /// </summary>
+        /// <param name="path">Absolute or relative file path.</param>
+        /// <param name="contents">Optional initial contents (defaults to empty).</param>
+        /// <returns>True if the file was created; false if it already existed or creation failed.</returns>
         public static bool InitializePath(string path, byte[] contents = null)
         {
             if (File.Exists(path))
@@ -40,6 +52,14 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
         }
 
+        /// <summary>
+        /// Asynchronously copies a file to a new path using a buffered stream.
+        /// </summary>
+        /// <param name="sourcePath">Source file path.</param>
+        /// <param name="destinationPath">Destination file path (overwrites).</param>
+        /// <param name="bufferSize">Buffer size in bytes (default 81920).</param>
+        /// <param name="cancellationToken">Optional cancellation token.</param>
+        /// <returns>True on success; false if the copy fails or is cancelled.</returns>
         public static async ValueTask<bool> CopyFileAsync(
             string sourcePath,
             string destinationPath,

@@ -23,14 +23,14 @@ namespace SevenZip.Compression.LZ
 
         public void MoveBlock()
         {
-            UInt32 offset = (UInt32)(_bufferOffset) + _pos - _keepSizeBefore;
+            UInt32 offset = _bufferOffset + _pos - _keepSizeBefore;
             // we need one additional byte, since MovePos moves on 1 byte.
             if (offset > 0)
             {
                 offset--;
             }
 
-            UInt32 numBytes = (UInt32)(_bufferOffset) + _streamPos - offset;
+            UInt32 numBytes = _bufferOffset + _streamPos - offset;
 
             // check negative offset ????
             for (UInt32 i = 0; i < numBytes; i++)
@@ -67,7 +67,7 @@ namespace SevenZip.Compression.LZ
                     UInt32 pointerToPostion = _bufferOffset + _posLimit;
                     if (pointerToPostion > _pointerToLastSafePosition)
                     {
-                        _posLimit = (UInt32)(_pointerToLastSafePosition - _bufferOffset);
+                        _posLimit = _pointerToLastSafePosition - _bufferOffset;
                     }
 
                     _streamEndWasReached = true;

@@ -5,13 +5,12 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     using System.Collections.Generic;
     using System.Linq;
     using System.Reflection;
+    using System.Runtime.CompilerServices;
     using Extension;
     using Helper;
-    using JetBrains.Annotations;
     using Object = UnityEngine.Object;
 
     [AttributeUsage(AttributeTargets.Field)]
-    [MeansImplicitUse]
     public sealed class ValidateAssignmentAttribute : Attribute { }
 
     public static class ValidateAssignmentExtensions
@@ -23,16 +22,14 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             return FieldsByType.GetOrAdd(
                 objectType,
                 type =>
-                    Enumerable
-                        .Where<FieldInfo>(
-                            type.GetFields(
-                                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
-                            ),
-                            prop =>
-                                Attribute.IsDefined(
-                                    (MemberInfo)prop,
-                                    typeof(ValidateAssignmentAttribute)
-                                )
+                    type.GetFields(
+                            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+                        )
+                        .Where(prop =>
+                            prop.IsAttributeDefined<ValidateAssignmentAttribute>(
+                                out _,
+                                inherit: false
+                            )
                         )
                         .ToArray()
             );
@@ -74,32 +71,44 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
         private static bool IsInvalid(IEnumerable enumerable)
         {
-            IEnumerator enumerator = enumerable.GetEnumerator();
             try
             {
-                return !enumerator.MoveNext();
-            }
-            finally
-            {
-                if (enumerator is IDisposable disposable)
+                IEnumerator enumerator = enumerable.GetEnumerator();
+                try
                 {
-                    disposable.Dispose();
+                    return !enumerator.MoveNext();
                 }
+                finally
+                {
+                    if (enumerator is IDisposable disposable)
+                    {
+                        disposable.Dispose();
+                    }
+                }
+            }
+            catch
+            {
+                return true;
             }
         }
 
         private static bool IsFieldInvalid(FieldInfo field, Object o)
         {
             object fieldValue = field.GetValue(o);
+            return IsValueInvalid(fieldValue);
+        }
 
-            return fieldValue switch
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static bool IsValueInvalid(object value)
+        {
+            return value switch
             {
-                Object unityObject => !unityObject,
+                Object unityObject => unityObject == null,
                 string stringValue => string.IsNullOrWhiteSpace(stringValue),
                 IList list => list.Count <= 0,
                 ICollection collection => collection.Count <= 0,
                 IEnumerable enumerable => IsInvalid(enumerable),
-                _ => fieldValue == null,
+                _ => value == null,
             };
         }
     }

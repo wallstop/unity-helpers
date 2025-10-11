@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="540" height="380" viewBox="0 0 540 380">
+  <rect x="0" y="0" width="540" height="380" fill="#0f0f13"/>
+  <g font-family="Verdana,Arial,sans-serif" font-size="12" fill="#c8d1dc">
+    <text x="16" y="24">QuadTree (2D) — Recursive 4-way partitioning</text>
+  </g>
+  <!-- world bounds -->
+  <g fill="none" stroke="#9fb3c8" stroke-width="2">
+    <rect x="40" y="60" width="460" height="300"/>
+  </g>
+  <!-- level 1 split -->
+  <g stroke="#3a7bd5" stroke-dasharray="6 6" stroke-width="2">
+    <line x1="270" y1="60" x2="270" y2="360"/>
+    <line x1="40" y1="210" x2="500" y2="210"/>
+  </g>
+  <!-- level 2 split (top-left quadrant) -->
+  <g stroke="#3a7bd5" stroke-dasharray="6 6" stroke-width="1.5">
+    <line x1="155" y1="60" x2="155" y2="210"/>
+    <line x1="40" y1="135" x2="270" y2="135"/>
+  </g>
+  <!-- points -->
+  <g fill="#7aa2ff">
+    <circle cx="110" cy="100" r="4"/>
+    <circle cx="200" cy="180" r="4"/>
+    <circle cx="320" cy="250" r="4"/>
+    <circle cx="430" cy="120" r="4"/>
+    <circle cx="460" cy="300" r="4"/>
+    <circle cx="140" cy="260" r="4"/>
+    <circle cx="250" cy="290" r="4"/>
+  </g>
+  <!-- labels (color-coded to split color) -->
+  <g font-family="Verdana,Arial,sans-serif" font-size="11">
+    <rect x="56" y="68" width="58" height="18" rx="6" ry="6" fill="#242a34" stroke="#3a7bd5" stroke-width="1.5"/>
+    <text x="60" y="81" fill="#3a7bd5">Level 1</text>
+    <rect x="56" y="138" width="58" height="18" rx="6" ry="6" fill="#242a34" stroke="#3a7bd5" stroke-width="1.5"/>
+    <text x="60" y="151" fill="#3a7bd5">Level 2</text>
+  </g>
+</svg>

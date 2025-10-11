@@ -6,6 +6,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using System.Linq;
     using System.Reflection;
     using NUnit.Framework;
+    using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Core.Random;
     using CategoryAttribute = System.ComponentModel.CategoryAttribute;
@@ -28,20 +29,20 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
     public struct TestStruct
     {
-        public static int staticIntValue;
+        public static int StaticIntValue;
         public int intValue;
     }
 
     public sealed class TestClass
     {
-        public static int staticIntValue;
+        public static int StaticIntValue;
         public int intValue;
     }
 
     public class TestMethodClass
     {
         public static int StaticMethodCallCount = 0;
-        public int InstanceMethodCallCount = 0;
+        public int instanceMethodCallCount = 0;
 
         // Void methods
         public static void StaticVoidMethod()
@@ -51,7 +52,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
         public void InstanceVoidMethod()
         {
-            InstanceMethodCallCount++;
+            instanceMethodCallCount++;
         }
 
         // Return value methods
@@ -75,13 +76,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
         public int InstanceIntMethod()
         {
-            InstanceMethodCallCount++;
+            instanceMethodCallCount++;
             return 100;
         }
 
         public string InstanceStringMethod()
         {
-            InstanceMethodCallCount++;
+            instanceMethodCallCount++;
             return "instance";
         }
 
@@ -94,7 +95,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
         public int InstanceMethodWithParam(string param)
         {
-            InstanceMethodCallCount++;
+            instanceMethodCallCount++;
             return param?.Length ?? 0;
         }
 
@@ -110,10 +111,38 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             return a + (b?.Length ?? 0) + (c ? 1 : 0);
         }
 
+        public static int StaticMethodFourParams(int a, int b, int c, int d)
+        {
+            StaticMethodCallCount++;
+            return a + b + c + d;
+        }
+
+        public static void StaticActionThree(int a, int b, int c)
+        {
+            StaticMethodCallCount = a + b + c;
+        }
+
+        public int InstanceSum(int a, int b)
+        {
+            instanceMethodCallCount++;
+            return a + b;
+        }
+
+        public void InstanceSetThree(int a, int b, int c)
+        {
+            instanceMethodCallCount = a + b + c;
+        }
+
+        public int InstanceSumFour(int a, int b, int c, int d)
+        {
+            instanceMethodCallCount++;
+            return a + b + c + d;
+        }
+
         public void Reset()
         {
             StaticMethodCallCount = 0;
-            InstanceMethodCallCount = 0;
+            instanceMethodCallCount = 0;
         }
     }
 
@@ -164,13 +193,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
     public sealed class TestPropertyClass
     {
-        private static int _staticValue = 50;
+        private static int _StaticValue = 50;
         private int _instanceValue = 25;
 
         public static int StaticProperty
         {
-            get => _staticValue;
-            set => _staticValue = value;
+            get => _StaticValue;
+            set => _StaticValue = value;
         }
 
         public int InstanceProperty
@@ -188,6 +217,43 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public int InstanceReadOnlyProperty => 888;
     }
 
+    public sealed class SelfReferentialType
+    {
+        public static SelfReferentialType InstanceField = new();
+        public static SelfReferentialType InstanceProperty { get; } = new();
+    }
+
+    public struct ValueStruct
+    {
+        public int x;
+        public int y;
+
+        public int Sum(int a, int b) => a + b + x + y;
+    }
+
+    public sealed class IndexerClass
+    {
+        private readonly int[] data = new int[10];
+        public int this[int i]
+        {
+            get => data[i];
+            set => data[i] = value;
+        }
+    }
+
+    public static class RefOutMethods
+    {
+        public static void RefInc(ref int x)
+        {
+            x++;
+        }
+
+        public static void OutSet(out int x)
+        {
+            x = 7;
+        }
+    }
+
     [Description("Test class for attribute testing")]
     [ReflectionTestAttribute("ClassLevel", 10)]
     public sealed class TestAttributeClass
@@ -198,7 +264,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
         [Category("TestCategory")]
         [ReflectionTestAttribute("InstanceField", 5)]
-        public int InstanceFieldWithAttribute = 2;
+        public int instanceFieldWithAttribute = 2;
 
         [Description("Static property for testing")]
         [ReflectionTestAttribute("StaticProperty", 20)]
@@ -238,6 +304,18 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     {
         private const int NumTries = 1_000;
 
+        private sealed class NoParameterlessCtor
+        {
+            public int V { get; }
+
+            public NoParameterlessCtor(int v)
+            {
+                V = v;
+            }
+        }
+
+        public sealed class EnabledProbe : MonoBehaviour { }
+
         [Test]
         public void GetFieldGetterClassMemberField()
         {
@@ -259,15 +337,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             TestClass testClass = new();
             Func<object, object> classGetter = ReflectionHelpers.GetFieldGetter(
                 typeof(TestClass).GetField(
-                    nameof(TestClass.staticIntValue),
+                    nameof(TestClass.StaticIntValue),
                     BindingFlags.Static | BindingFlags.Public
                 )
             );
-            Assert.AreEqual(TestClass.staticIntValue, classGetter(testClass));
+            Assert.AreEqual(TestClass.StaticIntValue, classGetter(testClass));
             for (int i = 0; i < NumTries; ++i)
             {
-                TestClass.staticIntValue = PRNG.Instance.Next(int.MinValue, int.MaxValue);
-                Assert.AreEqual(TestClass.staticIntValue, classGetter(testClass));
+                TestClass.StaticIntValue = PRNG.Instance.Next(int.MinValue, int.MaxValue);
+                Assert.AreEqual(TestClass.StaticIntValue, classGetter(testClass));
             }
         }
 
@@ -286,15 +364,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             Func<object> classGetter = ReflectionHelpers.GetStaticFieldGetter(
                 typeof(TestClass).GetField(
-                    nameof(TestClass.staticIntValue),
+                    nameof(TestClass.StaticIntValue),
                     BindingFlags.Static | BindingFlags.Public
                 )
             );
-            Assert.AreEqual(TestClass.staticIntValue, classGetter());
+            Assert.AreEqual(TestClass.StaticIntValue, classGetter());
             for (int i = 0; i < NumTries; ++i)
             {
-                TestClass.staticIntValue = PRNG.Instance.Next(int.MinValue, int.MaxValue);
-                Assert.AreEqual(TestClass.staticIntValue, classGetter());
+                TestClass.StaticIntValue = PRNG.Instance.Next(int.MinValue, int.MaxValue);
+                Assert.AreEqual(TestClass.StaticIntValue, classGetter());
             }
         }
 
@@ -319,15 +397,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             TestStruct testStruct = new();
             Func<object, object> structGetter = ReflectionHelpers.GetFieldGetter(
                 typeof(TestStruct).GetField(
-                    nameof(TestStruct.staticIntValue),
+                    nameof(TestStruct.StaticIntValue),
                     BindingFlags.Static | BindingFlags.Public
                 )
             );
-            Assert.AreEqual(TestStruct.staticIntValue, structGetter(testStruct));
+            Assert.AreEqual(TestStruct.StaticIntValue, structGetter(testStruct));
             for (int i = 0; i < NumTries; ++i)
             {
-                TestStruct.staticIntValue = PRNG.Instance.Next(int.MinValue, int.MaxValue);
-                Assert.AreEqual(TestStruct.staticIntValue, structGetter(testStruct));
+                TestStruct.StaticIntValue = PRNG.Instance.Next(int.MinValue, int.MaxValue);
+                Assert.AreEqual(TestStruct.StaticIntValue, structGetter(testStruct));
             }
         }
 
@@ -336,15 +414,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             Func<object> structGetter = ReflectionHelpers.GetStaticFieldGetter(
                 typeof(TestStruct).GetField(
-                    nameof(TestStruct.staticIntValue),
+                    nameof(TestStruct.StaticIntValue),
                     BindingFlags.Static | BindingFlags.Public
                 )
             );
-            Assert.AreEqual(TestStruct.staticIntValue, structGetter());
+            Assert.AreEqual(TestStruct.StaticIntValue, structGetter());
             for (int i = 0; i < NumTries; ++i)
             {
-                TestStruct.staticIntValue = PRNG.Instance.Next(int.MinValue, int.MaxValue);
-                Assert.AreEqual(TestStruct.staticIntValue, structGetter());
+                TestStruct.StaticIntValue = PRNG.Instance.Next(int.MinValue, int.MaxValue);
+                Assert.AreEqual(TestStruct.StaticIntValue, structGetter());
             }
         }
 
@@ -369,7 +447,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             TestClass testClass = new();
             Action<object, object> structSetter = ReflectionHelpers.GetFieldSetter(
                 typeof(TestClass).GetField(
-                    nameof(TestClass.staticIntValue),
+                    nameof(TestClass.StaticIntValue),
                     BindingFlags.Static | BindingFlags.Public
                 )
             );
@@ -377,7 +455,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             {
                 int expected = PRNG.Instance.Next(int.MinValue, int.MaxValue);
                 structSetter(testClass, expected);
-                Assert.AreEqual(expected, TestClass.staticIntValue);
+                Assert.AreEqual(expected, TestClass.StaticIntValue);
             }
         }
 
@@ -396,7 +474,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             Action<object> structSetter = ReflectionHelpers.GetStaticFieldSetter(
                 typeof(TestClass).GetField(
-                    nameof(TestClass.staticIntValue),
+                    nameof(TestClass.StaticIntValue),
                     BindingFlags.Static | BindingFlags.Public
                 )
             );
@@ -404,7 +482,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             {
                 int expected = PRNG.Instance.Next(int.MinValue, int.MaxValue);
                 structSetter(expected);
-                Assert.AreEqual(expected, TestClass.staticIntValue);
+                Assert.AreEqual(expected, TestClass.StaticIntValue);
             }
         }
 
@@ -431,7 +509,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             object testStruct = new TestStruct();
             Action<object, object> structSetter = ReflectionHelpers.GetFieldSetter(
                 typeof(TestStruct).GetField(
-                    nameof(TestStruct.staticIntValue),
+                    nameof(TestStruct.StaticIntValue),
                     BindingFlags.Static | BindingFlags.Public
                 )
             );
@@ -439,7 +517,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             {
                 int expected = PRNG.Instance.Next(int.MinValue, int.MaxValue);
                 structSetter(testStruct, expected);
-                Assert.AreEqual(expected, TestStruct.staticIntValue);
+                Assert.AreEqual(expected, TestStruct.StaticIntValue);
             }
         }
 
@@ -448,7 +526,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             Action<object> structSetter = ReflectionHelpers.GetStaticFieldSetter(
                 typeof(TestStruct).GetField(
-                    nameof(TestStruct.staticIntValue),
+                    nameof(TestStruct.StaticIntValue),
                     BindingFlags.Static | BindingFlags.Public
                 )
             );
@@ -456,7 +534,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             {
                 int expected = PRNG.Instance.Next(int.MinValue, int.MaxValue);
                 structSetter(expected);
-                Assert.AreEqual(expected, TestStruct.staticIntValue);
+                Assert.AreEqual(expected, TestStruct.StaticIntValue);
             }
         }
 
@@ -485,7 +563,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 int
             >(
                 typeof(TestClass).GetField(
-                    nameof(TestClass.staticIntValue),
+                    nameof(TestClass.StaticIntValue),
                     BindingFlags.Static | BindingFlags.Public
                 )
             );
@@ -493,7 +571,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             {
                 int expected = PRNG.Instance.Next(int.MinValue, int.MaxValue);
                 classSetter(ref testClass, expected);
-                Assert.AreEqual(expected, TestClass.staticIntValue);
+                Assert.AreEqual(expected, TestClass.StaticIntValue);
             }
         }
 
@@ -512,7 +590,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             Action<int> classSetter = ReflectionHelpers.GetStaticFieldSetter<int>(
                 typeof(TestClass).GetField(
-                    nameof(TestClass.staticIntValue),
+                    nameof(TestClass.StaticIntValue),
                     BindingFlags.Static | BindingFlags.Public
                 )
             );
@@ -520,7 +598,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             {
                 int expected = PRNG.Instance.Next(int.MinValue, int.MaxValue);
                 classSetter(expected);
-                Assert.AreEqual(expected, TestClass.staticIntValue);
+                Assert.AreEqual(expected, TestClass.StaticIntValue);
             }
         }
 
@@ -549,7 +627,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 int
             >(
                 typeof(TestStruct).GetField(
-                    nameof(TestStruct.staticIntValue),
+                    nameof(TestStruct.StaticIntValue),
                     BindingFlags.Static | BindingFlags.Public
                 )
             );
@@ -557,7 +635,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             {
                 int expected = PRNG.Instance.Next(int.MinValue, int.MaxValue);
                 structSetter(ref testStruct, expected);
-                Assert.AreEqual(expected, TestStruct.staticIntValue);
+                Assert.AreEqual(expected, TestStruct.StaticIntValue);
             }
         }
 
@@ -566,7 +644,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             Action<int> structSetter = ReflectionHelpers.GetStaticFieldSetter<int>(
                 typeof(TestStruct).GetField(
-                    nameof(TestStruct.staticIntValue),
+                    nameof(TestStruct.StaticIntValue),
                     BindingFlags.Static | BindingFlags.Public
                 )
             );
@@ -574,7 +652,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             {
                 int expected = PRNG.Instance.Next(int.MinValue, int.MaxValue);
                 structSetter(expected);
-                Assert.AreEqual(expected, TestStruct.staticIntValue);
+                Assert.AreEqual(expected, TestStruct.StaticIntValue);
             }
         }
 
@@ -598,14 +676,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             TestClass testClass = new();
             Func<TestClass, int> classGetter = ReflectionHelpers.GetFieldGetter<TestClass, int>(
                 typeof(TestClass).GetField(
-                    nameof(TestClass.staticIntValue),
+                    nameof(TestClass.StaticIntValue),
                     BindingFlags.Static | BindingFlags.Public
                 )
             );
             for (int i = 0; i < NumTries; ++i)
             {
-                TestClass.staticIntValue = PRNG.Instance.Next(int.MinValue, int.MaxValue);
-                Assert.AreEqual(TestClass.staticIntValue, classGetter(testClass));
+                TestClass.StaticIntValue = PRNG.Instance.Next(int.MinValue, int.MaxValue);
+                Assert.AreEqual(TestClass.StaticIntValue, classGetter(testClass));
             }
         }
 
@@ -624,14 +702,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             Func<int> classGetter = ReflectionHelpers.GetStaticFieldGetter<int>(
                 typeof(TestClass).GetField(
-                    nameof(TestClass.staticIntValue),
+                    nameof(TestClass.StaticIntValue),
                     BindingFlags.Static | BindingFlags.Public
                 )
             );
             for (int i = 0; i < NumTries; ++i)
             {
-                TestClass.staticIntValue = PRNG.Instance.Next(int.MinValue, int.MaxValue);
-                Assert.AreEqual(TestClass.staticIntValue, classGetter());
+                TestClass.StaticIntValue = PRNG.Instance.Next(int.MinValue, int.MaxValue);
+                Assert.AreEqual(TestClass.StaticIntValue, classGetter());
             }
         }
 
@@ -655,14 +733,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             TestStruct testStruct = new();
             Func<TestStruct, int> structSetter = ReflectionHelpers.GetFieldGetter<TestStruct, int>(
                 typeof(TestStruct).GetField(
-                    nameof(TestStruct.staticIntValue),
+                    nameof(TestStruct.StaticIntValue),
                     BindingFlags.Static | BindingFlags.Public
                 )
             );
             for (int i = 0; i < NumTries; ++i)
             {
-                TestStruct.staticIntValue = PRNG.Instance.Next(int.MinValue, int.MaxValue);
-                Assert.AreEqual(TestStruct.staticIntValue, structSetter(testStruct));
+                TestStruct.StaticIntValue = PRNG.Instance.Next(int.MinValue, int.MaxValue);
+                Assert.AreEqual(TestStruct.StaticIntValue, structSetter(testStruct));
             }
         }
 
@@ -671,14 +749,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             Func<int> structSetter = ReflectionHelpers.GetStaticFieldGetter<int>(
                 typeof(TestStruct).GetField(
-                    nameof(TestStruct.staticIntValue),
+                    nameof(TestStruct.StaticIntValue),
                     BindingFlags.Static | BindingFlags.Public
                 )
             );
             for (int i = 0; i < NumTries; ++i)
             {
-                TestStruct.staticIntValue = PRNG.Instance.Next(int.MinValue, int.MaxValue);
-                Assert.AreEqual(TestStruct.staticIntValue, structSetter());
+                TestStruct.StaticIntValue = PRNG.Instance.Next(int.MinValue, int.MaxValue);
+                Assert.AreEqual(TestStruct.StaticIntValue, structSetter());
             }
         }
 
@@ -880,12 +958,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             );
 
             Assert.IsNull(ReflectionHelpers.InvokeMethod(voidMethod, testObj));
-            Assert.AreEqual(1, testObj.InstanceMethodCallCount);
+            Assert.AreEqual(1, testObj.instanceMethodCallCount);
 
             Assert.AreEqual(100, ReflectionHelpers.InvokeMethod(intMethod, testObj));
             Assert.AreEqual("instance", ReflectionHelpers.InvokeMethod(stringMethod, testObj));
             Assert.AreEqual(5, ReflectionHelpers.InvokeMethod(paramMethod, testObj, "hello"));
-            Assert.AreEqual(4, testObj.InstanceMethodCallCount);
+            Assert.AreEqual(4, testObj.instanceMethodCallCount);
         }
 
         [Test]
@@ -915,13 +993,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             );
 
             Assert.IsNull(voidInvoker(testObj, Array.Empty<object>()));
-            Assert.AreEqual(1, testObj.InstanceMethodCallCount);
+            Assert.AreEqual(1, testObj.instanceMethodCallCount);
 
             Assert.AreEqual(100, intInvoker(testObj, Array.Empty<object>()));
-            Assert.AreEqual(2, testObj.InstanceMethodCallCount);
+            Assert.AreEqual(2, testObj.instanceMethodCallCount);
 
             Assert.AreEqual(5, paramInvoker(testObj, new object[] { "hello" }));
-            Assert.AreEqual(3, testObj.InstanceMethodCallCount);
+            Assert.AreEqual(3, testObj.instanceMethodCallCount);
         }
 
         [Test]
@@ -1094,6 +1172,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void GetPropertyGetterStatic()
         {
+            // Reset static state to initial values
+            TestPropertyClass.StaticProperty = 50;
+            TestPropertyClass.StaticStringProperty = "static";
+
             PropertyInfo staticProp = typeof(TestPropertyClass).GetProperty(
                 nameof(TestPropertyClass.StaticProperty)
             );
@@ -1205,6 +1287,182 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         }
 
         [Test]
+        public void GetPropertySetterInstanceAndStatic()
+        {
+            TestPropertyClass instance = new();
+
+            // Instance setter
+            PropertyInfo instProp = typeof(TestPropertyClass).GetProperty(
+                nameof(TestPropertyClass.InstanceProperty)
+            );
+            Action<object, object> instSetter = ReflectionHelpers.GetPropertySetter(instProp);
+            instSetter(instance, 555);
+            Assert.AreEqual(555, instance.InstanceProperty);
+
+            // Static setter
+            PropertyInfo staticProp = typeof(TestPropertyClass).GetProperty(
+                nameof(TestPropertyClass.StaticProperty)
+            );
+            Action<object, object> staticSetter = ReflectionHelpers.GetPropertySetter(staticProp);
+            staticSetter(null, 777);
+            Assert.AreEqual(777, TestPropertyClass.StaticProperty);
+        }
+
+        [Test]
+        public void GetPropertySetterThrowsOnReadOnly()
+        {
+            PropertyInfo roInstance = typeof(TestPropertyClass).GetProperty(
+                nameof(TestPropertyClass.InstanceReadOnlyProperty)
+            );
+            Assert.Throws<ArgumentException>(
+                () => ReflectionHelpers.GetPropertySetter(roInstance),
+                "Property InstanceReadOnlyProperty has no setter should throw"
+            );
+
+            PropertyInfo roStatic = typeof(TestPropertyClass).GetProperty(
+                nameof(TestPropertyClass.StaticReadOnlyProperty)
+            );
+            Assert.Throws<ArgumentException>(
+                () => ReflectionHelpers.GetPropertySetter(roStatic),
+                "Property StaticReadOnlyProperty has no setter should throw"
+            );
+        }
+
+        [Test]
+        public void GetPropertyGetterGenericCoversInstanceAndStatic()
+        {
+            TestPropertyClass obj = new() { InstanceProperty = 123 };
+
+            Func<TestPropertyClass, int> instGetter = ReflectionHelpers.GetPropertyGetter<
+                TestPropertyClass,
+                int
+            >(typeof(TestPropertyClass).GetProperty(nameof(TestPropertyClass.InstanceProperty)));
+            Assert.AreEqual(123, instGetter(obj));
+
+            TestPropertyClass.StaticProperty = 246;
+            Func<TestPropertyClass, int> staticGetter = ReflectionHelpers.GetPropertyGetter<
+                TestPropertyClass,
+                int
+            >(typeof(TestPropertyClass).GetProperty(nameof(TestPropertyClass.StaticProperty)));
+            Assert.AreEqual(246, staticGetter(obj)); // instance arg ignored for static
+        }
+
+        [Test]
+        public void HashSetCreatorAndAdder()
+        {
+            object intSetObj = ReflectionHelpers.CreateHashSet(typeof(int), 0);
+            Assert.IsInstanceOf<HashSet<int>>(intSetObj);
+            Action<object, object> addInt = ReflectionHelpers.GetHashSetAdder(typeof(int));
+            addInt(intSetObj, 1);
+            addInt(intSetObj, 1);
+            addInt(intSetObj, 2);
+            Assert.That((HashSet<int>)intSetObj, Is.EquivalentTo(new[] { 1, 2 }));
+
+            object strSetObj = ReflectionHelpers.CreateHashSet(typeof(string), 0);
+            Assert.IsInstanceOf<HashSet<string>>(strSetObj);
+            Action<object, object> addStr = ReflectionHelpers.GetHashSetAdder(typeof(string));
+            addStr(strSetObj, null);
+            addStr(strSetObj, "a");
+            addStr(strSetObj, "a");
+            Assert.IsTrue(((HashSet<string>)strSetObj).Contains(null));
+            Assert.That((HashSet<string>)strSetObj, Is.EquivalentTo(new string[] { null, "a" }));
+        }
+
+        [Test]
+        public void GetStaticMethodInvokerTypedTwoParams()
+        {
+            MethodInfo concat = typeof(string).GetMethod(
+                nameof(string.Concat),
+                new[] { typeof(string), typeof(string) }
+            );
+            Func<string, string, string> invoker = ReflectionHelpers.GetStaticMethodInvoker<
+                string,
+                string,
+                string
+            >(concat);
+            Assert.AreEqual("ab", invoker("a", "b"));
+        }
+
+        [Test]
+        public void GetStaticMethodInvokerTypedThrowsOnSignatureMismatch()
+        {
+            MethodInfo concat = typeof(string).GetMethod(
+                nameof(string.Concat),
+                new[] { typeof(string), typeof(string) }
+            );
+            Assert.Throws<ArgumentException>(
+                () => ReflectionHelpers.GetStaticMethodInvoker<int, int, int>(concat),
+                "Mismatched generic signature should throw"
+            );
+
+            MethodInfo instanceToString = typeof(object).GetMethod(nameof(ToString));
+            Assert.Throws<ArgumentException>(
+                () =>
+                    ReflectionHelpers.GetStaticMethodInvoker<object, object, string>(
+                        instanceToString
+                    ),
+                "Non-static method should throw"
+            );
+        }
+
+        [Test]
+        public void GetParameterlessConstructorTypeOverload()
+        {
+            Func<object> ctor = ReflectionHelpers.GetParameterlessConstructor(
+                typeof(TestConstructorClass)
+            );
+            object instance = ctor();
+            Assert.IsInstanceOf<TestConstructorClass>(instance);
+
+            Assert.Throws<ArgumentException>(
+                () => ReflectionHelpers.GetParameterlessConstructor(typeof(NoParameterlessCtor)),
+                "Type without parameterless constructor should throw"
+            );
+        }
+
+        [Test]
+        public void BuildParameterlessInstanceMethodIfExists()
+        {
+            Action<TestMethodClass> action =
+                ReflectionHelpers.BuildParameterlessInstanceMethodIfExists<TestMethodClass>(
+                    "Reset"
+                );
+            Assert.IsNotNull(action);
+            TestMethodClass obj = new();
+            TestMethodClass.StaticMethodCallCount = 5;
+            obj.instanceMethodCallCount = 4;
+            action(obj);
+            Assert.AreEqual(0, TestMethodClass.StaticMethodCallCount);
+            Assert.AreEqual(0, obj.instanceMethodCallCount);
+
+            Action<TestMethodClass> missing =
+                ReflectionHelpers.BuildParameterlessInstanceMethodIfExists<TestMethodClass>(
+                    "DoesNotExist"
+                );
+            Assert.IsNull(missing);
+        }
+
+        [Test]
+        public void IsComponentEnabledCoversMonoBehaviourAndScriptableObject()
+        {
+            GameObject go = new("probe");
+            try
+            {
+                EnabledProbe probe = go.AddComponent<EnabledProbe>();
+                Assert.IsTrue(probe.IsComponentEnabled());
+                probe.enabled = false;
+                Assert.IsFalse(probe.IsComponentEnabled());
+
+                ScriptableObject so = ScriptableObject.CreateInstance<ScriptableObject>();
+                Assert.IsTrue(so.IsComponentEnabled());
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        [Test]
         public void GetTypesFromAssembly()
         {
             Assembly testAssembly = typeof(ReflectionHelperTests).Assembly;
@@ -1294,7 +1552,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             Type testType = typeof(TestAttributeClass);
             FieldInfo instanceField = testType.GetField(
-                nameof(TestAttributeClass.InstanceFieldWithAttribute)
+                nameof(TestAttributeClass.instanceFieldWithAttribute)
             );
 
             ReflectionTestAttribute classAttr =
@@ -1332,27 +1590,27 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 nameof(TestAttributeClass.InstancePropertyWithAttribute)
             );
 
-            ReflectionTestAttribute[] typeAttrs = ReflectionHelpers
-                .GetAllAttributesSafe<ReflectionTestAttribute>(testType)
+            ReflectionTestAttribute[] typeAttrs = testType
+                .GetAllAttributesSafe<ReflectionTestAttribute>()
                 .ToArray();
             Assert.IsNotNull(typeAttrs);
             Assert.AreEqual(1, typeAttrs.Length);
             Assert.AreEqual("ClassLevel", typeAttrs[0].Name);
 
-            ReflectionTestAttribute[] propAttrs = ReflectionHelpers
-                .GetAllAttributesSafe<ReflectionTestAttribute>(instanceProperty)
+            ReflectionTestAttribute[] propAttrs = instanceProperty
+                .GetAllAttributesSafe<ReflectionTestAttribute>()
                 .ToArray();
             Assert.IsNotNull(propAttrs);
             Assert.AreEqual(1, propAttrs.Length);
             Assert.AreEqual("InstanceProperty", propAttrs[0].Name);
 
             // Test non-generic version
-            Attribute[] allTypeAttrs = ReflectionHelpers.GetAllAttributesSafe(testType).ToArray();
+            Attribute[] allTypeAttrs = testType.GetAllAttributesSafe().ToArray();
             Assert.IsNotNull(allTypeAttrs);
             Assert.Greater(allTypeAttrs.Length, 0);
 
-            Attribute[] allPropAttrs = ReflectionHelpers
-                .GetAllAttributesSafe(instanceProperty, typeof(ReflectionTestAttribute))
+            Attribute[] allPropAttrs = instanceProperty
+                .GetAllAttributesSafe(typeof(ReflectionTestAttribute))
                 .ToArray();
             Assert.IsNotNull(allPropAttrs);
             Assert.AreEqual(1, allPropAttrs.Length);
@@ -1369,9 +1627,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public void GetAllAttributeValuesSafe()
         {
             Type testType = typeof(TestAttributeClass);
-            Dictionary<string, object> attrValues = ReflectionHelpers.GetAllAttributeValuesSafe(
-                testType
-            );
+            Dictionary<string, object> attrValues = testType.GetAllAttributeValuesSafe();
 
             Assert.IsNotNull(attrValues);
             Assert.IsTrue(attrValues.ContainsKey("ReflectionTest"));
@@ -1390,8 +1646,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             Type testType = typeof(TestAttributeClass);
 
-            MethodInfo[] methods = ReflectionHelpers
-                .GetMethodsWithAttributeSafe<ReflectionTestAttribute>(testType)
+            MethodInfo[] methods = testType
+                .GetMethodsWithAttributeSafe<ReflectionTestAttribute>()
                 .ToArray();
             Assert.IsNotNull(methods);
             Assert.Greater(methods.Length, 0);
@@ -1402,8 +1658,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 methods.Any(m => m.Name == nameof(TestAttributeClass.InstanceMethodWithAttribute))
             );
 
-            PropertyInfo[] properties = ReflectionHelpers
-                .GetPropertiesWithAttributeSafe<ReflectionTestAttribute>(testType)
+            PropertyInfo[] properties = testType
+                .GetPropertiesWithAttributeSafe<ReflectionTestAttribute>()
                 .ToArray();
             Assert.IsNotNull(properties);
             Assert.Greater(properties.Length, 0);
@@ -1413,8 +1669,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 )
             );
 
-            FieldInfo[] fields = ReflectionHelpers
-                .GetFieldsWithAttributeSafe<ReflectionTestAttribute>(testType)
+            FieldInfo[] fields = testType
+                .GetFieldsWithAttributeSafe<ReflectionTestAttribute>()
                 .ToArray();
             Assert.IsNotNull(fields);
             Assert.Greater(fields.Length, 0);
@@ -1470,7 +1726,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             Type testType = typeof(TestAttributeClass);
             FieldInfo testField = testType.GetField(
-                nameof(TestAttributeClass.InstanceFieldWithAttribute)
+                nameof(TestAttributeClass.instanceFieldWithAttribute)
             );
 
             // Test the extension method version
@@ -1488,6 +1744,456 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             Type methodType = typeof(TestMethodClass);
             Assert.IsFalse(methodType.IsAttributeDefined(out ReflectionTestAttribute noAttr));
             Assert.IsNull(noAttr);
+        }
+
+        [Test]
+        public void PropertySetterThrowsOnReadOnly()
+        {
+            PropertyInfo ro = typeof(TestPropertyClass).GetProperty(
+                nameof(TestPropertyClass.InstanceReadOnlyProperty)
+            );
+            Assert.Throws<ArgumentException>(() => ReflectionHelpers.GetPropertySetter(ro));
+            Assert.Throws<ArgumentException>(() =>
+                ReflectionHelpers.GetPropertySetter<TestPropertyClass, int>(ro)
+            );
+        }
+
+        [Test]
+        public void StaticPropertySetterThrowsOnInstanceProperty()
+        {
+            PropertyInfo pi = typeof(TestPropertyClass).GetProperty(
+                nameof(TestPropertyClass.InstanceProperty)
+            );
+            Assert.Throws<ArgumentException>(() =>
+                ReflectionHelpers.GetStaticPropertySetter<int>(pi)
+            );
+        }
+
+        [Test]
+        public void IndexerHelpersThrowOnNonIndexer()
+        {
+            PropertyInfo pi = typeof(TestPropertyClass).GetProperty(
+                nameof(TestPropertyClass.InstanceProperty)
+            );
+            Assert.Throws<ArgumentException>(() => ReflectionHelpers.GetIndexerGetter(pi));
+            Assert.Throws<ArgumentException>(() => ReflectionHelpers.GetIndexerSetter(pi));
+        }
+
+        [Test]
+        public void TypedPropertyGetterStaticIgnoresInstance()
+        {
+            PropertyInfo spi = typeof(TestPropertyClass).GetProperty(
+                nameof(TestPropertyClass.StaticProperty)
+            );
+            Action<int> setter = ReflectionHelpers.GetStaticPropertySetter<int>(spi);
+            setter(777);
+            Func<TestPropertyClass, int> getter = ReflectionHelpers.GetPropertyGetter<
+                TestPropertyClass,
+                int
+            >(spi);
+            TestPropertyClass dummy = new();
+            Assert.AreEqual(777, getter(dummy));
+        }
+
+        [Test]
+        public void TypedStaticInvokerWrongReturnTypeThrows()
+        {
+            MethodInfo m0 = typeof(TestMethodClass).GetMethod(
+                nameof(TestMethodClass.StaticIntMethod)
+            );
+            Assert.Throws<ArgumentException>(() =>
+                ReflectionHelpers.GetStaticMethodInvoker<string>(m0)
+            );
+        }
+
+        [Test]
+        public void TypedInstanceInvokerWrongInstanceTypeThrows()
+        {
+            MethodInfo mi = typeof(TestMethodClass).GetMethod(
+                nameof(TestMethodClass.InstanceIntMethod)
+            );
+            Assert.Throws<ArgumentException>(() =>
+                ReflectionHelpers.GetInstanceMethodInvoker<string, int>(mi)
+            );
+        }
+
+        [Test]
+        public void ValueTypeInstanceTypedInvoker()
+        {
+            MethodInfo mi = typeof(ValueStruct).GetMethod(nameof(ValueStruct.Sum));
+            Func<ValueStruct, int, int, int> inv = ReflectionHelpers.GetInstanceMethodInvoker<
+                ValueStruct,
+                int,
+                int,
+                int
+            >(mi);
+            ValueStruct vs = new() { x = 1, y = 2 };
+            Assert.AreEqual(1 + 2 + 1 + 2, inv(vs, 1, 2));
+        }
+
+        [Test]
+        public void HashSetAdderTypeMismatchThrows()
+        {
+            object set = ReflectionHelpers.CreateHashSet(typeof(int), 0);
+            Action<object, object> add = ReflectionHelpers.GetHashSetAdder(typeof(int));
+            Assert.Throws<InvalidCastException>(() => add(set, "oops"));
+        }
+
+        [Test]
+        public void ArrayCreatorNegativeLengthThrows()
+        {
+            Func<int, Array> makeObj = ReflectionHelpers.GetArrayCreator(typeof(int));
+            Assert.Throws<OverflowException>(() => makeObj(-1));
+            Func<int, int[]> makeT = ReflectionHelpers.GetArrayCreator<int>();
+            Assert.Throws<OverflowException>(() => makeT(-1));
+        }
+
+        [Test]
+        public void LoadStaticFieldsAndPropertiesForType()
+        {
+            Dictionary<string, FieldInfo> fields =
+                ReflectionHelpers.LoadStaticFieldsForType<SelfReferentialType>();
+            Dictionary<string, PropertyInfo> props =
+                ReflectionHelpers.LoadStaticPropertiesForType<SelfReferentialType>();
+            Assert.IsTrue(fields.ContainsKey(nameof(SelfReferentialType.InstanceField)));
+            Assert.IsTrue(fields.ContainsKey(nameof(SelfReferentialType.InstanceField).ToLower()));
+            Assert.IsTrue(props.ContainsKey(nameof(SelfReferentialType.InstanceProperty)));
+            Assert.IsTrue(
+                props.ContainsKey(nameof(SelfReferentialType.InstanceProperty).ToLower())
+            );
+        }
+
+        [Test]
+        public void IndexerSetterInvalidIndexTypeThrows()
+        {
+            PropertyInfo idx = typeof(IndexerClass).GetProperty("Item");
+            Action<object, object, object[]> setter = ReflectionHelpers.GetIndexerSetter(idx);
+            IndexerClass obj = new();
+            Assert.Throws<InvalidCastException>(() => setter(obj, 3, new object[] { "notInt" }));
+        }
+
+        [Test]
+        public void StaticActionInvokerThrowsOnNonStatic()
+        {
+            MethodInfo m = typeof(TestMethodClass).GetMethod(
+                nameof(TestMethodClass.InstanceVoidMethod)
+            );
+            Assert.Throws<ArgumentException>(() => ReflectionHelpers.GetStaticActionInvoker(m));
+        }
+
+        [Test]
+        public void TypedPropertySetters()
+        {
+            PropertyInfo pi = typeof(TestPropertyClass).GetProperty(
+                nameof(TestPropertyClass.InstanceProperty)
+            );
+            Action<TestPropertyClass, int> set = ReflectionHelpers.GetPropertySetter<
+                TestPropertyClass,
+                int
+            >(pi);
+            TestPropertyClass obj = new();
+            set(obj, 123);
+            Assert.AreEqual(123, obj.InstanceProperty);
+
+            PropertyInfo spi = typeof(TestPropertyClass).GetProperty(
+                nameof(TestPropertyClass.StaticProperty)
+            );
+            Action<int> sset = ReflectionHelpers.GetStaticPropertySetter<int>(spi);
+            sset(456);
+            Assert.AreEqual(456, TestPropertyClass.StaticProperty);
+        }
+
+        [Test]
+        public void TypedStaticMethodInvokersFuncAndAction()
+        {
+            MethodInfo m0 = typeof(TestMethodClass).GetMethod(
+                nameof(TestMethodClass.StaticIntMethod)
+            );
+            Func<int> f0 = ReflectionHelpers.GetStaticMethodInvoker<int>(m0);
+            Assert.AreEqual(42, f0());
+
+            MethodInfo m1 = typeof(TestMethodClass).GetMethod(
+                nameof(TestMethodClass.StaticMethodWithParam)
+            );
+            Func<int, int> f1 = ReflectionHelpers.GetStaticMethodInvoker<int, int>(m1);
+            Assert.AreEqual(10, f1(5));
+
+            MethodInfo m3 = typeof(TestMethodClass).GetMethod(
+                nameof(TestMethodClass.StaticMethodMultipleParams)
+            );
+            Func<int, string, bool, int> f3 = ReflectionHelpers.GetStaticMethodInvoker<
+                int,
+                string,
+                bool,
+                int
+            >(m3);
+            Assert.AreEqual(1 + 3 + 1, f3(1, "hey", true));
+
+            MethodInfo m4 = typeof(TestMethodClass).GetMethod(
+                nameof(TestMethodClass.StaticMethodFourParams)
+            );
+            Func<int, int, int, int, int> f4 = ReflectionHelpers.GetStaticMethodInvoker<
+                int,
+                int,
+                int,
+                int,
+                int
+            >(m4);
+            Assert.AreEqual(10, f4(1, 2, 3, 4));
+
+            MethodInfo a0 = typeof(TestMethodClass).GetMethod(
+                nameof(TestMethodClass.StaticVoidMethod)
+            );
+            TestMethodClass.StaticMethodCallCount = 0;
+            Action a0i = ReflectionHelpers.GetStaticActionInvoker(a0);
+            a0i();
+            Assert.AreEqual(1, TestMethodClass.StaticMethodCallCount);
+
+            MethodInfo a3 = typeof(TestMethodClass).GetMethod(
+                nameof(TestMethodClass.StaticActionThree)
+            );
+            Action<int, int, int> a3i = ReflectionHelpers.GetStaticActionInvoker<int, int, int>(a3);
+            a3i(1, 2, 3);
+            Assert.AreEqual(6, TestMethodClass.StaticMethodCallCount);
+        }
+
+        [Test]
+        public void TypedInstanceMethodInvokersFuncAndAction()
+        {
+            TestMethodClass o = new();
+            o.Reset();
+
+            MethodInfo i0 = typeof(TestMethodClass).GetMethod(
+                nameof(TestMethodClass.InstanceIntMethod)
+            );
+            Func<TestMethodClass, int> fi0 = ReflectionHelpers.GetInstanceMethodInvoker<
+                TestMethodClass,
+                int
+            >(i0);
+            Assert.AreEqual(100, fi0(o));
+            Assert.AreEqual(1, o.instanceMethodCallCount);
+
+            MethodInfo i1 = typeof(TestMethodClass).GetMethod(
+                nameof(TestMethodClass.InstanceMethodWithParam)
+            );
+            Func<TestMethodClass, string, int> fi1 = ReflectionHelpers.GetInstanceMethodInvoker<
+                TestMethodClass,
+                string,
+                int
+            >(i1);
+            Assert.AreEqual(4, fi1(o, "four"));
+
+            MethodInfo i2 = typeof(TestMethodClass).GetMethod(nameof(TestMethodClass.InstanceSum));
+            Func<TestMethodClass, int, int, int> fi2 = ReflectionHelpers.GetInstanceMethodInvoker<
+                TestMethodClass,
+                int,
+                int,
+                int
+            >(i2);
+            Assert.AreEqual(7, fi2(o, 3, 4));
+
+            MethodInfo ia3 = typeof(TestMethodClass).GetMethod(
+                nameof(TestMethodClass.InstanceSetThree)
+            );
+            Action<TestMethodClass, int, int, int> ai3 = ReflectionHelpers.GetInstanceActionInvoker<
+                TestMethodClass,
+                int,
+                int,
+                int
+            >(ia3);
+            ai3(o, 1, 2, 3);
+            Assert.AreEqual(6, o.instanceMethodCallCount);
+
+            MethodInfo i4 = typeof(TestMethodClass).GetMethod(
+                nameof(TestMethodClass.InstanceSumFour)
+            );
+            Func<TestMethodClass, int, int, int, int, int> fi4 =
+                ReflectionHelpers.GetInstanceMethodInvoker<
+                    TestMethodClass,
+                    int,
+                    int,
+                    int,
+                    int,
+                    int
+                >(i4);
+            Assert.AreEqual(10, fi4(o, 1, 2, 3, 4));
+        }
+
+        [Test]
+        public void RefOutTypedInvokersThrow()
+        {
+            MethodInfo refm = typeof(RefOutMethods).GetMethod(nameof(RefOutMethods.RefInc));
+            Assert.Throws<NotSupportedException>(() =>
+                ReflectionHelpers.GetStaticActionInvoker<int>(refm)
+            );
+
+            MethodInfo outm = typeof(RefOutMethods).GetMethod(nameof(RefOutMethods.OutSet));
+            Assert.Throws<NotSupportedException>(() =>
+                ReflectionHelpers.GetStaticActionInvoker<int>(outm)
+            );
+        }
+
+        [Test]
+        public void IndexerGetterAndSetter()
+        {
+            PropertyInfo idxProp = typeof(IndexerClass).GetProperty("Item");
+            Func<object, object[], object> getter = ReflectionHelpers.GetIndexerGetter(idxProp);
+            Action<object, object, object[]> setter = ReflectionHelpers.GetIndexerSetter(idxProp);
+            IndexerClass obj = new();
+            setter(obj, 5, new object[] { 2 });
+            Assert.AreEqual(5, getter(obj, new object[] { 2 }));
+        }
+
+        [Test]
+        public void DictionaryCreators()
+        {
+            int capacity = 32;
+            object dictObj = ReflectionHelpers.CreateDictionary(
+                typeof(int),
+                typeof(string),
+                capacity
+            );
+            Assert.IsInstanceOf<Dictionary<int, string>>(dictObj);
+            Func<int, Dictionary<int, string>> typed = ReflectionHelpers.GetDictionaryCreator<
+                int,
+                string
+            >();
+            Dictionary<int, string> d2 = typed(capacity);
+            Assert.IsNotNull(d2);
+            Assert.AreEqual(0, d2.Count);
+        }
+
+        [Test]
+        public void TypedCollectionCreators()
+        {
+            Func<int, int[]> makeArray = ReflectionHelpers.GetArrayCreator<int>();
+            int[] arr = makeArray(5);
+            Assert.AreEqual(5, arr.Length);
+
+            Func<IList> makeList = ReflectionHelpers.GetListCreator<string>();
+            IList list = makeList();
+            Assert.IsInstanceOf<List<string>>(list);
+
+            Func<int, IList> makeListCap = ReflectionHelpers.GetListWithCapacityCreator<float>();
+            IList listCap = makeListCap(16);
+            Assert.IsInstanceOf<List<float>>(listCap);
+            Assert.AreEqual(16, ((List<float>)listCap).Capacity);
+
+            Func<int, HashSet<int>> makeSet =
+                ReflectionHelpers.GetHashSetWithCapacityCreator<int>();
+            HashSet<int> set = makeSet(8);
+            Action<HashSet<int>, int> add = ReflectionHelpers.GetHashSetAdder<int>();
+            add(set, 3);
+            add(set, 3);
+            add(set, 4);
+            Assert.IsTrue(set.Contains(3));
+            Assert.IsTrue(set.Contains(4));
+            Assert.AreEqual(2, set.Count);
+        }
+
+        [Test]
+        public void IsActiveAndEnabledChecksGameObjectState()
+        {
+            GameObject go = new("probe2");
+            try
+            {
+                EnabledProbe probe = go.AddComponent<EnabledProbe>();
+                go.SetActive(false);
+                Assert.IsFalse(probe.IsActiveAndEnabled());
+                go.SetActive(true);
+                probe.enabled = true;
+                Assert.IsTrue(probe.IsActiveAndEnabled());
+                probe.enabled = false;
+                Assert.IsFalse(probe.IsActiveAndEnabled());
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        [Test]
+        public void InvokeInstanceVoidMethod()
+        {
+            TestMethodClass obj = new();
+            MethodInfo m = typeof(TestMethodClass).GetMethod(
+                nameof(TestMethodClass.InstanceVoidMethod)
+            );
+            object result = ReflectionHelpers.InvokeMethod(m, obj);
+            Assert.IsNull(result);
+            Assert.AreEqual(1, obj.instanceMethodCallCount);
+        }
+
+        [Test]
+        public void InvokeInstanceMethodWithReturnValue()
+        {
+            TestMethodClass obj = new();
+            MethodInfo m = typeof(TestMethodClass).GetMethod(
+                nameof(TestMethodClass.InstanceStringMethod)
+            );
+            object result = ReflectionHelpers.InvokeMethod(m, obj);
+            Assert.AreEqual("instance", result);
+        }
+
+        [Test]
+        public void InvokeInstanceMethodWithParameters()
+        {
+            TestMethodClass obj = new();
+            MethodInfo m = typeof(TestMethodClass).GetMethod(
+                nameof(TestMethodClass.InstanceMethodWithParam)
+            );
+            object result = ReflectionHelpers.InvokeMethod(m, obj, "hello");
+            Assert.AreEqual(5, result);
+        }
+
+        [Test]
+        public void BoxedSetterOnStructDoesNotMutateOriginal()
+        {
+            FieldInfo field = typeof(TestStruct).GetField(nameof(TestStruct.intValue));
+            Action<object, object> setter = ReflectionHelpers.GetFieldSetter(field);
+            TestStruct s = default;
+            setter(s, 99);
+            Assert.AreEqual(0, s.intValue);
+        }
+
+        [Test]
+        public void GenericParameterlessConstructorThrowsOnMissing()
+        {
+            Assert.Throws<ArgumentException>(() =>
+                ReflectionHelpers.GetParameterlessConstructor<NoParameterlessCtor>()
+            );
+        }
+
+        [Test]
+        public void GenericParameterlessConstructorWorks()
+        {
+            Func<List<int>> ctor = ReflectionHelpers.GetParameterlessConstructor<List<int>>();
+            List<int> list = ctor();
+            Assert.IsInstanceOf<List<int>>(list);
+        }
+
+        [Test]
+        public void DictionaryWithCapacityCreator()
+        {
+            Func<int, Dictionary<int, string>> creator = ReflectionHelpers.GetDictionaryCreator<
+                int,
+                string
+            >();
+            Dictionary<int, string> d = creator(16);
+            Assert.IsInstanceOf<Dictionary<int, string>>(d);
+            d[1] = "a";
+            Assert.AreEqual("a", d[1]);
+        }
+
+        [Test]
+        public void IndexerGetterSetterWrongIndexLengthThrows()
+        {
+            PropertyInfo prop = typeof(IndexerClass).GetProperty("Item");
+            Func<object, object[], object> getter = ReflectionHelpers.GetIndexerGetter(prop);
+            Action<object, object, object[]> setter = ReflectionHelpers.GetIndexerSetter(prop);
+            IndexerClass obj = new();
+            Assert.Throws<IndexOutOfRangeException>(() => getter(obj, new object[] { }));
+            Assert.Throws<IndexOutOfRangeException>(() => setter(obj, 1, new object[] { }));
         }
     }
 }

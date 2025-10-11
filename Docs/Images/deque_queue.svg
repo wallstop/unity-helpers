@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="220" viewBox="0 0 640 220">
+  <rect x="0" y="0" width="640" height="220" fill="#0f0f13"/>
+  <g font-family="Verdana,Arial,sans-serif" font-size="12" fill="#c8d1dc">
+    <text x="16" y="24">Queue vs Deque</text>
+  </g>
+  <!-- queue -->
+  <g fill="none" stroke="#9fb3c8" stroke-width="2">
+    <rect x="60" y="70" width="200" height="50"/>
+    <line x1="100" y1="70" x2="100" y2="120"/>
+    <line x1="140" y1="70" x2="140" y2="120"/>
+    <line x1="180" y1="70" x2="180" y2="120"/>
+    <line x1="220" y1="70" x2="220" y2="120"/>
+  </g>
+  <!-- queue arrows: color-coded -->
+  <g stroke="#5ec69a" fill="#5ec69a">
+    <!-- enqueue: shorter, more gap to label and box; point to cell center (x=80) -->
+    <line x1="80" y1="152" x2="80" y2="138"/>
+    <polygon points="74,144 86,144 80,136"/>
+  </g>
+  <g stroke="#d57a7a" fill="#d57a7a">
+    <!-- dequeue: arrow below, pointing down away from rightmost occupied cell (x=200), leave larger gap before label -->
+    <line x1="200" y1="120" x2="200" y2="152"/>
+    <polygon points="194,152 206,152 200,162"/>
+  </g>
+  <g font-family="Verdana,Arial,sans-serif" font-size="11">
+    <text x="80" y="170" text-anchor="middle" fill="#5ec69a">enqueue</text>
+    <text x="200" y="170" text-anchor="middle" fill="#d57a7a">dequeue</text>
+  </g>
+  <!-- structure labels centered above each structure -->
+  <g font-family="Verdana,Arial,sans-serif" font-size="11">
+    <text x="160" y="56" text-anchor="middle" fill="#7aa2ff">queue</text>
+  </g>
+  <!-- queue: example occupied cells -->
+  <g fill="rgba(122,162,255,0.22)" stroke="#7aa2ff">
+    <rect x="100" y="70" width="40" height="50"/>
+    <rect x="140" y="70" width="40" height="50"/>
+    <rect x="180" y="70" width="40" height="50"/>
+  </g>
+  <!-- deque -->
+  <g fill="none" stroke="#9fb3c8" stroke-width="2">
+    <rect x="360" y="70" width="200" height="50"/>
+    <line x1="400" y1="70" x2="400" y2="120"/>
+    <line x1="440" y1="70" x2="440" y2="120"/>
+    <line x1="480" y1="70" x2="480" y2="120"/>
+    <line x1="520" y1="70" x2="520" y2="120"/>
+    <line x1="560" y1="70" x2="560" y2="120"/>
+  </g>
+  <!-- deque arrows: color-coded and length-aligned to labels -->
+  <!-- pushes (green) -->
+  <g stroke="#5ec69a" fill="#5ec69a">
+    <!-- push_front (label y=168), angled toward cell; base slightly left for a natural angle -->
+    <line x1="380" y1="150" x2="380" y2="144"/>
+    <polygon points="374,144 386,144 380,136"/>
+    <!-- push_back (label y=188), shorter -->
+    <line x1="540" y1="170" x2="540" y2="140"/>
+    <polygon points="534,144 546,144 540,136"/>
+  </g>
+  <!-- pops (red) -->
+  <g stroke="#d57a7a" fill="#d57a7a">
+    <!-- pop_front (label y=188), even more gap -->
+    <line x1="420" y1="120" x2="420" y2="164"/>
+    <polygon points="414,164 426,164 420,174"/>
+    <!-- pop_back (label y=168), even more gap -->
+    <line x1="500" y1="120" x2="500" y2="144"/>
+    <polygon points="494,144 506,144 500,154"/>
+  </g>
+  <g font-family="Verdana,Arial,sans-serif" font-size="11">
+    <!-- staggered labels to avoid overlap; pushes = green, pops = red -->
+    <text x="360" y="168" text-anchor="middle" fill="#5ec69a">push_front</text>
+    <text x="420" y="188" text-anchor="middle" fill="#d57a7a">pop_front</text>
+    <text x="500" y="168" text-anchor="middle" fill="#d57a7a">pop_back</text>
+    <text x="540" y="188" text-anchor="middle" fill="#5ec69a">push_back</text>
+  </g>
+  <!-- side hints -->
+  <g font-family="Verdana,Arial,sans-serif" font-size="10" fill="#9fb3c8">
+    <text x="350" y="64">front</text>
+    <text x="560" y="64">back</text>
+  </g>
+  <g font-family="Verdana,Arial,sans-serif" font-size="11">
+    <text x="460" y="56" text-anchor="middle" fill="#c792ea">deque</text>
+  </g>
+  <!-- deque: example occupied cells -->
+  <g fill="rgba(122,162,255,0.22)" stroke="#7aa2ff">
+    <rect x="400" y="70" width="40" height="50"/>
+    <rect x="440" y="70" width="40" height="50"/>
+    <rect x="480" y="70" width="40" height="50"/>
+  </g>
+  <!-- light head/tail markers -->
+  <g fill="#5ec69a" stroke="#5ec69a" opacity="0.85">
+    <!-- queue markers: tail at leftmost shaded (center 120), head at rightmost shaded (center 200) -->
+    <circle cx="120" cy="60" r="4"/>
+    <circle cx="200" cy="60" r="4"/>
+  </g>
+  <g font-family="Verdana,Arial,sans-serif" font-size="10" fill="#9fb3c8" text-anchor="middle">
+    <text x="120" y="52">tail</text>
+    <text x="200" y="52">head</text>
+  </g>
+  <g fill="#5ec69a" stroke="#5ec69a" opacity="0.85">
+    <!-- deque markers: tail at leftmost shaded (center 420), head at rightmost shaded (center 500) -->
+    <circle cx="420" cy="60" r="4"/>
+    <circle cx="500" cy="60" r="4"/>
+  </g>
+  <g font-family="Verdana,Arial,sans-serif" font-size="10" fill="#9fb3c8" text-anchor="middle">
+    <text x="420" y="52">tail</text>
+    <text x="500" y="52">head</text>
+  </g>
+</svg>

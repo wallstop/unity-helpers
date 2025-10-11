@@ -6,21 +6,53 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;
-    using Core.Extension;
-    using Core.Helper;
     using UnityEditor;
     using UnityEditor.UIElements;
     using UnityEngine;
     using UnityEngine.UIElements;
+    using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Editor;
     using WallstopStudios.UnityHelpers.Visuals;
     using WallstopStudios.UnityHelpers.Visuals.UIToolkit;
     using Object = UnityEngine.Object;
 
+    /// <summary>
+    /// UI Toolkit-based multi-clip 2D animation viewer and lightweight editor. Load multiple
+    /// AnimationClips, preview layered sprite animation, reorder frames via drag & drop, adjust
+    /// preview FPS, and save an updated clip back to disk.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Problems this solves: quickly auditing and tweaking sprite-based clips without opening the
+    /// full Animation window workflow; comparing multiple clips; and adjusting timing visually.
+    /// </para>
+    /// <para>
+    /// How it works: for a selected clip, the tool resolves the <see cref="SpriteRenderer"/>
+    /// binding path and extracts its frames. The frames list supports reordering via drag & drop
+    /// with placeholders for clarity. Preview uses an in-editor <c>LayeredImage</c> to animate the
+    /// sprite sequence at the chosen FPS.
+    /// </para>
+    /// <para>
+    /// Usage:
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>Open via menu: Tools/Wallstop Studios/Unity Helpers/Sprite Animation Editor.</description></item>
+    /// <item><description>Add clips (object field or project selection button).</description></item>
+    /// <item><description>Drag frames to reorder, then Save to write an updated clip.</description></item>
+    /// </list>
+    /// <para>
+    /// Pros: intuitive drag/drop, live preview, handles multiple clips in a session.
+    /// Caveats: operates on SpriteRenderer curves only; saving overwrites the target clip asset.
+    /// </para>
+    /// </remarks>
     public sealed class AnimationViewerWindow : EditorWindow
     {
         private const string PackageId = "com.wallstop-studios.unity-helpers";
         private const float DragThresholdSqrMagnitude = 10f * 10f;
         private const int InvalidPointerId = -1;
+        private const string DirToolName = "SpriteAnimationEditor";
+        private const string DirContextKey = "Clips";
 
         private sealed class EditorLayerData
         {
@@ -48,7 +80,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     {
                         if (
                             binding.type == typeof(SpriteRenderer)
-                            && binding.propertyName == "m_Sprite"
+                            && string.Equals(
+                                binding.propertyName,
+                                "m_Sprite",
+                                StringComparison.Ordinal
+                            )
                         )
                         {
                             BindingPath = binding.path;
@@ -334,7 +370,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             if (_fileSelector == null)
             {
                 _fileSelector = new MultiFileSelectorElement(
-                    ProjectAnimationSettings.Instance.lastAnimationPath,
+                    GetLastAnimationDirectory(),
                     new[] { ".anim" }
                 );
                 _fileSelector.OnFilesSelected += HandleFilesSelectedFromCustomBrowser;
@@ -347,7 +383,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
             else if (_fileSelector.parent == null)
             {
-                _fileSelector.ResetAndShow(ProjectAnimationSettings.Instance.lastAnimationPath);
+                _fileSelector.ResetAndShow(GetLastAnimationDirectory());
                 root.Add(_fileSelector);
                 if (root.childCount > 1)
                 {
@@ -428,8 +464,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 this.Log($"Added {clipsAddedCount} clip(s).");
                 if (!string.IsNullOrWhiteSpace(lastValidDirectory))
                 {
-                    ProjectAnimationSettings.Instance.lastAnimationPath = lastValidDirectory;
-                    ProjectAnimationSettings.Instance.Save();
+                    RecordLastAnimationDirectory(lastValidDirectory);
                 }
             }
         }
@@ -453,10 +488,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             if (selectedObjects == null || selectedObjects.Length == 0)
             {
-                EditorUtility.DisplayDialog(
+                Utils.EditorUi.Info(
                     "No Clips Selected",
-                    "Please select one or more AnimationClip assets in the Project window first.",
-                    "OK"
+                    "Please select one or more AnimationClip assets in the Project window first."
                 );
                 return;
             }
@@ -493,7 +527,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         {
             string path = EditorUtility.OpenFilePanelWithFilters(
                 "Select Animation Clip to Add",
-                ProjectAnimationSettings.Instance.lastAnimationPath,
+                GetLastAnimationDirectory(),
                 new[] { "Animation Clip", "anim" }
             );
 
@@ -504,8 +538,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     path = "Assets" + path.Substring(Application.dataPath.Length);
                 }
 
-                ProjectAnimationSettings.Instance.lastAnimationPath = Path.GetDirectoryName(path);
-                ProjectAnimationSettings.Instance.Save();
+                string dir = Path.GetDirectoryName(path);
+                if (!string.IsNullOrWhiteSpace(dir))
+                {
+                    RecordLastAnimationDirectory(dir);
+                }
 
                 AnimationClip clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(path);
                 if (clip != null)
@@ -515,11 +552,73 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
         }
 
+        private static string GetLastAnimationDirectory()
+        {
+            try
+            {
+                PersistentDirectorySettings settings = PersistentDirectorySettings.Instance;
+                DirectoryUsageData[] paths =
+                    settings != null
+                        ? settings.GetPaths(DirToolName, DirContextKey, topOnly: true, topN: 1)
+                        : Array.Empty<DirectoryUsageData>();
+                string candidate = paths is { Length: > 0 } ? paths[0]?.path : null;
+
+                if (string.IsNullOrWhiteSpace(candidate))
+                {
+                    return "Assets";
+                }
+
+                // Prefer Assets-relative paths for UI components that expect them
+                if (!candidate.StartsWith("Assets", StringComparison.OrdinalIgnoreCase))
+                {
+                    string assetsRoot = Application.dataPath.Replace('\\', '/');
+                    string full = candidate.Replace('\\', '/');
+                    if (full.StartsWith(assetsRoot, StringComparison.OrdinalIgnoreCase))
+                    {
+                        candidate = "Assets" + full.Substring(assetsRoot.Length);
+                    }
+                }
+
+                return string.IsNullOrWhiteSpace(candidate) ? "Assets" : candidate;
+            }
+            catch
+            {
+                return "Assets";
+            }
+        }
+
+        private static void RecordLastAnimationDirectory(string assetsRelativeDir)
+        {
+            if (string.IsNullOrWhiteSpace(assetsRelativeDir))
+            {
+                return;
+            }
+
+            // Ensure Assets-relative if possible
+            string path = assetsRelativeDir.Replace('\\', '/');
+            if (!path.StartsWith("Assets", StringComparison.OrdinalIgnoreCase))
+            {
+                string assetsRoot = Application.dataPath.Replace('\\', '/');
+                string full = path;
+                if (full.StartsWith(assetsRoot, StringComparison.OrdinalIgnoreCase))
+                {
+                    path = "Assets" + full.Substring(assetsRoot.Length);
+                }
+            }
+
+            PersistentDirectorySettings settings = PersistentDirectorySettings.Instance;
+            if (settings != null)
+            {
+                settings.RecordPath(DirToolName, DirContextKey, path);
+            }
+        }
+
         private void AddEditorLayer(AnimationClip clip)
         {
             if (clip == null || _loadedEditorLayers.Any(layer => layer.SourceClip == clip))
             {
-                this.LogWarn($"Clip '{clip?.name}' is null or already loaded.");
+                string clipName = clip != null ? clip.name : "<null>";
+                this.LogWarn($"Clip '{clipName}' is null or already loaded.");
                 return;
             }
 
@@ -675,9 +774,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     "DraggedLoadedClipIndex",
                     _draggedLoadedClipOriginalIndex
                 );
-                Object dragContextObject =
-                    _loadedEditorLayers[_draggedLoadedClipOriginalIndex]?.SourceClip
-                    ?? (Object)CreateInstance<ScriptableObject>();
+                Object dragContextObject = _loadedEditorLayers[
+                    _draggedLoadedClipOriginalIndex
+                ]?.SourceClip;
+                if (dragContextObject == null)
+                {
+                    dragContextObject = CreateInstance<ScriptableObject>();
+                }
                 DragAndDrop.objectReferences = new[] { dragContextObject };
                 DragAndDrop.StartDrag(
                     _loadedEditorLayers[_draggedLoadedClipOriginalIndex].ClipName
@@ -1329,8 +1432,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 DragAndDrop.PrepareStartDrag();
                 DragAndDrop.SetGenericData("DraggedFrameDataIndex", _draggedFrameOriginalDataIndex);
 
-                Object dragContextObject =
-                    _activeEditorLayer.SourceClip ?? (Object)CreateInstance<ScriptableObject>();
+                Object dragContextObject = _activeEditorLayer.SourceClip;
+                if (dragContextObject == null)
+                {
+                    dragContextObject = CreateInstance<ScriptableObject>();
+                }
                 if (dragContextObject == null)
                 {
                     this.LogError($"Failed to create dragContextObject for frame drag.");
@@ -1445,8 +1551,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 if (
                     b.type == typeof(SpriteRenderer)
-                    && b.propertyName == "m_Sprite"
-                    && (string.IsNullOrWhiteSpace(bindingPath) || b.path == bindingPath)
+                    && string.Equals(b.propertyName, "m_Sprite", StringComparison.Ordinal)
+                    && (
+                        string.IsNullOrWhiteSpace(bindingPath)
+                        || string.Equals(b.path, bindingPath, StringComparison.Ordinal)
+                    )
                 )
                 {
                     spriteBinding = b;
@@ -1459,7 +1568,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 foreach (EditorCurveBinding b in allBindings)
                 {
-                    if (b.type == typeof(SpriteRenderer) && b.propertyName == "m_Sprite")
+                    if (
+                        b.type == typeof(SpriteRenderer)
+                        && string.Equals(b.propertyName, "m_Sprite", StringComparison.Ordinal)
+                    )
                     {
                         spriteBinding = b;
                         bindingFound = true;

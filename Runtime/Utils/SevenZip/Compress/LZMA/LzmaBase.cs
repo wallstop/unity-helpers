@@ -77,7 +77,7 @@ namespace SevenZip.Compression.LZMA
                 return len;
             }
 
-            return (uint)(kNumLenToPosStates - 1);
+            return kNumLenToPosStates - 1;
         }
 
         public const int kNumAlignBits = 4;

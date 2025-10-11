@@ -3,7 +3,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
 #if UNITY_EDITOR
     using UnityEditor;
     using UnityEngine;
-    using Core.Extension;
+    using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Utils;
 
     [CustomEditor(typeof(MatchColliderToSprite))]

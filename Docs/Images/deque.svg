@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="240" viewBox="0 0 640 240">
+  <rect x="0" y="0" width="640" height="240" fill="#0f0f13"/>
+  <g font-family="Verdana,Arial,sans-serif" font-size="12" fill="#c8d1dc">
+    <text x="16" y="24">Deque (Double-Ended Queue)</text>
+  </g>
+  <!-- deque nodes in array-like view -->
+  <g fill="none" stroke="#9fb3c8" stroke-width="2">
+    <rect x="80" y="80" width="480" height="60"/>
+    <line x1="140" y1="80" x2="140" y2="140"/>
+    <line x1="200" y1="80" x2="200" y2="140"/>
+    <line x1="260" y1="80" x2="260" y2="140"/>
+    <line x1="320" y1="80" x2="320" y2="140"/>
+    <line x1="380" y1="80" x2="380" y2="140"/>
+    <line x1="440" y1="80" x2="440" y2="140"/>
+    <line x1="500" y1="80" x2="500" y2="140"/>
+  </g>
+  <!-- arrows indicating push/pop at both ends (color-coded, length aligned to labels) -->
+  <!-- pushes (green), shorter arrows -->
+  <g stroke="#5ec69a" fill="#5ec69a">
+    <!-- push_front: shorter with gap to box -->
+    <line x1="110" y1="188" x2="110" y2="146"/>
+    <polygon points="104,152 116,152 110,146"/>
+    <!-- push_back: shorter with gap to box -->
+    <line x1="350" y1="203" x2="350" y2="146"/>
+    <polygon points="344,152 356,152 350,146"/>
+  </g>
+  <!-- pops (red), shorter with more gap before labels -->
+  <g stroke="#d57a7a" fill="#d57a7a">
+    <!-- pop_front: shorter; tip at 206 (label 220) -->
+    <line x1="170" y1="154" x2="170" y2="196"/>
+    <polygon points="164,196 176,196 170,206"/>
+    <!-- pop_back: shorter; tip at 192 (label 205) -->
+    <line x1="290" y1="154" x2="290" y2="184"/>
+    <polygon points="284,184 296,184 290,192"/>
+  </g>
+  <!-- labels (color-coded and staggered) -->
+  <g font-family="Verdana,Arial,sans-serif" font-size="11" text-anchor="middle">
+    <text x="110" y="205" fill="#5ec69a">push_front</text>
+    <text x="170" y="220" fill="#d57a7a">pop_front</text>
+    <text x="290" y="205" fill="#d57a7a">pop_back</text>
+    <text x="350" y="220" fill="#5ec69a">push_back</text>
+  </g>
+  <!-- side hints -->
+  <g font-family="Verdana,Arial,sans-serif" font-size="10" fill="#9fb3c8">
+    <text x="84" y="76">front</text>
+    <text x="554" y="76" text-anchor="end">back</text>
+  </g>
+  <!-- filled elements -->
+  <g fill="rgba(122,162,255,0.22)" stroke="#7aa2ff">
+    <rect x="140" y="80" width="60" height="60"/>
+    <rect x="200" y="80" width="60" height="60"/>
+    <rect x="260" y="80" width="60" height="60"/>
+  </g>
+  <!-- light head/tail markers aligned with operations -->
+  <g fill="#5ec69a" stroke="#5ec69a" opacity="0.85">
+    <!-- head at new leftmost shaded (center 170), tail at rightmost shaded (center 290) -->
+    <circle cx="170" cy="70" r="4"/>
+    <circle cx="290" cy="70" r="4"/>
+  </g>
+  <g font-family="Verdana,Arial,sans-serif" font-size="10" fill="#9fb3c8" text-anchor="middle">
+    <text x="170" y="62">head</text>
+    <text x="290" y="62">tail</text>
+  </g>
+</svg>

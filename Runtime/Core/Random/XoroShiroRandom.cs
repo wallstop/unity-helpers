@@ -2,10 +2,59 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 {
     using System;
     using System.Runtime.CompilerServices;
+    using System.Runtime.Serialization;
     using System.Text.Json.Serialization;
     using Extension;
     using Helper;
+    using ProtoBuf;
 
+    [Serializable]
+    [DataContract]
+    [ProtoContract]
+    /// <summary>
+    /// A fast 128-bit state Xoroshiro-based PRNG with good quality and tiny footprint.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Xoroshiro family generators (here in a 64/64 configuration) offer an excellent balance between speed and quality
+    /// for real-time applications. This implementation maintains two 64-bit state variables and returns 32-bit outputs.
+    /// </para>
+    /// <para>Pros:</para>
+    /// <list type="bullet">
+    /// <item><description>Very fast; suitable for gameplay and procedural generation.</description></item>
+    /// <item><description>Good statistical properties for non-crypto use; long period (~2^128−1).</description></item>
+    /// <item><description>Deterministic and reproducible across platforms.</description></item>
+    /// </list>
+    /// <para>Cons:</para>
+    /// <list type="bullet">
+    /// <item><description>Not cryptographically secure.</description></item>
+    /// <item><description>Low bits may show weaker properties in some variants; use full width for mixing.</description></item>
+    /// </list>
+    /// <para>When to use:</para>
+    /// <list type="bullet">
+    /// <item><description>General-purpose game randomness, procedural placement, shuffles, noise seeding.</description></item>
+    /// </list>
+    /// <para>When not to use:</para>
+    /// <list type="bullet">
+    /// <item><description>Security or adversarial contexts.</description></item>
+    /// </list>
+    /// <para>
+    /// Threading: Prefer <c>ThreadLocalRandom&lt;XoroShiroRandom&gt;.Instance</c> to avoid sharing state across threads.
+    /// </para>
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// using WallstopStudios.UnityHelpers.Core.Random;
+    ///
+    /// IRandom rng = new XoroShiroRandom(Guid.NewGuid());
+    /// float t = rng.NextFloat();
+    /// Color c = rng.NextColor(); // via RandomExtensions
+    ///
+    /// // Save/restore for deterministic replays
+    /// var state = rng.InternalState;
+    /// var replay = new XoroShiroRandom(state);
+    /// </code>
+    /// </example>
     public sealed class XoroShiroRandom
         : AbstractRandom,
             IEquatable<XoroShiroRandom>,
@@ -14,25 +63,39 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     {
         public static XoroShiroRandom Instance => ThreadLocalRandom<XoroShiroRandom>.Instance;
 
-        public override RandomState InternalState => new(_s0, _s1, _cachedGaussian);
+        public override RandomState InternalState => BuildState(_s0, _s1);
 
+        [ProtoMember(6)]
         internal ulong _s0;
+
+        [ProtoMember(7)]
         internal ulong _s1;
+
+        private void EnsureNonZeroState()
+        {
+            if ((_s0 | _s1) == 0)
+            {
+                _s0 = 0x9E3779B97F4A7C15UL;
+                _s1 = 0xD1B54A32D192ED03UL;
+            }
+        }
 
         public XoroShiroRandom()
             : this(Guid.NewGuid()) { }
 
         public XoroShiroRandom(Guid guid)
         {
-            byte[] bytes = guid.ToByteArray();
-            _s0 = BitConverter.ToUInt64(bytes, 0);
-            _s1 = BitConverter.ToUInt64(bytes, 8);
+            (ulong a, ulong b) = RandomUtilities.GuidToUInt64Pair(guid);
+            _s0 = a;
+            _s1 = b;
+            EnsureNonZeroState();
         }
 
         public XoroShiroRandom(ulong seed1, ulong seed2)
         {
             _s0 = seed1;
             _s1 = seed2;
+            EnsureNonZeroState();
         }
 
         [JsonConstructor]
@@ -40,13 +103,15 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         {
             _s0 = internalState.State1;
             _s1 = internalState.State2;
-            _cachedGaussian = internalState.Gaussian;
+            RestoreCommonState(internalState);
+            EnsureNonZeroState();
         }
 
         public override uint NextUint()
         {
             unchecked
             {
+                EnsureNonZeroState();
                 ulong s0 = _s0;
                 ulong s1 = _s1;
                 ulong result = s0 + s1;
@@ -87,7 +152,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         public override int GetHashCode()
         {
-            return Objects.ValueTypeHashCode(_s0, _s1);
+            return Objects.HashCode(_s0, _s1);
         }
 
         public override string ToString()

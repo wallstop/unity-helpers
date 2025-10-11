@@ -26,7 +26,12 @@ namespace WallstopStudios.UnityHelpers.Utils
         public MatchTransformMode mode = MatchTransformMode.Update;
 
         [SiblingComponent]
-        private Transform _transform;
+        internal Transform _transform;
+
+        // When matching self, avoid accumulating offset across frames by
+        // remembering the original base position we matched from.
+        private bool _hasSelfBasePosition;
+        private Vector3 _selfBasePosition;
 
         private void Awake()
         {
@@ -73,6 +78,18 @@ namespace WallstopStudios.UnityHelpers.Utils
         {
             if (toMatch == null)
             {
+                return;
+            }
+
+            if (toMatch == _transform)
+            {
+                if (!_hasSelfBasePosition)
+                {
+                    _selfBasePosition = _transform.position;
+                    _hasSelfBasePosition = true;
+                }
+
+                _transform.position = _selfBasePosition + localOffset;
                 return;
             }
 

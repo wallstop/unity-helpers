@@ -3,135 +3,262 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     using System;
     using System.Collections;
     using System.Collections.Generic;
-    using System.Linq;
-    using System.Reflection;
-    using Extension;
-    using Helper;
-    using JetBrains.Annotations;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Utils;
+    using static RelationalComponentProcessor;
 
+    /// <summary>
+    /// Automatically assigns sibling components (components on the same <see cref="GameObject"/>) to the decorated field.
+    /// Supports single components, <see cref="System.Array"/>s, <see cref="System.Collections.Generic.List{T}"/>,
+    /// and <see cref="System.Collections.Generic.HashSet{T}"/> collection types.
+    /// </summary>
+    /// <remarks>
+    /// Call <see cref="SiblingComponentExtensions.AssignSiblingComponents"/> (or
+    /// <see cref="RelationalComponentExtensions.AssignRelationalComponents(UnityEngine.Component)"/>) to populate the field.
+    /// This is typically done in <c>Awake()</c> or <c>OnEnable()</c>.
+    ///
+    /// Use optional filters to refine results: <see cref="BaseRelationalComponentAttribute.TagFilter"/> (by tag),
+    /// <see cref="BaseRelationalComponentAttribute.NameFilter"/> (substring match on name), and
+    /// <see cref="BaseRelationalComponentAttribute.IncludeInactive"/> (include disabled/inactive components).
+    ///
+    /// IMPORTANT: This attribute populates fields at runtime, not during Unity serialization in Edit mode.
+    /// Fields populated by this attribute will not be serialized by Unity.
+    ///
+    /// <seealso cref="BaseRelationalComponentAttribute"/>
+    /// <seealso cref="SiblingComponentExtensions.AssignSiblingComponents(UnityEngine.Component)"/>
+    /// <seealso cref="RelationalComponentExtensions.AssignRelationalComponents(UnityEngine.Component)"/>
+    /// </remarks>
+    /// <example>
+    /// Assign common sibling components with filters and collections:
+    /// <code><![CDATA[
+    /// using UnityEngine;
+    /// using WallstopStudios.UnityHelpers.Core.Attributes;
+    ///
+    /// public class Enemy : MonoBehaviour
+    /// {
+    ///     // Single assignment (required by default)
+    ///     [SiblingComponent] private Animator animator;
+    ///
+    ///     // Optional – do not log an error if not present
+    ///     [SiblingComponent(Optional = true)] private Rigidbody2D rb;
+    ///
+    ///     // Multiple results – collect all on the same GameObject
+    ///     [SiblingComponent] private List<Collider2D> allSiblingColliders;
+    ///
+    ///     // Filter by tag and name substring
+    ///     [SiblingComponent(TagFilter = "Visual", NameFilter = "Sprite")]
+    ///     private Component[] visualComponents;
+    ///
+    ///     private void Awake()
+    ///     {
+    ///         this.AssignSiblingComponents();
+    ///         // or: this.AssignRelationalComponents();
+    ///     }
+    /// }
+    /// ]]></code>
+    /// </example>
     [AttributeUsage(AttributeTargets.Field)]
-    [MeansImplicitUse]
-    public sealed class SiblingComponentAttribute : Attribute
-    {
-        public bool optional = false;
-    }
+    public sealed class SiblingComponentAttribute : BaseRelationalComponentAttribute { }
 
     public static class SiblingComponentExtensions
     {
         private static readonly Dictionary<
             Type,
-            (FieldInfo field, SiblingComponentAttribute attribute, Action<object, object> setter)[]
+            FieldMetadata<SiblingComponentAttribute>[]
         > FieldsByType = new();
 
+        /// <summary>
+        /// Assigns fields on <paramref name="component"/> marked with <see cref="SiblingComponentAttribute"/>.
+        /// </summary>
+        /// <param name="component">The component whose fields will be populated.</param>
+        /// <remarks>
+        /// Typical call site is <c>Awake()</c> or <c>OnEnable()</c>. For convenience, you can also call
+        /// <see cref="RelationalComponentExtensions.AssignRelationalComponents(UnityEngine.Component)"/> to assign all relational attributes.
+        /// </remarks>
+        /// <example>
+        /// <code><![CDATA[
+        /// void Awake()
+        /// {
+        ///     this.AssignSiblingComponents();
+        /// }
+        /// ]]></code>
+        /// </example>
         public static void AssignSiblingComponents(this Component component)
         {
             Type componentType = component.GetType();
-            (
-                FieldInfo field,
-                SiblingComponentAttribute attribute,
-                Action<object, object> setter
-            )[] fields = FieldsByType.GetOrAdd(
+            FieldMetadata<SiblingComponentAttribute>[] fields = FieldsByType.GetOrAdd(
                 componentType,
-                type =>
-                {
-                    FieldInfo[] fields = type.GetFields(
-                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
-                    );
-                    return fields
-                        .Select(field =>
-                            field.IsAttributeDefined(out SiblingComponentAttribute attribute)
-                                ? (field, attribute, ReflectionHelpers.GetFieldSetter(field))
-                                : (null, null, null)
-                        )
-                        .Where(tuple => tuple.attribute != null)
-                        .ToArray();
-                }
+                type => GetFieldMetadata<SiblingComponentAttribute>(type)
             );
 
-            foreach (
-                (
-                    FieldInfo field,
-                    SiblingComponentAttribute attribute,
-                    Action<object, object> setter
-                ) in fields
-            )
+            foreach (FieldMetadata<SiblingComponentAttribute> metadata in fields)
             {
-                Type fieldType = field.FieldType;
-                bool isArray = fieldType.IsArray;
-                Type siblingComponentType = isArray ? fieldType.GetElementType() : fieldType;
+                if (ShouldSkipAssignment(metadata, component))
+                {
+                    continue;
+                }
 
                 bool foundSibling;
-                if (isArray)
+
+                if (metadata.kind == FieldKind.Single)
                 {
-                    using PooledResource<List<Component>> componentBufferResource =
-                        Buffers<Component>.List.Get();
-                    List<Component> siblingComponents = componentBufferResource.resource;
-                    component.GetComponents(siblingComponentType, siblingComponents);
-                    foundSibling = 0 < siblingComponents.Count;
-
-                    Array correctTypedArray = ReflectionHelpers.CreateArray(
-                        siblingComponentType,
-                        siblingComponents.Count
-                    );
-                    for (int i = 0; i < siblingComponents.Count; i++)
-                    {
-                        Component siblingComponent = siblingComponents[i];
-                        correctTypedArray.SetValue(siblingComponent, i);
-                    }
-
-                    setter(component, correctTypedArray);
-                }
-                else if (
-                    fieldType.IsGenericType
-                    && fieldType.GetGenericTypeDefinition() == typeof(List<>)
-                )
-                {
-                    siblingComponentType = fieldType.GenericTypeArguments[0];
-
-                    using PooledResource<List<Component>> componentBufferResource =
-                        Buffers<Component>.List.Get();
-                    List<Component> siblingComponents = componentBufferResource.resource;
-                    component.GetComponents(siblingComponentType, siblingComponents);
-
-                    IList instance = ReflectionHelpers.CreateList(
-                        siblingComponentType,
-                        siblingComponents.Count
-                    );
-
-                    foundSibling = false;
-                    foreach (Component siblingComponent in siblingComponents)
-                    {
-                        instance.Add(siblingComponent);
-                        foundSibling = true;
-                    }
-
-                    setter(component, instance);
+                    foundSibling = TryAssignSingleSibling(component, metadata);
                 }
                 else
                 {
-                    if (
-                        component.TryGetComponent(
-                            siblingComponentType,
-                            out Component siblingComponent
-                        )
-                    )
+                    FilterParameters filters = new(metadata.attribute);
+                    switch (metadata.kind)
                     {
-                        foundSibling = true;
-                        setter(component, siblingComponent);
-                    }
-                    else
-                    {
-                        foundSibling = false;
+                        case FieldKind.Array:
+                        {
+                            using PooledResource<List<Component>> componentBuffer =
+                                Buffers<Component>.List.Get(out List<Component> components);
+                            GetComponentsOfType(
+                                component,
+                                metadata.elementType,
+                                metadata.isInterface,
+                                metadata.attribute.AllowInterfaces,
+                                components
+                            );
+
+                            int filteredCount = FilterComponentsInPlace(
+                                components,
+                                filters,
+                                metadata.attribute,
+                                metadata.elementType,
+                                metadata.isInterface
+                            );
+
+                            Array correctTypedArray = metadata.arrayCreator(filteredCount);
+                            for (int i = 0; i < filteredCount; ++i)
+                            {
+                                correctTypedArray.SetValue(components[i], i);
+                            }
+
+                            metadata.setter(component, correctTypedArray);
+                            foundSibling = filteredCount > 0;
+                            break;
+                        }
+                        case FieldKind.List:
+                        {
+                            using PooledResource<List<Component>> componentBuffer =
+                                Buffers<Component>.List.Get(out List<Component> components);
+                            GetComponentsOfType(
+                                component,
+                                metadata.elementType,
+                                metadata.isInterface,
+                                metadata.attribute.AllowInterfaces,
+                                components
+                            );
+
+                            int filteredCount = FilterComponentsInPlace(
+                                components,
+                                filters,
+                                metadata.attribute,
+                                metadata.elementType,
+                                metadata.isInterface
+                            );
+
+                            IList instance = metadata.listCreator(filteredCount);
+                            for (int i = 0; i < filteredCount; ++i)
+                            {
+                                instance.Add(components[i]);
+                            }
+
+                            metadata.setter(component, instance);
+                            foundSibling = filteredCount > 0;
+                            break;
+                        }
+                        case FieldKind.HashSet:
+                        {
+                            using PooledResource<List<Component>> componentBuffer =
+                                Buffers<Component>.List.Get(out List<Component> components);
+                            GetComponentsOfType(
+                                component,
+                                metadata.elementType,
+                                metadata.isInterface,
+                                metadata.attribute.AllowInterfaces,
+                                components
+                            );
+
+                            int filteredCount = FilterComponentsInPlace(
+                                components,
+                                filters,
+                                metadata.attribute,
+                                metadata.elementType,
+                                metadata.isInterface
+                            );
+
+                            object instance = metadata.hashSetCreator(filteredCount);
+                            for (int i = 0; i < filteredCount; ++i)
+                            {
+                                metadata.hashSetAdder(instance, components[i]);
+                            }
+
+                            metadata.setter(component, instance);
+                            foundSibling = filteredCount > 0;
+                            break;
+                        }
+                        default:
+                        {
+                            foundSibling = TryAssignSingleSibling(component, metadata);
+                            break;
+                        }
                     }
                 }
 
-                if (!foundSibling && !attribute.optional)
+                if (!foundSibling)
                 {
-                    component.LogError($"Unable to find sibling component of type {fieldType}");
+                    LogMissingComponentError(component, metadata, "sibling");
                 }
             }
+        }
+
+        private static bool TryAssignSingleSibling(
+            Component component,
+            FieldMetadata<SiblingComponentAttribute> metadata
+        )
+        {
+            SiblingComponentAttribute attribute = metadata.attribute;
+
+            if (metadata.isInterface && !attribute.AllowInterfaces)
+            {
+                return false;
+            }
+
+            bool hasSimpleFilters =
+                attribute.IncludeInactive
+                && attribute.TagFilter == null
+                && attribute.NameFilter == null;
+
+            if (!metadata.isInterface && hasSimpleFilters)
+            {
+                if (component.TryGetComponent(metadata.elementType, out Component sibling))
+                {
+                    metadata.setter(component, sibling);
+                    return true;
+                }
+                return false;
+            }
+
+            FilterParameters filters = new(attribute);
+            if (
+                TryResolveSingleComponent(
+                    component,
+                    filters,
+                    metadata.elementType,
+                    metadata.isInterface,
+                    attribute.AllowInterfaces,
+                    null,
+                    out Component resolved
+                )
+            )
+            {
+                metadata.setter(component, resolved);
+                return true;
+            }
+            return false;
         }
     }
 }

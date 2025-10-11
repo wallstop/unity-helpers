@@ -5,17 +5,32 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     using System;
     using System.Collections.Generic;
     using System.IO;
-    using System.Linq;
     using UnityEditor;
     using UnityEngine;
-    using Core.Attributes;
-    using Core.Extension;
     using CustomEditors;
+    using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
     [Serializable]
     public sealed class SpriteSettings
     {
+        public enum MatchMode
+        {
+            [Obsolete("Default is invalid. Choose a specific match mode.", false)]
+            None = 0,
+            Any = 1,
+            NameContains = 2,
+            PathContains = 3,
+            Regex = 4,
+            Extension = 5,
+        }
+
+        public MatchMode matchBy = MatchMode.Any;
+        public string matchPattern = string.Empty;
+        public int priority;
+
         public bool applyPixelsPerUnit;
 
         [WShowIf(nameof(applyPixelsPerUnit))]
@@ -74,6 +89,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         public TextureImporterCompression compressionLevel = TextureImporterCompression.Compressed;
 
         public string name = string.Empty;
+
+        public bool applyTextureType;
+
+        [WShowIf(nameof(applyTextureType))]
+        public TextureImporterType textureType = TextureImporterType.Sprite;
     }
 
     [CustomPropertyDrawer(typeof(SpriteSettings))]
@@ -156,6 +176,82 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             currentRect.y +=
                 EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
 
+            // Matching UI
+            SerializedProperty matchByProp = property.FindPropertyRelative(
+                nameof(SpriteSettings.matchBy)
+            );
+            SerializedProperty matchPatternProp = property.FindPropertyRelative(
+                nameof(SpriteSettings.matchPattern)
+            );
+            SerializedProperty priorityProp = property.FindPropertyRelative(
+                nameof(SpriteSettings.priority)
+            );
+
+            EditorGUI.LabelField(currentRect, "Matching", EditorStyles.boldLabel);
+            currentRect.y +=
+                EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
+
+            Rect rowRect = new(
+                position.x,
+                currentRect.y,
+                position.width,
+                EditorGUIUtility.singleLineHeight
+            );
+            Rect matchByRect = new(rowRect.x, rowRect.y, rowRect.width * 0.35f, rowRect.height);
+            // Draw a compact label+field for Match By to prevent label width from eating field space
+            const float matchByLabelWidth = 70f;
+            Rect matchByLabelRect = new(
+                matchByRect.x,
+                matchByRect.y,
+                matchByLabelWidth,
+                matchByRect.height
+            );
+            Rect matchByFieldRect = new(
+                matchByLabelRect.x + matchByLabelRect.width + HorizontalSpacing,
+                matchByRect.y,
+                Mathf.Max(0f, matchByRect.width - matchByLabelWidth - HorizontalSpacing),
+                matchByRect.height
+            );
+            EditorGUI.LabelField(matchByLabelRect, "Match By");
+            EditorGUI.PropertyField(matchByFieldRect, matchByProp, GUIContent.none);
+            SpriteSettings.MatchMode mode = (SpriteSettings.MatchMode)matchByProp.enumValueIndex;
+#pragma warning disable CS0618 // Type or member is obsolete
+            if (mode != SpriteSettings.MatchMode.Any && mode != SpriteSettings.MatchMode.None)
+#pragma warning restore CS0618 // Type or member is obsolete
+            {
+                Rect patternRect = new(
+                    matchByRect.x + matchByRect.width + HorizontalSpacing,
+                    rowRect.y,
+                    rowRect.width - matchByRect.width - HorizontalSpacing - 80f,
+                    rowRect.height
+                );
+                EditorGUI.PropertyField(patternRect, matchPatternProp, new GUIContent("Pattern"));
+            }
+            Rect priorityRect = new(
+                rowRect.x + rowRect.width - 80f,
+                rowRect.y,
+                80f,
+                rowRect.height
+            );
+            // Priority area is tight: draw label+field manually to avoid label consuming all width
+            const float priorityLabelWidth = 50f;
+            Rect priorityLabelRect = new(
+                priorityRect.x,
+                priorityRect.y,
+                priorityLabelWidth,
+                priorityRect.height
+            );
+            Rect priorityFieldRect = new(
+                priorityLabelRect.x + priorityLabelRect.width + HorizontalSpacing,
+                priorityRect.y,
+                Mathf.Max(0f, priorityRect.width - priorityLabelWidth - HorizontalSpacing),
+                priorityRect.height
+            );
+            EditorGUI.LabelField(priorityLabelRect, "Priority");
+            EditorGUI.PropertyField(priorityFieldRect, priorityProp, GUIContent.none);
+            currentRect.y +=
+                EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
+
             foreach ((string apply, string val, string label) pair in _settingPairs)
             {
                 SerializedProperty applyProp = property.FindPropertyRelative(pair.apply);
@@ -213,6 +309,42 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 }
             }
 
+            // Enforce Texture Type UI
+            SerializedProperty applyTextureTypeProp = property.FindPropertyRelative(
+                nameof(SpriteSettings.applyTextureType)
+            );
+            SerializedProperty textureTypeProp = property.FindPropertyRelative(
+                nameof(SpriteSettings.textureType)
+            );
+
+            float labelLineHeight2 = EditorGUIUtility.singleLineHeight;
+            Rect labelLineRect2 = new(position.x, currentRect.y, position.width, labelLineHeight2);
+            Rect checkboxRect2 = new(
+                labelLineRect2.x + labelLineRect2.width - CheckboxWidth,
+                labelLineRect2.y,
+                CheckboxWidth,
+                labelLineHeight2
+            );
+            Rect labelRect2 = new(
+                labelLineRect2.x,
+                labelLineRect2.y,
+                labelLineRect2.width - CheckboxWidth - HorizontalSpacing,
+                labelLineHeight2
+            );
+            EditorGUI.LabelField(labelRect2, "Enforce Texture Type");
+            EditorGUI.PropertyField(checkboxRect2, applyTextureTypeProp, GUIContent.none);
+            currentRect.y += labelLineHeight2 + EditorGUIUtility.standardVerticalSpacing;
+            if (applyTextureTypeProp.boolValue)
+            {
+                float valuePropHeight = EditorGUI.GetPropertyHeight(textureTypeProp, true);
+                Rect valueRect = new(position.x, currentRect.y, position.width, valuePropHeight);
+                using (new EditorGUI.IndentLevelScope())
+                {
+                    EditorGUI.PropertyField(valueRect, textureTypeProp, GUIContent.none, true);
+                }
+                currentRect.y += valueRect.height + EditorGUIUtility.standardVerticalSpacing;
+            }
+
             EditorGUI.EndProperty();
         }
 
@@ -229,6 +361,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     EditorGUI.GetPropertyHeight(nameProp)
                     + EditorGUIUtility.standardVerticalSpacing;
             }
+
+            // Matching header + row (matchBy, pattern, priority)
+            totalHeight +=
+                EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing; // header
+            totalHeight +=
+                EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing; // row
 
             foreach ((string apply, string val, string label) pair in _settingPairs)
             {
@@ -251,6 +389,22 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 }
             }
 
+            // Texture type enforcement height
+            SerializedProperty applyTextureTypeProp = property.FindPropertyRelative(
+                nameof(SpriteSettings.applyTextureType)
+            );
+            SerializedProperty textureTypeProp = property.FindPropertyRelative(
+                nameof(SpriteSettings.textureType)
+            );
+            totalHeight +=
+                EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
+            if (applyTextureTypeProp is { boolValue: true })
+            {
+                totalHeight +=
+                    EditorGUI.GetPropertyHeight(textureTypeProp, true)
+                    + EditorGUIUtility.standardVerticalSpacing;
+            }
+
             if (totalHeight > 0)
             {
                 totalHeight -= EditorGUIUtility.standardVerticalSpacing;
@@ -260,6 +414,29 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         }
     }
 
+    /// <summary>
+    /// Batch-applies configurable sprite importer settings to selected sprites and/or recursively
+    /// through selected directories using prioritized profiles with multiple match modes.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Problems this solves: keeping large sets of sprites consistent (PPU, pivot, mode, filter,
+    /// wrap, compression, etc.) without manual per-asset editing.
+    /// </para>
+    /// <para>
+    /// How it works: define one or more <c>SpriteSettings</c> profiles with match mode
+    /// (Any/NameContains/PathContains/Regex/Extension) and an optional priority. Calculate stats to
+    /// preview which assets will be affected, then apply settings in one pass.
+    /// </para>
+    /// <para>
+    /// Usage: add sprites and/or directories; configure profiles; click "Calculate Stats" to see
+    /// impact and preview up to 200 paths; then "Apply Settings" to write importer changes.
+    /// </para>
+    /// <para>
+    /// Caveats: importer changes trigger reimports; ensure regex patterns are correct; for very
+    /// large trees prefer running in batches.
+    /// </para>
+    /// </remarks>
     public sealed class SpriteSettingsApplierWindow : EditorWindow
     {
         public List<Sprite> sprites = new();
@@ -276,6 +453,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         private Vector2 _scrollPosition;
         private int _totalSpritesToProcess = -1;
         private int _spritesThatWillChange = -1;
+        private bool _showPreviewOfChanges;
+        private readonly List<string> _assetsThatWillChange = new();
+        private bool _applyCanceled;
+        private readonly TextureImporterSettings _settingsBuffer = new();
 
         [MenuItem("Tools/Wallstop Studios/Unity Helpers/Sprite Settings Applier", priority = -2)]
         public static void ShowWindow()
@@ -335,6 +516,31 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 EditorGUILayout.LabelField($"Sprites to process: {_totalSpritesToProcess}");
                 EditorGUILayout.LabelField($"Sprites that will change: {_spritesThatWillChange}");
+                _showPreviewOfChanges = EditorGUILayout.Foldout(
+                    _showPreviewOfChanges,
+                    $"Preview ({_assetsThatWillChange.Count})"
+                );
+                if (_showPreviewOfChanges)
+                {
+                    int toShow = Mathf.Min(_assetsThatWillChange.Count, 200);
+                    for (int i = 0; i < toShow; i++)
+                    {
+                        EditorGUILayout.LabelField(_assetsThatWillChange[i]);
+                    }
+                    if (_assetsThatWillChange.Count > 200)
+                    {
+                        EditorGUILayout.LabelField(
+                            $"...and {_assetsThatWillChange.Count - 200} more"
+                        );
+                    }
+                    if (GUILayout.Button("Copy List"))
+                    {
+                        EditorGUIUtility.systemCopyBuffer = string.Join(
+                            "\n",
+                            _assetsThatWillChange
+                        );
+                    }
+                }
             }
             else
             {
@@ -348,6 +554,19 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 ApplySettings();
             }
 
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Profiles", EditorStyles.boldLabel);
+            EditorGUILayout.BeginHorizontal();
+            if (GUILayout.Button("Save Profiles Asset"))
+            {
+                SaveProfilesAsset();
+            }
+            if (GUILayout.Button("Load Profiles Asset"))
+            {
+                LoadProfilesAsset();
+            }
+            EditorGUILayout.EndHorizontal();
+
             EditorGUILayout.EndScrollView();
 
             _serializedObject.ApplyModifiedProperties();
@@ -355,28 +574,28 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
         private List<(string fullFilePath, string relativePath)> GetTargetSpritePaths()
         {
+            List<(string fullFilePath, string relativePath)> filePaths = new();
             HashSet<string> uniqueRelativePaths = new(StringComparer.OrdinalIgnoreCase);
-            HashSet<Object> validDirectories = new();
 
+            // Collect folder asset paths from user selection
+            List<string> folderAssetPaths = new();
             for (int i = 0; i < _directoriesProp.arraySize; i++)
             {
                 Object dir = _directoriesProp.GetArrayElementAtIndex(i).objectReferenceValue;
-                if (dir != null)
+                if (dir == null)
                 {
-                    validDirectories.Add(dir);
+                    continue;
                 }
-            }
 
-            HashSet<string> uniqueDirectoryPaths = new(StringComparer.OrdinalIgnoreCase);
-            foreach (
-                string assetPath in validDirectories
-                    .Select(AssetDatabase.GetAssetPath)
-                    .Where(assetPath => !string.IsNullOrWhiteSpace(assetPath))
-            )
-            {
+                string assetPath = AssetDatabase.GetAssetPath(dir);
+                if (string.IsNullOrWhiteSpace(assetPath))
+                {
+                    continue;
+                }
+
                 if (AssetDatabase.IsValidFolder(assetPath))
                 {
-                    _ = uniqueDirectoryPaths.Add(assetPath);
+                    folderAssetPaths.Add(assetPath);
                 }
                 else
                 {
@@ -384,82 +603,60 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 }
             }
 
-            List<(string fullFilePath, string relativePath)> filePaths = new();
-            Queue<string> directoriesToCheck = new(uniqueDirectoryPaths);
-            HashSet<string> processedFullPaths = new(StringComparer.OrdinalIgnoreCase);
-
-            while (directoriesToCheck.TryDequeue(out string relativeDirectoryPath))
+            // Build allowed extension set
+            HashSet<string> allowedExtensions = new(StringComparer.OrdinalIgnoreCase);
+            for (int i = 0; i < _spriteFileExtensionsProp.arraySize; i++)
             {
-                string fullDirectoryPath = Path.GetFullPath(relativeDirectoryPath);
-
-                if (!Directory.Exists(fullDirectoryPath))
+                string ext = _spriteFileExtensionsProp.GetArrayElementAtIndex(i).stringValue;
+                if (string.IsNullOrWhiteSpace(ext))
                 {
-                    this.LogWarn($"Directory path does not exist: {fullDirectoryPath}. Skipping.");
                     continue;
                 }
 
-                try
+                if (!ext.StartsWith("."))
                 {
-                    foreach (string fullFilePath in Directory.EnumerateFiles(fullDirectoryPath))
-                    {
-                        string fileExtension = Path.GetExtension(fullFilePath);
-                        bool extensionMatch = false;
-                        for (int i = 0; i < _spriteFileExtensionsProp.arraySize; i++)
-                        {
-                            if (
-                                string.Equals(
-                                    fileExtension,
-                                    _spriteFileExtensionsProp.GetArrayElementAtIndex(i).stringValue,
-                                    StringComparison.OrdinalIgnoreCase
-                                )
-                            )
-                            {
-                                extensionMatch = true;
-                                break;
-                            }
-                        }
-
-                        if (!extensionMatch)
-                        {
-                            continue;
-                        }
-
-                        if (processedFullPaths.Add(fullFilePath))
-                        {
-                            string relativeFilePath =
-                                "Assets"
-                                + fullFilePath
-                                    .Substring(Application.dataPath.Length)
-                                    .Replace("\\", "/");
-                            if (uniqueRelativePaths.Add(relativeFilePath))
-                            {
-                                filePaths.Add((fullFilePath, relativeFilePath));
-                            }
-                        }
-                    }
-
-                    foreach (
-                        string subDirectoryFullPath in Directory.EnumerateDirectories(
-                            fullDirectoryPath
-                        )
-                    )
-                    {
-                        string relativeSubDirectory =
-                            "Assets"
-                            + subDirectoryFullPath
-                                .Substring(Application.dataPath.Length)
-                                .Replace("\\", "/");
-                        directoriesToCheck.Enqueue(relativeSubDirectory);
-                    }
+                    ext = "." + ext;
                 }
-                catch (Exception e)
+
+                allowedExtensions.Add(ext);
+            }
+
+            // Search in folders via AssetDatabase
+            if (folderAssetPaths.Count > 0)
+            {
+                using PooledResource<string[]> bufferResource = WallstopFastArrayPool<string>.Get(
+                    folderAssetPaths.Count,
+                    out string[] folders
+                );
+
+                for (int i = 0; i < folderAssetPaths.Count; i++)
                 {
-                    this.LogError(
-                        $"Error enumerating directory '{fullDirectoryPath}': {e.Message}"
-                    );
+                    folders[i] = folderAssetPaths[i];
+                }
+
+                string[] guids = AssetDatabase.FindAssets("t:Texture2D", folders);
+                for (int i = 0; i < guids.Length; i++)
+                {
+                    string assetPath = AssetDatabase.GUIDToAssetPath(guids[i]);
+                    if (string.IsNullOrWhiteSpace(assetPath))
+                    {
+                        continue;
+                    }
+
+                    string ext = Path.GetExtension(assetPath);
+                    if (allowedExtensions.Count > 0 && !allowedExtensions.Contains(ext))
+                    {
+                        continue;
+                    }
+
+                    if (uniqueRelativePaths.Add(assetPath))
+                    {
+                        filePaths.Add((string.Empty, assetPath));
+                    }
                 }
             }
 
+            // Add explicitly selected sprites
             for (int i = 0; i < _spritesProp.arraySize; i++)
             {
                 Sprite sprite =
@@ -469,17 +666,21 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     continue;
                 }
 
-                string relativePath = AssetDatabase.GetAssetPath(sprite);
-                if (!string.IsNullOrWhiteSpace(relativePath))
+                string assetPath = AssetDatabase.GetAssetPath(sprite);
+                if (string.IsNullOrWhiteSpace(assetPath))
                 {
-                    if (uniqueRelativePaths.Add(relativePath))
-                    {
-                        string fullPath = Path.GetFullPath(relativePath);
-                        if (processedFullPaths.Add(fullPath))
-                        {
-                            filePaths.Add((fullPath, relativePath));
-                        }
-                    }
+                    continue;
+                }
+
+                string ext = Path.GetExtension(assetPath);
+                if (allowedExtensions.Count > 0 && !allowedExtensions.Contains(ext))
+                {
+                    continue;
+                }
+
+                if (uniqueRelativePaths.Add(assetPath))
+                {
+                    filePaths.Add((string.Empty, assetPath));
                 }
             }
 
@@ -494,41 +695,64 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             _totalSpritesToProcess = targetFiles.Count;
 
-            List<SpriteSettings> currentSettings = new();
-            for (int i = 0; i < _spriteSettingsProp.arraySize; i++)
+            List<SpriteSettings> currentSettings;
+            if (_serializedObject.targetObject is SpriteSettingsApplierWindow windowInstance)
             {
-                if (_serializedObject.targetObject is SpriteSettingsApplierWindow windowInstance)
-                {
-                    if (i < windowInstance.spriteSettings.Count)
-                    {
-                        currentSettings.Add(windowInstance.spriteSettings[i]);
-                    }
-                }
+                currentSettings = windowInstance.spriteSettings;
             }
-
-            if (currentSettings.Count != _spriteSettingsProp.arraySize)
+            else
             {
-                this.LogWarn(
-                    $"Mismatch between SerializedProperty size and actual list size for spriteSettings. Stats might be inaccurate."
+                this.LogError(
+                    $"Cannot access spriteSettings list from target object. Aborting stats."
                 );
+                return;
             }
 
+            _assetsThatWillChange.Clear();
+            if (_assetsThatWillChange.Capacity < targetFiles.Count)
+            {
+                _assetsThatWillChange.Capacity = targetFiles.Count;
+            }
+
+            // Prepare matchers once using public API
+            List<SpriteSettingsApplierAPI.PreparedProfile> prepared =
+                SpriteSettingsApplierAPI.PrepareProfiles(currentSettings);
+
+            double lastUpdateTime = EditorApplication.timeSinceStartup;
             for (int i = 0; i < targetFiles.Count; i++)
             {
                 (string _, string relativePath) = targetFiles[i];
-                EditorUtility.DisplayProgressBar(
-                    "Calculating Stats",
-                    $"Checking '{Path.GetFileName(relativePath)}' ({i + 1}/{_totalSpritesToProcess})",
-                    (float)(i + 1) / _totalSpritesToProcess
-                );
+                // Throttle progress bar updates to reduce overhead
+                double now = EditorApplication.timeSinceStartup;
+                if (
+                    i == 0
+                    || i == targetFiles.Count - 1
+                    || i % 50 == 0
+                    || now - lastUpdateTime > 0.2
+                )
+                {
+                    Utils.EditorUi.ShowProgress(
+                        "Calculating Stats",
+                        $"Checking '{Path.GetFileName(relativePath)}' ({i + 1}/{_totalSpritesToProcess})",
+                        (float)(i + 1) / _totalSpritesToProcess
+                    );
+                    lastUpdateTime = now;
+                }
 
-                if (WillTextureSettingsChange(relativePath, currentSettings))
+                if (
+                    SpriteSettingsApplierAPI.WillTextureSettingsChange(
+                        relativePath,
+                        prepared,
+                        _settingsBuffer
+                    )
+                )
                 {
                     _spritesThatWillChange++;
+                    _assetsThatWillChange.Add(relativePath);
                 }
             }
 
-            EditorUtility.ClearProgressBar();
+            Utils.EditorUi.ClearProgress();
             this.Log(
                 $"Calculation complete. Sprites to process: {_totalSpritesToProcess}, Sprites that will change: {_spritesThatWillChange}"
             );
@@ -538,7 +762,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         {
             List<(string fullFilePath, string relativePath)> targetFiles = GetTargetSpritePaths();
             int spriteCount = 0;
-            List<TextureImporter> updatedImporters = new();
+            List<TextureImporter> updatedImporters = new(targetFiles.Count);
+            _applyCanceled = false;
 
             List<SpriteSettings> currentSettings;
             if (_serializedObject.targetObject is SpriteSettingsApplierWindow windowInstance)
@@ -562,13 +787,43 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             AssetDatabase.StartAssetEditing();
             try
             {
-                foreach ((string _, string filePath) in targetFiles)
+                // Prepare profile matchers once via API for unification
+                List<SpriteSettingsApplierAPI.PreparedProfile> prepared =
+                    SpriteSettingsApplierAPI.PrepareProfiles(currentSettings);
+                double lastUpdateTime = EditorApplication.timeSinceStartup;
+
+                for (int i = 0; i < targetFiles.Count; i++)
                 {
+                    string filePath = targetFiles[i].relativePath;
+                    double now = EditorApplication.timeSinceStartup;
+                    bool shouldUpdate =
+                        i == 0
+                        || i == targetFiles.Count - 1
+                        || i % 50 == 0
+                        || now - lastUpdateTime > 0.2;
                     if (
-                        TryUpdateTextureSettings(
+                        shouldUpdate
+                        && Utils.EditorUi.CancelableProgress(
+                            "Applying Sprite Settings",
+                            $"Processing '{Path.GetFileName(filePath)}' ({i + 1}/{targetFiles.Count})",
+                            (float)(i + 1) / targetFiles.Count
+                        )
+                    )
+                    {
+                        _applyCanceled = true;
+                        break;
+                    }
+                    if (shouldUpdate)
+                    {
+                        lastUpdateTime = now;
+                    }
+
+                    if (
+                        SpriteSettingsApplierAPI.TryUpdateTextureSettings(
                             filePath,
-                            currentSettings,
-                            out TextureImporter textureImporter
+                            prepared,
+                            out TextureImporter textureImporter,
+                            _settingsBuffer
                         )
                     )
                     {
@@ -583,13 +838,20 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             finally
             {
                 AssetDatabase.StopAssetEditing();
-                EditorUtility.ClearProgressBar();
+                Utils.EditorUi.ClearProgress();
                 foreach (TextureImporter importer in updatedImporters)
                 {
                     importer.SaveAndReimport();
                 }
 
-                this.Log($"Processed {spriteCount} sprites.");
+                if (_applyCanceled)
+                {
+                    this.Log($"Canceled. Processed {spriteCount} sprites before cancel.");
+                }
+                else
+                {
+                    this.Log($"Processed {spriteCount} sprites.");
+                }
                 if (0 < spriteCount)
                 {
                     AssetDatabase.SaveAssets();
@@ -606,312 +868,74 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
         }
 
-        private static SpriteSettings FindMatchingSettings(
-            string filePath,
-            List<SpriteSettings> settingsProfiles
-        )
+        // Matching and application logic lives in SpriteSettingsApplierAPI.
+
+        // Profiles persistence helpers
+        private void SaveProfilesAsset()
         {
-            string fileName = Path.GetFileName(filePath);
-
-            foreach (SpriteSettings settings in settingsProfiles)
+            string path = EditorUtility.SaveFilePanelInProject(
+                "Save Sprite Settings Profiles",
+                "SpriteSettingsProfiles",
+                "asset",
+                "Choose location to save the profiles asset"
+            );
+            if (string.IsNullOrEmpty(path))
             {
-                if (
-                    !string.IsNullOrWhiteSpace(settings.name)
-                    && fileName.Contains(settings.name, StringComparison.OrdinalIgnoreCase)
-                )
-                {
-                    return settings;
-                }
+                return;
             }
 
-            foreach (SpriteSettings settings in settingsProfiles)
+            SpriteSettingsProfileCollection asset =
+                CreateInstance<SpriteSettingsProfileCollection>();
+            asset.profiles = new List<SpriteSettings>(spriteSettings.Count);
+            for (int i = 0; i < spriteSettings.Count; i++)
             {
-                if (string.IsNullOrWhiteSpace(settings.name))
-                {
-                    return settings;
-                }
+                string json = JsonUtility.ToJson(spriteSettings[i]);
+                asset.profiles.Add(JsonUtility.FromJson<SpriteSettings>(json));
             }
-            return null;
+            AssetDatabase.CreateAsset(asset, path);
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            this.Log($"Saved profiles to {path}");
         }
 
-        private bool WillTextureSettingsChange(
-            string filePath,
-            List<SpriteSettings> settingsProfiles
-        )
+        private void LoadProfilesAsset()
         {
-            if (string.IsNullOrWhiteSpace(filePath))
+            string path = Utils.EditorUi.OpenFilePanel(
+                "Load Sprite Settings Profiles",
+                "Assets",
+                "asset"
+            );
+            if (string.IsNullOrEmpty(path))
             {
-                return false;
+                return;
             }
 
-            TextureImporter textureImporter = AssetImporter.GetAtPath(filePath) as TextureImporter;
-            if (textureImporter == null)
+            string projectRelative = path;
+            if (path.StartsWith(Application.dataPath))
             {
-                this.LogWarn($"Could not get TextureImporter for asset: {filePath}");
-                return false;
+                projectRelative = "Assets" + path.Substring(Application.dataPath.Length);
+            }
+            else if (path.Contains("/Assets/"))
+            {
+                int idx = path.IndexOf("/Assets/", StringComparison.OrdinalIgnoreCase);
+                projectRelative = path.Substring(idx + 1);
             }
 
-            SpriteSettings spriteData = FindMatchingSettings(filePath, settingsProfiles);
-            if (spriteData == null)
+            SpriteSettingsProfileCollection asset =
+                AssetDatabase.LoadAssetAtPath<SpriteSettingsProfileCollection>(projectRelative);
+            if (asset == null)
             {
-                this.LogWarn($"No matching SpriteSettings profile found for: {filePath}");
-                return false;
+                this.LogWarn($"Could not load profiles asset at: {projectRelative}");
+                return;
             }
 
-            bool changed = false;
-            if (spriteData.applyPixelsPerUnit)
+            spriteSettings = new List<SpriteSettings>(asset.profiles.Count);
+            for (int i = 0; i < asset.profiles.Count; i++)
             {
-                changed |= textureImporter.spritePixelsPerUnit != spriteData.pixelsPerUnit;
+                string json = JsonUtility.ToJson(asset.profiles[i]);
+                spriteSettings.Add(JsonUtility.FromJson<SpriteSettings>(json));
             }
-
-            if (spriteData.applyPivot)
-            {
-                changed |= textureImporter.spritePivot != spriteData.pivot;
-            }
-
-            if (spriteData.applyGenerateMipMaps)
-            {
-                changed |= textureImporter.mipmapEnabled != spriteData.generateMipMaps;
-            }
-
-            if (spriteData.applyCrunchCompression)
-            {
-                changed |= textureImporter.crunchedCompression != spriteData.useCrunchCompression;
-            }
-
-            if (spriteData.applyCompression)
-            {
-                changed |= textureImporter.textureCompression != spriteData.compressionLevel;
-            }
-
-            TextureImporterSettings settings = new();
-            textureImporter.ReadTextureSettings(settings);
-            if (spriteData.applyPivot)
-            {
-                changed |= settings.spriteAlignment != (int)SpriteAlignment.Custom;
-            }
-
-            if (spriteData.applyAlphaIsTransparency)
-            {
-                changed |= settings.alphaIsTransparency != spriteData.alphaIsTransparency;
-            }
-
-            if (spriteData.applyReadWriteEnabled)
-            {
-                changed |= settings.readable != spriteData.readWriteEnabled;
-            }
-
-            if (spriteData.applySpriteMode)
-            {
-                changed |= settings.spriteMode != (int)spriteData.spriteMode;
-            }
-
-            if (spriteData.applyExtrudeEdges)
-            {
-                changed |= settings.spriteExtrude != spriteData.extrudeEdges;
-            }
-
-            if (spriteData.applyWrapMode)
-            {
-                changed |= settings.wrapMode != spriteData.wrapMode;
-            }
-
-            if (spriteData.applyFilterMode)
-            {
-                changed |= settings.filterMode != spriteData.filterMode;
-            }
-
-            return changed;
-        }
-
-        private bool TryUpdateTextureSettings(
-            string filePath,
-            List<SpriteSettings> settingsProfiles,
-            out TextureImporter textureImporter
-        )
-        {
-            textureImporter = default;
-            if (string.IsNullOrWhiteSpace(filePath))
-            {
-                return false;
-            }
-
-            textureImporter = AssetImporter.GetAtPath(filePath) as TextureImporter;
-            if (textureImporter == null)
-            {
-                this.LogWarn($"Could not get TextureImporter for asset: {filePath}");
-                return false;
-            }
-
-            SpriteSettings spriteData = FindMatchingSettings(filePath, settingsProfiles);
-
-            if (spriteData == null)
-            {
-                this.LogWarn($"No matching SpriteSettings profile found for: {filePath}");
-                return false;
-            }
-
-            bool changed = false;
-            bool settingsChanged = false;
-            TextureImporterSettings settings = new();
-            textureImporter.ReadTextureSettings(settings);
-
-            if (spriteData.applySpriteMode)
-            {
-                if (textureImporter.spriteImportMode != spriteData.spriteMode)
-                {
-                    textureImporter.spriteImportMode = spriteData.spriteMode;
-                    changed = true;
-                }
-
-                if (settings.spriteMode != (int)spriteData.spriteMode)
-                {
-                    settings.spriteMode = (int)spriteData.spriteMode;
-                    settingsChanged = true;
-                }
-            }
-
-            if (spriteData.applyPixelsPerUnit)
-            {
-                if (textureImporter.spritePixelsPerUnit != spriteData.pixelsPerUnit)
-                {
-                    textureImporter.spritePixelsPerUnit = spriteData.pixelsPerUnit;
-                    changed = true;
-                }
-
-                if (settings.spritePixelsPerUnit != spriteData.pixelsPerUnit)
-                {
-                    settings.spritePixelsPerUnit = spriteData.pixelsPerUnit;
-                    settingsChanged = true;
-                }
-            }
-
-            if (spriteData.applyPivot)
-            {
-                if (textureImporter.spritePivot != spriteData.pivot)
-                {
-                    textureImporter.spritePivot = spriteData.pivot;
-                    changed = true;
-                }
-
-                if (settings.spriteAlignment != (int)SpriteAlignment.Custom)
-                {
-                    settings.spriteAlignment = (int)SpriteAlignment.Custom;
-                    settingsChanged = true;
-                }
-
-                if (settings.spritePivot != spriteData.pivot)
-                {
-                    settings.spritePivot = spriteData.pivot;
-                    settingsChanged = true;
-                }
-            }
-
-            if (spriteData.applyGenerateMipMaps)
-            {
-                if (textureImporter.mipmapEnabled != spriteData.generateMipMaps)
-                {
-                    textureImporter.mipmapEnabled = spriteData.generateMipMaps;
-                    changed = true;
-                }
-                if (settings.mipmapEnabled != spriteData.generateMipMaps)
-                {
-                    settings.mipmapEnabled = spriteData.generateMipMaps;
-                    settingsChanged = true;
-                }
-            }
-
-            if (spriteData.applyCrunchCompression)
-            {
-                if (textureImporter.crunchedCompression != spriteData.useCrunchCompression)
-                {
-                    textureImporter.crunchedCompression = spriteData.useCrunchCompression;
-                    changed = true;
-                }
-            }
-
-            if (spriteData.applyCompression)
-            {
-                if (textureImporter.textureCompression != spriteData.compressionLevel)
-                {
-                    textureImporter.textureCompression = spriteData.compressionLevel;
-                    changed = true;
-                }
-            }
-
-            if (spriteData.applyAlphaIsTransparency)
-            {
-                if (textureImporter.alphaIsTransparency != spriteData.alphaIsTransparency)
-                {
-                    textureImporter.alphaIsTransparency = spriteData.alphaIsTransparency;
-                    changed = true;
-                }
-                if (settings.alphaIsTransparency != spriteData.alphaIsTransparency)
-                {
-                    settings.alphaIsTransparency = spriteData.alphaIsTransparency;
-                    settingsChanged = true;
-                }
-            }
-
-            if (spriteData.applyReadWriteEnabled)
-            {
-                if (textureImporter.isReadable != spriteData.readWriteEnabled)
-                {
-                    textureImporter.isReadable = spriteData.readWriteEnabled;
-                    changed = true;
-                }
-
-                if (settings.readable != spriteData.readWriteEnabled)
-                {
-                    settings.readable = spriteData.readWriteEnabled;
-                    settingsChanged = true;
-                }
-            }
-
-            if (spriteData.applyExtrudeEdges)
-            {
-                if (settings.spriteExtrude != spriteData.extrudeEdges)
-                {
-                    settings.spriteExtrude = spriteData.extrudeEdges;
-                    settingsChanged = true;
-                }
-            }
-
-            if (spriteData.applyWrapMode)
-            {
-                if (textureImporter.wrapMode != spriteData.wrapMode)
-                {
-                    textureImporter.wrapMode = spriteData.wrapMode;
-                    changed = true;
-                }
-                if (settings.wrapMode != spriteData.wrapMode)
-                {
-                    settings.wrapMode = spriteData.wrapMode;
-                    settingsChanged = true;
-                }
-            }
-
-            if (spriteData.applyFilterMode)
-            {
-                if (textureImporter.filterMode != spriteData.filterMode)
-                {
-                    textureImporter.filterMode = spriteData.filterMode;
-                    changed = true;
-                }
-                if (settings.filterMode != spriteData.filterMode)
-                {
-                    settings.filterMode = spriteData.filterMode;
-                    settingsChanged = true;
-                }
-            }
-
-            if (changed || settingsChanged)
-            {
-                textureImporter.SetTextureSettings(settings);
-                textureImporter.SaveAndReimport();
-            }
-
-            return changed || settingsChanged;
+            this.Log($"Loaded {spriteSettings.Count} profiles from {projectRelative}");
         }
     }
 #endif

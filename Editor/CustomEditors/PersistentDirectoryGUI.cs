@@ -6,8 +6,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
     using UnityEditor;
     using System.Collections.Generic;
     using System.Linq;
-    using Core.Helper;
     using System.IO;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using Object = UnityEngine.Object;
 
     public static class PersistentDirectoryGUI
@@ -630,7 +630,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
                         initialBrowsePath = Application.dataPath;
                     }
 
-                    string selectedPathSys = EditorUtility.OpenFolderPanel(
+                    string selectedPathSys = Utils.EditorUi.OpenFolderPanel(
                         dialogTitle,
                         initialBrowsePath,
                         ""

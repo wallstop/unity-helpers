@@ -9,6 +9,9 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
     {
         public static readonly Vector2Converter Instance = new();
 
+        private static readonly JsonEncodedText XProp = JsonEncodedText.Encode("x");
+        private static readonly JsonEncodedText YProp = JsonEncodedText.Encode("y");
+
         private Vector2Converter() { }
 
         public override Vector2 Read(
@@ -34,24 +37,19 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
 
                 if (reader.TokenType == JsonTokenType.PropertyName)
                 {
-                    string propertyName = reader.GetString();
-                    reader.Read();
-                    switch (propertyName)
+                    if (reader.ValueTextEquals("x"))
                     {
-                        case "x":
-                        {
-                            x = reader.GetSingle();
-                            break;
-                        }
-                        case "y":
-                        {
-                            y = reader.GetSingle();
-                            break;
-                        }
-                        default:
-                        {
-                            throw new JsonException($"Unknown property: {propertyName}");
-                        }
+                        reader.Read();
+                        x = reader.GetSingle();
+                    }
+                    else if (reader.ValueTextEquals("y"))
+                    {
+                        reader.Read();
+                        y = reader.GetSingle();
+                    }
+                    else
+                    {
+                        throw new JsonException("Unknown property for Vector2");
                     }
                 }
             }
@@ -66,8 +64,8 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
         )
         {
             writer.WriteStartObject();
-            writer.WriteNumber("x", value.x);
-            writer.WriteNumber("y", value.y);
+            writer.WriteNumber(XProp, value.x);
+            writer.WriteNumber(YProp, value.y);
             writer.WriteEndObject();
         }
     }

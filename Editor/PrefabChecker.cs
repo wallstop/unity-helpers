@@ -4,19 +4,24 @@ namespace WallstopStudios.UnityHelpers.Editor
     using System;
     using System.Collections;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.IO;
     using System.Linq;
     using System.Reflection;
     using UnityEditor;
+    using UnityEditorInternal;
     using UnityEngine;
-    using Core.Attributes;
-    using Core.Extension;
-    using Core.Helper;
+    using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
     public sealed class PrefabChecker : EditorWindow
     {
+        private const string ToolName = "PrefabChecker";
+        private const string TargetContextKey = "TargetFolder";
         private const float ToggleWidth = 18f;
         private const float ToggleSpacing = 4f;
 
@@ -27,7 +32,8 @@ namespace WallstopStudios.UnityHelpers.Editor
         private static readonly Dictionary<Type, RequireComponent[]> RequiredComponentsByType =
             new();
 
-        private readonly List<string> _assetPaths = new();
+        internal List<string> _assetPaths = new();
+        private ReorderableList _pathsList;
         private Vector2 _scrollPosition;
 
         private bool _checkMissingScripts = true;
@@ -38,6 +44,13 @@ namespace WallstopStudios.UnityHelpers.Editor
         private bool _onlyCheckNullObjectsWithAttribute = true;
         private bool _checkDisabledRootGameObjects = true;
         private bool _checkDisabledComponents;
+        private bool _offerAutoFixes;
+
+        private readonly List<string> _includeLabels = new();
+        private readonly List<string> _excludeLabels = new();
+        private string _componentTypeDenyListCsv = string.Empty;
+
+        private const int MaxTransformScanForMissingOwner = 5000;
 
         private const string DefaultPrefabsFolder = "Assets/Prefabs";
 
@@ -50,10 +63,18 @@ namespace WallstopStudios.UnityHelpers.Editor
         private void OnEnable()
         {
             PopulateDefaultPaths();
+            TryRestoreFromHistory();
+            SetupReorderableList();
         }
 
         private void PopulateDefaultPaths()
         {
+            // Avoid implicit state when running in tests or suppressed UI contexts
+            if (EditorUi.Suppress)
+            {
+                return;
+            }
+
             if (_assetPaths.Count == 0 && AssetDatabase.IsValidFolder(DefaultPrefabsFolder))
             {
                 _assetPaths.Add(DefaultPrefabsFolder);
@@ -75,10 +96,27 @@ namespace WallstopStudios.UnityHelpers.Editor
                     AddFolder();
                 }
 
+                HandleDragAndDropForPaths();
+
+                EditorGUILayout.Space();
+                DrawFiltersAndUtilities();
                 EditorGUILayout.Space();
                 if (GUILayout.Button("Run Checks", GUILayout.Height(30)))
                 {
-                    RunChecks();
+                    RunChecksImproved();
+                }
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    GUI.enabled = _offerAutoFixes;
+                    if (GUILayout.Button("Fix Missing Scripts"))
+                    {
+                        FixMissingScripts();
+                    }
+                    GUI.enabled = true;
+                    if (GUILayout.Button("Export Report (JSON)"))
+                    {
+                        ExportLastReport();
+                    }
                 }
             }
             finally
@@ -267,105 +305,104 @@ namespace WallstopStudios.UnityHelpers.Editor
 
         private void DrawAssetPaths()
         {
-            if (_assetPaths.Count == 0)
+            if (_pathsList == null)
             {
-                EditorGUILayout.HelpBox(
-                    "No target folders specified. Add folders containing prefabs to check.",
-                    MessageType.Info
-                );
+                SetupReorderableList();
             }
-
-            List<string> pathsToRemove = null;
-
-            foreach (string assetPath in _assetPaths)
-            {
-                using (new EditorGUILayout.HorizontalScope())
-                {
-                    string currentPath = assetPath;
-                    EditorGUILayout.LabelField(currentPath);
-
-                    DefaultAsset folderAsset = AssetDatabase.LoadAssetAtPath<DefaultAsset>(
-                        currentPath
-                    );
-                    if (folderAsset != null)
-                    {
-                        if (GUILayout.Button("Ping", GUILayout.Width(50)))
-                        {
-                            EditorGUIUtility.PingObject(folderAsset);
-                        }
-                    }
-                    else
-                    {
-                        GUILayout.Space(56);
-                    }
-
-                    if (GUILayout.Button("X", GUILayout.Width(25)))
-                    {
-                        pathsToRemove ??= new List<string>();
-                        pathsToRemove.Add(currentPath);
-                    }
-                }
-            }
-
-            if (pathsToRemove != null)
-            {
-                foreach (string path in pathsToRemove)
-                {
-                    _assetPaths.Remove(path);
-                }
-                Repaint();
-            }
+            _pathsList.DoLayoutList();
         }
 
         private void AddFolder()
         {
-            string projectPath = Directory.GetParent(Application.dataPath)?.FullName;
-            if (string.IsNullOrWhiteSpace(projectPath))
-            {
-                this.LogError($"Failed to find project path!");
-                return;
-            }
-            string absolutePath = EditorUtility.OpenFolderPanel(
+            string absolutePath = EditorUi.OpenFolderPanel(
                 "Select Prefab Folder",
                 "Assets",
-                ""
+                string.Empty
             );
 
-            if (!string.IsNullOrEmpty(absolutePath))
+            if (string.IsNullOrWhiteSpace(absolutePath))
             {
-                if (absolutePath.StartsWith(projectPath, StringComparison.Ordinal))
-                {
-                    string relativePath =
-                        "Assets" + absolutePath.Substring(projectPath.Length).Replace('\\', '/');
-
-                    if (AssetDatabase.IsValidFolder(relativePath))
-                    {
-                        if (!_assetPaths.Contains(relativePath))
-                        {
-                            _assetPaths.Add(relativePath);
-                        }
-                        else
-                        {
-                            this.LogWarn($"Folder '{relativePath}' is already in the list.");
-                        }
-                    }
-                    else
-                    {
-                        this.LogWarn(
-                            $"Selected path '{relativePath}' is not a valid Unity folder."
-                        );
-                    }
-                }
-                else
-                {
-                    this.LogError(
-                        $"Selected folder must be inside the Unity project's Assets folder. Project path: {projectPath}, Selected path: {absolutePath}"
-                    );
-                }
+                return;
             }
+
+            _ = TryAddFolderFromAbsolute(absolutePath);
         }
 
-        private void RunChecks()
+        internal bool TryAddFolderFromAbsolute(string absolutePath)
+        {
+            if (!TryGetUnityFolderFromAbsolute(absolutePath, out string relativePath))
+            {
+                this.LogError(
+                    $"Selected folder must be inside the Unity project's Assets folder. Selected path: {absolutePath}"
+                );
+                return false;
+            }
+
+            return AddAssetFolder(relativePath);
+        }
+
+        internal bool AddAssetFolder(string relativePath)
+        {
+            if (string.IsNullOrWhiteSpace(relativePath))
+            {
+                return false;
+            }
+
+            if (
+                relativePath.Equals("Assets", StringComparison.Ordinal)
+                || AssetDatabase.IsValidFolder(relativePath)
+            )
+            {
+                if (!_assetPaths.Contains(relativePath))
+                {
+                    _assetPaths.Add(relativePath);
+                    TryRecordHistory(relativePath);
+                    return true;
+                }
+
+                this.LogWarn($"Folder '{relativePath}' is already in the list.");
+                return false;
+            }
+
+            this.LogWarn($"Selected path '{relativePath}' is not a valid Unity folder.");
+            return false;
+        }
+
+        private static bool TryGetUnityFolderFromAbsolute(
+            string absolutePath,
+            out string unityRelative
+        )
+        {
+            unityRelative = string.Empty;
+            if (string.IsNullOrWhiteSpace(absolutePath))
+            {
+                return false;
+            }
+
+            string rel = DirectoryHelper.AbsoluteToUnityRelativePath(absolutePath);
+            if (string.IsNullOrWhiteSpace(rel))
+            {
+                return false;
+            }
+
+            // Normalize slashes and casing for consistency
+            rel = rel.Replace('\\', '/');
+            if (rel.StartsWith("assets/", StringComparison.OrdinalIgnoreCase))
+            {
+                rel = "Assets/" + rel.Substring("assets/".Length);
+            }
+            else if (string.Equals(rel, "assets", StringComparison.OrdinalIgnoreCase))
+            {
+                rel = "Assets";
+            }
+
+            unityRelative = rel;
+            return true;
+        }
+
+        // Removed legacy RunChecks(). Use RunChecksImproved() instead.
+
+        internal void RunChecksImproved()
         {
             if (_assetPaths is not { Count: > 0 })
             {
@@ -373,9 +410,17 @@ namespace WallstopStudios.UnityHelpers.Editor
                 return;
             }
 
-            List<string> validPaths = _assetPaths
-                .Where(p => !string.IsNullOrEmpty(p) && AssetDatabase.IsValidFolder(p))
-                .ToList();
+            using PooledResource<List<string>> validPathBuffer = Buffers<string>.List.Get(
+                out List<string> validPaths
+            );
+            for (int i = 0; i < _assetPaths.Count; i++)
+            {
+                string p = _assetPaths[i];
+                if (!string.IsNullOrEmpty(p) && (p == "Assets" || AssetDatabase.IsValidFolder(p)))
+                {
+                    validPaths.Add(p);
+                }
+            }
 
             if (validPaths.Count == 0)
             {
@@ -386,18 +431,121 @@ namespace WallstopStudios.UnityHelpers.Editor
             }
 
             this.Log($"Starting prefab check for folders: {string.Join(", ", validPaths)}");
+            foreach (string p in validPaths)
+            {
+                TryRecordHistory(p);
+            }
+
+            using PooledResource<string[]> folderArrayLease = WallstopFastArrayPool<string>.Get(
+                validPaths.Count,
+                out string[] folderArray
+            );
+            for (int i = 0; i < validPaths.Count; i++)
+            {
+                folderArray[i] = validPaths[i];
+            }
+
+            string[] guids = AssetDatabase.FindAssets("t:prefab", folderArray);
             int totalPrefabsChecked = 0;
             int totalIssuesFound = 0;
 
-            foreach (GameObject prefab in Helpers.EnumeratePrefabs(validPaths))
+            using PooledResource<HashSet<string>> includeSetLease = Buffers<string>.HashSet.Get(
+                out HashSet<string> includeSet
+            );
+            includeSet.Clear();
+            for (int i = 0; i < _includeLabels.Count; i++)
             {
+                string s = _includeLabels[i];
+                if (!string.IsNullOrWhiteSpace(s))
+                {
+                    includeSet.Add(s.Trim());
+                }
+            }
+
+            using PooledResource<HashSet<string>> excludeSetLease = Buffers<string>.HashSet.Get(
+                out HashSet<string> excludeSet
+            );
+            excludeSet.Clear();
+            for (int i = 0; i < _excludeLabels.Count; i++)
+            {
+                string s = _excludeLabels[i];
+                if (!string.IsNullOrWhiteSpace(s))
+                {
+                    excludeSet.Add(s.Trim());
+                }
+            }
+            using PooledResource<Stopwatch> stopwatchBuffer = StopwatchBuffers.Stopwatch.Get(
+                out Stopwatch stopwatch
+            );
+            int skippedByLabel = 0;
+            _lastReport = new ScanReport(validPaths);
+
+            for (int idx = 0; idx < guids.Length; idx++)
+            {
+                if (
+                    EditorUi.CancelableProgress(
+                        "Prefab Checker",
+                        $"Scanning prefabs... {idx + 1}/{guids.Length}",
+                        (float)(idx + 1) / Mathf.Max(1, guids.Length)
+                    )
+                )
+                {
+                    this.LogWarn($"Prefab scan canceled by user.");
+                    break;
+                }
+
+                string path = AssetDatabase.GUIDToAssetPath(guids[idx]);
+                GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                if (prefab == null)
+                {
+                    continue;
+                }
+
+                string[] labels = AssetDatabase.GetLabels(prefab);
+                if (includeSet.Count > 0)
+                {
+                    bool anyIncluded = false;
+                    for (int li = 0; li < labels.Length; li++)
+                    {
+                        if (includeSet.Contains(labels[li]))
+                        {
+                            anyIncluded = true;
+                            break;
+                        }
+                    }
+                    if (!anyIncluded)
+                    {
+                        skippedByLabel++;
+                        continue;
+                    }
+                }
+                if (excludeSet.Count > 0)
+                {
+                    bool anyExcluded = false;
+                    for (int li = 0; li < labels.Length; li++)
+                    {
+                        if (excludeSet.Contains(labels[li]))
+                        {
+                            anyExcluded = true;
+                            break;
+                        }
+                    }
+                    if (anyExcluded)
+                    {
+                        skippedByLabel++;
+                        continue;
+                    }
+                }
+
                 totalPrefabsChecked++;
                 int issuesForThisPrefab = 0;
-                string prefabPath = AssetDatabase.GetAssetPath(prefab);
+                using PooledResource<List<string>> resultLease = Buffers<string>.List.Get(
+                    out List<string> messages
+                );
 
                 if (_checkDisabledRootGameObjects && !prefab.activeSelf)
                 {
-                    prefab.LogWarn($"Prefab root GameObject is disabled.");
+                    messages.Add("Prefab root GameObject is disabled.");
                     issuesForThisPrefab++;
                 }
 
@@ -406,26 +554,85 @@ namespace WallstopStudios.UnityHelpers.Editor
                 List<MonoBehaviour> componentBuffer = componentBufferResource.resource;
                 prefab.GetComponentsInChildren(true, componentBuffer);
 
+                using PooledResource<Dictionary<GameObject, HashSet<Type>>> typeMapLease =
+                    DictionaryBuffer<GameObject, HashSet<Type>>.Dictionary.Get(
+                        out Dictionary<GameObject, HashSet<Type>> typeMap
+                    );
+                using PooledResource<List<Component>> compsLease = Buffers<Component>.List.Get(
+                    out List<Component> comps
+                );
+                using PooledResource<List<PooledResource<HashSet<Type>>>> createdSetsLeases =
+                    Buffers<PooledResource<HashSet<Type>>>.List.Get(
+                        out List<PooledResource<HashSet<Type>>> createdSets
+                    );
+
+                HashSet<Type> GetOrBuildTypeSet(GameObject go)
+                {
+                    if (typeMap.TryGetValue(go, out HashSet<Type> cached))
+                    {
+                        return cached;
+                    }
+                    PooledResource<HashSet<Type>> setLease = Buffers<Type>.HashSet.Get(
+                        out HashSet<Type> set
+                    );
+                    createdSets.Add(setLease);
+                    go.GetComponents(comps);
+                    for (int ci = 0; ci < comps.Count; ci++)
+                    {
+                        Component c = comps[ci];
+                        if (c != null)
+                        {
+                            set.Add(c.GetType());
+                        }
+                    }
+                    comps.Clear();
+                    typeMap[go] = set;
+                    return set;
+                }
+
                 foreach (MonoBehaviour script in componentBuffer)
                 {
                     if (_checkMissingScripts && !script)
                     {
-                        GameObject owner = FindOwnerOfMissingScript(prefab, componentBuffer);
+                        GameObject owner = FindOwnerOfMissingScriptBounded(prefab, componentBuffer);
                         string ownerName = owner ? owner.name : "[[Unknown GameObject]]";
-                        Object context = owner ? (Object)owner : prefab;
-                        context.LogError($"Detected missing script on GameObject '{ownerName}'.");
+                        messages.Add($"Detected missing script on GameObject '{ownerName}'.");
                         issuesForThisPrefab++;
                         continue;
                     }
-
                     if (!script)
                     {
                         continue;
                     }
 
-                    Type scriptType = script.GetType();
                     GameObject ownerGameObject = script.gameObject;
-
+                    bool denied = false;
+                    if (!string.IsNullOrWhiteSpace(_componentTypeDenyListCsv))
+                    {
+                        string typeName = script.GetType().Name;
+                        string fullName = script.GetType().FullName;
+                        string[] tokens = _componentTypeDenyListCsv.Split(',');
+                        for (int ti = 0; ti < tokens.Length; ti++)
+                        {
+                            string t = tokens[ti].Trim();
+                            if (t.Length == 0)
+                            {
+                                continue;
+                            }
+                            if (
+                                string.Equals(t, typeName, StringComparison.Ordinal)
+                                || string.Equals(t, fullName, StringComparison.Ordinal)
+                            )
+                            {
+                                denied = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (denied)
+                    {
+                        continue;
+                    }
                     if (_checkNullElementsInLists)
                     {
                         issuesForThisPrefab += ValidateNoNullsInLists(script, ownerGameObject);
@@ -433,9 +640,13 @@ namespace WallstopStudios.UnityHelpers.Editor
 
                     if (_checkMissingRequiredComponents)
                     {
-                        issuesForThisPrefab += ValidateRequiredComponents(script, ownerGameObject);
+                        HashSet<Type> present = GetOrBuildTypeSet(ownerGameObject);
+                        issuesForThisPrefab += ValidateRequiredComponentsFast(
+                            script,
+                            ownerGameObject,
+                            present
+                        );
                     }
-
                     if (_checkEmptyStringFields)
                     {
                         issuesForThisPrefab += ValidateEmptyStrings(script, ownerGameObject);
@@ -451,8 +662,8 @@ namespace WallstopStudios.UnityHelpers.Editor
 
                     if (_checkDisabledComponents && script is Behaviour { enabled: false })
                     {
-                        ownerGameObject.LogWarn(
-                            $"Component '{scriptType.Name}' on GameObject '{ownerGameObject.name}' is disabled."
+                        messages.Add(
+                            $"Component '{script.GetType().Name}' on GameObject '{ownerGameObject.name}' is disabled."
                         );
                         issuesForThisPrefab++;
                     }
@@ -460,11 +671,31 @@ namespace WallstopStudios.UnityHelpers.Editor
 
                 if (issuesForThisPrefab > 0)
                 {
-                    prefab.LogWarn(
-                        $"Prefab '{prefab.name}' at path '{prefabPath}' has {issuesForThisPrefab} potential issues."
+                    int toLog = Mathf.Min(100, messages.Count);
+                    for (int m = 0; m < toLog; m++)
+                    {
+                        prefab.LogWarn($"{messages[m]}");
+                    }
+
+                    if (messages.Count > toLog)
+                    {
+                        prefab.LogWarn($"... and {messages.Count - toLog} more.");
+                    }
+
+                    this.LogWarn(
+                        $"Prefab '{prefab.name}' at path '{path}' has {issuesForThisPrefab} potential issues."
                     );
+                    _lastReport.Add(path, messages);
                     totalIssuesFound += issuesForThisPrefab;
                 }
+
+                // Release pooled type sets created for this prefab
+                for (int si = 0; si < createdSets.Count; si++)
+                {
+                    PooledResource<HashSet<Type>> setLease = createdSets[si];
+                    setLease.Dispose();
+                }
+                createdSets.Clear();
             }
 
             if (totalIssuesFound > 0)
@@ -479,6 +710,11 @@ namespace WallstopStudios.UnityHelpers.Editor
                     $"Prefab check complete. No issues found in {totalPrefabsChecked} prefabs."
                 );
             }
+            EditorUi.ClearProgress();
+            stopwatch.Stop();
+            this.Log(
+                $"Scanned {totalPrefabsChecked} prefabs in {stopwatch.ElapsedMilliseconds} ms. Skipped {skippedByLabel} by label."
+            );
         }
 
         private static GameObject FindOwnerOfMissingScript(
@@ -556,14 +792,25 @@ namespace WallstopStudios.UnityHelpers.Editor
             return cache.GetOrAdd(
                 componentType,
                 type =>
-                    type.GetFields(
-                            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
-                        )
-                        .Where(field =>
+                {
+                    FieldInfo[] fields = type.GetFields(
+                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+                    );
+                    int len = fields.Length;
+                    List<FieldInfo> list = new(len);
+                    for (int i = 0; i < len; i++)
+                    {
+                        FieldInfo field = fields[i];
+                        bool include =
                             field.IsPublic
-                            || field.IsAttributeDefined<SerializeField>(out _, inherit: true)
-                        )
-                        .ToList()
+                            || field.IsAttributeDefined<SerializeField>(out _, inherit: true);
+                        if (include)
+                        {
+                            list.Add(field);
+                        }
+                    }
+                    return list;
+                }
             );
         }
 
@@ -572,18 +819,28 @@ namespace WallstopStudios.UnityHelpers.Editor
             int issueCount = 0;
             Type componentType = component.GetType();
 
-            foreach (
-                FieldInfo field in ListFieldsByType.GetOrAdd(
-                    componentType,
-                    type =>
-                        GetFieldsToCheck(type, FieldsByType)
-                            .Where(f =>
-                                typeof(IEnumerable).IsAssignableFrom(f.FieldType)
-                                && f.FieldType != typeof(string)
-                            )
-                            .ToList()
-                )
-            )
+            List<FieldInfo> listFields = ListFieldsByType.GetOrAdd(
+                componentType,
+                type =>
+                {
+                    IEnumerable<FieldInfo> baseFields = GetFieldsToCheck(type, FieldsByType);
+                    List<FieldInfo> res = new();
+                    foreach (FieldInfo f in baseFields)
+                    {
+                        if (f == null)
+                        {
+                            continue;
+                        }
+                        Type ft = f.FieldType;
+                        if (typeof(IEnumerable).IsAssignableFrom(ft) && ft != typeof(string))
+                        {
+                            res.Add(f);
+                        }
+                    }
+                    return res;
+                }
+            );
+            foreach (FieldInfo field in listFields)
             {
                 object fieldValue = field.GetValue(component);
 
@@ -618,7 +875,11 @@ namespace WallstopStudios.UnityHelpers.Editor
             return issueCount;
         }
 
-        private static int ValidateRequiredComponents(Component component, GameObject context)
+        private static int ValidateRequiredComponentsFast(
+            Component component,
+            GameObject context,
+            HashSet<Type> presentTypes
+        )
         {
             int issueCount = 0;
             Type componentType = component.GetType();
@@ -633,35 +894,27 @@ namespace WallstopStudios.UnityHelpers.Editor
                 return issueCount;
             }
 
-            foreach (RequireComponent requirement in required)
+            for (int i = 0; i < required.Length; i++)
             {
-                if (
-                    requirement.m_Type0 != null
-                    && component.GetComponent(requirement.m_Type0) == null
-                )
+                RequireComponent rc = required[i];
+                if (rc.m_Type0 != null && !presentTypes.Contains(rc.m_Type0))
                 {
                     context.LogError(
-                        $"Component '{componentType.Name}' requires component '{requirement.m_Type0.Name}', but it is missing."
+                        $"Component '{componentType.Name}' requires component '{rc.m_Type0.Name}', but it is missing."
                     );
                     issueCount++;
                 }
-                if (
-                    requirement.m_Type1 != null
-                    && component.GetComponent(requirement.m_Type1) == null
-                )
+                if (rc.m_Type1 != null && !presentTypes.Contains(rc.m_Type1))
                 {
                     context.LogError(
-                        $"Component '{componentType.Name}' requires component '{requirement.m_Type1.Name}', but it is missing."
+                        $"Component '{componentType.Name}' requires component '{rc.m_Type1.Name}', but it is missing."
                     );
                     issueCount++;
                 }
-                if (
-                    requirement.m_Type2 != null
-                    && component.GetComponent(requirement.m_Type2) == null
-                )
+                if (rc.m_Type2 != null && !presentTypes.Contains(rc.m_Type2))
                 {
                     context.LogError(
-                        $"Component '{componentType.Name}' requires component '{requirement.m_Type2.Name}', but it is missing."
+                        $"Component '{componentType.Name}' requires component '{rc.m_Type2.Name}', but it is missing."
                     );
                     issueCount++;
                 }
@@ -674,15 +927,23 @@ namespace WallstopStudios.UnityHelpers.Editor
             int issueCount = 0;
             Type componentType = component.GetType();
 
-            foreach (
-                FieldInfo field in StringFieldsByType.GetOrAdd(
-                    componentType,
-                    type =>
-                        GetFieldsToCheck(type, FieldsByType)
-                            .Where(f => f.FieldType == typeof(string))
-                            .ToList()
-                )
-            )
+            List<FieldInfo> stringFields = StringFieldsByType.GetOrAdd(
+                componentType,
+                type =>
+                {
+                    IEnumerable<FieldInfo> baseFields = GetFieldsToCheck(type, FieldsByType);
+                    List<FieldInfo> res = new();
+                    foreach (FieldInfo f in baseFields)
+                    {
+                        if (f != null && f.FieldType == typeof(string))
+                        {
+                            res.Add(f);
+                        }
+                    }
+                    return res;
+                }
+            );
+            foreach (FieldInfo field in stringFields)
             {
                 object fieldValue = field.GetValue(component);
                 if (fieldValue is string stringValue && string.IsNullOrEmpty(stringValue))
@@ -701,19 +962,27 @@ namespace WallstopStudios.UnityHelpers.Editor
             int issueCount = 0;
             Type componentType = component.GetType();
 
-            foreach (
-                FieldInfo field in ObjectFieldsByType.GetOrAdd(
-                    componentType,
-                    type =>
-                        GetFieldsToCheck(type, FieldsByType)
-                            .Where(f => typeof(Object).IsAssignableFrom(f.FieldType))
-                            .ToList()
-                )
-            )
+            List<FieldInfo> objFields = ObjectFieldsByType.GetOrAdd(
+                componentType,
+                type =>
+                {
+                    IEnumerable<FieldInfo> baseFields = GetFieldsToCheck(type, FieldsByType);
+                    List<FieldInfo> res = new();
+                    foreach (FieldInfo f in baseFields)
+                    {
+                        if (f != null && typeof(Object).IsAssignableFrom(f.FieldType))
+                        {
+                            res.Add(f);
+                        }
+                    }
+                    return res;
+                }
+            );
+            foreach (FieldInfo field in objFields)
             {
                 bool hasValidateAttribute = field.IsAttributeDefined<ValidateAssignmentAttribute>(
                     out _,
-                    inherit: true
+                    inherit: false
                 );
 
                 if (_onlyCheckNullObjectsWithAttribute && !hasValidateAttribute)
@@ -735,6 +1004,325 @@ namespace WallstopStudios.UnityHelpers.Editor
                 issueCount++;
             }
             return issueCount;
+        }
+
+        private static GameObject FindOwnerOfMissingScriptBounded(
+            GameObject prefabRoot,
+            List<MonoBehaviour> buffer
+        )
+        {
+            using PooledResource<List<Transform>> transformBufferResource =
+                Buffers<Transform>.List.Get();
+            List<Transform> transforms = transformBufferResource.resource;
+            prefabRoot.GetComponentsInChildren(true, transforms);
+            if (transforms.Count > MaxTransformScanForMissingOwner)
+            {
+                prefabRoot.LogWarn(
+                    $"Hierarchy too large to locate owner of missing script (>{MaxTransformScanForMissingOwner}). Reporting at prefab root."
+                );
+                return prefabRoot;
+            }
+            return FindOwnerOfMissingScript(prefabRoot, buffer);
+        }
+
+        private void SetupReorderableList()
+        {
+            _pathsList = new ReorderableList(_assetPaths, typeof(string), true, true, true, true)
+            {
+                drawHeaderCallback = rect =>
+                {
+                    EditorGUI.LabelField(rect, "Folders to scan");
+                },
+                drawElementCallback = (rect, index, _, _) =>
+                {
+                    if (index < 0 || index >= _assetPaths.Count)
+                    {
+                        return;
+                    }
+
+                    string path = _assetPaths[index];
+                    Rect labelRect = new(
+                        rect.x,
+                        rect.y,
+                        rect.width - 100f,
+                        EditorGUIUtility.singleLineHeight
+                    );
+                    EditorGUI.LabelField(labelRect, path);
+                    if (
+                        GUI.Button(
+                            new Rect(
+                                rect.x + rect.width - 95f,
+                                rect.y,
+                                45f,
+                                EditorGUIUtility.singleLineHeight
+                            ),
+                            "Ping"
+                        )
+                    )
+                    {
+                        DefaultAsset asset = AssetDatabase.LoadAssetAtPath<DefaultAsset>(path);
+                        if (asset)
+                        {
+                            EditorGUIUtility.PingObject(asset);
+                        }
+                    }
+                    if (
+                        GUI.Button(
+                            new Rect(
+                                rect.x + rect.width - 45f,
+                                rect.y,
+                                45f,
+                                EditorGUIUtility.singleLineHeight
+                            ),
+                            "Open"
+                        )
+                    )
+                    {
+                        DefaultAsset asset = AssetDatabase.LoadAssetAtPath<DefaultAsset>(path);
+                        if (asset)
+                        {
+                            Selection.activeObject = asset;
+                        }
+                    }
+                },
+                onAddCallback = _ =>
+                {
+                    AddFolder();
+                },
+                onRemoveCallback = list =>
+                {
+                    if (list.index >= 0 && list.index < _assetPaths.Count)
+                    {
+                        _assetPaths.RemoveAt(list.index);
+                    }
+                },
+            };
+        }
+
+        private void HandleDragAndDropForPaths()
+        {
+            Rect dropArea = GUILayoutUtility.GetLastRect();
+            Event evt = Event.current;
+            if (!dropArea.Contains(evt.mousePosition))
+            {
+                return;
+            }
+
+            if (evt.type == EventType.DragUpdated || evt.type == EventType.DragPerform)
+            {
+                DragAndDrop.visualMode = DragAndDropVisualMode.Copy;
+                if (evt.type == EventType.DragPerform)
+                {
+                    DragAndDrop.AcceptDrag();
+                    foreach (Object obj in DragAndDrop.objectReferences)
+                    {
+                        string path = AssetDatabase.GetAssetPath(obj);
+                        if (string.IsNullOrWhiteSpace(path))
+                        {
+                            continue;
+                        }
+
+                        _ = AddAssetFolder(path);
+                    }
+                }
+                Event.current.Use();
+            }
+        }
+
+        private void DrawFiltersAndUtilities()
+        {
+            EditorGUILayout.LabelField("Filters & Utilities", EditorStyles.boldLabel);
+            _offerAutoFixes = EditorGUILayout.ToggleLeft(
+                "Enable Auto-fix options",
+                _offerAutoFixes
+            );
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                EditorGUILayout.LabelField("Include Labels (comma)", GUILayout.Width(180));
+                string includeCsv = string.Join(",", _includeLabels);
+                string newInclude = EditorGUILayout.TextField(includeCsv);
+                if (!string.Equals(includeCsv, newInclude, StringComparison.Ordinal))
+                {
+                    _includeLabels.Clear();
+                    foreach (string s in newInclude.Split(','))
+                    {
+                        if (!string.IsNullOrWhiteSpace(s))
+                        {
+                            _includeLabels.Add(s.Trim());
+                        }
+                    }
+                }
+            }
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                EditorGUILayout.LabelField("Exclude Labels (comma)", GUILayout.Width(180));
+                string excludeCsv = string.Join(",", _excludeLabels);
+                string newExclude = EditorGUILayout.TextField(excludeCsv);
+                if (!string.Equals(excludeCsv, newExclude, StringComparison.Ordinal))
+                {
+                    _excludeLabels.Clear();
+                    foreach (string s in newExclude.Split(','))
+                    {
+                        if (!string.IsNullOrWhiteSpace(s))
+                        {
+                            _excludeLabels.Add(s.Trim());
+                        }
+                    }
+                }
+            }
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                EditorGUILayout.LabelField(
+                    "Deny Component Types (comma names)",
+                    GUILayout.Width(220)
+                );
+                _componentTypeDenyListCsv = EditorGUILayout.TextField(_componentTypeDenyListCsv);
+            }
+        }
+
+        private void TryRestoreFromHistory()
+        {
+            // Do not restore persisted UI state while tests/non-interactive contexts run
+            if (EditorUi.Suppress)
+            {
+                return;
+            }
+
+            if (_assetPaths.Count > 0)
+            {
+                return;
+            }
+
+            if (PersistentDirectorySettings.Instance == null)
+            {
+                return;
+            }
+
+            DirectoryUsageData[] top = PersistentDirectorySettings.Instance.GetPaths(
+                ToolName,
+                TargetContextKey,
+                true,
+                1
+            );
+            if (top is { Length: > 0 })
+            {
+                string p = top[0].path;
+                if (
+                    !string.IsNullOrWhiteSpace(p)
+                    && (p == "Assets" || AssetDatabase.IsValidFolder(p))
+                )
+                {
+                    _assetPaths.Add(p);
+                }
+            }
+        }
+
+        private static void TryRecordHistory(string relativePath)
+        {
+            if (PersistentDirectorySettings.Instance == null)
+            {
+                return;
+            }
+
+            try
+            {
+                PersistentDirectorySettings.Instance.RecordPath(
+                    ToolName,
+                    TargetContextKey,
+                    relativePath
+                );
+            }
+            catch
+            {
+                // Swallow
+            }
+        }
+
+        private void FixMissingScripts()
+        {
+            if (!_offerAutoFixes)
+            {
+                return;
+            }
+
+            foreach (string folder in _assetPaths)
+            {
+                string[] guids = AssetDatabase.FindAssets("t:prefab", new[] { folder });
+                for (int i = 0; i < guids.Length; i++)
+                {
+                    string path = AssetDatabase.GUIDToAssetPath(guids[i]);
+                    GameObject go = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                    if (go == null)
+                    {
+                        continue;
+                    }
+
+                    GameObjectUtility.RemoveMonoBehavioursWithMissingScript(go);
+                }
+            }
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            this.Log($"Auto-fix complete: Removed missing scripts in selected folders.");
+        }
+
+        [Serializable]
+        private sealed class ScanReport
+        {
+            public readonly string[] folders;
+            public readonly List<Item> items = new();
+
+            public ScanReport(IEnumerable<string> folders)
+            {
+                this.folders = folders?.ToArray() ?? Array.Empty<string>();
+            }
+
+            [Serializable]
+            public sealed class Item
+            {
+                public string path;
+                public string[] messages;
+            }
+
+            public void Add(string path, List<string> messages)
+            {
+                items.Add(new Item { path = path, messages = messages.ToArray() });
+            }
+        }
+
+        private ScanReport _lastReport;
+
+        private void ExportLastReport()
+        {
+            if (_lastReport == null || _lastReport.items.Count == 0)
+            {
+                EditorUi.Info("Prefab Checker", "No report data to export.");
+                return;
+            }
+            string defaultPath = Application.dataPath + "/PrefabCheckerReport.json";
+            string savePath = EditorUi.Suppress
+                ? defaultPath
+                : EditorUtility.SaveFilePanel(
+                    "Save Prefab Checker Report",
+                    Application.dataPath,
+                    "PrefabCheckerReport",
+                    "json"
+                );
+            if (string.IsNullOrWhiteSpace(savePath))
+            {
+                return;
+            }
+
+            try
+            {
+                string json = JsonUtility.ToJson(_lastReport, true);
+                File.WriteAllText(savePath, json);
+                this.Log($"Saved report to: {savePath}");
+            }
+            catch (Exception e)
+            {
+                this.LogError($"Failed to save report: {e.Message}");
+            }
         }
     }
 #endif

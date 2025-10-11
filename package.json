@@ -1,6 +1,6 @@
 {
   "name": "com.wallstop-studios.unity-helpers",
-  "version": "2.0.0-rc81.7",
+  "version": "2.0.0-rc81.8",
   "displayName": "Unity Helpers",
   "description": "Various Unity Helper Library",
   "dependencies": {},
@@ -33,6 +33,9 @@
   "homepage": "https://github.com/wallstop/unity-helpers#readme",
   "main": "README.md",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint:docs": "pwsh -NoProfile -File scripts/lint-doc-links.ps1",
+    "hooks:install": "git config core.hooksPath .githooks",
+    "prepublishOnly": "npm run lint:docs"
   }
 }

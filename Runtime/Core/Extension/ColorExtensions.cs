@@ -2,24 +2,60 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 {
     using System.Collections.Generic;
     using System.ComponentModel;
-    using System.Linq;
     using Helper;
     using Random;
+    using Unity.Collections;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
+    using WallstopStudios.UnityHelpers.Utils;
 
+    /// <summary>
+    /// Defines the method used for averaging colors from multiple pixels or sources.
+    /// </summary>
+    /// <remarks>
+    /// Different averaging methods produce different perceptual results:
+    /// - LAB provides the most perceptually accurate averaging
+    /// - HSV preserves color vibrancy
+    /// - Weighted accounts for human luminance perception
+    /// - Dominant finds the most common color cluster
+    /// </remarks>
     public enum ColorAveragingMethod
     {
-        LAB = 0, // CIE L*a*b* space averaging
-        HSV = 1, // HSV space averaging
-        Weighted = 2, // Weighted RGB averaging using perceived luminance
-        Dominant = 3, // Find most dominant color cluster
+        /// <summary>CIE L*a*b* space averaging - most perceptually accurate for human vision.</summary>
+        LAB = 0,
+
+        /// <summary>HSV space averaging - preserves vibrant colors better.</summary>
+        HSV = 1,
+
+        /// <summary>Weighted RGB averaging using perceived luminance coefficients.</summary>
+        Weighted = 2,
+
+        /// <summary>Find most dominant color cluster using bucket-based analysis.</summary>
+        Dominant = 3,
     }
 
-    // https://sharpsnippets.wordpress.com/2014/03/11/c-extension-complementary-color/
+    /// <summary>
+    /// Provides extension methods for Unity's Color type, including color averaging, hex conversion, and complementary color generation.
+    /// </summary>
+    /// <remarks>
+    /// Thread Safety: All methods are thread-safe as they operate on value types and use no shared state.
+    /// Reference: https://sharpsnippets.wordpress.com/2014/03/11/c-extension-complementary-color/
+    /// </remarks>
     public static class ColorExtensions
     {
-        private static readonly Dictionary<Vector3Int, int> ColorBucketCache = new();
-
+        /// <summary>
+        /// Converts a Unity Color to a hexadecimal color string representation.
+        /// </summary>
+        /// <param name="color">The color to convert.</param>
+        /// <param name="includeAlpha">If true, includes the alpha channel in the output (RGBA). If false, only RGB is included.</param>
+        /// <returns>A hexadecimal color string starting with '#' (e.g., "#FF00FF" or "#FF00FFAA").</returns>
+        /// <remarks>
+        /// Null Handling: N/A - operates on value types.
+        /// Thread Safety: Thread-safe, no shared state.
+        /// Performance: O(1) - simple arithmetic and string formatting.
+        /// Allocations: Allocates one string for the result.
+        /// Edge Cases: Color component values outside [0,1] are clamped to valid range.
+        /// </remarks>
         public static string ToHex(this Color color, bool includeAlpha = true)
         {
             int r = (int)(Mathf.Clamp01(color.r) * 255f);
@@ -35,6 +71,20 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return $"#{r:X2}{g:X2}{b:X2}{a:X2}";
         }
 
+        /// <summary>
+        /// Calculates the average color of a sprite's texture pixels using the specified averaging method.
+        /// </summary>
+        /// <param name="sprite">The sprite whose average color to calculate.</param>
+        /// <param name="method">The color averaging method to use (default: LAB for perceptually accurate results).</param>
+        /// <param name="alphaCutoff">Pixels with alpha below this threshold are excluded from calculation (default: 0.01).</param>
+        /// <returns>The calculated average color with full alpha (1.0) for most methods.</returns>
+        /// <remarks>
+        /// Null Handling: Returns black (0,0,0,1) if sprite is null.
+        /// Thread Safety: NOT thread-safe - calls MakeReadable() which modifies texture import settings.
+        /// Performance: O(n) where n is the number of pixels. Can be expensive for large textures.
+        /// Allocations: Allocates Color[] array from texture.GetPixels().
+        /// Edge Cases: Empty sprites or sprites with all transparent pixels may return black.
+        /// </remarks>
         public static Color GetAverageColor(
             this Sprite sprite,
             ColorAveragingMethod method = ColorAveragingMethod.LAB,
@@ -44,28 +94,366 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return GetAverageColor(Enumerables.Of(sprite), method, alphaCutoff);
         }
 
+        /// <summary>
+        /// Calculates the average color across all pixels in multiple sprites using the specified averaging method.
+        /// </summary>
+        /// <param name="sprites">The collection of sprites to analyze.</param>
+        /// <param name="method">The color averaging method to use (default: LAB for perceptually accurate results).</param>
+        /// <param name="alphaCutoff">Pixels with alpha below this threshold are excluded from calculation (default: 0.01).</param>
+        /// <returns>The calculated average color across all sprite pixels with full alpha (1.0) for most methods.</returns>
+        /// <remarks>
+        /// Null Handling: Null sprites and textures are filtered out automatically.
+        /// Thread Safety: NOT thread-safe - calls MakeReadable() which modifies texture import settings.
+        /// Performance: O(n*m) where n is the number of sprites and m is pixels per sprite. Can be very expensive.
+        /// Allocations: Allocates Color[] array for each texture via GetPixels(), plus LINQ enumerators.
+        /// Edge Cases: Empty collection or all transparent pixels returns black. Duplicate textures are processed multiple times.
+        /// </remarks>
         public static Color GetAverageColor(
             this IEnumerable<Sprite> sprites,
             ColorAveragingMethod method = ColorAveragingMethod.LAB,
             float alphaCutoff = 0.01f
         )
         {
-            return GetAverageColor(
-                sprites
-                    .Where(value => value != null)
-                    .Select(sprite => sprite.texture)
-                    .Where(value => value != null)
-                    .SelectMany(texture =>
+            if (sprites == null)
+            {
+                return Color.black;
+            }
+
+            switch (method)
+            {
+                case ColorAveragingMethod.LAB:
+                    return AverageSpritesLAB(sprites, alphaCutoff);
+                case ColorAveragingMethod.HSV:
+                    return AverageSpritesHSV(sprites, alphaCutoff);
+                case ColorAveragingMethod.Weighted:
+                    return AverageSpritesWeighted(sprites, alphaCutoff);
+                case ColorAveragingMethod.Dominant:
+                    return DominantColorFromSprites(sprites, alphaCutoff);
+                default:
+                    return Color.black;
+            }
+
+            static Color AverageSpritesLAB(IEnumerable<Sprite> sprites, float alphaCutoff)
+            {
+                double l = 0;
+                double a = 0;
+                double b = 0;
+                int count = 0;
+                foreach (Sprite sprite in sprites)
+                {
+                    if (sprite == null)
                     {
-                        texture.MakeReadable();
-                        Color[] pixels = texture.GetPixels();
-                        return pixels;
-                    }),
-                method,
-                alphaCutoff
-            );
+                        continue;
+                    }
+                    Texture2D texture = sprite.texture;
+                    if (texture == null)
+                    {
+                        continue;
+                    }
+                    texture.MakeReadable();
+                    int expectedBytes = texture.width * texture.height * 4;
+                    NativeArray<byte> rawBytes = texture.GetRawTextureData<byte>();
+                    if (rawBytes.Length == expectedBytes)
+                    {
+                        NativeArray<Color32> raw = texture.GetRawTextureData<Color32>();
+                        int n = raw.Length;
+                        for (int i = 0; i < n; ++i)
+                        {
+                            Color32 c = raw[i];
+                            if (c.a / 255f <= alphaCutoff)
+                            {
+                                continue;
+                            }
+                            Color cf = c;
+                            LABColor lab = RGBToLAB(cf);
+                            l += lab.l;
+                            a += lab.a;
+                            b += lab.b;
+                            ++count;
+                        }
+                    }
+                    else
+                    {
+                        Color32[] px = texture.GetPixels32();
+                        for (int i = 0; i < px.Length; ++i)
+                        {
+                            Color32 c = px[i];
+                            if (c.a / 255f <= alphaCutoff)
+                            {
+                                continue;
+                            }
+                            Color cf = c;
+                            LABColor lab = RGBToLAB(cf);
+                            l += lab.l;
+                            a += lab.a;
+                            b += lab.b;
+                            ++count;
+                        }
+                    }
+                }
+
+                count = Mathf.Max(count, 1);
+                return LABToRGB(l / count, a / count, b / count);
+            }
+
+            static Color AverageSpritesHSV(IEnumerable<Sprite> sprites, float alphaCutoff)
+            {
+                float sumCos = 0f;
+                float sumSin = 0f;
+                float sumS = 0f;
+                float sumV = 0f;
+                int count = 0;
+                foreach (Sprite sprite in sprites)
+                {
+                    if (sprite == null)
+                    {
+                        continue;
+                    }
+                    Texture2D texture = sprite.texture;
+                    if (texture == null)
+                    {
+                        continue;
+                    }
+                    texture.MakeReadable();
+                    int expectedBytes = texture.width * texture.height * 4;
+                    NativeArray<byte> rawBytes = texture.GetRawTextureData<byte>();
+                    if (rawBytes.Length == expectedBytes)
+                    {
+                        NativeArray<Color32> raw = texture.GetRawTextureData<Color32>();
+                        int n = raw.Length;
+                        for (int i = 0; i < n; ++i)
+                        {
+                            Color32 c = raw[i];
+                            if (c.a / 255f <= alphaCutoff)
+                            {
+                                continue;
+                            }
+                            Color cf = c;
+                            Color.RGBToHSV(cf, out float h, out float s, out float v);
+                            float hueRad = h * 2f * Mathf.PI;
+                            sumCos += Mathf.Cos(hueRad);
+                            sumSin += Mathf.Sin(hueRad);
+                            sumS += s;
+                            sumV += v;
+                            ++count;
+                        }
+                    }
+                    else
+                    {
+                        Color32[] px = texture.GetPixels32();
+                        for (int i = 0; i < px.Length; ++i)
+                        {
+                            Color32 c = px[i];
+                            if (c.a / 255f <= alphaCutoff)
+                            {
+                                continue;
+                            }
+                            Color cf = c;
+                            Color.RGBToHSV(cf, out float h, out float s, out float v);
+                            float hueRad = h * 2f * Mathf.PI;
+                            sumCos += Mathf.Cos(hueRad);
+                            sumSin += Mathf.Sin(hueRad);
+                            sumS += s;
+                            sumV += v;
+                            ++count;
+                        }
+                    }
+                }
+
+                if (count == 0)
+                {
+                    return Color.black;
+                }
+
+                float avgHueRad = Mathf.Atan2(sumSin / count, sumCos / count);
+                if (avgHueRad < 0f)
+                {
+                    avgHueRad += 2f * Mathf.PI;
+                }
+                float avgHue = avgHueRad / (2f * Mathf.PI);
+                float avgS = sumS / count;
+                float avgV = sumV / count;
+                return Color.HSVToRGB(avgHue, avgS, avgV);
+            }
+
+            static Color AverageSpritesWeighted(IEnumerable<Sprite> sprites, float alphaCutoff)
+            {
+                const float rW = 0.299f;
+                const float gW = 0.587f;
+                const float bW = 0.114f;
+                float total = 0f;
+                float r = 0f;
+                float g = 0f;
+                float b = 0f;
+                float a = 0f;
+                foreach (Sprite sprite in sprites)
+                {
+                    if (sprite == null)
+                    {
+                        continue;
+                    }
+                    Texture2D texture = sprite.texture;
+                    if (texture == null)
+                    {
+                        continue;
+                    }
+                    texture.MakeReadable();
+                    int expectedBytes = texture.width * texture.height * 4;
+                    NativeArray<byte> rawBytes = texture.GetRawTextureData<byte>();
+                    if (rawBytes.Length == expectedBytes)
+                    {
+                        NativeArray<Color32> raw = texture.GetRawTextureData<Color32>();
+                        int n = raw.Length;
+                        for (int i = 0; i < n; ++i)
+                        {
+                            Color32 c = raw[i];
+                            if (c.a / 255f <= alphaCutoff)
+                            {
+                                continue;
+                            }
+                            float rf = c.r / 255f;
+                            float gf = c.g / 255f;
+                            float bf = c.b / 255f;
+                            float af = c.a / 255f;
+                            float w = rf * rW + gf * gW + bf * bW;
+                            r += rf * w;
+                            g += gf * w;
+                            b += bf * w;
+                            a += af * w;
+                            total += w;
+                        }
+                    }
+                    else
+                    {
+                        Color32[] px = texture.GetPixels32();
+                        for (int i = 0; i < px.Length; ++i)
+                        {
+                            Color32 c = px[i];
+                            if (c.a / 255f <= alphaCutoff)
+                            {
+                                continue;
+                            }
+                            float rf = c.r / 255f;
+                            float gf = c.g / 255f;
+                            float bf = c.b / 255f;
+                            float af = c.a / 255f;
+                            float w = rf * rW + gf * gW + bf * bW;
+                            r += rf * w;
+                            g += gf * w;
+                            b += bf * w;
+                            a += af * w;
+                            total += w;
+                        }
+                    }
+                }
+                if (total > 0f)
+                {
+                    r /= total;
+                    g /= total;
+                    b /= total;
+                    a /= total;
+                }
+                return new Color(r, g, b, a);
+            }
+
+            static Color DominantColorFromSprites(IEnumerable<Sprite> sprites, float alphaCutoff)
+            {
+                using PooledResource<Dictionary<FastVector3Int, int>> bucketsLease =
+                    DictionaryBuffer<FastVector3Int, int>.Dictionary.Get(
+                        out Dictionary<FastVector3Int, int> buckets
+                    );
+                const int bucketSize = 32;
+
+                foreach (Sprite sprite in sprites)
+                {
+                    if (sprite == null)
+                    {
+                        continue;
+                    }
+                    Texture2D texture = sprite.texture;
+                    if (texture == null)
+                    {
+                        continue;
+                    }
+                    texture.MakeReadable();
+                    int expectedBytes = texture.width * texture.height * 4;
+                    NativeArray<byte> rawBytes = texture.GetRawTextureData<byte>();
+                    if (rawBytes.Length == expectedBytes)
+                    {
+                        NativeArray<Color32> raw = texture.GetRawTextureData<Color32>();
+                        int n = raw.Length;
+                        for (int i = 0; i < n; ++i)
+                        {
+                            Color32 c = raw[i];
+                            if (c.a / 255f <= alphaCutoff)
+                            {
+                                continue;
+                            }
+                            FastVector3Int bucket = new(
+                                Mathf.RoundToInt(c.r / (float)bucketSize),
+                                Mathf.RoundToInt(c.g / (float)bucketSize),
+                                Mathf.RoundToInt(c.b / (float)bucketSize)
+                            );
+                            buckets.AddOrUpdate(bucket, _ => 0, (_, value) => value + 1);
+                        }
+                    }
+                    else
+                    {
+                        Color32[] px = texture.GetPixels32();
+                        for (int i = 0; i < px.Length; ++i)
+                        {
+                            Color32 c = px[i];
+                            if (c.a / 255f <= alphaCutoff)
+                            {
+                                continue;
+                            }
+                            FastVector3Int bucket = new(
+                                Mathf.RoundToInt(c.r / (float)bucketSize),
+                                Mathf.RoundToInt(c.g / (float)bucketSize),
+                                Mathf.RoundToInt(c.b / (float)bucketSize)
+                            );
+                            buckets.AddOrUpdate(bucket, _ => 0, (_, value) => value + 1);
+                        }
+                    }
+                }
+
+                KeyValuePair<FastVector3Int, int>? largest = null;
+                foreach (KeyValuePair<FastVector3Int, int> kv in buckets)
+                {
+                    largest ??= kv;
+                    if (largest.Value.Value < kv.Value)
+                    {
+                        largest = kv;
+                    }
+                }
+                if (largest == null)
+                {
+                    return default;
+                }
+                FastVector3Int dominant = largest.Value.Key;
+                return new Color(
+                    (dominant.x * bucketSize) / 255f,
+                    (dominant.y * bucketSize) / 255f,
+                    (dominant.z * bucketSize) / 255f
+                );
+            }
         }
 
+        /// <summary>
+        /// Calculates the average color of a collection of pixels using the specified averaging method.
+        /// </summary>
+        /// <param name="pixels">The collection of color values to average.</param>
+        /// <param name="method">The color averaging method to use (default: LAB for perceptually accurate results).</param>
+        /// <param name="alphaCutoff">Pixels with alpha below this threshold are excluded from calculation (default: 0.01).</param>
+        /// <returns>The calculated average color. Alpha is 1.0 for LAB/HSV methods, weighted average for Weighted method.</returns>
+        /// <exception cref="InvalidEnumArgumentException">Thrown when an invalid ColorAveragingMethod is provided.</exception>
+        /// <remarks>
+        /// Null Handling: Individual null colors are not handled; ensure the collection doesn't contain null.
+        /// Thread Safety: Thread-safe when pixels collection is not modified during execution.
+        /// Performance: O(n) where n is pixel count. LAB/HSV involve color space conversions. Dominant uses bucket clustering.
+        /// Allocations: Optimized for IReadOnlyList and HashSet. LAB/HSV use stack allocations. Dominant uses pooled dictionary.
+        /// Edge Cases: Empty collection or all transparent pixels returns black (0,0,0,1) for LAB/HSV/Dominant, (0,0,0,0) for Weighted.
+        /// </remarks>
         public static Color GetAverageColor(
             this IEnumerable<Color> pixels,
             ColorAveragingMethod method = ColorAveragingMethod.LAB,
@@ -95,28 +483,11 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             int count = 0;
             switch (pixels)
             {
-                case List<Color> colorList:
+                case IReadOnlyList<Color> colorList:
                 {
-                    foreach (Color pixel in colorList)
+                    for (int i = 0; i < colorList.Count; i++)
                     {
-                        if (pixel.a <= alphaCutoff)
-                        {
-                            continue;
-                        }
-
-                        LABColor lab = RGBToLAB(pixel);
-                        l += lab.l;
-                        a += lab.a;
-                        b += lab.b;
-                        ++count;
-                    }
-
-                    break;
-                }
-                case Color[] colorArray:
-                {
-                    foreach (Color pixel in colorArray)
-                    {
+                        Color pixel = colorList[i];
                         if (pixel.a <= alphaCutoff)
                         {
                             continue;
@@ -176,118 +547,98 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         // HSV space averaging - good for preserving vibrant colors
         private static Color AverageInHSVSpace(IEnumerable<Color> pixels, float alphaCutoff)
         {
-            float avgH = 0f;
-            float avgS = 0f;
-            float avgV = 0f;
+            float sumCos = 0f;
+            float sumSin = 0f;
+            float sumS = 0f;
+            float sumV = 0f;
             int count = 0;
 
-            switch (pixels)
+            Accumulate(pixels);
+
+            if (count == 0)
             {
-                case List<Color> pixelList:
-                {
-                    foreach (Color pixel in pixelList)
-                    {
-                        if (pixel.a <= alphaCutoff)
-                        {
-                            continue;
-                        }
-
-                        Color.RGBToHSV(pixel, out float h, out float s, out float v);
-
-                        // Handle hue wrapping around 360 degrees
-                        float hRad = h * 2f * Mathf.PI;
-                        avgH += Mathf.Cos(hRad);
-                        avgH += Mathf.Sin(hRad);
-
-                        avgS += s;
-                        avgV += v;
-                        ++count;
-                    }
-
-                    break;
-                }
-                case Color[] pixelArray:
-                {
-                    foreach (Color pixel in pixelArray)
-                    {
-                        if (pixel.a <= alphaCutoff)
-                        {
-                            continue;
-                        }
-
-                        Color.RGBToHSV(pixel, out float h, out float s, out float v);
-
-                        // Handle hue wrapping around 360 degrees
-                        float hRad = h * 2f * Mathf.PI;
-                        avgH += Mathf.Cos(hRad);
-                        avgH += Mathf.Sin(hRad);
-
-                        avgS += s;
-                        avgV += v;
-                        ++count;
-                    }
-
-                    break;
-                }
-                case HashSet<Color> pixelSet:
-                {
-                    foreach (Color pixel in pixelSet)
-                    {
-                        if (pixel.a <= alphaCutoff)
-                        {
-                            continue;
-                        }
-
-                        Color.RGBToHSV(pixel, out float h, out float s, out float v);
-
-                        // Handle hue wrapping around 360 degrees
-                        float hRad = h * 2f * Mathf.PI;
-                        avgH += Mathf.Cos(hRad);
-                        avgH += Mathf.Sin(hRad);
-
-                        avgS += s;
-                        avgV += v;
-                        ++count;
-                    }
-
-                    break;
-                }
-                default:
-                {
-                    foreach (Color pixel in pixels)
-                    {
-                        if (pixel.a <= alphaCutoff)
-                        {
-                            continue;
-                        }
-
-                        Color.RGBToHSV(pixel, out float h, out float s, out float v);
-
-                        // Handle hue wrapping around 360 degrees
-                        float hRad = h * 2f * Mathf.PI;
-                        avgH += Mathf.Cos(hRad);
-                        avgH += Mathf.Sin(hRad);
-
-                        avgS += s;
-                        avgV += v;
-                        ++count;
-                    }
-
-                    break;
-                }
-            }
-            count = Mathf.Max(count, 1);
-            avgH = Mathf.Atan2(avgH / count, avgH / count) / (2f * Mathf.PI);
-
-            if (avgH < 0)
-            {
-                avgH += 1f;
+                return Color.black;
             }
 
-            avgS /= count;
-            avgV /= count;
+            float averageHueRadians = Mathf.Atan2(sumSin / count, sumCos / count);
+            if (averageHueRadians < 0f)
+            {
+                averageHueRadians += 2f * Mathf.PI;
+            }
 
-            return Color.HSVToRGB(avgH, avgS, avgV);
+            float averageHue = averageHueRadians / (2f * Mathf.PI);
+            float averageS = sumS / count;
+            float averageV = sumV / count;
+
+            return Color.HSVToRGB(averageHue, averageS, averageV);
+
+            void Accumulate(IEnumerable<Color> source)
+            {
+                switch (source)
+                {
+                    case IReadOnlyList<Color> colorList:
+                    {
+                        for (int i = 0; i < colorList.Count; ++i)
+                        {
+                            Color pixel = colorList[i];
+                            if (pixel.a <= alphaCutoff)
+                            {
+                                continue;
+                            }
+
+                            Color.RGBToHSV(pixel, out float h, out float s, out float v);
+                            float hueRadians = h * 2f * Mathf.PI;
+                            sumCos += Mathf.Cos(hueRadians);
+                            sumSin += Mathf.Sin(hueRadians);
+                            sumS += s;
+                            sumV += v;
+                            ++count;
+                        }
+
+                        break;
+                    }
+                    case HashSet<Color> colorSet:
+                    {
+                        foreach (Color pixel in colorSet)
+                        {
+                            if (pixel.a <= alphaCutoff)
+                            {
+                                continue;
+                            }
+
+                            Color.RGBToHSV(pixel, out float h, out float s, out float v);
+                            float hueRadians = h * 2f * Mathf.PI;
+                            sumCos += Mathf.Cos(hueRadians);
+                            sumSin += Mathf.Sin(hueRadians);
+                            sumS += s;
+                            sumV += v;
+                            ++count;
+                        }
+
+                        break;
+                    }
+                    default:
+                    {
+                        foreach (Color pixel in source)
+                        {
+                            if (pixel.a <= alphaCutoff)
+                            {
+                                continue;
+                            }
+
+                            Color.RGBToHSV(pixel, out float h, out float s, out float v);
+                            float hueRadians = h * 2f * Mathf.PI;
+                            sumCos += Mathf.Cos(hueRadians);
+                            sumSin += Mathf.Sin(hueRadians);
+                            sumS += s;
+                            sumV += v;
+                            ++count;
+                        }
+
+                        break;
+                    }
+                }
+            }
         }
 
         // Weighted RGB averaging using perceived luminance
@@ -299,39 +650,23 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             const float bWeight = 0.114f;
 
             float totalWeight = 0f;
-            float r = 0f,
-                g = 0f,
-                b = 0f,
-                a = 0f;
+            float r = 0f;
+            float g = 0f;
+            float b = 0f;
+            float a = 0f;
 
             switch (pixels)
             {
-                case List<Color> colorList:
+                case IReadOnlyList<Color> colorList:
                 {
-                    foreach (Color pixel in colorList)
+                    for (int i = 0; i < colorList.Count; i++)
                     {
+                        Color pixel = colorList[i];
                         if (pixel.a <= alphaCutoff)
                         {
                             continue;
                         }
-                        float weight = pixel.r * rWeight + pixel.g * gWeight + pixel.b * bWeight;
-                        r += pixel.r * weight;
-                        g += pixel.g * weight;
-                        b += pixel.b * weight;
-                        a += pixel.a * weight;
-                        totalWeight += weight;
-                    }
 
-                    break;
-                }
-                case Color[] colorArray:
-                {
-                    foreach (Color pixel in colorArray)
-                    {
-                        if (pixel.a <= alphaCutoff)
-                        {
-                            continue;
-                        }
                         float weight = pixel.r * rWeight + pixel.g * gWeight + pixel.b * bWeight;
                         r += pixel.r * weight;
                         g += pixel.g * weight;
@@ -395,47 +730,31 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         // Find dominant color using simple clustering
         private static Color GetDominantColor(IEnumerable<Color> pixels, float alphaCutoff)
         {
-            ColorBucketCache.Clear();
+            using PooledResource<Dictionary<FastVector3Int, int>> colorBucketResource =
+                DictionaryBuffer<FastVector3Int, int>.Dictionary.Get(
+                    out Dictionary<FastVector3Int, int> cache
+                );
             const int bucketSize = 32; // Adjust for different precision
 
             switch (pixels)
             {
-                case List<Color> colorList:
+                case IReadOnlyList<Color> colorList:
                 {
-                    foreach (Color pixel in colorList)
+                    for (int i = 0; i < colorList.Count; i++)
                     {
+                        Color pixel = colorList[i];
                         if (pixel.a <= alphaCutoff)
                         {
                             continue;
                         }
 
-                        Vector3Int bucket = new(
+                        FastVector3Int bucket = new(
                             Mathf.RoundToInt(pixel.r * 255 / bucketSize),
                             Mathf.RoundToInt(pixel.g * 255 / bucketSize),
                             Mathf.RoundToInt(pixel.b * 255 / bucketSize)
                         );
 
-                        ColorBucketCache.AddOrUpdate(bucket, _ => 0, (_, value) => value + 1);
-                    }
-
-                    break;
-                }
-                case Color[] colorArray:
-                {
-                    foreach (Color pixel in colorArray)
-                    {
-                        if (pixel.a <= alphaCutoff)
-                        {
-                            continue;
-                        }
-
-                        Vector3Int bucket = new(
-                            Mathf.RoundToInt(pixel.r * 255 / bucketSize),
-                            Mathf.RoundToInt(pixel.g * 255 / bucketSize),
-                            Mathf.RoundToInt(pixel.b * 255 / bucketSize)
-                        );
-
-                        ColorBucketCache.AddOrUpdate(bucket, _ => 0, (_, value) => value + 1);
+                        cache.AddOrUpdate(bucket, _ => 0, (_, value) => value + 1);
                     }
 
                     break;
@@ -449,13 +768,13 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                             continue;
                         }
 
-                        Vector3Int bucket = new(
+                        FastVector3Int bucket = new(
                             Mathf.RoundToInt(pixel.r * 255 / bucketSize),
                             Mathf.RoundToInt(pixel.g * 255 / bucketSize),
                             Mathf.RoundToInt(pixel.b * 255 / bucketSize)
                         );
 
-                        ColorBucketCache.AddOrUpdate(bucket, _ => 0, (_, value) => value + 1);
+                        cache.AddOrUpdate(bucket, _ => 0, (_, value) => value + 1);
                     }
 
                     break;
@@ -469,23 +788,23 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                             continue;
                         }
 
-                        Vector3Int bucket = new(
+                        FastVector3Int bucket = new(
                             Mathf.RoundToInt(pixel.r * 255 / bucketSize),
                             Mathf.RoundToInt(pixel.g * 255 / bucketSize),
                             Mathf.RoundToInt(pixel.b * 255 / bucketSize)
                         );
 
-                        ColorBucketCache.AddOrUpdate(bucket, _ => 0, (_, value) => value + 1);
+                        cache.AddOrUpdate(bucket, _ => 0, (_, value) => value + 1);
                     }
 
                     break;
                 }
             }
 
-            KeyValuePair<Vector3Int, int>? largest = null;
-            if (0 < ColorBucketCache.Count)
+            KeyValuePair<FastVector3Int, int>? largest = null;
+            if (0 < cache.Count)
             {
-                foreach (KeyValuePair<Vector3Int, int> bucketEntry in ColorBucketCache)
+                foreach (KeyValuePair<FastVector3Int, int> bucketEntry in cache)
                 {
                     largest ??= bucketEntry;
                     if (largest.Value.Value < bucketEntry.Value)
@@ -500,7 +819,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return default;
             }
 
-            Vector3Int dominantBucket = largest.Value.Key;
+            FastVector3Int dominantBucket = largest.Value.Key;
             return new Color(
                 dominantBucket.x * bucketSize / 255f,
                 dominantBucket.y * bucketSize / 255f,
@@ -574,6 +893,26 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             );
         }
 
+        /// <summary>
+        /// Generates a complementary color by rotating the hue by 180 degrees in HSV space.
+        /// Handles grayscale colors specially and supports optional randomization.
+        /// </summary>
+        /// <param name="source">The source color to find the complement of.</param>
+        /// <param name="random">Optional random number generator for adding variance (default: null for no randomization).</param>
+        /// <param name="variance">
+        /// The amount of random variance to apply (default: 0 for none).
+        /// If non-zero, variance is applied as +/- range to each RGB component.
+        /// If zero with random provided, multiplies each component by random value.
+        /// </param>
+        /// <returns>The complementary color with the same alpha as the source.</returns>
+        /// <remarks>
+        /// Null Handling: random can be null (no randomization applied).
+        /// Thread Safety: Thread-safe if the provided IRandom is thread-safe.
+        /// Performance: O(1) - constant time color space conversion and arithmetic.
+        /// Allocations: No heap allocations.
+        /// Edge Cases: Grayscale colors (RGB values within 20/255 of each other) are converted to contrasting colors
+        /// rather than complementary - dark grays become cyan-ish, light grays become yellow.
+        /// </remarks>
         public static Color GetComplement(
             this Color source,
             IRandom random = null,

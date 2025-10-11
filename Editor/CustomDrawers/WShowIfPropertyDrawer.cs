@@ -7,9 +7,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using Extensions;
     using UnityEditor;
     using UnityEngine;
-    using Core.Attributes;
-    using Core.Extension;
-    using Core.Helper;
+    using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Core.Helper;
 
     [CustomPropertyDrawer(typeof(WShowIfAttribute))]
     public sealed class WShowIfPropertyDrawer : PropertyDrawer

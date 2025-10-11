@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="420" viewBox="0 0 560 420">
+  <rect x="0" y="0" width="560" height="420" fill="#0f0f13"/>
+  <g font-family="Verdana,Arial,sans-serif" font-size="14" fill="#c8d1dc">
+    <text x="16" y="26">Octree (3D) — Three Orthogonal Splits</text>
+  </g>
+  <!-- complete cube wireframe (axonometric) -->
+  <g fill="none" stroke="#9fb3c8" stroke-width="2">
+    <!-- front face -->
+    <rect x="160" y="140" width="240" height="180"/>
+    <!-- back face (offset) -->
+    <rect x="200" y="110" width="240" height="180"/>
+    <!-- connecting edges -->
+    <line x1="160" y1="140" x2="200" y2="110"/>
+    <line x1="400" y1="140" x2="440" y2="110"/>
+    <line x1="160" y1="320" x2="200" y2="290"/>
+    <line x1="400" y1="320" x2="440" y2="290"/>
+  </g>
+
+  <!-- X-split (vertical plane through center) -->
+  <g fill="rgba(213, 122, 122, 0.12)" stroke="#d57a7a" stroke-width="2" stroke-dasharray="6 6">
+    <polygon points="280,140 320,110 320,290 280,320"/>
+  </g>
+  <!-- x-split label bubble (red, near plane) -->
+  <g font-family="Verdana,Arial,sans-serif" font-size="11">
+    <rect x="268" y="120" width="56" height="18" rx="6" ry="6" fill="#242a34" stroke="#d57a7a" stroke-width="1.5"/>
+    <text x="272" y="133" fill="#d57a7a">x-split</text>
+  </g>
+
+  <!-- Y-split (horizontal plane) -->
+  <g fill="rgba(94, 198, 154, 0.12)" stroke="#5ec69a" stroke-width="2" stroke-dasharray="6 6">
+    <polygon points="160,230 200,200 440,200 400,230"/>
+  </g>
+  <!-- y-split label bubble -->
+  <g font-family="Verdana,Arial,sans-serif" font-size="11">
+    <rect x="416" y="186" width="56" height="18" rx="6" ry="6" fill="#242a34" stroke="#5ec69a" stroke-width="1.5"/>
+    <text x="420" y="199" fill="#5ec69a">y-split</text>
+  </g>
+
+  <!-- Z-split (depth-aligned plane parallel to front, mid-depth) -->
+  <g fill="rgba(122, 162, 255, 0.10)" stroke="#7aa2ff" stroke-width="2" stroke-dasharray="6 6">
+    <polygon points="180,125 420,125 420,305 180,305"/>
+  </g>
+  <!-- z-split label bubble -->
+  <g font-family="Verdana,Arial,sans-serif" font-size="11">
+    <rect x="424" y="112" width="56" height="18" rx="6" ry="6" fill="#242a34" stroke="#7aa2ff" stroke-width="1.5"/>
+    <text x="428" y="125" fill="#7aa2ff">z-split</text>
+  </g>
+
+  <!-- points -->
+  <g fill="#e0e6ee">
+    <circle cx="210" cy="260" r="3"/>
+    <circle cx="300" cy="190" r="3"/>
+    <circle cx="360" cy="240" r="3"/>
+    <circle cx="260" cy="300" r="3"/>
+    <circle cx="420" cy="180" r="3"/>
+  </g>
+
+  <!-- axis hints (moved outside box; lighter strokes and clearer labels) -->
+  <g stroke="#9fb3c8" stroke-width="1.5" fill="none" opacity="0.85">
+    <!-- origin for axes -->
+    <!-- x-axis (to the right) -->
+    <line x1="80" y1="380" x2="140" y2="380"/>
+    <polygon fill="#9fb3c8" points="134,374 134,386 146,380"/>
+    <!-- y-axis (up-right/back) -->
+    <line x1="80" y1="380" x2="110" y2="360"/>
+    <polygon fill="#9fb3c8" points="106,356 113,364 118,358"/>
+    <!-- z-axis (upward) -->
+    <line x1="80" y1="380" x2="80" y2="340"/>
+    <polygon fill="#9fb3c8" points="74,346 86,346 80,334"/>
+  </g>
+  <g font-family="Verdana,Arial,sans-serif" font-size="11" text-anchor="start">
+    <rect x="142" y="372" width="22" height="16" rx="6" ry="6" fill="#242a34" stroke="#3a4354" stroke-width="1"/>
+    <text x="146" y="384" fill="#e0e6ee">+x</text>
+    <rect x="112" y="349" width="22" height="16" rx="6" ry="6" fill="#242a34" stroke="#3a4354" stroke-width="1"/>
+    <text x="116" y="361" fill="#e0e6ee">+y</text>
+    <rect x="70" y="327" width="22" height="16" rx="6" ry="6" fill="#242a34" stroke="#3a4354" stroke-width="1"/>
+    <text x="74" y="339" fill="#e0e6ee">+z</text>
+  </g>
+</svg>

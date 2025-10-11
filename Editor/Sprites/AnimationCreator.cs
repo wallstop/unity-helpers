@@ -8,9 +8,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     using System.Text.RegularExpressions;
     using UnityEditor;
     using UnityEngine;
-    using Core.Extension;
-    using Core.Helper;
     using CustomEditors;
+    using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
     [Serializable]
@@ -25,6 +26,35 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         public bool loop;
     }
 
+    /// <summary>
+    /// Builds AnimationClips from sprites using flexible grouping and naming rules. Supports
+    /// auto-parsing by folders, regex-based grouping, duplicate-resolution, dry-run previews, and
+    /// optional case-insensitive grouping.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Problems this solves: turning folder(s) of sprites into one or many consistent
+    /// <see cref="AnimationClip"/> assets with predictable names and frame rates.
+    /// </para>
+    /// <para>
+    /// How it works: choose directories and a sprite name regex; optionally supply custom group
+    /// regex with named groups <c>base</c>/<c>index</c> or rely on common patterns
+    /// (e.g., name_01, name (2), name3). Configure per-animation FPS, loop flag, and naming
+    /// prefixes/suffixes. Use Calculate/Dry-Run sections to preview results before generating.
+    /// </para>
+    /// <para>
+    /// Pros: reproducible clip creation, battle-tested grouping heuristics, detailed previews.
+    /// Caveats: ensure regex correctness; strict numeric ordering can be toggled when mixed digits
+    /// produce undesired lexicographic ordering.
+    /// </para>
+    /// <example>
+    /// <![CDATA[
+    /// // Open via menu: Tools/Wallstop Studios/Unity Helpers/Animation Creator
+    /// // Example filter: ^Enemy_(?<base>Walk)_(?<index>\d+)$
+    /// // Add folders, enable "Resolve Duplicate Animation Names" to avoid conflicts,
+    /// // then Generate to create .anim files under a chosen folder.
+    /// ]]>
+    /// </example>
     public sealed class AnimationCreatorWindow : EditorWindow
     {
         private static readonly char[] WhiteSpaceSplitters = { ' ', '\t', '\n', '\r' };
@@ -34,11 +64,35 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         private SerializedProperty _animationSourcesProp;
         private SerializedProperty _spriteNameRegexProp;
         private SerializedProperty _textProp;
+        private SerializedProperty _autoRefreshProp;
+        private SerializedProperty _groupingCaseInsensitiveProp;
+        private SerializedProperty _includeFolderNameProp;
+        private SerializedProperty _includeFullFolderPathProp;
+        private SerializedProperty _autoParseNamePrefixProp;
+        private SerializedProperty _autoParseNameSuffixProp;
+        private SerializedProperty _useCustomGroupRegexProp;
+        private SerializedProperty _customGroupRegexProp;
+        private SerializedProperty _customGroupRegexIgnoreCaseProp;
+        private SerializedProperty _resolveDuplicateNamesProp;
+        private SerializedProperty _regexTestInputProp;
+        private SerializedProperty _strictNumericOrderingProp;
 
         public List<AnimationData> animationData = new();
         public List<Object> animationSources = new();
         public string spriteNameRegex = ".*";
         public string text;
+        public bool autoRefresh = true;
+        public bool groupingCaseInsensitive = true;
+        public bool includeFolderNameInAnimName;
+        public bool includeFullFolderPathInAnimName;
+        public string autoParseNamePrefix = string.Empty;
+        public string autoParseNameSuffix = string.Empty;
+        public bool useCustomGroupRegex;
+        public string customGroupRegex = string.Empty;
+        public bool customGroupRegexIgnoreCase = true;
+        public bool resolveDuplicateAnimationNames = true;
+        public string regexTestInput = string.Empty;
+        public bool strictNumericOrdering = false;
 
         [HideInInspector]
         [SerializeField]
@@ -50,7 +104,48 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         private string _searchString = string.Empty;
         private Vector2 _scrollPosition;
         private string _errorMessage = string.Empty;
+        private Regex _compiledGroupRegex;
+        private string _lastGroupRegex;
+        private string _groupRegexErrorMessage = string.Empty;
+        private int _lastSourcesHash;
         private bool _animationDataIsExpanded = true;
+        private bool _autoParsePreviewExpanded = false;
+        private bool _autoParseDryRunExpanded = false;
+
+        private sealed class AutoParsePreviewRecord
+        {
+            public string folder;
+            public string baseName;
+            public int count;
+            public bool hasIndex;
+        }
+
+        private readonly List<AutoParsePreviewRecord> _autoParsePreview = new();
+
+        private sealed class AutoParseDryRunRecord
+        {
+            public string folderPath;
+            public string finalName;
+            public string finalAssetPath;
+            public int count;
+            public bool hasIndex;
+            public bool duplicateResolved;
+        }
+
+        private readonly List<AutoParseDryRunRecord> _autoParseDryRun = new();
+
+        private static readonly Regex s_ParenIndexRegex = new(
+            @"^(?<base>.*?)[\s]*\(\s*(?<index>\d+)\s*\)\s*$",
+            RegexOptions.Compiled | RegexOptions.CultureInvariant
+        );
+        private static readonly Regex s_SeparatorIndexRegex = new(
+            @"^(?<base>.*?)[_\-\.\s]+(?<index>\d+)$",
+            RegexOptions.Compiled | RegexOptions.CultureInvariant
+        );
+        private static readonly Regex s_TrailingIndexRegex = new(
+            @"^(?<base>.*?)(?<index>\d+)$",
+            RegexOptions.Compiled | RegexOptions.CultureInvariant
+        );
 
         [MenuItem("Tools/Wallstop Studios/Unity Helpers/Animation Creator", priority = -3)]
         public static void ShowWindow()
@@ -65,9 +160,35 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             _animationSourcesProp = _serializedObject.FindProperty(nameof(animationSources));
             _spriteNameRegexProp = _serializedObject.FindProperty(nameof(spriteNameRegex));
             _textProp = _serializedObject.FindProperty(nameof(text));
+            _autoRefreshProp = _serializedObject.FindProperty(nameof(autoRefresh));
+            _groupingCaseInsensitiveProp = _serializedObject.FindProperty(
+                nameof(groupingCaseInsensitive)
+            );
+            _includeFolderNameProp = _serializedObject.FindProperty(
+                nameof(includeFolderNameInAnimName)
+            );
+            _includeFullFolderPathProp = _serializedObject.FindProperty(
+                nameof(includeFullFolderPathInAnimName)
+            );
+            _autoParseNamePrefixProp = _serializedObject.FindProperty(nameof(autoParseNamePrefix));
+            _autoParseNameSuffixProp = _serializedObject.FindProperty(nameof(autoParseNameSuffix));
+            _useCustomGroupRegexProp = _serializedObject.FindProperty(nameof(useCustomGroupRegex));
+            _customGroupRegexProp = _serializedObject.FindProperty(nameof(customGroupRegex));
+            _customGroupRegexIgnoreCaseProp = _serializedObject.FindProperty(
+                nameof(customGroupRegexIgnoreCase)
+            );
+            _resolveDuplicateNamesProp = _serializedObject.FindProperty(
+                nameof(resolveDuplicateAnimationNames)
+            );
+            _regexTestInputProp = _serializedObject.FindProperty(nameof(regexTestInput));
+            _strictNumericOrderingProp = _serializedObject.FindProperty(
+                nameof(strictNumericOrdering)
+            );
 
             UpdateRegex();
+            UpdateGroupRegex();
             FindAndFilterSprites();
+            _lastSourcesHash = ComputeSourcesHash();
             Repaint();
         }
 
@@ -84,15 +205,124 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             );
             EditorGUILayout.PropertyField(_spriteNameRegexProp);
             EditorGUILayout.PropertyField(_textProp);
+            EditorGUILayout.PropertyField(_autoRefreshProp, new GUIContent("Auto Refresh Filter"));
+
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Grouping & Naming", EditorStyles.boldLabel);
+            EditorGUILayout.PropertyField(
+                _groupingCaseInsensitiveProp,
+                new GUIContent("Case-Insensitive Grouping")
+            );
+            EditorGUILayout.PropertyField(
+                _includeFolderNameProp,
+                new GUIContent("Prefix Leaf Folder Name")
+            );
+            EditorGUILayout.PropertyField(
+                _includeFullFolderPathProp,
+                new GUIContent("Prefix Full Folder Path")
+            );
+            EditorGUILayout.PropertyField(
+                _autoParseNamePrefixProp,
+                new GUIContent("Auto-Parse Name Prefix")
+            );
+            EditorGUILayout.PropertyField(
+                _autoParseNameSuffixProp,
+                new GUIContent("Auto-Parse Name Suffix")
+            );
+            EditorGUILayout.PropertyField(
+                _resolveDuplicateNamesProp,
+                new GUIContent("Resolve Duplicate Animation Names")
+            );
+            EditorGUILayout.PropertyField(
+                _strictNumericOrderingProp,
+                new GUIContent("Strict Numeric Ordering")
+            );
+
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Custom Group Regex", EditorStyles.boldLabel);
+            EditorGUILayout.PropertyField(
+                _useCustomGroupRegexProp,
+                new GUIContent("Enable Custom Group Regex")
+            );
+            using (new EditorGUI.DisabledScope(!_useCustomGroupRegexProp.boolValue))
+            {
+                EditorGUILayout.PropertyField(
+                    _customGroupRegexProp,
+                    new GUIContent("Pattern (?<base>)(?<index>)")
+                );
+                EditorGUILayout.PropertyField(
+                    _customGroupRegexIgnoreCaseProp,
+                    new GUIContent("Ignore Case (Regex)")
+                );
+            }
+
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Regex Tester", EditorStyles.boldLabel);
+            EditorGUILayout.PropertyField(_regexTestInputProp, new GUIContent("Test Input"));
+            if (!string.IsNullOrEmpty(regexTestInput))
+            {
+                if (_compiledRegex != null)
+                {
+                    bool match = _compiledRegex.IsMatch(regexTestInput);
+                    EditorGUILayout.LabelField("Filter Regex Match:", match ? "Yes" : "No");
+                }
+                else
+                {
+                    EditorGUILayout.LabelField("Filter Regex Match:", "Invalid Pattern");
+                }
+
+                if (useCustomGroupRegex)
+                {
+                    if (_compiledGroupRegex != null)
+                    {
+                        Match m = _compiledGroupRegex.Match(regexTestInput);
+                        if (m.Success)
+                        {
+                            string b = m.Groups["base"].Success ? m.Groups["base"].Value : "";
+                            string idx = m.Groups["index"].Success ? m.Groups["index"].Value : "";
+                            EditorGUILayout.LabelField("Custom Group Base:", b);
+                            EditorGUILayout.LabelField(
+                                "Custom Group Index:",
+                                string.IsNullOrEmpty(idx) ? "(none)" : idx
+                            );
+                        }
+                        else
+                        {
+                            EditorGUILayout.LabelField("Custom Group Result:", "No match");
+                        }
+                    }
+                    else
+                    {
+                        EditorGUILayout.LabelField("Custom Group Result:", "Invalid Pattern");
+                    }
+                }
+
+                if (TryExtractBaseAndIndex(regexTestInput, out string fbBase, out int fbIndex))
+                {
+                    EditorGUILayout.LabelField("Fallback Base:", fbBase);
+                    EditorGUILayout.LabelField(
+                        "Fallback Index:",
+                        fbIndex >= 0 ? fbIndex.ToString() : "(none)"
+                    );
+                }
+                else
+                {
+                    EditorGUILayout.LabelField("Fallback Result:", "No index; base = input");
+                }
+            }
 
             if (!string.IsNullOrWhiteSpace(_errorMessage))
             {
                 EditorGUILayout.HelpBox(_errorMessage, MessageType.Error);
             }
+            if (!string.IsNullOrWhiteSpace(_groupRegexErrorMessage))
+            {
+                EditorGUILayout.HelpBox(_groupRegexErrorMessage, MessageType.Error);
+            }
             else if (
                 _animationSourcesProp.arraySize == 0
                 || _animationSourcesProp.FindPropertyRelative("Array.size").intValue == 0
-                || animationSources.TrueForAll(Objects.Null)
+                || animationSources.TrueForAll(val => Objects.Null(val))
             )
             {
                 EditorGUILayout.HelpBox(
@@ -118,9 +348,110 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             DrawActionButtons();
 
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Auto-Parse Preview", EditorStyles.boldLabel);
+            using (new EditorGUI.DisabledScope(_filteredSprites.Count == 0))
+            {
+                if (GUILayout.Button("Generate Auto-Parse Preview"))
+                {
+                    GenerateAutoParsePreview();
+                    _autoParsePreviewExpanded = true;
+                }
+                if (GUILayout.Button("Generate Dry-Run Apply"))
+                {
+                    GenerateAutoParseDryRun();
+                    _autoParseDryRunExpanded = true;
+                }
+            }
+            if (_filteredSprites.Count == 0)
+            {
+                EditorGUILayout.HelpBox("No matched sprites to preview.", MessageType.Info);
+            }
+            _autoParsePreviewExpanded = EditorGUILayout.Foldout(
+                _autoParsePreviewExpanded,
+                $"Preview Groups ({_autoParsePreview.Count})",
+                true
+            );
+            if (_autoParsePreviewExpanded && _autoParsePreview.Count > 0)
+            {
+                using (new EditorGUI.IndentLevelScope())
+                {
+                    int shown = 0;
+                    foreach (AutoParsePreviewRecord rec in _autoParsePreview)
+                    {
+                        EditorGUILayout.LabelField(
+                            $"{rec.folder} / {rec.baseName}",
+                            $"Frames: {rec.count} | Numeric: {(rec.hasIndex ? "Yes" : "No")}"
+                        );
+                        shown++;
+                        if (shown >= 200)
+                        {
+                            EditorGUILayout.LabelField($"Showing first {shown} groups...");
+                            break;
+                        }
+                    }
+                }
+            }
+            _autoParseDryRunExpanded = EditorGUILayout.Foldout(
+                _autoParseDryRunExpanded,
+                $"Dry-Run Results ({_autoParseDryRun.Count})",
+                true
+            );
+            if (_autoParseDryRunExpanded && _autoParseDryRun.Count > 0)
+            {
+                using (new EditorGUI.IndentLevelScope())
+                {
+                    int shown = 0;
+                    foreach (AutoParseDryRunRecord rec in _autoParseDryRun)
+                    {
+                        string info =
+                            $"Name: {rec.finalName} | Frames: {rec.count} | Numeric: {(rec.hasIndex ? "Yes" : "No")}";
+                        if (rec.duplicateResolved)
+                        {
+                            info += " | Renamed to avoid duplicate";
+                        }
+                        EditorGUILayout.LabelField(rec.folderPath, info);
+                        EditorGUILayout.LabelField("→ Asset Path:", rec.finalAssetPath);
+                        shown++;
+                        if (shown >= 200)
+                        {
+                            EditorGUILayout.LabelField($"Showing first {shown} results...");
+                            break;
+                        }
+                    }
+                }
+            }
+
             EditorGUILayout.EndScrollView();
 
             _ = _serializedObject.ApplyModifiedProperties();
+
+            // Auto refresh behavior at end of GUI to pick up any changed fields
+            if (autoRefresh)
+            {
+                bool regexChanged = _compiledRegex == null || _lastUsedRegex != spriteNameRegex;
+                int currentSourcesHash = ComputeSourcesHash();
+                bool sourcesChanged = currentSourcesHash != _lastSourcesHash;
+                if (regexChanged)
+                {
+                    UpdateRegex();
+                }
+                if (regexChanged || sourcesChanged)
+                {
+                    _lastSourcesHash = currentSourcesHash;
+                    FindAndFilterSprites();
+                    Repaint();
+                }
+                if (
+                    _compiledGroupRegex == null
+                    || _lastGroupRegex != customGroupRegex
+                    || customGroupRegexIgnoreCase
+                        != ((_compiledGroupRegex?.Options & RegexOptions.IgnoreCase) != 0)
+                )
+                {
+                    UpdateGroupRegex();
+                }
+            }
         }
 
         private void DrawCheckSpritesButton()
@@ -226,11 +557,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     else if (animationData[0].frames.Count > 0)
                     {
                         if (
-                            !EditorUtility.DisplayDialog(
+                            !Utils.EditorUi.Confirm(
                                 "Confirm Overwrite",
                                 "This will replace the frames currently in the first animation slot. Are you sure?",
                                 "Replace",
-                                "Cancel"
+                                "Cancel",
+                                defaultWhenSuppressed: true
                             )
                         )
                         {
@@ -251,11 +583,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 if (GUILayout.Button("Auto-Parse Matched Sprites into Animations"))
                 {
                     if (
-                        EditorUtility.DisplayDialog(
+                        Utils.EditorUi.Confirm(
                             "Confirm Auto-Parse",
                             "This will replace the current animation list with animations generated from matched sprites based on their names (e.g., 'Player_Run_0', 'Player_Run_1'). Are you sure?",
                             "Parse",
-                            "Cancel"
+                            "Cancel",
+                            defaultWhenSuppressed: true
                         )
                     )
                     {
@@ -451,7 +784,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         continue;
                     }
 
-                    EditorUtility.DisplayProgressBar(
+                    Utils.EditorUi.ShowProgress(
                         "Creating Animations",
                         $"Processing '{animationName}' ({currentAnimationIndex}/{totalAnimations})",
                         (float)currentAnimationIndex / totalAnimations
@@ -475,7 +808,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         continue;
                     }
 
-                    List<Sprite> validFrames = frames.Where(f => f != null).ToList();
+                    using PooledResource<List<Sprite>> validFramesResource =
+                        Buffers<Sprite>.List.Get();
+                    List<Sprite> validFrames = validFramesResource.resource;
+                    foreach (Sprite f in frames)
+                    {
+                        if (f != null)
+                        {
+                            validFrames.Add(f);
+                        }
+                    }
                     if (validFrames.Count == 0)
                     {
                         this.LogWarn(
@@ -486,25 +828,21 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
                     validFrames.Sort((s1, s2) => EditorUtility.NaturalCompare(s1.name, s2.name));
 
-                    List<ObjectReferenceKeyframe> keyFrames = new(validFrames.Count);
                     float timeStep = 1f / framesPerSecond;
+                    using PooledResource<ObjectReferenceKeyframe[]> keyframesResource =
+                        WallstopFastArrayPool<ObjectReferenceKeyframe>.Get(
+                            validFrames.Count,
+                            out ObjectReferenceKeyframe[] keyframes
+                        );
                     float currentTime = 0f;
-
-                    foreach (
-                        ObjectReferenceKeyframe keyFrame in validFrames.Select(
-                            sprite => new ObjectReferenceKeyframe
-                            {
-                                time = currentTime,
-                                value = sprite,
-                            }
-                        )
-                    )
+                    for (int k = 0; k < validFrames.Count; k++)
                     {
-                        keyFrames.Add(keyFrame);
+                        keyframes[k].time = currentTime;
+                        keyframes[k].value = validFrames[k];
                         currentTime += timeStep;
                     }
 
-                    if (keyFrames.Count <= 0)
+                    if (keyframes.Length <= 0)
                     {
                         this.LogWarn(
                             $"No valid keyframes could be generated for animation '{animationName}'."
@@ -526,7 +864,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     AnimationUtility.SetObjectReferenceCurve(
                         animationClip,
                         EditorCurveBinding.PPtrCurve("", typeof(SpriteRenderer), "m_Sprite"),
-                        keyFrames.ToArray()
+                        keyframes
                     );
 
                     string firstFramePath = AssetDatabase.GetAssetPath(validFrames[0]);
@@ -551,7 +889,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
             finally
             {
-                EditorUtility.ClearProgressBar();
+                Utils.EditorUi.ClearProgress();
                 if (!errorOccurred)
                 {
                     this.Log($"Finished creating {totalAnimations} animations.");
@@ -573,7 +911,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 try
                 {
-                    _compiledRegex = new Regex(spriteNameRegex, RegexOptions.Compiled);
+                    _compiledRegex = new Regex(
+                        spriteNameRegex,
+                        RegexOptions.Compiled | RegexOptions.CultureInvariant
+                    );
                     _lastUsedRegex = spriteNameRegex;
                     _errorMessage = "";
                     this.Log($"Regex updated to: {spriteNameRegex}");
@@ -585,6 +926,42 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     _errorMessage = $"Invalid Regex: {ex.Message}";
                     this.LogError($"Invalid Regex '{spriteNameRegex}': {ex.Message}");
                 }
+            }
+        }
+
+        private void UpdateGroupRegex()
+        {
+            _groupRegexErrorMessage = string.Empty;
+            _compiledGroupRegex = null;
+            if (!useCustomGroupRegex)
+            {
+                _lastGroupRegex = customGroupRegex;
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(customGroupRegex))
+            {
+                _lastGroupRegex = customGroupRegex;
+                _groupRegexErrorMessage = "Custom Group Regex enabled but pattern is empty.";
+                return;
+            }
+
+            try
+            {
+                RegexOptions options = RegexOptions.Compiled | RegexOptions.CultureInvariant;
+                if (customGroupRegexIgnoreCase)
+                {
+                    options |= RegexOptions.IgnoreCase;
+                }
+                _compiledGroupRegex = new Regex(customGroupRegex, options);
+                _lastGroupRegex = customGroupRegex;
+            }
+            catch (ArgumentException ex)
+            {
+                _compiledGroupRegex = null;
+                _lastGroupRegex = customGroupRegex;
+                _groupRegexErrorMessage = $"Invalid Custom Group Regex: {ex.Message}";
+                this.LogError($"Invalid Custom Group Regex '{customGroupRegex}': {ex.Message}");
             }
         }
 
@@ -630,12 +1007,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
 
             string[] assetGuids = AssetDatabase.FindAssets("t:sprite", searchPaths.ToArray());
-            float totalAssets = assetGuids.Length;
+            int totalAssets = assetGuids.Length;
             this.Log($"Found {totalAssets} total sprite assets in specified paths.");
 
             try
             {
-                EditorUtility.DisplayProgressBar(
+                Utils.EditorUi.ShowProgress(
                     "Finding and Filtering Sprites",
                     $"Scanning {assetGuids.Length} assets...",
                     0f
@@ -646,10 +1023,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     string guid = assetGuids[i];
                     string path = AssetDatabase.GUIDToAssetPath(guid);
 
-                    if (i % 20 == 0 || Mathf.Approximately(i, totalAssets - 1))
+                    if (i % 20 == 0 || i == totalAssets - 1)
                     {
-                        float progress = (i + 1) / totalAssets;
-                        EditorUtility.DisplayProgressBar(
+                        float progress = (i + 1) / (float)totalAssets;
+                        Utils.EditorUi.ShowProgress(
                             "Finding and Filtering Sprites",
                             $"Checking: {Path.GetFileName(path)} ({i + 1}/{assetGuids.Length})",
                             progress
@@ -677,7 +1054,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
             finally
             {
-                EditorUtility.ClearProgressBar();
+                Utils.EditorUi.ClearProgress();
             }
         }
 
@@ -689,176 +1066,28 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 return;
             }
 
-            Dictionary<string, Dictionary<string, List<Sprite>>> spritesByPrefixAndAssetPath = new(
-                StringComparer.Ordinal
-            );
-            int totalSprites = _filteredSprites.Count;
-            int processedCount = 0;
-            this.Log($"Starting auto-parse for {_filteredSprites.Count} matched sprites.");
-
             try
             {
-                foreach (Sprite sprite in _filteredSprites)
-                {
-                    processedCount++;
-                    if (processedCount % 10 == 0 || processedCount == totalSprites)
-                    {
-                        EditorUtility.DisplayProgressBar(
-                            "Auto-Parsing Sprites",
-                            $"Processing: {sprite.name} ({processedCount}/{totalSprites})",
-                            (float)processedCount / totalSprites
-                        );
-                    }
+                Dictionary<string, Dictionary<string, List<(int index, Sprite sprite)>>> groups =
+                    GroupFilteredSprites(withProgress: true);
 
-                    string assetPath = AssetDatabase.GetAssetPath(sprite);
-                    string directoryPath = Path.GetDirectoryName(assetPath).SanitizePath() ?? "";
-                    string frameName = sprite.name;
-
-                    int splitIndex = frameName.LastIndexOf('_');
-                    string prefix = frameName;
-
-                    if (splitIndex > 0 && splitIndex < frameName.Length - 1)
-                    {
-                        bool allDigitsAfter = true;
-                        for (int j = splitIndex + 1; j < frameName.Length; j++)
-                        {
-                            if (!char.IsDigit(frameName[j]))
-                            {
-                                allDigitsAfter = false;
-                                break;
-                            }
-                        }
-
-                        if (allDigitsAfter)
-                        {
-                            prefix = frameName.Substring(0, splitIndex);
-                        }
-                        else
-                        {
-                            prefix = frameName;
-                            this.LogWarn(
-                                $"Sprite name '{frameName}' has an underscore but not only digits after the last one. Treating as single frame or check naming."
-                            );
-                        }
-                    }
-                    else if (splitIndex == -1)
-                    {
-                        prefix = frameName;
-                        this.LogWarn(
-                            $"Sprite name '{frameName}' has no underscore. Treating as single frame or check naming."
-                        );
-                    }
-
-                    if (!string.IsNullOrWhiteSpace(prefix))
-                    {
-                        if (
-                            !spritesByPrefixAndAssetPath.TryGetValue(
-                                directoryPath,
-                                out Dictionary<string, List<Sprite>> spritesByPrefix
-                            )
-                        )
-                        {
-                            spritesByPrefix = new Dictionary<string, List<Sprite>>(
-                                StringComparer.Ordinal
-                            );
-                            spritesByPrefixAndAssetPath.Add(directoryPath, spritesByPrefix);
-                        }
-
-                        spritesByPrefix.GetOrAdd(prefix).Add(sprite);
-                    }
-                    else
-                    {
-                        this.LogWarn(
-                            $"Could not extract valid prefix for frame '{frameName}' at path '{assetPath}'. Skipping."
-                        );
-                    }
-                }
-
-                if (spritesByPrefixAndAssetPath.Count > 0)
-                {
-                    int removedCount = animationData.RemoveAll(data => data.isCreatedFromAutoParse);
-                    this.Log($"Removed {removedCount} previously auto-parsed animation entries.");
-
-                    int addedCount = 0;
-                    foreach (
-                        KeyValuePair<
-                            string,
-                            Dictionary<string, List<Sprite>>
-                        > kvpAssetPath in spritesByPrefixAndAssetPath
-                    )
-                    {
-                        string dirName = new DirectoryInfo(kvpAssetPath.Key).Name;
-
-                        foreach ((string key, List<Sprite> spritesInGroup) in kvpAssetPath.Value)
-                        {
-                            if (spritesInGroup.Count == 0)
-                            {
-                                continue;
-                            }
-
-                            spritesInGroup.Sort(
-                                (s1, s2) => EditorUtility.NaturalCompare(s1.name, s2.name)
-                            );
-
-                            string finalAnimName;
-
-                            bool keyIsLikelyFullName =
-                                spritesInGroup.Count > 0 && key == spritesInGroup[0].name;
-
-                            if (keyIsLikelyFullName)
-                            {
-                                int lastUnderscore = key.LastIndexOf('_');
-
-                                if (lastUnderscore > 0 && lastUnderscore < key.Length - 1)
-                                {
-                                    string suffix = key.Substring(lastUnderscore + 1);
-                                    finalAnimName = SanitizeName($"Anim_{suffix}");
-                                    this.Log(
-                                        $"Naming non-standard sprite group '{key}' as '{finalAnimName}' using suffix '{suffix}'."
-                                    );
-                                }
-                                else
-                                {
-                                    finalAnimName = SanitizeName($"Anim_{key}");
-                                    this.LogWarn(
-                                        $"Naming non-standard sprite group '{key}' as '{finalAnimName}'. Could not extract suffix."
-                                    );
-                                }
-                            }
-                            else
-                            {
-                                finalAnimName = SanitizeName($"Anim_{key}");
-                                this.Log(
-                                    $"Naming standard sprite group '{key}' as '{finalAnimName}'."
-                                );
-                            }
-
-                            animationData.Add(
-                                new AnimationData
-                                {
-                                    frames = spritesInGroup,
-                                    framesPerSecond = AnimationData.DefaultFramesPerSecond,
-                                    animationName = finalAnimName,
-                                    isCreatedFromAutoParse = true,
-                                    loop = false,
-                                }
-                            );
-                            addedCount++;
-                        }
-                    }
-
-                    this.Log($"Auto-parsed into {addedCount} new animation groups.");
-                }
-                else
+                if (groups.Count == 0)
                 {
                     this.LogWarn(
-                        $"Auto-parsing did not result in any animation groups. Check sprite naming conventions (e.g., 'Prefix_0', 'Prefix_1')."
+                        $"Auto-parsing did not result in any animation groups. Check naming."
                     );
+                    return;
                 }
+
+                int removedCount = animationData.RemoveAll(data => data.isCreatedFromAutoParse);
+                this.Log($"Removed {removedCount} previously auto-parsed animation entries.");
+
+                int added = ApplyAutoParseGroups(groups);
+                this.Log($"Auto-parsed into {added} new animation groups.");
             }
             finally
             {
-                EditorUtility.ClearProgressBar();
+                Utils.EditorUi.ClearProgress();
                 _serializedObject.Update();
             }
         }
@@ -874,6 +1103,428 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
 
             return inputName.Trim('_');
+        }
+
+        private static string StripDensitySuffix(string name)
+        {
+            // Removes common density suffixes like @2x, @0.5x, @3x at the end
+            return Regex.Replace(name, @"@\d+(?:\.\d+)?x$", string.Empty);
+        }
+
+        private static bool TryExtractBaseAndIndex(string name, out string baseName, out int index)
+        {
+            baseName = null;
+            index = -1;
+
+            // Try patterns in order of specificity
+            // 1) name(001), name (1)
+            Match m = s_ParenIndexRegex.Match(name);
+            if (m.Success)
+            {
+                baseName = m.Groups["base"].Value;
+                _ = int.TryParse(m.Groups["index"].Value, out index);
+                baseName = baseName.TrimEnd('_', '-', '.', ' ');
+                return true;
+            }
+
+            // 2) name_001, name-001, name 001, name.001 (last numeric segment)
+            m = s_SeparatorIndexRegex.Match(name);
+            if (m.Success)
+            {
+                baseName = m.Groups["base"].Value;
+                _ = int.TryParse(m.Groups["index"].Value, out index);
+                baseName = baseName.TrimEnd('_', '-', '.', ' ');
+                return true;
+            }
+
+            // 3) name001 (trailing digits without separators)
+            m = s_TrailingIndexRegex.Match(name);
+            if (m.Success && m.Groups["base"].Length > 0)
+            {
+                baseName = m.Groups["base"].Value;
+                _ = int.TryParse(m.Groups["index"].Value, out index);
+                baseName = baseName.TrimEnd('_', '-', '.', ' ');
+                return true;
+            }
+
+            // Not found
+            return false;
+        }
+
+        private int ComputeSourcesHash()
+        {
+            unchecked
+            {
+                int hash = 17;
+                if (animationSources != null)
+                {
+                    for (int i = 0; i < animationSources.Count; i++)
+                    {
+                        Object src = animationSources[i];
+                        int id = src != null ? src.GetInstanceID() : 0;
+                        string path = src != null ? AssetDatabase.GetAssetPath(src) : string.Empty;
+                        hash = hash * 31 + id;
+                        hash = hash * 31 + (path?.GetHashCode() ?? 0);
+                    }
+                }
+                return hash;
+            }
+        }
+
+        private Dictionary<
+            string,
+            Dictionary<string, List<(int index, Sprite sprite)>>
+        > GroupFilteredSprites(bool withProgress)
+        {
+            Dictionary<
+                string,
+                Dictionary<string, List<(int index, Sprite sprite)>>
+            > spritesByBaseAndAssetPath = new(StringComparer.Ordinal);
+
+            int total = _filteredSprites.Count;
+            int processed = 0;
+
+            foreach (Sprite sprite in _filteredSprites)
+            {
+                processed++;
+                if (withProgress && (processed % 10 == 0 || processed == total))
+                {
+                    Utils.EditorUi.ShowProgress(
+                        "Auto-Parsing Sprites",
+                        $"Processing: {sprite.name} ({processed}/{total})",
+                        (float)processed / total
+                    );
+                }
+
+                string assetPath = AssetDatabase.GetAssetPath(sprite);
+                string directoryPath =
+                    Path.GetDirectoryName(assetPath).SanitizePath() ?? string.Empty;
+                string frameName = StripDensitySuffix(sprite.name);
+
+                string baseName;
+                int frameIndex;
+
+                if (useCustomGroupRegex && _compiledGroupRegex != null)
+                {
+                    Match m = _compiledGroupRegex.Match(frameName);
+                    if (m.Success)
+                    {
+                        Group baseGroup = m.Groups["base"];
+                        Group indexGroup = m.Groups["index"];
+                        baseName = baseGroup.Success ? baseGroup.Value : frameName;
+                        frameIndex =
+                            indexGroup.Success && int.TryParse(indexGroup.Value, out int idx)
+                                ? idx
+                                : -1;
+                    }
+                    else if (!TryExtractBaseAndIndex(frameName, out baseName, out frameIndex))
+                    {
+                        baseName = frameName;
+                        frameIndex = -1;
+                    }
+                }
+                else if (!TryExtractBaseAndIndex(frameName, out baseName, out frameIndex))
+                {
+                    baseName = frameName;
+                    frameIndex = -1;
+                }
+
+                if (string.IsNullOrWhiteSpace(baseName))
+                {
+                    this.LogWarn(
+                        $"Could not extract valid base name for '{frameName}' at '{assetPath}'. Skipping."
+                    );
+                    continue;
+                }
+
+                if (
+                    !spritesByBaseAndAssetPath.TryGetValue(
+                        directoryPath,
+                        out Dictionary<string, List<(int index, Sprite sprite)>> byBase
+                    )
+                )
+                {
+                    byBase = new Dictionary<string, List<(int index, Sprite sprite)>>(
+                        groupingCaseInsensitive
+                            ? StringComparer.OrdinalIgnoreCase
+                            : StringComparer.Ordinal
+                    );
+                    spritesByBaseAndAssetPath.Add(directoryPath, byBase);
+                }
+
+                List<(int index, Sprite sprite)> list = byBase.GetOrAdd(baseName);
+                list.Add((frameIndex, sprite));
+            }
+
+            return spritesByBaseAndAssetPath;
+        }
+
+        private int ApplyAutoParseGroups(
+            Dictionary<string, Dictionary<string, List<(int index, Sprite sprite)>>> groups
+        )
+        {
+            int addedCount = 0;
+
+            HashSet<string> usedNames = new(StringComparer.OrdinalIgnoreCase);
+            foreach (AnimationData data in animationData)
+            {
+                if (!data.isCreatedFromAutoParse && !string.IsNullOrWhiteSpace(data.animationName))
+                {
+                    usedNames.Add(data.animationName);
+                }
+            }
+
+            foreach (
+                KeyValuePair<
+                    string,
+                    Dictionary<string, List<(int index, Sprite sprite)>>
+                > kvpAssetPath in groups
+            )
+            {
+                string folderName = new DirectoryInfo(kvpAssetPath.Key).Name;
+                foreach (
+                    (string baseKey, List<(int index, Sprite sprite)> entries) in kvpAssetPath.Value
+                )
+                {
+                    if (entries.Count == 0)
+                    {
+                        continue;
+                    }
+
+                    bool hasAnyIndex = entries.Any(e => e.index >= 0);
+                    if (strictNumericOrdering)
+                    {
+                        if (hasAnyIndex)
+                        {
+                            entries.Sort((a, b) => a.index.CompareTo(b.index));
+                        }
+                        // else leave discovery order
+                    }
+                    else
+                    {
+                        if (hasAnyIndex)
+                        {
+                            entries.Sort((a, b) => a.index.CompareTo(b.index));
+                        }
+                        else
+                        {
+                            entries.Sort(
+                                (a, b) => EditorUtility.NaturalCompare(a.sprite.name, b.sprite.name)
+                            );
+                        }
+                    }
+
+                    List<Sprite> framesForAnim = new(entries.Count);
+                    foreach ((int index, Sprite sprite) e in entries)
+                    {
+                        framesForAnim.Add(e.sprite);
+                    }
+
+                    string finalAnimName = ComposeFinalName(
+                        baseKey,
+                        kvpAssetPath.Key,
+                        usedNames,
+                        out bool _
+                    );
+                    usedNames.Add(finalAnimName);
+
+                    animationData.Add(
+                        new AnimationData
+                        {
+                            frames = framesForAnim,
+                            framesPerSecond = AnimationData.DefaultFramesPerSecond,
+                            animationName = finalAnimName,
+                            isCreatedFromAutoParse = true,
+                            loop = false,
+                        }
+                    );
+                    addedCount++;
+                }
+            }
+
+            return addedCount;
+        }
+
+        private static string EnsureUniqueName(string baseName, ISet<string> used)
+        {
+            if (!used.Contains(baseName))
+            {
+                return baseName;
+            }
+            int counter = 2;
+            string candidate;
+            do
+            {
+                candidate = $"{baseName}_{counter}";
+                counter++;
+            } while (used.Contains(candidate));
+            return candidate;
+        }
+
+        private string ComposeFinalName(
+            string baseKey,
+            string directoryPath,
+            ISet<string> usedNames,
+            out bool duplicateResolved
+        )
+        {
+            string finalNameCore = baseKey;
+            string folderPrefix = GetFolderPrefix(directoryPath);
+            if (!string.IsNullOrEmpty(folderPrefix))
+            {
+                finalNameCore = folderPrefix + "_" + finalNameCore;
+            }
+            if (!string.IsNullOrEmpty(autoParseNamePrefix))
+            {
+                finalNameCore = autoParseNamePrefix + finalNameCore;
+            }
+            if (!string.IsNullOrEmpty(autoParseNameSuffix))
+            {
+                finalNameCore = finalNameCore + autoParseNameSuffix;
+            }
+            string finalAnimName = SanitizeName(finalNameCore);
+
+            duplicateResolved = false;
+            if (resolveDuplicateAnimationNames && usedNames != null)
+            {
+                if (usedNames.Contains(finalAnimName))
+                {
+                    finalAnimName = EnsureUniqueName(finalAnimName, usedNames);
+                    duplicateResolved = true;
+                }
+            }
+            return finalAnimName;
+        }
+
+        private string GetFolderPrefix(string directoryPath)
+        {
+            if (!includeFolderNameInAnimName && !includeFullFolderPathInAnimName)
+            {
+                return string.Empty;
+            }
+            if (string.IsNullOrWhiteSpace(directoryPath))
+            {
+                return string.Empty;
+            }
+            string sanitized = directoryPath.Replace('\\', '/');
+            if (includeFullFolderPathInAnimName)
+            {
+                if (sanitized.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))
+                {
+                    sanitized = sanitized.Substring("Assets/".Length);
+                }
+                sanitized = sanitized.Trim('/');
+                sanitized = sanitized.Replace('/', '_');
+                return SanitizeName(sanitized);
+            }
+            return new DirectoryInfo(directoryPath).Name;
+        }
+
+        private void GenerateAutoParseDryRun()
+        {
+            _autoParseDryRun.Clear();
+            Dictionary<string, Dictionary<string, List<(int index, Sprite sprite)>>> groups =
+                GroupFilteredSprites(withProgress: false);
+
+            HashSet<string> usedNames = new(StringComparer.OrdinalIgnoreCase);
+            foreach (AnimationData data in animationData)
+            {
+                if (!data.isCreatedFromAutoParse && !string.IsNullOrWhiteSpace(data.animationName))
+                {
+                    usedNames.Add(data.animationName);
+                }
+            }
+
+            foreach (
+                KeyValuePair<
+                    string,
+                    Dictionary<string, List<(int index, Sprite sprite)>>
+                > kvp in groups
+            )
+            {
+                string dir = kvp.Key;
+                foreach ((string baseKey, List<(int index, Sprite sprite)> entries) in kvp.Value)
+                {
+                    bool hasAnyIndex = entries.Any(e => e.index >= 0);
+                    if (strictNumericOrdering)
+                    {
+                        if (hasAnyIndex)
+                        {
+                            entries.Sort((a, b) => a.index.CompareTo(b.index));
+                        }
+                    }
+                    else
+                    {
+                        if (hasAnyIndex)
+                        {
+                            entries.Sort((a, b) => a.index.CompareTo(b.index));
+                        }
+                        else
+                        {
+                            entries.Sort(
+                                (a, b) => EditorUtility.NaturalCompare(a.sprite.name, b.sprite.name)
+                            );
+                        }
+                    }
+
+                    string finalName = ComposeFinalName(
+                        baseKey,
+                        dir,
+                        usedNames,
+                        out bool wasResolved
+                    );
+                    usedNames.Add(finalName);
+
+                    string folderPath = dir;
+                    if (!folderPath.EndsWith("/"))
+                    {
+                        folderPath += "/";
+                    }
+                    string finalAssetPath = folderPath + finalName + ".anim";
+
+                    _autoParseDryRun.Add(
+                        new AutoParseDryRunRecord
+                        {
+                            folderPath = dir,
+                            finalName = finalName,
+                            finalAssetPath = finalAssetPath,
+                            count = entries.Count,
+                            hasIndex = hasAnyIndex,
+                            duplicateResolved = wasResolved,
+                        }
+                    );
+                }
+            }
+        }
+
+        private void GenerateAutoParsePreview()
+        {
+            _autoParsePreview.Clear();
+            Dictionary<string, Dictionary<string, List<(int index, Sprite sprite)>>> groups =
+                GroupFilteredSprites(withProgress: false);
+            foreach (
+                KeyValuePair<
+                    string,
+                    Dictionary<string, List<(int index, Sprite sprite)>>
+                > dir in groups
+            )
+            {
+                string folderName = new DirectoryInfo(dir.Key).Name;
+                foreach ((string baseKey, List<(int index, Sprite sprite)> entries) in dir.Value)
+                {
+                    AutoParsePreviewRecord rec = new()
+                    {
+                        folder = folderName,
+                        baseName = baseKey,
+                        count = entries.Count,
+                        hasIndex = entries.Any(e => e.index >= 0),
+                    };
+                    _autoParsePreview.Add(rec);
+                }
+            }
+            _autoParsePreview.Sort(
+                (a, b) => string.Compare(a.folder, b.folder, StringComparison.Ordinal)
+            );
         }
     }
 

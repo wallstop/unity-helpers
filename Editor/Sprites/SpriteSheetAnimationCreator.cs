@@ -8,16 +8,68 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     using System.IO;
     using System.Linq;
     using System.Runtime.Serialization;
-    using Core.Extension;
-    using Core.Helper;
     using UnityEditor;
     using UnityEditor.UIElements;
     using UnityEngine;
     using UnityEngine.UIElements;
+    using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using Object = UnityEngine.Object;
 
+    /// <summary>
+    /// Creates one or more AnimationClips from a single sprite sheet by selecting sprite ranges,
+    /// defining loop/cycle offset, and configuring per-animation constant or curve-based frame
+    /// rates. Includes live preview and per-definition controls.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Problems this solves: turning a sliced sprite sheet into multiple clips (e.g., Idle, Walk,
+    /// Attack) with minimal friction and previewing playback before saving.
+    /// </para>
+    /// <para>
+    /// How it works: load a Texture2D with multiple sprites (sliced), pick index ranges to form an
+    /// animation definition, and optionally use an <see cref="AnimationCurve"/> for variable frame
+    /// rate. Preview playback with transport controls; save generated clips to assets.
+    /// </para>
+    /// <para>
+    /// Pros: rapid clip creation from a single sheet; visual selection and iteration.
+    /// Caveats: relies on existing sprite slicing; saving overwrites/creates .anim assets.
+    /// </para>
+    /// </remarks>
     public sealed class SpriteSheetAnimationCreator : EditorWindow
     {
+        private static bool SuppressUserPrompts { get; set; }
+
+        static SpriteSheetAnimationCreator()
+        {
+            try
+            {
+                if (Application.isBatchMode || IsInvokedByTestRunner())
+                {
+                    SuppressUserPrompts = true;
+                }
+            }
+            catch { }
+        }
+
+        private static bool IsInvokedByTestRunner()
+        {
+            string[] args = Environment.GetCommandLineArgs();
+            for (int i = 0; i < args.Length; ++i)
+            {
+                string a = args[i];
+                if (
+                    a.IndexOf("runTests", StringComparison.OrdinalIgnoreCase) >= 0
+                    || a.IndexOf("testResults", StringComparison.OrdinalIgnoreCase) >= 0
+                    || a.IndexOf("testPlatform", StringComparison.OrdinalIgnoreCase) >= 0
+                )
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         private const float ThumbnailSize = 64f;
 
         private Texture2D _selectedSpriteSheet;
@@ -137,7 +189,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     filePath = Application.dataPath;
                 }
 
-                string selectedPath = EditorUtility.OpenFilePanel(
+                string selectedPath = Utils.EditorUi.OpenFilePanel(
                     "Select Sprite Sheet",
                     filePath,
                     "png,jpg,gif,bmp,psd"
@@ -630,7 +682,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         {
             if (_selectedSpriteSheet == null)
             {
-                EditorUtility.DisplayDialog("Error", "No sprite sheet selected.", "OK");
+                Utils.EditorUi.Info("Error", "No sprite sheet selected.");
                 _availableSprites.Clear();
                 UpdateSpriteThumbnails();
                 return;
@@ -639,17 +691,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             string path = AssetDatabase.GetAssetPath(_selectedSpriteSheet);
             if (string.IsNullOrEmpty(path))
             {
-                EditorUtility.DisplayDialog("Error", "Selected texture is not an asset.", "OK");
+                Utils.EditorUi.Info("Error", "Selected texture is not an asset.");
                 return;
             }
 
             TextureImporter importer = AssetImporter.GetAtPath(path) as TextureImporter;
             if (importer == null)
             {
-                EditorUtility.DisplayDialog(
+                Utils.EditorUi.Info(
                     "Error",
-                    "Could not get TextureImporter for the selected texture.",
-                    "OK"
+                    "Could not get TextureImporter for the selected texture."
                 );
                 return;
             }
@@ -662,12 +713,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
             if (importer.spriteImportMode != SpriteImportMode.Multiple)
             {
-                bool fix = EditorUtility.DisplayDialog(
-                    "Sprite Mode",
-                    "The selected texture is not in 'Sprite Mode: Multiple'. This is required to extract individual sprites.\n\nAttempt to change it automatically?",
-                    "Yes, Change It",
-                    "No, I'll Do It"
-                );
+                bool fix = SuppressUserPrompts
+                    ? false
+                    : Utils.EditorUi.Confirm(
+                        "Sprite Mode",
+                        "The selected texture is not in 'Sprite Mode: Multiple'. This is required to extract individual sprites.\n\nAttempt to change it automatically?",
+                        "Yes, Change It",
+                        "No, I'll Do It",
+                        defaultWhenSuppressed: true
+                    );
                 if (fix)
                 {
                     importer.spriteImportMode = SpriteImportMode.Multiple;
@@ -703,10 +757,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             if (_availableSprites.Count == 0)
             {
-                EditorUtility.DisplayDialog(
+                Utils.EditorUi.Info(
                     "No Sprites",
-                    "No sprites found in the selected Texture. Ensure it's sliced correctly in the Sprite Editor.",
-                    "OK"
+                    "No sprites found in the selected Texture. Ensure it's sliced correctly in the Sprite Editor."
                 );
             }
 
@@ -1256,10 +1309,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 || _currentPreviewDefinition.SpritesToAnimate.Count == 0
             )
             {
-                EditorUtility.DisplayDialog(
+                Utils.EditorUi.Info(
                     "Preview Error",
-                    "No animation definition selected or definition has no sprites. Click 'Preview This' on an animation definition first.",
-                    "OK"
+                    "No animation definition selected or definition has no sprites. Click 'Preview This' on an animation definition first."
                 );
                 return;
             }
@@ -1358,22 +1410,24 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         {
             if (_selectedSpriteSheet == null)
             {
-                EditorUtility.DisplayDialog("Error", "No sprite sheet loaded.", "OK");
+                Utils.EditorUi.Info("Error", "No sprite sheet loaded.");
                 return;
             }
             if (_animationDefinitions.Count == 0)
             {
-                EditorUtility.DisplayDialog("Error", "No animation definitions created.", "OK");
+                Utils.EditorUi.Info("Error", "No animation definitions created.");
                 return;
             }
 
             string sheetPath = AssetDatabase.GetAssetPath(_selectedSpriteSheet);
             string directory = Path.GetDirectoryName(sheetPath);
-            string animationsFolder = EditorUtility.OpenFolderPanel(
-                "Select Output Directory",
-                directory,
-                string.Empty
-            );
+            string animationsFolder = SuppressUserPrompts
+                ? string.Empty
+                : Utils.EditorUi.OpenFolderPanel(
+                    "Select Output Directory",
+                    directory,
+                    string.Empty
+                );
             if (string.IsNullOrWhiteSpace(animationsFolder))
             {
                 return;
@@ -1486,19 +1540,14 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
-                EditorUtility.DisplayDialog(
+                Utils.EditorUi.Info(
                     "Success",
-                    $"{createdCount} animation(s) created in:\n{animationsFolder}",
-                    "OK"
+                    $"{createdCount} animation(s) created in:\n{animationsFolder}"
                 );
             }
             else
             {
-                EditorUtility.DisplayDialog(
-                    "Finished",
-                    "No valid animations were generated.",
-                    "OK"
-                );
+                Utils.EditorUi.Info("Finished", "No valid animations were generated.");
             }
         }
 

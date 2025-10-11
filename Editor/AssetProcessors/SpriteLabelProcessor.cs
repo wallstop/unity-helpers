@@ -2,11 +2,10 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
 {
 #if UNITY_EDITOR
     using System;
-    using System.Collections.Immutable;
-    using System.Linq;
-    using Core.Extension;
-    using Core.Helper;
+    using System.Collections.Generic;
     using UnityEditor;
+    using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
     public sealed class SpriteLabelProcessor : AssetPostprocessor
@@ -70,20 +69,31 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
                         Helpers.CachedLabels[path] = newLabels;
                     }
                 }
-                else if (Helpers.CachedLabels.ContainsKey(path))
+                else if (Helpers.CachedLabels.Remove(path))
                 {
                     anyChanged = true;
-                    Helpers.CachedLabels.Remove(path);
                 }
             }
 
             if (anyChanged)
             {
-                Helpers.AllSpriteLabels = Helpers
-                    .CachedLabels.Values.SelectMany(x => x)
-                    .Distinct()
-                    .Ordered()
-                    .ToArray();
+                using PooledResource<HashSet<string>> labelSetResource =
+                    Buffers<string>.HashSet.Get();
+                HashSet<string> labelSet = labelSetResource.resource;
+                foreach (string[] labels in Helpers.CachedLabels.Values)
+                {
+                    foreach (string label in labels)
+                    {
+                        labelSet.Add(label);
+                    }
+                }
+
+                using PooledResource<List<string>> orderedLabelsResource =
+                    Buffers<string>.List.Get();
+                List<string> orderedLabels = orderedLabelsResource.resource;
+                orderedLabels.AddRange(labelSet);
+                orderedLabels.Sort(StringComparer.Ordinal);
+                Helpers.SetSpriteLabelCache(orderedLabels, alreadySorted: true);
             }
         }
 
@@ -104,7 +114,24 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
                 return false;
             }
 
-            return a.ToImmutableHashSet(StringComparer.Ordinal).SetEquals(b);
+            using PooledResource<HashSet<string>> setABuffer = SetBuffers<string>
+                .GetHashSetPool(StringComparer.Ordinal)
+                .Get(out HashSet<string> setA);
+            using PooledResource<HashSet<string>> setBBuffer = SetBuffers<string>
+                .GetHashSetPool(StringComparer.Ordinal)
+                .Get(out HashSet<string> setB);
+
+            foreach (string inputA in a)
+            {
+                setA.Add(inputA);
+            }
+
+            foreach (string inputB in b)
+            {
+                setB.Add(inputB);
+            }
+
+            return setA.SetEquals(setB);
         }
     }
 #endif

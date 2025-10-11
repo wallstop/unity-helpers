@@ -23,20 +23,14 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             if (includeSelf)
             {
                 component.GetComponents(internalBuffer);
-                foreach (T c in internalBuffer)
-                {
-                    buffer.Add(c);
-                }
+                buffer.AddRange(internalBuffer);
             }
 
             Transform parent = component.transform.parent;
             while (parent != null)
             {
                 parent.GetComponents(internalBuffer);
-                foreach (T c in internalBuffer)
-                {
-                    buffer.Add(c);
-                }
+                buffer.AddRange(internalBuffer);
                 parent = parent.parent;
             }
 
@@ -89,10 +83,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             if (includeSelf)
             {
                 component.GetComponents(internalBuffer);
-                foreach (T c in internalBuffer)
-                {
-                    buffer.Add(c);
-                }
+                buffer.AddRange(internalBuffer);
             }
 
             Transform transform = component.transform;
@@ -100,10 +91,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             {
                 Transform child = transform.GetChild(i);
                 child.GetComponentsInChildren(true, internalBuffer);
-                foreach (T c in internalBuffer)
-                {
-                    buffer.Add(c);
-                }
+                buffer.AddRange(internalBuffer);
             }
 
             return buffer;
@@ -346,6 +334,21 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             bool includeSelf = false
         )
         {
+            return IterateOverAllChildrenRecursivelyBreadthFirst(
+                component,
+                buffer,
+                includeSelf,
+                maxDepth: 0
+            );
+        }
+
+        public static List<Transform> IterateOverAllChildrenRecursivelyBreadthFirst(
+            this Component component,
+            List<Transform> buffer,
+            bool includeSelf,
+            int maxDepth
+        )
+        {
             buffer.Clear();
             if (component == null)
             {
@@ -358,17 +361,30 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 buffer.Add(transform);
             }
 
-            using PooledResource<Queue<Transform>> iterationResource =
-                Buffers<Transform>.Queue.Get();
-            Queue<Transform> iteration = iterationResource.resource;
-            iteration.Enqueue(transform);
-            while (iteration.TryDequeue(out Transform current))
+            if (maxDepth == 0)
             {
-                for (int i = 0; i < current.childCount; ++i)
+                maxDepth = int.MaxValue;
+            }
+
+            using PooledResource<Queue<(Transform, int)>> iterationResource = Buffers<(
+                Transform,
+                int
+            )>.Queue.Get();
+            Queue<(Transform transform, int depth)> iteration = iterationResource.resource;
+            iteration.Enqueue((transform, 0));
+
+            while (iteration.TryDequeue(out (Transform current, int depth) item))
+            {
+                for (int i = 0; i < item.current.childCount; ++i)
                 {
-                    Transform childTransform = current.GetChild(i);
-                    iteration.Enqueue(childTransform);
-                    buffer.Add(childTransform);
+                    Transform childTransform = item.current.GetChild(i);
+                    int childDepth = item.depth + 1;
+
+                    if (childDepth <= maxDepth)
+                    {
+                        buffer.Add(childTransform);
+                        iteration.Enqueue((childTransform, childDepth));
+                    }
                 }
             }
             return buffer;

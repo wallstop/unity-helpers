@@ -7,8 +7,8 @@ namespace WallstopStudios.UnityHelpers.Editor
     using System.Collections.Generic;
     using System.Linq;
     using System.IO;
-    using Core.Helper;
     using UnityEngine.Serialization;
+    using WallstopStudios.UnityHelpers.Core.Helper;
 
     [Serializable]
     public sealed class DirectoryUsageData
@@ -89,75 +89,131 @@ namespace WallstopStudios.UnityHelpers.Editor
         }
     }
 
-    public sealed class PersistentDirectorySettings : ScriptableObject
+    [WallstopStudios.UnityHelpers.Core.Attributes.ScriptableSingletonPath(
+        "Wallstop Studios/Editor"
+    )]
+    public sealed class PersistentDirectorySettings
+        : WallstopStudios.UnityHelpers.Utils.ScriptableObjectSingleton<PersistentDirectorySettings>
     {
-        private const string DefaultAssetPath = "Assets/Editor/PersistentDirectorySettings.asset";
-
         [FormerlySerializedAs("allToolHistories")]
         [SerializeField]
         private List<ToolHistory> _allToolHistories = new();
 
-        private static PersistentDirectorySettings _instance;
-
-        public static PersistentDirectorySettings Instance
+        // Automatic migration and consolidation to Resources/Wallstop Studios/Editor
+        [InitializeOnLoadMethod]
+        private static void EnsureSingletonAndMigrate()
         {
-            get
+            try
             {
-                if (_instance == null)
+                string resourcesRoot = "Assets/Resources";
+                string subPath = "Wallstop Studios/Editor";
+                string targetFolder = SanitizePath(Path.Combine(resourcesRoot, subPath));
+                string targetAssetPath = SanitizePath(
+                    Path.Combine(targetFolder, nameof(PersistentDirectorySettings) + ".asset")
+                );
+
+                EnsureFolderExists(resourcesRoot);
+                EnsureFolderExists(targetFolder);
+
+                // Find all existing assets of this type
+                string[] guids = AssetDatabase.FindAssets(
+                    "t:" + nameof(PersistentDirectorySettings)
+                );
+                List<string> candidatePaths = guids
+                    .Select(AssetDatabase.GUIDToAssetPath)
+                    .Where(p => !string.IsNullOrWhiteSpace(p))
+                    .Select(SanitizePath)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+                PersistentDirectorySettings target =
+                    AssetDatabase.LoadAssetAtPath<PersistentDirectorySettings>(targetAssetPath);
+
+                if (target == null)
                 {
-                    PersistentDirectorySettings[] settings = AssetDatabase
-                        .FindAssets($"t:{nameof(PersistentDirectorySettings)}")
-                        .Select(AssetDatabase.GUIDToAssetPath)
-                        .Select(AssetDatabase.LoadAssetAtPath<PersistentDirectorySettings>)
-                        .Where(Objects.NotNull)
-                        .ToArray();
-
-                    if (settings.Length > 0)
+                    if (candidatePaths.Count == 0)
                     {
-                        if (settings.Length > 1)
-                        {
-                            Debug.LogWarning(
-                                $"Multiple instances of {nameof(PersistentDirectorySettings)} found. Using the first one at: {AssetDatabase.GetAssetPath(settings[0])}. Please ensure only one instance exists for consistent behavior."
-                            );
-                        }
-
-                        _instance = settings[0];
+                        // Create a fresh asset if none exist anywhere
+                        target = CreateInstance<PersistentDirectorySettings>();
+                        AssetDatabase.CreateAsset(target, targetAssetPath);
+                        AssetDatabase.SaveAssets();
+                        AssetDatabase.Refresh();
                     }
                     else
                     {
-                        if (_instance == null)
+                        // Take the first found as primary and move it to target
+                        string primaryPath = candidatePaths[0];
+                        target = AssetDatabase.LoadAssetAtPath<PersistentDirectorySettings>(
+                            primaryPath
+                        );
+                        if (target == null)
                         {
-                            Debug.Log(
-                                $"No instance of {nameof(PersistentDirectorySettings)} found. Creating a new one at {DefaultAssetPath}."
+                            // Fallback to create if unexpected null
+                            target = CreateInstance<PersistentDirectorySettings>();
+                            AssetDatabase.CreateAsset(target, targetAssetPath);
+                        }
+                        else if (!PathsEqual(primaryPath, targetAssetPath))
+                        {
+                            string moveResult = AssetDatabase.MoveAsset(
+                                primaryPath,
+                                targetAssetPath
                             );
-                            _instance = CreateInstance<PersistentDirectorySettings>();
-
-                            string directoryPath = Path.GetDirectoryName(DefaultAssetPath);
-                            if (
-                                !string.IsNullOrWhiteSpace(directoryPath)
-                                && !Directory.Exists(directoryPath)
-                            )
+                            if (!string.IsNullOrEmpty(moveResult))
                             {
-                                Directory.CreateDirectory(directoryPath);
+                                Debug.LogWarning(
+                                    $"Failed to move {nameof(PersistentDirectorySettings)} from {primaryPath} to {targetAssetPath}: {moveResult}. Will create new and merge."
+                                );
+                                // Create new target and merge below
+                                PersistentDirectorySettings newTarget =
+                                    CreateInstance<PersistentDirectorySettings>();
+                                AssetDatabase.CreateAsset(newTarget, targetAssetPath);
+                                target = newTarget;
                             }
-
-                            AssetDatabase.CreateAsset(_instance, DefaultAssetPath);
-                            AssetDatabase.SaveAssets();
-                            AssetDatabase.Refresh();
-                            EditorUtility.FocusProjectWindow();
-                            Selection.activeObject = _instance;
+                            else
+                            {
+                                TryDeleteEmptyParentFolders(primaryPath);
+                            }
                         }
                     }
                 }
 
-                if (_instance == null)
+                // Merge any remaining duplicates into target, then delete them
+                if (target != null && candidatePaths.Count > 0)
                 {
-                    Debug.LogError(
-                        $"Failed to find or create {nameof(PersistentDirectorySettings)}. Directory persistence will not work."
-                    );
-                }
+                    foreach (string path in candidatePaths)
+                    {
+                        if (PathsEqual(path, targetAssetPath))
+                        {
+                            continue;
+                        }
 
-                return _instance;
+                        PersistentDirectorySettings other =
+                            AssetDatabase.LoadAssetAtPath<PersistentDirectorySettings>(path);
+                        if (other == null)
+                        {
+                            continue;
+                        }
+
+                        // Merge data
+                        MergeSettings(target, other);
+                        EditorUtility.SetDirty(target);
+
+                        // Delete old asset and clean empty folders
+                        if (AssetDatabase.DeleteAsset(path))
+                        {
+                            TryDeleteEmptyParentFolders(path);
+                        }
+                    }
+
+                    AssetDatabase.SaveAssets();
+                    AssetDatabase.Refresh();
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning(
+                    $"{nameof(PersistentDirectorySettings)} migration encountered an issue: {e.Message}\n{e}"
+                );
             }
         }
 
@@ -189,7 +245,7 @@ namespace WallstopStudios.UnityHelpers.Editor
                 return;
             }
 
-            string sanitizedPath = path.SanitizePath();
+            string sanitizedPath = PathHelper.Sanitize(path);
             if (
                 !sanitizedPath.StartsWith("Assets/", StringComparison.Ordinal)
                 || !AssetDatabase.IsValidFolder(sanitizedPath)
@@ -242,6 +298,231 @@ namespace WallstopStudios.UnityHelpers.Editor
                 .ToArray();
 
             return topOnly ? sortedDirectories.Take(topN).ToArray() : sortedDirectories;
+        }
+
+        private static void MergeSettings(
+            PersistentDirectorySettings target,
+            PersistentDirectorySettings other
+        )
+        {
+            if (other == null || target == null || ReferenceEquals(target, other))
+            {
+                return;
+            }
+
+            foreach (ToolHistory otherTool in other._allToolHistories)
+            {
+                if (otherTool == null || string.IsNullOrWhiteSpace(otherTool.toolName))
+                {
+                    continue;
+                }
+
+                ToolHistory targetTool = target._allToolHistories.Find(t =>
+                    string.Equals(t.toolName, otherTool.toolName, StringComparison.Ordinal)
+                );
+                if (targetTool == null)
+                {
+                    // Deep copy to avoid shared references
+                    ToolHistory copyTool = new(otherTool.toolName)
+                    {
+                        contexts = new List<ContextHistory>(),
+                    };
+
+                    foreach (ContextHistory oc in otherTool.contexts)
+                    {
+                        if (oc == null || string.IsNullOrWhiteSpace(oc.contextKey))
+                        {
+                            continue;
+                        }
+                        ContextHistory cc = new(oc.contextKey)
+                        {
+                            directories = new List<DirectoryUsageData>(),
+                        };
+                        foreach (DirectoryUsageData od in oc.directories)
+                        {
+                            if (od == null || string.IsNullOrWhiteSpace(od.path))
+                            {
+                                continue;
+                            }
+                            cc.directories.Add(
+                                new DirectoryUsageData(od.path)
+                                {
+                                    count = od.count,
+                                    lastUsedTicks = od.lastUsedTicks,
+                                }
+                            );
+                        }
+                        copyTool.contexts.Add(cc);
+                    }
+
+                    target._allToolHistories.Add(copyTool);
+                    continue;
+                }
+
+                // Merge contexts
+                foreach (ContextHistory otherContext in otherTool.contexts)
+                {
+                    if (otherContext == null || string.IsNullOrWhiteSpace(otherContext.contextKey))
+                    {
+                        continue;
+                    }
+
+                    ContextHistory targetContext = targetTool.contexts.Find(c =>
+                        string.Equals(
+                            c.contextKey,
+                            otherContext.contextKey,
+                            StringComparison.Ordinal
+                        )
+                    );
+                    if (targetContext == null)
+                    {
+                        ContextHistory cc = new(otherContext.contextKey)
+                        {
+                            directories = new List<DirectoryUsageData>(),
+                        };
+                        foreach (DirectoryUsageData od in otherContext.directories)
+                        {
+                            if (od == null || string.IsNullOrWhiteSpace(od.path))
+                            {
+                                continue;
+                            }
+                            cc.directories.Add(
+                                new DirectoryUsageData(od.path)
+                                {
+                                    count = od.count,
+                                    lastUsedTicks = od.lastUsedTicks,
+                                }
+                            );
+                        }
+                        targetTool.contexts.Add(cc);
+                        continue;
+                    }
+
+                    // Merge directories
+                    foreach (DirectoryUsageData od in otherContext.directories)
+                    {
+                        if (od == null || string.IsNullOrWhiteSpace(od.path))
+                        {
+                            continue;
+                        }
+                        DirectoryUsageData td = targetContext.directories.Find(d =>
+                            string.Equals(d.path, od.path, StringComparison.Ordinal)
+                        );
+                        if (td == null)
+                        {
+                            targetContext.directories.Add(
+                                new DirectoryUsageData(od.path)
+                                {
+                                    count = od.count,
+                                    lastUsedTicks = od.lastUsedTicks,
+                                }
+                            );
+                        }
+                        else
+                        {
+                            long maxTicks = Math.Max(td.lastUsedTicks, od.lastUsedTicks);
+                            long sumCount = (long)td.count + od.count;
+                            td.count = sumCount > int.MaxValue ? int.MaxValue : (int)sumCount;
+                            td.lastUsedTicks = maxTicks;
+                        }
+                    }
+                }
+            }
+        }
+
+        private static string SanitizePath(string path)
+        {
+            return PathHelper.Sanitize(path);
+        }
+
+        private static bool PathsEqual(string a, string b)
+        {
+            return string.Equals(
+                SanitizePath(a),
+                SanitizePath(b),
+                StringComparison.OrdinalIgnoreCase
+            );
+        }
+
+        private static void EnsureFolderExists(string folderPath)
+        {
+            if (string.IsNullOrWhiteSpace(folderPath))
+            {
+                return;
+            }
+
+            folderPath = SanitizePath(folderPath);
+            if (AssetDatabase.IsValidFolder(folderPath))
+            {
+                return;
+            }
+
+            string[] parts = folderPath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length == 0)
+            {
+                return;
+            }
+
+            string current = parts[0];
+            if (!string.Equals(current, "Assets", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            for (int i = 1; i < parts.Length; i++)
+            {
+                string next = current + "/" + parts[i];
+                if (!AssetDatabase.IsValidFolder(next))
+                {
+                    AssetDatabase.CreateFolder(current, parts[i]);
+                }
+                current = next;
+            }
+        }
+
+        private static void TryDeleteEmptyParentFolders(string assetOrFolderPath)
+        {
+            try
+            {
+                string path = SanitizePath(assetOrFolderPath);
+                string folder = AssetDatabase.IsValidFolder(path)
+                    ? path
+                    : Path.GetDirectoryName(path);
+                if (string.IsNullOrWhiteSpace(folder))
+                {
+                    return;
+                }
+
+                folder = SanitizePath(folder);
+                while (
+                    !string.IsNullOrWhiteSpace(folder)
+                    && !string.Equals(folder, "Assets", StringComparison.OrdinalIgnoreCase)
+                )
+                {
+                    if (!AssetDatabase.IsValidFolder(folder))
+                    {
+                        folder = Path.GetDirectoryName(folder);
+                        folder = SanitizePath(folder);
+                        continue;
+                    }
+
+                    string[] contents = AssetDatabase.FindAssets(string.Empty, new[] { folder });
+                    if (contents == null || contents.Length == 0)
+                    {
+                        if (AssetDatabase.DeleteAsset(folder))
+                        {
+                            string parent = Path.GetDirectoryName(folder);
+                            folder = SanitizePath(parent);
+                            continue;
+                        }
+                    }
+                    break;
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"Failed to delete {assetOrFolderPath} with error: {e}.");
+            }
         }
     }
 #endif

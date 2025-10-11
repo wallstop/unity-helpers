@@ -8,8 +8,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Core.Helper.Logging;
+    using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
-    public sealed class LoggingExtensionTests
+    public sealed class LoggingExtensionTests : CommonTestBase
     {
         [Test]
         public void Registration()
@@ -66,7 +67,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void SimpleLogging()
         {
-            GameObject go = new(nameof(SimpleLogging), typeof(SpriteRenderer));
+            GameObject go = Track(new GameObject(nameof(SimpleLogging), typeof(SpriteRenderer)));
 
             int logCount = 0;
             Exception exception = null;
@@ -142,7 +143,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void ColorLogging()
         {
-            GameObject go = new(nameof(ColorLogging), typeof(SpriteRenderer));
+            GameObject go = Track(new GameObject(nameof(ColorLogging), typeof(SpriteRenderer)));
 
             int logCount = 0;
             Exception exception = null;
@@ -240,7 +241,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void BoldLogging()
         {
-            GameObject go = new(nameof(BoldLogging), typeof(SpriteRenderer));
+            GameObject go = Track(new GameObject(nameof(BoldLogging), typeof(SpriteRenderer)));
 
             int logCount = 0;
             Exception exception = null;
@@ -303,7 +304,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void JsonLogging()
         {
-            GameObject go = new(nameof(JsonLogging), typeof(SpriteRenderer));
+            GameObject go = Track(new GameObject(nameof(JsonLogging), typeof(SpriteRenderer)));
 
             int logCount = 0;
             Exception exception = null;
@@ -413,7 +414,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void SizeLogging()
         {
-            GameObject go = new(nameof(SizeLogging), typeof(SpriteRenderer));
+            GameObject go = Track(new GameObject(nameof(SizeLogging), typeof(SpriteRenderer)));
 
             int logCount = 0;
             Exception exception = null;
@@ -472,7 +473,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void DateTimeNormalFormatTests()
         {
-            GameObject go = new(nameof(DateTimeNormalFormatTests), typeof(SpriteRenderer));
+            GameObject go = Track(
+                new GameObject(nameof(DateTimeNormalFormatTests), typeof(SpriteRenderer))
+            );
             int logCount = 0;
             Exception exception = null;
             Action<string> assertion = null;
@@ -554,7 +557,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void StackedTags()
         {
-            GameObject go = new(nameof(StackedTags), typeof(SpriteRenderer));
+            GameObject go = Track(new GameObject(nameof(StackedTags), typeof(SpriteRenderer)));
             int logCount = 0;
             Exception exception = null;
             Action<string> assertion = null;
@@ -633,7 +636,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void TagsDeduplicate()
         {
-            GameObject go = new(nameof(TagsDeduplicate), typeof(SpriteRenderer));
+            GameObject go = Track(new GameObject(nameof(TagsDeduplicate), typeof(SpriteRenderer)));
             int logCount = 0;
             Exception exception = null;
             Action<string> assertion = null;

@@ -1,22 +1,17 @@
 namespace WallstopStudios.UnityHelpers.Core.Helper
 {
     using System;
-    using System.Collections;
+    using System.Collections.Generic;
     using System.Runtime.CompilerServices;
-    using Object = System.Object;
 
+    /// <summary>
+    /// Utilities for null checks (including UnityEngine.Object overloads) and deterministic hash code composition.
+    /// </summary>
     public static class Objects
     {
-        private const int HashBase = 5556137;
-        private const int HashMultiplier = 95785853;
-
-        public static T FromWeakReference<T>(WeakReference weakReference)
-            where T : class
-        {
-            object empty = weakReference.Target;
-            return (T)empty;
-        }
-
+        /// <summary>
+        /// Unity-aware null check for UnityEngine.Object types (handles destroyed objects returning true for == null).
+        /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool Null<T>(T instance)
             where T : UnityEngine.Object
@@ -24,11 +19,27 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             return instance == null;
         }
 
-        public static bool Null(Object instance)
+        /// <summary>
+        /// Hybrid null check for boxed or unknown objects (handles UnityEngine.Object special null semantics).
+        /// </summary>
+        public static bool Null(object instance)
         {
-            return instance == null;
+            if (instance is null)
+            {
+                return true;
+            }
+
+            if (instance is UnityEngine.Object unityObject)
+            {
+                return unityObject == null;
+            }
+
+            return false;
         }
 
+        /// <summary>
+        /// Unity-aware not-null check for UnityEngine.Object types.
+        /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool NotNull<T>(T instance)
             where T : UnityEngine.Object
@@ -36,98 +47,91 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             return instance != null;
         }
 
-        public static bool NotNull(Object instance)
+        /// <summary>
+        /// Hybrid not-null check for boxed or unknown objects.
+        /// </summary>
+        public static bool NotNull(object instance)
         {
-            return instance != null;
+            return !Null(instance);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int NullSafeHashCode<T>(T param)
+        /// <summary>
+        /// Combines hash codes for a span of values into a deterministic composite hash.
+        /// </summary>
+        public static int HashCode<T>(ReadOnlySpan<T> values)
         {
-            Type type = typeof(T);
-            if (type.IsValueType)
+            if (values.IsEmpty)
             {
-                return param.GetHashCode();
+                return 0;
             }
 
-            return param == null ? type.GetHashCode() : param.GetHashCode();
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int ValueTypeHashCode<T1>(T1 param1)
-            where T1 : unmanaged
-        {
-            unchecked
+            DeterministicHashBuilder hash = default;
+            foreach (ref readonly T value in values)
             {
-                return HashBase * HashMultiplier + param1.GetHashCode();
+                hash.Add(value);
             }
+
+            return hash.ToHashCode();
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int ValueTypeHashCode<T1, T2>(T1 param1, T2 param2)
-            where T1 : unmanaged
-            where T2 : unmanaged
+        /// <summary>
+        /// Combines one value into a deterministic hash.
+        /// </summary>
+        public static int HashCode<T1>(T1 param1)
         {
-            unchecked
-            {
-                return ValueTypeHashCode(param1) * HashMultiplier + param2.GetHashCode();
-            }
+            DeterministicHashBuilder hash = default;
+            hash.Add(param1);
+            return hash.ToHashCode();
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int ValueTypeHashCode<T1, T2, T3>(T1 param1, T2 param2, T3 param3)
-            where T1 : unmanaged
-            where T2 : unmanaged
-            where T3 : unmanaged
+        /// <summary>
+        /// Combines two values into a deterministic hash.
+        /// </summary>
+        public static int HashCode<T1, T2>(T1 param1, T2 param2)
         {
-            unchecked
-            {
-                return ValueTypeHashCode(param1, param2) * HashMultiplier + param3.GetHashCode();
-            }
+            DeterministicHashBuilder hash = default;
+            hash.Add(param1);
+            hash.Add(param2);
+            return hash.ToHashCode();
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int ValueTypeHashCode<T1, T2, T3, T4>(
-            T1 param1,
-            T2 param2,
-            T3 param3,
-            T4 param4
-        )
-            where T1 : unmanaged
-            where T2 : unmanaged
-            where T3 : unmanaged
-            where T4 : unmanaged
+        public static int HashCode<T1, T2, T3>(T1 param1, T2 param2, T3 param3)
         {
-            unchecked
-            {
-                return ValueTypeHashCode(param1, param2, param3) * HashMultiplier
-                    + param4.GetHashCode();
-            }
+            DeterministicHashBuilder hash = default;
+            hash.Add(param1);
+            hash.Add(param2);
+            hash.Add(param3);
+            return hash.ToHashCode();
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int ValueTypeHashCode<T1, T2, T3, T4, T5>(
+        public static int HashCode<T1, T2, T3, T4>(T1 param1, T2 param2, T3 param3, T4 param4)
+        {
+            DeterministicHashBuilder hash = default;
+            hash.Add(param1);
+            hash.Add(param2);
+            hash.Add(param3);
+            hash.Add(param4);
+            return hash.ToHashCode();
+        }
+
+        public static int HashCode<T1, T2, T3, T4, T5>(
             T1 param1,
             T2 param2,
             T3 param3,
             T4 param4,
             T5 param5
         )
-            where T1 : unmanaged
-            where T2 : unmanaged
-            where T3 : unmanaged
-            where T4 : unmanaged
-            where T5 : unmanaged
         {
-            unchecked
-            {
-                return ValueTypeHashCode(param1, param2, param3, param4) * HashMultiplier
-                    + param5.GetHashCode();
-            }
+            DeterministicHashBuilder hash = default;
+            hash.Add(param1);
+            hash.Add(param2);
+            hash.Add(param3);
+            hash.Add(param4);
+            hash.Add(param5);
+            return hash.ToHashCode();
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int ValueTypeHashCode<T1, T2, T3, T4, T5, T6>(
+        public static int HashCode<T1, T2, T3, T4, T5, T6>(
             T1 param1,
             T2 param2,
             T3 param3,
@@ -135,22 +139,18 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             T5 param5,
             T6 param6
         )
-            where T1 : unmanaged
-            where T2 : unmanaged
-            where T3 : unmanaged
-            where T4 : unmanaged
-            where T5 : unmanaged
-            where T6 : unmanaged
         {
-            unchecked
-            {
-                return ValueTypeHashCode(param1, param2, param3, param4, param5) * HashMultiplier
-                    + param6.GetHashCode();
-            }
+            DeterministicHashBuilder hash = default;
+            hash.Add(param1);
+            hash.Add(param2);
+            hash.Add(param3);
+            hash.Add(param4);
+            hash.Add(param5);
+            hash.Add(param6);
+            return hash.ToHashCode();
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int ValueTypeHashCode<T1, T2, T3, T4, T5, T6, T7>(
+        public static int HashCode<T1, T2, T3, T4, T5, T6, T7>(
             T1 param1,
             T2 param2,
             T3 param3,
@@ -159,24 +159,19 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             T6 param6,
             T7 param7
         )
-            where T1 : unmanaged
-            where T2 : unmanaged
-            where T3 : unmanaged
-            where T4 : unmanaged
-            where T5 : unmanaged
-            where T6 : unmanaged
-            where T7 : unmanaged
         {
-            unchecked
-            {
-                return ValueTypeHashCode(param1, param2, param3, param4, param5, param6)
-                        * HashMultiplier
-                    + param7.GetHashCode();
-            }
+            DeterministicHashBuilder hash = default;
+            hash.Add(param1);
+            hash.Add(param2);
+            hash.Add(param3);
+            hash.Add(param4);
+            hash.Add(param5);
+            hash.Add(param6);
+            hash.Add(param7);
+            return hash.ToHashCode();
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int ValueTypeHashCode<T1, T2, T3, T4, T5, T6, T7, T8>(
+        public static int HashCode<T1, T2, T3, T4, T5, T6, T7, T8>(
             T1 param1,
             T2 param2,
             T3 param3,
@@ -186,25 +181,20 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             T7 param7,
             T8 param8
         )
-            where T1 : unmanaged
-            where T2 : unmanaged
-            where T3 : unmanaged
-            where T4 : unmanaged
-            where T5 : unmanaged
-            where T6 : unmanaged
-            where T7 : unmanaged
-            where T8 : unmanaged
         {
-            unchecked
-            {
-                return ValueTypeHashCode(param1, param2, param3, param4, param5, param6, param7)
-                        * HashMultiplier
-                    + param8.GetHashCode();
-            }
+            DeterministicHashBuilder hash = default;
+            hash.Add(param1);
+            hash.Add(param2);
+            hash.Add(param3);
+            hash.Add(param4);
+            hash.Add(param5);
+            hash.Add(param6);
+            hash.Add(param7);
+            hash.Add(param8);
+            return hash.ToHashCode();
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int ValueTypeHashCode<T1, T2, T3, T4, T5, T6, T7, T8, T9>(
+        public static int HashCode<T1, T2, T3, T4, T5, T6, T7, T8, T9>(
             T1 param1,
             T2 param2,
             T3 param3,
@@ -215,34 +205,21 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             T8 param8,
             T9 param9
         )
-            where T1 : unmanaged
-            where T2 : unmanaged
-            where T3 : unmanaged
-            where T4 : unmanaged
-            where T5 : unmanaged
-            where T6 : unmanaged
-            where T7 : unmanaged
-            where T8 : unmanaged
-            where T9 : unmanaged
         {
-            unchecked
-            {
-                return ValueTypeHashCode(
-                        param1,
-                        param2,
-                        param3,
-                        param4,
-                        param5,
-                        param6,
-                        param7,
-                        param8
-                    ) * HashMultiplier
-                    + param9.GetHashCode();
-            }
+            DeterministicHashBuilder hash = default;
+            hash.Add(param1);
+            hash.Add(param2);
+            hash.Add(param3);
+            hash.Add(param4);
+            hash.Add(param5);
+            hash.Add(param6);
+            hash.Add(param7);
+            hash.Add(param8);
+            hash.Add(param9);
+            return hash.ToHashCode();
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int ValueTypeHashCode<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(
+        public static int HashCode<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(
             T1 param1,
             T2 param2,
             T3 param3,
@@ -254,36 +231,22 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             T9 param9,
             T10 param10
         )
-            where T1 : unmanaged
-            where T2 : unmanaged
-            where T3 : unmanaged
-            where T4 : unmanaged
-            where T5 : unmanaged
-            where T6 : unmanaged
-            where T7 : unmanaged
-            where T8 : unmanaged
-            where T9 : unmanaged
-            where T10 : unmanaged
         {
-            unchecked
-            {
-                return ValueTypeHashCode(
-                        param1,
-                        param2,
-                        param3,
-                        param4,
-                        param5,
-                        param6,
-                        param7,
-                        param8,
-                        param9
-                    ) * HashMultiplier
-                    + param10.GetHashCode();
-            }
+            DeterministicHashBuilder hash = default;
+            hash.Add(param1);
+            hash.Add(param2);
+            hash.Add(param3);
+            hash.Add(param4);
+            hash.Add(param5);
+            hash.Add(param6);
+            hash.Add(param7);
+            hash.Add(param8);
+            hash.Add(param9);
+            hash.Add(param10);
+            return hash.ToHashCode();
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int ValueTypeHashCode<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(
+        public static int HashCode<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(
             T1 param1,
             T2 param2,
             T3 param3,
@@ -296,473 +259,218 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             T10 param10,
             T11 param11
         )
-            where T1 : unmanaged
-            where T2 : unmanaged
-            where T3 : unmanaged
-            where T4 : unmanaged
-            where T5 : unmanaged
-            where T6 : unmanaged
-            where T7 : unmanaged
-            where T8 : unmanaged
-            where T9 : unmanaged
-            where T10 : unmanaged
-            where T11 : unmanaged
         {
-            unchecked
-            {
-                return ValueTypeHashCode(
-                        param1,
-                        param2,
-                        param3,
-                        param4,
-                        param5,
-                        param6,
-                        param7,
-                        param8,
-                        param9,
-                        param10
-                    ) * HashMultiplier
-                    + param11.GetHashCode();
-            }
+            DeterministicHashBuilder hash = default;
+            hash.Add(param1);
+            hash.Add(param2);
+            hash.Add(param3);
+            hash.Add(param4);
+            hash.Add(param5);
+            hash.Add(param6);
+            hash.Add(param7);
+            hash.Add(param8);
+            hash.Add(param9);
+            hash.Add(param10);
+            hash.Add(param11);
+            return hash.ToHashCode();
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int ValueTypeHashCode<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(
-            T1 param1,
-            T2 param2,
-            T3 param3,
-            T4 param4,
-            T5 param5,
-            T6 param6,
-            T7 param7,
-            T8 param8,
-            T9 param9,
-            T10 param10,
-            T11 param11,
-            T12 param12
-        )
-            where T1 : unmanaged
-            where T2 : unmanaged
-            where T3 : unmanaged
-            where T4 : unmanaged
-            where T5 : unmanaged
-            where T6 : unmanaged
-            where T7 : unmanaged
-            where T8 : unmanaged
-            where T9 : unmanaged
-            where T10 : unmanaged
-            where T11 : unmanaged
-            where T12 : unmanaged
-        {
-            unchecked
-            {
-                return ValueTypeHashCode(
-                        param1,
-                        param2,
-                        param3,
-                        param4,
-                        param5,
-                        param6,
-                        param7,
-                        param8,
-                        param9,
-                        param10,
-                        param11
-                    ) * HashMultiplier
-                    + param12.GetHashCode();
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int ValueTypeHashCode<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(
-            T1 param1,
-            T2 param2,
-            T3 param3,
-            T4 param4,
-            T5 param5,
-            T6 param6,
-            T7 param7,
-            T8 param8,
-            T9 param9,
-            T10 param10,
-            T11 param11,
-            T12 param12,
-            T13 param13
-        )
-            where T1 : unmanaged
-            where T2 : unmanaged
-            where T3 : unmanaged
-            where T4 : unmanaged
-            where T5 : unmanaged
-            where T6 : unmanaged
-            where T7 : unmanaged
-            where T8 : unmanaged
-            where T9 : unmanaged
-            where T10 : unmanaged
-            where T11 : unmanaged
-            where T12 : unmanaged
-            where T13 : unmanaged
-        {
-            unchecked
-            {
-                return ValueTypeHashCode(
-                        param1,
-                        param2,
-                        param3,
-                        param4,
-                        param5,
-                        param6,
-                        param7,
-                        param8,
-                        param9,
-                        param10,
-                        param11,
-                        param12
-                    ) * HashMultiplier
-                    + param13.GetHashCode();
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int ValueTypeHashCode<
-            T1,
-            T2,
-            T3,
-            T4,
-            T5,
-            T6,
-            T7,
-            T8,
-            T9,
-            T10,
-            T11,
-            T12,
-            T13,
-            T14
-        >(
-            T1 param1,
-            T2 param2,
-            T3 param3,
-            T4 param4,
-            T5 param5,
-            T6 param6,
-            T7 param7,
-            T8 param8,
-            T9 param9,
-            T10 param10,
-            T11 param11,
-            T12 param12,
-            T13 param13,
-            T14 param14
-        )
-            where T1 : unmanaged
-            where T2 : unmanaged
-            where T3 : unmanaged
-            where T4 : unmanaged
-            where T5 : unmanaged
-            where T6 : unmanaged
-            where T7 : unmanaged
-            where T8 : unmanaged
-            where T9 : unmanaged
-            where T10 : unmanaged
-            where T11 : unmanaged
-            where T12 : unmanaged
-            where T13 : unmanaged
-            where T14 : unmanaged
-        {
-            unchecked
-            {
-                return ValueTypeHashCode(
-                        param1,
-                        param2,
-                        param3,
-                        param4,
-                        param5,
-                        param6,
-                        param7,
-                        param8,
-                        param9,
-                        param10,
-                        param11,
-                        param12,
-                        param13
-                    ) * HashMultiplier
-                    + param14.GetHashCode();
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int ValueTypeHashCode<
-            T1,
-            T2,
-            T3,
-            T4,
-            T5,
-            T6,
-            T7,
-            T8,
-            T9,
-            T10,
-            T11,
-            T12,
-            T13,
-            T14,
-            T15
-        >(
-            T1 param1,
-            T2 param2,
-            T3 param3,
-            T4 param4,
-            T5 param5,
-            T6 param6,
-            T7 param7,
-            T8 param8,
-            T9 param9,
-            T10 param10,
-            T11 param11,
-            T12 param12,
-            T13 param13,
-            T14 param14,
-            T15 param15
-        )
-            where T1 : unmanaged
-            where T2 : unmanaged
-            where T3 : unmanaged
-            where T4 : unmanaged
-            where T5 : unmanaged
-            where T6 : unmanaged
-            where T7 : unmanaged
-            where T8 : unmanaged
-            where T9 : unmanaged
-            where T10 : unmanaged
-            where T11 : unmanaged
-            where T12 : unmanaged
-            where T13 : unmanaged
-            where T14 : unmanaged
-            where T15 : unmanaged
-        {
-            unchecked
-            {
-                return ValueTypeHashCode(
-                        param1,
-                        param2,
-                        param3,
-                        param4,
-                        param5,
-                        param6,
-                        param7,
-                        param8,
-                        param9,
-                        param10,
-                        param11,
-                        param12,
-                        param13,
-                        param14
-                    ) * HashMultiplier
-                    + param15.GetHashCode();
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int ValueTypeHashCode<
-            T1,
-            T2,
-            T3,
-            T4,
-            T5,
-            T6,
-            T7,
-            T8,
-            T9,
-            T10,
-            T11,
-            T12,
-            T13,
-            T14,
-            T15,
-            T16
-        >(
-            T1 param1,
-            T2 param2,
-            T3 param3,
-            T4 param4,
-            T5 param5,
-            T6 param6,
-            T7 param7,
-            T8 param8,
-            T9 param9,
-            T10 param10,
-            T11 param11,
-            T12 param12,
-            T13 param13,
-            T14 param14,
-            T15 param15,
-            T16 param16
-        )
-            where T1 : unmanaged
-            where T2 : unmanaged
-            where T3 : unmanaged
-            where T4 : unmanaged
-            where T5 : unmanaged
-            where T6 : unmanaged
-            where T7 : unmanaged
-            where T8 : unmanaged
-            where T9 : unmanaged
-            where T10 : unmanaged
-            where T11 : unmanaged
-            where T12 : unmanaged
-            where T13 : unmanaged
-            where T14 : unmanaged
-            where T15 : unmanaged
-            where T16 : unmanaged
-        {
-            unchecked
-            {
-                return ValueTypeHashCode(
-                        param1,
-                        param2,
-                        param3,
-                        param4,
-                        param5,
-                        param6,
-                        param7,
-                        param8,
-                        param9,
-                        param10,
-                        param11,
-                        param12,
-                        param13,
-                        param14,
-                        param15
-                    ) * HashMultiplier
-                    + param16.GetHashCode();
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int HashCode<T1>(T1 param1)
-        {
-            unchecked
-            {
-                return HashBase * NullSafeHashCode(param1);
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int HashCode<T1, T2>(T1 param1, T2 param2)
-        {
-            unchecked
-            {
-                return HashCode(param1) * HashMultiplier + NullSafeHashCode(param2);
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int HashCode<T1, T2, T3>(T1 param1, T2 param2, T3 param3)
-        {
-            unchecked
-            {
-                return HashCode(param1, param2) * HashMultiplier + NullSafeHashCode(param3);
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int HashCode<T1, T2, T3, T4>(T1 param1, T2 param2, T3 param3, T4 param4)
-        {
-            unchecked
-            {
-                return HashCode(param1, param2, param3) * HashMultiplier + NullSafeHashCode(param4);
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int HashCode<T1, T2, T3, T4, T5>(
-            T1 param1,
-            T2 param2,
-            T3 param3,
-            T4 param4,
-            T5 param5
-        )
-        {
-            unchecked
-            {
-                return HashCode(param1, param2, param3, param4) * HashMultiplier
-                    + NullSafeHashCode(param5);
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int HashCode<T1, T2, T3, T4, T5, T6>(
-            T1 param1,
-            T2 param2,
-            T3 param3,
-            T4 param4,
-            T5 param5,
-            T6 param6
-        )
-        {
-            unchecked
-            {
-                return HashCode(param1, param2, param3, param4, param5) * HashMultiplier
-                    + NullSafeHashCode(param6);
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int HashCode<T1, T2, T3, T4, T5, T6, T7>(
-            T1 param1,
-            T2 param2,
-            T3 param3,
-            T4 param4,
-            T5 param5,
-            T6 param6,
-            T7 param7
-        )
-        {
-            unchecked
-            {
-                return HashCode(param1, param2, param3, param4, param5, param6) * HashMultiplier
-                    + NullSafeHashCode(param7);
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int HashCode<T1, T2, T3, T4, T5, T6, T7, T8>(
-            T1 param1,
-            T2 param2,
-            T3 param3,
-            T4 param4,
-            T5 param5,
-            T6 param6,
-            T7 param7,
-            T8 param8
-        )
-        {
-            unchecked
-            {
-                return HashCode(param1, param2, param3, param4, param5, param6, param7)
-                        * HashMultiplier
-                    + NullSafeHashCode(param8);
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int EnumerableHashCode(IEnumerable enumerable)
+        /// <summary>
+        /// Combines hash codes for all elements in an enumerable (with optimized paths for common collection types).
+        /// </summary>
+        public static int EnumerableHashCode<T>(IEnumerable<T> enumerable)
         {
             if (ReferenceEquals(enumerable, null))
             {
                 return 0;
             }
-            unchecked
+
+            DeterministicHashBuilder hash = default;
+            switch (enumerable)
             {
-                int hash = HashBase;
-                IEnumerator walker = enumerable.GetEnumerator();
-                while (walker.MoveNext())
+                case IReadOnlyList<T> list:
                 {
-                    hash = hash * HashMultiplier + NullSafeHashCode(walker.Current);
+                    for (int i = 0; i < list.Count; ++i)
+                    {
+                        hash.Add(list[i]);
+                    }
+
+                    break;
+                }
+                case HashSet<T> hashSet:
+                {
+                    foreach (T item in hashSet)
+                    {
+                        hash.Add(item);
+                    }
+
+                    break;
+                }
+                case Queue<T> queue:
+                {
+                    foreach (T item in queue)
+                    {
+                        hash.Add(item);
+                    }
+
+                    break;
+                }
+                case Stack<T> stack:
+                {
+                    foreach (T item in stack)
+                    {
+                        hash.Add(item);
+                    }
+
+                    break;
+                }
+                case SortedSet<T> sortedSet:
+                {
+                    foreach (T item in sortedSet)
+                    {
+                        hash.Add(item);
+                    }
+
+                    break;
+                }
+                default:
+                {
+                    foreach (T item in enumerable)
+                    {
+                        hash.Add(item);
+                    }
+
+                    break;
+                }
+            }
+
+            return hash.ToHashCode();
+        }
+
+        // Lightweight deterministic hash accumulator using FNV-1a mixing.
+        private struct DeterministicHashBuilder
+        {
+            private const uint Seed = 2166136261u;
+            private const uint Prime = 16777619u;
+
+            private uint _hash;
+            private bool _hasContribution;
+            private bool _hasNonNullContribution;
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void Add<T>(T value)
+            {
+                uint valueHash = TypeTraits<T>.GetValueHash(value, out bool hasNonNullValue);
+
+                if (!_hasContribution)
+                {
+                    // Defer seeding until the first value is observed so empty hashes stay at 0.
+                    _hash = Seed;
+                    _hasContribution = true;
                 }
 
-                return hash;
+                _hash ^= valueHash;
+                _hash *= Prime;
+
+                if (hasNonNullValue)
+                {
+                    _hasNonNullContribution = true;
+                }
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public int ToHashCode()
+            {
+                if (!_hasContribution || !_hasNonNullContribution)
+                {
+                    return 0;
+                }
+
+                return unchecked((int)_hash);
+            }
+        }
+
+        private static class TypeTraits<T>
+        {
+            private const uint NullSentinel = 0x9E3779B9u;
+
+            private static readonly bool IsReferenceType = !typeof(T).IsValueType;
+            private static readonly bool IsObjectType = typeof(T) == typeof(object);
+            private static readonly bool IsUnityObject =
+                typeof(UnityEngine.Object).IsAssignableFrom(typeof(T));
+            private static readonly EqualityComparer<T> EqualityComparer =
+                EqualityComparer<T>.Default;
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public static uint GetValueHash(T value, out bool hasNonNullValue)
+            {
+                if (!IsReferenceType)
+                {
+                    hasNonNullValue = true;
+                    return unchecked((uint)EqualityComparer.GetHashCode(value));
+                }
+
+                if (IsObjectType)
+                {
+                    return GetBoxedObjectHash(value, out hasNonNullValue);
+                }
+
+                if (IsUnityObject)
+                {
+                    return GetUnityObjectHash(value, out hasNonNullValue);
+                }
+
+                if (ReferenceEquals(value, null))
+                {
+                    hasNonNullValue = false;
+                    return NullSentinel;
+                }
+
+                hasNonNullValue = true;
+                return unchecked((uint)EqualityComparer.GetHashCode(value));
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            private static uint GetUnityObjectHash(T value, out bool hasNonNullValue)
+            {
+                T local = value;
+                UnityEngine.Object unityObject = Unsafe.As<T, UnityEngine.Object>(ref local);
+
+                if (unityObject == null)
+                {
+                    hasNonNullValue = false;
+                    return NullSentinel;
+                }
+
+                hasNonNullValue = true;
+                return unchecked((uint)unityObject.GetHashCode());
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            private static uint GetBoxedObjectHash(T value, out bool hasNonNullValue)
+            {
+                object boxed = value;
+
+                if (boxed is UnityEngine.Object unityObject)
+                {
+                    if (unityObject == null)
+                    {
+                        hasNonNullValue = false;
+                        return NullSentinel;
+                    }
+
+                    hasNonNullValue = true;
+                    return unchecked((uint)unityObject.GetHashCode());
+                }
+
+                if (boxed is null)
+                {
+                    hasNonNullValue = false;
+                    return NullSentinel;
+                }
+
+                hasNonNullValue = true;
+                return unchecked((uint)EqualityComparer<object>.Default.GetHashCode(boxed));
             }
         }
     }
