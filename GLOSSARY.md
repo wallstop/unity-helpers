@@ -244,6 +244,6 @@ Quick reference for terms used throughout Unity Helpers documentation.
 ---
 
 **See Also:**
-- [INDEX.md](INDEX.md) - Alphabetical feature index
-- [GETTING_STARTED.md](GETTING_STARTED.md) - Quick start guide
-- [README.md](README.md) - Main documentation
+- [Feature Index](INDEX.md) - Alphabetical feature index
+- [Getting Started Guide](GETTING_STARTED.md) - Quick start guide
+- [Main Documentation](README.md) - Main documentation

@@ -28,8 +28,8 @@ Jump directly to the solution you need:
 
 Comprehensive deep-dive (best for team leads and senior developers):
 
-1. Read [README.md](README.md) - Full feature overview
-2. Review [FEATURES.md](FEATURES.md) - Detailed API documentation
+1. Read [Main Documentation](README.md) - Full feature overview
+2. Review [Features Documentation](FEATURES.md) - Detailed API documentation
 3. Explore category-specific guides as needed
 
 ### 💡 Path 3: "I Learn Best from Examples"
