@@ -52,19 +52,26 @@
     <circle cx="420" cy="180" r="3"/>
   </g>
 
-  <!-- axis hints -->
-  <g stroke="#9fb3c8" stroke-width="2" fill="#9fb3c8" font-family="Verdana,Arial,sans-serif" font-size="10">
-    <!-- x-axis (screen right) -->
-    <line x1="160" y1="350" x2="220" y2="350"/>
-    <polygon points="214,344 214,356 226,350"/>
-    <text x="228" y="353" fill="#c8d1dc">+x</text>
-    <!-- y-axis (screen up-right/back) -->
-    <line x1="160" y1="350" x2="190" y2="330"/>
-    <polygon points="185,326 192,334 196,328"/>
-    <text x="198" y="330" fill="#c8d1dc">+y</text>
-    <!-- z-axis (screen up) -->
-    <line x1="160" y1="350" x2="160" y2="310"/>
-    <polygon points="154,316 166,316 160,304"/>
-    <text x="150" y="306" fill="#c8d1dc">+z</text>
+  <!-- axis hints (moved outside box; lighter strokes and clearer labels) -->
+  <g stroke="#9fb3c8" stroke-width="1.5" fill="none" opacity="0.85">
+    <!-- origin for axes -->
+    <!-- x-axis (to the right) -->
+    <line x1="80" y1="380" x2="140" y2="380"/>
+    <polygon fill="#9fb3c8" points="134,374 134,386 146,380"/>
+    <!-- y-axis (up-right/back) -->
+    <line x1="80" y1="380" x2="110" y2="360"/>
+    <polygon fill="#9fb3c8" points="106,356 113,364 118,358"/>
+    <!-- z-axis (upward) -->
+    <line x1="80" y1="380" x2="80" y2="340"/>
+    <polygon fill="#9fb3c8" points="74,346 86,346 80,334"/>
+  </g>
+  <g font-family="Verdana,Arial,sans-serif" font-size="11" text-anchor="start">
+    <!-- label bubbles for readability -->
+    <rect x="142" y="372" width="22" height="16" rx="6" ry="6" fill="#242a34" stroke="#3a4354" stroke-width="1"/>
+    <text x="146" y="384" fill="#e0e6ee">+x</text>
+    <rect x="112" y="349" width="22" height="16" rx="6" ry="6" fill="#242a34" stroke="#3a4354" stroke-width="1"/>
+    <text x="116" y="361" fill="#e0e6ee">+y</text>
+    <rect x="70" y="327" width="22" height="16" rx="6" ry="6" fill="#242a34" stroke="#3a4354" stroke-width="1"/>
+    <text x="74" y="339" fill="#e0e6ee">+z</text>
   </g>
 </svg>
