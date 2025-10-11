@@ -48,10 +48,18 @@
     <!-- pop_back: arrow below, pointing down away from rightmost occupied cell center (x=500) -->
     <line x1="500" y1="120" x2="500" y2="140"/>
     <polygon points="494,138 506,138 500,148"/>
+    <!-- push_back: arrow below, pointing up into rightmost empty cell (center x=540) -->
+    <line x1="540" y1="150" x2="540" y2="130"/>
+    <polygon points="534,138 546,138 540,128"/>
+    <!-- pop_front: arrow below, pointing down away from leftmost occupied cell center (x=420) -->
+    <line x1="420" y1="120" x2="420" y2="140"/>
+    <polygon points="414,138 426,138 420,148"/>
   </g>
   <g font-family="Verdana,Arial,sans-serif" font-size="11" fill="#c8d1dc">
     <text x="360" y="170" text-anchor="middle">push_front</text>
     <text x="500" y="170" text-anchor="middle">pop_back</text>
+    <text x="540" y="170" text-anchor="middle">push_back</text>
+    <text x="420" y="170" text-anchor="middle">pop_front</text>
   </g>
   <g font-family="Verdana,Arial,sans-serif" font-size="11" fill="#9fb3c8">
     <text x="360" y="62">deque</text>

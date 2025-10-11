@@ -22,11 +22,19 @@
     <!-- pop_back: bottom-down; small gap from border (y=140) to line start (y=150) -->
     <line x1="290" y1="150" x2="290" y2="175"/>
     <polygon points="284,175 296,175 290,185"/>
+    <!-- push_back: bottom-up into next empty (center x=350) -->
+    <line x1="350" y1="185" x2="350" y2="160"/>
+    <polygon points="344,160 356,160 350,150"/>
+    <!-- pop_front: bottom-down away from head (center x=170) -->
+    <line x1="170" y1="150" x2="170" y2="175"/>
+    <polygon points="164,175 176,175 170,185"/>
   </g>
   <!-- labels (lighter, separate for readability) -->
   <g font-family="Verdana,Arial,sans-serif" font-size="11" fill="#c8d1dc" text-anchor="middle">
     <text x="110" y="205">push_front</text>
     <text x="290" y="205">pop_back</text>
+    <text x="350" y="205">push_back</text>
+    <text x="170" y="205">pop_front</text>
   </g>
   <!-- filled elements -->
   <g fill="rgba(122,162,255,0.22)" stroke="#7aa2ff">
