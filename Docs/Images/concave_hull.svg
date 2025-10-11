@@ -21,9 +21,10 @@
   </g>
   <!-- concave hull polygon with an inward indentation (simple, non-self-intersecting; includes all points) -->
   <g fill="rgba(102, 217, 168, 0.12)" stroke="#66d9a8" stroke-width="2.5">
-    <polygon points="120,100 420,80 460,120 420,220 360,230 300,260 210,260 80,240"/>
+    <!-- Non-self-intersecting, more concave; closes from middle-left to upper-left -->
+    <polygon points="120,100 420,80 460,120 410,230 330,210 310,260 180,260 80,240 130,220"/>
   </g>
   <g font-family="Verdana,Arial,sans-serif" font-size="11" fill="#9fb3c8">
-    <text x="340" y="280">Concave hull captures shape detail</text>
+    <text x="300" y="300">Concave hull captures shape detail</text>
   </g>
 </svg>

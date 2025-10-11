@@ -10,7 +10,7 @@ Each works with single fields, arrays, `List<T>`, and `HashSet<T>`, supports opt
 
 Having issues? Jump to Troubleshooting: see [Troubleshooting](#troubleshooting).
 
-Related systems: For data‑driven gameplay effects (attributes, tags, cosmetics), see EFFECTS_SYSTEM.md and the README section Effects, Attributes, and Tags (#effects-attributes-and-tags).
+Related systems: For data‑driven gameplay effects (attributes, tags, cosmetics), see [Effects System](EFFECTS_SYSTEM.md) and the README section Effects, Attributes, and Tags (#effects-attributes-and-tags).
 
 ## Why Use These?
 

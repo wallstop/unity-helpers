@@ -10,7 +10,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Persistence
     /// </summary>
     public sealed class MultiFileSelectorPersistenceWindow : EditorWindow
     {
-        [MenuItem("Tools/Wallstop/Multi-File Selector Persistence")]
+        [MenuItem("Tools/Wallstop Studios/Multi-File Selector Persistence")]
         private static void Open()
         {
             MultiFileSelectorPersistenceWindow window =

@@ -1042,7 +1042,7 @@ public class CharacterStats : MonoBehaviour
 
 **Purpose:** Automatically creates and maintains singleton ScriptableObject assets.
 
-See the base API guide for details on `ScriptableObjectSingleton<T>` usage, scenarios, and ODIN compatibility: `SINGLETONS.md`.
+See the base API guide for details on `ScriptableObjectSingleton<T>` usage, scenarios, and ODIN compatibility: [Singleton Utilities](SINGLETONS.md).
 
 **How It Works:**
 ```
@@ -1571,4 +1571,4 @@ All tools are designed to work together seamlessly and follow consistent design 
 ---
 
 For questions, issues, or feature requests, please contact the Wallstop Studios team.
-- Integration note: The cache powers editor dropdowns and reflection shortcuts for the Effects system’s `AttributeModification.attribute` field. See [EFFECTS_SYSTEM.md](EFFECTS_SYSTEM.md) for how attributes, effects, and tags fit together.
+- Integration note: The cache powers editor dropdowns and reflection shortcuts for the Effects system’s `AttributeModification.attribute` field. See [Effects System](EFFECTS_SYSTEM.md) for how attributes, effects, and tags fit together.

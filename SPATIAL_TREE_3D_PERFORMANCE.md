@@ -2,7 +2,7 @@
 
 Note: KdTree3D, OctTree3D, and RTree3D are under active development and their APIs/performance may evolve. SpatialHash3D is stable and recommended for broad‑phase neighbor queries with many moving objects.
 
-For boundary and result semantics across structures, see Spatial Tree Semantics — SPATIAL_TREE_SEMANTICS.md
+For boundary and result semantics across structures, see [Spatial Tree Semantics](SPATIAL_TREE_SEMANTICS.md)
 
 This document contains performance benchmarks for the 3D spatial tree implementations in Unity Helpers.
 
