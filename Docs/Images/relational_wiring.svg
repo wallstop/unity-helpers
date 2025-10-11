@@ -1,7 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="780" height="360" viewBox="0 0 780 360">
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="780" height="360" viewBox="0 0 780 360" version="1.1">
+  <title>Relational Components — Discovery &amp; Wiring</title>
+  <desc>Shows scene graph (parent/children) and the OnValidate/Awake scan flow that wires [ParentComponent]/[ChildComponent]/[SiblingComponent] with cached lookups.</desc>
   <rect x="0" y="0" width="780" height="360" fill="#0f0f13"/>
   <g font-family="Verdana,Arial,sans-serif" font-size="14" fill="#c8d1dc">
-    <text x="16" y="26">Relational Components — Discovery & Wiring</text>
+    <text x="16" y="26">Relational Components — Discovery &amp; Wiring</text>
   </g>
   <!-- scene graph -->
   <g fill="#1d2330" stroke="#7aa2ff" stroke-width="2">
@@ -39,4 +42,3 @@
     <polygon points="564,184 576,184 570,194"/>
   </g>
 </svg>
-
