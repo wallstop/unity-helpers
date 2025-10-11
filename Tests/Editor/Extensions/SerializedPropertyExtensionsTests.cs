@@ -1,4 +1,4 @@
-﻿namespace WallstopStudios.UnityHelpers.Tests.Extensions
+﻿namespace WallstopStudios.UnityHelpers.Tests.Editor.Extensions
 {
 #if UNITY_EDITOR
     using System;
@@ -8,13 +8,14 @@
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Editor.Extensions;
+    using WallstopStudios.UnityHelpers.Tests.Editor.Utils;
 
     /// <summary>
     /// Comprehensive tests for SerializedPropertyExtensions covering simple fields,
     /// arrays/lists, and nested objects. These tests focus on validating current,
     /// documented behavior of the extension methods.
     /// </summary>
-    public sealed class SerializedPropertyExtensionsTests : Utils.CommonTestBase
+    public sealed class SerializedPropertyExtensionsTests : CommonTestBase
     {
         [Serializable]
         private class Inner

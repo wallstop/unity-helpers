@@ -21,7 +21,17 @@ All formats are exposed via `WallstopStudios.UnityHelpers.Core.Serialization.Ser
 **Formats Provided**
 - Json
   - Human-readable; ideal for settings, debug, modding, and Git diffs.
-  - Includes converters for Unity types (Vector2/3/4, Color, Matrix4x4, GameObject, Type, enums as strings), ignores cycles, includes fields, case-insensitive.
+  - Includes converters for Unity types (ignores cycles, includes fields by default, case-insensitive by default; enums as strings in Normal/Pretty):
+    - Vector2, Vector3, Vector4, Vector2Int, Vector3Int
+    - Color, Color32, ColorBlock
+    - Quaternion, Matrix4x4, Pose, Plane, SphericalHarmonicsL2
+    - Bounds, BoundsInt, Rect, RectInt, RectOffset, RangeInt
+    - Ray, Ray2D, RaycastHit, BoundingSphere
+    - Resolution, RenderTextureDescriptor, LayerMask, Hash128, Scene
+    - AnimationCurve, Gradient, Touch, GameObject
+    - ParticleSystem.MinMaxCurve, ParticleSystem.MinMaxGradient
+    - System.Type (type metadata)
+  - Profiles: Normal, Pretty, Fast, FastPOCO (see below)
 - Protobuf (protobuf-net)
   - **⭐ Killer Feature: Schema Evolution** — Players can load saves from older game versions without breaking! Add new fields, remove old ones, rename types—all while maintaining compatibility.
   - Small and fast; best for networking and large save payloads.
@@ -155,28 +165,39 @@ int len = Serializer.Serialize(info, SerializationType.Protobuf, ref buffer);
 PlayerInfo sliced = Serializer.Deserialize<PlayerInfo>(buffer.AsSpan(0, len).ToArray(), SerializationType.Protobuf);
 ```
 
-- Unity types with Protobuf: prefer DTOs/surrogates
+- Unity types with Protobuf: built-in surrogates
 ```csharp
-using ProtoBuf;
-using UnityEngine;
-
-[ProtoContract]
-public struct Vector3DTO
-{
-    [ProtoMember(1)] public float x;
-    [ProtoMember(2)] public float y;
-    [ProtoMember(3)] public float z;
-
-    public static implicit operator Vector3(Vector3DTO d) => new Vector3(d.x, d.y, d.z);
-    public static implicit operator Vector3DTO(Vector3 v) => new Vector3DTO { x = v.x, y = v.y, z = v.z };
-}
+// This package registers protobuf-net surrogates at startup so Unity structs just work in protobuf models.
+// The following Unity types are protobuf-compatible out of the box:
+// - Vector2, Vector3, Vector2Int, Vector3Int
+// - Quaternion
+// - Color, Color32
+// - Rect, RectInt
+// - Bounds, BoundsInt
+// - Resolution
+// Example: use Vector3 directly in a protobuf-annotated model
+using ProtoBuf;              // protobuf-net
+using UnityEngine;           // Unity types
+using WallstopStudios.UnityHelpers.Core.Serialization;
 
 [ProtoContract]
 public class NetworkMessage
 {
     [ProtoMember(1)] public int playerId;
-    [ProtoMember(2)] public Vector3DTO position;
+    [ProtoMember(2)] public Vector3 position;   // Works via registered surrogates
+    [ProtoMember(3)] public Quaternion facing;  // Works via registered surrogates
 }
+
+// Serialize/deserialize as usual
+var msg = new NetworkMessage { playerId = 7, position = new Vector3(1,2,3), facing = Quaternion.identity };
+byte[] bytes = Serializer.ProtoSerialize(msg);
+NetworkMessage again = Serializer.ProtoDeserialize<NetworkMessage>(bytes);
+```
+
+Notes
+- Surrogates are registered in the Serializer static initializer; you don't need to call anything.
+- If you define your own DTOs, they will continue to work; surrogates simply make Unity structs first-class.
+- Keep using [ProtoContract]/[ProtoMember] and stable field numbers for your own types.
 ```
 
 ## Protobuf Schema Evolution: The Killer Feature

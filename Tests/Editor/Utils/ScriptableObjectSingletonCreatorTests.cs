@@ -1,12 +1,12 @@
-namespace WallstopStudios.UnityHelpers.Tests.Utils
+namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils
 {
 #if UNITY_EDITOR
     using System.Collections;
+    using System.Text.RegularExpressions;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
     using UnityEngine.TestTools;
-    using System.Text.RegularExpressions;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Utils;
@@ -28,7 +28,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTearDown]
         public override IEnumerator UnityTearDown()
         {
-            yield return base.UnityTearDown();
+            IEnumerator baseEnumerator = base.UnityTearDown();
+            while (baseEnumerator.MoveNext())
+            {
+                yield return baseEnumerator.Current;
+            }
+
             // Clean up any assets created under our test root
             string[] guids = AssetDatabase.FindAssets("t:Object", new[] { TestRoot });
             foreach (string guid in guids)
@@ -124,6 +129,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 {
                     AssetDatabase.CreateFolder(current, parts[i]);
                 }
+
                 current = next;
             }
         }
@@ -149,29 +155,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [ScriptableSingletonPath("CreatorTests")]
         private sealed class Duplicate : ScriptableObjectSingleton<Duplicate> { }
     }
-
-    // Name collision types in different namespaces
 #endif
 }
 
-namespace WallstopStudios.UnityHelpers.Tests.Utils.CollisionA
-{
+// Name collision types in different namespaces
+
 #if UNITY_EDITOR
+namespace A
+{
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Utils;
 
     [ScriptableSingletonPath("CreatorTests/Collision")]
     internal sealed class NameCollision : ScriptableObjectSingleton<NameCollision> { }
-#endif
 }
-
-namespace WallstopStudios.UnityHelpers.Tests.Utils.CollisionB
-{
+#endif
 #if UNITY_EDITOR
+namespace B
+{
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Utils;
 
     [ScriptableSingletonPath("CreatorTests/Collision")]
     internal sealed class NameCollision : ScriptableObjectSingleton<NameCollision> { }
-#endif
 }
+
+#endif

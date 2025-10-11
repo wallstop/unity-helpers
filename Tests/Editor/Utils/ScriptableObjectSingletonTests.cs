@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Tests.Utils
+namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils
 {
 #if UNITY_EDITOR
     using System.Collections;
@@ -13,23 +13,36 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     public sealed class ScriptableObjectSingletonTests : CommonTestBase
     {
         private static readonly System.Collections.Generic.List<string> CreatedAssetPaths = new();
+        private static readonly System.Collections.Generic.List<ScriptableObject> InMemoryInstances =
+            new();
 
         [UnitySetUp]
         public IEnumerator SetUp()
         {
             TestSingleton.ClearInstance();
+            yield return null;
             EmptyPathSingleton.ClearInstance();
+            yield return null;
             CustomPathSingleton.ClearInstance();
+            yield return null;
             MultipleInstancesSingleton.ClearInstance();
-            EnsureResourceAsset<TestSingleton>("Assets/Resources", "TestSingleton.asset");
-            EnsureResourceAsset<EmptyPathSingleton>("Assets/Resources", "EmptyPathSingleton.asset");
-            // Custom path specified via [ScriptableSingletonPath("CustomPath")] => place under Resources/CustomPath
-            EnsureFolder("Assets/Resources/CustomPath");
-            EnsureResourceAsset<CustomPathSingleton>(
-                "Assets/Resources/CustomPath",
-                "CustomPathSingleton.asset"
-            );
-            yield break;
+            yield return null;
+            // Clean up any leftover assets from previous runs to avoid broken nested-class assets
+            DeleteAssetIfExists("Assets/Resources/TestSingleton.asset");
+            yield return null;
+            DeleteAssetIfExists("Assets/Resources/EmptyPathSingleton.asset");
+            yield return null;
+            DeleteAssetIfExists("Assets/Resources/CustomPath/CustomPathSingleton.asset");
+            yield return null;
+
+            // For nested test types, Unity cannot create valid .asset files (no script file).
+            // Instead, create in-memory instances so the singleton loader can discover them via FindObjectsOfTypeAll.
+            CreateInMemoryInstance<TestSingleton>();
+            yield return null;
+            CreateInMemoryInstance<EmptyPathSingleton>();
+            yield return null;
+            CreateInMemoryInstance<CustomPathSingleton>();
+            yield return null;
         }
 
         private static void EnsureFolder(string folderPath)
@@ -44,27 +57,38 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                     if (!AssetDatabase.IsValidFolder(next))
                     {
                         AssetDatabase.CreateFolder(current, parts[i]);
+                        AssetDatabase.SaveAssets();
+                        AssetDatabase.Refresh();
                     }
                     current = next;
                 }
             }
         }
 
-        private static void EnsureResourceAsset<TType>(string folder, string fileName)
-            where TType : ScriptableObject
+        private static void DeleteAssetIfExists(string assetPath)
         {
-            EnsureFolder("Assets/Resources");
-            EnsureFolder(folder);
-            string assetPath = folder + "/" + fileName;
-            Object existing = AssetDatabase.LoadAssetAtPath<Object>(assetPath);
-            if (existing == null)
+            if (string.IsNullOrWhiteSpace(assetPath))
             {
-                TType instance = ScriptableObject.CreateInstance<TType>();
-                AssetDatabase.CreateAsset(instance, assetPath);
-                CreatedAssetPaths.Add(assetPath);
+                return;
+            }
+
+            Object existing = AssetDatabase.LoadAssetAtPath<Object>(assetPath);
+            if (existing != null || !string.IsNullOrEmpty(AssetDatabase.AssetPathToGUID(assetPath)))
+            {
+                AssetDatabase.DeleteAsset(assetPath);
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
             }
+        }
+
+        private static TType CreateInMemoryInstance<TType>()
+            where TType : ScriptableObject
+        {
+            TType instance = ScriptableObject.CreateInstance<TType>();
+            instance.name = typeof(TType).Name;
+            instance.hideFlags = HideFlags.DontSave;
+            InMemoryInstances.Add(instance);
+            return instance;
         }
 
         private sealed class TestSingleton : ScriptableObjectSingleton<TestSingleton>
@@ -90,8 +114,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         }
 
         [UnityTearDown]
-        public IEnumerator Cleanup()
+        public override IEnumerator UnityTearDown()
         {
+            yield return base.UnityTearDown();
+
             // Delete any assets created during SetUp
             foreach (string path in CreatedAssetPaths)
             {
@@ -103,36 +129,26 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             }
 
             CreatedAssetPaths.Clear();
+            // Destroy any in-memory instances created as a fallback
+            for (int i = 0; i < InMemoryInstances.Count; i++)
+            {
+                ScriptableObject obj = InMemoryInstances[i];
+                if (obj != null)
+                {
+                    Object.DestroyImmediate(obj);
+                }
+                yield return null;
+            }
+            InMemoryInstances.Clear();
+            yield return null;
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             yield return null;
-            if (TestSingleton.LazyInstance.IsValueCreated)
+            // Prefer public API surface over reflection to clean up the cached instance
+            if (TestSingleton.HasInstance)
             {
-                System.Reflection.FieldInfo field = typeof(TestSingleton).GetField(
-                    nameof(TestSingleton.LazyInstance),
-                    System.Reflection.BindingFlags.NonPublic
-                        | System.Reflection.BindingFlags.Static
-                        | System.Reflection.BindingFlags.Public
-                );
-                if (field != null)
-                {
-                    object lazyInstance = field.GetValue(null);
-                    if (lazyInstance != null)
-                    {
-                        System.Reflection.PropertyInfo valueProperty = lazyInstance
-                            .GetType()
-                            .GetProperty("Value");
-                        if (valueProperty != null)
-                        {
-                            TestSingleton instance =
-                                valueProperty.GetValue(lazyInstance) as TestSingleton;
-                            if (instance != null)
-                            {
-                                Object.DestroyImmediate(instance);
-                            }
-                        }
-                    }
-                }
+                TestSingleton.Instance.Destroy();
+                TestSingleton.ClearInstance();
             }
 
             yield return null;
@@ -167,6 +183,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 singleton.Destroy();
                 yield return null;
             }
+            yield return null;
         }
 
         [UnityTest]
@@ -349,15 +366,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator CanAccessInstanceAfterHasInstanceCheck()
         {
+            yield return null;
             bool hasInstance = TestSingleton.HasInstance;
             Assert.IsFalse(hasInstance);
 
-            TestSingleton instance = TestSingleton.Instance;
-            Assert.IsTrue(instance != null);
+            yield return null;
+            _ = TestSingleton.Instance;
+            Assert.IsTrue(TestSingleton.HasInstance);
+            yield return null;
+            Assert.IsTrue(TestSingleton.Instance != null);
 
+            yield return null;
             hasInstance = TestSingleton.HasInstance;
             Assert.IsTrue(hasInstance);
-            yield break;
         }
 
         [UnityTest]
@@ -413,6 +434,31 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             Assert.IsNotNull(result);
             Assert.IsTrue(result.Contains("TestSingleton") || result.Length > 0);
+            yield break;
+        }
+
+        [UnityTest]
+        public IEnumerator LoadsInstanceFromInMemoryWhenAssetMissing()
+        {
+            string path = "Assets/Resources/TestSingleton.asset";
+            Object existing = AssetDatabase.LoadAssetAtPath<Object>(path);
+            if (existing != null)
+            {
+                AssetDatabase.DeleteAsset(path);
+                AssetDatabase.SaveAssets();
+                AssetDatabase.Refresh();
+            }
+
+            TestSingleton.ClearInstance();
+
+            TestSingleton created = ScriptableObject.CreateInstance<TestSingleton>();
+            created.hideFlags = HideFlags.DontSave;
+            InMemoryInstances.Add(created);
+
+            TestSingleton resolved = TestSingleton.Instance;
+
+            Assert.IsTrue(resolved != null);
+            Assert.AreSame(created, resolved);
             yield break;
         }
     }

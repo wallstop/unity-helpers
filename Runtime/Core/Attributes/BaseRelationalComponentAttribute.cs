@@ -505,7 +505,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 }
             }
 
-            if (!filters._checkTag && !filters._checkName)
+            if (filters is { _checkTag: false, _checkName: false })
             {
                 return true;
             }

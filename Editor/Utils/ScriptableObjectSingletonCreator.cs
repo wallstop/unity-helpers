@@ -93,11 +93,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                         continue;
                     }
 
-                    EnsureFolderExists(ResourcesRoot);
+                    string resolvedResourcesRoot = EnsureAndResolveFolderPath(ResourcesRoot);
 
                     string resourcesSubFolder = GetResourcesSubFolder(derivedType);
-                    string targetFolder = CombinePaths(ResourcesRoot, resourcesSubFolder);
-                    EnsureFolderExists(targetFolder);
+                    string targetFolderRequested = CombinePaths(ResourcesRoot, resourcesSubFolder);
+                    string targetFolder = EnsureAndResolveFolderPath(targetFolderRequested);
 
                     string targetAssetPath = CombinePaths(
                         targetFolder,
@@ -193,9 +193,22 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             string normalizedTarget = NormalizePath(targetAssetPath);
             string assetName = Path.GetFileName(targetAssetPath);
 
+            // Ensure the target parent folder exists and use its exact-cased path
+            string targetParent = Path.GetDirectoryName(normalizedTarget)?.Replace('\\', '/');
+            if (!string.IsNullOrWhiteSpace(targetParent))
+            {
+                string resolvedParent = EnsureAndResolveFolderPath(targetParent);
+                if (!string.IsNullOrWhiteSpace(resolvedParent))
+                {
+                    string rebuilt = CombinePaths(resolvedParent, assetName);
+                    normalizedTarget = rebuilt;
+                }
+            }
+
             HashSet<string> seenPaths = new(StringComparer.OrdinalIgnoreCase);
             List<string> candidatePaths = new();
 
+            // Try finding by script name (won't work for nested/private classes but harmless to try)
             string[] guids = AssetDatabase.FindAssets("t:" + type.Name);
             if (guids != null && guids.Length != 0)
             {
@@ -205,6 +218,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 }
             }
 
+            // Load from Resources - this works for already-indexed assets
             Object[] resourceInstances = Resources.LoadAll(string.Empty, type);
             if (resourceInstances != null)
             {
@@ -217,6 +231,30 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 
                     string assetPath = AssetDatabase.GetAssetPath(instance);
                     AddCandidate(assetPath);
+                }
+            }
+
+            // Search only within Assets/Resources folder for ScriptableObject assets of this type
+            // This is more targeted than searching all assets and catches newly created test assets
+            string[] resourceGuids = AssetDatabase.FindAssets(
+                "t:ScriptableObject",
+                new[] { ResourcesRoot }
+            );
+            if (resourceGuids != null)
+            {
+                foreach (string guid in resourceGuids)
+                {
+                    string path = AssetDatabase.GUIDToAssetPath(guid);
+                    if (string.IsNullOrEmpty(path))
+                    {
+                        continue;
+                    }
+
+                    Object obj = AssetDatabase.LoadAssetAtPath(path, type);
+                    if (obj != null)
+                    {
+                        AddCandidate(path);
+                    }
                 }
             }
 
@@ -244,6 +282,17 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                     continue;
                 }
 
+                // Final guard: ensure parent exists just before moving
+                string parent = Path.GetDirectoryName(normalizedTarget)?.Replace('\\', '/');
+                if (!string.IsNullOrWhiteSpace(parent) && !AssetDatabase.IsValidFolder(parent))
+                {
+                    string ensured = EnsureAndResolveFolderPath(parent);
+                    if (!string.IsNullOrWhiteSpace(ensured))
+                    {
+                        normalizedTarget = CombinePaths(ensured, assetName);
+                    }
+                }
+
                 string moveResult = AssetDatabase.MoveAsset(alternatePath, normalizedTarget);
                 if (string.IsNullOrEmpty(moveResult))
                 {
@@ -254,8 +303,58 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                     return asset;
                 }
 
+                // Retry after ensuring parent and performing save/refresh if parent folder may not yet be registered
+                string parentDir = Path.GetDirectoryName(normalizedTarget)?.Replace('\\', '/');
+                bool retried = false;
+                if (!string.IsNullOrWhiteSpace(parentDir))
+                {
+                    // Ensure parent folder exists and get its resolved path
+                    string resolvedParent = EnsureAndResolveFolderPath(parentDir);
+                    if (!string.IsNullOrWhiteSpace(resolvedParent))
+                    {
+                        normalizedTarget = CombinePaths(resolvedParent, assetName);
+                        parentDir = resolvedParent;
+                    }
+
+                    // Temporarily stop asset editing to save and refresh
+                    AssetDatabase.StopAssetEditing();
+                    try
+                    {
+                        AssetDatabase.SaveAssets();
+                        AssetDatabase.Refresh();
+                    }
+                    finally
+                    {
+                        AssetDatabase.StartAssetEditing();
+                    }
+
+                    // Verify parent folder is now valid in AssetDatabase
+                    if (AssetDatabase.IsValidFolder(parentDir))
+                    {
+                        string retry = AssetDatabase.MoveAsset(alternatePath, normalizedTarget);
+                        retried = true;
+                        if (string.IsNullOrEmpty(retry))
+                        {
+                            LogVerbose(
+                                $"Relocated singleton asset for type {type.Name} from {alternatePath} to {normalizedTarget} after refresh."
+                            );
+                            anyChanges = true;
+                            return asset;
+                        }
+                        else
+                        {
+                            moveResult = retry;
+                        }
+                    }
+                    else
+                    {
+                        retried = true;
+                        moveResult = $"Parent directory is not in asset database (after retry)";
+                    }
+                }
+
                 Debug.LogWarning(
-                    $"Failed to move singleton asset {assetName} for type {type.Name} from {alternatePath}: {moveResult}"
+                    $"Failed to move singleton asset {assetName} for type {type.Name} from {alternatePath}: {moveResult}{(retried ? " (after retry)" : string.Empty)}"
                 );
             }
 
@@ -314,23 +413,25 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             return normalized;
         }
 
-        private static void EnsureFolderExists(string folderPath)
+        private static string EnsureAndResolveFolderPath(string folderPath)
         {
             if (string.IsNullOrWhiteSpace(folderPath))
             {
-                return;
+                return string.Empty;
             }
 
             folderPath = NormalizePath(folderPath);
-            if (AssetDatabase.IsValidFolder(folderPath))
-            {
-                return;
-            }
-
             string[] parts = folderPath.Split('/', StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length == 0)
             {
-                return;
+                return string.Empty;
+            }
+
+            // If the whole folder already exists, return the exact casing Unity knows
+            if (AssetDatabase.IsValidFolder(folderPath))
+            {
+                // Resolve to exact-cased path by walking down from Assets
+                return ResolveExistingFolderPath(folderPath);
             }
 
             // Always anchor to Unity's "Assets" root with correct casing
@@ -340,7 +441,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 Debug.LogWarning(
                     $"Unable to ensure folder for path '{folderPath}' because it does not start with 'Assets'."
                 );
-                return;
+                return folderPath;
             }
 
             for (int i = 1; i < parts.Length; i++)
@@ -375,21 +476,149 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 }
                 else
                 {
-                    if (
-                        !string.Equals(
-                            matchedExisting,
-                            current + "/" + desiredName,
-                            StringComparison.Ordinal
-                        )
-                    )
+                    string intendedPath = current + "/" + desiredName;
+                    if (string.Equals(matchedExisting, intendedPath, StringComparison.Ordinal))
                     {
-                        LogVerbose(
-                            $"ScriptableObjectSingletonCreator: Reusing existing folder '{matchedExisting}' for requested segment '{desiredName}'."
-                        );
+                        // Exact match, just continue
+                        current = matchedExisting;
                     }
-                    current = matchedExisting; // reuse existing folder even if case differs
+                    else
+                    {
+                        // Case-insensitive match with different casing. Attempt to rename to the intended casing
+                        string renameError = AssetDatabase.MoveAsset(matchedExisting, intendedPath);
+                        if (string.IsNullOrEmpty(renameError))
+                        {
+                            LogVerbose(
+                                $"ScriptableObjectSingletonCreator: Renamed folder '{matchedExisting}' to '{intendedPath}' to correct casing."
+                            );
+                            current = intendedPath;
+                        }
+                        else
+                        {
+                            // Some platforms/filesystems require a two-step rename to change only casing
+                            // Attempt rename -> temp -> intended when paths differ only by case
+                            string currentTerminal = matchedExisting;
+                            int ls = currentTerminal.LastIndexOf('/', currentTerminal.Length - 1);
+                            currentTerminal =
+                                ls >= 0 ? currentTerminal.Substring(ls + 1) : currentTerminal;
+
+                            if (
+                                string.Equals(
+                                    currentTerminal,
+                                    desiredName,
+                                    StringComparison.OrdinalIgnoreCase
+                                )
+                            )
+                            {
+                                string tempName = desiredName + "__CaseFix__";
+                                string tempPath = current + "/" + tempName;
+                                string toTempErr = AssetDatabase.MoveAsset(
+                                    matchedExisting,
+                                    tempPath
+                                );
+                                if (string.IsNullOrEmpty(toTempErr))
+                                {
+                                    string toFinalErr = AssetDatabase.MoveAsset(
+                                        tempPath,
+                                        intendedPath
+                                    );
+                                    if (string.IsNullOrEmpty(toFinalErr))
+                                    {
+                                        LogVerbose(
+                                            $"ScriptableObjectSingletonCreator: Renamed folder '{matchedExisting}' to '{intendedPath}' via temporary '{tempPath}' to correct casing."
+                                        );
+                                        current = intendedPath;
+                                    }
+                                    else
+                                    {
+                                        LogVerbose(
+                                            $"ScriptableObjectSingletonCreator: Reusing existing folder '{matchedExisting}' for requested segment '{desiredName}' (final case-fix rename failed: {toFinalErr})."
+                                        );
+                                        current = matchedExisting;
+                                    }
+                                }
+                                else
+                                {
+                                    LogVerbose(
+                                        $"ScriptableObjectSingletonCreator: Reusing existing folder '{matchedExisting}' for requested segment '{desiredName}' (case-fix temp rename failed: {toTempErr})."
+                                    );
+                                    current = matchedExisting;
+                                }
+                            }
+                            else
+                            {
+                                // If mismatch isn't purely casing, fall back to using existing
+                                LogVerbose(
+                                    $"ScriptableObjectSingletonCreator: Reusing existing folder '{matchedExisting}' for requested segment '{desiredName}' (rename failed: {renameError})."
+                                );
+                                current = matchedExisting;
+                            }
+                        }
+                    }
                 }
             }
+
+            return current;
+        }
+
+        private static string ResolveExistingFolderPath(string intended)
+        {
+            if (string.IsNullOrWhiteSpace(intended))
+            {
+                return string.Empty;
+            }
+
+            intended = NormalizePath(intended);
+            string[] parts = intended.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length == 0)
+            {
+                return string.Empty;
+            }
+
+            string current = parts[0];
+            if (!string.Equals(current, "Assets", StringComparison.OrdinalIgnoreCase))
+            {
+                return intended;
+            }
+
+            for (int i = 1; i < parts.Length; i++)
+            {
+                string desired = parts[i];
+                string next = current + "/" + desired;
+                if (AssetDatabase.IsValidFolder(next))
+                {
+                    current = next;
+                    continue;
+                }
+
+                string[] subs = AssetDatabase.GetSubFolders(current);
+                if (subs == null || subs.Length == 0)
+                {
+                    return intended;
+                }
+
+                string match = null;
+                for (int s = 0; s < subs.Length; s++)
+                {
+                    string sub = subs[s];
+                    int last = sub.LastIndexOf('/', sub.Length - 1);
+                    string name = last >= 0 ? sub.Substring(last + 1) : sub;
+                    if (string.Equals(name, desired, StringComparison.OrdinalIgnoreCase))
+                    {
+                        match = sub;
+                        break;
+                    }
+                }
+
+                if (string.IsNullOrEmpty(match))
+                {
+                    return intended;
+                }
+
+                current = match;
+            }
+
+            return current;
         }
 
         private static void LogVerbose(string message)

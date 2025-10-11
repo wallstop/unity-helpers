@@ -261,7 +261,7 @@ namespace WallstopStudios.UnityHelpers.Utils
             unchecked
             {
                 ulong v =
-                    (ulong)bytes[0]
+                    bytes[0]
                     | ((ulong)bytes[1] << 8)
                     | ((ulong)bytes[2] << 16)
                     | ((ulong)bytes[3] << 24)

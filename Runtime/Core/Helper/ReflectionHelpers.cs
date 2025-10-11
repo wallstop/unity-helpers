@@ -4613,7 +4613,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 MethodCallExpression call = Expression.Call(castSet, addMethod, castValue);
                 Expression body =
                     addMethod.ReturnType == typeof(void)
-                        ? (Expression)call
+                        ? call
                         : Expression.Block(call, Expression.Empty());
 
                 return Expression

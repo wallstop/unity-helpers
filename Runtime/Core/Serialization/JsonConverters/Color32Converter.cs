@@ -88,10 +88,10 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
         )
         {
             writer.WriteStartObject();
-            writer.WriteNumber(RProp, (int)value.r);
-            writer.WriteNumber(GProp, (int)value.g);
-            writer.WriteNumber(BProp, (int)value.b);
-            writer.WriteNumber(AProp, (int)value.a);
+            writer.WriteNumber(RProp, value.r);
+            writer.WriteNumber(GProp, value.g);
+            writer.WriteNumber(BProp, value.b);
+            writer.WriteNumber(AProp, value.a);
             writer.WriteEndObject();
         }
     }

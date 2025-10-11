@@ -6,7 +6,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Editor;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Editor.Utils;
 
     public sealed class FitTextureSizeWindowTests : CommonTestBase
     {

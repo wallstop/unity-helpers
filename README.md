@@ -136,7 +136,7 @@ Unity Helpers was built to solve common game development challenges with **perfo
 - 🔧 **20+ editor tools** to streamline your workflow
 - 📦 **Zero dependencies** - just import and use
 - ✅ **Production-tested** in shipped games
-- 🧪 **4000+ test cases** cover most of the public API and run before each release to catch regressions and prevent bugs
+- 🧪 **5000+ test cases** cover most of the public API and run before each release to catch regressions and prevent bugs
 
 ## Key Features
 
@@ -867,7 +867,7 @@ using WallstopStudios.UnityHelpers.Core.Serialization;
 public class NetworkMessage
 {
     [ProtoMember(1)] public int playerId;
-    [ProtoMember(2)] public Vector3 position; // Vector3 is supported by our JSON; for Protobuf, prefer serializable surrogates
+    [ProtoMember(2)] public Vector3 position; // Vector3 works in Protobuf via built-in surrogates
 }
 
 var message = new NetworkMessage { playerId = 7, position = new Vector3(5, 0, -2) };
@@ -888,7 +888,7 @@ NetworkMessage again = Serializer.Deserialize<NetworkMessage>(buffer.AsSpan(0, l
 
 Notes:
 - Protobuf‑net requires stable field numbers. Annotate with `[ProtoMember(n)]` and never reuse or renumber.
-- For Unity types, consider custom DTOs (e.g., `Vector3` → `{ float x, y, z }`) or protobuf‑net surrogates.
+- Unity types supported via surrogates: Vector2/3, Vector2Int/3Int, Quaternion, Color/Color32, Rect/RectInt, Bounds/BoundsInt, Resolution.
 
 #### Protobuf Compatibility Tips
 - Add fields with new numbers; old clients ignore unknown fields, new clients default missing fields.

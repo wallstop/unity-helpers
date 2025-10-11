@@ -518,7 +518,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         {
             float floatTolerance = Mathf.Max(0f, tolerance) / 255f;
             float floatDelta = Mathf.Max(0f, delta) / 255f;
-            return ((Color)lhs).Approximately((Color)rhs, floatTolerance, floatDelta, includeAlpha);
+            return ((Color)lhs).Approximately(rhs, floatTolerance, floatDelta, includeAlpha);
         }
 
         /// <summary>

@@ -1,4 +1,4 @@
-﻿namespace WallstopStudios.UnityHelpers.Tests.Helper
+﻿namespace WallstopStudios.UnityHelpers.Tests.Editor.Helper
 {
     using System;
     using System.Collections.Generic;
@@ -9,9 +9,10 @@
     using UnityEditorInternal;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Tests.Editor.Utils;
     using WallstopStudios.UnityHelpers.Utils;
 
-    public sealed class HelpersTests : Utils.CommonTestBase
+    public sealed class HelpersTests : CommonTestBase
     {
         [Test]
         public void EnumeratePrefabsFindsGeneratedPrefab()

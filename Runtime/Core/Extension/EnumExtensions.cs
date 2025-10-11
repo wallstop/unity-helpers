@@ -85,7 +85,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
             // Use array if the range is reasonable (< 256 elements)
             ulong range = hasValidRange && maxVal >= minVal ? maxVal - minVal + 1 : 0;
-            bool useArray = hasValidRange && range <= 256 && range > 0;
+            bool useArray = hasValidRange && range is <= 256 and > 0;
 
             string[] namesArray;
             ConcurrentDictionary<ulong, string> namesDict;
@@ -260,7 +260,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
             // Use array if the range is reasonable (< 256 elements)
             ulong range = hasValidRange && maxVal >= minVal ? maxVal - minVal + 1 : 0;
-            bool useArray = hasValidRange && range <= 256 && range > 0;
+            bool useArray = hasValidRange && range is <= 256 and > 0;
 
             string[] namesArray;
             ConcurrentDictionary<ulong, string> namesDict;

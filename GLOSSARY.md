@@ -173,7 +173,7 @@ Quick reference for terms used throughout Unity Helpers documentation.
 
 **Unity Converters**
 - Custom JSON converters for Unity engine types
-- Supports: Vector2/3/4, Color, Matrix4x4, GameObject, Type
+- Supports: Vector2/3/4, Vector2Int/3Int, Color/Color32/ColorBlock, Quaternion, Matrix4x4, Pose, Plane, SphericalHarmonicsL2, Bounds/BoundsInt, Rect/RectInt/RectOffset, RangeInt, Ray/Ray2D/RaycastHit, BoundingSphere, Resolution, RenderTextureDescriptor, LayerMask, Hash128, Scene, AnimationCurve, Gradient, Touch, GameObject, ParticleSystem.MinMaxCurve, ParticleSystem.MinMaxGradient, System.Type
 - Automatically included in Unity Helpers JSON options
 - See: [Serialization](SERIALIZATION.md)
 

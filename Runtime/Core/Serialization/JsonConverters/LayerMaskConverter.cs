@@ -23,7 +23,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
             if (reader.TokenType == JsonTokenType.Number)
             {
                 int v = reader.GetInt32();
-                return (LayerMask)v;
+                return v;
             }
             if (reader.TokenType == JsonTokenType.StartObject)
             {
@@ -34,7 +34,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
                 {
                     if (reader.TokenType == JsonTokenType.EndObject)
                     {
-                        return (LayerMask)value;
+                        return value;
                     }
                     if (reader.TokenType == JsonTokenType.PropertyName)
                     {

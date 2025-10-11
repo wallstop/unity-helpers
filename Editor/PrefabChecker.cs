@@ -69,6 +69,12 @@ namespace WallstopStudios.UnityHelpers.Editor
 
         private void PopulateDefaultPaths()
         {
+            // Avoid implicit state when running in tests or suppressed UI contexts
+            if (EditorUi.Suppress)
+            {
+                return;
+            }
+
             if (_assetPaths.Count == 0 && AssetDatabase.IsValidFolder(DefaultPrefabsFolder))
             {
                 _assetPaths.Add(DefaultPrefabsFolder);
@@ -1177,6 +1183,12 @@ namespace WallstopStudios.UnityHelpers.Editor
 
         private void TryRestoreFromHistory()
         {
+            // Do not restore persisted UI state while tests/non-interactive contexts run
+            if (EditorUi.Suppress)
+            {
+                return;
+            }
+
             if (_assetPaths.Count > 0)
             {
                 return;

@@ -7,7 +7,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
     using UnityEngine;
     using UnityEngine.U2D;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Editor.Utils;
 
     public sealed class ScriptableSpriteAtlasEditorTests : CommonTestBase
     {

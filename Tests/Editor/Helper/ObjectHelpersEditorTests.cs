@@ -1,11 +1,11 @@
-namespace WallstopStudios.UnityHelpers.Tests.Helper
+namespace WallstopStudios.UnityHelpers.Tests.Editor.Helper
 {
 #if UNITY_EDITOR
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Editor.Utils;
 
     public sealed class ObjectHelpersEditorTests : CommonTestBase
     {

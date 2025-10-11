@@ -1280,9 +1280,9 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             for (int i = 0; i < effectiveLen; ++i)
             {
                 char c = s[i];
-                bool isAlphaUpper = c >= 'A' && c <= 'Z';
-                bool isAlphaLower = c >= 'a' && c <= 'z';
-                bool isDigit = c >= '0' && c <= '9';
+                bool isAlphaUpper = c is >= 'A' and <= 'Z';
+                bool isAlphaLower = c is >= 'a' and <= 'z';
+                bool isDigit = c is >= '0' and <= '9';
                 bool isPlusSlash = c == '+' || c == '/';
                 if (!(isAlphaUpper || isAlphaLower || isDigit || isPlusSlash))
                 {
@@ -1368,15 +1368,15 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
         private static int Base64Map(char c)
         {
-            if (c >= 'A' && c <= 'Z')
+            if (c is >= 'A' and <= 'Z')
             {
                 return c - 'A';
             }
-            if (c >= 'a' && c <= 'z')
+            if (c is >= 'a' and <= 'z')
             {
                 return c - 'a' + 26;
             }
-            if (c >= '0' && c <= '9')
+            if (c is >= '0' and <= '9')
             {
                 return c - '0' + 52;
             }

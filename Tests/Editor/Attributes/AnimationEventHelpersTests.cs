@@ -1,4 +1,4 @@
-﻿namespace WallstopStudios.UnityHelpers.Tests.Attributes
+﻿namespace WallstopStudios.UnityHelpers.Tests.Editor.Attributes
 {
     using System;
     using System.Collections.Generic;
@@ -8,9 +8,10 @@
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Editor.Core.Helper;
+    using WallstopStudios.UnityHelpers.Tests.Editor.Utils;
 
     [TestFixture]
-    public sealed class AnimationEventHelpersTests : Utils.CommonTestBase
+    public sealed class AnimationEventHelpersTests : CommonTestBase
     {
         [Test]
         public void TypesToMethodsIncludesDeclaringTypeAndFiltersEmptyEntries()

@@ -720,7 +720,7 @@ namespace SevenZip.Compression.LZMA
 
             if (lenMain < 2 && currentByte != matchByte && repLens[repMaxIndex] < 2)
             {
-                backRes = (UInt32)0xFFFFFFFF;
+                backRes = 0xFFFFFFFF;
                 return 1;
             }
 
@@ -1119,9 +1119,7 @@ namespace SevenZip.Compression.LZMA
                                     .GetPrice(
                                         true,
                                         _matchFinder.GetIndexByte(
-                                            (Int32)(
-                                                (Int32)lenTest - 1 - (Int32)(reps[repIndex] + 1)
-                                            )
+                                            (Int32)lenTest - 1 - (Int32)(reps[repIndex] + 1)
                                         ),
                                         _matchFinder.GetIndexByte((Int32)lenTest - 1)
                                     );
@@ -1831,8 +1829,8 @@ namespace SevenZip.Compression.LZMA
                             throw new InvalidParamException();
                         }
 
-                        _posStateBits = (int)v;
-                        _posStateMask = (((UInt32)1) << (int)_posStateBits) - 1;
+                        _posStateBits = v;
+                        _posStateMask = (((UInt32)1) << _posStateBits) - 1;
                         break;
                     }
                     case CoderPropID.LitPosBits:
@@ -1843,12 +1841,12 @@ namespace SevenZip.Compression.LZMA
                         }
 
                         Int32 v = (Int32)prop;
-                        if (v < 0 || v > (UInt32)Base.kNumLitPosStatesBitsEncodingMax)
+                        if (v < 0 || v > Base.kNumLitPosStatesBitsEncodingMax)
                         {
                             throw new InvalidParamException();
                         }
 
-                        _numLiteralPosStateBits = (int)v;
+                        _numLiteralPosStateBits = v;
                         break;
                     }
                     case CoderPropID.LitContextBits:
@@ -1859,12 +1857,12 @@ namespace SevenZip.Compression.LZMA
                         }
 
                         Int32 v = (Int32)prop;
-                        if (v < 0 || v > (UInt32)Base.kNumLitContextBitsMax)
+                        if (v < 0 || v > Base.kNumLitContextBitsMax)
                         {
                             throw new InvalidParamException();
                         }
                         ;
-                        _numLiteralContextBits = (int)v;
+                        _numLiteralContextBits = v;
                         break;
                     }
                     case CoderPropID.EndMarker:

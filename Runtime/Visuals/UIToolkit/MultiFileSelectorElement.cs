@@ -103,7 +103,7 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
             _assetsFullPath = Path.GetFullPath(Application.dataPath);
 
             // Normalize filters: ensure leading '.' and OrdinalIgnoreCase
-            if (filterExtensions != null && filterExtensions.Length > 0)
+            if (filterExtensions is { Length: > 0 })
             {
                 _filterExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 foreach (string ext in filterExtensions)

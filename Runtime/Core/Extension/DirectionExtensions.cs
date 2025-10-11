@@ -295,37 +295,37 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     return Direction.North;
                 }
 
-                if (15 <= angle && angle < 75)
+                if (angle is >= 15 and < 75)
                 {
                     return Direction.NorthEast;
                 }
 
-                if (75 <= angle && angle < 105)
+                if (angle is >= 75 and < 105)
                 {
                     return Direction.East;
                 }
 
-                if (105 <= angle && angle < 165)
+                if (angle is >= 105 and < 165)
                 {
                     return Direction.SouthEast;
                 }
 
-                if (165 <= angle && angle < 195)
+                if (angle is >= 165 and < 195)
                 {
                     return Direction.South;
                 }
 
-                if (195 <= angle && angle < 255)
+                if (angle is >= 195 and < 255)
                 {
                     return Direction.SouthWest;
                 }
 
-                if (255 <= angle && angle < 285)
+                if (angle is >= 255 and < 285)
                 {
                     return Direction.West;
                 }
 
-                if (285 <= angle && angle < 345)
+                if (angle is >= 285 and < 345)
                 {
                     return Direction.NorthWest;
                 }

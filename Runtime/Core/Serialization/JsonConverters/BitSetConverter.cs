@@ -35,7 +35,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
                 if (reader.TokenType == JsonTokenType.EndObject)
                 {
                     int finalCapacity = capacity;
-                    if (indices != null && indices.Count > 0)
+                    if (indices is { Count: > 0 })
                     {
                         int maxIndex = 0;
                         for (int i = 0; i < indices.Count; i++)

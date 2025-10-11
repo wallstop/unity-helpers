@@ -8,7 +8,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Editor.Utils;
 
     public sealed class PrefabCheckerTests : CommonTestBase
     {

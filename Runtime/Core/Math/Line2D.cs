@@ -123,7 +123,7 @@ namespace WallstopStudios.UnityHelpers.Core.Math
             float t1 = (diff.x * d2.y - diff.y * d2.x) / determinant;
             float t2 = (diff.x * d1.y - diff.y * d1.x) / determinant;
 
-            if (t1 >= 0 && t1 <= 1 && t2 >= 0 && t2 <= 1)
+            if (t1 is >= 0 and <= 1 && t2 is >= 0 and <= 1)
             {
                 intersection = from + t1 * d1;
                 return true;

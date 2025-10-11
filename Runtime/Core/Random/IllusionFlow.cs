@@ -73,7 +73,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                 ulong stateA = ((ulong)_a << UintByteCount) | _b;
                 ulong stateB = ((ulong)_c << UintByteCount) | _d;
                 // Pack _e into the low 32 bits of a double's bit pattern without allocations
-                double packedE = BitConverter.Int64BitsToDouble((long)(ulong)_e);
+                double packedE = BitConverter.Int64BitsToDouble(_e);
                 return new RandomState(
                     stateA,
                     stateB,
