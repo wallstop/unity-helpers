@@ -2,6 +2,7 @@ namespace WallstopStudios.UnityHelpers.Core.Math
 {
     using System;
     using System.Runtime.Serialization;
+    using System.Text.Json.Serialization;
     using DataStructure;
     using ProtoBuf;
     using UnityEngine;
@@ -33,6 +34,7 @@ namespace WallstopStudios.UnityHelpers.Core.Math
         /// </summary>
         /// <param name="from">The starting point.</param>
         /// <param name="to">The ending point.</param>
+        [JsonConstructor]
         public Line3D(Vector3 from, Vector3 to)
         {
             this.from = from;

@@ -1,6 +1,7 @@
 namespace WallstopStudios.UnityHelpers.Core.DataStructure
 {
     using System;
+    using System.Text.Json.Serialization;
     using Helper;
     using Math;
     using UnityEngine;
@@ -15,6 +16,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         public readonly Vector3 min;
         public readonly Vector3 max;
 
+        [JsonConstructor]
         public BoundingBox3D(Vector3 min, Vector3 max)
         {
             if (min.x > max.x || min.y > max.y || min.z > max.z)

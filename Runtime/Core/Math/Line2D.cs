@@ -2,6 +2,7 @@ namespace WallstopStudios.UnityHelpers.Core.Math
 {
     using System;
     using System.Runtime.Serialization;
+    using System.Text.Json.Serialization;
     using DataStructure;
     using Extension;
     using ProtoBuf;
@@ -41,6 +42,7 @@ namespace WallstopStudios.UnityHelpers.Core.Math
         /// </summary>
         /// <param name="from">The starting point.</param>
         /// <param name="to">The ending point.</param>
+        [JsonConstructor]
         public Line2D(Vector2 from, Vector2 to)
         {
             this.from = from;

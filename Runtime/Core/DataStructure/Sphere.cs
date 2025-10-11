@@ -2,6 +2,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 {
     using System;
     using System.Runtime.CompilerServices;
+    using System.Text.Json.Serialization;
     using Helper;
     using Math;
     using UnityEngine;
@@ -20,6 +21,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         /// </summary>
         /// <param name="center">The center point of the sphere.</param>
         /// <param name="radius">The radius of the sphere.</param>
+        [JsonConstructor]
         public Sphere(Vector3 center, float radius)
         {
             this.center = center;

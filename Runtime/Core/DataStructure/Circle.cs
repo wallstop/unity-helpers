@@ -1,6 +1,7 @@
 namespace WallstopStudios.UnityHelpers.Core.DataStructure
 {
     using System;
+    using System.Text.Json.Serialization;
     using Extension;
     using Math;
     using UnityEngine;
@@ -20,6 +21,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         /// </summary>
         /// <param name="center">The center point of the circle.</param>
         /// <param name="radius">The radius of the circle.</param>
+        [JsonConstructor]
         public Circle(Vector2 center, float radius)
         {
             this.center = center;

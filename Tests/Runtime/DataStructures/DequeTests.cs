@@ -139,7 +139,7 @@
         [Test]
         public void ConstructorWithNullCollectionThrowsException()
         {
-            Assert.Throws<ArgumentNullException>(() => new Deque<int>((IEnumerable<int>)null));
+            Assert.Throws<ArgumentNullException>(() => new Deque<int>(null));
         }
 
         [Test]

@@ -1,9 +1,10 @@
-﻿namespace WallstopStudios.UnityHelpers.Tests.Serialization
+namespace WallstopStudios.UnityHelpers.Tests.Serialization
 {
     using System;
     using System.Text.Json;
     using NUnit.Framework;
     using UnityEngine;
+    using UnityEngine.Rendering;
     using WallstopStudios.UnityHelpers.Core.Serialization;
 
     [TestFixture]
@@ -793,5 +794,361 @@
                 Serializer.JsonDeserialize<GameObject>(json)
             );
         }
+
+        [Test]
+        public void LayerMaskConverterSerializeAndDeserializeSuccess()
+        {
+            LayerMask original =
+                1 << LayerMask.NameToLayer("Default") | 1 << LayerMask.NameToLayer("UI");
+            string json = Serializer.JsonStringify(original);
+            LayerMask deserialized = Serializer.JsonDeserialize<LayerMask>(json);
+            Assert.AreEqual(original.value, deserialized.value);
+        }
+
+        [Test]
+        public void LayerMaskConverterAcceptsValueProperty()
+        {
+            int mask = (1 << LayerMask.NameToLayer("Default"));
+            string json = $"{{\"value\":{mask}}}";
+            LayerMask deserialized = Serializer.JsonDeserialize<LayerMask>(json);
+            Assert.AreEqual(mask, deserialized.value);
+        }
+
+        [Test]
+        public void LayerMaskConverterAcceptsLayersByName()
+        {
+            string json = "{\"layers\":[\"Default\",\"UI\"]}";
+            LayerMask deserialized = Serializer.JsonDeserialize<LayerMask>(json);
+            Assert.IsTrue((deserialized.value & (1 << LayerMask.NameToLayer("Default"))) != 0);
+            Assert.IsTrue((deserialized.value & (1 << LayerMask.NameToLayer("UI"))) != 0);
+        }
+
+        [Test]
+        public void LayerMaskConverterInvalidTokenTypeThrowsException()
+        {
+            string invalidJson = "{\"layers\":\"not array\"}";
+            Assert.Throws<JsonException>(() => Serializer.JsonDeserialize<LayerMask>(invalidJson));
+        }
+
+        [Test]
+        public void PoseConverterSerializeAndDeserializeSuccess()
+        {
+            Pose original = new(new Vector3(1, 2, 3), new Quaternion(0, 0, 0, 1));
+            string json = Serializer.JsonStringify(original);
+            Pose deserialized = Serializer.JsonDeserialize<Pose>(json);
+            Assert.AreEqual(original.position, deserialized.position);
+            Assert.AreEqual(original.rotation, deserialized.rotation);
+        }
+
+        [Test]
+        public void PoseConverterUnknownPropertyThrowsException()
+        {
+            string invalidJson = "{\"position\":{\"x\":0,\"y\":0,\"z\":0},\"extra\":0}";
+            Assert.Throws<JsonException>(() => Serializer.JsonDeserialize<Pose>(invalidJson));
+        }
+
+        [Test]
+        public void PlaneConverterSerializeAndDeserializeSuccess()
+        {
+            Plane original = new(new Vector3(0, 1, 0), 5f);
+            string json = Serializer.JsonStringify(original);
+            Plane deserialized = Serializer.JsonDeserialize<Plane>(json);
+            Assert.AreEqual(original.normal, deserialized.normal);
+            Assert.AreEqual(original.distance, deserialized.distance);
+        }
+
+        [Test]
+        public void RayConverterSerializeAndDeserializeSuccess()
+        {
+            Ray original = new(new Vector3(1, 2, 3), new Vector3(0, 0, 1));
+            string json = Serializer.JsonStringify(original);
+            Ray deserialized = Serializer.JsonDeserialize<Ray>(json);
+            Assert.AreEqual(original.origin, deserialized.origin);
+            Assert.AreEqual(original.direction, deserialized.direction);
+        }
+
+        [Test]
+        public void Ray2DConverterSerializeAndDeserializeSuccess()
+        {
+            Ray2D original = new(new Vector2(4, 5), new Vector2(1, 0));
+            string json = Serializer.JsonStringify(original);
+            Ray2D deserialized = Serializer.JsonDeserialize<Ray2D>(json);
+            Assert.AreEqual(original.origin, deserialized.origin);
+            Assert.AreEqual(original.direction, deserialized.direction);
+        }
+
+        [Test]
+        public void RectOffsetConverterSerializeAndDeserializeSuccess()
+        {
+            RectOffset original = new(1, 2, 3, 4);
+            string json = Serializer.JsonStringify(original);
+            RectOffset deserialized = Serializer.JsonDeserialize<RectOffset>(json);
+            Assert.AreEqual(original.left, deserialized.left);
+            Assert.AreEqual(original.right, deserialized.right);
+            Assert.AreEqual(original.top, deserialized.top);
+            Assert.AreEqual(original.bottom, deserialized.bottom);
+        }
+
+        [Test]
+        public void RangeIntConverterSerializeAndDeserializeSuccess()
+        {
+            RangeInt original = new(10, 5);
+            string json = Serializer.JsonStringify(original);
+            RangeInt deserialized = Serializer.JsonDeserialize<RangeInt>(json);
+            Assert.AreEqual(original.start, deserialized.start);
+            Assert.AreEqual(original.length, deserialized.length);
+        }
+
+        [Test]
+        public void Hash128ConverterSerializeAndDeserializeSuccess()
+        {
+            Hash128 original = Hash128.Parse("0123456789abcdef0123456789abcdef");
+            string json = Serializer.JsonStringify(original);
+            Hash128 deserialized = Serializer.JsonDeserialize<Hash128>(json);
+            Assert.AreEqual(original, deserialized);
+        }
+
+        [Test]
+        public void Hash128ConverterObjectShapeSuccess()
+        {
+            Hash128 original = Hash128.Parse("fedcba9876543210fedcba9876543210");
+            string json = $"{{\"value\":\"{original}\"}}";
+            Hash128 deserialized = Serializer.JsonDeserialize<Hash128>(json);
+            Assert.AreEqual(original, deserialized);
+        }
+
+        [Test]
+        public void AnimationCurveConverterSerializeAndDeserializeSuccess()
+        {
+            AnimationCurve original = new(
+                new Keyframe(0f, 0f, 0f, 1f),
+                new Keyframe(1f, 1f, 1f, 0f)
+            );
+            original.preWrapMode = WrapMode.ClampForever;
+            original.postWrapMode = WrapMode.Once;
+            string json = Serializer.JsonStringify(original);
+            AnimationCurve deserialized = Serializer.JsonDeserialize<AnimationCurve>(json);
+            Assert.AreEqual(original.preWrapMode, deserialized.preWrapMode);
+            Assert.AreEqual(original.postWrapMode, deserialized.postWrapMode);
+            Assert.AreEqual(original.keys.Length, deserialized.keys.Length);
+            Assert.AreEqual(original.keys[0].time, deserialized.keys[0].time);
+            Assert.AreEqual(original.keys[0].value, deserialized.keys[0].value);
+        }
+
+        [Test]
+        public void GradientConverterSerializeAndDeserializeSuccess()
+        {
+            Gradient original = new();
+            original.mode = GradientMode.Blend;
+            original.colorKeys = new[]
+            {
+                new GradientColorKey(Color.red, 0f),
+                new GradientColorKey(Color.blue, 1f),
+            };
+            original.alphaKeys = new[]
+            {
+                new GradientAlphaKey(1f, 0f),
+                new GradientAlphaKey(1f, 1f),
+            };
+            string json = Serializer.JsonStringify(original);
+            Gradient deserialized = Serializer.JsonDeserialize<Gradient>(json);
+            Assert.AreEqual(original.mode, deserialized.mode);
+            Assert.AreEqual(original.colorKeys.Length, deserialized.colorKeys.Length);
+            Assert.AreEqual(original.alphaKeys.Length, deserialized.alphaKeys.Length);
+            Assert.AreEqual(original.colorKeys[0].color, deserialized.colorKeys[0].color);
+            Assert.AreEqual(original.colorKeys[0].time, deserialized.colorKeys[0].time);
+        }
+
+        [Test]
+        public void SphericalHarmonicsL2ConverterSerializeAndDeserializeSuccess()
+        {
+            SphericalHarmonicsL2 sh = new();
+            int index = 0;
+            for (int ch = 0; ch < 3; ch++)
+            {
+                for (int c = 0; c < 9; c++)
+                {
+                    sh[ch, c] = index++;
+                }
+            }
+            string json = Serializer.JsonStringify(sh);
+            SphericalHarmonicsL2 deserialized = Serializer.JsonDeserialize<SphericalHarmonicsL2>(
+                json
+            );
+            for (int ch = 0; ch < 3; ch++)
+            {
+                for (int c = 0; c < 9; c++)
+                {
+                    Assert.AreEqual(sh[ch, c], deserialized[ch, c]);
+                }
+            }
+        }
+
+        [Test]
+        public void ResolutionConverterSerializeAndDeserializeSuccess()
+        {
+            Resolution original = new() { width = 1920, height = 1080 };
+            string json = Serializer.JsonStringify(original);
+            Resolution deserialized = Serializer.JsonDeserialize<Resolution>(json);
+            Assert.AreEqual(original.width, deserialized.width);
+            Assert.AreEqual(original.height, deserialized.height);
+        }
+
+        [Test]
+        public void ResolutionConverterWritesRefreshFields()
+        {
+            Resolution original = new() { width = 1280, height = 720 };
+            string json = Serializer.JsonStringify(original);
+            Assert.IsTrue(json.Contains("\"refreshRate\""));
+#if UNITY_2022_2_OR_NEWER
+            Assert.IsTrue(json.Contains("\"refreshRateRatio\""));
+            Assert.IsTrue(json.Contains("\"numerator\""));
+            Assert.IsTrue(json.Contains("\"denominator\""));
+#endif
+        }
+
+        [Test]
+        public void ResolutionConverterReadsRatioShape()
+        {
+#if UNITY_2022_2_OR_NEWER
+            string json =
+                "{\"width\":800,\"height\":600,\"refreshRate\":60,\"refreshRateRatio\":{\"numerator\":60,\"denominator\":1,\"value\":60.0}}";
+#else
+            string json = "{\"width\":800,\"height\":600,\"refreshRate\":60}";
+#endif
+            Resolution deserialized = Serializer.JsonDeserialize<Resolution>(json);
+            string round = Serializer.JsonStringify(deserialized);
+            Assert.IsTrue(round.Contains("\"refreshRate\""));
+        }
+
+        [Test]
+        public void RenderTextureDescriptorConverterSerializeAndDeserializeSuccess()
+        {
+            RenderTextureDescriptor original = new RenderTextureDescriptor(256, 128)
+            {
+                msaaSamples = 1,
+                volumeDepth = 1,
+                mipCount = 1,
+                sRGB = true,
+                useMipMap = false,
+                autoGenerateMips = false,
+                enableRandomWrite = false,
+                bindMS = false,
+                useDynamicScale = false,
+            };
+            string json = Serializer.JsonStringify(original);
+            RenderTextureDescriptor deserialized =
+                Serializer.JsonDeserialize<RenderTextureDescriptor>(json);
+            Assert.AreEqual(original.width, deserialized.width);
+            Assert.AreEqual(original.height, deserialized.height);
+            Assert.AreEqual(original.msaaSamples, deserialized.msaaSamples);
+        }
+
+        [Test]
+        public void MinMaxCurveConverterSerializeAndDeserializeSuccess()
+        {
+            ParticleSystem.MinMaxCurve original = new(2f)
+            {
+                mode = ParticleSystemCurveMode.TwoConstants,
+                constant = 3f,
+                constantMin = 1f,
+                constantMax = 5f,
+                curve = new AnimationCurve(new Keyframe(0, 0), new Keyframe(1, 1)),
+            };
+            string json = Serializer.JsonStringify(original);
+            ParticleSystem.MinMaxCurve deserialized =
+                Serializer.JsonDeserialize<ParticleSystem.MinMaxCurve>(json);
+            Assert.AreEqual(original.mode, deserialized.mode);
+            Assert.AreEqual(original.constant, deserialized.constant);
+            Assert.AreEqual(original.constantMin, deserialized.constantMin);
+            Assert.AreEqual(original.constantMax, deserialized.constantMax);
+        }
+
+        [Test]
+        public void MinMaxGradientConverterSerializeAndDeserializeSuccess()
+        {
+            ParticleSystem.MinMaxGradient original = new(Color.green)
+            {
+                mode = ParticleSystemGradientMode.TwoColors,
+                color = Color.green,
+                colorMin = Color.red,
+                colorMax = Color.blue,
+                gradient = new Gradient(),
+            };
+            string json = Serializer.JsonStringify(original);
+            ParticleSystem.MinMaxGradient deserialized =
+                Serializer.JsonDeserialize<ParticleSystem.MinMaxGradient>(json);
+            Assert.AreEqual(original.mode, deserialized.mode);
+            Assert.AreEqual(original.color, deserialized.color);
+            Assert.AreEqual(original.colorMin, deserialized.colorMin);
+            Assert.AreEqual(original.colorMax, deserialized.colorMax);
+        }
+
+        [Test]
+        public void BoundingSphereConverterSerializeAndDeserializeSuccess()
+        {
+            UnityEngine.BoundingSphere original = new(new Vector3(1, 2, 3), 4f);
+            string json = Serializer.JsonStringify(original);
+            UnityEngine.BoundingSphere deserialized =
+                Serializer.JsonDeserialize<UnityEngine.BoundingSphere>(json);
+            Assert.AreEqual(original.position, deserialized.position);
+            Assert.AreEqual(original.radius, deserialized.radius);
+        }
+
+        [Test]
+        public void RaycastHitConverterSerializeAndDeserializeSuccess()
+        {
+            RaycastHit original = new();
+            original.point = new Vector3(1, 2, 3);
+            original.normal = Vector3.up;
+            original.distance = 5f;
+            string json = Serializer.JsonStringify(original);
+            RaycastHit deserialized = Serializer.JsonDeserialize<RaycastHit>(json);
+            Assert.AreEqual(original.point, deserialized.point);
+            Assert.AreEqual(original.normal, deserialized.normal);
+            Assert.AreEqual(original.distance, deserialized.distance);
+        }
+
+        [Test]
+        public void TouchConverterReadThrowsNotImplementedException()
+        {
+            string json = "{}";
+            Assert.Throws<NotImplementedException>(() => Serializer.JsonDeserialize<Touch>(json));
+        }
+
+        [Test]
+        public void SceneConverterSerializeAndDeserializeSuccess()
+        {
+            var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+            string json = Serializer.JsonStringify(scene);
+            var deserialized = Serializer.JsonDeserialize<UnityEngine.SceneManagement.Scene>(json);
+            Assert.IsTrue(deserialized.IsValid());
+            Assert.AreEqual(scene.name, deserialized.name);
+        }
+
+#if !UNITY_DISABLE_UI
+        [Test]
+        public void ColorBlockConverterSerializeAndDeserializeSuccess()
+        {
+            UnityEngine.UI.ColorBlock original = UnityEngine.UI.ColorBlock.defaultColorBlock;
+            original.normalColor = Color.cyan;
+            original.highlightedColor = Color.yellow;
+            original.pressedColor = Color.gray;
+            original.selectedColor = Color.white;
+            original.disabledColor = Color.black;
+            original.colorMultiplier = 1.5f;
+            original.fadeDuration = 0.2f;
+            string json = Serializer.JsonStringify(original);
+            UnityEngine.UI.ColorBlock deserialized =
+                Serializer.JsonDeserialize<UnityEngine.UI.ColorBlock>(json);
+            Assert.AreEqual(original.normalColor, deserialized.normalColor);
+            Assert.AreEqual(original.highlightedColor, deserialized.highlightedColor);
+            Assert.AreEqual(original.pressedColor, deserialized.pressedColor);
+            Assert.AreEqual(original.selectedColor, deserialized.selectedColor);
+            Assert.AreEqual(original.disabledColor, deserialized.disabledColor);
+            Assert.AreEqual(original.colorMultiplier, deserialized.colorMultiplier);
+            Assert.AreEqual(original.fadeDuration, deserialized.fadeDuration);
+        }
+#endif
     }
 }

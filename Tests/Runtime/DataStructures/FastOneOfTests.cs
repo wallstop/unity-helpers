@@ -376,7 +376,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void ToStringHandlesNull()
         {
-            FastOneOf<int, string, bool> oneOf = (string)null;
+            FastOneOf<int, string, bool> oneOf = null;
             string result = oneOf.ToString();
 
             Assert.AreEqual("T1()", result);

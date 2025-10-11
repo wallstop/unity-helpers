@@ -2,6 +2,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 {
     using System;
     using System.Runtime.CompilerServices;
+    using System.Text.Json.Serialization;
     using Helper;
     using ProtoBuf;
     using UnityEngine;
@@ -34,6 +35,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         [ProtoMember(3)]
         private readonly int _hash;
 
+        [JsonConstructor]
         public FastVector3Int(int x, int y, int z)
         {
             this.x = x;
@@ -47,6 +49,15 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
         public FastVector3Int(int x, int y)
             : this(x, y, 0) { }
+
+        [JsonPropertyName("x")]
+        public int X => x;
+
+        [JsonPropertyName("y")]
+        public int Y => y;
+
+        [JsonPropertyName("z")]
+        public int Z => z;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool operator ==(FastVector3Int lhs, FastVector3Int rhs)

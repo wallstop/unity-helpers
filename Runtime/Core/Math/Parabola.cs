@@ -2,6 +2,7 @@ namespace WallstopStudios.UnityHelpers.Core.Math
 {
     using System;
     using System.Runtime.Serialization;
+    using System.Text.Json.Serialization;
     using Helper;
     using ProtoBuf;
 
@@ -69,6 +70,7 @@ namespace WallstopStudios.UnityHelpers.Core.Math
         /// <param name="maxHeight">Max height of parabola (must be greater than 0).</param>
         /// <param name="length">Length of parabola between x intercepts (must be greater than 0).</param>
         /// <exception cref="ArgumentException">Thrown when maxHeight or length are not positive.</exception>
+        [JsonConstructor]
         public Parabola(float maxHeight, float length)
         {
             if (length <= 0f)
