@@ -1,6 +1,7 @@
 namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
 {
 #if UNITY_EDITOR
+    using System.Collections.Generic;
     using System.IO;
     using NUnit.Framework;
     using UnityEditor;
@@ -49,7 +50,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
 
             PrefabChecker checker = Track(ScriptableObject.CreateInstance<PrefabChecker>());
 
-            var list = new System.Collections.Generic.List<string> { "Assets" };
+            List<string> list = new() { "Assets" };
             checker._assetPaths = list;
 
             Assert.DoesNotThrow(() => checker.RunChecksImproved());

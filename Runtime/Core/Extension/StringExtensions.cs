@@ -5,7 +5,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
     using System.Collections.Immutable;
     using System.Text;
     using Serialization;
-    using UnityEngine;
     using WallstopStudios.UnityHelpers.Utils;
 
     /// <summary>

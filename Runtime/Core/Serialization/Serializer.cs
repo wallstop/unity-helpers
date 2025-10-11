@@ -868,7 +868,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             {
                 try
                 {
-                    Type[] types = declared.Assembly.GetTypes();
+                    Type[] types = ReflectionHelpers.GetTypesFromAssembly(declared.Assembly);
                     Type[] candidates = types
                         .Where(t =>
                             t.IsClass

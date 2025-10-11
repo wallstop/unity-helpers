@@ -226,10 +226,11 @@ namespace WallstopStudios.UnityHelpers.Tags
                 AttributeMetadataCache inst = Instance;
                 if (inst != null && inst._prewarmRelationalOnLoad)
                 {
-                    var report = Core.Attributes.RelationalComponentInitializer.Initialize(
-                        types: null,
-                        logSummary: false
-                    );
+                    RelationalComponentInitializer.Report report =
+                        Core.Attributes.RelationalComponentInitializer.Initialize(
+                            types: null,
+                            logSummary: false
+                        );
                     Debug.Log(
                         $"AttributeMetadataCache: Relational prewarm enabled. TypesWarmed={report.TypesWarmed}, FieldsWarmed={report.FieldsWarmed}, Warnings={report.Warnings}, Errors={report.Errors}."
                     );
@@ -400,20 +401,7 @@ namespace WallstopStudios.UnityHelpers.Tags
                     return type != null;
                 }
 
-                type = Type.GetType(typeName, throwOnError: false, ignoreCase: false);
-
-                if (type == null && !typeName.Contains(','))
-                {
-                    foreach (var assembly in Core.Helper.ReflectionHelpers.GetAllLoadedAssemblies())
-                    {
-                        type = assembly.GetType(typeName, throwOnError: false, ignoreCase: false);
-                        if (type != null)
-                        {
-                            break;
-                        }
-                    }
-                }
-
+                type = Core.Helper.ReflectionHelpers.TryResolveType(typeName);
                 _resolvedTypeCache[typeName] = type;
                 return type != null;
             }

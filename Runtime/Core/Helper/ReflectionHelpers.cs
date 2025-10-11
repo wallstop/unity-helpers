@@ -13,6 +13,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
     using System.Reflection;
     using System.Reflection.Emit;
     using System.Runtime.CompilerServices;
+    using UnityEditor;
 #if !SINGLE_THREADED
     using System.Collections.Concurrent;
 #else
@@ -44,6 +45,17 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
     /// </example>
     public static class ReflectionHelpers
     {
+        // Cache for type resolution by name
+#if !SINGLE_THREADED
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<
+            string,
+            Type
+        > TypeResolutionCache = new(StringComparer.Ordinal);
+#else
+        private static readonly Dictionary<string, Type> TypeResolutionCache = new(
+            StringComparer.Ordinal
+        );
+#endif
 #if SINGLE_THREADED
         private static readonly Dictionary<Type, Func<int, Array>> ArrayCreators = new();
         private static readonly Dictionary<Type, Func<IList>> ListCreators = new();
@@ -3466,6 +3478,115 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             {
                 return Type.EmptyTypes;
             }
+        }
+
+        /// <summary>
+        /// Attempts to resolve a type by name using Type.GetType first, then scans loaded assemblies.
+        /// Returns null if not found. Results are cached.
+        /// </summary>
+        public static Type TryResolveType(string typeName)
+        {
+            if (string.IsNullOrWhiteSpace(typeName))
+            {
+                return null;
+            }
+
+            if (TypeResolutionCache.TryGetValue(typeName, out Type cached))
+            {
+                return cached;
+            }
+
+            Type resolved = null;
+            try
+            {
+                resolved = Type.GetType(typeName, throwOnError: false, ignoreCase: false);
+            }
+            catch
+            {
+                resolved = null;
+            }
+
+            if (resolved == null)
+            {
+                foreach (Assembly asm in GetAllLoadedAssemblies())
+                {
+                    try
+                    {
+                        resolved = asm.GetType(typeName, throwOnError: false, ignoreCase: false);
+                        if (resolved != null)
+                        {
+                            break;
+                        }
+                    }
+                    catch
+                    {
+                        // swallow and continue
+                    }
+                }
+            }
+
+            TypeResolutionCache[typeName] = resolved;
+            return resolved;
+        }
+
+        /// <summary>
+        /// Gets all loaded types derived from T. In editor, uses TypeCache for speed.
+        /// </summary>
+        public static IEnumerable<Type> GetTypesDerivedFrom<T>(bool includeAbstract = false)
+        {
+#if UNITY_EDITOR
+            try
+            {
+                TypeCache.TypeCollection list = UnityEditor.TypeCache.GetTypesDerivedFrom<T>();
+                return list.Where(t =>
+                    t != null && (includeAbstract || (t.IsClass && !t.IsAbstract))
+                );
+            }
+            catch
+            {
+                // fall through to runtime path
+            }
+#endif
+            Type baseType = typeof(T);
+            return GetAllLoadedTypes()
+                .Where(t =>
+                    t != null
+                    && baseType.IsAssignableFrom(t)
+                    && (includeAbstract || (t.IsClass && !t.IsAbstract))
+                );
+        }
+
+        /// <summary>
+        /// Gets all loaded types derived from the specified base type. In editor, uses TypeCache for speed.
+        /// </summary>
+        public static IEnumerable<Type> GetTypesDerivedFrom(
+            Type baseType,
+            bool includeAbstract = false
+        )
+        {
+            if (baseType == null)
+            {
+                return Array.Empty<Type>();
+            }
+#if UNITY_EDITOR
+            try
+            {
+                TypeCache.TypeCollection list = UnityEditor.TypeCache.GetTypesDerivedFrom(baseType);
+                return list.Where(t =>
+                    t != null && (includeAbstract || (t.IsClass && !t.IsAbstract))
+                );
+            }
+            catch
+            {
+                // fall through
+            }
+#endif
+            return GetAllLoadedTypes()
+                .Where(t =>
+                    t != null
+                    && baseType.IsAssignableFrom(t)
+                    && (includeAbstract || (t.IsClass && !t.IsAbstract))
+                );
         }
 
         /// <summary>

@@ -17,9 +17,14 @@ namespace WallstopStudios.UnityHelpers.Tests.TestUtils
         )
         {
             if (expected is null)
+            {
                 throw new ArgumentNullException(nameof(expected));
+            }
+
             if (actual is null)
+            {
                 throw new ArgumentNullException(nameof(actual));
+            }
 
             if (expected.Count == actual.Count)
             {
@@ -169,10 +174,16 @@ namespace WallstopStudios.UnityHelpers.Tests.TestUtils
         {
             int cx = a.x.CompareTo(b.x);
             if (cx != 0)
+            {
                 return cx;
+            }
+
             int cy = a.y.CompareTo(b.y);
             if (cy != 0)
+            {
                 return cy;
+            }
+
             return a.z.CompareTo(b.z);
         }
 

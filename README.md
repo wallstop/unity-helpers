@@ -22,16 +22,20 @@ A comprehensive collection of high-performance utilities, data structures, and e
 - **10-15x faster random** ([PRNG.Instance](RANDOM_PERFORMANCE.md)) vs UnityEngine.Random + seedable for determinism
 - **Zero-allocation spatial queries** ([Buffering Pattern](#buffering-pattern)) → no GC spikes, stable 60fps
 - **O(log n) spatial trees** ([Spatial Trees](SPATIAL_TREES_2D_GUIDE.md)) scale to millions of objects
+- **IL-emitted reflection** ([ReflectionHelpers](#reflectionhelpers-blazing-fast-reflection)) → field/property access 10-100x faster than System.Reflection
 
 **🚀 Productivity - Ship Features Faster**
 - **Auto-wire components** ([Relational Components](RELATIONAL_COMPONENTS.md)) → eliminate GetComponent boilerplate
 - **Data-driven effects** ([Effects System](EFFECTS_SYSTEM.md)) → designers create 100s of buffs/debuffs without programmer
 - **20+ editor tools** ([Editor Tools](EDITOR_TOOLS_GUIDE.md)) → automate sprite cropping, animations, atlases
+- **Predictive targeting** ([PredictCurrentTarget](#predictive-targeting-hit-moving-targets)) → perfect ballistics for turrets/missiles in 1 line
+- **Professional pooling** ([Buffers](#professional-grade-object-pooling)) → zero-alloc patterns with automatic cleanup
 
 **🛡️ Production-Ready - Never Break Player Saves**
 - **Protobuf schema evolution** ([Serialization](SERIALIZATION.md#protobuf-schema-evolution-the-killer-feature)) → add/remove fields without breaking old saves
 - **4,000+ test cases** → used in shipped commercial games
 - **IL2CPP optimized** → works with Unity's aggressive compiler
+- **SmartDestroy** ([Lifecycle Helpers](#lifecycle-helpers-no-more-destroyimmediate-bugs)) → editor/runtime safe destruction, never corrupt scenes again
 
 ---
 
@@ -1233,6 +1237,388 @@ public class BulletManager : MonoBehaviour
     }
 }
 ```
+
+## Hidden Gems: Underrated Killer Features
+
+These powerful utilities solve common game development problems but might not be immediately obvious from the feature list.
+
+### Predictive Targeting: Hit Moving Targets
+
+Perfect ballistics in one line. Calculates the intercept point for hitting a moving target with a projectile of known speed.
+
+```csharp
+using WallstopStudios.UnityHelpers.Core.Helper;
+
+public class Turret : MonoBehaviour
+{
+    public float projectileSpeed = 25f;
+
+    void Update()
+    {
+        GameObject target = FindTarget();
+        if (target == null) return;
+
+        // Estimate target velocity (or track it)
+        Vector2 targetVelocity = EstimateVelocity(target);
+
+        // Calculate perfect aim point accounting for projectile travel time
+        Vector2 aimPoint = target.PredictCurrentTarget(
+            launchLocation: transform.position,
+            projectileSpeed: projectileSpeed,
+            predictiveFiring: true,
+            targetVelocity: targetVelocity
+        );
+
+        // Aim and fire
+        transform.up = (aimPoint - (Vector2)transform.position).normalized;
+        Fire();
+    }
+}
+```
+
+**Why this is a game-changer:**
+- Solves quadratic intercept equation with robust fallbacks for edge cases
+- Handles fast/slow projectiles, moving/stationary targets automatically
+- Perfect for: turrets, homing missiles, AI prediction, physics-based games
+- Eliminates need for iterative aiming or complex prediction logic
+
+**Real-world use case:** Tower defense games where enemies move along paths - turrets lead the target perfectly without any tuning.
+
+---
+
+### ReflectionHelpers: Blazing-Fast Reflection
+
+High-performance reflection using IL emission and expression compilation. 10-100x faster than System.Reflection for hot paths.
+
+```csharp
+using WallstopStudios.UnityHelpers.Core.Helper;
+using System.Reflection;
+
+// ONE-TIME: Create cached delegates (do this at initialization)
+FieldInfo healthField = typeof(Enemy).GetField("_health", BindingFlags.NonPublic | BindingFlags.Instance);
+var getHealth = ReflectionHelpers.GetFieldGetter(healthField);      // Cached
+var setHealth = ReflectionHelpers.GetFieldSetter(healthField);      // Cached
+
+// HOT PATH: Use the delegates (10-100x faster than reflection)
+void ProcessEnemies(List<object> enemies)
+{
+    foreach (object enemy in enemies)
+    {
+        float health = (float)getHealth(enemy);
+        setHealth(enemy, health - 10f);
+    }
+}
+```
+
+**Advanced: Typed accessors for zero boxing**
+```csharp
+// For structs or when you need maximum performance
+FieldInfo scoreField = typeof(Player).GetField("Score");
+var getScore = ReflectionHelpers.GetFieldGetter<Player, int>(scoreField);
+var setScore = ReflectionHelpers.GetFieldSetter<Player, int>(scoreField);
+
+Player player = new Player();
+setScore(ref player, 100);  // No boxing, direct struct mutation
+int score = getScore(ref player);
+```
+
+**Why this is essential:**
+- **Serialization systems**: Deserialize thousands of objects per frame
+- **Data binding**: UI systems that update from model properties
+- **Modding APIs**: Safe access to private fields without making everything public
+- **ECS-style systems**: Generic component access without inheritance
+- **IL2CPP safe**: Works with Unity's aggressive compilation
+
+**Performance numbers:** GetField: ~2ns vs ~200ns (100x), SetField: ~3ns vs ~150ns (50x)
+
+---
+
+### Professional-Grade Object Pooling
+
+Thread-safe pooling for Lists, Arrays, Dictionaries, and custom types with automatic cleanup via IDisposable pattern.
+
+```csharp
+using WallstopStudios.UnityHelpers.Utils;
+using WallstopStudios.UnityHelpers.Core.DataStructure;
+
+public class ParticleSystem : MonoBehaviour
+{
+    void Update()
+    {
+        // Get pooled list - automatically returned on scope exit
+        using var lease = Buffers<Vector3>.List.Get(out List<Vector3> positions);
+
+        // Use it freely
+        CalculateParticlePositions(positions);
+
+        // Do spatial query with pooled buffer
+        using var enemiesLease = Buffers<Enemy>.List.Get(out List<Enemy> enemies);
+        enemyTree.GetElementsInRange(transform.position, 10f, enemies);
+
+        foreach (Enemy enemy in enemies)
+        {
+            enemy.TakeDamage(1f);
+        }
+
+        // Both lists automatically returned to pool here - zero cleanup code
+    }
+}
+```
+
+**Advanced: Pooled arrays for high-frequency operations**
+```csharp
+void ProcessFrame(int vertexCount)
+{
+    // Rent array from pool
+    using var lease = WallstopArrayPool<Vector3>.Get(vertexCount, out Vector3[] vertices);
+
+    // Use it for processing
+    mesh.GetVertices(vertices);
+    TransformVertices(vertices);
+    mesh.SetVertices(vertices);
+
+    // Array automatically returned and cleared
+}
+```
+
+**Why this matters:**
+- **Zero GC spikes**: Reuse allocations instead of creating garbage
+- **Automatic cleanup**: IDisposable pattern ensures returns even on exceptions
+- **Thread-safe**: ConcurrentStack backing for multi-threaded scenarios
+- **Type-safe**: Generic pooling with full type safety
+- **Customizable**: Create pools for your own types with custom lifecycle callbacks
+
+**Perfect for:**
+- AI systems querying neighbors every frame
+- Particle systems with thousands of particles
+- Physics raycasts returning hit arrays
+- UI systems updating hundreds of elements
+- Any system doing frequent spatial queries
+
+---
+
+### Lifecycle Helpers: No More DestroyImmediate Bugs
+
+Safe object destruction that works correctly in both edit mode and play mode, preventing scene corruption.
+
+```csharp
+using WallstopStudios.UnityHelpers.Core.Helper;
+
+public class DynamicUI : MonoBehaviour
+{
+    void RebuildUI()
+    {
+        // ❌ WRONG: Can corrupt scenes in edit mode
+        // foreach (Transform child in transform)
+        //     DestroyImmediate(child.gameObject);
+
+        // ✅ RIGHT: Works safely in both modes
+        transform.gameObject.DestroyAllChildrenGameObjects();
+    }
+
+    void CleanupEffect(GameObject effect)
+    {
+        // Automatically uses DestroyImmediate in editor, Destroy at runtime
+        effect.SmartDestroy();
+
+        // Or with delay (runtime only)
+        effect.SmartDestroy(afterTime: 2f);
+    }
+}
+```
+
+**GetOrAddComponent: Idempotent Component Setup**
+```csharp
+public class PlayerSetup : MonoBehaviour
+{
+    void Initialize()
+    {
+        // Always safe - adds only if missing
+        Rigidbody2D rb = gameObject.GetOrAddComponent<Rigidbody2D>();
+        rb.gravityScale = 0;
+
+        // Works with non-generic too
+        Component collider = gameObject.GetOrAddComponent(typeof(CircleCollider2D));
+    }
+}
+```
+
+**Why these are essential:**
+- `SmartDestroy`: Prevents "Destroying assets is not permitted" errors in editor
+- `DestroyAllChildren*`: Cleans hierarchies without index shifting bugs
+- `GetOrAddComponent`: Initialization code that's safe to run multiple times
+- All methods handle null checks and edge cases
+- Works correctly with prefab editing mode
+
+**Common scenarios:**
+- Editor tools that modify hierarchies
+- Runtime UI builders
+- Procedural content generation
+- Testing/setup code that runs multiple times
+
+---
+
+### Convex & Concave Hull Generation
+
+Production-ready implementations of hull generation algorithms for complex shapes from point clouds.
+
+```csharp
+using WallstopStudios.UnityHelpers.Core.Extension;
+using System.Collections.Generic;
+
+public class TerrainOutline : MonoBehaviour
+{
+    void GenerateOutline(List<Vector2> terrainPoints)
+    {
+        // Convex hull (fast, for simple outer bounds)
+        List<Vector2> convexHull = terrainPoints.BuildConvexHull(
+            algorithm: UnityExtensions.ConvexHullAlgorithm.MonotoneChain
+        );
+
+        // Concave hull (slower, but follows terrain shape closely)
+        List<FastVector3Int> gridPositions = GetTerrainGridPositions();
+        var options = new UnityExtensions.ConcaveHullOptions
+        {
+            Strategy = UnityExtensions.ConcaveHullStrategy.Knn,
+            NearestNeighbors = 5  // Lower = tighter fit, higher = smoother
+        };
+        List<FastVector3Int> concaveHull = gridPositions.BuildConcaveHull(
+            grid: GetComponent<Grid>(),
+            options: options
+        );
+
+        // Use for collider generation, fog of war, territory borders, etc.
+    }
+}
+```
+
+**Why this is powerful:**
+- **Convex hulls**: Perfect for collision bounds, fog of war outer limits, vision cones
+- **Concave hulls**: Detailed territory borders, minimap fog, destructible terrain
+- Multiple algorithms: MonotoneChain (fast), Jarvis (simple), Knn/EdgeSplit (concave)
+- Grid-aware: Works with Unity Tilemap/Grid systems out of the box
+
+**Real-world uses:**
+- RTS territory visualization
+- Fog of war boundaries
+- Destructible terrain collision
+- Minimap zone outlines
+- Vision cone generation
+
+---
+
+### Coroutine Timing with Jitter
+
+Production-ready timing utilities with staggered starts to prevent frame spikes.
+
+```csharp
+using WallstopStudios.UnityHelpers.Core.Helper;
+
+public class HealthRegen : MonoBehaviour
+{
+    void Start()
+    {
+        // Poll every 0.5s with random initial delay (prevents all enemies syncing)
+        this.StartFunctionAsCoroutine(
+            action: RegenHealth,
+            updateRate: 0.5f,
+            useJitter: true  // Adds 0-0.5s random initial delay
+        );
+    }
+
+    void RegenHealth()
+    {
+        health += regenPerTick;
+    }
+}
+```
+
+**Why jitter matters:**
+- **Prevents frame spikes**: 100 enemies all polling at once = lag spike
+- **Distributes load**: Staggers work across multiple frames
+- **Simple API**: One parameter prevents performance issues
+
+**Other timing helpers:**
+```csharp
+// Execute after delay
+this.ExecuteFunctionAfterDelay(() => SpawnBoss(), delay: 3f);
+
+// Execute next frame
+this.ExecuteFunctionNextFrame(() => RefreshUI());
+
+// Execute at end of frame (after rendering)
+this.ExecuteFunctionAfterFrame(() => CaptureScreenshot());
+
+// Execute N times over duration
+StartCoroutine(Helpers.ExecuteOverTime(
+    action: () => SpawnMinion(),
+    totalCount: 10,
+    duration: 5f,
+    delay: true  // Space evenly over duration
+));
+```
+
+---
+
+### Cached Lookups: Find<T> with Tag Caching
+
+Eliminates repeated GameObject.FindGameObjectWithTag calls with automatic caching.
+
+```csharp
+using WallstopStudios.UnityHelpers.Core.Helper;
+
+public class GameController : MonoBehaviour
+{
+    void Update()
+    {
+        // First call: searches scene and caches
+        // Subsequent calls: instant lookup from cache
+        AudioManager audio = Helpers.Find<AudioManager>("AudioManager");
+        audio.PlaySound("Click");
+
+        // From within a component (for logging context)
+        PlayerData data = this.Find<PlayerData>("PlayerData");
+    }
+}
+```
+
+**Why this helps:**
+- **Automatic caching**: First call populates cache, subsequent calls are O(1)
+- **Fail-fast**: Logs warnings when tags are missing (can disable)
+- **Memory efficient**: Only caches what you actually use
+- **Invalidation safe**: Removes stale entries automatically
+
+---
+
+### UI Toolkit Progress Bars
+
+Professional progress bar components with multiple visual styles, ready to use.
+
+```csharp
+// Available styles:
+// - CircularProgressBar: Circular/radial progress
+// - RegularProgressBar: Traditional horizontal/vertical
+// - LiquidProgressBar: Liquid/wave effect
+// - GlitchProgressBar: Glitch/cyberpunk effect
+// - MarchingAntsProgressBar: Animated border
+// - WigglyProgressBar: Wavy animation
+// - ArcedProgressBar: Partial arc/gauge
+
+// Use in UXML or code
+var progressBar = new CircularProgressBar
+{
+    Progress = 0.75f,
+    Radius = 50f,
+    Thickness = 10f,
+    Direction = CircularProgressBar.FillDirection.Clockwise,
+    TrackColor = Color.gray,
+    ProgressColor = Color.green
+};
+```
+
+**Located in:** `Styles/Elements/Progress/`
+
+---
 
 ## Performance
 

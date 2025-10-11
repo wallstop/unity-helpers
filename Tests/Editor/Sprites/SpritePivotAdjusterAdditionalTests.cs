@@ -163,11 +163,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
                 // solid 4x4 at top-right (w-4..w-1, h-4..h-1)
                 bool solid = x >= w - 4 && y >= h - 4;
                 if (solid)
+                {
                     pix[y * w + x] = new Color(1, 1, 1, 1);
+                }
                 else if (faint)
+                {
                     pix[y * w + x] = new Color(1, 1, 1, 0.2f);
+                }
                 else
+                {
                     pix[y * w + x] = new Color(0, 0, 0, 0);
+                }
             }
             t.SetPixels(pix);
             t.Apply();

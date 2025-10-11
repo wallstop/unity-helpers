@@ -268,7 +268,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             Texture2D t = new(w, h, TextureFormat.RGBA32, false) { alphaIsTransparency = true };
             Color[] pix = new Color[w * h];
             for (int i = 0; i < pix.Length; i++)
+            {
                 pix[i] = c;
+            }
+
             t.SetPixels(pix);
             t.Apply();
             File.WriteAllBytes(RelToFull(relPath), t.EncodeToPNG());
@@ -280,7 +283,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             Texture2D t = new(w, h, TextureFormat.RGBA32, false) { alphaIsTransparency = true };
             Color[] pix = new Color[w * h];
             for (int i = 0; i < pix.Length; i++)
+            {
                 pix[i] = new Color(0f, 0f, 0f, 0f);
+            }
+
             t.SetPixels(pix);
             t.Apply();
             File.WriteAllBytes(RelToFull(relPath), t.EncodeToPNG());

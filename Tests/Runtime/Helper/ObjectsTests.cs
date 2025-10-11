@@ -7,7 +7,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Helper;
-    using WallstopStudios.UnityHelpers.Tests;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
     [TestFixture]

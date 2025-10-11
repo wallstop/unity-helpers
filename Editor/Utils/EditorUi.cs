@@ -2,8 +2,12 @@
 namespace WallstopStudios.UnityHelpers.Editor.Utils
 {
     using System;
+    using System.Diagnostics;
+    using System.Reflection;
     using UnityEditor;
+    using UnityEditor.TestTools.TestRunner.Api;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Helper;
 
     public static class EditorUi
     {
@@ -41,7 +45,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             {
                 // Use fully-qualified names to avoid requiring using directives when the
                 // test framework isn't available.
-                var api =
+                TestRunnerApi api =
                     ScriptableObject.CreateInstance<UnityEditor.TestTools.TestRunner.Api.TestRunnerApi>();
                 api.RegisterCallbacks(new TestRunnerSuppressCallbacks());
                 _testRunnerApi = api;
@@ -84,36 +88,43 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
         {
             try
             {
-                Type t = Type.GetType(
-                    "NUnit.Framework.TestContext, nunit.framework",
-                    throwOnError: false
+                Type t = ReflectionHelpers.TryResolveType(
+                    "NUnit.Framework.TestContext, nunit.framework"
                 );
                 if (t == null)
                 {
-                    // Fallback: scan loaded assemblies to locate NUnit
-                    var asms = AppDomain.CurrentDomain.GetAssemblies();
-                    for (int i = 0; i < asms.Length && t == null; i++)
+                    foreach (Assembly asm in ReflectionHelpers.GetAllLoadedAssemblies())
                     {
-                        var an = asms[i].GetName().Name;
+                        string an = asm.GetName().Name;
                         if (
-                            an != null
+                            !string.IsNullOrEmpty(an)
                             && an.IndexOf("nunit.framework", StringComparison.OrdinalIgnoreCase)
                                 >= 0
                         )
                         {
-                            t = asms[i].GetType("NUnit.Framework.TestContext", throwOnError: false);
+                            t = asm.GetType("NUnit.Framework.TestContext", throwOnError: false);
+                            if (t != null)
+                            {
+                                break;
+                            }
                         }
                     }
                 }
                 if (t == null)
+                {
                     return false;
-                var prop = t.GetProperty(
+                }
+
+                PropertyInfo prop = t.GetProperty(
                     "CurrentContext",
                     System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static
                 );
                 if (prop == null)
+                {
                     return false;
-                var ctx = prop.GetValue(null, null);
+                }
+
+                object ctx = prop.GetValue(null, null);
                 return ctx != null;
             }
             catch
@@ -127,12 +138,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
         {
             try
             {
-                var st = new System.Diagnostics.StackTrace();
+                StackTrace st = new();
                 int frames = Math.Min(st.FrameCount, 20);
                 for (int i = 0; i < frames; i++)
                 {
-                    var method = st.GetFrame(i)?.GetMethod();
-                    var type = method?.DeclaringType;
+                    MethodBase method = st.GetFrame(i)?.GetMethod();
+                    Type type = method?.DeclaringType;
                     string asm = type?.Assembly?.GetName()?.Name ?? string.Empty;
                     string full = type?.FullName ?? string.Empty;
                     if (

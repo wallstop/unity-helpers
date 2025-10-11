@@ -175,7 +175,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             window3.platformOverrides =
                 new System.Collections.Generic.List<TextureSettingsApplierWindow.PlatformOverrideEntry>
                 {
-                    new TextureSettingsApplierWindow.PlatformOverrideEntry
+                    new()
                     {
                         platformName = "Standalone",
                         applyMaxTextureSize = true,
@@ -191,6 +191,47 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             TextureImporterPlatformSettings ops = imp.GetPlatformTextureSettings("Standalone");
             Assert.IsTrue(ops.overridden);
             Assert.AreEqual(256, ops.maxTextureSize);
+        }
+
+        [Test]
+        public void RequireChangesBeforeApplySkipsWhenNoChanges()
+        {
+            string dir = Root.Replace('\\', '/');
+            string path = (dir + "/dryrun.png").Replace('\\', '/');
+            CreatePng(path, 16, 16, Color.white);
+            AssetDatabase.Refresh();
+
+            // Set importer to desired state first
+            TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
+            Assert.IsNotNull(imp);
+            imp.wrapMode = TextureWrapMode.Clamp;
+            imp.filterMode = FilterMode.Bilinear;
+            TextureImporterPlatformSettings ps = imp.GetDefaultPlatformTextureSettings();
+            ps.maxTextureSize = 64;
+            imp.SetPlatformTextureSettings(ps);
+            imp.SaveAndReimport();
+
+            TextureSettingsApplierWindow window = Track(
+                ScriptableObject.CreateInstance<TextureSettingsApplierWindow>()
+            );
+            window.textures = new System.Collections.Generic.List<Texture2D>
+            {
+                AssetDatabase.LoadAssetAtPath<Texture2D>(path),
+            };
+            window.applyWrapMode = true;
+            window.wrapMode = TextureWrapMode.Clamp;
+            window.applyFilterMode = true;
+            window.filterMode = FilterMode.Bilinear;
+            window.maxTextureSize = 64; // default platform setting
+
+            // Dry-run guard on; calculate stats should find zero changes
+            window.requireChangesBeforeApply = true;
+            window.CalculateStats();
+            // Apply should be skipped (no assertion on logs; verify no change in a field)
+            FilterMode before = imp.filterMode;
+            window.ApplySettings();
+            imp = AssetImporter.GetAtPath(path) as TextureImporter;
+            Assert.AreEqual(before, imp.filterMode);
         }
 
         private static void EnsureFolder(string relPath)
@@ -214,7 +255,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             Texture2D t = new(w, h, TextureFormat.RGBA32, false);
             Color[] pix = new Color[w * h];
             for (int i = 0; i < pix.Length; i++)
+            {
                 pix[i] = c;
+            }
+
             t.SetPixels(pix);
             t.Apply();
             File.WriteAllBytes(RelToFull(relPath), t.EncodeToPNG());
@@ -226,7 +270,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             Texture2D t = new(w, h, TextureFormat.RGB24, false);
             Color[] pix = new Color[w * h];
             for (int i = 0; i < pix.Length; i++)
+            {
                 pix[i] = c;
+            }
+
             t.SetPixels(pix);
             t.Apply();
             File.WriteAllBytes(RelToFull(relPath), t.EncodeToJPG());

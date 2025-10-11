@@ -187,23 +187,24 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             EditorGUILayout.LabelField("Platform Overrides", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(_platformOverridesProp, true);
             EditorGUILayout.BeginHorizontal();
+            string[] knownNames = TexturePlatformNameHelper.GetKnownPlatformNames();
             _addPlatformIndex = EditorGUILayout.Popup(
                 "Add Known Platform",
                 _addPlatformIndex,
-                KnownPlatforms
+                knownNames
             );
             if (GUILayout.Button("Add Selected"))
             {
-                if (0 <= _addPlatformIndex && _addPlatformIndex < KnownPlatforms.Length)
+                if (0 <= _addPlatformIndex && _addPlatformIndex < knownNames.Length)
                 {
-                    AddPlatformIfMissing(KnownPlatforms[_addPlatformIndex]);
+                    AddPlatformIfMissing(knownNames[_addPlatformIndex]);
                 }
             }
             EditorGUILayout.EndHorizontal();
             for (int i = 0; i < platformOverrides.Count; i++)
             {
                 string name = platformOverrides[i]?.platformName?.Trim();
-                if (!string.IsNullOrEmpty(name) && Array.IndexOf(KnownPlatforms, name) < 0)
+                if (!string.IsNullOrEmpty(name) && Array.IndexOf(knownNames, name) < 0)
                 {
                     EditorGUILayout.HelpBox(
                         $"Unknown platform name '{name}'. It will be passed to Unity importer as-is.",
@@ -221,6 +222,23 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 ),
                 requireChangesBeforeApply
             );
+            if (requireChangesBeforeApply && _totalTexturesToProcess >= 0)
+            {
+                if (_texturesThatWillChange == 0)
+                {
+                    EditorGUILayout.HelpBox(
+                        "No textures require changes; Apply will be skipped.",
+                        MessageType.Info
+                    );
+                }
+                else if (_texturesThatWillChange > 0)
+                {
+                    EditorGUILayout.HelpBox(
+                        $"{_texturesThatWillChange} texture(s) will change.",
+                        MessageType.None
+                    );
+                }
+            }
             if (GUILayout.Button("Calculate Stats"))
             {
                 CalculateStats();
@@ -272,7 +290,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         private void AddPlatformIfMissing(string name)
         {
             if (string.IsNullOrEmpty(name))
+            {
                 return;
+            }
+
             if (
                 platformOverrides.Any(p =>
                     string.Equals(p.platformName?.Trim(), name, StringComparison.Ordinal)
@@ -286,7 +307,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
         private TextureSettingsApplierAPI.Config BuildConfig()
         {
-            TextureSettingsApplierAPI.Config config = new TextureSettingsApplierAPI.Config
+            TextureSettingsApplierAPI.Config config = new()
             {
                 applyReadWriteEnabled = applyReadOnly,
                 readWriteEnabled = !isReadOnly,
@@ -309,7 +330,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 applyCompression = false,
                 applyCrunchCompression = false,
             };
-            if (platformOverrides != null && 0 < platformOverrides.Count)
+            if (platformOverrides is { Count: > 0 })
             {
                 TextureSettingsApplierAPI.PlatformOverride[] arr =
                     new TextureSettingsApplierAPI.PlatformOverride[platformOverrides.Count];
@@ -345,7 +366,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             foreach (string extRaw in spriteFileExtensions ?? Enumerable.Empty<string>())
             {
                 if (string.IsNullOrWhiteSpace(extRaw))
+                {
                     continue;
+                }
+
                 string ext = extRaw.StartsWith(".") ? extRaw : "." + extRaw;
                 _ = allowedExtensions.Add(ext);
             }
@@ -355,7 +379,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             foreach (Object directory in directories ?? Enumerable.Empty<Object>())
             {
                 if (directory == null)
+                {
                     continue;
+                }
+
                 string assetPath = AssetDatabase.GetAssetPath(directory);
                 if (!string.IsNullOrWhiteSpace(assetPath) && AssetDatabase.IsValidFolder(assetPath))
                 {
@@ -371,16 +398,25 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     out string[] folders
                 );
                 for (int i = 0; i < folderAssetPaths.Count; i++)
+                {
                     folders[i] = folderAssetPaths[i];
+                }
+
                 string[] guids = AssetDatabase.FindAssets("t:Texture2D", folders);
                 for (int i = 0; i < guids.Length; i++)
                 {
                     string p = AssetDatabase.GUIDToAssetPath(guids[i]);
                     if (string.IsNullOrWhiteSpace(p))
+                    {
                         continue;
+                    }
+
                     string ext = Path.GetExtension(p);
                     if (allowedExtensions.Count > 0 && !allowedExtensions.Contains(ext))
+                    {
                         continue;
+                    }
+
                     _ = unique.Add(p);
                 }
             }
@@ -392,10 +428,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 string p = AssetDatabase.GetAssetPath(t);
                 if (string.IsNullOrWhiteSpace(p))
+                {
                     continue;
+                }
+
                 string ext = Path.GetExtension(p);
                 if (allowedExtensions.Count > 0 && !allowedExtensions.Contains(ext))
+                {
                     continue;
+                }
+
                 _ = unique.Add(p);
             }
 
@@ -409,7 +451,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             _texturesThatWillChange = 0;
             _assetsThatWillChange.Clear();
             if (_assetsThatWillChange.Capacity < targets.Count)
+            {
                 _assetsThatWillChange.Capacity = targets.Count;
+            }
 
             TextureSettingsApplierAPI.Config config = BuildConfig();
             double last = EditorApplication.timeSinceStartup;
@@ -459,6 +503,25 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             List<string> targets = GetTargetTexturePaths();
             TextureSettingsApplierAPI.Config config = BuildConfig();
+            // Warn about unknown platforms prior to apply
+            if (platformOverrides != null)
+            {
+                string[] knownNames = TexturePlatformNameHelper.GetKnownPlatformNames();
+                for (int i = 0; i < platformOverrides.Count; i++)
+                {
+                    string name = platformOverrides[i]?.platformName?.Trim();
+                    if (
+                        !string.IsNullOrEmpty(name)
+                        && Array.IndexOf(knownNames, name) < 0
+                        && !string.Equals(name, "DefaultTexturePlatform", StringComparison.Ordinal)
+                    )
+                    {
+                        this.LogWarn(
+                            $"Unknown texture platform '{name}'. Settings will be applied as-is."
+                        );
+                    }
+                }
+            }
             int count = 0;
             using (Buffers<TextureImporter>.List.Get(out List<TextureImporter> changed))
             {
@@ -487,7 +550,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                             break;
                         }
                         if (shouldUpdate)
+                        {
                             lastUpdate = now;
+                        }
 
                         if (
                             TextureSettingsApplierAPI.TryUpdateTextureSettings(
@@ -511,7 +576,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     AssetDatabase.StopAssetEditing();
                     Utils.EditorUi.ClearProgress();
                     for (int j = 0; j < changed.Count; j++)
+                    {
                         changed[j].SaveAndReimport();
+                    }
                 }
             }
 

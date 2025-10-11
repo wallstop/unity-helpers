@@ -214,9 +214,14 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             {
                 Type g = fieldType.GetGenericTypeDefinition();
                 if (g == typeof(List<>))
+                {
                     return fieldType.GenericTypeArguments[0];
+                }
+
                 if (g == typeof(HashSet<>))
+                {
                     return fieldType.GenericTypeArguments[0];
+                }
             }
             return fieldType;
         }

@@ -457,9 +457,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 string result = PRNG.Instance.NextWeighted(items);
                 seen.Add(result);
                 if (result == "common")
+                {
                     commonCount++;
+                }
                 else if (result == "rare")
+                {
                     rareCount++;
+                }
             }
 
             Assert.AreEqual(2, seen.Count);
@@ -500,9 +504,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 int result = PRNG.Instance.NextWeightedIndex(weights);
                 seen.Add(result);
                 if (result == 0)
+                {
                     index0Count++;
+                }
                 else if (result == 1)
+                {
                     index1Count++;
+                }
             }
 
             Assert.AreEqual(2, seen.Count);
@@ -541,7 +549,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             for (int i = 0; i < 1000; ++i)
             {
                 if (PRNG.Instance.NextBool(0.7f))
+                {
                     trueCount++;
+                }
             }
 
             Assert.Greater(trueCount, 600);

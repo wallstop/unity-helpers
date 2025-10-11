@@ -5,7 +5,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.TestTools;
-    using WallstopStudios.UnityHelpers.Tests;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
     using WallstopStudios.UnityHelpers.Utils;
 

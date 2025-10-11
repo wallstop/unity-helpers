@@ -3,10 +3,8 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
     using System;
     using System.Collections.Generic;
     using System.IO;
-    using System.Linq;
     using UnityEngine;
     using UnityEngine.UIElements;
-    using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper;
 
     /// <summary>

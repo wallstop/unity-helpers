@@ -922,7 +922,9 @@
             {
                 count++;
                 if (count == 3)
+                {
                     break;
+                }
             }
 
             Assert.AreEqual(3, count);
@@ -2626,7 +2628,9 @@
             {
                 count++;
                 if (count == 3)
+                {
                     break;
+                }
             }
 
             Assert.AreEqual(3, count);

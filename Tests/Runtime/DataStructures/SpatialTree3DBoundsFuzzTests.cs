@@ -1,6 +1,5 @@
 namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 {
-    using System;
     using System.Collections.Generic;
     using NUnit.Framework;
     using UnityEngine;

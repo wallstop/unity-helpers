@@ -36,7 +36,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             CreatePng(texPath, 16, 16, Color.white);
             AssetDatabase.Refresh();
 
-            var config = new TextureSettingsApplierAPI.Config
+            TextureSettingsApplierAPI.Config config = new()
             {
                 applyPlatformMaxTextureSize = true,
                 platformMaxTextureSize = 64,
@@ -71,13 +71,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             CreatePng(texPath, 32, 32, Color.white);
             AssetDatabase.Refresh();
 
-            var platform = new TextureSettingsApplierAPI.PlatformOverride
+            TextureSettingsApplierAPI.PlatformOverride platform = new()
             {
                 name = "Standalone",
                 applyMaxTextureSize = true,
                 maxTextureSize = 128,
             };
-            var config = new TextureSettingsApplierAPI.Config
+            TextureSettingsApplierAPI.Config config = new()
             {
                 platformOverrides = new[] { platform },
             };
@@ -93,6 +93,40 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
 
             TextureImporterPlatformSettings ops = importer.GetPlatformTextureSettings("Standalone");
             Assert.AreEqual(128, ops.maxTextureSize);
+            Assert.IsTrue(ops.overridden);
+        }
+
+        [Test]
+        public void UnknownPlatformOverrideDoesNotCrashAndIsApplied()
+        {
+            string texPath = (Root + "/api_tex_unknown.png").Replace('\\', '/');
+            CreatePng(texPath, 32, 32, Color.white);
+            AssetDatabase.Refresh();
+
+            TextureSettingsApplierAPI.PlatformOverride platform = new()
+            {
+                name = "BogusPlatform",
+                applyMaxTextureSize = true,
+                maxTextureSize = 96,
+            };
+            TextureSettingsApplierAPI.Config config = new()
+            {
+                platformOverrides = new[] { platform },
+            };
+
+            bool changed = TextureSettingsApplierAPI.TryUpdateTextureSettings(
+                texPath,
+                in config,
+                out TextureImporter importer
+            );
+            Assert.IsTrue(changed, "Expected override to apply even for unknown platform name");
+            Assert.IsNotNull(importer);
+            importer.SaveAndReimport();
+
+            TextureImporterPlatformSettings ops = importer.GetPlatformTextureSettings(
+                "BogusPlatform"
+            );
+            Assert.AreEqual(96, ops.maxTextureSize);
             Assert.IsTrue(ops.overridden);
         }
 
@@ -121,7 +155,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             Texture2D t = new(w, h, TextureFormat.RGBA32, false);
             Color[] pix = new Color[w * h];
             for (int i = 0; i < pix.Length; i++)
+            {
                 pix[i] = c;
+            }
+
             t.SetPixels(pix);
             t.Apply();
             File.WriteAllBytes(RelToFull(relPath), t.EncodeToPNG());
