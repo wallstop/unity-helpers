@@ -14,33 +14,34 @@
     <line x1="440" y1="80" x2="440" y2="140"/>
     <line x1="500" y1="80" x2="500" y2="140"/>
   </g>
-  <!-- arrows indicating push/pop at both ends -->
+  <!-- arrows indicating push/pop at both ends (bottom semantics, heads touching bottom border) -->
   <g stroke="#5ec69a" fill="#5ec69a">
-    <line x1="80" y1="70" x2="80" y2="50"/>
-    <polygon points="74,52 86,52 80,42"/>
-    <line x1="560" y1="150" x2="560" y2="170"/>
-    <polygon points="554,168 566,168 560,178"/>
+    <!-- push_front: bottom-up; arrowhead apex touches bottom border at y=140 (center x=110) -->
+    <line x1="110" y1="185" x2="110" y2="140"/>
+    <polygon points="104,150 116,150 110,140"/>
+    <!-- pop_back: bottom-down; arrowhead base touches bottom border at y=140 (center x=290) -->
+    <line x1="290" y1="140" x2="290" y2="185"/>
+    <polygon points="284,140 296,140 290,150"/>
   </g>
   <!-- labels (lighter, separate for readability) -->
-  <g font-family="Verdana,Arial,sans-serif" font-size="11" fill="#c8d1dc">
-    <text x="36" y="38">push_front / pop_front</text>
-    <text x="468" y="196">push_back / pop_back</text>
+  <g font-family="Verdana,Arial,sans-serif" font-size="11" fill="#c8d1dc" text-anchor="middle">
+    <text x="110" y="195">push_front</text>
+    <text x="290" y="195">pop_back</text>
   </g>
   <!-- filled elements -->
   <g fill="rgba(122,162,255,0.22)" stroke="#7aa2ff">
-    <rect x="80" y="80" width="60" height="60"/>
     <rect x="140" y="80" width="60" height="60"/>
     <rect x="200" y="80" width="60" height="60"/>
     <rect x="260" y="80" width="60" height="60"/>
   </g>
-  <!-- light head/tail markers -->
+  <!-- light head/tail markers aligned with operations -->
   <g fill="#5ec69a" stroke="#5ec69a" opacity="0.85">
-    <!-- tail at leftmost shaded (center 110), head at rightmost shaded (center 290) -->
-    <circle cx="110" cy="70" r="4"/>
+    <!-- head at new leftmost shaded (center 170), tail at rightmost shaded (center 290) -->
+    <circle cx="170" cy="70" r="4"/>
     <circle cx="290" cy="70" r="4"/>
   </g>
   <g font-family="Verdana,Arial,sans-serif" font-size="10" fill="#9fb3c8" text-anchor="middle">
-    <text x="110" y="62">tail</text>
-    <text x="290" y="62">head</text>
+    <text x="170" y="62">head</text>
+    <text x="290" y="62">tail</text>
   </g>
 </svg>

@@ -199,7 +199,22 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 EditorGUIUtility.singleLineHeight
             );
             Rect matchByRect = new(rowRect.x, rowRect.y, rowRect.width * 0.35f, rowRect.height);
-            EditorGUI.PropertyField(matchByRect, matchByProp, new GUIContent("Match By"));
+            // Draw a compact label+field for Match By to prevent label width from eating field space
+            const float matchByLabelWidth = 70f;
+            Rect matchByLabelRect = new(
+                matchByRect.x,
+                matchByRect.y,
+                matchByLabelWidth,
+                matchByRect.height
+            );
+            Rect matchByFieldRect = new(
+                matchByLabelRect.x + matchByLabelRect.width + HorizontalSpacing,
+                matchByRect.y,
+                Mathf.Max(0f, matchByRect.width - matchByLabelWidth - HorizontalSpacing),
+                matchByRect.height
+            );
+            EditorGUI.LabelField(matchByLabelRect, "Match By");
+            EditorGUI.PropertyField(matchByFieldRect, matchByProp, GUIContent.none);
             SpriteSettings.MatchMode mode = (SpriteSettings.MatchMode)matchByProp.enumValueIndex;
 #pragma warning disable CS0618 // Type or member is obsolete
             if (mode != SpriteSettings.MatchMode.Any && mode != SpriteSettings.MatchMode.None)
@@ -219,7 +234,22 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 80f,
                 rowRect.height
             );
-            EditorGUI.PropertyField(priorityRect, priorityProp, new GUIContent("Priority"));
+            // Priority area is tight: draw label+field manually to avoid label consuming all width
+            const float priorityLabelWidth = 50f;
+            Rect priorityLabelRect = new(
+                priorityRect.x,
+                priorityRect.y,
+                priorityLabelWidth,
+                priorityRect.height
+            );
+            Rect priorityFieldRect = new(
+                priorityLabelRect.x + priorityLabelRect.width + HorizontalSpacing,
+                priorityRect.y,
+                Mathf.Max(0f, priorityRect.width - priorityLabelWidth - HorizontalSpacing),
+                priorityRect.height
+            );
+            EditorGUI.LabelField(priorityLabelRect, "Priority");
+            EditorGUI.PropertyField(priorityFieldRect, priorityProp, GUIContent.none);
             currentRect.y +=
                 EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
 
