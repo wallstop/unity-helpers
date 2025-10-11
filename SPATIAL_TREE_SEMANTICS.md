@@ -24,6 +24,10 @@ Illustrations:
 
 ![RTree3D](Docs/Images/rtree_3d.svg)
 
+Diagram notes
+- Octree splits are centered along each axis, evenly dividing space into eight octants.
+- KDTree3D splits are data‑dependent and may be off‑center; the diagram shows an off‑center y‑split to emphasize this difference.
+
 ## 2D: Consistent Results Across QuadTree2D and KdTree2D
 
 - QuadTree2D and KdTree2D (balanced and unbalanced) index points and use equivalent per‑point checks for range and bounds queries. For the same input data and the same queries, they return the same results. Differences are limited to construction/query performance and memory layout.
