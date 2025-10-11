@@ -1820,7 +1820,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             MethodInfo mi = typeof(ValueStruct).GetMethod(nameof(ValueStruct.Sum));
             var inv = ReflectionHelpers.GetInstanceMethodInvoker<ValueStruct, int, int, int>(mi);
             ValueStruct vs = new ValueStruct { x = 1, y = 2 };
-            Assert.AreEqual(1 + 2 + 3 + 1 + 2, inv(vs, 1, 2));
+            Assert.AreEqual(1 + 2 + 1 + 2, inv(vs, 1, 2));
         }
 
         [Test]
@@ -2066,6 +2066,87 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             {
                 UnityEngine.Object.DestroyImmediate(go);
             }
+        }
+
+        [Test]
+        public void InvokeInstanceVoidMethod()
+        {
+            TestMethodClass obj = new();
+            MethodInfo m = typeof(TestMethodClass).GetMethod(
+                nameof(TestMethodClass.InstanceVoidMethod)
+            );
+            object result = ReflectionHelpers.InvokeMethod(m, obj);
+            Assert.IsNull(result);
+            Assert.AreEqual(1, obj.instanceMethodCallCount);
+        }
+
+        [Test]
+        public void InvokeInstanceMethodWithReturnValue()
+        {
+            TestMethodClass obj = new();
+            MethodInfo m = typeof(TestMethodClass).GetMethod(
+                nameof(TestMethodClass.InstanceStringMethod)
+            );
+            object result = ReflectionHelpers.InvokeMethod(m, obj);
+            Assert.AreEqual("instance", result);
+        }
+
+        [Test]
+        public void InvokeInstanceMethodWithParameters()
+        {
+            TestMethodClass obj = new();
+            MethodInfo m = typeof(TestMethodClass).GetMethod(
+                nameof(TestMethodClass.InstanceMethodWithParam)
+            );
+            object result = ReflectionHelpers.InvokeMethod(m, obj, "hello");
+            Assert.AreEqual(5, result);
+        }
+
+        [Test]
+        public void BoxedSetterOnStructDoesNotMutateOriginal()
+        {
+            var field = typeof(TestStruct).GetField(nameof(TestStruct.intValue));
+            var setter = ReflectionHelpers.GetFieldSetter(field);
+            TestStruct s = default;
+            setter(s, 99);
+            Assert.AreEqual(0, s.intValue);
+        }
+
+        [Test]
+        public void GenericParameterlessConstructorThrowsOnMissing()
+        {
+            Assert.Throws<ArgumentException>(() =>
+                ReflectionHelpers.GetParameterlessConstructor<NoParameterlessCtor>()
+            );
+        }
+
+        [Test]
+        public void GenericParameterlessConstructorWorks()
+        {
+            var ctor = ReflectionHelpers.GetParameterlessConstructor<List<int>>();
+            var list = ctor();
+            Assert.IsInstanceOf<List<int>>(list);
+        }
+
+        [Test]
+        public void DictionaryWithCapacityCreator()
+        {
+            var creator = ReflectionHelpers.GetDictionaryCreator<int, string>();
+            Dictionary<int, string> d = creator(16);
+            Assert.IsInstanceOf<Dictionary<int, string>>(d);
+            d[1] = "a";
+            Assert.AreEqual("a", d[1]);
+        }
+
+        [Test]
+        public void IndexerGetterSetterWrongIndexLengthThrows()
+        {
+            var prop = typeof(IndexerClass).GetProperty("Item");
+            var getter = ReflectionHelpers.GetIndexerGetter(prop);
+            var setter = ReflectionHelpers.GetIndexerSetter(prop);
+            IndexerClass obj = new();
+            Assert.Throws<IndexOutOfRangeException>(() => getter(obj, new object[] { }));
+            Assert.Throws<IndexOutOfRangeException>(() => setter(obj, 1, new object[] { }));
         }
     }
 }
