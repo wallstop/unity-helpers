@@ -33,4 +33,14 @@
     <rect x="200" y="80" width="60" height="60"/>
     <rect x="260" y="80" width="60" height="60"/>
   </g>
+  <!-- light head/tail markers -->
+  <g fill="#5ec69a" stroke="#5ec69a" opacity="0.85">
+    <!-- tail at leftmost shaded (center 110), head at rightmost shaded (center 290) -->
+    <circle cx="110" cy="70" r="4"/>
+    <circle cx="290" cy="70" r="4"/>
+  </g>
+  <g font-family="Verdana,Arial,sans-serif" font-size="10" fill="#9fb3c8" text-anchor="middle">
+    <text x="110" y="62">tail</text>
+    <text x="290" y="62">head</text>
+  </g>
 </svg>

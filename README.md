@@ -101,17 +101,17 @@ Unity Helpers was built to solve common game development challenges with **perfo
 - Math & Extensions — [Core Math & Extensions](MATH_AND_EXTENSIONS.md)
 - Singletons — [Singleton Utilities](SINGLETONS.md)
 - Relational Components — [Relational Components](RELATIONAL_COMPONENTS.md)
-- Effects System — [EFFECTS_SYSTEM.md](EFFECTS_SYSTEM.md)
-- Spatial Tree 2D Performance — [SPATIAL_TREE_2D_PERFORMANCE.md](SPATIAL_TREE_2D_PERFORMANCE.md)
-- Spatial Tree 3D Performance — [SPATIAL_TREE_3D_PERFORMANCE.md](SPATIAL_TREE_3D_PERFORMANCE.md)
- - Spatial Tree Semantics — [SPATIAL_TREE_SEMANTICS.md](SPATIAL_TREE_SEMANTICS.md)
- - 2D Spatial Trees Guide — [SPATIAL_TREES_2D_GUIDE.md](SPATIAL_TREES_2D_GUIDE.md)
- - Hulls (Convex vs Concave) — [HULLS.md](HULLS.md)
- - Data Structures — [DATA_STRUCTURES.md](DATA_STRUCTURES.md)
-- Random Performance — [RANDOM_PERFORMANCE.md](RANDOM_PERFORMANCE.md)
-- Changelog — [CHANGELOG.md](CHANGELOG.md)
-- License — [LICENSE.md](LICENSE.md)
-- Third‑Party Notices — [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
+ - Effects System — [Effects System](EFFECTS_SYSTEM.md)
+ - Spatial Tree 2D Performance — [Spatial Tree 2D Performance](SPATIAL_TREE_2D_PERFORMANCE.md)
+ - Spatial Tree 3D Performance — [Spatial Tree 3D Performance](SPATIAL_TREE_3D_PERFORMANCE.md)
+  - Spatial Tree Semantics — [Spatial Tree Semantics](SPATIAL_TREE_SEMANTICS.md)
+  - 2D Spatial Trees Guide — [2D Spatial Trees Guide](SPATIAL_TREES_2D_GUIDE.md)
+  - Hulls (Convex vs Concave) — [Hulls (Convex vs Concave)](HULLS.md)
+  - Data Structures — [Data Structures](DATA_STRUCTURES.md)
+ - Random Performance — [Random Performance](RANDOM_PERFORMANCE.md)
+ - Changelog — [Changelog](CHANGELOG.md)
+ - License — [License](LICENSE.md)
+ - Third‑Party Notices — [Third‑Party Notices](THIRD_PARTY_NOTICES.md)
 
 ## Installation
 
@@ -192,7 +192,7 @@ When to use what
 - Hot loops/large arrays: Fast or FastPOCO (POCO-only graphs)
 - Mixed graphs with Unity types: Fast
 
-See the full guide for trade-offs, tips, and examples: [SERIALIZATION.md](SERIALIZATION.md)
+See the full guide for trade-offs, tips, and examples: [Serialization Guide](SERIALIZATION.md)
 ## Quick Start Guide
 
 ### Random Number Generation
@@ -563,7 +563,7 @@ Tips:
 - Prefer `%`-style changes with Multiplication and small flat changes with Addition.
 - Keep tag strings consistent; centralize in constants to avoid mistakes.
 
-Further reading: see the full guide [EFFECTS_SYSTEM.md](EFFECTS_SYSTEM.md).
+Further reading: see the full guide [Effects System](EFFECTS_SYSTEM.md).
 
 ### Component Attributes
 
@@ -633,7 +633,7 @@ public class PlayerController : MonoBehaviour
 
 ### Serialization
 
- [Full guide: SERIALIZATION.md](SERIALIZATION.md)
+ [Full guide: Serialization](SERIALIZATION.md)
 
 Fast, compact serialization for save systems, config, and networking.
 
@@ -1150,11 +1150,11 @@ Found a bug or have a feature request? [Open an issue](https://github.com/wallst
 
 For a complete, user-friendly walkthrough of `[ParentComponent]`, `[ChildComponent]`, and `[SiblingComponent]` including examples, recipes, and FAQs, see:
 
-- `RELATIONAL_COMPONENTS.md`
+- [Relational Components](RELATIONAL_COMPONENTS.md)
 
 Troubleshooting common issues (runtime-only assignment, filters, depth, inactive objects):
 
-- `RELATIONAL_COMPONENTS.md#troubleshooting`
+- [Relational Components — Troubleshooting](RELATIONAL_COMPONENTS.md#troubleshooting)
 
 ---
 
