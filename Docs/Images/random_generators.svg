@@ -47,10 +47,25 @@
     <text x="70" y="315">uniform</text>
   </g>
 
-  <!-- Gaussian curve -->
-  <g fill="none" stroke="#5ec69a" stroke-width="2">
-    <path d="M220 300 C 235 270, 245 250, 260 250 C 275 250, 285 270, 300 300"/>
-    <path d="M300 300 C 315 330, 325 350, 340 350" opacity="0"/>
+  <!-- Gaussian curve (proper normal distribution) -->
+  <g stroke="#5ec69a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Mean=280, sigma=20, base=300, amplitude=60; y = base - amp * exp(-((x-mean)^2)/(2*sigma^2)) -->
+    <path fill="#5ec69a" fill-opacity="0.18"
+          d="M220 299.33
+             L230 297.36
+             L240 291.88
+             L250 280.52
+             L260 263.61
+             L270 247.05
+             L280 240
+             L290 247.05
+             L300 263.61
+             L310 280.52
+             L320 291.88
+             L330 297.36
+             L340 299.33
+             L340 300
+             L220 300 Z"/>
   </g>
   <g font-family="Verdana,Arial,sans-serif" font-size="10" fill="#9fb3c8">
     <text x="240" y="315">gaussian</text>

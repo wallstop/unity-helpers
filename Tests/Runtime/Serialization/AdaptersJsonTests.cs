@@ -10,7 +10,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         [Test]
         public void FastVector2IntRoundTrips()
         {
-            FastVector2Int v = new FastVector2Int(-3, 7);
+            FastVector2Int v = new(-3, 7);
             string json = Serializer.JsonStringify(v);
             FastVector2Int again = Serializer.JsonDeserialize<FastVector2Int>(json);
             Assert.AreEqual(v, again, "FastVector2Int should round-trip by value");
@@ -19,7 +19,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         [Test]
         public void FastVector3IntRoundTrips()
         {
-            FastVector3Int v = new FastVector3Int(1, -2, 3);
+            FastVector3Int v = new(1, -2, 3);
             string json = Serializer.JsonStringify(v);
             FastVector3Int again = Serializer.JsonDeserialize<FastVector3Int>(json);
             Assert.AreEqual(v, again, "FastVector3Int should round-trip by value");
@@ -28,7 +28,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         [Test]
         public void KVector2RoundTrips()
         {
-            KVector2 v = new KVector2(1.25f, -2.5f);
+            KVector2 v = new(1.25f, -2.5f);
             string json = Serializer.JsonStringify(v);
             KVector2 again = Serializer.JsonDeserialize<KVector2>(json);
             Assert.AreEqual(v, again, "KVector2 should round-trip by value");
@@ -46,9 +46,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         [Test]
         public void FastOptionsAdaptersRoundTrip()
         {
-            FastVector2Int v2 = new FastVector2Int(9, -4);
-            FastVector3Int v3 = new FastVector3Int(5, 6, -7);
-            KVector2 kv = new KVector2(-3.5f, 8.25f);
+            FastVector2Int v2 = new(9, -4);
+            FastVector3Int v3 = new(5, 6, -7);
+            KVector2 kv = new(-3.5f, 8.25f);
             JsonSerializerOptions options = Serializer.CreateFastJsonOptions();
 
             string j2 = Serializer.JsonStringify(v2, options);

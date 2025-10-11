@@ -41,6 +41,9 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                 AllowTrailingCommas = true,
                 Converters =
                 {
+                    RangeConverterFactory.Instance,
+                    FastVector2IntConverter.Instance,
+                    FastVector3IntConverter.Instance,
                     new JsonStringEnumConverter(),
                     Vector3Converter.Instance,
                     Vector2Converter.Instance,
@@ -103,6 +106,9 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                 AllowTrailingCommas = true,
                 Converters =
                 {
+                    RangeConverterFactory.Instance,
+                    FastVector2IntConverter.Instance,
+                    FastVector3IntConverter.Instance,
                     new JsonStringEnumConverter(),
                     Vector3Converter.Instance,
                     Vector2Converter.Instance,
@@ -154,7 +160,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             return new JsonSerializerOptions
             {
                 IgnoreReadOnlyFields = false,
-                IgnoreReadOnlyProperties = false,
+                IgnoreReadOnlyProperties = true,
                 ReferenceHandler = null,
                 PropertyNameCaseInsensitive = false,
                 IncludeFields = false,
@@ -163,6 +169,9 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                 AllowTrailingCommas = false,
                 Converters =
                 {
+                    RangeConverterFactory.Instance,
+                    FastVector2IntConverter.Instance,
+                    FastVector3IntConverter.Instance,
                     Vector3Converter.Instance,
                     Vector2Converter.Instance,
                     Vector4Converter.Instance,
@@ -374,6 +383,9 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
 
         static Serializer()
         {
+            // Initialize protobuf surrogates and any other serialization bootstrapping here
+            // so initialization does not depend on JSON option access.
+            ProtobufUnityModel.EnsureInitialized();
             try
             {
                 MethodInfo[] methods = typeof(ProtoBuf.Serializer).GetMethods(

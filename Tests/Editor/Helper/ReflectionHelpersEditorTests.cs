@@ -8,7 +8,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Helper
     using NUnit.Framework;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
-    using WallstopStudios.UnityHelpers.Tests.Attributes;
+    using WallstopStudios.UnityHelpers.Tests.Editor.TestComponents;
 
     [AttributeUsage(
         AttributeTargets.Class

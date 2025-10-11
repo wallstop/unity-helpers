@@ -300,10 +300,10 @@ namespace SevenZip.Compression.LZMA
 
             Base.State state = new();
             state.Init();
-            uint rep0 = 0,
-                rep1 = 0,
-                rep2 = 0,
-                rep3 = 0;
+            uint rep0 = 0;
+            uint rep1 = 0;
+            uint rep2 = 0;
+            uint rep3 = 0;
 
             UInt64 nowPos64 = 0;
             UInt64 outSize64 = (UInt64)outSize;

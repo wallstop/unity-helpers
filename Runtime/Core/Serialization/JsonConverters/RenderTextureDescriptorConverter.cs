@@ -63,17 +63,17 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
                 throw new JsonException($"Invalid token type {reader.TokenType}");
             }
 
-            int width = 0,
-                height = 0,
-                msaa = 1,
-                depth = 0,
-                mips = 1;
-            bool sRGB = false,
-                useMipMap = false,
-                autoMips = false,
-                enableRW = false,
-                bindMS = false,
-                dynScale = false;
+            int width = 0;
+            int height = 0;
+            int msaa = 1;
+            int depth = 0;
+            int mips = 1;
+            bool sRGB = false;
+            bool useMipMap = false;
+            bool autoMips = false;
+            bool enableRW = false;
+            bool bindMS = false;
+            bool dynScale = false;
 #if UNITY_2019_1_OR_NEWER
             TextureDimension dim = TextureDimension.Tex2D;
             ShadowSamplingMode shadow = ShadowSamplingMode.None;

@@ -177,9 +177,9 @@ namespace SevenZip.Compression.LZ
             UInt32 matchMinPos = (_pos > _cyclicBufferSize) ? (_pos - _cyclicBufferSize) : 0;
             UInt32 cur = _bufferOffset + _pos;
             UInt32 maxLen = kStartMaxLen; // to avoid items for len < hashSize;
-            UInt32 hashValue,
-                hash2Value = 0,
-                hash3Value = 0;
+            UInt32 hashValue;
+            UInt32 hash2Value = 0;
+            UInt32 hash3Value = 0;
 
             if (HASH_ARRAY)
             {

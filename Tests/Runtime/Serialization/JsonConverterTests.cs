@@ -62,7 +62,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         [Test]
         public void Color32ConverterSerializeAndDeserializeSuccess()
         {
-            Color32 original = new Color32(10, 20, 30, 40);
+            Color32 original = new(10, 20, 30, 40);
             string json = Serializer.JsonStringify(original);
             Color32 deserialized = Serializer.JsonDeserialize<Color32>(json);
 
@@ -75,7 +75,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         [Test]
         public void Color32ConverterBoundaryValuesSuccess()
         {
-            Color32 original = new Color32(0, 255, 0, 255);
+            Color32 original = new(0, 255, 0, 255);
             string json = Serializer.JsonStringify(original);
             Color32 deserialized = Serializer.JsonDeserialize<Color32>(json);
 
@@ -1025,7 +1025,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         [Test]
         public void RenderTextureDescriptorConverterSerializeAndDeserializeSuccess()
         {
-            RenderTextureDescriptor original = new RenderTextureDescriptor(256, 128)
+            RenderTextureDescriptor original = new(256, 128)
             {
                 msaaSamples = 1,
                 volumeDepth = 1,

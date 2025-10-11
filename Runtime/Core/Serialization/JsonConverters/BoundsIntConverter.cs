@@ -71,12 +71,12 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
                 throw new JsonException("Vector3Int must be an object");
             }
 
-            bool haveX = false,
-                haveY = false,
-                haveZ = false;
-            int x = 0,
-                y = 0,
-                z = 0;
+            bool haveX = false;
+            bool haveY = false;
+            bool haveZ = false;
+            int x = 0;
+            int y = 0;
+            int z = 0;
             while (reader.Read())
             {
                 if (reader.TokenType == JsonTokenType.EndObject)

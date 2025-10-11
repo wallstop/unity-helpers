@@ -44,7 +44,6 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
 #if UNITY_2022_2_OR_NEWER
             int ratioNum = 0;
             int ratioDen = 0;
-            bool haveRatio = false;
 #endif
 
             while (reader.Read())
@@ -94,13 +93,11 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
                                     {
                                         reader.Read();
                                         ratioNum = reader.GetInt32();
-                                        haveRatio = true;
                                     }
                                     else if (reader.ValueTextEquals("denominator"))
                                     {
                                         reader.Read();
                                         ratioDen = reader.GetInt32();
-                                        haveRatio = true;
                                     }
                                     else if (reader.ValueTextEquals("value"))
                                     {

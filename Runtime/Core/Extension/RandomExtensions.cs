@@ -231,10 +231,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         )
         {
             // Marsaglia's method for uniform sphere surface sampling
-            float x,
-                y,
-                z,
-                lengthSquared;
+            float x;
+            float y;
+            float z;
+            float lengthSquared;
             do
             {
                 x = random.NextFloat(-1f, 1f);

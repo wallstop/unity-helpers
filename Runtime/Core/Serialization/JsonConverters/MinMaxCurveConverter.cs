@@ -38,13 +38,13 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
             }
 
             ParticleSystemCurveMode mode = ParticleSystemCurveMode.Constant;
-            float constant = 0f,
-                constantMin = 0f,
-                constantMax = 0f,
-                multiplier = 1f;
-            AnimationCurve curve = null,
-                curveMin = null,
-                curveMax = null;
+            float constant = 0f;
+            float constantMin = 0f;
+            float constantMax = 0f;
+            float multiplier = 1f;
+            AnimationCurve curve = null;
+            AnimationCurve curveMin = null;
+            AnimationCurve curveMax = null;
 
             while (reader.Read())
             {

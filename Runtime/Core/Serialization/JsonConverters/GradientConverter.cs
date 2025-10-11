@@ -135,8 +135,8 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
 
             Color c = default;
             float t = 0f;
-            bool haveColor = false,
-                haveTime = false;
+            bool haveColor = false;
+            bool haveTime = false;
             while (reader.Read())
             {
                 if (reader.TokenType == JsonTokenType.EndObject)
@@ -173,10 +173,10 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
                 throw new JsonException("Invalid alphaKey token");
             }
 
-            float a = 0f,
-                t = 0f;
-            bool haveA = false,
-                haveT = false;
+            float a = 0f;
+            float t = 0f;
+            bool haveA = false;
+            bool haveT = false;
             while (reader.Read())
             {
                 if (reader.TokenType == JsonTokenType.EndObject)

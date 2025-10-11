@@ -135,9 +135,9 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
             static Color AverageSpritesLAB(IEnumerable<Sprite> sprites, float alphaCutoff)
             {
-                double l = 0,
-                    a = 0,
-                    b = 0;
+                double l = 0;
+                double a = 0;
+                double b = 0;
                 int count = 0;
                 foreach (Sprite sprite in sprites)
                 {
@@ -198,10 +198,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
             static Color AverageSpritesHSV(IEnumerable<Sprite> sprites, float alphaCutoff)
             {
-                float sumCos = 0f,
-                    sumSin = 0f,
-                    sumS = 0f,
-                    sumV = 0f;
+                float sumCos = 0f;
+                float sumSin = 0f;
+                float sumS = 0f;
+                float sumV = 0f;
                 int count = 0;
                 foreach (Sprite sprite in sprites)
                 {
@@ -278,14 +278,14 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
             static Color AverageSpritesWeighted(IEnumerable<Sprite> sprites, float alphaCutoff)
             {
-                const float rW = 0.299f,
-                    gW = 0.587f,
-                    bW = 0.114f;
+                const float rW = 0.299f;
+                const float gW = 0.587f;
+                const float bW = 0.114f;
                 float total = 0f;
-                float r = 0f,
-                    g = 0f,
-                    b = 0f,
-                    a = 0f;
+                float r = 0f;
+                float g = 0f;
+                float b = 0f;
+                float a = 0f;
                 foreach (Sprite sprite in sprites)
                 {
                     if (sprite == null)
@@ -311,10 +311,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                             {
                                 continue;
                             }
-                            float rf = c.r / 255f,
-                                gf = c.g / 255f,
-                                bf = c.b / 255f,
-                                af = c.a / 255f;
+                            float rf = c.r / 255f;
+                            float gf = c.g / 255f;
+                            float bf = c.b / 255f;
+                            float af = c.a / 255f;
                             float w = rf * rW + gf * gW + bf * bW;
                             r += rf * w;
                             g += gf * w;
@@ -333,10 +333,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                             {
                                 continue;
                             }
-                            float rf = c.r / 255f,
-                                gf = c.g / 255f,
-                                bf = c.b / 255f,
-                                af = c.a / 255f;
+                            float rf = c.r / 255f;
+                            float gf = c.g / 255f;
+                            float bf = c.b / 255f;
+                            float af = c.a / 255f;
                             float w = rf * rW + gf * gW + bf * bW;
                             r += rf * w;
                             g += gf * w;
@@ -650,10 +650,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             const float bWeight = 0.114f;
 
             float totalWeight = 0f;
-            float r = 0f,
-                g = 0f,
-                b = 0f,
-                a = 0f;
+            float r = 0f;
+            float g = 0f;
+            float b = 0f;
+            float a = 0f;
 
             switch (pixels)
             {

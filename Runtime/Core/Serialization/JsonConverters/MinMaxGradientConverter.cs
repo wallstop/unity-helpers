@@ -35,12 +35,12 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
             }
 
             ParticleSystemGradientMode mode = ParticleSystemGradientMode.Color;
-            Color color = default,
-                colorMin = default,
-                colorMax = default;
-            Gradient gradient = null,
-                gradientMin = null,
-                gradientMax = null;
+            Color color = default;
+            Color colorMin = default;
+            Color colorMax = default;
+            Gradient gradient = null;
+            Gradient gradientMin = null;
+            Gradient gradientMax = null;
 
             while (reader.Read())
             {

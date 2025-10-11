@@ -26,8 +26,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         }
 
         [UnityTearDown]
-        public IEnumerator TearDown()
+        public override IEnumerator UnityTearDown()
         {
+            yield return base.UnityTearDown();
             // Clean up any assets created under our test root
             string[] guids = AssetDatabase.FindAssets("t:Object", new[] { TestRoot });
             foreach (string guid in guids)
@@ -43,7 +44,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-            yield break;
         }
 
         [UnityTest]

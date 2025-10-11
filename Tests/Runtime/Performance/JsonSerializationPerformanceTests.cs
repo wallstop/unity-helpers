@@ -202,8 +202,8 @@
             _ = JsonSerializer.SerializeToUtf8Bytes(sample);
 
             T value = factory();
-            long allocStart,
-                allocEnd;
+            long allocStart;
+            long allocEnd;
             // Pooled - Normal
             Stopwatch sw = Stopwatch.StartNew();
             allocStart = GetAlloc();
@@ -262,8 +262,8 @@
             _ = JsonSerializer.Deserialize<T>(data);
 
             Stopwatch sw = Stopwatch.StartNew();
-            long allocStart,
-                allocEnd;
+            long allocStart;
+            long allocEnd;
             // Pooled - Normal
             allocStart = GetAlloc();
             for (int i = 0; i < Iterations; ++i)
@@ -329,8 +329,8 @@
 
             // Measure JsonStringify (returns string)
             Stopwatch sw = Stopwatch.StartNew();
-            long allocStart,
-                allocEnd;
+            long allocStart;
+            long allocEnd;
             for (int i = 0; i < Iterations; ++i)
             {
                 _ = SerializerAlias.JsonStringify(payload, normal);
