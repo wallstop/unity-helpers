@@ -1,7 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="820" height="360" viewBox="0 0 820 360">
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="360" viewBox="0 0 820 360" version="1.1">
+  <title>Random Generators — Landscape &amp; Usage</title>
+  <desc>Overview of RNG families and guidance. Boxes: PCG, XorShift/Xoshiro, SplitMix, System/Unity Adapters. Notes on streams, distributions, determinism, performance, threading.</desc>
   <rect x="0" y="0" width="820" height="360" fill="#0f0f13"/>
   <g font-family="Verdana,Arial,sans-serif" font-size="14" fill="#c8d1dc">
-    <text x="16" y="26">Random Generators — Landscape & Usage</text>
+    <text x="16" y="26">Random Generators — Landscape &amp; Usage</text>
   </g>
   <g fill="#1d2330" stroke="#7aa2ff" stroke-width="2">
     <rect x="40" y="60" width="160" height="50" rx="8"/>
@@ -13,7 +16,7 @@
     <text x="120" y="92">PCG</text>
     <text x="300" y="92">XorShift/Xoshiro</text>
     <text x="480" y="92">SplitMix</text>
-    <text x="680" y="92">System/Unity Adapters</text>
+    <text x="680" y="92">System / Unity Adapters</text>
   </g>
   <g fill="none" stroke="#9fb3c8" stroke-dasharray="6 6" stroke-width="2">
     <rect x="40" y="130" width="740" height="180" rx="8"/>
@@ -26,4 +29,3 @@
     <text x="50" y="222">- Threading: avoid sharing RNG across threads without locking</text>
   </g>
 </svg>
-
