@@ -128,7 +128,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
             tester.AssignChildComponents();
 
-            Assert.IsTrue((UnityEngine.Object)tester.iface == null);
+            Assert.IsTrue((Object)tester.iface == null);
             yield break;
         }
 

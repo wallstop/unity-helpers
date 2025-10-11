@@ -7,6 +7,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     using UnityEngine;
     using Utils;
 
+    /// <summary>
+    /// Immutable octree for efficient 3D spatial queries.
+    /// </summary>
+    /// <typeparam name="T">Element type contained in the tree.</typeparam>
+    /// <remarks>
+    /// <para><b>⚠️ EXPERIMENTAL:</b> This 3D spatial tree implementation is currently experimental and under active development.</para>
+    /// <para>APIs may change, and performance characteristics may vary. Use with caution in production environments.</para>
+    /// <para>Pros: Good all-around performance for 3D point queries, range queries, and approximate nearest neighbor searches.</para>
+    /// <para>Cons: Immutable structure by design; rebuild when positions change frequently.</para>
+    /// </remarks>
     [Serializable]
     public sealed class OctTree3D<T> : ISpatialTree3D<T>
     {

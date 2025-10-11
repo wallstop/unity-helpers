@@ -285,7 +285,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             tester.AssignParentComponents();
 
             // Should find component implementing ITestInterface
-            Assert.IsTrue((UnityEngine.Object)tester.interfaceParent != null);
+            Assert.IsTrue((Object)tester.interfaceParent != null);
             Assert.IsInstanceOf<ITestInterface>(tester.interfaceParent);
 
             // Should find in array too
@@ -309,7 +309,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             tester.AssignChildComponents();
 
             // Should find component implementing ITestInterface
-            Assert.IsTrue((UnityEngine.Object)tester.interfaceChild != null);
+            Assert.IsTrue((Object)tester.interfaceChild != null);
             Assert.IsInstanceOf<ITestInterface>(tester.interfaceChild);
 
             // Should find in list too
@@ -330,7 +330,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             tester.AssignSiblingComponents();
 
             // Should find component implementing ITestInterface
-            Assert.IsTrue((UnityEngine.Object)tester.interfaceSibling != null);
+            Assert.IsTrue((Object)tester.interfaceSibling != null);
             Assert.IsInstanceOf<ITestInterface>(tester.interfaceSibling);
 
             yield break;

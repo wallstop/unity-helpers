@@ -249,7 +249,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             }
         }
 
-        public sealed class EnabledProbe : UnityEngine.MonoBehaviour { }
+        public sealed class EnabledProbe : MonoBehaviour { }
 
         [Test]
         public void GetFieldGetterClassMemberField()
@@ -1330,7 +1330,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 "Mismatched generic signature should throw"
             );
 
-            MethodInfo instanceToString = typeof(object).GetMethod(nameof(object.ToString));
+            MethodInfo instanceToString = typeof(object).GetMethod(nameof(ToString));
             Assert.Throws<ArgumentException>(
                 () =>
                     ReflectionHelpers.GetStaticMethodInvoker<object, object, string>(
@@ -1388,8 +1388,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 probe.enabled = false;
                 Assert.IsFalse(probe.IsComponentEnabled());
 
-                ScriptableObject so =
-                    UnityEngine.ScriptableObject.CreateInstance<UnityEngine.ScriptableObject>();
+                ScriptableObject so = ScriptableObject.CreateInstance<ScriptableObject>();
                 Assert.IsTrue(so.IsComponentEnabled());
             }
             finally

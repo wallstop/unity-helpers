@@ -12,8 +12,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     /// </summary>
     /// <typeparam name="T">Element type.</typeparam>
     /// <remarks>
-    /// Pros: Great for sized 3D objects (meshes, volumes) with fast box and radius intersection queries.
-    /// Cons: Immutable; rebuild when element bounds change.
+    /// <para><b>⚠️ EXPERIMENTAL:</b> This 3D spatial tree implementation is currently experimental and under active development.</para>
+    /// <para>APIs may change, and performance characteristics may vary. Use with caution in production environments.</para>
+    /// <para>Pros: Great for sized 3D objects (meshes, volumes) with fast box and radius intersection queries.</para>
+    /// <para>Cons: Immutable; rebuild when element bounds change.</para>
     /// </remarks>
     [Serializable]
     public sealed class RTree3D<T> : ISpatialTree3D<T>

@@ -56,6 +56,7 @@ Unity Helpers was built to solve common game development challenges with **perfo
 - Perfect for collision detection, AI, visibility culling
 - **Massive performance gains** for games with many objects
 - Immutable trees with O(log n) query performance
+- **Note**: 3D variants are experimental and under active development
 
 ### Powerful Component Attributes
 - `[ParentComponent]`, `[ChildComponent]`, `[SiblingComponent]` - Auto-wire components
@@ -453,11 +454,14 @@ tree.GetElementsInBounds(searchArea, nearby);
 tree.GetApproximateNearestNeighbors(playerPos, count: 5, nearby);
 ```
 
-#### 3D Spatial Trees
+#### 3D Spatial Trees *(Experimental)*
+
+> **⚠️ EXPERIMENTAL**: 3D spatial trees are under active development. APIs and performance may change.
 
 - **OctTree3D** - Best general-purpose choice for 3D
 - **KDTree3D** - Fast 3D nearest-neighbor queries
 - **RTree3D** - Optimized for 3D bounding volumes
+- **SpatialHash3D** - Efficient for uniformly distributed moving objects
 
 ```csharp
 // Same API as 2D, but with Vector3

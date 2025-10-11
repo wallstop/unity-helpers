@@ -12,8 +12,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     /// </summary>
     /// <typeparam name="T">Element type contained in the tree.</typeparam>
     /// <remarks>
-    /// Pros: Very fast nearest neighbor performance; good for static or batched updates.
-    /// Cons: Immutable structure by design; rebuild when positions change frequently.
+    /// <para><b>⚠️ EXPERIMENTAL:</b> This 3D spatial tree implementation is currently experimental and under active development.</para>
+    /// <para>APIs may change, and performance characteristics may vary. Use with caution in production environments.</para>
+    /// <para>Pros: Very fast nearest neighbor performance; good for static or batched updates.</para>
+    /// <para>Cons: Immutable structure by design; rebuild when positions change frequently.</para>
     /// </remarks>
     [Serializable]
     public sealed class KdTree3D<T> : ISpatialTree3D<T>

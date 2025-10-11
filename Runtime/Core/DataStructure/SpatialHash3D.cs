@@ -11,6 +11,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     /// A 3D spatial hash for fast broad-phase collision detection and neighbor queries.
     /// Simpler and more efficient than octrees for uniformly distributed objects and frequently moving items.
     /// </summary>
+    /// <remarks>
+    /// <para><b>⚠️ EXPERIMENTAL:</b> This 3D spatial hash implementation is currently experimental and under active development.</para>
+    /// <para>APIs may change, and performance characteristics may vary. Use with caution in production environments.</para>
+    /// </remarks>
     [Serializable]
     public sealed class SpatialHash3D<T> : IDisposable
     {

@@ -16,7 +16,7 @@ namespace WallstopStudios.UnityHelpers.Tests.TestUtils
     public abstract class CommonTestBase
     {
         // Per-test tracked UnityEngine.Objects
-        protected readonly List<UnityEngine.Object> _trackedObjects = new();
+        protected readonly List<Object> _trackedObjects = new();
 
         // Per-test tracked IDisposable instances
         protected readonly List<IDisposable> _trackedDisposables = new();
@@ -32,14 +32,13 @@ namespace WallstopStudios.UnityHelpers.Tests.TestUtils
         }
 
         // Per-test tracked async disposal producers (executed during UnityTearDown)
-        protected readonly List<Func<System.Threading.Tasks.ValueTask>> _trackedAsyncDisposals =
-            new();
+        protected readonly List<Func<ValueTask>> _trackedAsyncDisposals = new();
 
         /// <summary>
         /// Track a UnityEngine.Object for automatic cleanup.
         /// </summary>
         protected T Track<T>(T obj)
-            where T : UnityEngine.Object
+            where T : Object
         {
             if (obj != null)
             {
@@ -64,9 +63,7 @@ namespace WallstopStudios.UnityHelpers.Tests.TestUtils
         /// <summary>
         /// Track an async disposal producer to be executed in UnityTearDown.
         /// </summary>
-        protected Func<System.Threading.Tasks.ValueTask> TrackAsyncDisposal(
-            Func<System.Threading.Tasks.ValueTask> producer
-        )
+        protected Func<ValueTask> TrackAsyncDisposal(Func<ValueTask> producer)
         {
             if (producer != null)
             {
@@ -105,11 +102,11 @@ namespace WallstopStudios.UnityHelpers.Tests.TestUtils
             {
                 // Snapshot to avoid list mutation issues during destruction
                 Object[] snapshot = _trackedObjects.ToArray();
-                foreach (UnityEngine.Object obj in snapshot)
+                foreach (Object obj in snapshot)
                 {
                     if (obj != null)
                     {
-                        UnityEngine.Object.DestroyImmediate(obj);
+                        Object.DestroyImmediate(obj);
                     }
                 }
                 _trackedObjects.Clear();
@@ -144,13 +141,13 @@ namespace WallstopStudios.UnityHelpers.Tests.TestUtils
             if (_trackedObjects.Count > 0)
             {
                 Object[] snapshot = _trackedObjects.ToArray();
-                foreach (UnityEngine.Object obj in snapshot)
+                foreach (Object obj in snapshot)
                 {
                     if (obj == null)
                     {
                         continue;
                     }
-                    UnityEngine.Object.Destroy(obj);
+                    Object.Destroy(obj);
                     // allow at least one frame for destruction to process
                     yield return null;
                 }
@@ -168,11 +165,11 @@ namespace WallstopStudios.UnityHelpers.Tests.TestUtils
             if (_trackedObjects.Count > 0)
             {
                 Object[] snapshot = _trackedObjects.ToArray();
-                foreach (UnityEngine.Object obj in snapshot)
+                foreach (Object obj in snapshot)
                 {
                     if (obj != null)
                     {
-                        UnityEngine.Object.DestroyImmediate(obj);
+                        Object.DestroyImmediate(obj);
                     }
                 }
                 _trackedObjects.Clear();

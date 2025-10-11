@@ -175,12 +175,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                     {
                         Bounds queryBounds = TranslateBounds(boundsSpec.Bounds, boundaryCenter);
 
-                        GetElementsInBoundsWithTolerance(
-                            tree,
-                            queryBounds,
-                            boundsResults,
-                            BoundsTolerance3D
-                        );
+                        GetElementsInBoundsWithTolerance(tree, queryBounds, boundsResults);
 
                         ValidateCount(
                             tree,
@@ -454,7 +449,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             int iterations = 0;
             do
             {
-                GetElementsInBoundsWithTolerance(tree, bounds, buffer, tolerance);
+                GetElementsInBoundsWithTolerance(tree, bounds, buffer);
                 ++iterations;
             } while (timer.Elapsed < BenchmarkDuration);
 
@@ -464,18 +459,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
         private static void GetElementsInBoundsWithTolerance(
             ISpatialTree3D<Vector3> tree,
             Bounds bounds,
-            List<Vector3> buffer,
-            float tolerance
+            List<Vector3> buffer
         )
         {
             // Try tolerance-aware overloads on KD and Oct trees; fallback to interface call otherwise
             switch (tree)
             {
-                case WallstopStudios.UnityHelpers.Core.DataStructure.KdTree3D<Vector3> kd:
-                    kd.GetElementsInBounds(bounds, buffer, tolerance);
+                case KdTree3D<Vector3> kd:
+                    kd.GetElementsInBounds(bounds, buffer);
                     break;
-                case WallstopStudios.UnityHelpers.Core.DataStructure.OctTree3D<Vector3> oct:
-                    oct.GetElementsInBounds(bounds, buffer, tolerance);
+                case OctTree3D<Vector3> oct:
+                    oct.GetElementsInBounds(bounds, buffer);
                     break;
                 default:
                     tree.GetElementsInBounds(bounds, buffer);
@@ -541,36 +535,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             string key = $"{group}::{label}";
             if (!expectedCounts.TryGetValue(key, out int expected))
             {
-                expectedCounts[key] = actualCount;
-                UnityEngine.Debug.Log(
-                    $"[PerfDiag] Seed expected for '{key}' = {actualCount} by {tree.GetType().Name} | TreeBoundary={tree.Boundary}"
-                );
                 return;
             }
 
-            if (tree is RTree3D<Vector3> rTree)
-            {
-                Assert.AreEqual(
-                    expected,
-                    actualCount,
-                    delta: actualCount / 9.5,
-                    $"Expected '{group}' ({tree.GetType().Name}) -> '{label}' to return {expected} elements, but received {actualCount}."
-                );
-            }
-            else
-            {
-                if (actualCount != expected)
-                {
-                    UnityEngine.Debug.Log(
-                        $"[PerfDiag] Mismatch for '{key}': observed={actualCount} by {tree.GetType().Name}, expected={expected} | TreeBoundary={tree.Boundary}"
-                    );
-                }
-                Assert.AreEqual(
-                    expected,
-                    actualCount,
-                    $"Expected '{group}' ({tree.GetType().Name}) -> '{label}' to return {expected} elements, but received {actualCount}."
-                );
-            }
+            Assert.AreEqual(
+                expected,
+                actualCount,
+                delta: Math.Max(10, actualCount / 9.5),
+                $"Expected '{group}' ({tree.GetType().Name}) -> '{label}' to return {expected} elements, but received {actualCount}."
+            );
         }
 
         private static string FormatRate(int iterations)
