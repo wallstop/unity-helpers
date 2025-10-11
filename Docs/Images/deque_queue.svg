@@ -13,9 +13,9 @@
   </g>
   <!-- queue arrows: color-coded -->
   <g stroke="#5ec69a" fill="#5ec69a">
-    <!-- enqueue: arrow below, pointing up into queue (length aligned to label) -->
-    <line x1="60" y1="160" x2="60" y2="130"/>
-    <polygon points="54,140 66,140 60,128"/>
+    <!-- enqueue: shorter, more gap to label and box; point to cell center (x=80) -->
+    <line x1="80" y1="152" x2="80" y2="138"/>
+    <polygon points="74,144 86,144 80,136"/>
   </g>
   <g stroke="#d57a7a" fill="#d57a7a">
     <!-- dequeue: arrow below, pointing down away from rightmost occupied cell (x=200), leave larger gap before label -->
@@ -23,7 +23,7 @@
     <polygon points="194,152 206,152 200,162"/>
   </g>
   <g font-family="Verdana,Arial,sans-serif" font-size="11">
-    <text x="60" y="170" text-anchor="middle" fill="#5ec69a">enqueue</text>
+    <text x="80" y="170" text-anchor="middle" fill="#5ec69a">enqueue</text>
     <text x="200" y="170" text-anchor="middle" fill="#d57a7a">dequeue</text>
   </g>
   <g font-family="Verdana,Arial,sans-serif" font-size="11" fill="#9fb3c8">
@@ -47,21 +47,21 @@
   <!-- deque arrows: color-coded and length-aligned to labels -->
   <!-- pushes (green) -->
   <g stroke="#5ec69a" fill="#5ec69a">
-    <!-- push_front (label y=168) -->
-    <line x1="360" y1="158" x2="360" y2="130"/>
-    <polygon points="354,140 366,140 360,128"/>
-    <!-- push_back (label y=188) -->
-    <line x1="540" y1="178" x2="540" y2="130"/>
-    <polygon points="534,140 546,140 540,128"/>
+    <!-- push_front (label y=168), angled to cell center (x=380); base near x=385 -->
+    <line x1="365" y1="150" x2="380" y2="140"/>
+    <polygon points="374,144 386,144 380,136"/>
+    <!-- push_back (label y=188), shorter -->
+    <line x1="540" y1="170" x2="540" y2="140"/>
+    <polygon points="534,144 546,144 540,136"/>
   </g>
   <!-- pops (red) -->
   <g stroke="#d57a7a" fill="#d57a7a">
-    <!-- pop_front (label y=188), increase gap -->
-    <line x1="420" y1="120" x2="420" y2="168"/>
-    <polygon points="414,168 426,168 420,178"/>
-    <!-- pop_back (label y=168), increase gap -->
-    <line x1="500" y1="120" x2="500" y2="148"/>
-    <polygon points="494,148 506,148 500,158"/>
+    <!-- pop_front (label y=188), even more gap -->
+    <line x1="420" y1="120" x2="420" y2="164"/>
+    <polygon points="414,164 426,164 420,174"/>
+    <!-- pop_back (label y=168), even more gap -->
+    <line x1="500" y1="120" x2="500" y2="144"/>
+    <polygon points="494,144 506,144 500,154"/>
   </g>
   <g font-family="Verdana,Arial,sans-serif" font-size="11">
     <!-- staggered labels to avoid overlap; pushes = green, pops = red -->

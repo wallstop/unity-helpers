@@ -15,23 +15,23 @@
     <line x1="500" y1="80" x2="500" y2="140"/>
   </g>
   <!-- arrows indicating push/pop at both ends (color-coded, length aligned to labels) -->
-  <!-- pushes (green) -->
+  <!-- pushes (green), shorter arrows -->
   <g stroke="#5ec69a" fill="#5ec69a">
-    <!-- push_front: up; base near label (y=205) -->
-    <line x1="110" y1="195" x2="110" y2="140"/>
-    <polygon points="104,150 116,150 110,140"/>
-    <!-- push_back: up; base near label (y=220) -->
-    <line x1="350" y1="210" x2="350" y2="140"/>
-    <polygon points="344,150 356,150 350,140"/>
+    <!-- push_front: shorter with gap to box -->
+    <line x1="110" y1="188" x2="110" y2="146"/>
+    <polygon points="104,152 116,152 110,146"/>
+    <!-- push_back: shorter with gap to box -->
+    <line x1="350" y1="203" x2="350" y2="146"/>
+    <polygon points="344,152 356,152 350,146"/>
   </g>
-  <!-- pops (red), increase gap before labels -->
+  <!-- pops (red), shorter with more gap before labels -->
   <g stroke="#d57a7a" fill="#d57a7a">
-    <!-- pop_front: down; tip well above label (y=220) -->
-    <line x1="170" y1="150" x2="170" y2="200"/>
-    <polygon points="164,200 176,200 170,210"/>
-    <!-- pop_back: down; tip well above label (y=205) -->
-    <line x1="290" y1="150" x2="290" y2="187"/>
-    <polygon points="284,187 296,187 290,195"/>
+    <!-- pop_front: shorter; tip at 206 (label 220) -->
+    <line x1="170" y1="154" x2="170" y2="196"/>
+    <polygon points="164,196 176,196 170,206"/>
+    <!-- pop_back: shorter; tip at 192 (label 205) -->
+    <line x1="290" y1="154" x2="290" y2="184"/>
+    <polygon points="284,184 296,184 290,192"/>
   </g>
   <!-- labels (color-coded and staggered) -->
   <g font-family="Verdana,Arial,sans-serif" font-size="11" text-anchor="middle">
