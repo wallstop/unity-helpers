@@ -1,0 +1,17 @@
+name: Lint Docs Links
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Markdown link linter
+        shell: pwsh
+        run: ./scripts/lint-doc-links.ps1 -VerboseOutput
+
