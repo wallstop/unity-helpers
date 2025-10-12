@@ -350,6 +350,94 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
             );
         }
 
+        [Test]
+        public void InstantiateWithRelationsAssignsWhenAssignerBound()
+        {
+            RecordingAssigner assigner = new();
+            Container.Bind<IRelationalComponentAssigner>().FromInstance(assigner);
+
+            ZenjectRelationalTester prefab = CreatePrefabTesterHierarchy(rootHasRigidbody: true);
+
+            ZenjectRelationalTester instance = Container.InstantiateComponentWithRelations(prefab);
+            Track(instance.gameObject);
+
+            Assert.That(
+                assigner.CallCount,
+                Is.EqualTo(1),
+                "Instantiate should invoke bound assigner exactly once"
+            );
+            Assert.That(
+                assigner.LastComponent,
+                Is.SameAs(instance),
+                "Instantiate should target the created tester instance"
+            );
+            Assert.That(
+                instance.parentBody,
+                Is.Not.Null,
+                "ParentComponent should be assigned from prefab root Rigidbody"
+            );
+            Assert.That(
+                instance.childCollider,
+                Is.Not.Null,
+                "ChildComponent should be assigned from prefab child collider"
+            );
+        }
+
+        [Test]
+        public void InstantiateWithRelationsAssignsWhenAssignerMissing()
+        {
+            ZenjectRelationalTester prefab = CreatePrefabTesterHierarchy(rootHasRigidbody: true);
+
+            ZenjectRelationalTester instance = Container.InstantiateComponentWithRelations(prefab);
+            Track(instance.gameObject);
+
+            Assert.That(
+                instance.parentBody,
+                Is.Not.Null,
+                "ParentComponent should be assigned without a bound assigner"
+            );
+            Assert.That(
+                instance.childCollider,
+                Is.Not.Null,
+                "ChildComponent should be assigned without a bound assigner"
+            );
+        }
+
+        [Test]
+        public void InstantiateWithRelationsRespectsParentOverride()
+        {
+            ZenjectRelationalTester prefab = CreatePrefabTesterHierarchy(rootHasRigidbody: false);
+
+            GameObject overrideParent = Track(new GameObject("ZenjectOverrideParent"));
+            overrideParent.AddComponent<Rigidbody>();
+
+            ZenjectRelationalTester instance = Container.InstantiateComponentWithRelations(
+                prefab,
+                overrideParent.transform
+            );
+            Track(instance.gameObject);
+
+            Assert.That(
+                instance.parentBody,
+                Is.Not.Null,
+                "ParentComponent should be assigned from override parent"
+            );
+            Assert.That(
+                instance.childCollider,
+                Is.Not.Null,
+                "ChildComponent should be assigned from prefab child collider"
+            );
+        }
+
+        [Test]
+        public void InstantiateWithRelationsThrowsOnNullPrefab()
+        {
+            Assert.That(
+                () => Container.InstantiateComponentWithRelations<ZenjectRelationalTester>(null),
+                Throws.ArgumentNullException
+            );
+        }
+
         private ZenjectRelationalTester CreateHierarchy()
         {
             GameObject parent = Track(new GameObject("ZenjectParent"));
@@ -360,6 +448,25 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
             middle.transform.SetParent(parent.transform);
 
             GameObject child = Track(new GameObject("ZenjectChild"));
+            child.AddComponent<CapsuleCollider>();
+            child.transform.SetParent(middle.transform);
+
+            return tester;
+        }
+
+        private ZenjectRelationalTester CreatePrefabTesterHierarchy(bool rootHasRigidbody)
+        {
+            GameObject root = Track(new GameObject("ZenjectPrefabRoot"));
+            if (rootHasRigidbody)
+            {
+                root.AddComponent<Rigidbody>();
+            }
+
+            GameObject middle = Track(new GameObject("ZenjectPrefabMiddle"));
+            middle.transform.SetParent(root.transform);
+            ZenjectRelationalTester tester = middle.AddComponent<ZenjectRelationalTester>();
+
+            GameObject child = Track(new GameObject("ZenjectPrefabChild"));
             child.AddComponent<CapsuleCollider>();
             child.transform.SetParent(middle.transform);
 

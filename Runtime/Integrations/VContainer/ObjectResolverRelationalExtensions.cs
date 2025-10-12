@@ -1,9 +1,11 @@
 #if VCONTAINER_PRESENT
 namespace WallstopStudios.UnityHelpers.Integrations.VContainer
 {
+    using System.Collections.Generic;
     using global::VContainer;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Utils;
 
     /// <summary>
     /// Convenience extensions for assigning relational component fields when using VContainer.
@@ -47,12 +49,13 @@ namespace WallstopStudios.UnityHelpers.Integrations.VContainer
                 return;
             }
 
-            Component[] components = root.GetComponentsInChildren<Component>(
-                includeInactiveChildren
+            using PooledResource<List<Component>> componentBuffer = Buffers<Component>.List.Get(
+                out List<Component> components
             );
-            for (int i = 0; i < components.Length; i++)
+            root.GetComponentsInChildren(includeInactiveChildren, components);
+            for (int i = 0; i < components.Count; i++)
             {
-                components[i]?.AssignRelationalComponents();
+                components[i].AssignRelationalComponents();
             }
         }
 
