@@ -34,11 +34,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         [Test]
         public void CyclicBufferRoundTripsWithFastOptions()
         {
-            CyclicBuffer<int> original = new(3);
-            original.Add(1);
-            original.Add(2);
-            original.Add(3);
-            original.Add(4);
+            CyclicBuffer<int> original = new(3) { 1, 2, 3, 4 };
             JsonSerializerOptions options = Serializer.CreateFastJsonOptions();
             string json = Serializer.JsonStringify(original, options);
             CyclicBuffer<int> deserialized = Serializer.JsonDeserialize<CyclicBuffer<int>>(

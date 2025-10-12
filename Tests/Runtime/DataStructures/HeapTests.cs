@@ -1758,8 +1758,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void AddToCapacity1TriggersGrowth()
         {
-            Heap<int> heap = new(1);
-            heap.Add(1);
+            Heap<int> heap = new(1) { 1 };
 
             Assert.AreEqual(1, heap.Capacity);
 
@@ -1814,9 +1813,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void TrimExcessAfterAddAndClear()
         {
-            Heap<int> heap = new(100);
-            heap.Add(1);
-            heap.Add(2);
+            Heap<int> heap = new(100) { 1, 2 };
             heap.Clear();
             heap.TrimExcess();
 

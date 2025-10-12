@@ -285,17 +285,41 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 throw new ArgumentException(nameof(newCapacity));
             }
 
-            int oldCapacity = Capacity;
-            Capacity = newCapacity;
-            _buffer.Shift(-_position);
-            if (newCapacity < _buffer.Count)
+            // Handle zero-capacity explicitly
+            if (newCapacity == 0)
             {
-                _buffer.RemoveRange(newCapacity, _buffer.Count - newCapacity);
+                Capacity = 0;
+                Clear();
+                return;
             }
 
-            _position =
-                newCapacity < oldCapacity && newCapacity <= _buffer.Count ? 0 : _buffer.Count;
-            Count = Math.Min(newCapacity, Count);
+            int toKeep = Math.Min(Count, newCapacity);
+
+            if (toKeep == 0)
+            {
+                // No items to retain, just update capacity and clear storage
+                Capacity = newCapacity;
+                Clear();
+                return;
+            }
+
+            // Retain the most recent entries (drop the oldest when shrinking)
+            // Build a contiguous list of the last 'toKeep' logical items in order
+            using (PooledResource<List<T>> lease = Buffers<T>.List.Get(out List<T> temp))
+            {
+                int start = Count - toKeep;
+                for (int i = 0; i < toKeep; ++i)
+                {
+                    temp.Add(_buffer[AdjustedIndexFor(start + i)]);
+                }
+
+                _buffer.Clear();
+                _buffer.AddRange(temp);
+            }
+
+            Capacity = newCapacity;
+            Count = toKeep;
+            _position = Count < Capacity ? Count : 0;
         }
 
         public bool Contains(T item)

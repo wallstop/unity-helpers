@@ -242,7 +242,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 int[] newValues = buffer.ToArray();
                 Assert.AreEqual(newCapacity, buffer.Capacity);
                 Assert.AreEqual(newCapacity, newValues.Length);
-                Assert.That(values.Take(newCapacity), Is.EqualTo(newValues));
+                // After shrinking, keep the most recent entries
+                Assert.That(values.Skip(values.Length - newCapacity), Is.EqualTo(newValues));
 
                 buffer.Add(1);
                 buffer.Add(2);
@@ -280,7 +281,11 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 int[] newValues = buffer.ToArray();
                 Assert.AreEqual(newCapacity, buffer.Capacity);
                 Assert.AreEqual(Math.Min(filled, newCapacity), newValues.Length);
-                Assert.That(values.Take(newCapacity), Is.EqualTo(newValues));
+                // After shrinking, keep the most recent entries from the prior contents
+                Assert.That(
+                    values.Skip(Math.Max(0, values.Length - newCapacity)),
+                    Is.EqualTo(newValues)
+                );
 
                 buffer.Add(1);
                 buffer.Add(2);
@@ -1392,15 +1397,16 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 4, 5, 6, 7, 8 }));
 
             buffer.Resize(3);
-            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 4, 5, 6 }));
+            // Shrink should retain most recent elements
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 6, 7, 8 }));
 
             buffer.Resize(7);
             Assert.AreEqual(3, buffer.Count);
-            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 4, 5, 6 }));
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 6, 7, 8 }));
 
             buffer.Add(9);
             buffer.Add(10);
-            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 4, 5, 6, 9, 10 }));
+            Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 6, 7, 8, 9, 10 }));
         }
 
         [Test]
@@ -1947,6 +1953,131 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.AreEqual(5, back);
 
             Assert.AreEqual(1, buffer.Count);
+        }
+
+        [Test]
+        public void AddAndOverwritePreservesChronology()
+        {
+            CyclicBuffer<int> buf = new(3) { 0, 1, 2 };
+
+            Assert.AreEqual(
+                3,
+                buf.Count,
+                "Count should reflect number of elements added up to capacity."
+            );
+            Assert.AreEqual(0, buf[0], "Oldest element should be at index 0 before wrap.");
+            Assert.AreEqual(1, buf[1], "Next element should be index 1.");
+            Assert.AreEqual(2, buf[2], "Newest element should be index 2 before wrap.");
+
+            // Overwrite oldest
+            buf.Add(3);
+            Assert.AreEqual(3, buf.Count, "Count should not grow beyond capacity.");
+            Assert.AreEqual(1, buf[0], "After overwrite, oldest is dropped.");
+            Assert.AreEqual(2, buf[1], "Element order should advance by one.");
+            Assert.AreEqual(3, buf[2], "Newest written value should be last.");
+
+            // Remove middle element
+            bool removed = buf.Remove(2);
+            Assert.IsTrue(removed, "Remove should return true when element existed.");
+            Assert.AreEqual(2, buf.Count, "Count should decrease after remove.");
+            Assert.AreEqual(1, buf[0], "Remaining first element should be unchanged.");
+            Assert.AreEqual(3, buf[1], "Remaining second element should be next in order.");
+        }
+
+        [Test]
+        public void ResizeTruncatesOrExtends()
+        {
+            CyclicBuffer<int> buf = new(5);
+            for (int i = 0; i < 5; ++i)
+            {
+                buf.Add(i);
+            }
+            Assert.AreEqual(5, buf.Count, "Filled buffer should have full count.");
+
+            // Shrink: oldest entries should be truncated
+            buf.Resize(3);
+            Assert.AreEqual(3, buf.Count, "Count should reflect new capacity after shrink.");
+            Assert.AreEqual(2, buf[0], "Shrink should retain most recent entries and drop oldest.");
+            Assert.AreEqual(3, buf[1], "Remaining order should be preserved (middle).");
+            Assert.AreEqual(4, buf[2], "Remaining order should be preserved (newest).");
+
+            // Grow: capacity increases, order stays
+            buf.Resize(6);
+            Assert.AreEqual(3, buf.Count, "Growing capacity should not change current count.");
+            Assert.AreEqual(2, buf[0], "Growing capacity should not alter order (first).");
+            Assert.AreEqual(3, buf[1], "Growing capacity should not alter order (second).");
+            Assert.AreEqual(4, buf[2], "Growing capacity should not alter order (third).");
+        }
+
+        [Test]
+        public void ResizeShrinkKeepsMostRecentFromPartialFill()
+        {
+            CyclicBuffer<int> buf = new(10);
+            for (int i = 0; i < 6; ++i)
+            {
+                buf.Add(i);
+            }
+
+            // Logical contents: [0,1,2,3,4,5]
+            buf.Resize(4);
+            Assert.AreEqual(4, buf.Count);
+            Assert.That(buf.ToArray(), Is.EqualTo(new[] { 2, 3, 4, 5 }));
+        }
+
+        [Test]
+        public void ResizeShrinkAfterWrapKeepsMostRecent()
+        {
+            CyclicBuffer<int> buf = new(5);
+            for (int i = 1; i <= 7; ++i)
+            {
+                buf.Add(i);
+            }
+            // Buffer: [3,4,5,6,7]
+            buf.Resize(2);
+            Assert.That(buf.ToArray(), Is.EqualTo(new[] { 6, 7 }));
+        }
+
+        [Test]
+        public void ResizeToZeroClearsAndSubsequentAddsWork()
+        {
+            CyclicBuffer<int> buf = new(4) { 1, 2, 3 };
+            buf.Resize(0);
+            Assert.AreEqual(0, buf.Capacity);
+            Assert.AreEqual(0, buf.Count);
+            Assert.That(buf.ToArray(), Is.EqualTo(Array.Empty<int>()));
+
+            buf.Add(42);
+            Assert.AreEqual(0, buf.Count); // capacity is zero, ignores adds
+        }
+
+        [Test]
+        public void ResizeAfterRemoveAllMaintainsMostRecent()
+        {
+            CyclicBuffer<int> buf = new(6) { 0, 1, 2, 3, 4, 5 };
+            int removed = buf.RemoveAll(x => x % 2 == 0); // keep [1,3,5]
+            Assert.AreEqual(3, removed);
+            Assert.That(buf.ToArray(), Is.EqualTo(new[] { 1, 3, 5 }));
+
+            buf.Resize(2);
+            Assert.That(buf.ToArray(), Is.EqualTo(new[] { 3, 5 }));
+        }
+
+        [Test]
+        public void SequentialResizeShrinkAndGrowPreservesOrder()
+        {
+            CyclicBuffer<int> buf = new(5) { 10, 11, 12, 13, 14 };
+            buf.Resize(4);
+            Assert.That(buf.ToArray(), Is.EqualTo(new[] { 11, 12, 13, 14 }));
+
+            buf.Resize(2);
+            Assert.That(buf.ToArray(), Is.EqualTo(new[] { 13, 14 }));
+
+            buf.Resize(6);
+            Assert.That(buf.ToArray(), Is.EqualTo(new[] { 13, 14 }));
+
+            buf.Add(15);
+            buf.Add(16);
+            Assert.That(buf.ToArray(), Is.EqualTo(new[] { 13, 14, 15, 16 }));
         }
     }
 }
