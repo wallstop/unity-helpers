@@ -1,0 +1,80 @@
+name: Update .NET Tools
+
+on:
+  schedule:
+    - cron: '25 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-tools:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore dotnet tools
+        run: dotnet tool restore
+
+      - name: Update local dotnet tools
+        shell: pwsh
+        run: |
+          $manifest = Join-Path $PWD ".config/dotnet-tools.json"
+          if (!(Test-Path $manifest)) {
+            Write-Host "No dotnet tool manifest found. Skipping."
+            exit 0
+          }
+
+          $json = Get-Content $manifest -Raw | ConvertFrom-Json
+          $toolIds = @()
+          if ($json.tools) {
+            $toolIds = $json.tools.PSObject.Properties.Name
+          }
+
+          if ($toolIds.Count -eq 0) {
+            Write-Host "No tools defined in manifest."
+            exit 0
+          }
+
+          foreach ($id in $toolIds) {
+            Write-Host "Updating $id..."
+            dotnet tool update $id --local
+          }
+
+      - name: Detect manifest changes
+        id: git_changes
+        run: |
+          if git diff --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create Pull Request
+        if: steps.git_changes.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: chore/update-dotnet-tools
+          title: "chore: update .NET local tools"
+          commit-message: "chore(dotnet-tools): update .config/dotnet-tools.json"
+          body: |
+            Automated update of local .NET tools defined in `.config/dotnet-tools.json`.
+          labels: dependencies
+          assignees: wallstop
+          reviewers: wallstop
+
+      - name: No changes summary
+        if: steps.git_changes.outputs.changed != 'true'
+        run: |
+          echo "## .NET tools are up to date" >> $GITHUB_STEP_SUMMARY
+
