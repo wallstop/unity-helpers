@@ -6,6 +6,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
     using global::VContainer;
     using NUnit.Framework;
     using UnityEngine;
+    using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Integrations.VContainer;
     using WallstopStudios.UnityHelpers.Tags;
@@ -83,21 +84,20 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
             );
         }
 
-        [Test]
-        public void EntryPointAssignsActiveSceneComponents()
+        [UnityTest]
+        public System.Collections.IEnumerator EntryPointAssignsActiveSceneComponents()
         {
             AttributeMetadataCache cache = CreateCacheFor(typeof(VContainerRelationalTester));
             try
             {
                 ContainerBuilder builder = new();
                 builder.RegisterInstance(cache).AsSelf();
-                builder
-                    .Register<RelationalComponentAssigner>(Lifetime.Singleton)
-                    .As<IRelationalComponentAssigner>()
-                    .AsSelf();
+                var assigner = new RecordingAssigner();
+                builder.RegisterInstance(assigner).As<IRelationalComponentAssigner>();
                 IObjectResolver resolver = builder.Build();
 
                 VContainerRelationalTester tester = CreateHierarchy();
+                yield return null;
 
                 var entryPoint = new RelationalComponentEntryPoint(
                     resolver.Resolve<IRelationalComponentAssigner>(),
@@ -105,6 +105,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
                     RelationalSceneAssignmentOptions.Default
                 );
                 entryPoint.Initialize();
+                yield return null;
 
                 Assert.That(
                     tester.parentBody,
@@ -204,22 +205,21 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
             );
         }
 
-        [Test]
-        public void EntryPointRespectsIncludeInactiveOption()
+        [UnityTest]
+        public System.Collections.IEnumerator EntryPointRespectsIncludeInactiveOption()
         {
             AttributeMetadataCache cache = CreateCacheFor(typeof(VContainerRelationalTester));
             try
             {
                 ContainerBuilder builder = new();
                 builder.RegisterInstance(cache).AsSelf();
-                builder
-                    .Register<RelationalComponentAssigner>(Lifetime.Singleton)
-                    .As<IRelationalComponentAssigner>()
-                    .AsSelf();
+                var assigner = new RecordingAssigner();
+                builder.RegisterInstance(assigner).As<IRelationalComponentAssigner>();
                 IObjectResolver resolver = builder.Build();
 
                 VContainerRelationalTester tester = CreateHierarchy();
                 tester.gameObject.SetActive(false);
+                yield return null;
 
                 var disabledEntryPoint = new RelationalComponentEntryPoint(
                     resolver.Resolve<IRelationalComponentAssigner>(),
@@ -244,6 +244,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
                     new RelationalSceneAssignmentOptions(includeInactive: true)
                 );
                 enabledEntryPoint.Initialize();
+                yield return null;
                 Assert.That(
                     tester.parentBody,
                     Is.Not.Null,

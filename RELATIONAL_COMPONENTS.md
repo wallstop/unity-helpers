@@ -392,11 +392,13 @@ VContainer (1.16.x)
   entry.Initialize();
   ```
 - Inject vs BuildUp: Use `resolver.Inject(component)` before calling `resolver.AssignRelationalComponents(component)`.
+- EditMode reliability: In EditMode tests, prefer `[UnityTest]` and `yield return null` after creating objects and after initializing the entry point so Unity has a frame to register new objects before `FindObjectsOfType` runs and to allow assignments to complete.
 - IncludeInactive: Control with `RelationalSceneAssignmentOptions(includeInactive: bool)`.
 
 Zenject/Extenject
 - Runtime usage: Add `RelationalComponentsInstaller` to your `SceneContext`. It binds `IRelationalComponentAssigner` and runs `RelationalComponentSceneInitializer` once the container is ready.
 - Tests: Bind a concrete `AttributeMetadataCache` instance and construct the assigner with that cache. Then resolve `IInitializable` and call `Initialize()`.
+- EditMode reliability: As with VContainer, consider `[UnityTest]` with a `yield return null` after creating objects and after calling `Initialize()` to allow Unity to register objects and complete assignments.
 
 Common pitfalls and how to avoid them
 - “No such registration … RelationalComponentEntryPoint”: You’re resolving in a plain container without `LifetimeScope`. Construct the entry point manually as shown above.
