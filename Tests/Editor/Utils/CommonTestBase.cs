@@ -12,7 +12,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils
     using UnityEditor.SceneManagement;
 #endif
 
-
     /// <summary>
     /// Common test base that tracks spawned Unity objects and disposables
     /// and cleans them up safely across NUnit and Unity test teardowns.

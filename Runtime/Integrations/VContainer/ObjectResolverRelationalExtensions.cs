@@ -1,4 +1,4 @@
-﻿#if VCONTAINER_PRESENT
+#if VCONTAINER_PRESENT
 namespace WallstopStudios.UnityHelpers.Integrations.VContainer
 {
     using System.Collections.Generic;
