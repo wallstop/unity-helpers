@@ -172,8 +172,7 @@ var saveData = new SaveData {
 };
 
 // One line to save:
-var opts = Serializer.CreateFastJsonOptions();
-byte[] data = Serializer.JsonSerialize(saveData, opts);
+byte[] data = Serializer.JsonSerialize(saveData);
 
 // Schema evolution = never break old saves:
 [ProtoMember(1)] public int gold;
