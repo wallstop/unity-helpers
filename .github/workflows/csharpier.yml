@@ -1,0 +1,100 @@
+name: CSharpier
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  format-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore dotnet tools
+        run: dotnet tool restore
+
+      - name: CSharpier check
+        id: csharpier_check
+        run: |
+          dotnet tool run csharpier --check .
+        continue-on-error: true
+
+      - name: Generate CSharpier diff
+        if: ${{ steps.csharpier_check.outcome == 'failure' }}
+        run: |
+          echo "Formatting issues detected. Generating diff..."
+          dotnet tool run csharpier .
+          git config user.email "actions@github.com"
+          git config user.name "github-actions[bot]"
+          git diff > csharpier.patch || true
+          # Provide a concise summary, too
+          git status --porcelain > csharpier_changed_files.txt
+
+      - name: Read diff for comment
+        if: ${{ github.event_name == 'pull_request' && steps.csharpier_check.outcome == 'failure' }}
+        id: read_diff
+        shell: bash
+        run: |
+          # Limit diff size in comment to ~60KB to avoid API limits
+          max=60000
+          content=$(cat csharpier.patch)
+          if [ ${#content} -gt $max ]; then
+            echo "diff<<EOF" >> $GITHUB_OUTPUT
+            echo "(Diff too large for inline comment. See attached artifact 'csharpier-diff'.)" >> $GITHUB_OUTPUT
+            echo EOF >> $GITHUB_OUTPUT
+          else
+            echo "diff<<EOF" >> $GITHUB_OUTPUT
+            printf '%s\n' "$content" >> $GITHUB_OUTPUT
+            echo EOF >> $GITHUB_OUTPUT
+          fi
+
+      - name: Post CSharpier suggestion comment
+        if: ${{ github.event_name == 'pull_request' && steps.csharpier_check.outcome == 'failure' }}
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: csharpier-formatting
+          message: |
+            CSharpier found formatting changes. This job is failing until formatting is applied.
+
+            To apply locally:
+            1) dotnet tool restore
+            2) dotnet tool run csharpier .
+
+            Diff of proposed changes:
+
+            ```diff
+            ${{ steps.read_diff.outputs.diff }}
+            ```
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Attach full patch as artifact
+        if: ${{ steps.csharpier_check.outcome == 'failure' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: csharpier-diff
+          path: |
+            csharpier.patch
+            csharpier_changed_files.txt
+
+      - name: Fail if formatting required
+        if: ${{ steps.csharpier_check.outcome == 'failure' }}
+        run: |
+          echo "CSharpier formatting required. Failing the job." 1>&2
+          exit 1
+
+      - name: Success summary
+        if: ${{ steps.csharpier_check.outcome == 'success' }}
+        run: echo "CSharpier check passed."
+
+      

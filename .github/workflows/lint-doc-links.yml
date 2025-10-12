@@ -16,3 +16,12 @@ jobs:
       - name: Run Markdown link linter
         shell: pwsh
         run: ./scripts/lint-doc-links.ps1 -VerboseOutput
+
+      - name: Check dead links (lychee)
+        uses: lycheeverse/lychee-action@v1
+        with:
+          args: >
+            --config .lychee.toml
+            **/*.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
