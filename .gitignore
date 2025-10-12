@@ -198,6 +198,11 @@ orleans.codegen.cs
 # (https://github.com/github/gitignore/pull/1529#issuecomment-104372622)
 #bower_components/
 
+## Windows reserved device names that may appear due to shell redirection
+# Some tools on Windows may accidentally create a file named "nul" by using
+# CMD/PowerShell redirection like `> nul`. Ignore it to avoid noise.
+nul
+
 # RIA/Silverlight projects
 Generated_Code/
 

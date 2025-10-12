@@ -1,4 +1,4 @@
-﻿namespace WallstopStudios.UnityHelpers.Core.Attributes
+namespace WallstopStudios.UnityHelpers.Core.Attributes
 {
     public static class ValueHelpers
     {

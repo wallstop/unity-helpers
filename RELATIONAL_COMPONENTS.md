@@ -299,6 +299,119 @@ Notes:
 - Scope the work by providing specific types: `RelationalComponentInitializer.Initialize(new[]{ typeof(MyComponent) });`
 - To auto‑prewarm on app load, enable the toggle on the AttributeMetadataCache asset: “Prewarm Relational On Load”.
 
+## Dependency Injection Integrations
+
+Unity Helpers provides optional integration assemblies that only compile when Zenject or VContainer is present in your project. Install the corresponding DI package via the Unity Package Manager and the helpers become available automatically (no additional scripting defines required).
+
+Why use the DI integrations
+- Eliminate boilerplate: hydrate relational fields after DI injection automatically.
+- Consistent behavior: integrates with constructor/property injection and works with runtime instantiation.
+- Safe fallback: if the DI binding is missing, falls back to the non-DI path so fields still populate.
+
+Supported package IDs (auto-detected)
+- Zenject/Extenject: `com.extenject.zenject`, `com.modesttree.zenject`, `com.svermeulen.extenject`
+- VContainer: `jp.cysharp.vcontainer`, `jp.hadashikick.vcontainer`
+
+Manual or source imports (no UPM)
+- If you import Zenject/VContainer as source, a .unitypackage, or a plain DLL, Unity cannot infer package IDs and the `versionDefines` in the asmdefs won’t trigger.
+- Add scripting defines in Project Settings to enable the integrations:
+  - `Project Settings > Player > Other Settings > Scripting Define Symbols`
+  - Add `ZENJECT_PRESENT` when Zenject/Extenject is present and/or `VCONTAINER_PRESENT` when VContainer is present.
+  - Set defines per target platform (Standalone, Android, iOS, etc.).
+  - After adding, Unity recompiles and the optional assemblies under `Runtime/Integrations/*` compile automatically.
+
+### Quick Start — VContainer
+
+1) Register integration in your `LifetimeScope`
+
+```csharp
+using VContainer;
+using VContainer.Unity;
+using WallstopStudios.UnityHelpers.Integrations.VContainer;
+
+public sealed class GameLifetimeScope : LifetimeScope
+{
+    protected override void Configure(IContainerBuilder builder)
+    {
+        // Registers IRelationalComponentAssigner and a scene entry point
+        builder.RegisterRelationalComponents();
+
+        // Or customize scanning (active objects only)
+        // builder.RegisterRelationalComponents(new RelationalSceneAssignmentOptions(includeInactive: false));
+    }
+}
+```
+
+2) Build up runtime instances (DI + relational fields)
+
+```csharp
+using UnityEngine;
+using VContainer;
+using WallstopStudios.UnityHelpers.Integrations.VContainer;
+
+public sealed class Spawner : MonoBehaviour
+{
+    [Inject] private IObjectResolver _resolver;
+    [SerializeField] private Enemy _enemyPrefab;
+
+    public Enemy Spawn(Transform parent)
+    {
+        Enemy enemy = Instantiate(_enemyPrefab, parent);
+        return _resolver.BuildUpWithRelations(enemy);
+    }
+}
+```
+
+3) Apply to whole hierarchies when needed
+
+```csharp
+_resolver.AssignRelationalHierarchy(root, includeInactiveChildren: false);
+```
+
+### Quick Start — Zenject
+
+1) Add the installer to your SceneContext
+
+- Add a `SceneContext` to your scene.
+- Add `RelationalComponentsInstaller` to the same GameObject.
+- Toggle "Assign Scene On Initialize" to run a one-time scene scan after the container builds.
+
+2) Instantiate prefabs with DI + relational assignment
+
+```csharp
+using UnityEngine;
+using Zenject;
+using WallstopStudios.UnityHelpers.Integrations.Zenject;
+
+public sealed class Spawner
+{
+    readonly DiContainer _container;
+    readonly Enemy _enemyPrefab;
+
+    public Spawner(DiContainer container, Enemy enemyPrefab)
+    {
+        _container = container;
+        _enemyPrefab = enemyPrefab;
+    }
+
+    public Enemy Spawn(Transform parent)
+    {
+        return _container.InstantiateComponentWithRelations(_enemyPrefab, parent);
+    }
+}
+```
+
+3) Apply to whole hierarchies
+
+```csharp
+Container.AssignRelationalHierarchy(root, includeInactiveChildren: true);
+```
+
+Notes
+- Both integrations fall back to the built-in `component.AssignRelationalComponents()` call path if the DI container does not expose the assigner binding, so you can adopt them incrementally without breaking existing behaviour.
+
+---
+
 ## Troubleshooting
 
 - Fields remain null in the Inspector
@@ -336,3 +449,65 @@ Q: What about performance?
 ---
 
 For quick examples in context, see the README’s “Auto Component Discovery” section. For API docs, hover the attributes in your IDE for XML summaries and examples.
+
+## DI Integrations: Testing and Edge Cases
+
+Beginner-friendly overview
+- Optional DI integrations compile only when symbols are present (`ZENJECT_PRESENT`, `VCONTAINER_PRESENT`). With UPM, these are added via asmdef `versionDefines`. Without UPM (manual import), add them in Project Settings → Player → Scripting Define Symbols.
+- Both integrations register an assigner (`IRelationalComponentAssigner`) and provide a scene initializer/entry point to hydrate relational fields once the container is ready.
+
+VContainer (1.16.x)
+- Runtime usage (LifetimeScope): Call `builder.RegisterRelationalComponents()` in `LifetimeScope.Configure`. The entry point runs automatically after the container builds.
+- Tests without LifetimeScope: Construct the entry point and call `Initialize()` yourself, and register your `AttributeMetadataCache` instance so the assigner uses it:
+  ```csharp
+  var cache = ScriptableObject.CreateInstance<AttributeMetadataCache>();
+  // populate cache._relationalTypeMetadata with your test component types
+  cache.ForceRebuildForTests(); // rebuild lookups so the initializer can discover your types
+  var builder = new ContainerBuilder();
+  builder.RegisterInstance(cache).AsSelf();
+  builder.Register<RelationalComponentAssigner>(Lifetime.Singleton)
+         .As<IRelationalComponentAssigner>()
+         .AsSelf();
+  var resolver = builder.Build();
+  var entry = new RelationalComponentEntryPoint(
+      resolver.Resolve<IRelationalComponentAssigner>(),
+      cache,
+      RelationalSceneAssignmentOptions.Default
+  );
+  entry.Initialize();
+  ```
+- Inject vs BuildUp: Use `resolver.Inject(component)` before calling `resolver.AssignRelationalComponents(component)`.
+- EditMode reliability: In EditMode tests, prefer `[UnityTest]` and `yield return null` after creating objects and after initializing the entry point so Unity has a frame to register new objects before `FindObjectsOfType` runs and to allow assignments to complete.
+- Active scene filter: Entry points operate on the active scene only. In EditMode, create a new scene with `SceneManager.CreateScene`, set it active, and move your test hierarchy into it before calling `Initialize()`.
+- IncludeInactive: Control with `RelationalSceneAssignmentOptions(includeInactive: bool)`.
+
+ Zenject/Extenject
+- Runtime usage: Add `RelationalComponentsInstaller` to your `SceneContext`. It binds `IRelationalComponentAssigner` and runs `RelationalComponentSceneInitializer` once the container is ready.
+- Tests: Bind a concrete `AttributeMetadataCache` instance and construct the assigner with that cache. Then resolve `IInitializable` and call `Initialize()`.
+ - EditMode reliability: As with VContainer, consider `[UnityTest]` with a `yield return null` after creating objects and after calling `Initialize()` to allow Unity to register objects and complete assignments.
+ - Active scene filter: The initializer operates on the active scene only. Create and set an active scene and move your test hierarchy into it before calling `Initialize()`.
+
+Common pitfalls and how to avoid them
+- "No such registration … RelationalComponentEntryPoint": You're resolving in a plain container without `LifetimeScope`. Construct the entry point manually as shown above.
+- Optional integrations don't compile: Ensure the scripting define symbols are present. UPM adds them automatically via `versionDefines`; manual imports require adding them in Player Settings.
+- Fields remain null in tests: Ensure your test `AttributeMetadataCache` has the relational metadata for your test component types and that the DI container uses the same cache instance (register it and prefer constructors that accept the cache).
+
+---
+
+## 📚 Related Documentation
+
+**Core Guides:**
+- [Getting Started](GETTING_STARTED.md) - Your first 5 minutes with Unity Helpers
+- [Main README](README.md) - Complete feature overview
+- [Feature Index](INDEX.md) - Alphabetical reference
+
+**Related Features:**
+- [Effects System](EFFECTS_SYSTEM.md) - Data-driven buffs/debuffs with attributes and tags
+- [Singletons](SINGLETONS.md) - Runtime and ScriptableObject singleton patterns
+- [Editor Tools](EDITOR_TOOLS_GUIDE.md) - Attribute Metadata Cache generator
+
+**DI Integration Samples:**
+- [VContainer Integration](Samples~/DI%20-%20VContainer/README.md) - Complete VContainer setup guide
+- [Zenject Integration](Samples~/DI%20-%20Zenject/README.md) - Complete Zenject setup guide
+
+**Need help?** [Open an issue](https://github.com/wallstop/unity-helpers/issues) | [Troubleshooting](#troubleshooting)

@@ -1,4 +1,4 @@
-﻿namespace WallstopStudios.UnityHelpers.Tests.Tags.Helpers
+namespace WallstopStudios.UnityHelpers.Tests.Tags.Helpers
 {
     using System;
     using UnityEngine;

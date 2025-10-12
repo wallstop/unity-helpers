@@ -219,7 +219,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         [Test]
         public void CompositePayloadWithCollectionsRoundTrips()
         {
-            var payload = new Composite
+            Composite payload = new Composite
             {
                 fv2 = new FastVector2Int(-3, 7),
                 fv3 = new FastVector3Int(1, -2, 3),

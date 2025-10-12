@@ -1,18 +1,18 @@
 {
-    "name": "WallstopStudios.UnityHelpers.Editor",
-    "rootNamespace": "WallstopStudios.UnityHelpers.Editor",
-    "references": [
-        "WallstopStudios.UnityHelpers"
-    ],
-    "includePlatforms": [
-        "Editor"
-    ],
-    "excludePlatforms": [],
-    "allowUnsafeCode": false,
-    "overrideReferences": false,
-    "precompiledReferences": [],
-    "autoReferenced": true,
-    "defineConstraints": [],
-    "versionDefines": [],
-    "noEngineReferences": false
+  "name": "WallstopStudios.UnityHelpers.Editor",
+  "rootNamespace": "WallstopStudios.UnityHelpers.Editor",
+  "references": [
+    "WallstopStudios.UnityHelpers"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
 }

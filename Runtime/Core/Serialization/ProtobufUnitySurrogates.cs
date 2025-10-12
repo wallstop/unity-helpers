@@ -318,7 +318,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
 
         public static implicit operator Resolution(ResolutionSurrogate s)
         {
-            var r = new Resolution { width = s.width, height = s.height };
+            Resolution r = new Resolution { width = s.width, height = s.height };
 #if !UNITY_2022_2_OR_NEWER
             r.refreshRate = s.refreshRate;
 #endif

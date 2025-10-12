@@ -67,7 +67,7 @@ namespace WallstopStudios.UnityHelpers.Utils
 
         protected internal static Lazy<T> LazyInstance = CreateLazy();
 
-        private static Lazy<T> CreateLazy()
+        internal static Lazy<T> CreateLazy()
         {
             return new Lazy<T>(() =>
             {

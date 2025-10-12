@@ -1,4 +1,4 @@
-﻿namespace WallstopStudios.UnityHelpers.Tests.Serialization
+namespace WallstopStudios.UnityHelpers.Tests.Serialization
 {
     using System;
     using System.Collections.Generic;

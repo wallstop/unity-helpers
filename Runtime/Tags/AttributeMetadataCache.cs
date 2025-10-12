@@ -133,7 +133,7 @@ namespace WallstopStudios.UnityHelpers.Tags
         private TypeFieldMetadata[] _typeMetadata = Array.Empty<TypeFieldMetadata>();
 
         [SerializeField]
-        private RelationalTypeMetadata[] _relationalTypeMetadata =
+        internal RelationalTypeMetadata[] _relationalTypeMetadata =
             Array.Empty<RelationalTypeMetadata>();
 
         // Compound key for element type lookup
@@ -341,6 +341,21 @@ namespace WallstopStudios.UnityHelpers.Tags
             }
         }
 
+#if UNITY_INCLUDE_TESTS
+        public void ForceRebuildForTests()
+        {
+            lock (_lookupLock)
+            {
+                _typeFieldsLookup = null;
+                _relationalFieldsLookup = null;
+                _resolvedRelationalFieldsLookup = null;
+                _elementTypeLookup = null;
+            }
+
+            BuildLookup();
+        }
+#endif
+
         public bool TryGetFieldNames(Type type, out string[] fieldNames)
         {
             if (_typeFieldsLookup == null)
@@ -360,6 +375,39 @@ namespace WallstopStudios.UnityHelpers.Tags
                 BuildLookup();
             }
             return _relationalFieldsLookup.TryGetValue(type, out relationalFields);
+        }
+
+        /// <summary>
+        /// Populates <paramref name="destination"/> with the set of component types that declare
+        /// relational component fields.
+        /// </summary>
+        /// <param name="destination">List that receives relational component types.</param>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="destination"/> is null.</exception>
+        public void CollectRelationalComponentTypes(List<Type> destination)
+        {
+            if (destination == null)
+            {
+                throw new ArgumentNullException(nameof(destination));
+            }
+
+            if (_relationalFieldsLookup == null)
+            {
+                BuildLookup();
+            }
+
+            foreach (KeyValuePair<Type, RelationalFieldMetadata[]> pair in _relationalFieldsLookup)
+            {
+                Type componentType = pair.Key;
+                if (componentType == null)
+                {
+                    continue;
+                }
+
+                if (pair.Value != null && pair.Value.Length > 0)
+                {
+                    destination.Add(componentType);
+                }
+            }
         }
 
         public bool TryGetResolvedRelationalFields(

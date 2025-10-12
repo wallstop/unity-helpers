@@ -1,0 +1,26 @@
+verbose = true
+no_progress = true
+max_concurrency = 4
+exclude_mail = true
+
+# Network tuning
+timeout = 20            # seconds per request
+retries = 3             # retry transient failures
+retry_wait_time = 2     # seconds between retries
+max_redirects = 10
+user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+
+# Treat rate-limiting as non-fatal in CI
+accept = [429]
+
+# Only check web links
+scheme = ["https", "http"]
+
+# Ignore common local/test URLs
+exclude = [
+  "^https?://localhost",
+  "^http://127\\.0\\.0\\.1",
+  "^https?://0\\.0\\.0\\.0",
+  "^file://"
+]
+

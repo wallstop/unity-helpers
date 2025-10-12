@@ -1,6 +1,7 @@
 namespace WallstopStudios.UnityHelpers.Tests.Serialization
 {
     using System.Collections.Generic;
+    using System.Text.Json;
     using NUnit.Framework;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
@@ -30,9 +31,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         [Test]
         public void AdaptersCollectionsRoundTrip()
         {
-            var list = new List<FastVector3Int> { new(1, 2, 3), new(-4, 5, -6), new(7, 0, -1) };
+            List<FastVector3Int> list = new List<FastVector3Int>
+            {
+                new(1, 2, 3),
+                new(-4, 5, -6),
+                new(7, 0, -1),
+            };
 
-            var map = new Dictionary<string, FastVector2Int>
+            Dictionary<string, FastVector2Int> map = new Dictionary<string, FastVector2Int>
             {
                 ["a"] = new(9, -9),
                 ["b"] = new(0, 1),
@@ -42,8 +48,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
             string listJson = Serializer.JsonStringify(list);
             string mapJson = Serializer.JsonStringify(map);
 
-            var listAgain = Serializer.JsonDeserialize<List<FastVector3Int>>(listJson);
-            var mapAgain = Serializer.JsonDeserialize<Dictionary<string, FastVector2Int>>(mapJson);
+            List<FastVector3Int> listAgain = Serializer.JsonDeserialize<List<FastVector3Int>>(
+                listJson
+            );
+            Dictionary<string, FastVector2Int> mapAgain = Serializer.JsonDeserialize<
+                Dictionary<string, FastVector2Int>
+            >(mapJson);
 
             Assert.AreEqual(list.Count, listAgain.Count, "List count should round-trip");
             for (int i = 0; i < list.Count; i++)
@@ -52,7 +62,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
             }
 
             Assert.AreEqual(map.Count, mapAgain.Count, "Dictionary count should round-trip");
-            foreach (var kvp in map)
+            foreach (KeyValuePair<string, FastVector2Int> kvp in map)
             {
                 Assert.IsTrue(mapAgain.ContainsKey(kvp.Key), $"Key '{kvp.Key}' should exist");
                 Assert.AreEqual(
@@ -66,7 +76,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         [Test]
         public void CompositePayloadRoundTrips()
         {
-            var payload = new CompositePayload
+            CompositePayload payload = new CompositePayload
             {
                 fv2 = new FastVector2Int(-3, 7),
                 fv3 = new FastVector3Int(1, -2, 3),
@@ -85,7 +95,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
             };
 
             string json = Serializer.JsonStringify(payload);
-            var again = Serializer.JsonDeserialize<CompositePayload>(json);
+            CompositePayload again = Serializer.JsonDeserialize<CompositePayload>(json);
 
             Assert.AreEqual(
                 payload.fv2,
@@ -137,7 +147,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         [Test]
         public void CompositePayloadRoundTripsWithFastOptions()
         {
-            var payload = new CompositePayload
+            CompositePayload payload = new CompositePayload
             {
                 fv2 = new FastVector2Int(9, -4),
                 fv3 = new FastVector3Int(5, 6, -7),
@@ -155,9 +165,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
                 mapFv2 = new Dictionary<string, FastVector2Int> { ["x"] = new(1, 1) },
             };
 
-            var options = Serializer.CreateFastJsonOptions();
+            JsonSerializerOptions options = Serializer.CreateFastJsonOptions();
             string json = Serializer.JsonStringify(payload, options);
-            var again = Serializer.JsonDeserialize<CompositePayload>(json, null, options);
+            CompositePayload again = Serializer.JsonDeserialize<CompositePayload>(
+                json,
+                null,
+                options
+            );
 
             Assert.AreEqual(
                 payload.fv2,

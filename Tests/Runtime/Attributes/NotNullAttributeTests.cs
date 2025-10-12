@@ -1,4 +1,4 @@
-﻿namespace WallstopStudios.UnityHelpers.Tests.Attributes
+namespace WallstopStudios.UnityHelpers.Tests.Attributes
 {
     using System;
     using NUnit.Framework;

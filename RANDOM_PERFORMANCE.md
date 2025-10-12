@@ -112,3 +112,22 @@ Based on the benchmarks:
 - **Avoid for performance**: `UnityRandom` - Significantly slower than alternatives
 
 All benchmarks are run for 1 second per operation type to ensure statistical significance.
+
+---
+
+## 📚 Related Documentation
+
+**Core Guides:**
+- [Getting Started](GETTING_STARTED.md) - Your first 5 minutes with Unity Helpers
+- [Main README](README.md) - Complete feature overview
+- [Feature Index](INDEX.md) - Alphabetical reference
+
+**Random Number Generator Features:**
+- [README - Random Generators](README.md#random-number-generators) - Full API reference
+- [README - Quick Start](README.md#random-number-generation) - 60-second tutorial
+
+**Related Features:**
+- [Math & Extensions](MATH_AND_EXTENSIONS.md) - Vector/color extensions and utilities
+- [Data Structures](DATA_STRUCTURES.md) - Heaps, tries, and more
+
+**Need help?** [Open an issue](https://github.com/wallstop/unity-helpers/issues)

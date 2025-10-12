@@ -3,6 +3,70 @@
 Welcome! Unity Helpers is a comprehensive toolkit designed to make Unity development faster,
 more reliable, and more enjoyable. This guide will help you get started based on your learning style.
 
+## What Makes Unity Helpers Special?
+
+Unity Helpers isn't just another utility library - it's built on three core principles:
+
+### 1. Developer-Friendly First
+
+**Extensive APIs that handle edge cases you'd otherwise code manually:**
+- Random selection with weights? One method call.
+- Weighted bool with probability? Built-in.
+- Gaussian distribution? Perlin noise maps? Already there.
+
+**Self-documenting attributes and patterns:**
+```csharp
+[SiblingComponent] private Animator animator;  // Clear intent
+[ParentComponent(OnlyAncestors = true)] private Rigidbody2D rb;  // Explicit search
+[ChildComponent(MaxDepth = 1)] private Collider2D[] colliders;  // Limited scope
+```
+
+**Fail-fast with helpful error messages:**
+- Missing required components? Detailed logs with GameObject names and paths.
+- Invalid spatial tree queries? Clear explanations of what went wrong.
+- Schema evolution issues? Specific guidance on fixing serialization problems.
+
+### 2. Performance-Backed
+
+**10-15x faster random generation:**
+- `PRNG.Instance` vs `UnityEngine.Random`: 655M ops/sec vs 65M ops/sec
+- Thread-safe via thread-local instances
+- Fully seedable for deterministic gameplay
+
+**Zero-allocation spatial queries:**
+- Buffering pattern eliminates GC spikes
+- Reusable collections keep frame times stable
+- O(log n) trees scale to millions of objects
+
+**IL-emitted reflection:**
+- 10-100x faster than System.Reflection
+- Field access: ~2ns vs ~200ns (100x speedup)
+- IL2CPP safe and fully tested
+
+### 3. Production-Ready
+
+**4,000+ automated test cases:**
+- Cover edge cases you haven't thought of
+- Run before each release to catch regressions
+- Prevent bugs before they reach your players
+
+**Used in shipped commercial games:**
+- Battle-tested in real production environments
+- Performance-critical paths proven at scale
+- API stability from real-world feedback
+
+**Protobuf schema evolution:**
+- Add/remove fields without breaking old saves
+- Players never lose progress from updates
+- Forward and backward compatible serialization
+
+**IL2CPP optimized:**
+- Works with Unity's aggressive compiler
+- No reflection issues in release builds
+- Full AOT compatibility
+
+---
+
 ## Choose Your Path
 
 ### 🎯 Path 1: "I Have a Specific Problem"
@@ -154,6 +218,14 @@ public class Player : MonoBehaviour
 
 ---
 
+#### Using With DI Containers (VContainer/Zenject)
+
+- If you use dependency injection, you can auto-populate relational fields right after DI injection.
+- Quick setup:
+  - VContainer: in `LifetimeScope.Configure`, call `builder.RegisterRelationalComponents()`.
+  - Zenject: add `RelationalComponentsInstaller` to your `SceneContext` and (optionally) enable the scene scan on initialize.
+- Full guide with scenarios and testing tips: [Dependency Injection Integrations](RELATIONAL_COMPONENTS.md#dependency-injection-integrations)
+
 ### 3. Spatial Queries in 60 Seconds 🟡 Intermediate
 
 **Problem:** Finding nearby objects with `FindObjectsOfType` and distance checks is O(n) and slow.
@@ -297,3 +369,25 @@ Pick one feature that solves your immediate problem:
 
 **Building something cool?** We'd love to hear about it! Share your experience in
 [GitHub Discussions](https://github.com/wallstop/unity-helpers/discussions).
+
+---
+
+## 📚 Related Documentation
+
+**Core Guides:**
+- [Main README](README.md) - Complete feature overview
+- [Feature Index](INDEX.md) - Alphabetical reference
+- [Glossary](GLOSSARY.md) - Term definitions
+
+**Deep Dives:**
+- [Relational Components](RELATIONAL_COMPONENTS.md) - Auto-wiring guide
+- [Effects System](EFFECTS_SYSTEM.md) - Buff/debuff system
+- [Spatial Trees 2D](SPATIAL_TREES_2D_GUIDE.md) - Fast spatial queries
+- [Serialization](SERIALIZATION.md) - Save systems and networking
+- [Editor Tools](EDITOR_TOOLS_GUIDE.md) - Asset pipeline automation
+
+**DI Integration:**
+- [VContainer Sample](Samples~/DI%20-%20VContainer/README.md) - VContainer integration guide
+- [Zenject Sample](Samples~/DI%20-%20Zenject/README.md) - Zenject integration guide
+
+**Need help?** [Open an issue](https://github.com/wallstop/unity-helpers/issues) or check [Troubleshooting](RELATIONAL_COMPONENTS.md#troubleshooting)

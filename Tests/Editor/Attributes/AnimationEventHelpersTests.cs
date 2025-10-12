@@ -1,4 +1,4 @@
-﻿namespace WallstopStudios.UnityHelpers.Tests.Editor.Attributes
+namespace WallstopStudios.UnityHelpers.Tests.Editor.Attributes
 {
     using System;
     using System.Collections.Generic;

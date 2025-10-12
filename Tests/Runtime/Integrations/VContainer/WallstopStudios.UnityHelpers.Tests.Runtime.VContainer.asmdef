@@ -1,0 +1,43 @@
+{
+  "name": "WallstopStudios.UnityHelpers.Tests.Runtime.VContainer",
+  "rootNamespace": "WallstopStudios.UnityHelpers.Tests.Integrations.VContainer",
+  "references": [
+    "UnityEditor.TestRunner",
+    "UnityEngine.TestRunner",
+    "WallstopStudios.UnityHelpers",
+    "WallstopStudios.UnityHelpers.Integration.VContainer",
+    "WallstopStudios.UnityHelpers.Tests.Runtime",
+    "VContainer",
+    "WallstopStudios.UnityHelpers.Tests.Editor"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "nunit.framework.dll"
+  ],
+  "autoReferenced": false,
+  "defineConstraints": [
+    "UNITY_INCLUDE_TESTS",
+    "VCONTAINER_PRESENT"
+  ],
+  "versionDefines": [
+    {
+      "name": "jp.cysharp.vcontainer",
+      "expression": "0.0.1",
+      "define": "VCONTAINER_PRESENT"
+    },
+    {
+      "name": "jp.hadashikick.vcontainer",
+      "expression": "0.0.1",
+      "define": "VCONTAINER_PRESENT"
+    },
+    {
+      "name": "VContainer",
+      "expression": "0.0.1",
+      "define": "VCONTAINER_PRESENT"
+    }
+  ],
+  "noEngineReferences": false
+}
