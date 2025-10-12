@@ -6,6 +6,10 @@ on:
       - main
   pull_request:
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   format-check:
     runs-on: ubuntu-latest
@@ -40,8 +44,19 @@ jobs:
           # Provide a concise summary, too
           git status --porcelain > csharpier_changed_files.txt
 
+      - name: Skip PR comment on fork
+        if: ${{ github.event_name == 'pull_request' && steps.csharpier_check.outcome == 'failure' && github.event.pull_request.head.repo.fork }}
+        run: |
+          echo "Forked PR detected; skipping sticky PR comment due to restricted permissions. Full diff uploaded as artifact."
+          {
+            echo "## CSharpier Formatting Issues Detected"
+            echo ""
+            echo "- PR is from a fork; comment skipped due to token restrictions."
+            echo "- Full diff uploaded as artifact 'csharpier-diff'."
+          } >> $GITHUB_STEP_SUMMARY
+
       - name: Read diff for comment
-        if: ${{ github.event_name == 'pull_request' && steps.csharpier_check.outcome == 'failure' }}
+        if: ${{ github.event_name == 'pull_request' && steps.csharpier_check.outcome == 'failure' && !github.event.pull_request.head.repo.fork }}
         id: read_diff
         shell: bash
         run: |
@@ -59,7 +74,7 @@ jobs:
           fi
 
       - name: Post CSharpier suggestion comment
-        if: ${{ github.event_name == 'pull_request' && steps.csharpier_check.outcome == 'failure' }}
+        if: ${{ github.event_name == 'pull_request' && steps.csharpier_check.outcome == 'failure' && !github.event.pull_request.head.repo.fork }}
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           header: csharpier-formatting
@@ -87,6 +102,20 @@ jobs:
             csharpier.patch
             csharpier_changed_files.txt
 
+      - name: Job summary (formatting required)
+        if: ${{ steps.csharpier_check.outcome == 'failure' }}
+        run: |
+          {
+            echo "## CSharpier Formatting Required"
+            echo ""
+            echo "- The formatter detected changes that need to be applied."
+            echo "- Apply locally: dotnet tool restore && dotnet tool run csharpier format ."
+            echo "- Changed files and full patch are uploaded as 'csharpier-diff' artifact."
+          } >> $GITHUB_STEP_SUMMARY
+          if [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ github.event.pull_request.head.repo.fork }}" = "true" ]; then
+            echo "- PR comment was skipped because this is a fork." >> $GITHUB_STEP_SUMMARY
+          fi
+
       - name: Fail if formatting required
         if: ${{ steps.csharpier_check.outcome == 'failure' }}
         run: |
@@ -95,6 +124,12 @@ jobs:
 
       - name: Success summary
         if: ${{ steps.csharpier_check.outcome == 'success' }}
-        run: echo "CSharpier check passed."
+        run: |
+          echo "CSharpier check passed."
+          {
+            echo "## CSharpier Check Passed"
+            echo ""
+            echo "- No formatting changes required."
+          } >> $GITHUB_STEP_SUMMARY
 
       
