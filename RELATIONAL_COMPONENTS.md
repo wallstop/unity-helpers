@@ -488,6 +488,26 @@ VContainer (1.16.x)
  - Active scene filter: The initializer operates on the active scene only. Create and set an active scene and move your test hierarchy into it before calling `Initialize()`.
 
 Common pitfalls and how to avoid them
-- “No such registration … RelationalComponentEntryPoint”: You’re resolving in a plain container without `LifetimeScope`. Construct the entry point manually as shown above.
-- Optional integrations don’t compile: Ensure the scripting define symbols are present. UPM adds them automatically via `versionDefines`; manual imports require adding them in Player Settings.
+- "No such registration … RelationalComponentEntryPoint": You're resolving in a plain container without `LifetimeScope`. Construct the entry point manually as shown above.
+- Optional integrations don't compile: Ensure the scripting define symbols are present. UPM adds them automatically via `versionDefines`; manual imports require adding them in Player Settings.
 - Fields remain null in tests: Ensure your test `AttributeMetadataCache` has the relational metadata for your test component types and that the DI container uses the same cache instance (register it and prefer constructors that accept the cache).
+
+---
+
+## 📚 Related Documentation
+
+**Core Guides:**
+- [Getting Started](GETTING_STARTED.md) - Your first 5 minutes with Unity Helpers
+- [Main README](README.md) - Complete feature overview
+- [Feature Index](INDEX.md) - Alphabetical reference
+
+**Related Features:**
+- [Effects System](EFFECTS_SYSTEM.md) - Data-driven buffs/debuffs with attributes and tags
+- [Singletons](SINGLETONS.md) - Runtime and ScriptableObject singleton patterns
+- [Editor Tools](EDITOR_TOOLS_GUIDE.md) - Attribute Metadata Cache generator
+
+**DI Integration Samples:**
+- [VContainer Integration](Samples~/DI%20-%20VContainer/README.md) - Complete VContainer setup guide
+- [Zenject Integration](Samples~/DI%20-%20Zenject/README.md) - Complete Zenject setup guide
+
+**Need help?** [Open an issue](https://github.com/wallstop/unity-helpers/issues) | [Troubleshooting](#troubleshooting)

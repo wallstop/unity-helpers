@@ -14,6 +14,90 @@ A comprehensive collection of high-performance utilities, data structures, and e
 
 ---
 
+## 👋 First Time Here? Choose Your Path
+
+Unity Helpers provides tools for different roles and needs. Pick your path to get started quickly:
+
+### 🎮 For Gameplay Programmers
+**You want:** Faster iteration on game features without sacrificing performance
+
+**Your quick wins:**
+1. **[Random Number Generators](#random-number-generators)** - 10-15x faster with extensive API
+   - Weighted selection, Gaussian distributions, noise maps - all built-in
+   - Seedable for deterministic gameplay (replays, networking)
+
+2. **[Relational Components](#auto-component-discovery)** - Stop writing GetComponent boilerplate
+   - `[SiblingComponent]`, `[ParentComponent]`, `[ChildComponent]` - that's it
+   - Works with DI containers (VContainer/Zenject)
+
+3. **[Effects System](#effects-attributes-and-tags)** - Data-driven buffs/debuffs
+   - Designers create effects as ScriptableObjects
+   - Automatic stacking, timing, and tag management
+
+**Start here:** [Random in 60 Seconds](#random-number-generation) → Try it now
+
+---
+
+### 🔧 For Tools & Editor Developers
+**You want:** Automate asset pipelines and validation workflows
+
+**Your quick wins:**
+1. **[Editor Tools](#editor-tools)** - 20+ tools for sprites, animations, validation
+   - Sprite cropper, atlas generator, animation creator
+   - Prefab checker with comprehensive validation rules
+
+2. **[ScriptableObject Singletons](#singleton-utilities-odin-compatible)** - Global settings management
+   - Auto-created from Resources/ folder
+   - ODIN Inspector compatible
+
+3. **[Reflection Helpers](#reflectionhelpers-blazing-fast-reflection)** - 100x faster than System.Reflection
+   - IL-emitted delegates for field/property access
+   - Safe for IL2CPP and AOT platforms
+
+**Start here:** [Editor Tools Guide](EDITOR_TOOLS_GUIDE.md)
+
+---
+
+### ⚡ For Performance Engineers
+**You want:** Optimize hotspots and eliminate GC pressure
+
+**Your quick wins:**
+1. **[Spatial Trees](#spatial-trees)** - O(log n) queries vs O(n) loops
+   - QuadTree2D, KDTree2D/3D, RTree2D/3D
+   - Scale to millions of objects
+
+2. **[Buffering Pattern](#buffering-pattern)** - Zero-allocation queries
+   - Reusable collections eliminate GC spikes
+   - Professional-grade pooling with automatic cleanup
+
+3. **[Data Structures](#data-structures)** - Production-ready containers
+   - Heaps, tries, sparse sets with clear trade-offs
+   - Performance benchmarks for informed decisions
+
+**Start here:** [Spatial Trees 2D Guide](SPATIAL_TREES_2D_GUIDE.md) + [Performance Benchmarks](#performance)
+
+---
+
+### 🏗️ For Architects & Tech Leads
+**You want:** Understand integration points and architectural patterns
+
+**Your quick wins:**
+1. **[DI Integration](#dependency-injection-integrations)** - VContainer & Zenject support
+   - Automatic relational component wiring after DI injection
+   - Scene and runtime instantiation patterns
+
+2. **[Serialization](#serialization)** - JSON/Protobuf with Unity type support
+   - Schema evolution for save files that never break
+   - Pooled buffers for hot paths
+
+3. **[Feature Index](INDEX.md)** - Complete feature catalog
+   - Alphabetical reference with links
+   - Quick navigation to any feature
+
+**Start here:** [DI Integration Samples](#dependency-injection-integrations) or [Architecture Overview](#why-unity-helpers)
+
+---
+
 ## Quick Onramp
 
 ### Why Unity Helpers? The Killer Features
@@ -144,10 +228,100 @@ Unity Helpers was built to solve common game development challenges with **perfo
 ## Key Features
 
 ### High-Performance Random Number Generators
-- **12 different implementations** including PCG, XorShift, and more
-- **Thread-safe access via `PRNG.Instance`** and **seedable** for deterministic gameplay
-- **Rich API** with Gaussian distributions, noise maps, UUIDs, and more
-- Up to **15x faster** than Unity.Random ([See benchmarks](#performance))
+
+**🎯 The Problem Unity.Random Solves Poorly:**
+- Slow (~65-85M ops/sec) - becomes a bottleneck in proc-gen and particle systems
+- Not seedable - impossible to create deterministic gameplay or replays
+- Not thread-safe - can only use on main thread
+- Basic API - missing weighted selection, distributions, noise generation
+
+**⚡ Unity Helpers Solution - PRNG.Instance:**
+- **10-15x faster** (655-885M ops/sec) - [See benchmarks](RANDOM_PERFORMANCE.md)
+- **Fully seedable** - same seed = identical results (perfect for networking, replays, proc-gen)
+- **Thread-safe** - via thread-local instances, use anywhere
+- **Game-ready API** - weighted selection, Gaussian distributions, Perlin noise, and more
+
+#### Quick Win Example
+
+```csharp
+using WallstopStudios.UnityHelpers.Core.Random;
+using WallstopStudios.UnityHelpers.Core.Extension;
+
+// ❌ OLD WAY (Slow + Not Reproducible)
+void SpawnEnemies()
+{
+    for (int i = 0; i < 1000; i++)
+    {
+        Vector2 pos = new Vector2(Random.value * 100, Random.value * 100);
+        // No way to reproduce this exact pattern!
+        // Slow - each call is expensive
+    }
+}
+
+// ✅ NEW WAY (10x Faster + Fully Deterministic)
+void SpawnEnemies(int levelSeed)
+{
+    IRandom rng = new IllusionFlow(seed: levelSeed);
+
+    for (int i = 0; i < 1000; i++)
+    {
+        Vector2 pos = rng.NextVector2() * 100f;
+        // Same seed = identical enemy layout every time!
+        // 10x faster execution
+    }
+}
+```
+
+#### When This Really Matters
+
+1. **Procedural Generation** - Levels, dungeons, terrain (thousands of random rolls per generation)
+2. **Networked Multiplayer** - Clients generate identical results from shared seeds
+3. **Replay Systems** - Reproduce exact gameplay sequences frame-by-frame
+4. **Particle Systems** - Hundreds of random values per frame without GC
+5. **Performance-Critical Loops** - Every microsecond counts in tight loops
+
+#### Rich API for Game Development
+
+Beyond basic `NextFloat()`, get game-ready features out of the box:
+
+```csharp
+IRandom rng = PRNG.Instance;
+
+// Weighted random selection (loot tables, spawn weights)
+string[] loot = { "Common", "Rare", "Epic", "Legendary" };
+float[] weights = { 0.60f, 0.25f, 0.10f, 0.05f };
+string drop = loot[rng.NextWeightedIndex(weights)];
+
+// Gaussian distribution (natural-looking randomness for damage variance, spawn positions)
+float damage = rng.NextGaussian(mean: 100f, stdDev: 15f);
+
+// Perlin noise maps (terrain generation, texture synthesis)
+float[,] heightMap = new float[256, 256];
+rng.NextNoiseMap(heightMap, octaves: 4, persistence: 0.5f);
+
+// Collections (shuffling, random picks)
+List<Enemy> enemies = GetAllEnemies();
+rng.Shuffle(enemies);  // Fisher-Yates shuffle
+Enemy target = rng.NextOf(enemies);  // Random element
+
+// Unity types (spawning, effects)
+Vector3 randomPos = rng.NextVector3() * spawnRadius;
+Color randomColor = rng.NextColor();
+Quaternion randomRot = rng.NextRotation();
+```
+
+#### Available Generators
+
+| Generator | Speed | Quality | Use Case |
+|-----------|-------|---------|----------|
+| **IllusionFlow** ⭐ | Fast | Good | Default (via PRNG.Instance) |
+| **PcgRandom** | Very Fast | Excellent | Explicit seeding, determinism |
+| **RomuDuo** | Fastest | Good | Maximum speed needed |
+| **LinearCongruentialGenerator** | Fastest | Fair | Simple, fast generation |
+
+⭐ **Recommended**: Use `PRNG.Instance` (currently IllusionFlow) for the best balance of speed, quality, and ease of use.
+
+[📊 Full Performance Benchmarks](RANDOM_PERFORMANCE.md)
 
 ### Spatial Trees for Fast Queries
 - **2D & 3D spatial trees** (QuadTree, OctTree, KDTree, RTree)
@@ -1710,6 +1884,41 @@ Troubleshooting common issues (runtime-only assignment, filters, depth, inactive
 - [GitHub Repository](https://github.com/wallstop/unity-helpers)
 - [Issue Tracker](https://github.com/wallstop/unity-helpers/issues)
 - [NPM Package](https://www.npmjs.com/package/com.wallstop-studios.unity-helpers)
+
+---
+
+---
+
+## 📚 Related Documentation
+
+**Quick Start:**
+- [Getting Started Guide](GETTING_STARTED.md) - Your first 5 minutes with Unity Helpers
+- [Feature Index](INDEX.md) - Alphabetical reference of all features
+- [Glossary](GLOSSARY.md) - Term definitions and concepts
+
+**Core Guides:**
+- [Relational Components](RELATIONAL_COMPONENTS.md) - Auto-wiring component references
+- [Effects System](EFFECTS_SYSTEM.md) - Data-driven buff/debuff system
+- [Serialization](SERIALIZATION.md) - Save systems and networking
+- [Editor Tools](EDITOR_TOOLS_GUIDE.md) - Asset pipeline automation
+- [Math & Extensions](MATH_AND_EXTENSIONS.md) - Core utilities and helpers
+
+**Spatial Trees:**
+- [2D Spatial Trees Guide](SPATIAL_TREES_2D_GUIDE.md) - QuadTree, KDTree, RTree
+- [3D Spatial Trees Guide](SPATIAL_TREES_3D_GUIDE.md) - OctTree, KDTree3D, RTree3D
+- [Spatial Tree Semantics](SPATIAL_TREE_SEMANTICS.md) - Boundary behavior details
+- [2D Performance](SPATIAL_TREE_2D_PERFORMANCE.md) | [3D Performance](SPATIAL_TREE_3D_PERFORMANCE.md)
+
+**Advanced:**
+- [Reflection Helpers](REFLECTION_HELPERS.md) - High-performance reflection
+- [Data Structures](DATA_STRUCTURES.md) - Heaps, tries, sparse sets
+- [Singletons](SINGLETONS.md) - Runtime and ScriptableObject patterns
+
+**DI Integration:**
+- [VContainer Sample](Samples~/DI%20-%20VContainer/README.md) - VContainer integration
+- [Zenject Sample](Samples~/DI%20-%20Zenject/README.md) - Zenject integration
+
+**Need help?** [Open an issue](https://github.com/wallstop/unity-helpers/issues) | [Discussions](https://github.com/wallstop/unity-helpers/discussions)
 
 ---
 
