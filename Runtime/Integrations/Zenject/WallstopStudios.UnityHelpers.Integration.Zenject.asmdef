@@ -1,19 +1,14 @@
 {
   "name": "WallstopStudios.UnityHelpers.Integration.Zenject",
   "rootNamespace": "WallstopStudios.UnityHelpers.Integrations.Zenject",
-  "references": [
-    "WallstopStudios.UnityHelpers",
-    "Zenject"
-  ],
+  "references": ["WallstopStudios.UnityHelpers", "Zenject"],
   "includePlatforms": [],
   "excludePlatforms": [],
   "allowUnsafeCode": false,
   "overrideReferences": false,
   "precompiledReferences": [],
   "autoReferenced": true,
-  "defineConstraints": [
-    "ZENJECT_PRESENT"
-  ],
+  "defineConstraints": ["ZENJECT_PRESENT"],
   "versionDefines": [
     {
       "name": "com.extenject.zenject",

@@ -9,6 +9,7 @@ This approachable guide shows when to use OctTree3D, KdTree3D, and RTree3D, with
 - Big speedups for range, bounds, and nearest‑neighbor queries.
 
 Quick picks
+
 - General 3D queries (broad‑phase, good locality): OctTree3D
 - Nearest neighbors on static points: KDTree3D (Balanced)
 - Fast builds with good‑enough point queries: KDTree3D (Unbalanced)
@@ -17,6 +18,7 @@ Quick picks
 ## Quick Start (Code)
 
 Points (OctTree3D / KdTree3D)
+
 ```csharp
 using WallstopStudios.UnityHelpers.Core.DataStructure;
 using UnityEngine;
@@ -44,6 +46,7 @@ kd.GetApproximateNearestNeighbors(playerPos, count: 12, neighbors);
 ```
 
 Sized objects (RTree3D)
+
 ```csharp
 using WallstopStudios.UnityHelpers.Core.DataStructure;
 using UnityEngine;
@@ -66,6 +69,7 @@ rtree.GetElementsInRange(center, radius, near);
 ```
 
 Notes
+
 - These trees are immutable: rebuild when positions/bounds change significantly.
 - For lots of moving points, consider `SpatialHash3D` for broad‑phase neighborhood queries.
 - See [Spatial Tree Semantics](SPATIAL_TREE_SEMANTICS.md) for boundary behavior and edge cases.
@@ -112,10 +116,12 @@ void Update()
 ```
 
 **Impact:**
+
 - **Before:** GC spikes every 2-3 seconds, frame drops to 40fps
 - **After:** Zero GC from queries, stable 60fps even with 1000s of queries/second
 
 **All spatial trees support this pattern:**
+
 - `OctTree3D.GetElementsInRange(pos, radius, buffer)`
 - `KdTree3D.GetElementsInBounds(bounds, buffer)`
 - `RTree3D.GetElementsInRange(pos, radius, buffer)`
@@ -206,4 +212,3 @@ See [Buffering Pattern](README.md#buffering-pattern) for the complete guide and 
 - For details and performance data, see:
   - [3D Performance Benchmarks](SPATIAL_TREE_3D_PERFORMANCE.md)
   - [Spatial Tree Semantics](SPATIAL_TREE_SEMANTICS.md)
-

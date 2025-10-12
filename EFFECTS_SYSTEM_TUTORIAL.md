@@ -3,6 +3,7 @@
 ## What You'll Build
 
 By the end of this tutorial, you'll have a complete working buff system with:
+
 - A "Haste" buff that increases speed by 50%
 - Visual particle effects that spawn/despawn with the buff
 - A "Stunned" debuff that prevents player movement
@@ -15,6 +16,7 @@ By the end of this tutorial, you'll have a complete working buff system with:
 ## Why Use the Effects System?
 
 **The Old Way:**
+
 ```csharp
 // 50-100 lines per effect type
 public class HasteEffect : MonoBehaviour {
@@ -37,6 +39,7 @@ public class HasteEffect : MonoBehaviour {
 ```
 
 **The New Way:**
+
 ```csharp
 // Zero lines - everything configured in editor
 player.ApplyEffect(hasteEffect);  // Done!
@@ -71,6 +74,7 @@ public class PlayerStats : AttributesComponent
 ```
 
 **What's an Attribute?**
+
 - Holds a base value (e.g., Speed = 5)
 - Tracks modifications from multiple sources
 - Calculates final value automatically (Add → Multiply → Override)
@@ -103,23 +107,27 @@ That's it! Your player now has modifiable attributes.
 Select `HasteEffect` and set these values in Inspector:
 
 **Modifications:**
+
 - Click **"+"** to add a modification
 - Attribute Name: `Speed` (must match field name exactly)
 - Action: `Multiplication`
 - Value: `1.5` (150% of base speed)
 
 **Duration:**
+
 - Modifier Duration Type: `Duration`
 - Duration: `5` (seconds)
 - Can Reapply: ✅ (checking this resets timer when reapplied)
 
 **Tags:**
+
 - Effect Tags: Add tag `"Haste"`
 - Grant Tags: Add tag `"Haste"` (allows gameplay queries)
 
 ### 3.3 Add Visual Effects (Optional)
 
 **Cosmetic Effects:**
+
 - Size: `1`
 - Element 0:
   - Prefab: Drag a particle system prefab (or create one)
@@ -162,6 +170,7 @@ public class PlayerController : MonoBehaviour
 ```
 
 **Test it:**
+
 1. Assign `HasteEffect` to the Inspector field
 2. Press Play
 3. Press `H` to apply haste
@@ -182,16 +191,19 @@ Let's make a more complex effect that prevents movement.
 ### 5.2 Configure Stun
 
 **Modifications:**
+
 - Attribute Name: `Speed`
 - Action: `Override`
 - Value: `0` (completely override speed to 0)
 
 **Duration:**
+
 - Modifier Duration Type: `Duration`
 - Duration: `3`
 - Can Reapply: ✅
 
 **Tags:**
+
 - Effect Tags: `"Stun"`, `"Debuff"`
 - Grant Tags: `"Stunned"`, `"CC"` (crowd control)
 
@@ -225,6 +237,7 @@ public class PlayerController : MonoBehaviour
 ```
 
 **Test it:**
+
 1. Press `S` to stun yourself
 2. Try to move - you can't!
 3. After 3 seconds, movement returns
@@ -267,6 +280,7 @@ this.RemoveAllEffectsWithTag("Haste");
 One effect can modify multiple attributes:
 
 **Create "Berserker Rage" effect:**
+
 - Modification 1: Speed × 1.3
 - Modification 2: Damage × 2.0
 - Modification 3: Health × 0.8 (trade-off!)
@@ -363,21 +377,25 @@ void TryApplyBuff(AttributeEffect effect)
 ## Troubleshooting
 
 ### "Attribute 'Speed' not found"
+
 - **Cause:** Attribute name in effect doesn't match field name in AttributesComponent
 - **Fix:** Names must match exactly (case-sensitive): `Speed` not `speed`
 - **Tip:** Use Attribute Metadata Cache generator for dropdown validation
 
 ### Effect doesn't apply
+
 - **Check:** Does target GameObject have an `AttributesComponent`?
 - **Check:** Is `EffectHandler` component added? (Usually added automatically)
 - **Check:** Are there any errors in console?
 
 ### Particles don't spawn
+
 - **Check:** Cosmetic Effects → Prefab is assigned
 - **Check:** Prefab has a `CosmeticEffectData` component
 - **Check:** Requires Instancing is checked if using per-application instances
 
 ### Value isn't changing
+
 - **Check:** Attribute name matches exactly
 - **Check:** Modification value is non-zero
 - **Check:** Action type is correct (Multiplication needs > 0, Addition can be negative)
@@ -390,6 +408,7 @@ void TryApplyBuff(AttributeEffect effect)
 You now have a complete buff/debuff system! Here are some ideas to expand:
 
 ### Create More Effects
+
 - **Shield:** Health × 2.0, visual shield sprite
 - **Slow:** Speed × 0.5, "Slowed" tag
 - **Critical:** Damage × 1.5, "Critical" tag
@@ -397,6 +416,7 @@ You now have a complete buff/debuff system! Here are some ideas to expand:
 - **Burn:** Health + (-5) per second, fire particles
 
 ### Build Systems Around Tags
+
 ```csharp
 // AI ignores invisible players
 if (!target.HasTag("Invisible"))
@@ -418,6 +438,7 @@ if (player.HasTag("Invulnerable"))
 ```
 
 ### Designer Workflows
+
 1. Create effect library (30+ common effects)
 2. Designers mix/match on items, abilities, enemies
 3. Programmers never touch effect code again!
@@ -427,11 +448,13 @@ if (player.HasTag("Invulnerable"))
 ## 📚 Related Documentation
 
 **Core Guides:**
+
 - [Effects System Full Guide](EFFECTS_SYSTEM.md) - Complete API reference and advanced patterns
 - [Getting Started](GETTING_STARTED.md) - Your first 5 minutes with Unity Helpers
 - [Main README](README.md) - Complete feature overview
 
 **Related Features:**
+
 - [Relational Components](RELATIONAL_COMPONENTS.md) - Auto-wire components (pairs well with effects)
 - [Serialization](SERIALIZATION.md) - Save/load effects and attributes
 
@@ -441,4 +464,4 @@ if (player.HasTag("Invulnerable"))
 
 **Made with ❤️ by Wallstop Studios**
 
-*Effects System tutorial complete! Your designers can now create gameplay effects without code.*
+_Effects System tutorial complete! Your designers can now create gameplay effects without code._

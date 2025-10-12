@@ -25,6 +25,7 @@ Related systems: For data‑driven gameplay effects (attributes, tags, cosmetics
 ### The Productivity Advantage
 
 **Before (The Old Way):**
+
 ```csharp
 void Awake()
 {
@@ -43,6 +44,7 @@ void Awake()
 ```
 
 **After (Relational Components):**
+
 ```csharp
 [SiblingComponent] private SpriteRenderer sprite;
 [ParentComponent] private Rigidbody2D rigidbody;
@@ -53,11 +55,13 @@ void Awake() => this.AssignRelationalComponents();
 ```
 
 Pick the right attribute
+
 - Same GameObject? Use `SiblingComponent`.
 - Search up the hierarchy? Use `ParentComponent`.
 - Search down the hierarchy? Use `ChildComponent`.
 
 One‑minute setup
+
 ```csharp
 [SiblingComponent] private SpriteRenderer sprite;
 [ParentComponent(OnlyAncestors = true)] private Rigidbody2D rb;
@@ -162,11 +166,13 @@ SiblingComponent (searches same GameObject):
 ### Key Options
 
 **OnlyAncestors / OnlyDescendants:**
+
 - `OnlyAncestors = true` → Excludes self, searches only parents/grandparents
 - `OnlyDescendants = true` → Excludes self, searches only children/grandchildren
 - Default (false) → Includes self in search
 
 **MaxDepth:**
+
 - Limits how far up/down the hierarchy to search
 - `MaxDepth = 1` with `OnlyDescendants = true` → immediate children only
 - `MaxDepth = 2` → children + grandchildren (or parents + grandparents)
@@ -186,6 +192,7 @@ SiblingComponent (searches same GameObject):
 - Use for: Standard component composition patterns
 
 Examples:
+
 ```csharp
 [SiblingComponent] private Animator animator;                 // required by default
 [SiblingComponent(Optional = true)] private Rigidbody2D rb;   // optional
@@ -199,6 +206,7 @@ Examples:
 - Controls: `OnlyAncestors`, `MaxDepth`
 
 Examples:
+
 ```csharp
 // Immediate parent only
 [ParentComponent(OnlyAncestors = true, MaxDepth = 1)] private Transform directParent;
@@ -216,6 +224,7 @@ Examples:
 - Controls: `OnlyDescendants`, `MaxDepth`
 
 Examples:
+
 ```csharp
 // Immediate children only
 [ChildComponent(OnlyDescendants = true, MaxDepth = 1)] private Transform[] immediateChildren;
@@ -230,23 +239,29 @@ Examples:
 ## Common Options (All Attributes)
 
 - `Optional` (default: false)
+
   - If `false`, logs a descriptive error when no match is found
   - If `true`, suppresses the error (field remains null/empty)
 
 - `IncludeInactive` (default: true)
+
   - If `true`, includes disabled components and inactive GameObjects
   - If `false`, only assigns enabled components on active-in-hierarchy objects
 
 - `SkipIfAssigned` (default: false)
+
   - If `true`, preserves existing non-null value (single) or non-empty collection
 
 - `MaxCount` (default: 0 = unlimited)
+
   - Applies to arrays, lists, and hash sets; ignored for single fields
 
 - `TagFilter`
+
   - Exact tag match using `CompareTag`
 
 - `NameFilter`
+
   - Case-sensitive substring match on the GameObject name
 
 - `AllowInterfaces` (default: true)
@@ -255,12 +270,14 @@ Examples:
 ## Recipes
 
 - UI hierarchy references
+
   ```csharp
   [ParentComponent(OnlyAncestors = true, MaxDepth = 2)] private Canvas canvas;
   [ChildComponent(OnlyDescendants = true, NameFilter = "Button")] private Button[] buttons;
   ```
 
 - Sensors/components living on children
+
   ```csharp
   [ChildComponent(OnlyDescendants = true, TagFilter = "Sensor")] private Collider[] sensors;
   ```
@@ -294,6 +311,7 @@ void Start()
 ```
 
 Notes:
+
 - Uses AttributeMetadataCache when available, with reflection fallback per type if not cached.
 - Logs warnings for missing fields/types and logs errors for unexpected exceptions; processing continues.
 - Scope the work by providing specific types: `RelationalComponentInitializer.Initialize(new[]{ typeof(MyComponent) });`
@@ -304,15 +322,18 @@ Notes:
 Unity Helpers provides optional integration assemblies that only compile when Zenject or VContainer is present in your project. Install the corresponding DI package via the Unity Package Manager and the helpers become available automatically (no additional scripting defines required).
 
 Why use the DI integrations
+
 - Eliminate boilerplate: hydrate relational fields after DI injection automatically.
 - Consistent behavior: integrates with constructor/property injection and works with runtime instantiation.
 - Safe fallback: if the DI binding is missing, falls back to the non-DI path so fields still populate.
 
 Supported package IDs (auto-detected)
+
 - Zenject/Extenject: `com.extenject.zenject`, `com.modesttree.zenject`, `com.svermeulen.extenject`
 - VContainer: `jp.cysharp.vcontainer`, `jp.hadashikick.vcontainer`
 
 Manual or source imports (no UPM)
+
 - If you import Zenject/VContainer as source, a .unitypackage, or a plain DLL, Unity cannot infer package IDs and the `versionDefines` in the asmdefs won’t trigger.
 - Add scripting defines in Project Settings to enable the integrations:
   - `Project Settings > Player > Other Settings > Scripting Define Symbols`
@@ -322,7 +343,7 @@ Manual or source imports (no UPM)
 
 ### Quick Start — VContainer
 
-1) Register integration in your `LifetimeScope`
+1. Register integration in your `LifetimeScope`
 
 ```csharp
 using VContainer;
@@ -342,7 +363,7 @@ public sealed class GameLifetimeScope : LifetimeScope
 }
 ```
 
-2) Build up runtime instances (DI + relational fields)
+2. Build up runtime instances (DI + relational fields)
 
 ```csharp
 using UnityEngine;
@@ -362,7 +383,7 @@ public sealed class Spawner : MonoBehaviour
 }
 ```
 
-3) Apply to whole hierarchies when needed
+3. Apply to whole hierarchies when needed
 
 ```csharp
 _resolver.AssignRelationalHierarchy(root, includeInactiveChildren: false);
@@ -370,13 +391,13 @@ _resolver.AssignRelationalHierarchy(root, includeInactiveChildren: false);
 
 ### Quick Start — Zenject
 
-1) Add the installer to your SceneContext
+1. Add the installer to your SceneContext
 
 - Add a `SceneContext` to your scene.
 - Add `RelationalComponentsInstaller` to the same GameObject.
 - Toggle "Assign Scene On Initialize" to run a one-time scene scan after the container builds.
 
-2) Instantiate prefabs with DI + relational assignment
+2. Instantiate prefabs with DI + relational assignment
 
 ```csharp
 using UnityEngine;
@@ -401,13 +422,14 @@ public sealed class Spawner
 }
 ```
 
-3) Apply to whole hierarchies
+3. Apply to whole hierarchies
 
 ```csharp
 Container.AssignRelationalHierarchy(root, includeInactiveChildren: true);
 ```
 
 Notes
+
 - Both integrations fall back to the built-in `component.AssignRelationalComponents()` call path if the DI container does not expose the assigner binding, so you can adopt them incrementally without breaking existing behaviour.
 
 ---
@@ -415,21 +437,26 @@ Notes
 ## Troubleshooting
 
 - Fields remain null in the Inspector
+
   - Expected in Edit Mode. These attributes assign at runtime only and are not serialized. Check at runtime or log values.
 
 - Nothing assigned at runtime
+
   - Ensure you call `AssignRelationalComponents()` or the specific `Assign*Components()` in `Awake()` or `OnEnable()`.
   - Verify filters: `TagFilter` must match an existing tag; `NameFilter` is case-sensitive.
   - Check depth limits: `OnlyAncestors`/`OnlyDescendants` may exclude self; `MaxDepth` may be too small.
   - For interface/base type fields, confirm `AllowInterfaces = true` (default) or use a concrete type.
 
 - Inactive or disabled components unexpectedly included
+
   - These are included by default. Set `IncludeInactive = false` to restrict to enabled components on active GameObjects.
 
 - Too many results or large allocations
+
   - Cap with `MaxCount` and/or `MaxDepth`. Prefer `List<T>` or `HashSet<T>` when you plan to mutate the collection after assignment.
 
 - Child search doesn’t find the nearest match you expect
+
   - Children are traversed breadth-first. If you want the nearest by hierarchy level, this is correct; if you need a custom order, gather a collection and sort manually.
 
 - I only need one category (e.g., parents)
@@ -438,12 +465,15 @@ Notes
 ## FAQ
 
 Q: Does this run in Edit Mode or serialize values?
+
 - No. Assignment occurs at runtime only; values are not serialized by Unity.
 
 Q: Are interfaces supported?
+
 - Yes, when `AllowInterfaces = true` (default). Set it to `false` to restrict to concrete types.
 
 Q: What about performance?
+
 - Work scales with the number of attributed fields and the search space. Use `MaxDepth`, `TagFilter`, `NameFilter`, and `MaxCount` to limit work. Sibling lookups are O(1) when no filters are applied.
 
 ---
@@ -453,10 +483,12 @@ For quick examples in context, see the README’s “Auto Component Discovery”
 ## DI Integrations: Testing and Edge Cases
 
 Beginner-friendly overview
+
 - Optional DI integrations compile only when symbols are present (`ZENJECT_PRESENT`, `VCONTAINER_PRESENT`). With UPM, these are added via asmdef `versionDefines`. Without UPM (manual import), add them in Project Settings → Player → Scripting Define Symbols.
 - Both integrations register an assigner (`IRelationalComponentAssigner`) and provide a scene initializer/entry point to hydrate relational fields once the container is ready.
 
 VContainer (1.16.x)
+
 - Runtime usage (LifetimeScope): Call `builder.RegisterRelationalComponents()` in `LifetimeScope.Configure`. The entry point runs automatically after the container builds.
 - Tests without LifetimeScope: Construct the entry point and call `Initialize()` yourself, and register your `AttributeMetadataCache` instance so the assigner uses it:
   ```csharp
@@ -481,13 +513,15 @@ VContainer (1.16.x)
 - Active scene filter: Entry points operate on the active scene only. In EditMode, create a new scene with `SceneManager.CreateScene`, set it active, and move your test hierarchy into it before calling `Initialize()`.
 - IncludeInactive: Control with `RelationalSceneAssignmentOptions(includeInactive: bool)`.
 
- Zenject/Extenject
+Zenject/Extenject
+
 - Runtime usage: Add `RelationalComponentsInstaller` to your `SceneContext`. It binds `IRelationalComponentAssigner` and runs `RelationalComponentSceneInitializer` once the container is ready.
 - Tests: Bind a concrete `AttributeMetadataCache` instance and construct the assigner with that cache. Then resolve `IInitializable` and call `Initialize()`.
- - EditMode reliability: As with VContainer, consider `[UnityTest]` with a `yield return null` after creating objects and after calling `Initialize()` to allow Unity to register objects and complete assignments.
- - Active scene filter: The initializer operates on the active scene only. Create and set an active scene and move your test hierarchy into it before calling `Initialize()`.
+- EditMode reliability: As with VContainer, consider `[UnityTest]` with a `yield return null` after creating objects and after calling `Initialize()` to allow Unity to register objects and complete assignments.
+- Active scene filter: The initializer operates on the active scene only. Create and set an active scene and move your test hierarchy into it before calling `Initialize()`.
 
 Common pitfalls and how to avoid them
+
 - "No such registration … RelationalComponentEntryPoint": You're resolving in a plain container without `LifetimeScope`. Construct the entry point manually as shown above.
 - Optional integrations don't compile: Ensure the scripting define symbols are present. UPM adds them automatically via `versionDefines`; manual imports require adding them in Player Settings.
 - Fields remain null in tests: Ensure your test `AttributeMetadataCache` has the relational metadata for your test component types and that the DI container uses the same cache instance (register it and prefer constructors that accept the cache).
@@ -497,16 +531,19 @@ Common pitfalls and how to avoid them
 ## 📚 Related Documentation
 
 **Core Guides:**
+
 - [Getting Started](GETTING_STARTED.md) - Your first 5 minutes with Unity Helpers
 - [Main README](README.md) - Complete feature overview
 - [Feature Index](INDEX.md) - Alphabetical reference
 
 **Related Features:**
+
 - [Effects System](EFFECTS_SYSTEM.md) - Data-driven buffs/debuffs with attributes and tags
 - [Singletons](SINGLETONS.md) - Runtime and ScriptableObject singleton patterns
 - [Editor Tools](EDITOR_TOOLS_GUIDE.md) - Attribute Metadata Cache generator
 
 **DI Integration Samples:**
+
 - [VContainer Integration](Samples~/DI%20-%20VContainer/README.md) - Complete VContainer setup guide
 - [Zenject Integration](Samples~/DI%20-%20Zenject/README.md) - Complete Zenject setup guide
 

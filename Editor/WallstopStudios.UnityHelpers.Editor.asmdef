@@ -1,12 +1,8 @@
 {
   "name": "WallstopStudios.UnityHelpers.Editor",
   "rootNamespace": "WallstopStudios.UnityHelpers.Editor",
-  "references": [
-    "WallstopStudios.UnityHelpers"
-  ],
-  "includePlatforms": [
-    "Editor"
-  ],
+  "references": ["WallstopStudios.UnityHelpers"],
+  "includePlatforms": ["Editor"],
   "excludePlatforms": [],
   "allowUnsafeCode": false,
   "overrideReferences": false,

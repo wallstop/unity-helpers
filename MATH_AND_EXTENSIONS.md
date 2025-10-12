@@ -8,6 +8,7 @@
 This guide summarizes the math primitives and extension helpers in this package and shows how to apply them effectively, with examples, performance notes, and practical scenarios.
 
 Contents
+
 - [Numeric helpers](#numeric-helpers) — Positive modulo, wrapped arithmetic, approximate equality, clamping
 - [Geometry](#geometry) — Lines, ranges, parabolas, point-in-polygon, polyline simplification
 - [Unity extensions](#unity-extensions) — Rect/Bounds conversions, RectTransform bounds, camera bounds, bounds aggregation
@@ -18,6 +19,7 @@ Contents
 - [Best Practices](#best-practices)
 
 <a id="numeric-helpers"></a>
+
 ## Numeric Helpers
 
 - Positive modulo and wrap-around arithmetic
@@ -25,6 +27,7 @@ Contents
   - Use `WrappedAdd`/`WrappedIncrement` for ring buffer indexes and cursor navigation.
 
 Example:
+
 ```csharp
 using WallstopStudios.UnityHelpers.Core.Helper;
 
@@ -37,6 +40,7 @@ float normalized = angle.PositiveMod(360f); // 330f
 ```
 
 Diagram (wrap-around on a ring of size 5):
+
 ```
 Index:   0   1   2   3   4
            ↖           ↙
@@ -49,6 +53,7 @@ Start at 4, add 2 → 6 → 6 % 5 = 1
   - `float.Approximately(rhs, tolerance)` and `double.Approximately` add a magnitude-scaled fudge factor.
 
 Example:
+
 ```csharp
 bool close = 0.1f.Approximately(0.10001f, 0.0001f); // true
 ```
@@ -57,12 +62,14 @@ bool close = 0.1f.Approximately(0.10001f, 0.0001f); // true
   - `Clamp<T>(min, max)` works for any `IComparable<T>`.
 
 <a id="geometry"></a>
+
 ## Geometry
 
 - `Line2D`/`Line3D` operations
   - Length, direction, contains, intersections and closest point calculations.
 
 Example:
+
 ```csharp
 using WallstopStudios.UnityHelpers.Core.Math;
 var a = new Line2D(new Vector2(0,0), new Vector2(2,0));
@@ -71,6 +78,7 @@ bool hit = a.Intersects(b); // true
 ```
 
 Diagram (segment intersection):
+
 ```
 y↑           b.to (1,1)
  |             │
@@ -87,6 +95,7 @@ y↑           b.to (1,1)
   - `Contains`, `Overlaps`, and factory methods for inclusive/exclusive endpoints.
 
 Example:
+
 ```csharp
 using WallstopStudios.UnityHelpers.Core.Math;
 var r = Range<int>.Inclusive(0, 10);
@@ -97,36 +106,41 @@ bool inside = r.Contains(10); // true
   - Construct by height/length or coefficients; evaluate by x or normalized position.
 
 Example:
+
 ```csharp
 var p = new Parabola(maxHeight: 5f, length: 10f);
 if (p.TryGetValueAtNormalized(0.5f, out float y)) { /* y == 5 */ }
 ```
 
 Diagram (normalized parabola):
+
 ```
 y↑          * vertex (0.5, 5)
- |        *   
- |      *     
- |    *       
- |  *         
+ |        *
+ |      *
+ |    *
+ |  *
  |*           *
  +────────*────────▶ x (t from 0..1)
  0        0.5       1
 ```
 
 - Point-in-polygon
+
   - 2D and 3D (projected) tests; remarks on precision and assumptions.
 
 - Polyline simplification (Douglas–Peucker)
   - `Simplify` (float epsilon) and `SimplifyPrecise` (double tolerance) reduce vertex count while preserving shape.
 
 Example:
+
 ```csharp
 using WallstopStudios.UnityHelpers.Core.Helper;
 List<Vector2> simplified = LineHelper.Simplify(points, epsilon: 0.1f);
 ```
 
 Diagram (original vs simplified):
+
 ```
 Original:     *----*--*---*--*-----*
 Simplified:   *-----------*--------*
@@ -138,6 +152,7 @@ Visual:
 ![Polyline Simplification](Docs/Images/polyline_simplify.svg)
 
 Convex hull (monotone chain / Jarvis examples used by helpers):
+
 ```
 Points:     ·  ·   ·
           ·      ·   ·
@@ -157,6 +172,7 @@ Edge Cases Gallery
 ![Geometry Edge Cases](Docs/Images/geometry_edge_cases.svg)
 
 <a id="unity-extensions"></a>
+
 ## Unity Extensions
 
 - Rect/Bounds conversions, RectTransform world bounds
@@ -164,13 +180,16 @@ Edge Cases Gallery
 - Bounds aggregation from collections
 
 Example:
+
 ```csharp
 Rect r = rectTransform.GetWorldRect();
 Bounds view = Camera.main.OrthographicBounds();
 ```
 
 Diagrams:
+
 - RectTransform world rect (axis-aligned bounds of rotated UI):
+
 ```
    • corner         ┌───────────────┐
       ╲             │   AABB (r)    │
@@ -181,6 +200,7 @@ Diagrams:
 ```
 
 - Orthographic camera bounds (centered on camera):
+
 ```
             ┌──────── view (Bounds) ────────┐
             │           height=2*size      │
@@ -191,6 +211,7 @@ Diagrams:
 ```
 
 <a id="color-utilities"></a>
+
 ## Color Utilities
 
 - Averaging methods:
@@ -200,6 +221,7 @@ Diagrams:
   - Dominant: bucket-based mode
 
 Example:
+
 ```csharp
 using WallstopStudios.UnityHelpers.Core.Extension;
 Color avg = sprite.GetAverageColor(ColorAveragingMethod.LAB);
@@ -207,12 +229,14 @@ string html = avg.ToHex();
 ```
 
 Dominant color example (bucket-based):
+
 ```csharp
 // Emphasize palette extraction (posterized sprites, UI swatches)
 var dominant = pixels.GetAverageColor(ColorAveragingMethod.Dominant, alphaCutoff: 0.05f);
 ```
 
 Diagram (dominant buckets):
+
 ```
 RGB space buckets → counts
  [R][G][B] …  [R+Δ][G][B]  …  [R][G+Δ][B]  …
@@ -220,18 +244,21 @@ RGB space buckets → counts
 ```
 
 <a id="collections"></a>
+
 ## Collections
 
 - Readable helpers: `AsList`, `ToLinkedList`, `OrderBy(Func)`
 - Utilities: `Infinite`, min-bounds from points, bounds aggregation
 
 Example:
+
 ```csharp
 using WallstopStudios.UnityHelpers.Core.Extension;
 foreach (var v in someList.Infinite()) { /* cycles forever */ }
 ```
 
 Bounds from points example:
+
 ```csharp
 // Compute BoundsInt for occupied grid cells
 BoundsInt? area = positions.GetBounds(inclusive: false);
@@ -239,12 +266,14 @@ if (area is BoundsInt b) { /* use b */ }
 ```
 
 Bounds aggregation example:
+
 ```csharp
 // Merge many Bounds (e.g., from Renderers)
 Bounds? merged = renderers.Select(r => r.bounds).GetBounds();
 ```
 
 <a id="strings"></a>
+
 ## Strings
 
 - Casing conversions (Pascal, Camel, Snake, Kebab, Title)
@@ -252,6 +281,7 @@ Bounds? merged = renderers.Select(r => r.bounds).GetBounds();
 - Similarity: `LevenshteinDistance`
 
 Example:
+
 ```csharp
 using WallstopStudios.UnityHelpers.Core.Extension;
 string s = "hello_world";
@@ -259,11 +289,13 @@ int distance = s.LevenshteinDistance("hello-world");
 ```
 
 <a id="directions"></a>
+
 ## Directions
 
 - Conversions between enum and vectors; splitting flag sets; combining
 
 Example:
+
 ```csharp
 using WallstopStudios.UnityHelpers.Core.Extension;
 Vector2Int v = Direction.NorthWest.AsVector2Int(); // (-1, 1)

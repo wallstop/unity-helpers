@@ -11,13 +11,14 @@ This practical guide complements performance and semantics pages with diagrams a
 ### The Scaling Advantage
 
 | Object Count | Naive Approach (checks) | Spatial Tree (checks) | Speedup |
-|--------------|-------------------------|-----------------------|---------|
+| ------------ | ----------------------- | --------------------- | ------- |
 | 100          | 100                     | ~7                    | 14x     |
 | 1,000        | 1,000                   | ~10                   | 100x    |
 | 10,000       | 10,000                  | ~13                   | 769x    |
 | 100,000      | 💀 Unplayable           | ~17                   | ∞       |
 
 Quick picks
+
 - Many moving points, frequent rebuilds, broad searches: QuadTree2D
 - Static points, nearest‑neighbor/k‑NN: KDTree2D (Balanced)
 - Fast builds with good‑enough queries on points: KDTree2D (Unbalanced)
@@ -26,6 +27,7 @@ Quick picks
 ## Quick Start (Code)
 
 Points (QuadTree2D / KdTree2D)
+
 ```csharp
 using WallstopStudios.UnityHelpers.Core.DataStructure;
 using UnityEngine;
@@ -54,6 +56,7 @@ kd.GetApproximateNearestNeighbors(playerPos, count: 10, neighbors);
 ```
 
 Sized objects (RTree2D)
+
 ```csharp
 using WallstopStudios.UnityHelpers.Core.DataStructure;
 using UnityEngine;
@@ -76,6 +79,7 @@ rtree.GetElementsInRange(center, radius, near);
 ```
 
 Notes
+
 - These trees are immutable: rebuild when positions/bounds change significantly.
 - For lots of moving points, consider `SpatialHash2D` for broad‑phase.
 - See [Spatial Tree Semantics](SPATIAL_TREE_SEMANTICS.md) for boundary behavior and edge cases.
@@ -122,10 +126,12 @@ void Update()
 ```
 
 **Impact:**
+
 - **Before:** GC spikes every 2-3 seconds, frame drops to 40fps
 - **After:** Zero GC from queries, stable 60fps even with 1000s of queries/second
 
 **All spatial trees support this pattern:**
+
 - `QuadTree2D.GetElementsInRange(pos, radius, buffer)`
 - `KdTree2D.GetElementsInBounds(bounds, buffer)`
 - `RTree2D.GetElementsInRange(pos, radius, buffer)`
@@ -250,5 +256,6 @@ START: Do your objects move frequently?
 - Numeric stability: prefer consistent ordering for colinear and boundary points.
 
 For deeper details, performance data, and diagrams, see:
+
 - [2D Performance Benchmarks](SPATIAL_TREE_2D_PERFORMANCE.md)
 - [Spatial Tree Semantics](SPATIAL_TREE_SEMANTICS.md)

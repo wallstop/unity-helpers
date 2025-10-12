@@ -423,6 +423,7 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 ---
 
 **See Also:**
+
 - [Glossary](GLOSSARY.md) - Term definitions
 - [Getting Started Guide](GETTING_STARTED.md) - Quick start guide
 - [Main Documentation](README.md) - Main documentation

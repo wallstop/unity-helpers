@@ -8,20 +8,13 @@
     "WallstopStudios.UnityHelpers.Integration.VContainer",
     "WallstopStudios.UnityHelpers.Tests.Editor"
   ],
-  "includePlatforms": [
-    "Editor"
-  ],
+  "includePlatforms": ["Editor"],
   "excludePlatforms": [],
   "allowUnsafeCode": false,
   "overrideReferences": true,
-  "precompiledReferences": [
-    "nunit.framework.dll"
-  ],
+  "precompiledReferences": ["nunit.framework.dll"],
   "autoReferenced": false,
-  "defineConstraints": [
-    "UNITY_INCLUDE_TESTS",
-    "VCONTAINER_PRESENT"
-  ],
+  "defineConstraints": ["UNITY_INCLUDE_TESTS", "VCONTAINER_PRESENT"],
   "versionDefines": [
     {
       "name": "jp.cysharp.vcontainer",

@@ -18,12 +18,14 @@ This package includes two lightweight, production‑ready singleton helpers that
 - No manual setup: instances auto‑create on first use; ScriptableObject assets auto‑create/move under `Resources/` in the Editor.
 
 Quick decision guide
+
 - Need a behaviour that runs (Update, events, coroutines) and may persist across scenes? Use `RuntimeSingleton<T>`.
 - Need global config/data you edit in the Inspector and load from any scene? Use `ScriptableObjectSingleton<T>`.
 
 ## Quick Start (1 minute)
 
 RuntimeSingleton
+
 ```csharp
 public sealed class GameServices : RuntimeSingleton<GameServices>
 {
@@ -36,6 +38,7 @@ GameServices.Instance.DoThing();
 ```
 
 ScriptableObjectSingleton
+
 ```csharp
 [CreateAssetMenu(menuName = "Game/Audio Settings")]
 [ScriptableSingletonPath("Settings/Audio")] // Assets/Resources/Settings/Audio/AudioSettings.asset
@@ -49,6 +52,7 @@ float vol = AudioSettings.Instance.masterVolume;
 ```
 
 Contents
+
 - ODIN Compatibility
 - When To Use / Not To Use
 - RuntimeSingleton<T>
@@ -59,15 +63,18 @@ Contents
 - Troubleshooting
 
 <a id="odin-compatibility"></a>
+
 ## ODIN Compatibility
 
 - With Odin installed (symbol `ODIN_INSPECTOR`), base classes inherit from `SerializedMonoBehaviour` and `SerializedScriptableObject` to enable serialization of complex types (dictionaries, polymorphic fields) with Odin drawers.
 - Without Odin, bases inherit from Unity’s `MonoBehaviour`/`ScriptableObject` with no behavior change.
 
 <a id="when-to-use"></a>
+
 ## When To Use
 
 - `RuntimeSingleton<T>`
+
   - Cross‑scene services (thread dispatcher, audio router, global managers).
   - Utility components that should always be available via `T.Instance`.
   - Creating the instance on demand when not found in the scene.
@@ -78,6 +85,7 @@ Contents
   - Consistent project setup for teams (auto‑created asset on editor load).
 
 <a id="when-not-to-use"></a>
+
 ## When Not To Use
 
 - Prefer DI/service locators for heavily decoupled architectures requiring multiple implementations per environment, or for test seams where global state is undesirable.
@@ -85,6 +93,7 @@ Contents
 - Avoid `ScriptableObjectSingleton<T>` for save data or level‑specific data that should not live in Resources or should have multiple instances.
 
 <a id="runtime-singleton"></a>
+
 ## `RuntimeSingleton<T>` Overview
 
 - Access via `T.Instance` (creates a new `GameObject` named `"<Type>-Singleton"` and adds `T` if none exists; otherwise finds an existing active instance).
@@ -116,11 +125,13 @@ GameServices.Instance.Log("Hello world");
 ODIN note: With Odin installed, the class inherits `SerializedMonoBehaviour`, enabling dictionaries and other complex serialized types.
 
 Common pitfalls:
+
 - If an inactive instance exists in the scene, `Instance` won’t find it (search excludes inactive objects) and will create a new one.
 - If two active instances exist, the newer one logs an error and destroys itself.
 - If `Preserve` is `true`, the instance is detached and marked `DontDestroyOnLoad`.
 
 Lifecycle diagram:
+
 ```
 T.Instance ─┬─ Has _instance? ──▶ return
             │
@@ -132,10 +143,12 @@ T.Instance ─┬─ Has _instance? ──▶ return
 ```
 
 Notes:
+
 - To avoid creation during a sensitive frame, place a pre‑made instance in your bootstrap scene.
 - For scene‑local managers, override `Preserve => false`.
 
 <a id="scriptableobject-singleton"></a>
+
 ## `ScriptableObjectSingleton<T>` Overview
 
 - Access via `T.Instance` (lazy‑loads from `Resources/` using either a custom path or the type name; warns if multiple assets found and chooses the first by name).
@@ -163,10 +176,12 @@ float vol = AudioSettings.Instance.musicVolume;
 ODIN note: With Odin installed, the class inherits `SerializedScriptableObject`, so you can safely serialize complex collections without custom drawers.
 
 Asset management tips:
+
 - Place the asset under `Assets/Resources/` (or under the path from `[ScriptableSingletonPath]`).
 - The Editor’s “ScriptableObject Singleton Creator” runs on load to create missing assets and move misplaced ones. It also supports a test‑assembly toggle used by our test suite.
 
 Lookup order diagram:
+
 ```
 Instance access:
   [1] Resources.LoadAll<T>(custom path from [ScriptableSingletonPath])
@@ -176,6 +191,7 @@ Instance access:
 ```
 
 Auto‑creator flow (Editor):
+
 ```
 On editor load:
   - Scan all ScriptableObjectSingleton<T> types
@@ -188,6 +204,7 @@ On editor load:
 ```
 
 Asset structure diagram:
+
 ```
 Default (no attribute):
 Assets/
@@ -203,6 +220,7 @@ Assets/
 ```
 
 <a id="scenarios"></a>
+
 ## Scenarios & Guidance
 
 - Global dispatcher: See `UnityMainThreadDispatcher` which derives from `RuntimeSingleton<UnityMainThreadDispatcher>`.
@@ -260,6 +278,7 @@ if (ItemsDb.TryGetById(42, out var sword)) { /* equip sword */ }
 ```
 
 Tips
+
 - Keep serialized lists as your source of truth; build dictionaries at load/validate.
 - Use `[ScriptableSingletonPath]` to place the asset predictably under `Resources/`.
 - Split huge DBs into themed sub‑assets and cross‑reference via indices.
@@ -357,6 +376,7 @@ public sealed class ContentDb : ScriptableObjectSingleton<ContentDb>
 ```
 
 Why this works well
+
 - One authoritative asset; code reads through stable APIs.
 - Deterministic load path via Resources; Addressables used only for content references.
 - Indices rebuilt automatically to keep lookups fast and in sync while editing.
@@ -386,8 +406,8 @@ Use this chart to pick an approach based on constraints:
 
 ![Data Distribution Strategy](Docs/Images/data_distribution_decision.svg)
 
-
 <a id="troubleshooting"></a>
+
 ## Troubleshooting
 
 ## Best Practices
