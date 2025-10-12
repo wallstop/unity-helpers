@@ -32,12 +32,10 @@ Unity Helpers provides tools for different roles and needs. Pick your path to ge
 **Your quick wins:**
 
 1. **[Random Number Generators](#random-number-generators)** - 10-15x faster with extensive API
-
    - Weighted selection, Gaussian distributions, noise maps - all built-in
    - Seedable for deterministic gameplay (replays, networking)
 
 2. **[Relational Components](#auto-component-discovery)** - Stop writing GetComponent boilerplate
-
    - `[SiblingComponent]`, `[ParentComponent]`, `[ChildComponent]` - that's it
    - Works with DI containers (VContainer/Zenject)
 
@@ -56,12 +54,10 @@ Unity Helpers provides tools for different roles and needs. Pick your path to ge
 **Your quick wins:**
 
 1. **[Editor Tools](#editor-tools)** - 20+ tools for sprites, animations, validation
-
    - Sprite cropper, atlas generator, animation creator
    - Prefab checker with comprehensive validation rules
 
 2. **[ScriptableObject Singletons](#singleton-utilities-odin-compatible)** - Global settings management
-
    - Auto-created from Resources/ folder
    - ODIN Inspector compatible
 
@@ -80,12 +76,10 @@ Unity Helpers provides tools for different roles and needs. Pick your path to ge
 **Your quick wins:**
 
 1. **[Spatial Trees](#spatial-trees)** - O(log n) queries vs O(n) loops
-
    - QuadTree2D, KDTree2D/3D, RTree2D/3D
    - Scale to millions of objects
 
 2. **[Buffering Pattern](#buffering-pattern)** - Zero-allocation queries
-
    - Reusable collections eliminate GC spikes
    - Professional-grade pooling with automatic cleanup
 
@@ -104,12 +98,10 @@ Unity Helpers provides tools for different roles and needs. Pick your path to ge
 **Your quick wins:**
 
 1. **[DI Integration](#dependency-injection-integrations)** - VContainer & Zenject support
-
    - Automatic relational component wiring after DI injection
    - Scene and runtime instantiation patterns
 
 2. **[Serialization](#serialization)** - JSON/Protobuf with Unity type support
-
    - Schema evolution for save files that never break
    - Pooled buffers for hot paths
 
@@ -3146,14 +3138,12 @@ Do / Don’t
 Pooling utilities
 
 - `Buffers<T>` — pooled collections (List/Stack/Queue/HashSet) with `PooledResource` leases.
-
   - Lists: `using var lease = Buffers<Foo>.List.Get(out List<Foo> list);`
   - Stacks: `using var lease = Buffers<Foo>.Stack.Get(out Stack<Foo> stack);`
   - HashSets: `using var lease = Buffers<Foo>.HashSet.Get(out HashSet<Foo> set);`
   - Pattern: acquire → use → Dispose (returns to pool, clears collection).
 
 - `WallstopArrayPool<T>` — rent arrays by length with automatic return on dispose.
-
   - Example: `using var lease = WallstopArrayPool<int>.Get(1024, out int[] buffer);`
   - Use for temporary processing buffers, sorting, or interop with APIs that require arrays.
 
@@ -3178,7 +3168,6 @@ How pooling + buffering help APIs
     - `VCONTAINER_PRESENT` when VContainer is present
   - Add the define per target platform (e.g., Standalone, Android, iOS).
 - Notes
-
   - When the define is present, optional assemblies under `Runtime/Integrations/*` compile automatically and expose helpers like `RelationalComponentsInstaller` (Zenject) and `RegisterRelationalComponents()` (VContainer).
   - If you use UPM, no manual defines are required — the package IDs above trigger symbols via `versionDefines` in the asmdefs.
   - For test scenarios without LifetimeScope (VContainer) or SceneContext (Zenject), see [DI Integrations: Testing and Edge Cases](RELATIONAL_COMPONENTS.md#di-integrations-testing-and-edge-cases) for step‑by‑step patterns.
