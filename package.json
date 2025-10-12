@@ -48,6 +48,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint:docs": "pwsh -NoProfile -File scripts/lint-doc-links.ps1",
     "hooks:install": "git config core.hooksPath .githooks",
+    "eol:check": "pwsh -NoProfile -File scripts/check-eol.ps1",
+    "eol:fix": "pwsh -NoProfile -File scripts/normalize-eol.ps1",
     "prepublishOnly": "npm run lint:docs"
   }
 }
