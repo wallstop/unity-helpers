@@ -3,15 +3,23 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
 {
     using System;
     using System.Collections.Generic;
+    using global::Zenject;
     using NUnit.Framework;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Integrations.Zenject;
     using WallstopStudios.UnityHelpers.Tags;
-    using Zenject;
 
-    public sealed class RelationalComponentsZenjectTests : ZenjectUnitTestFixture
+    public sealed class RelationalComponentsZenjectTests
     {
+        private DiContainer Container;
+
+        [SetUp]
+        public void Setup()
+        {
+            Container = new DiContainer();
+        }
+
         private readonly List<GameObject> _spawned = new();
 
         [TearDown]
@@ -28,7 +36,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
         }
 
         [Test]
-        public void ContainerExtensions_UseBoundAssigner()
+        public void ContainerExtensionsUseBoundAssigner()
         {
             RecordingAssigner assigner = new();
             Container.Bind<IRelationalComponentAssigner>().FromInstance(assigner);
@@ -37,25 +45,49 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
 
             Container.AssignRelationalComponents(tester);
 
-            Assert.That(assigner.CallCount, Is.EqualTo(1));
-            Assert.That(assigner.LastComponent, Is.SameAs(tester));
-            Assert.That(tester.parentBody, Is.Not.Null);
-            Assert.That(tester.childCollider, Is.Not.Null);
+            Assert.That(
+                assigner.CallCount,
+                Is.EqualTo(1),
+                "Assigner should be called exactly once when bound"
+            );
+            Assert.That(
+                assigner.LastComponent,
+                Is.SameAs(tester),
+                "Assigner should receive the same component instance"
+            );
+            Assert.That(
+                tester.parentBody,
+                Is.Not.Null,
+                "ParentComponent assignment should set parentBody"
+            );
+            Assert.That(
+                tester.childCollider,
+                Is.Not.Null,
+                "ChildComponent assignment should set childCollider"
+            );
         }
 
         [Test]
-        public void ContainerExtensions_FallBackWhenAssignerMissing()
+        public void ContainerExtensionsFallBackWhenAssignerMissing()
         {
             ZenjectRelationalTester tester = CreateHierarchy();
 
             Container.AssignRelationalComponents(tester);
 
-            Assert.That(tester.parentBody, Is.Not.Null);
-            Assert.That(tester.childCollider, Is.Not.Null);
+            Assert.That(
+                tester.parentBody,
+                Is.Not.Null,
+                "Fallback should assign parentBody without a bound assigner"
+            );
+            Assert.That(
+                tester.childCollider,
+                Is.Not.Null,
+                "Fallback should assign childCollider without a bound assigner"
+            );
         }
 
         [Test]
-        public void SceneInitializer_AssignsActiveSceneComponents()
+        public void SceneInitializerAssignsActiveSceneComponents()
         {
             AttributeMetadataCache cache = CreateCacheFor(typeof(ZenjectRelationalTester));
             try
@@ -73,8 +105,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
                 IInitializable initializer = Container.Resolve<IInitializable>();
                 initializer.Initialize();
 
-                Assert.That(tester.parentBody, Is.Not.Null);
-                Assert.That(tester.childCollider, Is.Not.Null);
+                Assert.That(
+                    tester.parentBody,
+                    Is.Not.Null,
+                    "Scene initializer should assign parentBody in the active scene"
+                );
+                Assert.That(
+                    tester.childCollider,
+                    Is.Not.Null,
+                    "Scene initializer should assign childCollider in the active scene"
+                );
             }
             finally
             {
@@ -83,6 +123,117 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
                     UnityEngine.Object.DestroyImmediate(cache);
                 }
             }
+        }
+
+        [Test]
+        public void SceneInitializerSkipsInactiveWhenOptionDisabled()
+        {
+            AttributeMetadataCache cache = CreateCacheFor(typeof(ZenjectRelationalTester));
+            try
+            {
+                Container.BindInstance(cache);
+                Container
+                    .Bind<IRelationalComponentAssigner>()
+                    .FromMethod(_ => new RelationalComponentAssigner(cache))
+                    .AsSingle();
+                Container.BindInstance(new RelationalSceneAssignmentOptions(false));
+                Container.BindInterfacesTo<RelationalComponentSceneInitializer>().AsSingle();
+
+                ZenjectRelationalTester tester = CreateHierarchy();
+                tester.gameObject.SetActive(false);
+
+                IInitializable initializer = Container.Resolve<IInitializable>();
+                initializer.Initialize();
+
+                Assert.That(
+                    tester.parentBody,
+                    Is.Null,
+                    "Disabled option should skip inactive components"
+                );
+                Assert.That(
+                    tester.childCollider,
+                    Is.Null,
+                    "Disabled option should skip inactive components"
+                );
+            }
+            finally
+            {
+                if (cache != null)
+                {
+                    UnityEngine.Object.DestroyImmediate(cache);
+                }
+            }
+        }
+
+        [Test]
+        public void SceneInitializerIncludesInactiveWhenOptionEnabled()
+        {
+            AttributeMetadataCache cache = CreateCacheFor(typeof(ZenjectRelationalTester));
+            try
+            {
+                Container.BindInstance(cache);
+                Container
+                    .Bind<IRelationalComponentAssigner>()
+                    .FromMethod(_ => new RelationalComponentAssigner(cache))
+                    .AsSingle();
+                Container.BindInstance(new RelationalSceneAssignmentOptions(true));
+                Container.BindInterfacesTo<RelationalComponentSceneInitializer>().AsSingle();
+
+                ZenjectRelationalTester tester = CreateHierarchy();
+                tester.gameObject.SetActive(false);
+
+                IInitializable initializer = Container.Resolve<IInitializable>();
+                initializer.Initialize();
+
+                Assert.That(
+                    tester.parentBody,
+                    Is.Not.Null,
+                    "Enabled option should include inactive components"
+                );
+                Assert.That(
+                    tester.childCollider,
+                    Is.Not.Null,
+                    "Enabled option should include inactive components"
+                );
+            }
+            finally
+            {
+                if (cache != null)
+                {
+                    UnityEngine.Object.DestroyImmediate(cache);
+                }
+            }
+        }
+
+        [Test]
+        public void ContainerAssignRelationalHierarchyAssignsFields()
+        {
+            ZenjectRelationalTester tester = CreateHierarchy();
+            Container.AssignRelationalHierarchy(tester.gameObject, includeInactiveChildren: false);
+            Assert.That(
+                tester.parentBody,
+                Is.Not.Null,
+                "AssignRelationalHierarchy should assign parentBody"
+            );
+            Assert.That(
+                tester.childCollider,
+                Is.Not.Null,
+                "AssignRelationalHierarchy should assign childCollider"
+            );
+        }
+
+        [Test]
+        public void ContainerAssignRelationalHierarchyUsesBoundAssigner()
+        {
+            RecordingAssigner assigner = new();
+            Container.Bind<IRelationalComponentAssigner>().FromInstance(assigner);
+            ZenjectRelationalTester tester = CreateHierarchy();
+            Container.AssignRelationalHierarchy(tester.gameObject, includeInactiveChildren: true);
+            Assert.That(
+                assigner.HierarchyCallCount,
+                Is.EqualTo(1),
+                "AssignRelationalHierarchy should use bound assigner"
+            );
         }
 
         private ZenjectRelationalTester CreateHierarchy()
@@ -138,14 +289,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
                 ),
             };
 
-            typeof(AttributeMetadataCache)
-                .GetField(
-                    "_relationalTypeMetadata",
-                    System.Reflection.BindingFlags.Instance
-                        | System.Reflection.BindingFlags.NonPublic
-                )
-                .SetValue(cache, relationalTypes);
-
+            cache._relationalTypeMetadata = relationalTypes;
             return cache;
         }
 
@@ -154,6 +298,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
             public int CallCount { get; private set; }
 
             public Component LastComponent { get; private set; }
+
+            public int HierarchyCallCount { get; private set; }
 
             public bool HasRelationalAssignments(Type componentType)
             {
@@ -187,6 +333,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
                     return;
                 }
 
+                HierarchyCallCount++;
                 Component[] components = root.GetComponentsInChildren<Component>(
                     includeInactiveChildren
                 );

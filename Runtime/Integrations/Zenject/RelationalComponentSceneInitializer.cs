@@ -3,12 +3,12 @@ namespace WallstopStudios.UnityHelpers.Integrations.Zenject
 {
     using System;
     using System.Collections.Generic;
+    using global::Zenject;
     using UnityEngine;
     using UnityEngine.SceneManagement;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Tags;
     using WallstopStudios.UnityHelpers.Utils;
-    using Zenject;
 
     /// <summary>
     /// Scene-level entry point that assigns relational component fields immediately after Zenject

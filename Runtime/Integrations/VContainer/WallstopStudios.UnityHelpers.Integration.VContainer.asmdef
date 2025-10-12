@@ -3,7 +3,8 @@
     "rootNamespace": "WallstopStudios.UnityHelpers.Integrations.VContainer",
     "references": [
         "WallstopStudios.UnityHelpers",
-        "VContainer"
+        "VContainer",
+        "VContainer.Unity"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
@@ -18,6 +19,11 @@
         {
             "name": "jp.cysharp.vcontainer",
             "expression": ">= 1.0.0",
+            "define": "VCONTAINER_PRESENT"
+        },
+        {
+            "name": "jp.hadashikick.vcontainer",
+            "expression": ">= 0.0.0",
             "define": "VCONTAINER_PRESENT"
         }
     ],

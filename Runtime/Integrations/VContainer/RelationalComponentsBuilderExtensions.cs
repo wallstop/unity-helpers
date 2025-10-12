@@ -2,8 +2,8 @@
 namespace WallstopStudios.UnityHelpers.Integrations.VContainer
 {
     using System;
-    using VContainer;
-    using VContainer.Unity;
+    using global::VContainer;
+    using global::VContainer.Unity;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Tags;
 

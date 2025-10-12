@@ -1934,3 +1934,18 @@ How pooling + buffering help APIs
 - Spatial queries: pass a reusable `List<T>` to `GetElementsInRange/GetElementsInBounds` and iterate results without allocations.
 - Component queries: `GetComponents(buffer)` clears and fills your buffer instead of allocating arrays.
 - Editor utilities: temporary arrays/lists from pools keep import/scan tools snappy, especially inside loops.
+
+## Dependency Injection Integrations
+
+- Auto-detected packages
+  - Zenject/Extenject: `com.extenject.zenject`, `com.modesttree.zenject`, `com.svermeulen.extenject`
+  - VContainer: `jp.cysharp.vcontainer`, `jp.hadashikick.vcontainer`
+- Manual or source imports (no UPM)
+  - Add scripting defines in `Project Settings > Player > Other Settings > Scripting Define Symbols`:
+    - `ZENJECT_PRESENT` when Zenject/Extenject is present
+    - `VCONTAINER_PRESENT` when VContainer is present
+  - Add the define per target platform (e.g., Standalone, Android, iOS).
+- Notes
+  - When the define is present, optional assemblies under `Runtime/Integrations/*` compile automatically and expose helpers like `RelationalComponentsInstaller` (Zenject) and `RegisterRelationalComponents()` (VContainer).
+  - If you use UPM, no manual defines are required — the package IDs above trigger symbols via `versionDefines` in the asmdefs.
+  - For test scenarios without LifetimeScope (VContainer) or SceneContext (Zenject), see “DI Integrations: Testing and Edge Cases” in RELATIONAL_COMPONENTS.md for step‑by‑step patterns.

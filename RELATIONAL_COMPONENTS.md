@@ -303,6 +303,18 @@ Notes:
 
 Unity Helpers provides optional integration assemblies that only compile when Zenject or VContainer is present in your project. Install the corresponding DI package via the Unity Package Manager and the helpers become available automatically (no additional scripting defines required).
 
+Supported package IDs (auto-detected)
+- Zenject/Extenject: `com.extenject.zenject`, `com.modesttree.zenject`, `com.svermeulen.extenject`
+- VContainer: `jp.cysharp.vcontainer`, `jp.hadashikick.vcontainer`
+
+Manual or source imports (no UPM)
+- If you import Zenject/VContainer as source, a .unitypackage, or a plain DLL, Unity cannot infer package IDs and the `versionDefines` in the asmdefs won’t trigger.
+- Add scripting defines in Project Settings to enable the integrations:
+  - `Project Settings > Player > Other Settings > Scripting Define Symbols`
+  - Add `ZENJECT_PRESENT` when Zenject/Extenject is present and/or `VCONTAINER_PRESENT` when VContainer is present.
+  - Set defines per target platform (Standalone, Android, iOS, etc.).
+  - After adding, Unity recompiles and the optional assemblies under `Runtime/Integrations/*` compile automatically.
+
 ### Zenject
 - Add `RelationalComponentsInstaller` to your `SceneContext` to register the shared `IRelationalComponentAssigner` service and run `RelationalComponentSceneInitializer` right after container construction.
 - The installer exposes toggles to control whether the active scene is scanned automatically and whether inactive GameObjects are included in the pass.
@@ -310,7 +322,7 @@ Unity Helpers provides optional integration assemblies that only compile when Ze
 
 ### VContainer
 - Call `builder.RegisterRelationalComponents()` inside your `LifetimeScope.Configure` method to register the assigner as a singleton and queue the `RelationalComponentEntryPoint` for scene-wide initialization.
-- Use `resolver.AssignRelationalComponents(component)` / `resolver.AssignRelationalHierarchy(root)` after calling `BuildUp` to ensure relational fields are hydrated for scene references and runtime instantiations.
+- Use `resolver.AssignRelationalComponents(component)` / `resolver.AssignRelationalHierarchy(root)` after calling `Inject` to ensure relational fields are hydrated for scene references and runtime instantiations.
 
 Both integrations fall back to the built-in `component.AssignRelationalComponents()` call path if the DI container does not expose the assigner binding, so you can adopt them incrementally without breaking existing behaviour.
 
@@ -353,3 +365,40 @@ Q: What about performance?
 ---
 
 For quick examples in context, see the README’s “Auto Component Discovery” section. For API docs, hover the attributes in your IDE for XML summaries and examples.
+
+## DI Integrations: Testing and Edge Cases
+
+Beginner-friendly overview
+- Optional DI integrations compile only when symbols are present (`ZENJECT_PRESENT`, `VCONTAINER_PRESENT`). With UPM, these are added via asmdef `versionDefines`. Without UPM (manual import), add them in Project Settings → Player → Scripting Define Symbols.
+- Both integrations register an assigner (`IRelationalComponentAssigner`) and provide a scene initializer/entry point to hydrate relational fields once the container is ready.
+
+VContainer (1.16.x)
+- Runtime usage (LifetimeScope): Call `builder.RegisterRelationalComponents()` in `LifetimeScope.Configure`. The entry point runs automatically after the container builds.
+- Tests without LifetimeScope: Construct the entry point and call `Initialize()` yourself, and register your `AttributeMetadataCache` instance so the assigner uses it:
+  ```csharp
+  var cache = ScriptableObject.CreateInstance<AttributeMetadataCache>();
+  // populate cache._relationalTypeMetadata with your test component types
+  var builder = new ContainerBuilder();
+  builder.RegisterInstance(cache).AsSelf();
+  builder.Register<RelationalComponentAssigner>(Lifetime.Singleton)
+         .As<IRelationalComponentAssigner>()
+         .AsSelf();
+  var resolver = builder.Build();
+  var entry = new RelationalComponentEntryPoint(
+      resolver.Resolve<IRelationalComponentAssigner>(),
+      cache,
+      RelationalSceneAssignmentOptions.Default
+  );
+  entry.Initialize();
+  ```
+- Inject vs BuildUp: Use `resolver.Inject(component)` before calling `resolver.AssignRelationalComponents(component)`.
+- IncludeInactive: Control with `RelationalSceneAssignmentOptions(includeInactive: bool)`.
+
+Zenject/Extenject
+- Runtime usage: Add `RelationalComponentsInstaller` to your `SceneContext`. It binds `IRelationalComponentAssigner` and runs `RelationalComponentSceneInitializer` once the container is ready.
+- Tests: Bind a concrete `AttributeMetadataCache` instance and construct the assigner with that cache. Then resolve `IInitializable` and call `Initialize()`.
+
+Common pitfalls and how to avoid them
+- “No such registration … RelationalComponentEntryPoint”: You’re resolving in a plain container without `LifetimeScope`. Construct the entry point manually as shown above.
+- Optional integrations don’t compile: Ensure the scripting define symbols are present. UPM adds them automatically via `versionDefines`; manual imports require adding them in Player Settings.
+- Fields remain null in tests: Ensure your test `AttributeMetadataCache` has the relational metadata for your test component types and that the DI container uses the same cache instance (register it and prefer constructors that accept the cache).

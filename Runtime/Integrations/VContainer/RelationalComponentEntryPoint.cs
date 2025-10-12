@@ -3,9 +3,9 @@ namespace WallstopStudios.UnityHelpers.Integrations.VContainer
 {
     using System;
     using System.Collections.Generic;
+    using global::VContainer.Unity;
     using UnityEngine;
     using UnityEngine.SceneManagement;
-    using VContainer.Unity;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Tags;
     using WallstopStudios.UnityHelpers.Utils;

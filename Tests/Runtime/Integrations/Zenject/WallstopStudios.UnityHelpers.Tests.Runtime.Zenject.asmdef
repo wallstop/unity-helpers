@@ -6,14 +6,16 @@
         "UnityEngine.TestRunner",
         "WallstopStudios.UnityHelpers",
         "WallstopStudios.UnityHelpers.Integration.Zenject",
-        "WallstopStudios.UnityHelpers.Tests.Runtime"
+        "WallstopStudios.UnityHelpers.Tests.Runtime",
+        "Zenject"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": true,
     "precompiledReferences": [
-        "nunit.framework.dll"
+        "nunit.framework.dll",
+        "Zenject-usage.dll"
     ],
     "autoReferenced": false,
     "defineConstraints": [
@@ -23,6 +25,16 @@
     "versionDefines": [
         {
             "name": "com.extenject.zenject",
+            "expression": ">= 0.0.0",
+            "define": "ZENJECT_PRESENT"
+        },
+        {
+            "name": "com.modesttree.zenject",
+            "expression": ">= 0.0.0",
+            "define": "ZENJECT_PRESENT"
+        },
+        {
+            "name": "com.svermeulen.extenject",
             "expression": ">= 0.0.0",
             "define": "ZENJECT_PRESENT"
         }

@@ -1,10 +1,10 @@
 #if ZENJECT_PRESENT
 namespace WallstopStudios.UnityHelpers.Integrations.Zenject
 {
+    using global::Zenject;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Tags;
-    using Zenject;
 
     /// <summary>
     /// Zenject installer that wires up the relational component assigner and optional scene

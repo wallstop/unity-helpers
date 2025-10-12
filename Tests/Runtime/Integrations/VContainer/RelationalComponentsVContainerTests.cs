@@ -3,9 +3,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
 {
     using System;
     using System.Collections.Generic;
+    using global::VContainer;
     using NUnit.Framework;
     using UnityEngine;
-    using VContainer;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Integrations.VContainer;
     using WallstopStudios.UnityHelpers.Tags;
@@ -28,7 +28,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
         }
 
         [Test]
-        public void ResolverExtensions_UseBoundAssigner()
+        public void ResolverExtensionsUseBoundAssigner()
         {
             RecordingAssigner assigner = new();
             ContainerBuilder builder = new();
@@ -39,14 +39,30 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
 
             resolver.AssignRelationalComponents(tester);
 
-            Assert.That(assigner.CallCount, Is.EqualTo(1));
-            Assert.That(assigner.LastComponent, Is.SameAs(tester));
-            Assert.That(tester.parentBody, Is.Not.Null);
-            Assert.That(tester.childCollider, Is.Not.Null);
+            Assert.That(
+                assigner.CallCount,
+                Is.EqualTo(1),
+                "Assigner should be called exactly once when bound"
+            );
+            Assert.That(
+                assigner.LastComponent,
+                Is.SameAs(tester),
+                "Assigner should receive the same component instance"
+            );
+            Assert.That(
+                tester.parentBody,
+                Is.Not.Null,
+                "ParentComponent assignment should set parentBody"
+            );
+            Assert.That(
+                tester.childCollider,
+                Is.Not.Null,
+                "ChildComponent assignment should set childCollider"
+            );
         }
 
         [Test]
-        public void ResolverExtensions_FallBackWhenAssignerMissing()
+        public void ResolverExtensionsFallBackWhenAssignerMissing()
         {
             ContainerBuilder builder = new();
             IObjectResolver resolver = builder.Build();
@@ -55,34 +71,192 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
 
             resolver.AssignRelationalComponents(tester);
 
-            Assert.That(tester.parentBody, Is.Not.Null);
-            Assert.That(tester.childCollider, Is.Not.Null);
+            Assert.That(
+                tester.parentBody,
+                Is.Not.Null,
+                "Fallback should assign parentBody without a bound assigner"
+            );
+            Assert.That(
+                tester.childCollider,
+                Is.Not.Null,
+                "Fallback should assign childCollider without a bound assigner"
+            );
         }
 
         [Test]
-        public void EntryPoint_AssignsActiveSceneComponents()
+        public void EntryPointAssignsActiveSceneComponents()
         {
             AttributeMetadataCache cache = CreateCacheFor(typeof(VContainerRelationalTester));
-            Lazy<AttributeMetadataCache> previousLazy = OverrideCacheLazy(cache);
-
             try
             {
                 ContainerBuilder builder = new();
-                builder.RegisterRelationalComponents();
+                builder.RegisterInstance(cache).AsSelf();
+                builder
+                    .Register<RelationalComponentAssigner>(Lifetime.Singleton)
+                    .As<IRelationalComponentAssigner>()
+                    .AsSelf();
                 IObjectResolver resolver = builder.Build();
 
                 VContainerRelationalTester tester = CreateHierarchy();
 
-                RelationalComponentEntryPoint entryPoint =
-                    resolver.Resolve<RelationalComponentEntryPoint>();
+                var entryPoint = new RelationalComponentEntryPoint(
+                    resolver.Resolve<IRelationalComponentAssigner>(),
+                    cache,
+                    RelationalSceneAssignmentOptions.Default
+                );
                 entryPoint.Initialize();
 
-                Assert.That(tester.parentBody, Is.Not.Null);
-                Assert.That(tester.childCollider, Is.Not.Null);
+                Assert.That(
+                    tester.parentBody,
+                    Is.Not.Null,
+                    "Entry point should assign parentBody in the active scene"
+                );
+                Assert.That(
+                    tester.childCollider,
+                    Is.Not.Null,
+                    "Entry point should assign childCollider in the active scene"
+                );
             }
             finally
             {
-                RestoreCacheLazy(previousLazy);
+                if (cache != null)
+                {
+                    UnityEngine.Object.DestroyImmediate(cache);
+                }
+            }
+        }
+
+        [Test]
+        public void BuildUpWithRelationsAssignsFields()
+        {
+            ContainerBuilder builder = new();
+            IObjectResolver resolver = builder.Build();
+
+            VContainerRelationalTester tester = CreateHierarchy();
+
+            var result = resolver.BuildUpWithRelations(tester);
+
+            Assert.That(
+                result,
+                Is.SameAs(tester),
+                "BuildUpWithRelations should return the same component instance"
+            );
+            Assert.That(
+                tester.parentBody,
+                Is.Not.Null,
+                "BuildUpWithRelations should assign parentBody"
+            );
+            Assert.That(
+                tester.childCollider,
+                Is.Not.Null,
+                "BuildUpWithRelations should assign childCollider"
+            );
+        }
+
+        [Test]
+        public void RegisterRelationalComponentsRegistersAssignerSingleton()
+        {
+            ContainerBuilder builder = new();
+            builder.RegisterRelationalComponents();
+            IObjectResolver resolver = builder.Build();
+
+            var a = resolver.Resolve<IRelationalComponentAssigner>();
+            var b = resolver.Resolve<IRelationalComponentAssigner>();
+            Assert.That(
+                a,
+                Is.SameAs(b),
+                "RegisterRelationalComponents should register assigner as singleton"
+            );
+        }
+
+        [Test]
+        public void ResolverExtensionsAssignRelationalHierarchyAssignsFields()
+        {
+            ContainerBuilder builder = new();
+            IObjectResolver resolver = builder.Build();
+            VContainerRelationalTester tester = CreateHierarchy();
+            resolver.AssignRelationalHierarchy(tester.gameObject, includeInactiveChildren: false);
+            Assert.That(
+                tester.parentBody,
+                Is.Not.Null,
+                "AssignRelationalHierarchy should assign parentBody"
+            );
+            Assert.That(
+                tester.childCollider,
+                Is.Not.Null,
+                "AssignRelationalHierarchy should assign childCollider"
+            );
+        }
+
+        [Test]
+        public void ResolverExtensionsAssignRelationalHierarchyUsesBoundAssigner()
+        {
+            RecordingAssigner assigner = new();
+            ContainerBuilder builder = new();
+            builder.RegisterInstance(assigner).As<IRelationalComponentAssigner>();
+            IObjectResolver resolver = builder.Build();
+            VContainerRelationalTester tester = CreateHierarchy();
+            resolver.AssignRelationalHierarchy(tester.gameObject, includeInactiveChildren: true);
+            Assert.That(
+                assigner.HierarchyCallCount,
+                Is.EqualTo(1),
+                "AssignRelationalHierarchy should use bound assigner"
+            );
+        }
+
+        [Test]
+        public void EntryPointRespectsIncludeInactiveOption()
+        {
+            AttributeMetadataCache cache = CreateCacheFor(typeof(VContainerRelationalTester));
+            try
+            {
+                ContainerBuilder builder = new();
+                builder.RegisterInstance(cache).AsSelf();
+                builder
+                    .Register<RelationalComponentAssigner>(Lifetime.Singleton)
+                    .As<IRelationalComponentAssigner>()
+                    .AsSelf();
+                IObjectResolver resolver = builder.Build();
+
+                VContainerRelationalTester tester = CreateHierarchy();
+                tester.gameObject.SetActive(false);
+
+                var disabledEntryPoint = new RelationalComponentEntryPoint(
+                    resolver.Resolve<IRelationalComponentAssigner>(),
+                    cache,
+                    new RelationalSceneAssignmentOptions(includeInactive: false)
+                );
+                disabledEntryPoint.Initialize();
+                Assert.That(
+                    tester.parentBody,
+                    Is.Null,
+                    "Disabled option should skip inactive components"
+                );
+                Assert.That(
+                    tester.childCollider,
+                    Is.Null,
+                    "Disabled option should skip inactive components"
+                );
+
+                var enabledEntryPoint = new RelationalComponentEntryPoint(
+                    resolver.Resolve<IRelationalComponentAssigner>(),
+                    cache,
+                    new RelationalSceneAssignmentOptions(includeInactive: true)
+                );
+                enabledEntryPoint.Initialize();
+                Assert.That(
+                    tester.parentBody,
+                    Is.Not.Null,
+                    "Enabled option should include inactive components"
+                );
+                Assert.That(
+                    tester.childCollider,
+                    Is.Not.Null,
+                    "Enabled option should include inactive components"
+                );
+            }
+            finally
+            {
                 if (cache != null)
                 {
                     UnityEngine.Object.DestroyImmediate(cache);
@@ -143,43 +317,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
                 ),
             };
 
-            typeof(AttributeMetadataCache)
-                .GetField(
-                    "_relationalTypeMetadata",
-                    System.Reflection.BindingFlags.Instance
-                        | System.Reflection.BindingFlags.NonPublic
-                )
-                .SetValue(cache, relationalTypes);
-
+            cache._relationalTypeMetadata = relationalTypes;
             return cache;
         }
 
-        private static Lazy<AttributeMetadataCache> OverrideCacheLazy(AttributeMetadataCache cache)
-        {
-            System.Reflection.FieldInfo field = typeof(AttributeMetadataCache).BaseType.GetField(
-                "LazyInstance",
-                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic
-            );
-            Lazy<AttributeMetadataCache> previous =
-                (Lazy<AttributeMetadataCache>)field.GetValue(null);
-            field.SetValue(null, new Lazy<AttributeMetadataCache>(() => cache));
-            return previous;
-        }
-
-        private static void RestoreCacheLazy(Lazy<AttributeMetadataCache> previous)
-        {
-            System.Reflection.FieldInfo field = typeof(AttributeMetadataCache).BaseType.GetField(
-                "LazyInstance",
-                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic
-            );
-            field.SetValue(null, previous);
-        }
+        // No reflection needed: tests provide a cache instance to the assigner via DI
 
         private sealed class RecordingAssigner : IRelationalComponentAssigner
         {
             public int CallCount { get; private set; }
 
             public Component LastComponent { get; private set; }
+
+            public int HierarchyCallCount { get; private set; }
 
             public bool HasRelationalAssignments(Type componentType)
             {
@@ -213,6 +363,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
                     return;
                 }
 
+                HierarchyCallCount++;
                 Component[] components = root.GetComponentsInChildren<Component>(
                     includeInactiveChildren
                 );

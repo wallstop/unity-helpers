@@ -133,7 +133,7 @@ namespace WallstopStudios.UnityHelpers.Tags
         private TypeFieldMetadata[] _typeMetadata = Array.Empty<TypeFieldMetadata>();
 
         [SerializeField]
-        private RelationalTypeMetadata[] _relationalTypeMetadata =
+        internal RelationalTypeMetadata[] _relationalTypeMetadata =
             Array.Empty<RelationalTypeMetadata>();
 
         // Compound key for element type lookup

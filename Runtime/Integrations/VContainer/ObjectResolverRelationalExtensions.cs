@@ -1,9 +1,8 @@
 #if VCONTAINER_PRESENT
 namespace WallstopStudios.UnityHelpers.Integrations.VContainer
 {
-    using System;
+    using global::VContainer;
     using UnityEngine;
-    using VContainer;
     using WallstopStudios.UnityHelpers.Core.Attributes;
 
     /// <summary>
@@ -65,7 +64,8 @@ namespace WallstopStudios.UnityHelpers.Integrations.VContainer
                 return null;
             }
 
-            resolver?.BuildUp(component);
+            // Use Inject for compatibility with VContainer 1.16.x
+            resolver?.Inject(component);
             resolver.AssignRelationalComponents(component);
             return component;
         }

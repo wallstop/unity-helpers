@@ -2,9 +2,9 @@
 namespace WallstopStudios.UnityHelpers.Integrations.Zenject
 {
     using System;
+    using global::Zenject;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
-    using Zenject;
 
     /// <summary>
     /// Helper extensions that bridge Zenject container operations with relational component
@@ -83,7 +83,7 @@ namespace WallstopStudios.UnityHelpers.Integrations.Zenject
                 throw new ArgumentNullException(nameof(prefab));
             }
 
-            T instance = container.InstantiatePrefabForComponent(prefab, parent);
+            T instance = container.InstantiatePrefabForComponent<T>(prefab, parent);
             container.AssignRelationalComponents(instance);
             return instance;
         }
@@ -95,7 +95,12 @@ namespace WallstopStudios.UnityHelpers.Integrations.Zenject
                 return null;
             }
 
-            return container.ResolveOptional<IRelationalComponentAssigner>();
+            if (container.HasBinding(typeof(IRelationalComponentAssigner)))
+            {
+                return container.Resolve<IRelationalComponentAssigner>();
+            }
+
+            return null;
         }
     }
 }

@@ -6,7 +6,8 @@
         "UnityEngine.TestRunner",
         "WallstopStudios.UnityHelpers",
         "WallstopStudios.UnityHelpers.Integration.VContainer",
-        "WallstopStudios.UnityHelpers.Tests.Runtime"
+        "WallstopStudios.UnityHelpers.Tests.Runtime",
+        "VContainer"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
@@ -24,6 +25,11 @@
         {
             "name": "jp.cysharp.vcontainer",
             "expression": ">= 1.0.0",
+            "define": "VCONTAINER_PRESENT"
+        },
+        {
+            "name": "jp.hadashikick.vcontainer",
+            "expression": ">= 0.0.0",
             "define": "VCONTAINER_PRESENT"
         }
     ],
