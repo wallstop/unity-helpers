@@ -26,14 +26,14 @@ jobs:
       - name: CSharpier check
         id: csharpier_check
         run: |
-          dotnet tool run csharpier --check .
+          dotnet tool run csharpier check .
         continue-on-error: true
 
       - name: Generate CSharpier diff
         if: ${{ steps.csharpier_check.outcome == 'failure' }}
         run: |
           echo "Formatting issues detected. Generating diff..."
-          dotnet tool run csharpier .
+          dotnet tool run csharpier format .
           git config user.email "actions@github.com"
           git config user.name "github-actions[bot]"
           git diff > csharpier.patch || true
@@ -68,7 +68,7 @@ jobs:
 
             To apply locally:
             1) dotnet tool restore
-            2) dotnet tool run csharpier .
+            2) dotnet tool run csharpier format .
 
             Diff of proposed changes:
 

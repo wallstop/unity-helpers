@@ -224,7 +224,7 @@ void ProcessEnemies(QuadTree2D<Enemy> enemyTree) {
 20+ tools that automate sprite cropping, animation creation, atlas generation, prefab validation.
 
 **Common workflows:**
-- **Sprite Cropper**: Remove transparent pixels from 500 sprites → 1 click (was: 30 minutes in Photoshop)
+- **Sprite Cropper**: Add or remove transparent pixels from 500 sprites → 1 click (was: 30 minutes in Photoshop)
 - **Animation Creator**: Bulk-create clips from naming patterns (`walk_0001.png`) → 1 minute (was: 20 minutes)
 - **Prefab Checker**: Validate 200 prefabs for missing references → 1 click (was: manual QA)
 - **Atlas Generator**: Create sprite atlases from regex/labels → automated (was: manual setup)
