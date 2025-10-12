@@ -190,6 +190,72 @@ IL2CPP/WebGL notes
 - Dynamic IL emit is disabled on IL2CPP/WebGL; ReflectionHelpers automatically falls back to expression compilation or direct reflection where necessary.
 - Caching still reduces overhead significantly, even without IL emit.
 
+### ⚠️ IL2CPP Code Stripping Considerations
+
+**Important for IL2CPP builds (WebGL, iOS, Android, Consoles):**
+
+While ReflectionHelpers itself is IL2CPP-safe, Unity's managed code stripping may remove types or members you're trying to access via reflection. This affects **any** reflection-based code, not just ReflectionHelpers.
+
+**Symptoms of stripping issues:**
+
+- `TypeLoadException` or `NullReferenceException` when calling `Type.GetType()`
+- `FieldInfo` or `MethodInfo` returns null for members that exist in the Editor
+- "Type not found" or "Member not found" errors in IL2CPP builds
+- Works in Editor/Development, fails in Release builds
+
+#### Solution: Use link.xml to preserve reflected types
+
+Create a `link.xml` file in your `Assets` folder:
+
+```xml
+<linker>
+  <!-- Preserve types you access via reflection -->
+  <assembly fullname="Assembly-CSharp">
+    <!-- Preserve entire type and all members -->
+    <type fullname="MyNamespace.MyReflectedClass" preserve="all"/>
+
+    <!-- Or preserve specific members -->
+    <type fullname="MyNamespace.AnotherClass">
+      <method signature="System.Void DoSomething()" />
+      <field name="importantField" />
+      <property name="ImportantProperty" />
+    </type>
+
+    <!-- Preserve all types in a namespace -->
+    <namespace fullname="MyNamespace.ReflectedTypes" preserve="all"/>
+  </assembly>
+</linker>
+```
+
+**Best practices:**
+
+- ✅ **Test IL2CPP builds regularly** - Stripping only occurs in Release builds
+- ✅ **Preserve all types accessed via string names** - `Type.GetType("MyType")` requires link.xml
+- ✅ **Check build logs** - Unity logs which types are stripped during the build
+- ✅ **Use `typeof()` when possible** - Direct type references prevent stripping without link.xml
+- ✅ **Test on target platform** - Stripping behavior differs across platforms
+
+**Examples of code that needs link.xml:**
+
+```csharp
+// ❌ Requires link.xml: Type accessed by name
+Type t = Type.GetType("MyNamespace.MyClass");
+
+// ✅ Safer: Direct type reference
+Type t = typeof(MyClass);
+
+// ❌ Requires link.xml: Field accessed by name
+FieldInfo field = typeof(MyClass).GetField("myField", BindingFlags.NonPublic);
+
+// ✅ Safer: If field is definitely there, link.xml ensures it won't be stripped
+```
+
+**When ReflectionHelpers doesn't need link.xml:**
+
+- Accessing Unity built-in types (they're never stripped)
+- Using generic type parameters (`GetFieldGetter<MyClass, int>()` prevents stripping of MyClass)
+- Accessing types that are directly referenced elsewhere in code
+
 Thread‑safety
 
 - Caches use thread‑safe dictionaries by default. A `SINGLE_THREADED` build flag switches to regular dictionaries for very constrained environments.

@@ -185,7 +185,7 @@ namespace WallstopStudios.UnityHelpers.Utils
             WallstopGenericPool<SortedSet<T>>
         > SortedSetCache = new();
         private static readonly Dictionary<
-            IComparer<T>,
+            IEqualityComparer<T>,
             WallstopGenericPool<HashSet<T>>
         > HashSetCache = new();
 #else
@@ -514,6 +514,11 @@ namespace WallstopStudios.UnityHelpers.Utils
     /// <typeparam name="T">The type of objects to pool.</typeparam>
     public sealed class WallstopGenericPool<T> : IDisposable
     {
+        /// <summary>
+        /// Gets the current number of instances in the pool.
+        /// </summary>
+        internal int Count => _pool.Count;
+
         private readonly Func<T> _producer;
         private readonly Action<T> _onGet;
         private readonly Action<T> _onRelease;

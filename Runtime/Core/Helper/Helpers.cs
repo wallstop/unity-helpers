@@ -11,6 +11,8 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
     using Object = UnityEngine.Object;
 #if !SINGLE_THREADED
     using System.Collections.Concurrent;
+#else
+    using WallstopStudios.UnityHelpers.Core.Extension;
 #endif
 #if UNITY_EDITOR
     using UnityEditor;

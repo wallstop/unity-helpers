@@ -208,6 +208,85 @@ Notes
 - If you define your own DTOs, they will continue to work; surrogates simply make Unity structs first-class.
 - Keep using [ProtoContract]/[ProtoMember] and stable field numbers for your own types.
 
+### ⚠️ IL2CPP and Code Stripping Warning
+
+**Critical for IL2CPP builds (WebGL, iOS, Android, Consoles):**
+
+Protobuf uses reflection internally to serialize/deserialize types. Unity's IL2CPP managed code stripping may remove types or fields that are only accessed via reflection, causing **silent data loss or runtime crashes** in release builds.
+
+**Common symptoms:**
+
+- `NullReferenceException` or `TypeLoadException` during Protobuf deserialization
+- Fields mysteriously have default values after loading (data appears to be lost)
+- Works perfectly in Editor/Development builds, fails in Release/IL2CPP builds
+- "Type not found" or "Method not found" errors at runtime
+
+#### Solution: Create a link.xml file
+
+In your `Assets` folder (or any subfolder), create `link.xml` to preserve your Protobuf types:
+
+```xml
+<linker>
+  <!-- Preserve all your Protobuf-serialized types -->
+  <assembly fullname="Assembly-CSharp">
+    <!-- Preserve specific types -->
+    <type fullname="MyGame.PlayerSave" preserve="all"/>
+    <type fullname="MyGame.InventoryData" preserve="all"/>
+    <type fullname="MyGame.NetworkMessage" preserve="all"/>
+
+    <!-- Or preserve entire namespace -->
+    <namespace fullname="MyGame.SaveData" preserve="all"/>
+  </assembly>
+
+  <!-- If using Protobuf types across assemblies -->
+  <assembly fullname="MyGame.Shared">
+    <namespace fullname="MyGame.Shared.Protocol" preserve="all"/>
+  </assembly>
+
+  <!-- Preserve Unity Helpers if needed -->
+  <assembly fullname="WallstopStudios.UnityHelpers.Runtime">
+    <!-- Usually not needed, but if you see errors: -->
+    <type fullname="WallstopStudios.UnityHelpers.Core.Serialization.Serializer" preserve="all"/>
+  </assembly>
+</linker>
+```
+
+**Testing checklist (CRITICAL):**
+
+- ✅ **Test every IL2CPP build** - Development builds don't strip code, so issues only appear in Release
+- ✅ **Test on actual devices** - WebGL/Mobile stripping can differ from standalone builds
+- ✅ **Test full save/load cycle** - Save in one session, load in another to verify persistence
+- ✅ **Update link.xml when adding new types** - Every `[ProtoContract]` type needs preservation
+- ✅ **Check build logs for stripping warnings** - Unity logs which types/methods are stripped
+- ✅ **Test after Unity upgrades** - Stripping behavior can change between Unity versions
+
+**When you might not need link.xml:**
+
+- Only using JSON serialization (source-generated, no reflection)
+- Already preserving entire assembly with `preserve="all"`
+- Using a custom IL2CPP link file that preserves everything
+
+#### Advanced: Preserve only what's needed
+
+Instead of `preserve="all"`, you can be more selective:
+
+```xml
+<type fullname="MyGame.PlayerSave">
+  <method signature="System.Void .ctor()" preserve="all"/>
+  <field name="playerId" />
+  <field name="level" />
+  <field name="inventory" />
+</type>
+```
+
+However, this is error-prone. **Start with `preserve="all"` and optimize later if build size is critical.**
+
+**Related documentation:**
+
+- [Unity Manual: Managed Code Stripping](https://docs.unity3d.com/Manual/ManagedCodeStripping.html)
+- [Protobuf-net IL2CPP Guide](https://github.com/protobuf-net/protobuf-net#il2cpp)
+- [Unity Forum: link.xml best practices](https://forum.unity.com/)
+
 ````text
 
 <a id="protobuf-schema-evolution-the-killer-feature"></a>

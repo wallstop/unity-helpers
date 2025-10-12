@@ -88,6 +88,31 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         > StaticMethodInvokers = new();
         private static readonly Dictionary<ConstructorInfo, Func<object[], object>> Constructors =
             new();
+
+        // Cache for typed static and instance invokers/actions in single-threaded mode
+        private static readonly Dictionary<MethodInfo, Delegate> TypedStaticInvoker2 = new();
+        private static readonly Dictionary<MethodInfo, Delegate> TypedStaticInvoker0 = new();
+        private static readonly Dictionary<MethodInfo, Delegate> TypedStaticInvoker1 = new();
+        private static readonly Dictionary<MethodInfo, Delegate> TypedStaticInvoker3 = new();
+        private static readonly Dictionary<MethodInfo, Delegate> TypedStaticInvoker4 = new();
+
+        private static readonly Dictionary<MethodInfo, Delegate> TypedStaticAction0 = new();
+        private static readonly Dictionary<MethodInfo, Delegate> TypedStaticAction1 = new();
+        private static readonly Dictionary<MethodInfo, Delegate> TypedStaticAction2 = new();
+        private static readonly Dictionary<MethodInfo, Delegate> TypedStaticAction3 = new();
+        private static readonly Dictionary<MethodInfo, Delegate> TypedStaticAction4 = new();
+
+        private static readonly Dictionary<MethodInfo, Delegate> TypedInstanceInvoker0 = new();
+        private static readonly Dictionary<MethodInfo, Delegate> TypedInstanceInvoker1 = new();
+        private static readonly Dictionary<MethodInfo, Delegate> TypedInstanceInvoker2 = new();
+        private static readonly Dictionary<MethodInfo, Delegate> TypedInstanceInvoker3 = new();
+        private static readonly Dictionary<MethodInfo, Delegate> TypedInstanceInvoker4 = new();
+
+        private static readonly Dictionary<MethodInfo, Delegate> TypedInstanceAction0 = new();
+        private static readonly Dictionary<MethodInfo, Delegate> TypedInstanceAction1 = new();
+        private static readonly Dictionary<MethodInfo, Delegate> TypedInstanceAction2 = new();
+        private static readonly Dictionary<MethodInfo, Delegate> TypedInstanceAction3 = new();
+        private static readonly Dictionary<MethodInfo, Delegate> TypedInstanceAction4 = new();
 #else
         private static readonly ConcurrentDictionary<Type, Func<int, Array>> ArrayCreators = new();
         private static readonly ConcurrentDictionary<Type, Func<IList>> ListCreators = new();
