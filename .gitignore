@@ -303,3 +303,7 @@ __pycache__/
 
 # Plugins
 /Unity/DxMessagingUnity/Assets/Plugins/*
+
+# Ensure Unity package samples are included
+!Samples~/
+!Samples~/**
