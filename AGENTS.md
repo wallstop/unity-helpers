@@ -5,7 +5,7 @@
 - `Editor/`: Editor-only tooling and UIElements/USS.
 - `Tests/Runtime`, `Tests/Editor`: NUnit/UTF tests mirroring source folders (e.g., `Attributes`, `Extensions`).
 - `Shaders/`, `Styles/`, `URP/`: Rendering assets with accompanying `.meta` files.
-- `Docs/` and top-level `*.md`: Developer guides and references.
+- `Docs/` and top-level guides: Developer guides and references.
 - `package.json`: Unity package metadata + helper scripts; `.editorconfig` defines formatting.
 
 ## Build, Test, and Development Commands
@@ -20,11 +20,16 @@
 - Line endings: CRLF; UTF-8 BOM per `.editorconfig`.
 - C#: explicit types over `var`; braces required; `using` inside namespace.
 - Naming: PascalCase for types/public members; camelCase for fields/locals; interfaces prefixed `I` (e.g., `IResolver`); type params prefixed `T`; events start with `On...`.
+- Do not use underscores in function names, especially test function names.
+- Do not use regions, anywhere, ever.
 
 ## Testing Guidelines
 - Frameworks: NUnit + Unity Test Framework (`[Test]`, `[UnityTest]`).
 - Structure tests to mirror `Runtime/` and `Editor/`; name files `*Tests.cs` (e.g., `Tests/Editor/MultiFileSelectorElementTests.cs`).
 - Keep tests deterministic; prefer fast EditMode where possible. Long-running tests should use timeouts (see `Tests/Runtime/RuntimeTestTimeouts.cs`).
+- Do not use regions.
+- Try to use minimal comments and instead rely on expressive naming conventions and assertions.
+- Do not use Description annotations for tests.
 
 ## Commit & Pull Request Guidelines
 - Commits: short, imperative summaries (e.g., “Fix JSON serialization for FastVector”), group related changes.
