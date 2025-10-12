@@ -1,0 +1,25 @@
+{
+    "name": "WallstopStudios.UnityHelpers.Integration.VContainer",
+    "rootNamespace": "WallstopStudios.UnityHelpers.Integrations.VContainer",
+    "references": [
+        "WallstopStudios.UnityHelpers",
+        "VContainer"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "VCONTAINER_PRESENT"
+    ],
+    "versionDefines": [
+        {
+            "name": "jp.cysharp.vcontainer",
+            "expression": ">= 1.0.0",
+            "define": "VCONTAINER_PRESENT"
+        }
+    ],
+    "noEngineReferences": false
+}

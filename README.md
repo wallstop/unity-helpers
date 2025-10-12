@@ -73,6 +73,9 @@ public class Player : MonoBehaviour
 {
   [SiblingComponent] SpriteRenderer sprite;
   void Awake() => this.AssignRelationalComponents();
+
+> Need DI integration? Optional assemblies automatically light up when Zenject or VContainer is installed, exposing helpers like `RelationalComponentsInstaller` and `RegisterRelationalComponents()` so relational fields are assigned during container initialization.
+
 }
 ```
 

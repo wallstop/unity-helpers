@@ -362,6 +362,39 @@ namespace WallstopStudios.UnityHelpers.Tags
             return _relationalFieldsLookup.TryGetValue(type, out relationalFields);
         }
 
+        /// <summary>
+        /// Populates <paramref name="destination"/> with the set of component types that declare
+        /// relational component fields.
+        /// </summary>
+        /// <param name="destination">List that receives relational component types.</param>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="destination"/> is null.</exception>
+        public void CollectRelationalComponentTypes(List<Type> destination)
+        {
+            if (destination == null)
+            {
+                throw new ArgumentNullException(nameof(destination));
+            }
+
+            if (_relationalFieldsLookup == null)
+            {
+                BuildLookup();
+            }
+
+            foreach (KeyValuePair<Type, RelationalFieldMetadata[]> pair in _relationalFieldsLookup)
+            {
+                Type componentType = pair.Key;
+                if (componentType == null)
+                {
+                    continue;
+                }
+
+                if (pair.Value != null && pair.Value.Length > 0)
+                {
+                    destination.Add(componentType);
+                }
+            }
+        }
+
         public bool TryGetResolvedRelationalFields(
             Type type,
             out ResolvedRelationalFieldMetadata[] relationalFields

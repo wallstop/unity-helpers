@@ -299,6 +299,23 @@ Notes:
 - Scope the work by providing specific types: `RelationalComponentInitializer.Initialize(new[]{ typeof(MyComponent) });`
 - To auto‑prewarm on app load, enable the toggle on the AttributeMetadataCache asset: “Prewarm Relational On Load”.
 
+## Dependency Injection Integrations
+
+Unity Helpers provides optional integration assemblies that only compile when Zenject or VContainer is present in your project. Install the corresponding DI package via the Unity Package Manager and the helpers become available automatically (no additional scripting defines required).
+
+### Zenject
+- Add `RelationalComponentsInstaller` to your `SceneContext` to register the shared `IRelationalComponentAssigner` service and run `RelationalComponentSceneInitializer` right after container construction.
+- The installer exposes toggles to control whether the active scene is scanned automatically and whether inactive GameObjects are included in the pass.
+- Use the extension helpers in `DiContainerRelationalExtensions` when instantiating prefabs or building up existing hierarchies (e.g. `container.InstantiateComponentWithRelations(prefab)` or `container.AssignRelationalHierarchy(root)`).
+
+### VContainer
+- Call `builder.RegisterRelationalComponents()` inside your `LifetimeScope.Configure` method to register the assigner as a singleton and queue the `RelationalComponentEntryPoint` for scene-wide initialization.
+- Use `resolver.AssignRelationalComponents(component)` / `resolver.AssignRelationalHierarchy(root)` after calling `BuildUp` to ensure relational fields are hydrated for scene references and runtime instantiations.
+
+Both integrations fall back to the built-in `component.AssignRelationalComponents()` call path if the DI container does not expose the assigner binding, so you can adopt them incrementally without breaking existing behaviour.
+
+---
+
 ## Troubleshooting
 
 - Fields remain null in the Inspector
