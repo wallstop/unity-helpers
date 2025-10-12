@@ -23,22 +23,22 @@
     "UNITY_INCLUDE_TESTS",
     "ZENJECT_PRESENT"
   ],
-    "versionDefines": [
-        {
-            "name": "com.extenject.zenject",
-            "expression": "",
-            "define": "ZENJECT_PRESENT"
-        },
-        {
-            "name": "com.modesttree.zenject",
-            "expression": "",
-            "define": "ZENJECT_PRESENT"
-        },
-        {
-            "name": "com.svermeulen.extenject",
-            "expression": "",
-            "define": "ZENJECT_PRESENT"
-        }
-    ],
+  "versionDefines": [
+    {
+      "name": "com.extenject.zenject",
+      "expression": "0.0.1",
+      "define": "ZENJECT_PRESENT"
+    },
+    {
+      "name": "com.modesttree.zenject",
+      "expression": "0.0.1",
+      "define": "ZENJECT_PRESENT"
+    },
+    {
+      "name": "com.svermeulen.extenject",
+      "expression": "0.0.1",
+      "define": "ZENJECT_PRESENT"
+    }
+  ],
   "noEngineReferences": false
 }

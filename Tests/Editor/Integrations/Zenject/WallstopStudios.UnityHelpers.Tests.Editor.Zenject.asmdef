@@ -25,17 +25,17 @@
   "versionDefines": [
     {
       "name": "com.extenject.zenject",
-      "expression": "",
+      "expression": "0.0.1",
       "define": "ZENJECT_PRESENT"
     },
     {
       "name": "com.modesttree.zenject",
-      "expression": "",
+      "expression": "0.0.1",
       "define": "ZENJECT_PRESENT"
     },
     {
       "name": "com.svermeulen.extenject",
-      "expression": "",
+      "expression": "0.0.1",
       "define": "ZENJECT_PRESENT"
     }
   ],

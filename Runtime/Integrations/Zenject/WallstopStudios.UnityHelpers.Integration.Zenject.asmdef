@@ -1,35 +1,35 @@
 {
-    "name": "WallstopStudios.UnityHelpers.Integration.Zenject",
-    "rootNamespace": "WallstopStudios.UnityHelpers.Integrations.Zenject",
-    "references": [
-        "WallstopStudios.UnityHelpers",
-        "Zenject"
-    ],
-    "includePlatforms": [],
-    "excludePlatforms": [],
-    "allowUnsafeCode": false,
-    "overrideReferences": false,
-    "precompiledReferences": [],
-    "autoReferenced": true,
-    "defineConstraints": [
-        "ZENJECT_PRESENT"
-    ],
-    "versionDefines": [
-        {
-            "name": "com.extenject.zenject",
-            "expression": ">= 0.0.0",
-            "define": "ZENJECT_PRESENT"
-        },
-        {
-            "name": "com.modesttree.zenject",
-            "expression": ">= 0.0.0",
-            "define": "ZENJECT_PRESENT"
-        },
-        {
-            "name": "com.svermeulen.extenject",
-            "expression": ">= 0.0.0",
-            "define": "ZENJECT_PRESENT"
-        }
-    ],
-    "noEngineReferences": false
+  "name": "WallstopStudios.UnityHelpers.Integration.Zenject",
+  "rootNamespace": "WallstopStudios.UnityHelpers.Integrations.Zenject",
+  "references": [
+    "WallstopStudios.UnityHelpers",
+    "Zenject"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [
+    "ZENJECT_PRESENT"
+  ],
+  "versionDefines": [
+    {
+      "name": "com.extenject.zenject",
+      "expression": "0.0.1",
+      "define": "ZENJECT_PRESENT"
+    },
+    {
+      "name": "com.modesttree.zenject",
+      "expression": "0.0.1",
+      "define": "ZENJECT_PRESENT"
+    },
+    {
+      "name": "com.svermeulen.extenject",
+      "expression": "0.0.1",
+      "define": "ZENJECT_PRESENT"
+    }
+  ],
+  "noEngineReferences": false
 }

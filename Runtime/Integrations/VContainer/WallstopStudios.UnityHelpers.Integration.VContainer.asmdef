@@ -1,31 +1,36 @@
 {
-    "name": "WallstopStudios.UnityHelpers.Integration.VContainer",
-    "rootNamespace": "WallstopStudios.UnityHelpers.Integrations.VContainer",
-    "references": [
-        "WallstopStudios.UnityHelpers",
-        "VContainer",
-        "VContainer.Unity"
-    ],
-    "includePlatforms": [],
-    "excludePlatforms": [],
-    "allowUnsafeCode": false,
-    "overrideReferences": false,
-    "precompiledReferences": [],
-    "autoReferenced": true,
-    "defineConstraints": [
-        "VCONTAINER_PRESENT"
-    ],
-    "versionDefines": [
-        {
-            "name": "jp.cysharp.vcontainer",
-            "expression": ">= 1.0.0",
-            "define": "VCONTAINER_PRESENT"
-        },
-        {
-            "name": "jp.hadashikick.vcontainer",
-            "expression": ">= 0.0.0",
-            "define": "VCONTAINER_PRESENT"
-        }
-    ],
-    "noEngineReferences": false
+  "name": "WallstopStudios.UnityHelpers.Integration.VContainer",
+  "rootNamespace": "WallstopStudios.UnityHelpers.Integrations.VContainer",
+  "references": [
+    "WallstopStudios.UnityHelpers",
+    "VContainer",
+    "VContainer.Unity"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [
+    "VCONTAINER_PRESENT"
+  ],
+  "versionDefines": [
+    {
+      "name": "jp.cysharp.vcontainer",
+      "expression": "0.0.1",
+      "define": "VCONTAINER_PRESENT"
+    },
+    {
+      "name": "jp.hadashikick.vcontainer",
+      "expression": "0.0.1",
+      "define": "VCONTAINER_PRESENT"
+    },
+    {
+      "name": "VContainer",
+      "expression": "0.0.1",
+      "define": "VCONTAINER_PRESENT"
+    }
+  ],
+  "noEngineReferences": false
 }
