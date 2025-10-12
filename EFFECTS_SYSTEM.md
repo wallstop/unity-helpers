@@ -61,12 +61,14 @@ target.ApplyEffect(hasteEffect);
 ```
 
 **Designer Workflow:**
+
 1. Create effect asset in 30 seconds (no code)
 2. Test in-game immediately
 3. Tweak values and iterate freely
 4. Create variations (Haste II, Haste III) by duplicating assets
 
 **Impact:**
+
 - **Programmer time saved**: Weeks of boilerplate → system built once
 - **Designer empowerment**: Block creating 100s of effects instantly
 - **Iteration speed**: Change values without code changes/recompiles
@@ -95,20 +97,21 @@ Visuals
 
 ## How It Works
 
-1) You author an `AttributeEffect` with modifications, tags, cosmetics, and duration.
-2) You apply it to a GameObject: `EffectHandle? handle = target.ApplyEffect(effect);`
-3) `EffectHandler` will:
+1. You author an `AttributeEffect` with modifications, tags, cosmetics, and duration.
+2. You apply it to a GameObject: `EffectHandle? handle = target.ApplyEffect(effect);`
+3. `EffectHandler` will:
    - Create an `EffectHandle` (for Duration/Infinite) and track expiration
    - Apply tags via `TagHandler` (counted; multiple sources safe)
    - Apply cosmetic behaviours (`CosmeticEffectData`)
    - Forward `AttributeModification`s to all `AttributesComponent`s on the GameObject
-4) On removal (manual or expiration), all of the above are cleanly reversed.
+4. On removal (manual or expiration), all of the above are cleanly reversed.
 
 Instant effects modify base values permanently and return `null` instead of a handle.
 
 ## Authoring Guide
 
-1) Define stats:
+1. Define stats:
+
 ```csharp
 public class CharacterStats : AttributesComponent
 {
@@ -118,14 +121,16 @@ public class CharacterStats : AttributesComponent
 }
 ```
 
-2) Create an `AttributeEffect` asset (Project view → Create → Wallstop Studios → Unity Helpers → Attribute Effect):
+1. Create an `AttributeEffect` asset (Project view → Create → Wallstop Studios → Unity Helpers → Attribute Effect):
+
 - modifications: e.g., `{ attribute: "Speed", action: Multiplication, value: 1.5f }`
 - durationType: `Duration` with `duration = 5`
 - resetDurationOnReapplication: true to refresh timer on reapply
 - effectTags: e.g., `[ "Haste" ]`
 - cosmeticEffects: prefab with `CosmeticEffectData` + `CosmeticEffectComponent` scripts
 
-3) Apply/remove at runtime:
+1. Apply/remove at runtime:
+
 ```csharp
 GameObject player = ...;
 AttributeEffect haste = ...; // ScriptableObject reference
@@ -137,7 +142,8 @@ if (handle.HasValue)
 }
 ```
 
-4) Query tags anywhere:
+1. Query tags anywhere:
+
 ```csharp
 if (player.HasTag("Stunned"))
 {
@@ -148,29 +154,35 @@ if (player.HasTag("Stunned"))
 ## Recipes
 
 ### 1) Buff with % Speed for 5s (refreshable)
+
 - Effect: Multiplication `Speed *= 1.5f`, `Duration=5`, `resetDurationOnReapplication=true`, tag `Haste`.
 - Apply to extend: reapply before expiry to reset the timer.
 
 ### 2) Poison: −5 Health instantly and "Poisoned" tag for 10s
+
 - modifications: Addition `{ attribute: "Health", value: -5f }`
 - durationType: Duration `10s`
 - effectTags: `[ "Poisoned" ]`
 - cosmetics: particles + UI icon
 
 ### 3) Equipment Aura: +10 Defense while equipped
+
 - durationType: Infinite
 - modifications: Addition `{ attribute: "Defense", value: 10f }`
 - Apply on equip, store handle, remove on unequip.
 
 ### 4) One‑off Permanent Bonus
+
 - durationType: Instant (returns null)
 - modifications: Addition or Override on base value (no handle; cannot be removed).
 
 ### 5) Stacking Multiple Instances
+
 - Apply the same effect multiple times → multiple `EffectHandle`s; remove one handle to remove one stack.
 - Use tags to gate behaviour regardless of which instance applied it.
 
 ### 6) Shared vs Instanced Cosmetics
+
 - In `CosmeticEffectData`, set a component’s `RequiresInstance = true` for per‑application instances (e.g., particles).
 - Keep `RequiresInstance = false` for shared presenters (e.g., status icon overlay).
 
@@ -185,18 +197,23 @@ if (player.HasTag("Stunned"))
 ## FAQ
 
 Q: Why didn’t I get an `EffectHandle`?
+
 - Instant effects modify the base value permanently and do not return a handle (`null`). Duration/Infinite do.
 
 Q: Do modifications stack across multiple effects?
+
 - Yes. Each `Attribute` applies all active modifications ordered by action: Addition → Multiplication → Override.
 
 Q: How do I remove just one instance of an effect?
+
 - Keep the `EffectHandle` returned from `ApplyEffect` and pass it to `RemoveEffect(handle)`.
 
 Q: Two systems apply the same tag. Who owns removal?
+
 - The tag is reference‑counted. Each application increments the count; removal decrements it. The tag is removed when the count reaches 0.
 
 Q: When should I use tags vs checking stats?
+
 - Use tags to represent categorical states (e.g., Stunned/Poisoned/Invulnerable) independent from numeric values. Check stats for numeric thresholds or calculations.
 
 ## Troubleshooting
@@ -220,5 +237,6 @@ Q: When should I use tags vs checking stats?
 ---
 
 Related:
+
 - README section: “Effects, Attributes, and Tags”
 - Attribute Metadata Cache (Editor Tools) for dropdowns and performance

@@ -1,0 +1,21 @@
+{
+  "default": true,
+  // Allow long lines; Prettier handles wrapping policy
+  "MD013": false,
+  // Allow inline HTML when needed
+  "MD033": false,
+  // First line need not be a top-level heading (many docs start with badges)
+  "MD041": false,
+  // Use fenced code blocks consistently (matches Prettier)
+  "MD046": { "style": "fenced" },
+  // Duplicate headings only matter among siblings
+  "MD024": { "siblings_only": true },
+  // Accept ascending ordered list numbers (matches Prettier behavior)
+  "MD029": { "style": "ordered" },
+  // Permit bare URLs; Prettier won’t auto-wrap, and link checks are handled separately
+  "MD034": false,
+  // Allow exactly one blank line between blocks (Prettier’s behavior)
+  "MD012": { "maximum": 1 },
+  // Don’t flag the two trailing spaces used for hard line breaks in Markdown
+  "MD009": { "strict": false }
+}

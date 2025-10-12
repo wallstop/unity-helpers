@@ -20,3 +20,20 @@ repos:
         types:
           - c#
         description: CSharpier is an opinionated C# formatter inspired by Prettier.
+
+  - repo: local
+    hooks:
+      - id: prettier
+        name: Prettier (Markdown, JSON, asmdef, asmref)
+        entry: npx --yes prettier --write
+        language: system
+        files: '(?i)\.(md|markdown|json|asmdef|asmref)$'
+        description: Use the repo's Prettier version from package.json.
+
+  - repo: local
+    hooks:
+      - id: markdownlint
+        name: markdownlint (respect repo config)
+        entry: npx --yes markdownlint --config .markdownlint.json --ignore-path .markdownlintignore
+        language: system
+        files: '(?i)\.(md|markdown)$'

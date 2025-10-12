@@ -1,4 +1,4 @@
-**Serialization Guide**
+# Serialization Guide
 
 ## TL;DR — What Problem This Solves
 
@@ -18,7 +18,8 @@ This package provides fast, compact serialization for save systems, configuratio
 
 All formats are exposed via `WallstopStudios.UnityHelpers.Core.Serialization.Serializer` and selected with `SerializationType`.
 
-**Formats Provided**
+## Formats Provided
+
 - Json
   - Human-readable; ideal for settings, debug, modding, and Git diffs.
   - Includes converters for Unity types (ignores cycles, includes fields by default, case-insensitive by default; enums as strings in Normal/Pretty):
@@ -35,16 +36,16 @@ All formats are exposed via `WallstopStudios.UnityHelpers.Core.Serialization.Ser
 - Protobuf (protobuf-net)
   - **⭐ Killer Feature: Schema Evolution** — Players can load saves from older game versions without breaking! Add new fields, remove old ones, rename types—all while maintaining compatibility.
   - Small and fast; best for networking and large save payloads.
-  - Forward/backward compatible message evolution (see [Schema Evolution Guide](#protobuf-schema-evolution-the-killer-feature) below).
+  - Forward/backward compatible message evolution (see the Schema Evolution guide below).
 - SystemBinary (BinaryFormatter)
   - Only for legacy or trusted, same-version, local data. Avoid for long-term persistence or untrusted input.
   - ⚠️ **Cannot handle version changes** - a single field addition breaks all existing saves.
 
-**When To Use What**
+## When To Use What
 
 Use this decision flowchart to pick the right serialization format:
 
-```
+```text
 START: What are you serializing?
   │
   ├─ Game settings / Config files
@@ -101,8 +102,10 @@ START: What are you serializing?
   - Transient caches in trusted environments with exact version match
   - ⚠️ Consider JSON Fast instead - SystemBinary is legacy
 
-**JSON Examples (Unity-aware)**
+## JSON Examples (Unity-aware)
+
 - Serialize/deserialize and write/read files
+
 ```csharp
 using System.Collections.Generic;
 using UnityEngine;
@@ -138,8 +141,10 @@ byte[] bytes = Serializer.Serialize(data, SerializationType.Json);
 SaveData loaded = Serializer.Deserialize<SaveData>(bytes, SerializationType.Json);
 ```
 
-**Protobuf Examples (Compact + Evolvable)**
+## Protobuf Examples (Compact + Evolvable)
+
 - Basic usage
+
 ```csharp
 using ProtoBuf; // protobuf-net
 using WallstopStudios.UnityHelpers.Core.Serialization;
@@ -166,6 +171,7 @@ PlayerInfo sliced = Serializer.Deserialize<PlayerInfo>(buffer.AsSpan(0, len).ToA
 ```
 
 - Unity types with Protobuf: built-in surrogates
+
 ```csharp
 // This package registers protobuf-net surrogates at startup so Unity structs just work in protobuf models.
 // The following Unity types are protobuf-compatible out of the box:
@@ -195,11 +201,93 @@ NetworkMessage again = Serializer.ProtoDeserialize<NetworkMessage>(bytes);
 ```
 
 Notes
+
 - Surrogates are registered in the Serializer static initializer; you don't need to call anything.
 - If you define your own DTOs, they will continue to work; surrogates simply make Unity structs first-class.
 - Keep using [ProtoContract]/[ProtoMember] and stable field numbers for your own types.
+
+### ⚠️ IL2CPP and Code Stripping Warning
+
+**Critical for IL2CPP builds (WebGL, iOS, Android, Consoles):**
+
+Protobuf uses reflection internally to serialize/deserialize types. Unity's IL2CPP managed code stripping may remove types or fields that are only accessed via reflection, causing **silent data loss or runtime crashes** in release builds.
+
+**Common symptoms:**
+
+- `NullReferenceException` or `TypeLoadException` during Protobuf deserialization
+- Fields mysteriously have default values after loading (data appears to be lost)
+- Works perfectly in Editor/Development builds, fails in Release/IL2CPP builds
+- "Type not found" or "Method not found" errors at runtime
+
+#### Solution: Create a link.xml file
+
+In your `Assets` folder (or any subfolder), create `link.xml` to preserve your Protobuf types:
+
+```xml
+<linker>
+  <!-- Preserve all your Protobuf-serialized types -->
+  <assembly fullname="Assembly-CSharp">
+    <!-- Preserve specific types -->
+    <type fullname="MyGame.PlayerSave" preserve="all"/>
+    <type fullname="MyGame.InventoryData" preserve="all"/>
+    <type fullname="MyGame.NetworkMessage" preserve="all"/>
+
+    <!-- Or preserve entire namespace -->
+    <namespace fullname="MyGame.SaveData" preserve="all"/>
+  </assembly>
+
+  <!-- If using Protobuf types across assemblies -->
+  <assembly fullname="MyGame.Shared">
+    <namespace fullname="MyGame.Shared.Protocol" preserve="all"/>
+  </assembly>
+
+  <!-- Preserve Unity Helpers if needed -->
+  <assembly fullname="WallstopStudios.UnityHelpers.Runtime">
+    <!-- Usually not needed, but if you see errors: -->
+    <type fullname="WallstopStudios.UnityHelpers.Core.Serialization.Serializer" preserve="all"/>
+  </assembly>
+</linker>
 ```
 
+**Testing checklist (CRITICAL):**
+
+- ✅ **Test every IL2CPP build** - Development builds don't strip code, so issues only appear in Release
+- ✅ **Test on actual devices** - WebGL/Mobile stripping can differ from standalone builds
+- ✅ **Test full save/load cycle** - Save in one session, load in another to verify persistence
+- ✅ **Update link.xml when adding new types** - Every `[ProtoContract]` type needs preservation
+- ✅ **Check build logs for stripping warnings** - Unity logs which types/methods are stripped
+- ✅ **Test after Unity upgrades** - Stripping behavior can change between Unity versions
+
+**When you might not need link.xml:**
+
+- Only using JSON serialization (source-generated, no reflection)
+- Already preserving entire assembly with `preserve="all"`
+- Using a custom IL2CPP link file that preserves everything
+
+#### Advanced: Preserve only what's needed
+
+Instead of `preserve="all"`, you can be more selective:
+
+```xml
+<type fullname="MyGame.PlayerSave">
+  <method signature="System.Void .ctor()" preserve="all"/>
+  <field name="playerId" />
+  <field name="level" />
+  <field name="inventory" />
+</type>
+```
+
+However, this is error-prone. **Start with `preserve="all"` and optimize later if build size is critical.**
+
+**Related documentation:**
+
+- [Unity Manual: Managed Code Stripping](https://docs.unity3d.com/Manual/ManagedCodeStripping.html)
+- [Protobuf-net IL2CPP Guide](https://github.com/protobuf-net/protobuf-net#il2cpp)
+- [Unity Forum: link.xml best practices](https://forum.unity.com/)
+
+````text
+
+<a id="protobuf-schema-evolution-the-killer-feature"></a>
 ## Protobuf Schema Evolution: The Killer Feature
 
 **The Problem Protobuf Solves:**
@@ -212,9 +300,10 @@ public class PlayerSave
     [ProtoMember(1)] public int level;
     [ProtoMember(2)] public string name;
 }
-```
+````
 
 A month later, you want to add a new feature and change the format:
+
 ```csharp
 [ProtoContract]
 public class PlayerSave
@@ -233,6 +322,7 @@ public class PlayerSave
 ### Real-World Save Game Evolution Example 🟡 Intermediate
 
 **Version 1.0 (Launch):**
+
 ```csharp
 [ProtoContract]
 public class PlayerSave
@@ -244,6 +334,7 @@ public class PlayerSave
 ```
 
 **Version 1.5 (Inventory System Added):**
+
 ```csharp
 [ProtoContract]
 public class PlayerSave
@@ -256,6 +347,7 @@ public class PlayerSave
 ```
 
 **Version 2.0 (Stats Overhaul - level renamed to xp):**
+
 ```csharp
 [ProtoContract]
 public class PlayerSave
@@ -270,6 +362,7 @@ public class PlayerSave
 ```
 
 **Result:** Players who saved in v1.0 can load their save in v2.0:
+
 - Old `level` value (tag 2) is ignored
 - New `xp` and `skillPoints` default to 0
 - All existing data (`playerId`, `position`, `inventory`) loads correctly
@@ -278,6 +371,7 @@ public class PlayerSave
 ### Schema Evolution Rules
 
 **✅ Safe Changes (Always Compatible):**
+
 - Add new fields with new tag numbers
 - Remove fields (but never reuse their tag numbers)
 - Change field names (tags are what matter, not names)
@@ -285,11 +379,13 @@ public class PlayerSave
 - Change default values (only affects new saves)
 
 **⚠️ Requires Care:**
+
 - Changing field types (e.g., `int` → `long` works, `int` → `string` doesn't)
 - Changing `repeated` to singular or vice versa (usually breaks)
 - Renumbering existing tags (breaks everything!)
 
 **❌ Never Do This:**
+
 - Reuse deleted field tag numbers
 - Change the meaning of an existing tag
 - Remove required fields (avoid `required` entirely - use validation instead)
@@ -363,6 +459,7 @@ Assert.AreEqual(0, loaded.gold);  // New field defaults to 0
 ### Common Save System Patterns
 
 **Pattern 1: Version-Aware Loading** 🟡 Intermediate
+
 ```csharp
 public SaveFile LoadSave(string path)
 {
@@ -377,6 +474,7 @@ public SaveFile LoadSave(string path)
 ```
 
 **Pattern 2: Gradual Migration (preserve old format for rollback)** 🔴 Advanced
+
 ```csharp
 public class SaveManager
 {
@@ -393,6 +491,7 @@ public class SaveManager
 ```
 
 **Pattern 3: Automatic Backup Before Save** 🟡 Intermediate
+
 ```csharp
 public void SaveGame(SaveFile save)
 {
@@ -416,6 +515,7 @@ public void SaveGame(SaveFile save)
 ### Why This Matters for Live Games
 
 **Without schema evolution (JSON/BinaryFormatter):**
+
 - ❌ Every update risks breaking player saves
 - ❌ Must write complex migration code for every version
 - ❌ Players lose progress if migration fails
@@ -423,6 +523,7 @@ public void SaveGame(SaveFile save)
 - ❌ Hotfixes that change save format are terrifying
 
 **With Protobuf schema evolution:**
+
 - ✅ Add features freely without breaking existing saves
 - ✅ Graceful degradation (old clients ignore new fields)
 - ✅ Can roll back game versions without data loss
@@ -441,9 +542,11 @@ public void SaveGame(SaveFile save)
 ---
 
 ## Protobuf Polymorphism (Inheritance + Interfaces)
+
 - Abstract base with [ProtoInclude] (recommended)
   - Protobuf-net does not infer subtype graphs unless you tell it. The recommended pattern is to put `[ProtoContract]` on an abstract base and list all concrete subtypes with `[ProtoInclude(tag, typeof(Subtype))]`.
   - Declare your fields/properties as the abstract base so protobuf can deserialize to the correct subtype.
+
 ```csharp
 using ProtoBuf;
 
@@ -469,11 +572,14 @@ Envelope again = Serializer.ProtoDeserialize<Envelope>(bytes);
   - Protobuf cannot deserialize directly to an interface because it needs a concrete root. You have three options:
     - Use an abstract base with `[ProtoInclude]` and declare fields as that base (preferred).
     - Register a mapping from the interface to a concrete root type at startup:
+
 ```csharp
 Serializer.RegisterProtobufRoot<IMsg, Ping>();
 IMsg msg = Serializer.ProtoDeserialize<IMsg>(bytes);
 ```
-    - Or specify the concrete type with the overload:
+
+- Or specify the concrete type with the overload:
+
 ```csharp
 IMsg msg = Serializer.ProtoDeserialize<IMsg>(bytes, typeof(Ping));
 ```
@@ -481,6 +587,7 @@ IMsg msg = Serializer.ProtoDeserialize<IMsg>(bytes, typeof(Ping));
 - Random system example
   - All PRNGs derive from `AbstractRandom`, which is `[ProtoContract]` and declares each implementation via `[ProtoInclude]`.
   - Do this in your models:
+
 ```csharp
 [ProtoContract]
 public class RNGHolder { [ProtoMember(1)] public AbstractRandom rng; }
@@ -490,7 +597,9 @@ RNGHolder holder = new RNGHolder { rng = new PcgRandom(seed: 123) };
 byte[] buf = Serializer.ProtoSerialize(holder);
 RNGHolder rt = Serializer.ProtoDeserialize<RNGHolder>(buf);
 ```
-  - If you truly need an `IRandom` field, register a root or pass the concrete type when deserializing:
+
+- If you truly need an `IRandom` field, register a root or pass the concrete type when deserializing:
+
 ```csharp
 Serializer.RegisterProtobufRoot<IRandom, PcgRandom>();
 IRandom r = Serializer.ProtoDeserialize<IRandom>(bytes);
@@ -501,7 +610,8 @@ IRandom r2 = Serializer.ProtoDeserialize<IRandom>(bytes, typeof(PcgRandom));
 - Tag numbers are API surface
   - Tags in `[ProtoInclude(tag, ...)]` and `[ProtoMember(tag)]` are part of your schema. Add new numbers for new types/fields; never reuse or renumber existing tags once shipped.
 
-**SystemBinary Examples (Legacy/Trusted Only)**
+## SystemBinary Examples (Legacy/Trusted Only)
+
 ```csharp
 using WallstopStudios.UnityHelpers.Core.Serialization;
 
@@ -515,20 +625,24 @@ var round2 = Serializer.Deserialize<SomeSerializableType>(bin2, SerializationTyp
 ```
 
 Watch-outs
+
 - BinaryFormatter is obsolete for modern .NET and unsafe for untrusted input.
 - Version changes often break BinaryFormatter payloads; restrict to same-version caches.
 
 Features
+
 - Unity converters for JSON: Vector2/3/4, Color, Matrix4x4, GameObject, Type
 - Protobuf (protobuf-net) integration
 - LZMA compression utilities (`Runtime/Utils/LZMA.cs`)
 - Pooled buffers/writers to reduce allocations
 
 References
+
 - API: `Runtime/Core/Serialization/Serializer.cs:1`
 - LZMA: `Runtime/Utils/LZMA.cs:1`
 
-**Migration**
+## Migration
+
 - Replace direct `System.Text.Json.JsonSerializer` calls in app code with `Serializer.JsonSerialize/JsonDeserialize/JsonStringify`, or with `Serializer.Serialize/Deserialize` + `SerializationType.Json` to centralize options and Unity converters.
 - Replace any custom protobuf helpers with `Serializer.ProtoSerialize/ProtoDeserialize` or the generic `Serializer.Serialize/Deserialize` APIs. Ensure models are annotated with `[ProtoContract]` and stable `[ProtoMember(n)]` tags.
 - For existing binary saves using BinaryFormatter, prefer migrating to Json or Protobuf. If you must keep BinaryFormatter, scope it to trusted, same-version caches only.

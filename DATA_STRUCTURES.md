@@ -19,10 +19,12 @@ This guide covers several foundational data structures used across the library a
 ![Cyclic Buffer](Docs/Images/cyclic_buffer.svg)
 
 When to use vs .NET queues
+
 - Prefer `CyclicBuffer<T>` over `Queue<T>` when you want bounded memory with O(1) push/pop at both ends and predictable behavior under backpressure (drop/overwrite oldest, or pop proactively).
 - Use `Queue<T>` when you need unbounded growth without wrap semantics.
 
 API snapshot
+
 ```csharp
 using WallstopStudios.UnityHelpers.Core.DataStructure;
 
@@ -43,6 +45,7 @@ rb.Resize(8);
 ```
 
 Tips and pitfalls
+
 - Know your overflow policy. `Add` will wrap and overwrite the oldest only once capacity is reached; use `TryPopFront` periodically to keep buffer from evicting data you still need.
 - Iteration enumerates logical order starting at head, not underlying storage order.
 - `Remove`/`RemoveAll` are O(n); keep hot paths to `Add`/`TryPop*` when possible.
@@ -58,10 +61,12 @@ Tips and pitfalls
 ![Deque](Docs/Images/deque.svg)
 
 When to use vs `Queue<T>` / `Stack<T>`
+
 - Prefer `Deque<T>` when you need both `push_front` and `push_back` in O(1) amortized.
 - Use `Queue<T>` for simple FIFO; `Stack<T>` for LIFO only.
 
 API snapshot
+
 ```csharp
 using WallstopStudios.UnityHelpers.Core.DataStructure;
 
@@ -78,13 +83,14 @@ if (dq.TryPeekFront(out var f)) { /* f == "x" */ }
 ```
 
 Tips
+
 - Capacity grows geometrically as needed; call `TrimExcess()` after spikes to return memory.
 - Indexer is in logical order (0 is front, Count-1 is back).
 
 ## Binary Heap (Priority Queue)
 
 - What it is: Array-backed binary tree maintaining heap-order (min/max).
-- Use for: Priority queues, Dijkstra/A*, event simulation.
+- Use for: Priority queues, Dijkstra/A\*, event simulation.
 - Operations: push/pop in O(log n); peek O(1); build-heap O(n).
 - Pros: Simple; great constant factors; contiguous memory.
 - Cons: Not ideal for decrease-key unless augmented.
@@ -92,10 +98,12 @@ Tips
 ![Heap](Docs/Images/heap.svg)
 
 When to use vs `SortedSet<T>`
+
 - Prefer `Heap<T>`/`PriorityQueue<T>` for frequent push/pop top in O(log n) with low overhead.
 - Use `SortedSet<T>` for ordered iteration and fast remove arbitrary item (by key), at higher constants.
 
 API snapshot (Heap)
+
 ```csharp
 using WallstopStudios.UnityHelpers.Core.DataStructure;
 
@@ -107,6 +115,7 @@ if (minHeap.TryPeek(out var peek)) { /* peek == 5 */ }
 ```
 
 API snapshot (PriorityQueue)
+
 ```csharp
 using WallstopStudios.UnityHelpers.Core.DataStructure;
 
@@ -119,6 +128,7 @@ pq.TryDequeue(out var item); // (1, "emergency")
 ```
 
 Tips
+
 - Use `PriorityQueue<T>.CreateMax()` to flip ordering without writing a custom comparer.
 - Heaps don’t support efficient decrease-key out of the box; reinsert updated items instead.
 
@@ -133,9 +143,11 @@ Tips
 ![Disjoint Set](Docs/Images/disjoint_set.svg)
 
 When to use
+
 - Batch connectivity queries where the graph mutates only via unions (no deletions): MST (Kruskal), island labeling, clustering, grouping by equivalence.
 
 API snapshot (int-based)
+
 ```csharp
 using WallstopStudios.UnityHelpers.Core.DataStructure;
 
@@ -148,6 +160,7 @@ uf.TryIsConnected(0, 3, out conn);     // true
 ```
 
 API snapshot (generic)
+
 ```csharp
 using WallstopStudios.UnityHelpers.Core.DataStructure;
 
@@ -158,6 +171,7 @@ uf.TryIsConnected("Ana", "Cy", out var conn); // false
 ```
 
 Tips
+
 - Use the generic variant to work with domain objects; internally it maps to indices.
 - No deletions: rebuild if you need dynamic splits.
 
@@ -172,10 +186,12 @@ Tips
 ![Sparse Set](Docs/Images/sparse_set.svg)
 
 When to use vs `HashSet<T>`
+
 - Prefer `SparseSet` when your IDs are small integers (0..N) and you need O(1) contains with dense, cache-friendly iteration over active items.
 - Use `HashSet<T>` for arbitrary keys, very large/unbounded key spaces, or when memory for `sparse` cannot scale to the max ID.
 
 API snapshot (int IDs)
+
 ```csharp
 using WallstopStudios.UnityHelpers.Core.DataStructure;
 
@@ -189,6 +205,7 @@ foreach (int id in set) { /* ... */ }
 ```
 
 API snapshot (generic values)
+
 ```csharp
 var set = new SparseSet<MyComponent>(capacity: 1024);
 set.Add(100, new MyComponent()); // key 100 -> value
@@ -196,6 +213,7 @@ var comp = set[0];               // dense index 0 value
 ```
 
 Tips
+
 - Capacity equals the universe size for keys; do not set capacity larger than your maximum possible ID.
 - Deletions swap-with-last in dense array; dense order is not stable.
 
@@ -210,10 +228,12 @@ Tips
 ![Trie](Docs/Images/trie.svg)
 
 When to use vs dictionaries
+
 - Prefer `Trie` for lots of prefix queries and auto-complete where per-character traversal beats repeated hashing.
 - Use `Dictionary<string, T>` when you rarely do prefix scans and primarily need exact lookup.
 
 API snapshot
+
 ```csharp
 using WallstopStudios.UnityHelpers.Core.DataStructure;
 
@@ -232,6 +252,7 @@ trie.SearchValuesByPrefix("ap", values);      // [1,2]
 ```
 
 Tips
+
 - Build once with full vocabulary; Tries here are immutable post-construction (no public insert) to stay compact.
 - Memory scales with total characters; very large alphabets or long keys benefit from compressed/radix tries (not included here).
 
@@ -246,10 +267,12 @@ Tips
 ![Bitset](Docs/Images/bitset.svg)
 
 When to use vs `bool[]` / `HashSet<int>`
+
 - Prefer `BitSet` for dense boolean sets with fast bitwise ops (masks, layers, filters) and compact storage.
 - Use `bool[]` for tiny, fixed schemas you manipulate rarely; use `HashSet<int>` for sparse, very large universes.
 
 API snapshot
+
 ```csharp
 using WallstopStudios.UnityHelpers.Core.DataStructure;
 
@@ -266,6 +289,7 @@ bits.RightShift(1);
 ```
 
 Tips
+
 - Capacity grows automatically when setting beyond bounds; prefer sizing appropriately upfront for fewer resizes.
 - Left/Right shift drop/zero-fill at the edges; use with care if capacity is small.
 
@@ -280,6 +304,7 @@ Tips
 - Need dynamic connectivity: Disjoint Set
 
 Common pitfalls
+
 - Sparse Set capacity equals the max key + 1; allocating for huge key spaces is memory-heavy.
 - Heaps don’t give you sorted iteration; popping yields order, but enumerating the heap array is not sorted.
 - Cyclic Buffer `Remove`/`RemoveAll` are O(n); keep hot paths to TryPop/Add.
@@ -295,4 +320,5 @@ Common pitfalls
 - Bitset: set/test O(1), bitwise ops O(n/word_size)
 
 Notes on constants
+
 - All structures are allocation-aware (enumerators avoid boxing; internal buffers reuse pools where applicable). Real-world throughput is often more important than asymptotic notation; these implementations are tuned for Unity/IL2CPP.

@@ -31,6 +31,7 @@ Illustrations:
 ![RTree3D](Docs/Images/rtree_3d.svg)
 
 Diagram notes
+
 - Octree splits are centered along each axis, evenly dividing space into eight octants.
 - KDTree3D splits are data‑dependent and may be off‑center; the diagram shows an off‑center y‑split to emphasize this difference.
 
@@ -93,6 +94,7 @@ Key reasons and scenarios:
 ![Query Boundaries](Docs/Images/query_boundaries.svg)
 
 Tips
+
 - Normalize to closed or half‑open intervals across your codebase.
 - Add a small epsilon where necessary to handle ties at split planes.
 

@@ -1,6 +1,11 @@
 # Unity Helpers
 
-[![Npm Publish](https://github.com/wallstop/unity-helpers/actions/workflows/npm-publish.yml/badge.svg)](https://github.com/wallstop/unity-helpers/actions/workflows/npm-publish.yml)
+[![Unity 2021.3+](https://img.shields.io/badge/Unity-2021.3%2B-000000?logo=unity&logoColor=white)](https://unity.com/releases/editor/whats-new/2021.3)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![CSharpier](https://github.com/wallstop/unity-helpers/actions/workflows/csharpier.yml/badge.svg?branch=main)](https://github.com/wallstop/unity-helpers/actions/workflows/csharpier.yml)
+[![Markdown & JSON Lint/Format](https://github.com/wallstop/unity-helpers/actions/workflows/markdown-json.yml/badge.svg?branch=main)](https://github.com/wallstop/unity-helpers/actions/workflows/markdown-json.yml)
+[![Lint Docs Links](https://github.com/wallstop/unity-helpers/actions/workflows/lint-doc-links.yml/badge.svg?branch=main)](https://github.com/wallstop/unity-helpers/actions/workflows/lint-doc-links.yml)
+[![Npm Publish](https://github.com/wallstop/unity-helpers/actions/workflows/npm-publish.yml/badge.svg?branch=main)](https://github.com/wallstop/unity-helpers/actions/workflows/npm-publish.yml)
 
 A comprehensive collection of high-performance utilities, data structures, and editor tools for Unity game development. Unity Helpers provides everything from blazing-fast random number generators and spatial trees to powerful editor wizards and component relationship management.
 
@@ -19,9 +24,13 @@ A comprehensive collection of high-performance utilities, data structures, and e
 Unity Helpers provides tools for different roles and needs. Pick your path to get started quickly:
 
 ### 🎮 For Gameplay Programmers
+
 **You want:** Faster iteration on game features without sacrificing performance
 
+<!-- markdownlint-disable MD036 -->
+
 **Your quick wins:**
+
 1. **[Random Number Generators](#random-number-generators)** - 10-15x faster with extensive API
    - Weighted selection, Gaussian distributions, noise maps - all built-in
    - Seedable for deterministic gameplay (replays, networking)
@@ -39,9 +48,11 @@ Unity Helpers provides tools for different roles and needs. Pick your path to ge
 ---
 
 ### 🔧 For Tools & Editor Developers
+
 **You want:** Automate asset pipelines and validation workflows
 
 **Your quick wins:**
+
 1. **[Editor Tools](#editor-tools)** - 20+ tools for sprites, animations, validation
    - Sprite cropper, atlas generator, animation creator
    - Prefab checker with comprehensive validation rules
@@ -59,9 +70,11 @@ Unity Helpers provides tools for different roles and needs. Pick your path to ge
 ---
 
 ### ⚡ For Performance Engineers
+
 **You want:** Optimize hotspots and eliminate GC pressure
 
 **Your quick wins:**
+
 1. **[Spatial Trees](#spatial-trees)** - O(log n) queries vs O(n) loops
    - QuadTree2D, KDTree2D/3D, RTree2D/3D
    - Scale to millions of objects
@@ -79,9 +92,11 @@ Unity Helpers provides tools for different roles and needs. Pick your path to ge
 ---
 
 ### 🏗️ For Architects & Tech Leads
+
 **You want:** Understand integration points and architectural patterns
 
 **Your quick wins:**
+
 1. **[DI Integration](#dependency-injection-integrations)** - VContainer & Zenject support
    - Automatic relational component wiring after DI injection
    - Scene and runtime instantiation patterns
@@ -103,6 +118,7 @@ Unity Helpers provides tools for different roles and needs. Pick your path to ge
 Unity Helpers isn't just about performance - it's about **eliminating entire categories of repetitive work**. Here are the five features that deliver the biggest time savings:
 
 ### 1. 🔌 Auto-Wire Components (Relational Components)
+
 **Time saved: 10-20 minutes per script × 100+ scripts = 20+ hours**
 
 Stop writing GetComponent boilerplate forever. Replace 20+ lines of repetitive code with 3 attributes.
@@ -134,6 +150,7 @@ void Awake() => this.AssignRelationalComponents();
 ---
 
 ### 2. 🎮 Data-Driven Effects System
+
 **Time saved: 2-4 hours per effect × 50 effects = 150+ hours**
 
 Designers create buffs/debuffs without touching code. Zero programmer time after initial setup.
@@ -149,6 +166,7 @@ player.RemoveAllEffectsWithTag("Haste");   // Batch removal
 ```
 
 **What you get:**
+
 - Automatic stacking & duration management
 - Reference-counted tags for gameplay queries
 - Cosmetic VFX/SFX that spawn/despawn automatically
@@ -159,6 +177,7 @@ player.RemoveAllEffectsWithTag("Haste");   // Batch removal
 ---
 
 ### 3. 💾 Unity-Aware Serialization
+
 **Time saved: 40+ hours on initial save system + preventing player data loss**
 
 JSON/Protobuf that understands `Vector3`, `GameObject`, `Color` - no custom converters needed.
@@ -188,6 +207,7 @@ byte[] data = Serializer.JsonSerialize(saveData);
 ---
 
 ### 4. 🎱 Professional Pooling (Buffers<T>)
+
 **Time saved: Eliminates GC spikes = 5-10 FPS improvement in complex scenes**
 
 Zero-allocation queries with automatic cleanup. Thread-safe, production-grade pooling in one line.
@@ -209,6 +229,7 @@ void ProcessEnemies(QuadTree2D<Enemy> enemyTree) {
 ```
 
 **Why this matters:**
+
 - Stable 60 FPS under load (no GC spikes)
 - AI systems querying hundreds of neighbors per frame
 - Particle systems with thousands of particles
@@ -219,11 +240,13 @@ void ProcessEnemies(QuadTree2D<Enemy> enemyTree) {
 ---
 
 ### 5. 🛠️ Editor Tools Suite
+
 **Time saved: 1-2 hours per batch operation × weekly usage = hundreds of hours/year**
 
 20+ tools that automate sprite cropping, animation creation, atlas generation, prefab validation.
 
 **Common workflows:**
+
 - **Sprite Cropper**: Add or remove transparent pixels from 500 sprites → 1 click (was: 30 minutes in Photoshop)
 - **Animation Creator**: Bulk-create clips from naming patterns (`walk_0001.png`) → 1 minute (was: 20 minutes)
 - **Prefab Checker**: Validate 200 prefabs for missing references → 1 click (was: manual QA)
@@ -237,15 +260,15 @@ void ProcessEnemies(QuadTree2D<Enemy> enemyTree) {
 
 These powerful utilities solve common problems but might not be obvious from feature names:
 
-| Feature | What It Does | Time Saved |
-|---------|-------------|------------|
-| **[Predictive Targeting](#predictive-targeting-hit-moving-targets)** | Perfect ballistics for turrets/missiles in one call | 2-3 hours per shooting system |
-| **[UpdateShapeToSprite()](#lifecycle-helpers-no-more-destroyimmediate-bugs)** | Collider instantly matches sprite changes at runtime | 30 minutes per dynamic sprite system |
-| **[Coroutine Jitter](#coroutine-timing-with-jitter)** | Prevents 100 enemies polling on same frame | Eliminates frame spikes |
-| **[GetAngleWithSpeed()](#lifecycle-helpers-no-more-destroyimmediate-bugs)** | Smooth rotation toward target in one line | 15 minutes per rotating entity |
-| **[IL-Emitted Reflection](#reflectionhelpers-blazing-fast-reflection)** | 100x faster than System.Reflection, IL2CPP safe | Critical for serialization/modding |
-| **[SmartDestroy()](#lifecycle-helpers-no-more-destroyimmediate-bugs)** | Editor/runtime safe destruction (no scene corruption) | Prevents countless debugging hours |
-| **[Convex/Concave Hulls](#convex--concave-hull-generation)** | Generate territory borders from point clouds | 4-6 hours per hull algorithm |
+| Feature                                                                       | What It Does                                          | Time Saved                           |
+| ----------------------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------ |
+| **[Predictive Targeting](#predictive-targeting-hit-moving-targets)**          | Perfect ballistics for turrets/missiles in one call   | 2-3 hours per shooting system        |
+| **[UpdateShapeToSprite()](#lifecycle-helpers-no-more-destroyimmediate-bugs)** | Collider instantly matches sprite changes at runtime  | 30 minutes per dynamic sprite system |
+| **[Coroutine Jitter](#coroutine-timing-with-jitter)**                         | Prevents 100 enemies polling on same frame            | Eliminates frame spikes              |
+| **[GetAngleWithSpeed()](#lifecycle-helpers-no-more-destroyimmediate-bugs)**   | Smooth rotation toward target in one line             | 15 minutes per rotating entity       |
+| **[IL-Emitted Reflection](#reflectionhelpers-blazing-fast-reflection)**       | 100x faster than System.Reflection, IL2CPP safe       | Critical for serialization/modding   |
+| **[SmartDestroy()](#lifecycle-helpers-no-more-destroyimmediate-bugs)**        | Editor/runtime safe destruction (no scene corruption) | Prevents countless debugging hours   |
+| **[Convex/Concave Hulls](#convex--concave-hull-generation)**                  | Generate territory borders from point clouds          | 4-6 hours per hull algorithm         |
 
 ---
 
@@ -254,6 +277,7 @@ These powerful utilities solve common problems but might not be obvious from fea
 Jump straight to complete working examples for common scenarios:
 
 ### Save System in 5 Minutes
+
 ```csharp
 using WallstopStudios.UnityHelpers.Core.Serialization;
 
@@ -284,6 +308,7 @@ SaveData loaded = Serializer.ReadFromJsonFile<SaveData>("save.json");
 ---
 
 ### Buff/Debuff System in 10 Minutes
+
 ```csharp
 // 1. Create stats component
 public class CharacterStats : AttributesComponent {
@@ -315,6 +340,7 @@ player.RemoveAllEffectsWithTag("Haste");          // Remove
 ### DI-Integrated Component Auto-Wiring in 2 Minutes
 
 **With VContainer:**
+
 ```csharp
 // 1. Register in LifetimeScope
 using WallstopStudios.UnityHelpers.Integrations.VContainer;
@@ -334,6 +360,7 @@ public class Player : MonoBehaviour {
 ```
 
 **With Zenject:**
+
 ```csharp
 // 1. Add RelationalComponentsInstaller to SceneContext (toggle scene scan)
 
@@ -353,6 +380,7 @@ public class Player : MonoBehaviour {
 ---
 
 ### Fast Spatial Queries in 3 Minutes
+
 ```csharp
 using WallstopStudios.UnityHelpers.Core.DataStructure;
 
@@ -384,12 +412,12 @@ Real code comparisons showing exactly what you're avoiding:
 
 ### Component Wiring: 20 Lines → 4 Lines
 
-| Without Unity Helpers | With Unity Helpers |
-|----------------------|-------------------|
-| **25 lines per script** | **4 lines total** |
-| Manual GetComponent calls | Attributes |
-| Manual null checks | Auto-validated |
-| Error-prone | Self-documenting |
+| Without Unity Helpers              | With Unity Helpers            |
+| ---------------------------------- | ----------------------------- |
+| **25 lines per script**            | **4 lines total**             |
+| Manual GetComponent calls          | Attributes                    |
+| Manual null checks                 | Auto-validated                |
+| Error-prone                        | Self-documenting              |
 | Must update when hierarchy changes | Handles changes automatically |
 
 ```csharp
@@ -440,12 +468,12 @@ public class Player : MonoBehaviour {
 
 ### Buff/Debuff System: 80 Lines → 0 Lines
 
-| Without Unity Helpers | With Unity Helpers |
-|----------------------|-------------------|
-| **80-100 lines per effect** | **0 lines - editor only** |
-| Manual duration tracking | Automatic |
-| Manual stacking logic | Built-in |
-| Manual VFX lifecycle | Cosmetic system |
+| Without Unity Helpers        | With Unity Helpers         |
+| ---------------------------- | -------------------------- |
+| **80-100 lines per effect**  | **0 lines - editor only**  |
+| Manual duration tracking     | Automatic                  |
+| Manual stacking logic        | Built-in                   |
+| Manual VFX lifecycle         | Cosmetic system            |
 | Code changes for new effects | Designer creates in editor |
 
 ```csharp
@@ -516,11 +544,11 @@ public class HasteEffect : MonoBehaviour {
 
 ### Spatial Queries: O(n) → O(log n)
 
-| Without Unity Helpers | With Unity Helpers |
-|----------------------|-------------------|
-| **O(n) linear search** | **O(log n) tree query** |
+| Without Unity Helpers                          | With Unity Helpers                        |
+| ---------------------------------------------- | ----------------------------------------- |
+| **O(n) linear search**                         | **O(log n) tree query**                   |
 | Scales poorly (10,000 objects = 10,000 checks) | Scales well (10,000 objects = ~13 checks) |
-| Allocates garbage | Zero GC with pooling |
+| Allocates garbage                              | Zero GC with pooling                      |
 
 ```csharp
 // ❌ WITHOUT (slow, allocates)
@@ -553,12 +581,12 @@ tree.GetElementsInRange(playerPos, radius, nearby);
 
 ### Save System: 40 Hours → 5 Minutes
 
-| Without Unity Helpers | With Unity Helpers |
-|----------------------|-------------------|
-| **40+ hours initial** | **5 minutes** |
-| Write custom converters for Unity types | Built-in |
-| Handle schema changes manually | Automatic |
-| Risk breaking old saves | Schema evolution |
+| Without Unity Helpers                   | With Unity Helpers |
+| --------------------------------------- | ------------------ |
+| **40+ hours initial**                   | **5 minutes**      |
+| Write custom converters for Unity types | Built-in           |
+| Handle schema changes manually          | Automatic          |
+| Risk breaking old saves                 | Schema evolution   |
 
 ```csharp
 // ❌ WITHOUT (need custom converters for every Unity type)
@@ -593,12 +621,14 @@ SaveData loaded = Serializer.ReadFromJsonFile<SaveData>("save.json");
 ### Why Unity Helpers? The Killer Features
 
 **⚡ Performance - Make Your Game Faster**
+
 - **10-15x faster random** ([PRNG.Instance](RANDOM_PERFORMANCE.md)) vs UnityEngine.Random + seedable for determinism
 - **Zero-allocation spatial queries** ([Buffering Pattern](#buffering-pattern)) → no GC spikes, stable 60fps
 - **O(log n) spatial trees** ([Spatial Trees](SPATIAL_TREES_2D_GUIDE.md)) scale to millions of objects
 - **IL-emitted reflection** ([ReflectionHelpers](#reflectionhelpers-blazing-fast-reflection)) → field/property access 10-100x faster than System.Reflection
 
 **🚀 Productivity - Ship Features Faster**
+
 - **Auto-wire components** ([Relational Components](RELATIONAL_COMPONENTS.md)) → eliminate GetComponent boilerplate
 - **Data-driven effects** ([Effects System](EFFECTS_SYSTEM.md)) → designers create 100s of buffs/debuffs without programmer
 - **20+ editor tools** ([Editor Tools](EDITOR_TOOLS_GUIDE.md)) → automate sprite cropping, animations, atlases
@@ -606,23 +636,28 @@ SaveData loaded = Serializer.ReadFromJsonFile<SaveData>("save.json");
 - **Professional pooling** ([Buffers](#professional-grade-object-pooling)) → zero-alloc patterns with automatic cleanup
 
 **🛡️ Production-Ready - Never Break Player Saves**
+
 - **Protobuf schema evolution** ([Serialization](SERIALIZATION.md#protobuf-schema-evolution-the-killer-feature)) → add/remove fields without breaking old saves
 - **4,000+ test cases** → used in shipped commercial games
-- **IL2CPP optimized** → works with Unity's aggressive compiler
+- **Fully multiplatform** → WebGL, IL2CPP, Mobile, Desktop, Consoles with SINGLE_THREADED hot path optimizations
+- **IL2CPP optimized** → works with Unity's aggressive compiler, full AOT compatibility
 - **SmartDestroy** ([Lifecycle Helpers](#lifecycle-helpers-no-more-destroyimmediate-bugs)) → editor/runtime safe destruction, never corrupt scenes again
 
 ---
 
 TL;DR — Why use this?
+
 - Ship faster with production‑ready utilities that are (much) faster than stock Unity options.
 - Solve common problems: global settings/services, fast spatial queries, auto‑wiring components, robust serialization.
 - 4,000+ tests and diagrams make behavior and trade‑offs clear.
 
 Who is this for?
+
 - Unity devs who want pragmatic, high‑quality building blocks without adopting a full framework.
 - Teams that value performance, determinism, and predictable editor tooling.
 
 Install in 60 seconds
+
 ```json
 // Packages/manifest.json
 {
@@ -633,7 +668,9 @@ Install in 60 seconds
 ```
 
 First 5 minutes: three quick wins
+
 - Random: swap in a faster, seedable RNG
+
 ```csharp
 using WallstopStudios.UnityHelpers.Core.Random;
 IRandom rng = PRNG.Instance;
@@ -641,6 +678,7 @@ int damage = rng.Next(10, 20);
 ```
 
 - Relational wiring: stop writing GetComponent
+
 ```csharp
 using WallstopStudios.UnityHelpers.Core.Attributes;
 public class Player : MonoBehaviour
@@ -654,6 +692,7 @@ public class Player : MonoBehaviour
 ```
 
 - Spatial queries: O(log n) instead of O(n)
+
 ```csharp
 using WallstopStudios.UnityHelpers.Core.DataStructure;
 var tree = new QuadTree2D<Vector2>(points, p => p);
@@ -662,12 +701,14 @@ tree.GetElementsInRange(playerPos, 10f, results);
 ```
 
 Pick the right spatial structure (2D)
+
 - Broad‑phase, many moving points: QuadTree2D
 - Nearest neighbors on static points: KDTree2D (Balanced)
 - Fast builds, good‑enough queries: KDTree2D (Unbalanced)
 - Objects with size, bounds queries: RTree2D
 
 Next steps
+
 - Browse the Guides: Singletons, Relational Components, Spatial Trees 2D/3D, Serialization
 - Skim the Performance pages for realistic expectations
 - Use the Editor Tools to automate common art/content workflows
@@ -701,8 +742,8 @@ Next steps
 - [License](#license)
 - [Relational Components Guide](#relational-components-guide)
 - [API Index](#api-index)
- - [Buffering Pattern](#buffering-pattern)
- - [Docs Index](#docs-index)
+- [Buffering Pattern](#buffering-pattern)
+- [Docs Index](#docs-index)
 
 ## Why Unity Helpers?
 
@@ -720,12 +761,14 @@ Unity Helpers was built to solve common game development challenges with **perfo
 ### High-Performance Random Number Generators
 
 **🎯 The Problem Unity.Random Solves Poorly:**
+
 - Slow (~65-85M ops/sec) - becomes a bottleneck in proc-gen and particle systems
 - Not seedable - impossible to create deterministic gameplay or replays
 - Not thread-safe - can only use on main thread
 - Basic API - missing weighted selection, distributions, noise generation
 
 **⚡ Unity Helpers Solution - PRNG.Instance:**
+
 - **10-15x faster** (655-885M ops/sec) - [See benchmarks](RANDOM_PERFORMANCE.md)
 - **Fully seedable** - same seed = identical results (perfect for networking, replays, proc-gen)
 - **Thread-safe** - via thread-local instances, use anywhere
@@ -802,18 +845,19 @@ Quaternion randomRot = rng.NextRotation();
 
 #### Available Generators
 
-| Generator | Speed | Quality | Use Case |
-|-----------|-------|---------|----------|
-| **IllusionFlow** ⭐ | Fast | Good | Default (via PRNG.Instance) |
-| **PcgRandom** | Very Fast | Excellent | Explicit seeding, determinism |
-| **RomuDuo** | Fastest | Good | Maximum speed needed |
-| **LinearCongruentialGenerator** | Fastest | Fair | Simple, fast generation |
+| Generator                       | Speed     | Quality   | Use Case                      |
+| ------------------------------- | --------- | --------- | ----------------------------- |
+| **IllusionFlow** ⭐             | Fast      | Good      | Default (via PRNG.Instance)   |
+| **PcgRandom**                   | Very Fast | Excellent | Explicit seeding, determinism |
+| **RomuDuo**                     | Fastest   | Good      | Maximum speed needed          |
+| **LinearCongruentialGenerator** | Fastest   | Fair      | Simple, fast generation       |
 
 ⭐ **Recommended**: Use `PRNG.Instance` (currently IllusionFlow) for the best balance of speed, quality, and ease of use.
 
 [📊 Full Performance Benchmarks](RANDOM_PERFORMANCE.md)
 
 ### Spatial Trees for Fast Queries
+
 - **2D & 3D spatial trees** (QuadTree, OctTree, KDTree, RTree)
 - Perfect for collision detection, AI, visibility culling
 - **Massive performance gains** for games with many objects
@@ -823,14 +867,16 @@ Quaternion randomRot = rng.NextRotation();
   - 3D: KdTree3D (balanced/unbalanced) and OctTree3D can yield different results for the same inputs/queries due to boundary, tie‑breaking, and traversal semantics. RTree3D indexes 3D bounds and differs by design. See Spatial Tree Semantics for details.
 
 ### Powerful Component Attributes
+
 - `[ParentComponent]`, `[ChildComponent]`, `[SiblingComponent]` - Auto-wire components
 - `[ValidateAssignment]` - Catch missing references at edit time
 - `[DxReadOnly]` - Display calculated values in inspector
 - `[WShowIf]` - Conditional inspector fields
- 
- See the in-depth guide: [Relational Components](RELATIONAL_COMPONENTS.md).
+
+See the in-depth guide: [Relational Components](RELATIONAL_COMPONENTS.md).
 
 ### 20+ Editor Tools
+
 - **Sprite tools**: Cropper, Atlas Generator, Animation Editor, Animation Creator (one‑click bulk from naming patterns)
 - **Texture tools**: Blur, Resize, Settings Applier
 - **Validation**: Prefab Checker, Animation Event Editor
@@ -838,10 +884,12 @@ Quaternion randomRot = rng.NextRotation();
 - [Full Editor Tools Documentation](EDITOR_TOOLS_GUIDE.md)
 
 ### Core Math & Extensions
+
 - Numeric helpers, geometry primitives, Unity extensions, colors, collections, strings, directions.
- - See the guide: [Core Math & Extensions](MATH_AND_EXTENSIONS.md).
+- See the guide: [Core Math & Extensions](MATH_AND_EXTENSIONS.md).
 
 #### At a Glance
+
 - `PositiveMod`, `WrappedAdd` — Safe cyclic arithmetic for indices/angles. See: [Numeric Helpers](MATH_AND_EXTENSIONS.md#numeric-helpers).
 - `LineHelper.Simplify` — Reduce polyline vertices with Douglas–Peucker. See: [Geometry](MATH_AND_EXTENSIONS.md#geometry).
 - `Line2D.Intersects` — Robust 2D segment intersection and closest-point helpers. See: [Geometry](MATH_AND_EXTENSIONS.md#geometry).
@@ -851,18 +899,23 @@ Quaternion randomRot = rng.NextRotation();
 - `IEnumerable.Infinite` — Cycle sequences without extra allocations. See: [Collections](MATH_AND_EXTENSIONS.md#collections).
 - `StringExtensions.LevenshteinDistance` — Edit distance for fuzzy matching. See: [Strings](MATH_AND_EXTENSIONS.md#strings).
 
+<a id="singleton-utilities-odin-compatible"></a>
+
 ### Singleton Utilities (ODIN‑compatible)
+
 - `RuntimeSingleton<T>` — Global component singleton with optional cross‑scene persistence. See the guide: [Singleton Utilities](SINGLETONS.md).
 - `ScriptableObjectSingleton<T>` — Global settings/data singleton loaded from `Resources/`, auto‑created by the editor tool. See the guide: [Singleton Utilities](SINGLETONS.md) and the tool: [ScriptableObject Singleton Creator](EDITOR_TOOLS_GUIDE.md#scriptableobject-singleton-creator).
 
 ## Docs Index
 
 **Start Here**
+
 - 🚀 Getting Started — [Getting Started Guide](GETTING_STARTED.md)
 - 🔍 Feature Index — [Complete A-Z Index](INDEX.md)
 - 📖 Glossary — [Term Definitions](GLOSSARY.md)
 
 **Core Guides**
+
 - Serialization Guide — [Serialization](SERIALIZATION.md)
 - Editor Tools Guide — [Editor Tools](EDITOR_TOOLS_GUIDE.md)
 - Math & Extensions — [Core Math & Extensions](MATH_AND_EXTENSIONS.md)
@@ -872,6 +925,7 @@ Quaternion randomRot = rng.NextRotation();
 - Data Structures — [Data Structures](DATA_STRUCTURES.md)
 
 **Spatial Trees**
+
 - 2D Spatial Trees Guide — [2D Spatial Trees Guide](SPATIAL_TREES_2D_GUIDE.md)
 - 3D Spatial Trees Guide — [3D Spatial Trees Guide](SPATIAL_TREES_3D_GUIDE.md)
 - Spatial Tree Semantics — [Spatial Tree Semantics](SPATIAL_TREE_SEMANTICS.md)
@@ -880,10 +934,12 @@ Quaternion randomRot = rng.NextRotation();
 - Hulls (Convex vs Concave) — [Hulls](HULLS.md)
 
 **Performance & Reference**
+
 - Random Performance — [Random Performance](RANDOM_PERFORMANCE.md)
 - Reflection Helpers — [Reflection Helpers](REFLECTION_HELPERS.md)
 
 **Project Info**
+
 - Changelog — [Changelog](CHANGELOG.md)
 - License — [License](LICENSE.md)
 - Third‑Party Notices — [Third‑Party Notices](THIRD_PARTY_NOTICES.md)
@@ -893,11 +949,12 @@ Quaternion randomRot = rng.NextRotation();
 ### As Unity Package (Recommended)
 
 1. Open Unity Package Manager
-2. *(Optional)* Enable **Pre-release packages** for cutting-edge builds
+2. _(Optional)_ Enable **Pre-release packages** for cutting-edge builds
 3. Click the **+** dropdown → **Add package from git URL...**
 4. Enter: `https://github.com/wallstop/unity-helpers.git`
 
 **OR** add to your `manifest.json`:
+
 ```json
 {
   "dependencies": {
@@ -909,7 +966,7 @@ Quaternion randomRot = rng.NextRotation();
 ### From NPM Registry
 
 1. Open Unity Package Manager
-2. *(Optional)* Enable **Pre-release packages**
+2. _(Optional)_ Enable **Pre-release packages**
 3. Open **Advanced Package Settings** (gear icon)
 4. Add a new **Scoped Registry**:
    - **Name**: `NPM`
@@ -925,12 +982,98 @@ Quaternion randomRot = rng.NextRotation();
 
 ## Compatibility
 
-| Unity Version | Built-In | URP | HDRP |
-| --- | --- | --- | --- |
-| 2021 | Likely, but untested | Likely, but untested | Likely, but untested |
-| 2022 | ✅ Compatible | ✅ Compatible | ✅ Compatible |
-| 2023 | ✅ Compatible | ✅ Compatible | ✅ Compatible |
-| Unity 6 | ✅ Compatible | ✅ Compatible | ✅ Compatible |
+| Unity Version | Built-In             | URP                  | HDRP                 |
+| ------------- | -------------------- | -------------------- | -------------------- |
+| 2021          | Likely, but untested | Likely, but untested | Likely, but untested |
+| 2022          | ✅ Compatible        | ✅ Compatible        | ✅ Compatible        |
+| 2023          | ✅ Compatible        | ✅ Compatible        | ✅ Compatible        |
+| Unity 6       | ✅ Compatible        | ✅ Compatible        | ✅ Compatible        |
+
+### Platform Support
+
+Unity Helpers is **fully multiplatform compatible** including:
+
+- ✅ **WebGL** - Full support with optimized SINGLE_THREADED hot paths
+- ✅ **IL2CPP** - Tested and compatible with ahead-of-time compilation
+- ✅ **Mobile** (iOS, Android) - Production-ready with IL2CPP
+- ✅ **Desktop** (Windows, macOS, Linux) - Full threading support
+- ✅ **Consoles** - IL2CPP compatible
+
+**Requirements:**
+
+- **.NET Standard 2.1** - Required for core library features
+
+### WebGL and Single-Threaded Optimization
+
+Unity Helpers includes a `SINGLE_THREADED` scripting define symbol for WebGL and other single-threaded environments. When enabled, the library automatically uses optimized code paths that eliminate threading overhead:
+
+**Optimized systems with SINGLE_THREADED:**
+
+- **Buffers & Pooling** - Uses `Stack<T>` and `Dictionary<T>` instead of `ConcurrentBag<T>` and `ConcurrentDictionary<T>`
+- **Random Number Generation** - Static instances instead of `ThreadLocal<T>`
+- **Reflection Caches** - Non-concurrent dictionaries for faster lookups
+- **Thread Pools** - SingleThreadedThreadPool disabled (not needed on WebGL)
+
+**How to enable:**
+
+Unity automatically defines `UNITY_WEBGL` for WebGL builds. To enable SINGLE_THREADED optimization:
+
+1. Go to **Project Settings > Player > Other Settings > Scripting Define Symbols**
+2. Add `SINGLE_THREADED` for WebGL platform
+3. Or use in your `csc.rsp` file: `-define:SINGLE_THREADED`
+
+**Performance impact:** 10-20% faster hot path operations on single-threaded platforms by avoiding unnecessary synchronization overhead.
+
+### IL2CPP and Code Stripping Considerations
+
+⚠️ **Important for IL2CPP builds (WebGL, Mobile, Consoles):**
+
+Some features in Unity Helpers use reflection internally (particularly **Protobuf serialization** and **ReflectionHelpers**). IL2CPP's managed code stripping may remove types/members that are only accessed via reflection, causing runtime errors.
+
+**Symptoms of stripping issues:**
+
+- `NullReferenceException` or `TypeLoadException` during deserialization
+- Missing fields after Protobuf deserialization
+- Reflection helpers failing to find types at runtime
+
+**Solution: Use link.xml to preserve required types**
+
+Create a `link.xml` file in your `Assets` folder to prevent stripping:
+
+```xml
+<linker>
+  <!-- Preserve your serialized types -->
+  <assembly fullname="Assembly-CSharp">
+    <type fullname="MyNamespace.PlayerSave" preserve="all"/>
+    <type fullname="MyNamespace.InventoryData" preserve="all"/>
+    <!-- Add all Protobuf-serialized types here -->
+  </assembly>
+
+  <!-- Preserve Unity Helpers if needed -->
+  <assembly fullname="WallstopStudios.UnityHelpers.Runtime" preserve="all"/>
+</linker>
+```
+
+**Best practices:**
+
+- ✅ **Always test IL2CPP builds** - Development builds don't use stripping, so bugs only appear in release builds
+- ✅ **Test on target platform** - WebGL stripping behaves differently than iOS/Android
+- ✅ **Use link.xml for all Protobuf types** - Any type with `[ProtoContract]` should be preserved
+- ✅ **Verify after every schema change** - Adding new serialized types requires updating link.xml
+- ✅ **Check logs for stripping warnings** - Unity logs which types are stripped during build
+
+**When you don't need link.xml:**
+
+- JSON serialization (uses source-generated converters, not reflection)
+- Spatial trees and data structures (no reflection used)
+- Most helper methods (compiled ahead-of-time)
+
+**Related documentation:**
+
+- [Unity Manual: Managed Code Stripping](https://docs.unity3d.com/Manual/ManagedCodeStripping.html)
+- [Protobuf-net and IL2CPP](https://github.com/protobuf-net/protobuf-net#il2cpp)
+- [Serialization Guide: IL2CPP Warning](SERIALIZATION.md#️-il2cpp-and-code-stripping-warning)
+- [Reflection Helpers: IL2CPP Warning](REFLECTION_HELPERS.md#️-il2cpp-code-stripping-considerations)
 
 ## Serialization
 
@@ -968,6 +1111,7 @@ When to use what
 - Mixed graphs with Unity types: Fast
 
 See the full guide for trade-offs, tips, and examples: [Serialization Guide](SERIALIZATION.md)
+
 ## Quick Start Guide
 
 ### Random Number Generation
@@ -999,7 +1143,7 @@ string item = random.NextOf(lootTable);
 
 // Weighted bool
 float probability = 0.7f;
-bool lucky = random.NextBool(probability); 
+bool lucky = random.NextBool(probability);
 
 // Noise generation
 float[,] noiseMap = new float[256, 256];
@@ -1007,6 +1151,7 @@ random.NextNoiseMap(noiseMap, octaves: 4);
 ```
 
 **Why use PRNG.Instance?**
+
 - 10-15x faster than Unity.Random
 - Seedable for deterministic gameplay
 - Thread-safe access (uses a thread-local instance)
@@ -1060,6 +1205,7 @@ public class Player : MonoBehaviour
 ```
 
 **Benefits:**
+
 - Cleaner, more declarative code
 - Safer defaults (required by default; opt-in `Optional = true`)
 - Filters by tag/name, limit results, control depth, support interfaces
@@ -1139,6 +1285,7 @@ target.RemoveAllEffectsWithTag("Haste");
 ```
 
 Why use it
+
 - Declarative authoring, automatic stacking/timing/tagging, clean removal.
 - Cosmetic hooks for VFX/SFX via `CosmeticEffectData`.
 
@@ -1160,6 +1307,7 @@ var model2 = Serializer.JsonDeserialize<MyType>(buf, null, opts);
 ```
 
 Tips
+
 - Pretty/Normal for configs; Fast for hot loops; FastPOCO for pure POCO graphs.
 - Unity converters handle Vector/Color/Matrix/GameObject references.
 
@@ -1171,6 +1319,7 @@ Tips
 - SpatialHash2D/3D — Many moving objects that are fairly uniformly distributed. Cheap updates; fast approximate neighborhood queries.
 
 Rules of thumb:
+
 - Frequent movement? Prefer SpatialHash. Static or batched rebuilds? Use QuadTree/KdTree/RTree.
 - Query by area/rectangle? RTree2D excels. Nearest neighbors? KdTree. Broad-phase neighbor checks? SpatialHash.
 
@@ -1182,20 +1331,20 @@ Unity Helpers includes **12 high-quality random number generators**, all impleme
 
 #### Available Generators
 
-| Generator | Speed | Quality | Use Case |
-|-----------|-------|---------|----------|
-| **IllusionFlow** ⭐ | Fast | Good | Default choice (via PRNG.Instance) |
-| **PcgRandom** | Very Fast | Excellent | Deterministic gameplay; explicit seeding |
-| **RomuDuo** | Fastest | Good | Maximum performance needed |
-| **LinearCongruentialGenerator** | Fastest | Fair | Simple, fast generation |
-| **XorShiftRandom** | Very Fast | Good | General purpose |
-| **XoroShiroRandom** | Very Fast | Good | General purpose |
-| **SplitMix64** | Very Fast | Good | Initialization, hashing |
-| **SquirrelRandom** | Moderate | Good | Hash-based generation |
-| **WyRandom** | Moderate | Good | Hashing applications |
-| **DotNetRandom** | Moderate | Good | .NET compatibility |
-| **SystemRandom** | Slow | Good | Backward compatibility |
-| **UnityRandom** | Very Slow | Good | Unity compatibility |
+| Generator                       | Speed     | Quality   | Use Case                                 |
+| ------------------------------- | --------- | --------- | ---------------------------------------- |
+| **IllusionFlow** ⭐             | Fast      | Good      | Default choice (via PRNG.Instance)       |
+| **PcgRandom**                   | Very Fast | Excellent | Deterministic gameplay; explicit seeding |
+| **RomuDuo**                     | Fastest   | Good      | Maximum performance needed               |
+| **LinearCongruentialGenerator** | Fastest   | Fair      | Simple, fast generation                  |
+| **XorShiftRandom**              | Very Fast | Good      | General purpose                          |
+| **XoroShiroRandom**             | Very Fast | Good      | General purpose                          |
+| **SplitMix64**                  | Very Fast | Good      | Initialization, hashing                  |
+| **SquirrelRandom**              | Moderate  | Good      | Hash-based generation                    |
+| **WyRandom**                    | Moderate  | Good      | Hashing applications                     |
+| **DotNetRandom**                | Moderate  | Good      | .NET compatibility                       |
+| **SystemRandom**                | Slow      | Good      | Backward compatibility                   |
+| **UnityRandom**                 | Very Slow | Good      | Unity compatibility                      |
 
 ⭐ **Recommended**: Use `PRNG.Instance` (currently IllusionFlow)
 
@@ -1249,6 +1398,7 @@ IRandom replay = new IllusionFlow(seed: 12345);
 ```
 
 Threading
+
 - Do not share a single RNG instance across threads.
 - Use `PRNG.Instance` for a thread-local default, or use each generator’s `TypeName.Instance` (e.g., `IllusionFlow.Instance`, `PcgRandom.Instance`).
 - Alternatively, create one separate instance per thread.
@@ -1305,6 +1455,7 @@ tree.GetElementsInRange(center, radius: 50f, results);
 #### When to Use Spatial Trees
 
 ✅ **Good for:**
+
 - Many objects (100+)
 - Frequent spatial queries
 - Static or slowly changing data
@@ -1313,6 +1464,7 @@ tree.GetElementsInRange(center, radius: 50f, results);
 - Collision detection optimization
 
 ❌ **Not ideal for:**
+
 - Few objects (<50)
 - Constantly moving objects
 - Single queries
@@ -1456,11 +1608,12 @@ public class PlayerController : MonoBehaviour
 
 ### Serialization
 
- [Full guide: Serialization](SERIALIZATION.md)
+[Full guide: Serialization](SERIALIZATION.md)
 
 Fast, compact serialization for save systems, config, and networking.
 
 This package provides three serialization technologies:
+
 - `Json` — Uses System.Text.Json with built‑in converters for Unity types.
 - `Protobuf` — Uses protobuf-net for compact, fast, schema‑evolvable binary.
 - `SystemBinary` — Uses .NET BinaryFormatter for legacy/ephemeral data only.
@@ -1468,6 +1621,7 @@ This package provides three serialization technologies:
 All are exposed via `WallstopStudios.UnityHelpers.Core.Serialization.Serializer`.
 
 #### Formats Provided
+
 - Json
   - Human‑readable; great for configs, save files you want to inspect or diff.
   - Includes converters for Unity types (Vector2/3/4, Color, Matrix4x4, GameObject, Type, enums as strings, cycles ignored, case‑insensitive, includes fields).
@@ -1478,6 +1632,7 @@ All are exposed via `WallstopStudios.UnityHelpers.Core.Serialization.Serializer`
   - Only for legacy or trusted, same‑version, local data. Not recommended for long‑term persistence or untrusted input (security + versioning issues).
 
 #### When To Use What
+
 - Use Json for:
   - Player or tool settings, human‑readable saves, serverless workflows.
   - Interop with tooling, debugging, or versioning in Git.
@@ -1489,6 +1644,7 @@ All are exposed via `WallstopStudios.UnityHelpers.Core.Serialization.Serializer`
   - Never for untrusted data or long‑term persistence.
 
 #### JSON Examples (Unity‑aware)
+
 ```csharp
 using System.Collections.Generic;
 using UnityEngine;
@@ -1525,6 +1681,7 @@ SaveData loaded = Serializer.Deserialize<SaveData>(bytes, SerializationType.Json
 ```
 
 #### Protobuf Examples (Compact + Evolvable)
+
 ```csharp
 using ProtoBuf; // protobuf-net
 using UnityEngine;
@@ -1554,10 +1711,12 @@ NetworkMessage again = Serializer.Deserialize<NetworkMessage>(buffer.AsSpan(0, l
 ```
 
 Notes:
+
 - Protobuf‑net requires stable field numbers. Annotate with `[ProtoMember(n)]` and never reuse or renumber.
 - Unity types supported via surrogates: Vector2/3, Vector2Int/3Int, Quaternion, Color/Color32, Rect/RectInt, Bounds/BoundsInt, Resolution.
 
 #### Protobuf Compatibility Tips
+
 - Add fields with new numbers; old clients ignore unknown fields, new clients default missing fields.
 - Do not change field numbers or `oneof` layout; reserve removed numbers if needed.
 - Avoid switching scalar types (e.g., `int32` → `string`) on the same number.
@@ -1565,6 +1724,7 @@ Notes:
 - Use sensible defaults to keep payloads minimal.
 
 #### SystemBinary Examples (Legacy/Trusted Only)
+
 ```csharp
 using WallstopStudios.UnityHelpers.Core.Serialization;
 
@@ -1578,10 +1738,12 @@ var round2 = Serializer.Deserialize<SomeSerializableType>(bin2, SerializationTyp
 ```
 
 Watch‑outs:
+
 - BinaryFormatter is obsolete in modern .NET and not secure for untrusted input.
 - Version changes often break binary round‑trips; use only for same‑version caches.
 
 **Features:**
+
 - Custom converters for Unity types (Vector2/3/4, Color, GameObject, Matrix4x4, Type)
 - Protobuf (protobuf‑net) support for compact binary
 - LZMA compression utilities (see `Runtime/Utils/LZMA.cs`)
@@ -1591,18 +1753,18 @@ Watch‑outs:
 
 Additional high-performance data structures:
 
-| Structure | Use Case |
-|-----------|----------|
-| **CyclicBuffer<T>** | Ring buffer, sliding windows |
-| **BitSet** | Compact boolean storage |
-| **ImmutableBitSet** | Read-only bit flags |
-| **Heap<T>** | Priority queue operations |
-| **PriorityQueue<T>** | Event scheduling |
-| **Deque<T>** | Double-ended queue |
-| **DisjointSet** | Union-find operations |
-| **Trie** | String prefix trees |
-| **SparseSet** | Fast add/remove with iteration |
-| **TimedCache<T>** | Auto-expiring cache |
+| Structure            | Use Case                       |
+| -------------------- | ------------------------------ |
+| **CyclicBuffer<T>**  | Ring buffer, sliding windows   |
+| **BitSet**           | Compact boolean storage        |
+| **ImmutableBitSet**  | Read-only bit flags            |
+| **Heap<T>**          | Priority queue operations      |
+| **PriorityQueue<T>** | Event scheduling               |
+| **Deque<T>**         | Double-ended queue             |
+| **DisjointSet**      | Union-find operations          |
+| **Trie**             | String prefix trees            |
+| **SparseSet**        | Fast add/remove with iteration |
+| **TimedCache<T>**    | Auto-expiring cache            |
 
 ```csharp
 // Cyclic buffer for damage history
@@ -1632,7 +1794,105 @@ See also: [Buffering Pattern](#buffering-pattern)
 
 High-level helpers and extension methods that streamline day-to-day Unity work.
 
-Key picks:
+#### Context-Aware Logging with Custom Formatters
+
+Unity Helpers includes a powerful logging system with automatic context injection, custom formatters, and build-time stripping:
+
+**Key Features:**
+
+- **Automatic Context & Timing** — Every log includes GameObject name, component type, and timestamp
+- **Exception Overloads** — Pass exceptions directly: `this.LogError($"Failed to load {asset}", exception)`
+- **Custom Formatters** — Built-in support for colors, bold, italic, JSON, sizing, and extensible with your own
+- **Thread-Safe** — Automatically routes logs to Unity main thread when needed
+- **Build Stripping** — Controlled via scripting defines (`ENABLE_UBERLOGGING`, `DEBUG_LOGGING`, etc.)
+- **Per-Object Control** — Enable/disable logging globally or per-component
+
+**Quick Example:**
+
+```csharp
+using WallstopStudios.UnityHelpers.Core.Extension;
+
+public class PlayerController : MonoBehaviour
+{
+    void Start()
+    {
+        // Simple logging with automatic context
+        this.Log($"Player initialized");
+        // Output: 12.34|PlayerController[PlayerController]|Player initialized
+
+        // Rich formatting with colors and bold
+        int health = 100;
+        this.Log($"Health: {"100":b,#green}");
+        // Output (in Unity): 12.34|PlayerController[PlayerController]|Health: <b><color=#00FF00FF>100</color></b>
+
+        // JSON serialization
+        var data = new { x = 10, y = 20 };
+        this.LogWarn($"Position data: {data:json}");
+        // Output: 12.34|PlayerController[PlayerController]|Position data: {"x":10,"y":20}
+
+        // Exception logging
+        try
+        {
+            // ... risky operation
+        }
+        catch (Exception e)
+        {
+            this.LogError($"Failed to save game", e);
+            // Includes full exception with stack trace
+        }
+    }
+}
+```
+
+**Supported Format Tags:**
+
+- `b`, `bold`, `!` — **Bold text** (editor only)
+- `i`, `italic`, `_` — _Italic text_ (editor only)
+- `#colorName` or `#RRGGBB` — <span style="color:red">Colored text</span> (editor only)
+- `json` — JSON serialization (works everywhere)
+- `12` or `size=12` — Sized text 1-100 (editor only)
+- Stack multiple: `{value:b,#red,20}` → large, bold, red text
+
+**Custom Formatters:**
+
+```csharp
+using WallstopStudios.UnityHelpers.Core.Helper.Logging;
+
+// Add your own formatter
+UnityLogTagFormatter formatter = WallstopStudiosLogger.LogInstance;
+formatter.AddDecoration(
+    match: "upper",
+    format: value => value.ToString().ToUpper(),
+    tag: "Uppercase"
+);
+
+// Use it
+this.Log($"{"hello":upper}");  // Output: HELLO
+```
+
+**Build-Time Control:**
+
+```csharp
+// Logs are enabled by default in:
+// - Development builds (DEVELOPMENT_BUILD)
+// - Debug builds (DEBUG)
+// - Unity Editor (UNITY_EDITOR)
+
+// Override with scripting defines:
+// ENABLE_UBERLOGGING    - Enable all logs
+// DEBUG_LOGGING         - Enable Log() calls only
+// WARN_LOGGING          - Enable LogWarn() calls only
+// ERROR_LOGGING         - Enable LogError() calls only
+
+// Runtime control
+this.DisableLogging();          // Disable logs for this component
+this.EnableLogging();           // Re-enable logs for this component
+this.GlobalDisableLogging();    // Disable all logs
+this.GlobalEnableLogging();     // Re-enable all logs
+```
+
+**Other Key Helpers:**
+
 - `Helpers.Find<T>(tag)` and `HasComponent<T>()` — Fewer `GetComponent` calls, cached lookups by tag.
 - `GetOrAddComponent<T>()` — Idempotent component setup in initialization code.
 - `DestroyAllChildren*` and `SmartDestroy()` — Safe destroy patterns across editor/runtime.
@@ -1684,6 +1944,7 @@ public class CameraUtils : MonoBehaviour
 ```
 
 When to use what:
+
 - Prefer `SpatialHash2D` for many moving objects uniformly spread; prefer `QuadTree2D` for static or semi-static content with clustered queries.
 - Use `Helpers.StartFunctionAsCoroutine` for simple, frame-safe polling; prefer `InvokeRepeating` or custom `Update` loops when you need fine-grained frame ordering.
 - Use `SmartDestroy` when writing code that runs in both edit mode and play mode to avoid editor/runtime differences.
@@ -1696,7 +1957,6 @@ When to use what:
 - Random placement: Use `Helpers.GetRandomPointInCircle/Sphere` or `RandomExtensions.NextVector2/3(InRange)` for uniform distributions.
 - Asset/tooling: `GetAllLayerNames` and `GetAllSpriteLabelNames` power menu tooling and editor workflows.
 - Math/geometry: `WallMath.PositiveMod/Wrapped*` for robust wrap-around; `LineHelper.Simplify*` to reduce polyline complexity; `Geometry.IsAPointLeftOfVectorOrOnTheLine` for sidedness tests.
-
 
 ### Editor Tools
 
@@ -1711,11 +1971,13 @@ Unity Helpers includes 20+ editor tools to streamline your workflow:
 [📖 Complete Editor Tools Documentation](EDITOR_TOOLS_GUIDE.md)
 
 **Quick Access:**
+
 - Menu: `Tools > Wallstop Studios > Unity Helpers`
 - Create Assets: `Assets > Create > Wallstop Studios > Unity Helpers`
 
 <a id="use-cases--examples"></a>
 <a id="use-cases-examples"></a>
+
 ## Use Cases & Examples
 
 ### Case Study: Player Controller with Auto-Wiring
@@ -1776,6 +2038,7 @@ public class PlayerController : MonoBehaviour
 ```
 
 **Key benefits:**
+
 - **Zero boilerplate:** No GetComponent calls, null checks, or error handling
 - **Self-documenting:** Clear intent with attributes (`[ChildComponent]`)
 - **Compile-time safety:** Typos caught immediately
@@ -1855,12 +2118,14 @@ public class Character : MonoBehaviour
 **In the Unity Editor, create AttributeEffect ScriptableObjects:**
 
 **HasteEffect.asset:**
+
 - Modifications: Speed × 1.5
 - Duration: 5 seconds
 - Tags: "Haste", "Buff"
 - Visual: Speed lines particle effect
 
 **ShieldEffect.asset:**
+
 - Modifications: Defense + 10
 - Duration: 10 seconds
 - Tags: "Shield", "Buff"
@@ -1868,6 +2133,7 @@ public class Character : MonoBehaviour
 - Visual: Blue shield glow
 
 **StunEffect.asset:**
+
 - Modifications: Speed = 0 (Override)
 - Duration: 3 seconds
 - Tags: "Stun", "Debuff", "CC"
@@ -1875,6 +2141,7 @@ public class Character : MonoBehaviour
 - Visual: Stars circling head
 
 **Why this is game-changing:**
+
 - **Zero effect code:** Designers create hundreds of effects without programmer involvement
 - **Instant prototyping:** New buff in 30 seconds (create ScriptableObject, set values)
 - **Perfect stacking:** Multiple effects work together automatically
@@ -1961,6 +2228,7 @@ public class LootTable : MonoBehaviour
 ```
 
 **Why Unity Helpers' random API shines here:**
+
 - **NextWeightedIndex():** Handles normalization automatically
 - **NextBool(probability):** Cleaner than `NextFloat() < 0.2f`
 - **NextOf(array):** Direct selection without manual indexing
@@ -2052,6 +2320,7 @@ public class LevelGenerator : MonoBehaviour
 ```
 
 **Advanced features showcased:**
+
 - **NextNoiseMap():** Complete Perlin noise implementation in one call
 - **NextGaussian():** Natural clustering (bell curve distribution)
 - **NextVector2():** Cleaner than `new Vector2(random.NextFloat(), random.NextFloat())`
@@ -2121,11 +2390,13 @@ public class AIController : MonoBehaviour
 ```
 
 **Performance wins:**
+
 - **O(log n) queries:** Find nearby enemies without checking every object
 - **Buffering pattern:** Reuse `nearbyBuffer` to avoid GC
 - **Scales to 1000+ units:** QuadTree keeps queries fast even with many objects
 
 **When to use spatial trees:**
+
 - Many moving objects (enemies, bullets, particles)
 - Frequent proximity checks (AI awareness, collision)
 - Large open worlds (visibility culling)
@@ -2171,6 +2442,7 @@ public class Turret : MonoBehaviour
 ```
 
 **Why this is a game-changer:**
+
 - Solves quadratic intercept equation with robust fallbacks for edge cases
 - Handles fast/slow projectiles, moving/stationary targets automatically
 - Perfect for: turrets, homing missiles, AI prediction, physics-based games
@@ -2205,6 +2477,7 @@ void ProcessEnemies(List<object> enemies)
 ```
 
 **Advanced: Typed accessors for zero boxing**
+
 ```csharp
 // For structs or when you need maximum performance
 FieldInfo scoreField = typeof(Player).GetField("Score");
@@ -2217,6 +2490,7 @@ int score = getScore(ref player);
 ```
 
 **Why this is essential:**
+
 - **Serialization systems**: Deserialize thousands of objects per frame
 - **Data binding**: UI systems that update from model properties
 - **Modding APIs**: Safe access to private fields without making everything public
@@ -2260,6 +2534,7 @@ public class ParticleSystem : MonoBehaviour
 ```
 
 **Advanced: Pooled arrays for high-frequency operations**
+
 ```csharp
 void ProcessFrame(int vertexCount)
 {
@@ -2276,6 +2551,7 @@ void ProcessFrame(int vertexCount)
 ```
 
 **Why this matters:**
+
 - **Zero GC spikes**: Reuse allocations instead of creating garbage
 - **Automatic cleanup**: IDisposable pattern ensures returns even on exceptions
 - **Thread-safe**: ConcurrentStack backing for multi-threaded scenarios
@@ -2283,6 +2559,7 @@ void ProcessFrame(int vertexCount)
 - **Customizable**: Create pools for your own types with custom lifecycle callbacks
 
 **Perfect for:**
+
 - AI systems querying neighbors every frame
 - Particle systems with thousands of particles
 - Physics raycasts returning hit arrays
@@ -2322,6 +2599,7 @@ public class DynamicUI : MonoBehaviour
 ```
 
 **GetOrAddComponent: Idempotent Component Setup**
+
 ```csharp
 public class PlayerSetup : MonoBehaviour
 {
@@ -2338,6 +2616,7 @@ public class PlayerSetup : MonoBehaviour
 ```
 
 **Why these are essential:**
+
 - `SmartDestroy`: Prevents "Destroying assets is not permitted" errors in editor
 - `DestroyAllChildren*`: Cleans hierarchies without index shifting bugs
 - `GetOrAddComponent`: Initialization code that's safe to run multiple times
@@ -2345,6 +2624,7 @@ public class PlayerSetup : MonoBehaviour
 - Works correctly with prefab editing mode
 
 **Common scenarios:**
+
 - Editor tools that modify hierarchies
 - Runtime UI builders
 - Procedural content generation
@@ -2387,12 +2667,14 @@ public class TerrainOutline : MonoBehaviour
 ```
 
 **Why this is powerful:**
+
 - **Convex hulls**: Perfect for collision bounds, fog of war outer limits, vision cones
 - **Concave hulls**: Detailed territory borders, minimap fog, destructible terrain
 - Multiple algorithms: MonotoneChain (fast), Jarvis (simple), Knn/EdgeSplit (concave)
 - Grid-aware: Works with Unity Tilemap/Grid systems out of the box
 
 **Real-world uses:**
+
 - RTS territory visualization
 - Fog of war boundaries
 - Destructible terrain collision
@@ -2428,11 +2710,13 @@ public class HealthRegen : MonoBehaviour
 ```
 
 **Why jitter matters:**
+
 - **Prevents frame spikes**: 100 enemies all polling at once = lag spike
 - **Distributes load**: Staggers work across multiple frames
 - **Simple API**: One parameter prevents performance issues
 
 **Other timing helpers:**
+
 ```csharp
 // Execute after delay
 this.ExecuteFunctionAfterDelay(() => SpawnBoss(), delay: 3f);
@@ -2477,6 +2761,7 @@ public class GameController : MonoBehaviour
 ```
 
 **Why this helps:**
+
 - **Automatic caching**: First call populates cache, subsequent calls are O(1)
 - **Fail-fast**: Logs warnings when tags are missing (can disable)
 - **Memory efficient**: Only caches what you actually use
@@ -2532,20 +2817,21 @@ Unity Helpers' random number generators are **10-15x faster** than Unity's built
 
 Spatial queries are dramatically faster than linear searches:
 
-| Objects | Linear Search | QuadTree2D | Speedup |
-|---------|---------------|------------|---------|
-| 1,000 | 1M ops/sec | 283M ops/sec | **283x** |
-| 10,000 | 100K ops/sec | 233M ops/sec | **2,330x** |
-| 100,000 | 10K ops/sec | 174M ops/sec | **17,400x** |
-| 1,000,000 | 1K ops/sec | 141M ops/sec | **141,000x** |
+| Objects   | Linear Search | QuadTree2D   | Speedup      |
+| --------- | ------------- | ------------ | ------------ |
+| 1,000     | 1M ops/sec    | 283M ops/sec | **283x**     |
+| 10,000    | 100K ops/sec  | 233M ops/sec | **2,330x**   |
+| 100,000   | 10K ops/sec   | 174M ops/sec | **17,400x**  |
+| 1,000,000 | 1K ops/sec    | 141M ops/sec | **141,000x** |
 
-*Measurements for small radius queries (1 unit)*
+_Measurements for small radius queries (1 unit)_
 
 [📊 2D Spatial Tree Benchmarks](SPATIAL_TREE_2D_PERFORMANCE.md) | [📊 3D Spatial Tree Benchmarks](SPATIAL_TREE_3D_PERFORMANCE.md)
 
 ### Editor Performance
 
 Editor tools use optimizations like:
+
 - Parallel processing for image operations
 - Cached reflection for attribute systems
 - Batch asset database operations
@@ -2609,11 +2895,13 @@ Troubleshooting common issues (runtime-only assignment, filters, depth, inactive
 ## 📚 Related Documentation
 
 **Quick Start:**
+
 - [Getting Started Guide](GETTING_STARTED.md) - Your first 5 minutes with Unity Helpers
 - [Feature Index](INDEX.md) - Alphabetical reference of all features
 - [Glossary](GLOSSARY.md) - Term definitions and concepts
 
 **Core Guides:**
+
 - [Relational Components](RELATIONAL_COMPONENTS.md) - Auto-wiring component references
 - [Effects System](EFFECTS_SYSTEM.md) - Data-driven buff/debuff system
 - [Serialization](SERIALIZATION.md) - Save systems and networking
@@ -2621,17 +2909,20 @@ Troubleshooting common issues (runtime-only assignment, filters, depth, inactive
 - [Math & Extensions](MATH_AND_EXTENSIONS.md) - Core utilities and helpers
 
 **Spatial Trees:**
+
 - [2D Spatial Trees Guide](SPATIAL_TREES_2D_GUIDE.md) - QuadTree, KDTree, RTree
 - [3D Spatial Trees Guide](SPATIAL_TREES_3D_GUIDE.md) - OctTree, KDTree3D, RTree3D
 - [Spatial Tree Semantics](SPATIAL_TREE_SEMANTICS.md) - Boundary behavior details
 - [2D Performance](SPATIAL_TREE_2D_PERFORMANCE.md) | [3D Performance](SPATIAL_TREE_3D_PERFORMANCE.md)
 
 **Advanced:**
+
 - [Reflection Helpers](REFLECTION_HELPERS.md) - High-performance reflection
 - [Data Structures](DATA_STRUCTURES.md) - Heaps, tries, sparse sets
 - [Singletons](SINGLETONS.md) - Runtime and ScriptableObject patterns
 
 **DI Integration:**
+
 - [VContainer Sample](Samples~/DI%20-%20VContainer/README.md) - VContainer integration
 - [Zenject Sample](Samples~/DI%20-%20Zenject/README.md) - Zenject integration
 
@@ -2641,7 +2932,7 @@ Troubleshooting common issues (runtime-only assignment, filters, depth, inactive
 
 **Made with ❤️ by [Wallstop Studios](https://wallstopstudios.com)**
 
-*Unity Helpers is production-ready and actively maintained. Star the repo if you find it useful!*
+_Unity Helpers is production-ready and actively maintained. Star the repo if you find it useful!_
 
 ## API Index
 
@@ -2732,16 +3023,19 @@ Tip: Most collection-based APIs accept and fill buffers you provide (List<T>, ar
 Many APIs accept a caller-provided buffer (e.g., `List<T>`) and clear it before writing results. Reuse these buffers to avoid per-frame allocations and reduce GC pressure.
 
 Why it helps
+
 - Prevents transient allocations in tight loops (AI queries, physics scans).
 - Keeps GC stable in gameplay spikes (hundreds/thousands of queries).
 
 Basics
+
 - Create buffers once per system and reuse them.
 - APIs that take a `List<T>` will clear it before use and return the same list for chaining.
 - **Ergonomic benefit**: Because these APIs return the same list you pass in, you can use them directly in `foreach` loops for maximum convenience.
 - Don't share a single buffer across concurrent operations; allocate one per caller or use pooling.
 
 **Getting buffers easily:**
+
 - Use `Buffers<T>.List.Get()` for pooled `List<T>` with automatic return via `Dispose`
 - Use `WallstopArrayPool<T>.Get()` for pooled arrays with automatic return
 - Use `WallstopFastArrayPool<T>.Get()` for frequently-used short-lived arrays
@@ -2834,6 +3128,7 @@ void ProcessLargeDataset(int size)
 ```
 
 Do / Don’t
+
 - Do reuse buffers per system or component.
 - Do treat buffers as temporary scratch space (APIs clear them first).
 - Don’t keep references to pooled lists beyond their lease lifetime.
@@ -2857,6 +3152,7 @@ Pooling utilities
   - Used throughout Helpers for high‑frequency editor/runtime operations (e.g., asset searches).
 
 How pooling + buffering help APIs
+
 - Spatial queries: pass a reusable `List<T>` to `GetElementsInRange/GetElementsInBounds` and iterate results without allocations.
 - Component queries: `GetComponents(buffer)` clears and fills your buffer instead of allocating arrays.
 - Editor utilities: temporary arrays/lists from pools keep import/scan tools snappy, especially inside loops.

@@ -10,11 +10,13 @@ Unity Helpers isn't just another utility library - it's built on three core prin
 ### 1. Developer-Friendly First
 
 **Extensive APIs that handle edge cases you'd otherwise code manually:**
+
 - Random selection with weights? One method call.
 - Weighted bool with probability? Built-in.
 - Gaussian distribution? Perlin noise maps? Already there.
 
 **Self-documenting attributes and patterns:**
+
 ```csharp
 [SiblingComponent] private Animator animator;  // Clear intent
 [ParentComponent(OnlyAncestors = true)] private Rigidbody2D rb;  // Explicit search
@@ -22,6 +24,7 @@ Unity Helpers isn't just another utility library - it's built on three core prin
 ```
 
 **Fail-fast with helpful error messages:**
+
 - Missing required components? Detailed logs with GameObject names and paths.
 - Invalid spatial tree queries? Clear explanations of what went wrong.
 - Schema evolution issues? Specific guidance on fixing serialization problems.
@@ -29,16 +32,19 @@ Unity Helpers isn't just another utility library - it's built on three core prin
 ### 2. Performance-Backed
 
 **10-15x faster random generation:**
+
 - `PRNG.Instance` vs `UnityEngine.Random`: 655M ops/sec vs 65M ops/sec
 - Thread-safe via thread-local instances
 - Fully seedable for deterministic gameplay
 
 **Zero-allocation spatial queries:**
+
 - Buffering pattern eliminates GC spikes
 - Reusable collections keep frame times stable
 - O(log n) trees scale to millions of objects
 
 **IL-emitted reflection:**
+
 - 10-100x faster than System.Reflection
 - Field access: ~2ns vs ~200ns (100x speedup)
 - IL2CPP safe and fully tested
@@ -46,24 +52,30 @@ Unity Helpers isn't just another utility library - it's built on three core prin
 ### 3. Production-Ready
 
 **4,000+ automated test cases:**
+
 - Cover edge cases you haven't thought of
 - Run before each release to catch regressions
 - Prevent bugs before they reach your players
 
 **Used in shipped commercial games:**
+
 - Battle-tested in real production environments
 - Performance-critical paths proven at scale
 - API stability from real-world feedback
 
 **Protobuf schema evolution:**
+
 - Add/remove fields without breaking old saves
 - Players never lose progress from updates
 - Forward and backward compatible serialization
 
-**IL2CPP optimized:**
+**IL2CPP and WebGL optimized:**
+
 - Works with Unity's aggressive compiler
 - No reflection issues in release builds
 - Full AOT compatibility
+- SINGLE_THREADED define for optimized WebGL hot paths
+- 10-20% faster on single-threaded platforms
 
 ---
 
@@ -74,16 +86,19 @@ Unity Helpers isn't just another utility library - it's built on three core prin
 Jump directly to the solution you need:
 
 **Performance Issues?**
+
 - Slow random number generation → [Random Generators](#random-in-60-seconds)
 - Too many objects to search → [Spatial Queries](#spatial-queries-in-60-seconds)
 - Frame drops from allocations → [Buffering Pattern](README.md#buffering-pattern)
 
 **Workflow Issues?**
+
 - Writing too much GetComponent → [Auto Component Wiring](#component-wiring-in-60-seconds)
 - Manual sprite animation setup → [Editor Tools](EDITOR_TOOLS_GUIDE.md)
 - Prefab validation problems → [Prefab Checker](EDITOR_TOOLS_GUIDE.md#prefab-checker)
 
 **Architecture Issues?**
+
 - Need global settings → [Singletons](SINGLETONS.md)
 - Need buff/debuff system → [Effects System](EFFECTS_SYSTEM.md)
 - Need save/load system → [Serialization](SERIALIZATION.md)
@@ -122,6 +137,7 @@ Add to your `Packages/manifest.json`:
 ```
 
 Or in Unity:
+
 1. Open **Window > Package Manager**
 2. Click **+** → **Add package from git URL...**
 3. Enter: `https://github.com/wallstop/unity-helpers.git`
@@ -129,6 +145,7 @@ Or in Unity:
 ### Verify Installation
 
 Check that the package appears in Package Manager under "Custom". You should see:
+
 - **Name:** Unity Helpers
 - **Version:** (current version)
 - **Author:** Wallstop Studios
@@ -136,6 +153,8 @@ Check that the package appears in Package Manager under "Custom". You should see
 ---
 
 ## Three Quick Wins (5 Minutes)
+
+<a id="random-in-60-seconds"></a>
 
 ### 1. Random in 60 Seconds 🟢 Beginner
 
@@ -173,6 +192,8 @@ public class LootDrop : MonoBehaviour
 **Learn More:** [Random Performance](RANDOM_PERFORMANCE.md)
 
 ---
+
+<a id="component-wiring-in-60-seconds"></a>
 
 ### 2. Component Wiring in 60 Seconds 🟢 Beginner
 
@@ -226,6 +247,8 @@ public class Player : MonoBehaviour
   - Zenject: add `RelationalComponentsInstaller` to your `SceneContext` and (optionally) enable the scene scan on initialize.
 - Full guide with scenarios and testing tips: [Dependency Injection Integrations](RELATIONAL_COMPONENTS.md#dependency-injection-integrations)
 
+<a id="spatial-queries-in-60-seconds"></a>
+
 ### 3. Spatial Queries in 60 Seconds 🟡 Intermediate
 
 **Problem:** Finding nearby objects with `FindObjectsOfType` and distance checks is O(n) and slow.
@@ -265,6 +288,7 @@ public class EnemyManager : MonoBehaviour
 > when enemy positions change. For frequently moving objects, use `SpatialHash2D` instead.
 
 **Learn More:**
+
 - [2D Spatial Trees Guide](SPATIAL_TREES_2D_GUIDE.md)
 - [Performance Benchmarks](SPATIAL_TREE_2D_PERFORMANCE.md)
 
@@ -323,14 +347,19 @@ Based on your needs:
 ### "Is this production-ready?"
 
 Yes! Unity Helpers is:
+
 - ✅ Used in shipped commercial games
 - ✅ 4,000+ automated test cases
 - ✅ Compatible with Unity 2022, 2023, and Unity 6
 - ✅ Zero external dependencies
+- ✅ **Fully WebGL/IL2CPP compatible** with optimized SINGLE_THREADED hot paths
+- ✅ **Multiplatform support** - Desktop, Mobile, Web, and Consoles
+- ⚠️ Requires .NET Standard 2.1
 
 ### "Will this conflict with my existing code?"
 
 No! Unity Helpers:
+
 - ✅ Uses namespaces (`WallstopStudios.UnityHelpers.*`)
 - ✅ Doesn't modify Unity types or global state
 - ✅ Opt-in for all features - use what you need
@@ -353,15 +382,15 @@ use it freely in commercial projects.
 
 Pick one feature that solves your immediate problem:
 
-| Your Need | Start Here | Time to Learn |
-|-----------|------------|---------------|
-| Faster random numbers | [Random Performance](RANDOM_PERFORMANCE.md) | 5 min |
-| Auto-wire components | [Relational Components](RELATIONAL_COMPONENTS.md) | 10 min |
-| Spatial queries | [2D Spatial Trees](SPATIAL_TREES_2D_GUIDE.md) | 15 min |
-| Buff/debuff system | [Effects System](EFFECTS_SYSTEM.md) | 20 min |
-| Save/load data | [Serialization](SERIALIZATION.md) | 20 min |
-| Editor automation | [Editor Tools](EDITOR_TOOLS_GUIDE.md) | 30 min |
-| Global settings | [Singletons](SINGLETONS.md) | 10 min |
+| Your Need             | Start Here                                        | Time to Learn |
+| --------------------- | ------------------------------------------------- | ------------- |
+| Faster random numbers | [Random Performance](RANDOM_PERFORMANCE.md)       | 5 min         |
+| Auto-wire components  | [Relational Components](RELATIONAL_COMPONENTS.md) | 10 min        |
+| Spatial queries       | [2D Spatial Trees](SPATIAL_TREES_2D_GUIDE.md)     | 15 min        |
+| Buff/debuff system    | [Effects System](EFFECTS_SYSTEM.md)               | 20 min        |
+| Save/load data        | [Serialization](SERIALIZATION.md)                 | 20 min        |
+| Editor automation     | [Editor Tools](EDITOR_TOOLS_GUIDE.md)             | 30 min        |
+| Global settings       | [Singletons](SINGLETONS.md)                       | 10 min        |
 
 ---
 
@@ -375,11 +404,13 @@ Pick one feature that solves your immediate problem:
 ## 📚 Related Documentation
 
 **Core Guides:**
+
 - [Main README](README.md) - Complete feature overview
 - [Feature Index](INDEX.md) - Alphabetical reference
 - [Glossary](GLOSSARY.md) - Term definitions
 
 **Deep Dives:**
+
 - [Relational Components](RELATIONAL_COMPONENTS.md) - Auto-wiring guide
 - [Effects System](EFFECTS_SYSTEM.md) - Buff/debuff system
 - [Spatial Trees 2D](SPATIAL_TREES_2D_GUIDE.md) - Fast spatial queries
@@ -387,6 +418,7 @@ Pick one feature that solves your immediate problem:
 - [Editor Tools](EDITOR_TOOLS_GUIDE.md) - Asset pipeline automation
 
 **DI Integration:**
+
 - [VContainer Sample](Samples~/DI%20-%20VContainer/README.md) - VContainer integration guide
 - [Zenject Sample](Samples~/DI%20-%20Zenject/README.md) - Zenject integration guide
 

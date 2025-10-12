@@ -27,7 +27,9 @@ $inlineCodeMdPattern = [regex]'`[^`\n]*?\.md[^`\n]*?`'
 
 $violationCount = 0
 
-Get-ChildItem -Path . -Recurse -Include *.md -File | ForEach-Object {
+Get-ChildItem -Path . -Recurse -Include *.md -File |
+    Where-Object { $_.FullName -notmatch '(?i)[\\/](node_modules)[\\/]' } |
+    ForEach-Object {
     $file = $_.FullName
     $inFence = $false
     $lineNo = 0

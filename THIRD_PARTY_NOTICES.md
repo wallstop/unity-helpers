@@ -1,31 +1,33 @@
 This package contains third-party software components governed by the license(s) indicated below.
 
 protobuf-net
+
 - Description: .NET runtime/library for Protocol Buffers serialization by Marc Gravell.
-- Upstream: https://github.com/protobuf-net/protobuf-net
+- Upstream: [GitHub repository](https://github.com/protobuf-net/protobuf-net)
 - License: Apache License 2.0
-- License URL: https://www.apache.org/licenses/LICENSE-2.0
+- License URL: [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)
 - Notes: Uses attributes such as [ProtoContract]/[ProtoMember] and runtime `ProtoBuf.Serializer`.
 
 7-Zip LZMA SDK
+
 - Description: LZMA compression/decompression implementation (encoder/decoder) used via `SevenZip.Compression.LZMA`.
-- Upstream: https://www.7-zip.org/sdk.html
+- Upstream: [7‑Zip LZMA SDK](https://www.7-zip.org/sdk.html)
 - License: Public Domain (per 7-Zip LZMA SDK)
 - Notes: Integrated sources under `Runtime/Utils/SevenZip/Compress/LZMA`.
 
 Additional notes
+
 - System.Text.Json and other .NET BCL components are used as part of the .NET runtime and are subject to their respective licenses (e.g., MIT for dotnet/runtime). No vendored sources from these components are included in this repository.
 
-
 Acknowledgements
-- 7-Zip LZMA SDK by Igor Pavlov. The SDK is released to the public domain. See: https://www.7-zip.org/sdk.html
 
+- 7‑Zip LZMA SDK by Igor Pavlov. The SDK is released to the public domain. See: [7‑Zip LZMA SDK](https://www.7-zip.org/sdk.html)
 
 Full License Texts
 
 Apache License
 Version 2.0, January 2004
-http://www.apache.org/licenses/
+[http://www.apache.org/licenses/](http://www.apache.org/licenses/)
 
 TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
 

@@ -42,6 +42,36 @@
       "displayName": "DI – Zenject",
       "description": "SceneContext installer, scene-wide assignment, and prefab instantiation with relations.",
       "path": "Samples~/DI - Zenject"
+    },
+    {
+      "displayName": "Relational Components – Basic",
+      "description": "Attribute-based auto-wiring without DI; parent/sibling/child examples.",
+      "path": "Samples~/Relational Components - Basic"
+    },
+    {
+      "displayName": "Serialization – JSON",
+      "description": "System.Text.Json with Unity converters; pretty and fast options.",
+      "path": "Samples~/Serialization - JSON"
+    },
+    {
+      "displayName": "Random – PRNG",
+      "description": "PCG seeds, floats, Gaussian, and list sampling.",
+      "path": "Samples~/Random - PRNG"
+    },
+    {
+      "displayName": "Spatial Structures – 2D and 3D",
+      "description": "QuadTree2D, KdTree2D nearest neighbors, SpatialHash2D queries.",
+      "path": "Samples~/Spatial Structures - 2D and 3D"
+    },
+    {
+      "displayName": "UI Toolkit – MultiFile Selector (Editor)",
+      "description": "EditorWindow using MultiFileSelectorElement for multi-file picking.",
+      "path": "Samples~/UI Toolkit - MultiFile Selector (Editor)"
+    },
+    {
+      "displayName": "UGUI – EnhancedImage",
+      "description": "Programmatic Canvas setup and HDR-tinted EnhancedImage.",
+      "path": "Samples~/UGUI - EnhancedImage"
     }
   ],
   "scripts": {
@@ -50,6 +80,16 @@
     "hooks:install": "git config core.hooksPath .githooks",
     "eol:check": "pwsh -NoProfile -File scripts/check-eol.ps1",
     "eol:fix": "pwsh -NoProfile -File scripts/normalize-eol.ps1",
-    "prepublishOnly": "npm run lint:docs"
+    "format:md": "prettier --write \"**/*.{md,markdown}\"",
+    "format:md:check": "prettier --check \"**/*.{md,markdown}\"",
+    "format:json": "prettier --write \"**/*.{json,asmdef,asmref}\"",
+    "format:json:check": "prettier --check \"**/*.{json,asmdef,asmref}\"",
+    "lint:markdown": "markdownlint \"**/*.md\" \"**/*.markdown\" --config .markdownlint.json --ignore-path .markdownlintignore",
+    "validate:content": "npm run lint:docs && npm run lint:markdown && npm run format:md:check && npm run format:json:check",
+    "prepublishOnly": "npm run validate:content"
+  },
+  "devDependencies": {
+    "markdownlint-cli": "^0.40.0",
+    "prettier": "^3.3.3"
   }
 }

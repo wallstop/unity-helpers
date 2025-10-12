@@ -1,26 +1,24 @@
 {
-    "name": "WallstopStudios.UnityHelpers.Tests.Runtime",
-    "rootNamespace": "WallstopStudios.UnityHelpers.Tests",
-    "references": [
-        "UnityEditor.TestRunner",
-        "UnityEngine.TestRunner",
-        "WallstopStudios.UnityHelpers"
-    ],
-    "includePlatforms": [],
-    "excludePlatforms": [],
-    "allowUnsafeCode": false,
-    "overrideReferences": true,
-    "precompiledReferences": [
-        "nunit.framework.dll",
-        "System.Text.Json.dll",
-        "protobuf-net.dll",
-        "protobuf-net.Core.dll",
-        "System.Collections.Immutable.dll"
-    ],
-    "autoReferenced": false,
-    "defineConstraints": [
-        "UNITY_INCLUDE_TESTS"
-    ],
-    "versionDefines": [],
-    "noEngineReferences": false
+  "name": "WallstopStudios.UnityHelpers.Tests.Runtime",
+  "rootNamespace": "WallstopStudios.UnityHelpers.Tests",
+  "references": [
+    "UnityEditor.TestRunner",
+    "UnityEngine.TestRunner",
+    "WallstopStudios.UnityHelpers"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "nunit.framework.dll",
+    "System.Text.Json.dll",
+    "protobuf-net.dll",
+    "protobuf-net.Core.dll",
+    "System.Collections.Immutable.dll"
+  ],
+  "autoReferenced": false,
+  "defineConstraints": ["UNITY_INCLUDE_TESTS"],
+  "versionDefines": [],
+  "noEngineReferences": false
 }

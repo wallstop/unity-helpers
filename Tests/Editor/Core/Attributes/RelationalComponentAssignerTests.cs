@@ -28,19 +28,20 @@ namespace WallstopStudios.UnityHelpers.Tests.Core.Attributes
         {
             AttributeMetadataCache cache = CreateScriptableObject<AttributeMetadataCache>();
 
-            var relationalMetadata = new AttributeMetadataCache.RelationalTypeMetadata(
-                typeof(RelationalConsumer).AssemblyQualifiedName,
-                new[]
-                {
-                    new AttributeMetadataCache.RelationalFieldMetadata(
-                        "_spriteRenderer",
-                        AttributeMetadataCache.RelationalAttributeKind.Sibling,
-                        AttributeMetadataCache.FieldKind.Single,
-                        typeof(SpriteRenderer).AssemblyQualifiedName,
-                        false
-                    ),
-                }
-            );
+            AttributeMetadataCache.RelationalTypeMetadata relationalMetadata =
+                new AttributeMetadataCache.RelationalTypeMetadata(
+                    typeof(RelationalConsumer).AssemblyQualifiedName,
+                    new[]
+                    {
+                        new AttributeMetadataCache.RelationalFieldMetadata(
+                            "_spriteRenderer",
+                            AttributeMetadataCache.RelationalAttributeKind.Sibling,
+                            AttributeMetadataCache.FieldKind.Single,
+                            typeof(SpriteRenderer).AssemblyQualifiedName,
+                            false
+                        ),
+                    }
+                );
 
             cache.SetMetadata(
                 System.Array.Empty<string>(),
@@ -49,7 +50,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Core.Attributes
             );
             cache.ForceRebuildForTests();
 
-            var assigner = new RelationalComponentAssigner(cache);
+            RelationalComponentAssigner assigner = new RelationalComponentAssigner(cache);
 
             Assert.IsTrue(
                 assigner.HasRelationalAssignments(typeof(RelationalConsumer)),
@@ -66,19 +67,20 @@ namespace WallstopStudios.UnityHelpers.Tests.Core.Attributes
         {
             AttributeMetadataCache cache = CreateScriptableObject<AttributeMetadataCache>();
 
-            var relationalMetadata = new AttributeMetadataCache.RelationalTypeMetadata(
-                typeof(RelationalConsumer).AssemblyQualifiedName,
-                new[]
-                {
-                    new AttributeMetadataCache.RelationalFieldMetadata(
-                        "_spriteRenderer",
-                        AttributeMetadataCache.RelationalAttributeKind.Sibling,
-                        AttributeMetadataCache.FieldKind.Single,
-                        typeof(SpriteRenderer).AssemblyQualifiedName,
-                        false
-                    ),
-                }
-            );
+            AttributeMetadataCache.RelationalTypeMetadata relationalMetadata =
+                new AttributeMetadataCache.RelationalTypeMetadata(
+                    typeof(RelationalConsumer).AssemblyQualifiedName,
+                    new[]
+                    {
+                        new AttributeMetadataCache.RelationalFieldMetadata(
+                            "_spriteRenderer",
+                            AttributeMetadataCache.RelationalAttributeKind.Sibling,
+                            AttributeMetadataCache.FieldKind.Single,
+                            typeof(SpriteRenderer).AssemblyQualifiedName,
+                            false
+                        ),
+                    }
+                );
 
             cache.SetMetadata(
                 System.Array.Empty<string>(),
@@ -87,7 +89,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Core.Attributes
             );
             cache.ForceRebuildForTests();
 
-            var assigner = new RelationalComponentAssigner(cache);
+            RelationalComponentAssigner assigner = new RelationalComponentAssigner(cache);
 
             GameObject go1 = NewGameObject("Relational");
             SpriteRenderer sr1 = go1.AddComponent<SpriteRenderer>();
@@ -98,7 +100,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Core.Attributes
 
             Assert.IsNull(consumer.SR, "Precondition: relational field should start null");
 
-            var items = new List<Component> { consumer, null, non.transform };
+            List<Component> items = new List<Component> { consumer, null, non.transform };
             assigner.Assign(items);
 
             Assert.IsNotNull(

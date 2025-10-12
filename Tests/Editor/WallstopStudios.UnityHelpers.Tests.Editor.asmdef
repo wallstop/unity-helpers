@@ -7,20 +7,13 @@
     "WallstopStudios.UnityHelpers",
     "WallstopStudios.UnityHelpers.Editor"
   ],
-  "includePlatforms": [
-    "Editor"
-  ],
+  "includePlatforms": ["Editor"],
   "excludePlatforms": [],
   "allowUnsafeCode": false,
   "overrideReferences": true,
-  "precompiledReferences": [
-    "nunit.framework.dll",
-    "System.Text.Json.dll"
-  ],
+  "precompiledReferences": ["nunit.framework.dll", "System.Text.Json.dll"],
   "autoReferenced": false,
-  "defineConstraints": [
-    "UNITY_INCLUDE_TESTS"
-  ],
+  "defineConstraints": ["UNITY_INCLUDE_TESTS"],
   "versionDefines": [],
   "noEngineReferences": false
 }
