@@ -14,6 +14,27 @@ namespace WallstopStudios.UnityHelpers.Integrations.VContainer
     /// Entry point registered with VContainer to hydrate relational attributes once the container is
     /// fully built.
     /// </summary>
+    /// <remarks>
+    /// This type is registered automatically by calling
+    /// <see cref="RelationalComponentsBuilderExtensions"/>,
+    /// and runs once on startup to assign relational fields across the active scene. It uses
+    /// <see cref="AttributeMetadataCache"/> (when present) to quickly locate components that have
+    /// relational attributes.
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// // LifetimeScope that enables relational assignments at scene start
+    /// public sealed class GameLifetimeScope : LifetimeScope
+    /// {
+    ///     protected override void Configure(IContainerBuilder builder)
+    ///     {
+    ///         builder.RegisterRelationalComponents(
+    ///             new RelationalSceneAssignmentOptions(includeInactive: true)
+    ///         );
+    ///     }
+    /// }
+    /// </code>
+    /// </example>
     public sealed class RelationalComponentEntryPoint : IInitializable
     {
         private readonly IRelationalComponentAssigner _assigner;

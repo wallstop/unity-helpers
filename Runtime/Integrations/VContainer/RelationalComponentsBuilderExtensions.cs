@@ -11,12 +11,42 @@ namespace WallstopStudios.UnityHelpers.Integrations.VContainer
     /// Convenience registration helpers for wiring relational component support into a
     /// <see cref="LifetimeScope"/>.
     /// </summary>
+    /// <remarks>
+    /// Registers the shared <see cref="IRelationalComponentAssigner"/> as a singleton and schedules a
+    /// scene-wide entry point that hydrates all relational fields after the container has been built.
+    /// </remarks>
     public static class RelationalComponentsBuilderExtensions
     {
         /// <summary>
         /// Registers the relational component assigner and scene entry point with the supplied
         /// container builder.
         /// </summary>
+        /// <param name="builder">The VContainer builder.</param>
+        /// <param name="options">
+        /// Optional settings to control how the active scene is scanned (e.g., include inactive
+        /// objects). When <c>null</c>, <see cref="RelationalSceneAssignmentOptions.Default"/> is used.
+        /// </param>
+        /// <example>
+        /// <code>
+        /// using VContainer;
+        /// using VContainer.Unity;
+        /// using WallstopStudios.UnityHelpers.Integrations.VContainer;
+        ///
+        /// public sealed class GameLifetimeScope : LifetimeScope
+        /// {
+        ///     protected override void Configure(IContainerBuilder builder)
+        ///     {
+        ///         // Basic usage
+        ///         builder.RegisterRelationalComponents();
+        ///
+        ///         // Or customize scanning options
+        ///         builder.RegisterRelationalComponents(
+        ///             new RelationalSceneAssignmentOptions(includeInactive: false)
+        ///         );
+        ///     }
+        /// }
+        /// </code>
+        /// </example>
         public static void RegisterRelationalComponents(
             this IContainerBuilder builder,
             RelationalSceneAssignmentOptions? options = null

@@ -303,6 +303,11 @@ Notes:
 
 Unity Helpers provides optional integration assemblies that only compile when Zenject or VContainer is present in your project. Install the corresponding DI package via the Unity Package Manager and the helpers become available automatically (no additional scripting defines required).
 
+Why use the DI integrations
+- Eliminate boilerplate: hydrate relational fields after DI injection automatically.
+- Consistent behavior: integrates with constructor/property injection and works with runtime instantiation.
+- Safe fallback: if the DI binding is missing, falls back to the non-DI path so fields still populate.
+
 Supported package IDs (auto-detected)
 - Zenject/Extenject: `com.extenject.zenject`, `com.modesttree.zenject`, `com.svermeulen.extenject`
 - VContainer: `jp.cysharp.vcontainer`, `jp.hadashikick.vcontainer`
@@ -315,16 +320,95 @@ Manual or source imports (no UPM)
   - Set defines per target platform (Standalone, Android, iOS, etc.).
   - After adding, Unity recompiles and the optional assemblies under `Runtime/Integrations/*` compile automatically.
 
-### Zenject
-- Add `RelationalComponentsInstaller` to your `SceneContext` to register the shared `IRelationalComponentAssigner` service and run `RelationalComponentSceneInitializer` right after container construction.
-- The installer exposes toggles to control whether the active scene is scanned automatically and whether inactive GameObjects are included in the pass.
-- Use the extension helpers in `DiContainerRelationalExtensions` when instantiating prefabs or building up existing hierarchies (e.g. `container.InstantiateComponentWithRelations(prefab)` or `container.AssignRelationalHierarchy(root)`).
+### Quick Start — VContainer
 
-### VContainer
-- Call `builder.RegisterRelationalComponents()` inside your `LifetimeScope.Configure` method to register the assigner as a singleton and queue the `RelationalComponentEntryPoint` for scene-wide initialization.
-- Use `resolver.AssignRelationalComponents(component)` / `resolver.AssignRelationalHierarchy(root)` after calling `Inject` to ensure relational fields are hydrated for scene references and runtime instantiations.
+1) Register integration in your `LifetimeScope`
 
-Both integrations fall back to the built-in `component.AssignRelationalComponents()` call path if the DI container does not expose the assigner binding, so you can adopt them incrementally without breaking existing behaviour.
+```csharp
+using VContainer;
+using VContainer.Unity;
+using WallstopStudios.UnityHelpers.Integrations.VContainer;
+
+public sealed class GameLifetimeScope : LifetimeScope
+{
+    protected override void Configure(IContainerBuilder builder)
+    {
+        // Registers IRelationalComponentAssigner and a scene entry point
+        builder.RegisterRelationalComponents();
+
+        // Or customize scanning (active objects only)
+        // builder.RegisterRelationalComponents(new RelationalSceneAssignmentOptions(includeInactive: false));
+    }
+}
+```
+
+2) Build up runtime instances (DI + relational fields)
+
+```csharp
+using UnityEngine;
+using VContainer;
+using WallstopStudios.UnityHelpers.Integrations.VContainer;
+
+public sealed class Spawner : MonoBehaviour
+{
+    [Inject] private IObjectResolver _resolver;
+    [SerializeField] private Enemy _enemyPrefab;
+
+    public Enemy Spawn(Transform parent)
+    {
+        Enemy enemy = Instantiate(_enemyPrefab, parent);
+        return _resolver.BuildUpWithRelations(enemy);
+    }
+}
+```
+
+3) Apply to whole hierarchies when needed
+
+```csharp
+_resolver.AssignRelationalHierarchy(root, includeInactiveChildren: false);
+```
+
+### Quick Start — Zenject
+
+1) Add the installer to your SceneContext
+
+- Add a `SceneContext` to your scene.
+- Add `RelationalComponentsInstaller` to the same GameObject.
+- Toggle "Assign Scene On Initialize" to run a one-time scene scan after the container builds.
+
+2) Instantiate prefabs with DI + relational assignment
+
+```csharp
+using UnityEngine;
+using Zenject;
+using WallstopStudios.UnityHelpers.Integrations.Zenject;
+
+public sealed class Spawner
+{
+    readonly DiContainer _container;
+    readonly Enemy _enemyPrefab;
+
+    public Spawner(DiContainer container, Enemy enemyPrefab)
+    {
+        _container = container;
+        _enemyPrefab = enemyPrefab;
+    }
+
+    public Enemy Spawn(Transform parent)
+    {
+        return _container.InstantiateComponentWithRelations(_enemyPrefab, parent);
+    }
+}
+```
+
+3) Apply to whole hierarchies
+
+```csharp
+Container.AssignRelationalHierarchy(root, includeInactiveChildren: true);
+```
+
+Notes
+- Both integrations fall back to the built-in `component.AssignRelationalComponents()` call path if the DI container does not expose the assigner binding, so you can adopt them incrementally without breaking existing behaviour.
 
 ---
 

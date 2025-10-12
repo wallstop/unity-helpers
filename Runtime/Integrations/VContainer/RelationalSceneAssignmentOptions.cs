@@ -6,6 +6,14 @@ namespace WallstopStudios.UnityHelpers.Integrations.VContainer
     /// <summary>
     /// Controls how the VContainer integration applies relational component assignment.
     /// </summary>
+    /// <example>
+    /// <code>
+    /// // Register integration and scan only active objects
+    /// builder.RegisterRelationalComponents(
+    ///     new RelationalSceneAssignmentOptions(includeInactive: false)
+    /// );
+    /// </code>
+    /// </example>
     public readonly struct RelationalSceneAssignmentOptions
         : IEquatable<RelationalSceneAssignmentOptions>
     {
@@ -49,6 +57,9 @@ namespace WallstopStudios.UnityHelpers.Integrations.VContainer
             return IncludeInactive.GetHashCode();
         }
 
+        /// <summary>
+        /// Equality operator.
+        /// </summary>
         public static bool operator ==(
             RelationalSceneAssignmentOptions left,
             RelationalSceneAssignmentOptions right
@@ -57,6 +68,9 @@ namespace WallstopStudios.UnityHelpers.Integrations.VContainer
             return left.Equals(right);
         }
 
+        /// <summary>
+        /// Inequality operator.
+        /// </summary>
         public static bool operator !=(
             RelationalSceneAssignmentOptions left,
             RelationalSceneAssignmentOptions right

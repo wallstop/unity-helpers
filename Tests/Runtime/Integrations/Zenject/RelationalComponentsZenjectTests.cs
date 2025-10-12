@@ -356,9 +356,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
             RecordingAssigner assigner = new();
             Container.Bind<IRelationalComponentAssigner>().FromInstance(assigner);
 
-            ZenjectRelationalTester prefab = CreatePrefabTesterHierarchy(rootHasRigidbody: true);
+            ZenjectRelationalTester prefab = CreatePrefabTesterHierarchy(rootHasRigidbody: false);
 
-            ZenjectRelationalTester instance = Container.InstantiateComponentWithRelations(prefab);
+            GameObject overrideParent = Track(new GameObject("ZenjectOverrideParent_Bound"));
+            overrideParent.AddComponent<Rigidbody>();
+
+            ZenjectRelationalTester instance = Container.InstantiateComponentWithRelations(
+                prefab,
+                overrideParent.transform
+            );
             Track(instance.gameObject);
 
             Assert.That(
@@ -374,7 +380,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
             Assert.That(
                 instance.parentBody,
                 Is.Not.Null,
-                "ParentComponent should be assigned from prefab root Rigidbody"
+                "ParentComponent should be assigned from override parent"
             );
             Assert.That(
                 instance.childCollider,
@@ -386,15 +392,21 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
         [Test]
         public void InstantiateWithRelationsAssignsWhenAssignerMissing()
         {
-            ZenjectRelationalTester prefab = CreatePrefabTesterHierarchy(rootHasRigidbody: true);
+            ZenjectRelationalTester prefab = CreatePrefabTesterHierarchy(rootHasRigidbody: false);
 
-            ZenjectRelationalTester instance = Container.InstantiateComponentWithRelations(prefab);
+            GameObject overrideParent = Track(new GameObject("ZenjectOverrideParent_NoAssigner"));
+            overrideParent.AddComponent<Rigidbody>();
+
+            ZenjectRelationalTester instance = Container.InstantiateComponentWithRelations(
+                prefab,
+                overrideParent.transform
+            );
             Track(instance.gameObject);
 
             Assert.That(
                 instance.parentBody,
                 Is.Not.Null,
-                "ParentComponent should be assigned without a bound assigner"
+                "ParentComponent should be assigned from override parent without a bound assigner"
             );
             Assert.That(
                 instance.childCollider,

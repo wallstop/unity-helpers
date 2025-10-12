@@ -6,6 +6,12 @@ namespace WallstopStudios.UnityHelpers.Integrations.Zenject
     /// <summary>
     /// Controls how the Zenject integration scans the scene for relational components.
     /// </summary>
+    /// <example>
+    /// <code>
+    /// // In a custom installer, if you want to bind your own options instance:
+    /// Container.BindInstance(new RelationalSceneAssignmentOptions(includeInactive: false));
+    /// </code>
+    /// </example>
     public readonly struct RelationalSceneAssignmentOptions
         : IEquatable<RelationalSceneAssignmentOptions>
     {
@@ -16,7 +22,7 @@ namespace WallstopStudios.UnityHelpers.Integrations.Zenject
         /// When true the initializer will scan inactive scene objects so that relational fields are
         /// populated even for disabled hierarchies. Defaults to <c>true</c>.
         /// </param>
-        public RelationalSceneAssignmentOptions(bool includeInactive = true)
+        public RelationalSceneAssignmentOptions(bool includeInactive)
         {
             IncludeInactive = includeInactive;
         }
@@ -52,6 +58,9 @@ namespace WallstopStudios.UnityHelpers.Integrations.Zenject
         /// <summary>
         /// Equality operator.
         /// </summary>
+        /// <summary>
+        /// Equality operator.
+        /// </summary>
         public static bool operator ==(
             RelationalSceneAssignmentOptions left,
             RelationalSceneAssignmentOptions right
@@ -60,6 +69,9 @@ namespace WallstopStudios.UnityHelpers.Integrations.Zenject
             return left.Equals(right);
         }
 
+        /// <summary>
+        /// Inequality operator.
+        /// </summary>
         /// <summary>
         /// Inequality operator.
         /// </summary>

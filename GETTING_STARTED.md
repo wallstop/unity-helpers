@@ -154,6 +154,14 @@ public class Player : MonoBehaviour
 
 ---
 
+#### Using With DI Containers (VContainer/Zenject)
+
+- If you use dependency injection, you can auto-populate relational fields right after DI injection.
+- Quick setup:
+  - VContainer: in `LifetimeScope.Configure`, call `builder.RegisterRelationalComponents()`.
+  - Zenject: add `RelationalComponentsInstaller` to your `SceneContext` and (optionally) enable the scene scan on initialize.
+- Full guide with scenarios and testing tips: RELATIONAL_COMPONENTS.md#dependency-injection-integrations
+
 ### 3. Spatial Queries in 60 Seconds 🟡 Intermediate
 
 **Problem:** Finding nearby objects with `FindObjectsOfType` and distance checks is O(n) and slow.

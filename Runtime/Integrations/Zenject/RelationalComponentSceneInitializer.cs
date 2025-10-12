@@ -14,6 +14,25 @@ namespace WallstopStudios.UnityHelpers.Integrations.Zenject
     /// Scene-level entry point that assigns relational component fields immediately after Zenject
     /// finishes injecting the container.
     /// </summary>
+    /// <remarks>
+    /// Registered automatically when you add <see cref="RelationalComponentsInstaller"/> to a
+    /// <c>SceneContext</c> or bind it manually. Uses <see cref="AttributeMetadataCache"/> when
+    /// available to discover component types that contain relational attributes, then hydrates those
+    /// fields across the active scene.
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// // In SceneContext, add RelationalComponentsInstaller to enable scene-wide assignment
+    /// [AddComponentMenu("Installers/Game Installer")]
+    /// public sealed class GameInstaller : MonoInstaller
+    /// {
+    ///     public override void InstallBindings()
+    ///     {
+    ///         // Your app bindings here
+    ///     }
+    /// }
+    /// </code>
+    /// </example>
     public sealed class RelationalComponentSceneInitializer : IInitializable
     {
         private readonly IRelationalComponentAssigner _assigner;

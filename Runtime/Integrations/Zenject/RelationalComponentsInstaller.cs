@@ -10,6 +10,18 @@ namespace WallstopStudios.UnityHelpers.Integrations.Zenject
     /// Zenject installer that wires up the relational component assigner and optional scene
     /// initializer.
     /// </summary>
+    /// <remarks>
+    /// Add this installer to your <c>SceneContext</c> to:
+    /// - Bind <see cref="IRelationalComponentAssigner"/> as a singleton
+    /// - Optionally register <see cref="RelationalComponentSceneInitializer"/> to populate relational
+    ///   fields after container construction
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// // In your scene, add a SceneContext and this installer component.
+    /// // Toggle "Assign Scene On Initialize" to run the one-time scene scan on startup.
+    /// </code>
+    /// </example>
     [AddComponentMenu("Wallstop Studios/Relational Components/Zenject Installer")]
     public sealed class RelationalComponentsInstaller : MonoInstaller
     {

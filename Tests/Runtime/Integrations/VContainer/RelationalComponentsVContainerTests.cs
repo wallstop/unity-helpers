@@ -341,8 +341,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
             // Expect an error about missing child component due to IncludeInactive=false on attribute
             UnityEngine.TestTools.LogAssert.Expect(
                 UnityEngine.LogType.Error,
-                System.Text.RegularExpressions.Regex.Escape(
-                    "Unable to find child component of type UnityEngine.CapsuleCollider for field 'childCollider'"
+                new System.Text.RegularExpressions.Regex(
+                    ".*Unable to find child component of type UnityEngine\\.CapsuleCollider for field 'childCollider'.*"
                 )
             );
             resolver.AssignRelationalComponents(tester);
