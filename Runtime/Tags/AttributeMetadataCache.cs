@@ -341,6 +341,21 @@ namespace WallstopStudios.UnityHelpers.Tags
             }
         }
 
+#if UNITY_INCLUDE_TESTS
+        public void ForceRebuildForTests()
+        {
+            lock (_lookupLock)
+            {
+                _typeFieldsLookup = null;
+                _relationalFieldsLookup = null;
+                _resolvedRelationalFieldsLookup = null;
+                _elementTypeLookup = null;
+            }
+
+            BuildLookup();
+        }
+#endif
+
         public bool TryGetFieldNames(Type type, out string[] fieldNames)
         {
             if (_typeFieldsLookup == null)

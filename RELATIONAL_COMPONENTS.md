@@ -378,6 +378,7 @@ VContainer (1.16.x)
   ```csharp
   var cache = ScriptableObject.CreateInstance<AttributeMetadataCache>();
   // populate cache._relationalTypeMetadata with your test component types
+  cache.ForceRebuildForTests(); // rebuild lookups so the initializer can discover your types
   var builder = new ContainerBuilder();
   builder.RegisterInstance(cache).AsSelf();
   builder.Register<RelationalComponentAssigner>(Lifetime.Singleton)
@@ -393,12 +394,14 @@ VContainer (1.16.x)
   ```
 - Inject vs BuildUp: Use `resolver.Inject(component)` before calling `resolver.AssignRelationalComponents(component)`.
 - EditMode reliability: In EditMode tests, prefer `[UnityTest]` and `yield return null` after creating objects and after initializing the entry point so Unity has a frame to register new objects before `FindObjectsOfType` runs and to allow assignments to complete.
+- Active scene filter: Entry points operate on the active scene only. In EditMode, create a new scene with `SceneManager.CreateScene`, set it active, and move your test hierarchy into it before calling `Initialize()`.
 - IncludeInactive: Control with `RelationalSceneAssignmentOptions(includeInactive: bool)`.
 
-Zenject/Extenject
+ Zenject/Extenject
 - Runtime usage: Add `RelationalComponentsInstaller` to your `SceneContext`. It binds `IRelationalComponentAssigner` and runs `RelationalComponentSceneInitializer` once the container is ready.
 - Tests: Bind a concrete `AttributeMetadataCache` instance and construct the assigner with that cache. Then resolve `IInitializable` and call `Initialize()`.
-- EditMode reliability: As with VContainer, consider `[UnityTest]` with a `yield return null` after creating objects and after calling `Initialize()` to allow Unity to register objects and complete assignments.
+ - EditMode reliability: As with VContainer, consider `[UnityTest]` with a `yield return null` after creating objects and after calling `Initialize()` to allow Unity to register objects and complete assignments.
+ - Active scene filter: The initializer operates on the active scene only. Create and set an active scene and move your test hierarchy into it before calling `Initialize()`.
 
 Common pitfalls and how to avoid them
 - “No such registration … RelationalComponentEntryPoint”: You’re resolving in a plain container without `LifetimeScope`. Construct the entry point manually as shown above.

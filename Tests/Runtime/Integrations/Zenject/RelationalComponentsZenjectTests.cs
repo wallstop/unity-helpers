@@ -6,6 +6,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
     using global::Zenject;
     using NUnit.Framework;
     using UnityEngine;
+    using UnityEngine.SceneManagement;
+    using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Integrations.Zenject;
     using WallstopStudios.UnityHelpers.Tags;
@@ -86,34 +88,38 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
             );
         }
 
-        [Test]
-        public void SceneInitializerAssignsActiveSceneComponents()
+        [UnityTest]
+        public System.Collections.IEnumerator SceneInitializerAssignsActiveSceneComponents()
         {
             AttributeMetadataCache cache = CreateCacheFor(typeof(ZenjectRelationalTester));
             try
             {
                 Container.BindInstance(cache);
-                Container
-                    .Bind<IRelationalComponentAssigner>()
-                    .FromMethod(_ => new RelationalComponentAssigner(cache))
-                    .AsSingle();
+                RecordingAssigner assigner = new();
+                Container.Bind<IRelationalComponentAssigner>().FromInstance(assigner);
                 Container.BindInstance(RelationalSceneAssignmentOptions.Default);
                 Container.BindInterfacesTo<RelationalComponentSceneInitializer>().AsSingle();
 
+                Scene scene = SceneManager.CreateScene("ZenjectTestScene_Active");
+                SceneManager.SetActiveScene(scene);
                 ZenjectRelationalTester tester = CreateHierarchy();
+                GameObject root = tester.transform.root.gameObject;
+                SceneManager.MoveGameObjectToScene(root, scene);
+                yield return null;
 
                 IInitializable initializer = Container.Resolve<IInitializable>();
                 initializer.Initialize();
+                yield return null;
 
                 Assert.That(
-                    tester.parentBody,
-                    Is.Not.Null,
-                    "Scene initializer should assign parentBody in the active scene"
+                    assigner.CallCount,
+                    Is.EqualTo(1),
+                    "Initializer should invoke assigner exactly once for the tester component"
                 );
                 Assert.That(
-                    tester.childCollider,
-                    Is.Not.Null,
-                    "Scene initializer should assign childCollider in the active scene"
+                    assigner.LastComponent,
+                    Is.SameAs(tester),
+                    "Initializer should target the created tester instance"
                 );
             }
             finally
@@ -125,35 +131,34 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
             }
         }
 
-        [Test]
-        public void SceneInitializerSkipsInactiveWhenOptionDisabled()
+        [UnityTest]
+        public System.Collections.IEnumerator SceneInitializerSkipsInactiveWhenOptionDisabled()
         {
             AttributeMetadataCache cache = CreateCacheFor(typeof(ZenjectRelationalTester));
             try
             {
                 Container.BindInstance(cache);
-                Container
-                    .Bind<IRelationalComponentAssigner>()
-                    .FromMethod(_ => new RelationalComponentAssigner(cache))
-                    .AsSingle();
+                RecordingAssigner assigner = new();
+                Container.Bind<IRelationalComponentAssigner>().FromInstance(assigner);
                 Container.BindInstance(new RelationalSceneAssignmentOptions(false));
                 Container.BindInterfacesTo<RelationalComponentSceneInitializer>().AsSingle();
 
+                Scene scene = SceneManager.CreateScene("ZenjectTestScene_InactiveFalse");
+                SceneManager.SetActiveScene(scene);
                 ZenjectRelationalTester tester = CreateHierarchy();
                 tester.gameObject.SetActive(false);
+                GameObject root = tester.transform.root.gameObject;
+                SceneManager.MoveGameObjectToScene(root, scene);
+                yield return null;
 
                 IInitializable initializer = Container.Resolve<IInitializable>();
                 initializer.Initialize();
+                yield return null;
 
                 Assert.That(
-                    tester.parentBody,
-                    Is.Null,
-                    "Disabled option should skip inactive components"
-                );
-                Assert.That(
-                    tester.childCollider,
-                    Is.Null,
-                    "Disabled option should skip inactive components"
+                    assigner.CallCount,
+                    Is.EqualTo(0),
+                    "Initializer should skip inactive tester when IncludeInactive is false"
                 );
             }
             finally
@@ -165,35 +170,39 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
             }
         }
 
-        [Test]
-        public void SceneInitializerIncludesInactiveWhenOptionEnabled()
+        [UnityTest]
+        public System.Collections.IEnumerator SceneInitializerIncludesInactiveWhenOptionEnabled()
         {
             AttributeMetadataCache cache = CreateCacheFor(typeof(ZenjectRelationalTester));
             try
             {
                 Container.BindInstance(cache);
-                Container
-                    .Bind<IRelationalComponentAssigner>()
-                    .FromMethod(_ => new RelationalComponentAssigner(cache))
-                    .AsSingle();
+                RecordingAssigner assigner = new();
+                Container.Bind<IRelationalComponentAssigner>().FromInstance(assigner);
                 Container.BindInstance(new RelationalSceneAssignmentOptions(true));
                 Container.BindInterfacesTo<RelationalComponentSceneInitializer>().AsSingle();
 
+                Scene scene = SceneManager.CreateScene("ZenjectTestScene_InactiveTrue");
+                SceneManager.SetActiveScene(scene);
                 ZenjectRelationalTester tester = CreateHierarchy();
                 tester.gameObject.SetActive(false);
+                GameObject root = tester.transform.root.gameObject;
+                SceneManager.MoveGameObjectToScene(root, scene);
+                yield return null;
 
                 IInitializable initializer = Container.Resolve<IInitializable>();
                 initializer.Initialize();
+                yield return null;
 
                 Assert.That(
-                    tester.parentBody,
-                    Is.Not.Null,
-                    "Enabled option should include inactive components"
+                    assigner.CallCount,
+                    Is.EqualTo(1),
+                    "Initializer should include inactive tester when IncludeInactive is true"
                 );
                 Assert.That(
-                    tester.childCollider,
-                    Is.Not.Null,
-                    "Enabled option should include inactive components"
+                    assigner.LastComponent,
+                    Is.SameAs(tester),
+                    "Initializer should target the inactive tester component"
                 );
             }
             finally
@@ -219,6 +228,111 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
                 tester.childCollider,
                 Is.Not.Null,
                 "AssignRelationalHierarchy should assign childCollider"
+            );
+        }
+
+        [UnityTest]
+        public System.Collections.IEnumerator SceneInitializerIgnoresNonActiveScenes()
+        {
+            AttributeMetadataCache cache = CreateCacheFor(typeof(ZenjectRelationalTester));
+            try
+            {
+                RecordingAssigner assigner = new();
+                Container.BindInstance(cache);
+                Container.Bind<IRelationalComponentAssigner>().FromInstance(assigner);
+                Container.BindInstance(new RelationalSceneAssignmentOptions(true));
+                Container.BindInterfacesTo<RelationalComponentSceneInitializer>().AsSingle();
+
+                Scene active = SceneManager.CreateScene("ZenjectActiveScene_Sep");
+                SceneManager.SetActiveScene(active);
+                ZenjectRelationalTester testerA = CreateHierarchy();
+                SceneManager.MoveGameObjectToScene(testerA.transform.root.gameObject, active);
+
+                Scene secondary = SceneManager.CreateScene("ZenjectSecondaryScene_Sep");
+                ZenjectRelationalTester testerB = CreateHierarchy();
+                SceneManager.MoveGameObjectToScene(testerB.transform.root.gameObject, secondary);
+                yield return null;
+
+                IInitializable initializer = Container.Resolve<IInitializable>();
+                initializer.Initialize();
+                yield return null;
+
+                Assert.That(
+                    assigner.CallCount,
+                    Is.EqualTo(1),
+                    "Initializer should only process components from the active scene"
+                );
+                Assert.That(
+                    assigner.LastComponent,
+                    Is.SameAs(testerA),
+                    "Active scene tester should be assigned"
+                );
+            }
+            finally
+            {
+                if (cache != null)
+                {
+                    UnityEngine.Object.DestroyImmediate(cache);
+                }
+            }
+        }
+
+        [Test]
+        public void ContainerAssignRelationalHierarchyRespectsIncludeInactiveChildren()
+        {
+            ZenjectRelationalTester rootTester = CreateHierarchy();
+
+            // Create a second tester under an INACTIVE child to verify enumeration filter
+            GameObject subTesterGO = Track(new GameObject("ZenjectSubTester"));
+            subTesterGO.transform.SetParent(rootTester.transform);
+            ZenjectRelationalTester subTester = subTesterGO.AddComponent<ZenjectRelationalTester>();
+            // Provide a descendant collider for the sub tester
+            GameObject subChild = Track(new GameObject("ZenjectSubChild"));
+            subChild.AddComponent<CapsuleCollider>();
+            subChild.transform.SetParent(subTesterGO.transform);
+            // Make the tester itself inactive
+            subTesterGO.SetActive(false);
+
+            // includeInactiveChildren = false -> root tester is assigned (root is always included), inactive sub-tester skipped
+            Container.AssignRelationalHierarchy(
+                rootTester.gameObject,
+                includeInactiveChildren: false
+            );
+            Assert.That(
+                rootTester.parentBody,
+                Is.Not.Null,
+                "Root tester should be assigned even when includeInactiveChildren is false"
+            );
+            Assert.That(
+                rootTester.childCollider,
+                Is.Not.Null,
+                "Root tester should be assigned even when includeInactiveChildren is false"
+            );
+            Assert.That(
+                subTester.parentBody,
+                Is.Null,
+                "Inactive sub tester should be skipped when includeInactiveChildren is false"
+            );
+            Assert.That(
+                subTester.childCollider,
+                Is.Null,
+                "Inactive sub tester should be skipped when includeInactiveChildren is false"
+            );
+
+            // includeInactiveChildren = true -> sub tester now gets assigned
+            Container.AssignRelationalHierarchy(
+                rootTester.gameObject,
+                includeInactiveChildren: true
+            );
+            Assert.That(
+                subTester.parentBody,
+                Is.Not.Null,
+                "Inactive sub tester should be assigned when includeInactiveChildren is true"
+            );
+            Assert.That(
+                subTester.childCollider,
+                Is.Not.Null,
+                "Inactive sub tester should be assigned when includeInactiveChildren is true"
             );
         }
 
@@ -290,6 +404,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
             };
 
             cache._relationalTypeMetadata = relationalTypes;
+            cache.ForceRebuildForTests();
             return cache;
         }
 

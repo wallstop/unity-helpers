@@ -6,6 +6,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
     using global::VContainer;
     using NUnit.Framework;
     using UnityEngine;
+    using UnityEngine.SceneManagement;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Integrations.VContainer;
@@ -90,6 +91,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
             AttributeMetadataCache cache = CreateCacheFor(typeof(VContainerRelationalTester));
             try
             {
+                Scene scene = SceneManager.CreateScene("VContainerTestScene_Active");
+                SceneManager.SetActiveScene(scene);
                 ContainerBuilder builder = new();
                 builder.RegisterInstance(cache).AsSelf();
                 var assigner = new RecordingAssigner();
@@ -97,6 +100,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
                 IObjectResolver resolver = builder.Build();
 
                 VContainerRelationalTester tester = CreateHierarchy();
+                GameObject rootObj = tester.transform.root.gameObject;
+                SceneManager.MoveGameObjectToScene(rootObj, scene);
                 yield return null;
 
                 var entryPoint = new RelationalComponentEntryPoint(
@@ -205,12 +210,166 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
             );
         }
 
+        [Test]
+        public void ResolverAssignRelationalHierarchyRespectsIncludeInactiveChildren()
+        {
+            ContainerBuilder builder = new();
+            IObjectResolver resolver = builder.Build();
+
+            // Root tester stays active (always included); create an inactive sub-tester
+            VContainerRelationalTester rootTester = CreateHierarchy();
+            GameObject subTesterGO = Track(new GameObject("VContainerSubTester"));
+            subTesterGO.transform.SetParent(rootTester.transform);
+            VContainerRelationalTester subTester =
+                subTesterGO.AddComponent<VContainerRelationalTester>();
+            GameObject subChild = Track(new GameObject("VContainerSubChild"));
+            subChild.AddComponent<CapsuleCollider>();
+            subChild.transform.SetParent(subTesterGO.transform);
+            subTesterGO.SetActive(false);
+
+            // exclude inactive children: root assigned, sub-tester skipped
+            resolver.AssignRelationalHierarchy(
+                rootTester.gameObject,
+                includeInactiveChildren: false
+            );
+            Assert.That(
+                rootTester.parentBody,
+                Is.Not.Null,
+                "Root tester should be assigned even when includeInactiveChildren is false"
+            );
+            Assert.That(
+                rootTester.childCollider,
+                Is.Not.Null,
+                "Root tester should be assigned even when includeInactiveChildren is false"
+            );
+            Assert.That(
+                subTester.parentBody,
+                Is.Null,
+                "Inactive sub tester should be skipped when includeInactiveChildren is false"
+            );
+            Assert.That(
+                subTester.childCollider,
+                Is.Null,
+                "Inactive sub tester should be skipped when includeInactiveChildren is false"
+            );
+
+            // include inactive: sub tester now assigned
+            resolver.AssignRelationalHierarchy(
+                rootTester.gameObject,
+                includeInactiveChildren: true
+            );
+            Assert.That(
+                subTester.parentBody,
+                Is.Not.Null,
+                "Inactive sub tester should be assigned when includeInactiveChildren is true"
+            );
+            Assert.That(
+                subTester.childCollider,
+                Is.Not.Null,
+                "Inactive sub tester should be assigned when includeInactiveChildren is true"
+            );
+        }
+
+        [UnityTest]
+        public System.Collections.IEnumerator EntryPointIgnoresNonActiveScenes()
+        {
+            AttributeMetadataCache cache = CreateCacheFor(typeof(VContainerRelationalTester));
+            try
+            {
+                Scene active = SceneManager.CreateScene("VContainerActiveScene_Sep");
+                SceneManager.SetActiveScene(active);
+
+                ContainerBuilder builder = new();
+                builder.RegisterInstance(cache).AsSelf();
+                var assigner = new RecordingAssigner();
+                builder.RegisterInstance(assigner).As<IRelationalComponentAssigner>();
+                IObjectResolver resolver = builder.Build();
+
+                VContainerRelationalTester testerA = CreateHierarchy();
+                SceneManager.MoveGameObjectToScene(testerA.transform.root.gameObject, active);
+
+                Scene secondary = SceneManager.CreateScene("VContainerSecondaryScene_Sep");
+                VContainerRelationalTester testerB = CreateHierarchy();
+                SceneManager.MoveGameObjectToScene(testerB.transform.root.gameObject, secondary);
+                yield return null;
+
+                var entryPoint = new RelationalComponentEntryPoint(
+                    resolver.Resolve<IRelationalComponentAssigner>(),
+                    cache,
+                    new RelationalSceneAssignmentOptions(includeInactive: true)
+                );
+                entryPoint.Initialize();
+                yield return null;
+
+                Assert.That(
+                    assigner.CallCount,
+                    Is.EqualTo(1),
+                    "Entry point should only process components from the active scene"
+                );
+                Assert.That(
+                    assigner.LastComponent,
+                    Is.SameAs(testerA),
+                    "Active scene tester should be assigned"
+                );
+            }
+            finally
+            {
+                if (cache != null)
+                {
+                    UnityEngine.Object.DestroyImmediate(cache);
+                }
+            }
+        }
+
+        [Test]
+        public void ChildAttributeIncludeInactiveControlsSearch()
+        {
+            ContainerBuilder builder = new();
+            IObjectResolver resolver = builder.Build();
+
+            GameObject parent = Track(new GameObject("IncludeInactiveParent"));
+            parent.AddComponent<Rigidbody>();
+            GameObject middle = Track(new GameObject("IncludeInactiveMiddle"));
+            AttributeIncludeInactiveTester tester =
+                middle.AddComponent<AttributeIncludeInactiveTester>();
+            middle.transform.SetParent(parent.transform);
+            GameObject child = Track(new GameObject("IncludeInactiveChild"));
+            child.AddComponent<CapsuleCollider>();
+            child.SetActive(false);
+            child.transform.SetParent(middle.transform);
+
+            // Expect an error about missing child component due to IncludeInactive=false on attribute
+            UnityEngine.TestTools.LogAssert.Expect(
+                UnityEngine.LogType.Error,
+                System.Text.RegularExpressions.Regex.Escape(
+                    "Unable to find child component of type UnityEngine.CapsuleCollider for field 'childCollider'"
+                )
+            );
+            resolver.AssignRelationalComponents(tester);
+            Assert.That(tester.parentBody, Is.Not.Null, "Parent assignment should succeed");
+            Assert.That(
+                tester.childCollider,
+                Is.Null,
+                "Child assignment should ignore inactive child when IncludeInactive is false"
+            );
+
+            child.SetActive(true);
+            resolver.AssignRelationalComponents(tester);
+            Assert.That(
+                tester.childCollider,
+                Is.Not.Null,
+                "Child assignment should include active child when IncludeInactive is false"
+            );
+        }
+
         [UnityTest]
         public System.Collections.IEnumerator EntryPointRespectsIncludeInactiveOption()
         {
             AttributeMetadataCache cache = CreateCacheFor(typeof(VContainerRelationalTester));
             try
             {
+                Scene scene = SceneManager.CreateScene("VContainerTestScene_Inactive");
+                SceneManager.SetActiveScene(scene);
                 ContainerBuilder builder = new();
                 builder.RegisterInstance(cache).AsSelf();
                 var assigner = new RecordingAssigner();
@@ -219,6 +378,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
 
                 VContainerRelationalTester tester = CreateHierarchy();
                 tester.gameObject.SetActive(false);
+                GameObject rootObj = tester.transform.root.gameObject;
+                SceneManager.MoveGameObjectToScene(rootObj, scene);
                 yield return null;
 
                 var disabledEntryPoint = new RelationalComponentEntryPoint(
@@ -319,6 +480,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
             };
 
             cache._relationalTypeMetadata = relationalTypes;
+            cache.ForceRebuildForTests();
             return cache;
         }
 
@@ -381,6 +543,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
             public Rigidbody parentBody;
 
             [ChildComponent(OnlyDescendants = true)]
+            public CapsuleCollider childCollider;
+        }
+
+        private sealed class AttributeIncludeInactiveTester : MonoBehaviour
+        {
+            [ParentComponent(OnlyAncestors = true)]
+            public Rigidbody parentBody;
+
+            [ChildComponent(OnlyDescendants = true, IncludeInactive = false)]
             public CapsuleCollider childCollider;
         }
     }
