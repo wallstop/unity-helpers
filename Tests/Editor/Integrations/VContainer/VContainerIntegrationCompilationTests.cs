@@ -2,6 +2,7 @@
 namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
 {
     using System;
+    using System.Reflection;
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Integrations.VContainer;
 
@@ -27,7 +28,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
         [Test]
         public void PublicAPIAccessible()
         {
-            var method = typeof(RelationalComponentsBuilderExtensions).GetMethod(
+            MethodInfo method = typeof(RelationalComponentsBuilderExtensions).GetMethod(
                 "RegisterRelationalComponents"
             );
             Assert.NotNull(

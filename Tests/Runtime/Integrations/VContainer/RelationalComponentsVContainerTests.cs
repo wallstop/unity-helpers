@@ -95,7 +95,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
                 SceneManager.SetActiveScene(scene);
                 ContainerBuilder builder = new();
                 builder.RegisterInstance(cache).AsSelf();
-                var assigner = new RecordingAssigner();
+                RecordingAssigner assigner = new RecordingAssigner();
                 builder.RegisterInstance(assigner).As<IRelationalComponentAssigner>();
                 IObjectResolver resolver = builder.Build();
 
@@ -104,7 +104,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
                 SceneManager.MoveGameObjectToScene(rootObj, scene);
                 yield return null;
 
-                var entryPoint = new RelationalComponentEntryPoint(
+                RelationalComponentEntryPoint entryPoint = new RelationalComponentEntryPoint(
                     resolver.Resolve<IRelationalComponentAssigner>(),
                     cache,
                     RelationalSceneAssignmentOptions.Default
@@ -140,7 +140,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
 
             VContainerRelationalTester tester = CreateHierarchy();
 
-            var result = resolver.BuildUpWithRelations(tester);
+            VContainerRelationalTester result = resolver.BuildUpWithRelations(tester);
 
             Assert.That(
                 result,
@@ -166,8 +166,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
             builder.RegisterRelationalComponents();
             IObjectResolver resolver = builder.Build();
 
-            var a = resolver.Resolve<IRelationalComponentAssigner>();
-            var b = resolver.Resolve<IRelationalComponentAssigner>();
+            IRelationalComponentAssigner a = resolver.Resolve<IRelationalComponentAssigner>();
+            IRelationalComponentAssigner b = resolver.Resolve<IRelationalComponentAssigner>();
             Assert.That(
                 a,
                 Is.SameAs(b),
@@ -281,7 +281,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
 
                 ContainerBuilder builder = new();
                 builder.RegisterInstance(cache).AsSelf();
-                var assigner = new RecordingAssigner();
+                RecordingAssigner assigner = new RecordingAssigner();
                 builder.RegisterInstance(assigner).As<IRelationalComponentAssigner>();
                 IObjectResolver resolver = builder.Build();
 
@@ -293,7 +293,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
                 SceneManager.MoveGameObjectToScene(testerB.transform.root.gameObject, secondary);
                 yield return null;
 
-                var entryPoint = new RelationalComponentEntryPoint(
+                RelationalComponentEntryPoint entryPoint = new RelationalComponentEntryPoint(
                     resolver.Resolve<IRelationalComponentAssigner>(),
                     cache,
                     new RelationalSceneAssignmentOptions(includeInactive: true)
@@ -372,7 +372,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
                 SceneManager.SetActiveScene(scene);
                 ContainerBuilder builder = new();
                 builder.RegisterInstance(cache).AsSelf();
-                var assigner = new RecordingAssigner();
+                RecordingAssigner assigner = new RecordingAssigner();
                 builder.RegisterInstance(assigner).As<IRelationalComponentAssigner>();
                 IObjectResolver resolver = builder.Build();
 
@@ -382,11 +382,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
                 SceneManager.MoveGameObjectToScene(rootObj, scene);
                 yield return null;
 
-                var disabledEntryPoint = new RelationalComponentEntryPoint(
-                    resolver.Resolve<IRelationalComponentAssigner>(),
-                    cache,
-                    new RelationalSceneAssignmentOptions(includeInactive: false)
-                );
+                RelationalComponentEntryPoint disabledEntryPoint =
+                    new RelationalComponentEntryPoint(
+                        resolver.Resolve<IRelationalComponentAssigner>(),
+                        cache,
+                        new RelationalSceneAssignmentOptions(includeInactive: false)
+                    );
                 disabledEntryPoint.Initialize();
                 Assert.That(
                     tester.parentBody,
@@ -399,7 +400,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
                     "Disabled option should skip inactive components"
                 );
 
-                var enabledEntryPoint = new RelationalComponentEntryPoint(
+                RelationalComponentEntryPoint enabledEntryPoint = new RelationalComponentEntryPoint(
                     resolver.Resolve<IRelationalComponentAssigner>(),
                     cache,
                     new RelationalSceneAssignmentOptions(includeInactive: true)

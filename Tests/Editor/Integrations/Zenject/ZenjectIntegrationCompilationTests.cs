@@ -2,6 +2,7 @@
 namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
 {
     using System;
+    using System.Reflection;
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Integrations.Zenject;
 
@@ -27,7 +28,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
         [Test]
         public void PublicAPIAccessible()
         {
-            var method = typeof(DiContainerRelationalExtensions).GetMethod(
+            MethodInfo method = typeof(DiContainerRelationalExtensions).GetMethod(
                 "AssignRelationalComponents"
             );
             Assert.NotNull(

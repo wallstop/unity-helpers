@@ -36,19 +36,20 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
             AttributeMetadataCache cache =
                 ScriptableObject.CreateInstance<AttributeMetadataCache>();
 #if UNITY_EDITOR
-            var relationalMetadata = new AttributeMetadataCache.RelationalTypeMetadata(
-                typeof(Consumer).AssemblyQualifiedName,
-                new[]
-                {
-                    new AttributeMetadataCache.RelationalFieldMetadata(
-                        "_spriteRenderer",
-                        AttributeMetadataCache.RelationalAttributeKind.Sibling,
-                        AttributeMetadataCache.FieldKind.Single,
-                        typeof(SpriteRenderer).AssemblyQualifiedName,
-                        false
-                    ),
-                }
-            );
+            AttributeMetadataCache.RelationalTypeMetadata relationalMetadata =
+                new AttributeMetadataCache.RelationalTypeMetadata(
+                    typeof(Consumer).AssemblyQualifiedName,
+                    new[]
+                    {
+                        new AttributeMetadataCache.RelationalFieldMetadata(
+                            "_spriteRenderer",
+                            AttributeMetadataCache.RelationalAttributeKind.Sibling,
+                            AttributeMetadataCache.FieldKind.Single,
+                            typeof(SpriteRenderer).AssemblyQualifiedName,
+                            false
+                        ),
+                    }
+                );
 
             cache.SetMetadata(
                 System.Array.Empty<string>(),
@@ -58,8 +59,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
             cache.ForceRebuildForTests();
 #endif
 
-            var assigner = new RelationalComponentAssigner(cache);
-            var entry = new RelationalComponentEntryPoint(
+            RelationalComponentAssigner assigner = new RelationalComponentAssigner(cache);
+            RelationalComponentEntryPoint entry = new RelationalComponentEntryPoint(
                 assigner,
                 cache,
                 RelationalSceneAssignmentOptions.Default

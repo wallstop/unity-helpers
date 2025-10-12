@@ -2,9 +2,11 @@
 namespace WallstopStudios.UnityHelpers.Integrations.Zenject
 {
     using System;
+    using System.Collections.Generic;
     using global::Zenject;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Utils;
 
     /// <summary>
     /// Helper extensions that bridge Zenject container operations with relational component
@@ -118,12 +120,13 @@ namespace WallstopStudios.UnityHelpers.Integrations.Zenject
                 return;
             }
 
-            Component[] components = root.GetComponentsInChildren<Component>(
-                includeInactiveChildren
+            using PooledResource<List<Component>> componentBuffer = Buffers<Component>.List.Get(
+                out List<Component> components
             );
-            for (int i = 0; i < components.Length; i++)
+            root.GetComponentsInChildren(includeInactiveChildren, components);
+            for (int i = 0; i < components.Count; i++)
             {
-                components[i]?.AssignRelationalComponents();
+                components[i].AssignRelationalComponents();
             }
         }
 

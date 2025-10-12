@@ -160,7 +160,7 @@ public class Player : MonoBehaviour
 - Quick setup:
   - VContainer: in `LifetimeScope.Configure`, call `builder.RegisterRelationalComponents()`.
   - Zenject: add `RelationalComponentsInstaller` to your `SceneContext` and (optionally) enable the scene scan on initialize.
-- Full guide with scenarios and testing tips: RELATIONAL_COMPONENTS.md#dependency-injection-integrations
+- Full guide with scenarios and testing tips: [Dependency Injection Integrations](RELATIONAL_COMPONENTS.md#dependency-injection-integrations)
 
 ### 3. Spatial Queries in 60 Seconds 🟡 Intermediate
 

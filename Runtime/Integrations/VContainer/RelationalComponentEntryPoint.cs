@@ -54,10 +54,14 @@ namespace WallstopStudios.UnityHelpers.Integrations.VContainer
 
         public void Initialize()
         {
-            AttributeMetadataCache cache = _metadataCache ?? AttributeMetadataCache.Instance;
+            AttributeMetadataCache cache = _metadataCache;
             if (cache == null)
             {
-                return;
+                cache = AttributeMetadataCache.Instance;
+                if (cache == null)
+                {
+                    return;
+                }
             }
 
             using PooledResource<List<Type>> pooledTypes = Buffers<Type>.List.Get(

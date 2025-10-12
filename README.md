@@ -1948,7 +1948,7 @@ How pooling + buffering help APIs
 - Notes
   - When the define is present, optional assemblies under `Runtime/Integrations/*` compile automatically and expose helpers like `RelationalComponentsInstaller` (Zenject) and `RegisterRelationalComponents()` (VContainer).
   - If you use UPM, no manual defines are required — the package IDs above trigger symbols via `versionDefines` in the asmdefs.
-  - For test scenarios without LifetimeScope (VContainer) or SceneContext (Zenject), see “DI Integrations: Testing and Edge Cases” in RELATIONAL_COMPONENTS.md for step‑by‑step patterns.
+  - For test scenarios without LifetimeScope (VContainer) or SceneContext (Zenject), see [DI Integrations: Testing and Edge Cases](RELATIONAL_COMPONENTS.md#di-integrations-testing-and-edge-cases) for step‑by‑step patterns.
 
 - Quick start
   - VContainer: in your `LifetimeScope.Configure`, call `builder.RegisterRelationalComponents()`.
@@ -1968,4 +1968,4 @@ using Zenject; using WallstopStudios.UnityHelpers.Integrations.Zenject;
 var enemy = Container.InstantiateComponentWithRelations(enemyPrefab, parent);
 ```
 
-See the full guide with scenarios, troubleshooting, and testing patterns: RELATIONAL_COMPONENTS.md
+See the full guide with scenarios, troubleshooting, and testing patterns: [Relational Components Guide](RELATIONAL_COMPONENTS.md)

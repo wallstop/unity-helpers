@@ -42,7 +42,11 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 return false;
             }
 
-            return cache.TryGetRelationalFields(componentType, out var fields) && fields.Length > 0;
+            return cache.TryGetRelationalFields(
+                    componentType,
+                    out AttributeMetadataCache.RelationalFieldMetadata[] fields
+                )
+                && fields.Length > 0;
         }
 
         /// <inheritdoc />
@@ -69,6 +73,15 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 return;
             }
 
+            if (components is IReadOnlyList<Component> readonlyList)
+            {
+                for (int i = 0; i < readonlyList.Count; i++)
+                {
+                    Assign(readonlyList[i]);
+                }
+                return;
+            }
+
             foreach (Component component in components)
             {
                 Assign(component);
@@ -83,10 +96,12 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 return;
             }
 
-            Component[] components = root.GetComponentsInChildren<Component>(
-                includeInactiveChildren
+            using PooledResource<List<Component>> componentBuffer = Buffers<Component>.List.Get(
+                out List<Component> components
             );
-            Assign((IEnumerable<Component>)components);
+
+            root.GetComponentsInChildren(includeInactiveChildren, components);
+            Assign(components);
         }
     }
 }

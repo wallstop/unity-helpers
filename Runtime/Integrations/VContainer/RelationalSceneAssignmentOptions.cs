@@ -24,7 +24,7 @@ namespace WallstopStudios.UnityHelpers.Integrations.VContainer
         /// When true the entry point will scan inactive scene objects so that relational fields are
         /// populated even for disabled hierarchies. Defaults to <c>true</c>.
         /// </param>
-        public RelationalSceneAssignmentOptions(bool includeInactive = true)
+        public RelationalSceneAssignmentOptions(bool includeInactive)
         {
             IncludeInactive = includeInactive;
         }

@@ -32,6 +32,18 @@
   "author": "wallstop studios <wallstop@wallstopstudios.com> (https://wallstopstudios.com)",
   "homepage": "https://github.com/wallstop/unity-helpers#readme",
   "main": "README.md",
+  "samples": [
+    {
+      "displayName": "DI – VContainer",
+      "description": "LifetimeScope registration, scene-wide assignment, and runtime BuildUpWithRelations.",
+      "path": "Samples~/DI - VContainer"
+    },
+    {
+      "displayName": "DI – Zenject",
+      "description": "SceneContext installer, scene-wide assignment, and prefab instantiation with relations.",
+      "path": "Samples~/DI - Zenject"
+    }
+  ],
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint:docs": "pwsh -NoProfile -File scripts/lint-doc-links.ps1",
