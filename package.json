@@ -42,6 +42,36 @@
       "displayName": "DI – Zenject",
       "description": "SceneContext installer, scene-wide assignment, and prefab instantiation with relations.",
       "path": "Samples~/DI - Zenject"
+    },
+    {
+      "displayName": "Relational Components – Basic",
+      "description": "Attribute-based auto-wiring without DI; parent/sibling/child examples.",
+      "path": "Samples~/Relational Components - Basic"
+    },
+    {
+      "displayName": "Serialization – JSON",
+      "description": "System.Text.Json with Unity converters; pretty and fast options.",
+      "path": "Samples~/Serialization - JSON"
+    },
+    {
+      "displayName": "Random – PRNG",
+      "description": "PCG seeds, floats, Gaussian, and list sampling.",
+      "path": "Samples~/Random - PRNG"
+    },
+    {
+      "displayName": "Spatial Structures – 2D and 3D",
+      "description": "QuadTree2D, KdTree2D nearest neighbors, SpatialHash2D queries.",
+      "path": "Samples~/Spatial Structures - 2D and 3D"
+    },
+    {
+      "displayName": "UI Toolkit – MultiFile Selector (Editor)",
+      "description": "EditorWindow using MultiFileSelectorElement for multi-file picking.",
+      "path": "Samples~/UI Toolkit - MultiFile Selector (Editor)"
+    },
+    {
+      "displayName": "UGUI – EnhancedImage",
+      "description": "Programmatic Canvas setup and HDR-tinted EnhancedImage.",
+      "path": "Samples~/UGUI - EnhancedImage"
     }
   ],
   "scripts": {

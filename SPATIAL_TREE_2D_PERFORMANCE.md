@@ -23,15 +23,15 @@ This document contains performance benchmarks for the 2D spatial tree implementa
 <!-- SPATIAL_TREE_BENCHMARKS_START -->
 <!-- tabs:start -->
 
-#### **1,000,000 entries**
+### 1,000,000 entries
 
-##### Construction
+#### Construction
 
 | Construction      | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D    |
 | ----------------- | ------------------- | --------------------- | ---------- | ---------- |
 | 1,000,000 entries | 4 (0.244s)          | 6 (0.153s)            | 4 (0.222s) | 2 (0.386s) |
 
-##### Elements In Range
+#### Elements In Range
 
 | Elements In Range           | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | --------------------------- | ------------------- | --------------------- | ---------- | ------- |
@@ -40,7 +40,7 @@ This document contains performance benchmarks for the 2D spatial tree implementa
 | Quarter (~span/8) (r=124.9) | 946                 | 945                   | 816        | 119     |
 | Tiny (~span/1000) (r=1)     | 101,504             | 105,285               | 142,984    | 106,816 |
 
-##### Get Elements In Bounds
+#### Get Elements In Bounds
 
 | Get Elements In Bounds     | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | -------------------------- | ------------------- | --------------------- | ---------- | ------- |
@@ -49,7 +49,7 @@ This document contains performance benchmarks for the 2D spatial tree implementa
 | Quarter (size=249.8x249.8) | 7,483               | 7,248                 | 3,887      | 377     |
 | Unit (size=1)              | 147,825             | 152,474               | 196,544    | 110,185 |
 
-##### Approximate Nearest Neighbors
+#### Approximate Nearest Neighbors
 
 | Approximate Nearest Neighbors | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | ----------------------------- | ------------------- | --------------------- | ---------- | ------- |
@@ -58,15 +58,15 @@ This document contains performance benchmarks for the 2D spatial tree implementa
 | 10 neighbors                  | 377,857             | 352,657               | 225,271    | 281,743 |
 | 1 neighbor                    | 516,596             | 504,358               | 276,636    | 296,533 |
 
-#### **100,000 entries**
+### 100,000 entries
 
-##### Construction
+#### Construction
 
 | Construction    | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D  | RTree2D     |
 | --------------- | ------------------- | --------------------- | ----------- | ----------- |
 | 100,000 entries | 50 (0.020s)         | 83 (0.012s)           | 50 (0.020s) | 50 (0.020s) |
 
-##### Elements In Range
+#### Elements In Range
 
 | Elements In Range           | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | --------------------------- | ------------------- | --------------------- | ---------- | ------- |
@@ -75,7 +75,7 @@ This document contains performance benchmarks for the 2D spatial tree implementa
 | Quarter (~span/8) (r=49.88) | 4,667               | 5,176                 | 4,299      | 724     |
 | Tiny (~span/1000) (r=1)     | 127,432             | 127,776               | 178,260    | 145,496 |
 
-##### Get Elements In Bounds
+#### Get Elements In Bounds
 
 | Get Elements In Bounds     | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | -------------------------- | ------------------- | --------------------- | ---------- | ------- |
@@ -84,7 +84,7 @@ This document contains performance benchmarks for the 2D spatial tree implementa
 | Quarter (size=99.75x62.25) | 25,538              | 33,097                | 19,916     | 3,832   |
 | Unit (size=1)              | 182,094             | 183,264               | 244,353    | 154,606 |
 
-##### Approximate Nearest Neighbors
+#### Approximate Nearest Neighbors
 
 | Approximate Nearest Neighbors | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | ----------------------------- | ------------------- | --------------------- | ---------- | ------- |
@@ -128,15 +128,15 @@ This document contains performance benchmarks for the 2D spatial tree implementa
 | 10 neighbors                  | 395,764             | 419,775               | 284,603    | 415,788 |
 | 1 neighbor                    | 597,510             | 602,338               | 369,442    | 459,139 |
 
-#### **1,000 entries**
+### 1,000 entries
 
-##### Construction
+#### Construction
 
 | Construction  | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D     | RTree2D        |
 | ------------- | ------------------- | --------------------- | -------------- | -------------- |
 | 1,000 entries | 5,327 (0.000s)      | 7,739 (0.000s)        | 4,952 (0.000s) | 4,764 (0.000s) |
 
-##### Elements In Range
+#### Elements In Range
 
 | Elements In Range          | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | -------------------------- | ------------------- | --------------------- | ---------- | ------- |
@@ -145,7 +145,7 @@ This document contains performance benchmarks for the 2D spatial tree implementa
 | Quarter (~span/8) (r=6.13) | 95,578              | 108,397               | 95,395     | 38,031  |
 | Tiny (~span/1000) (r=1)    | 238,625             | 236,418               | 334,236    | 251,174 |
 
-##### Get Elements In Bounds
+#### Get Elements In Bounds
 
 | Get Elements In Bounds    | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | ------------------------- | ------------------- | --------------------- | ---------- | ------- |
@@ -154,7 +154,7 @@ This document contains performance benchmarks for the 2D spatial tree implementa
 | Quarter (size=12.25x4.75) | 255,238             | 273,498               | 194,690    | 176,327 |
 | Unit (size=1)             | 338,275             | 335,033               | 453,237    | 279,167 |
 
-##### Approximate Nearest Neighbors
+#### Approximate Nearest Neighbors
 
 | Approximate Nearest Neighbors | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | ----------------------------- | ------------------- | --------------------- | ---------- | ------- |
@@ -163,15 +163,15 @@ This document contains performance benchmarks for the 2D spatial tree implementa
 | 10 neighbors                  | 520,835             | 601,494               | 416,276    | 506,668 |
 | 1 neighbor                    | 725,705             | 581,979               | 388,981    | 591,498 |
 
-#### **100 entries**
+### 100 entries
 
-##### Construction
+#### Construction
 
 | Construction | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D      | RTree2D         |
 | ------------ | ------------------- | --------------------- | --------------- | --------------- |
 | 100 entries  | 42,553 (0.000s)     | 21,929 (0.000s)       | 29,325 (0.000s) | 21,786 (0.000s) |
 
-##### Elements In Range
+#### Elements In Range
 
 | Elements In Range          | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | -------------------------- | ------------------- | --------------------- | ---------- | ------- |
@@ -180,7 +180,7 @@ This document contains performance benchmarks for the 2D spatial tree implementa
 | Quarter (~span/8) (r=1.13) | 425,958             | 430,848               | 593,604    | 338,080 |
 | Tiny (~span/1000) (r=1)    | 424,528             | 430,448               | 591,691    | 338,365 |
 
-##### Get Elements In Bounds
+#### Get Elements In Bounds
 
 | Get Elements In Bounds   | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | ------------------------ | ------------------- | --------------------- | ---------- | ------- |
@@ -189,7 +189,7 @@ This document contains performance benchmarks for the 2D spatial tree implementa
 | Quarter (size=2.25x2.25) | 592,102             | 565,569               | 753,693    | 390,919 |
 | Unit (size=1)            | 592,678             | 595,395               | 784,153    | 386,053 |
 
-##### Approximate Nearest Neighbors
+#### Approximate Nearest Neighbors
 
 | Approximate Nearest Neighbors | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | ----------------------------- | ------------------- | --------------------- | ---------- | ------- |

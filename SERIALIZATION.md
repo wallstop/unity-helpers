@@ -1,4 +1,4 @@
-**Serialization Guide**
+# Serialization Guide
 
 ## TL;DR — What Problem This Solves
 
@@ -18,7 +18,7 @@ This package provides fast, compact serialization for save systems, configuratio
 
 All formats are exposed via `WallstopStudios.UnityHelpers.Core.Serialization.Serializer` and selected with `SerializationType`.
 
-**Formats Provided**
+## Formats Provided
 
 - Json
   - Human-readable; ideal for settings, debug, modding, and Git diffs.
@@ -36,16 +36,16 @@ All formats are exposed via `WallstopStudios.UnityHelpers.Core.Serialization.Ser
 - Protobuf (protobuf-net)
   - **⭐ Killer Feature: Schema Evolution** — Players can load saves from older game versions without breaking! Add new fields, remove old ones, rename types—all while maintaining compatibility.
   - Small and fast; best for networking and large save payloads.
-  - Forward/backward compatible message evolution (see [Schema Evolution Guide](#protobuf-schema-evolution-the-killer-feature) below).
+  - Forward/backward compatible message evolution (see the Schema Evolution guide below).
 - SystemBinary (BinaryFormatter)
   - Only for legacy or trusted, same-version, local data. Avoid for long-term persistence or untrusted input.
   - ⚠️ **Cannot handle version changes** - a single field addition breaks all existing saves.
 
-**When To Use What**
+## When To Use What
 
 Use this decision flowchart to pick the right serialization format:
 
-```
+```text
 START: What are you serializing?
   │
   ├─ Game settings / Config files
@@ -104,7 +104,7 @@ START: What are you serializing?
   - Transient caches in trusted environments with exact version match
   - ⚠️ Consider JSON Fast instead - SystemBinary is legacy
 
-**JSON Examples (Unity-aware)**
+## JSON Examples (Unity-aware)
 
 - Serialize/deserialize and write/read files
 
@@ -143,7 +143,7 @@ byte[] bytes = Serializer.Serialize(data, SerializationType.Json);
 SaveData loaded = Serializer.Deserialize<SaveData>(bytes, SerializationType.Json);
 ```
 
-**Protobuf Examples (Compact + Evolvable)**
+## Protobuf Examples (Compact + Evolvable)
 
 - Basic usage
 
@@ -208,8 +208,9 @@ Notes
 - If you define your own DTOs, they will continue to work; surrogates simply make Unity structs first-class.
 - Keep using [ProtoContract]/[ProtoMember] and stable field numbers for your own types.
 
-````
+````text
 
+<a id="protobuf-schema-evolution-the-killer-feature"></a>
 ## Protobuf Schema Evolution: The Killer Feature
 
 **The Problem Protobuf Solves:**
@@ -500,7 +501,7 @@ Serializer.RegisterProtobufRoot<IMsg, Ping>();
 IMsg msg = Serializer.ProtoDeserialize<IMsg>(bytes);
 ```
 
-    - Or specify the concrete type with the overload:
+- Or specify the concrete type with the overload:
 
 ```csharp
 IMsg msg = Serializer.ProtoDeserialize<IMsg>(bytes, typeof(Ping));
@@ -532,7 +533,7 @@ IRandom r2 = Serializer.ProtoDeserialize<IRandom>(bytes, typeof(PcgRandom));
 - Tag numbers are API surface
   - Tags in `[ProtoInclude(tag, ...)]` and `[ProtoMember(tag)]` are part of your schema. Add new numbers for new types/fields; never reuse or renumber existing tags once shipped.
 
-**SystemBinary Examples (Legacy/Trusted Only)**
+## SystemBinary Examples (Legacy/Trusted Only)
 
 ```csharp
 using WallstopStudios.UnityHelpers.Core.Serialization;
@@ -563,7 +564,7 @@ References
 - API: `Runtime/Core/Serialization/Serializer.cs:1`
 - LZMA: `Runtime/Utils/LZMA.cs:1`
 
-**Migration**
+## Migration
 
 - Replace direct `System.Text.Json.JsonSerializer` calls in app code with `Serializer.JsonSerialize/JsonDeserialize/JsonStringify`, or with `Serializer.Serialize/Deserialize` + `SerializationType.Json` to centralize options and Unity converters.
 - Replace any custom protobuf helpers with `Serializer.ProtoSerialize/ProtoDeserialize` or the generic `Serializer.Serialize/Deserialize` APIs. Ensure models are annotated with `[ProtoContract]` and stable `[ProtoMember(n)]` tags.

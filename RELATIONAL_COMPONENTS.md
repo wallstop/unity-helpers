@@ -117,7 +117,7 @@ Assignments happen at runtime (e.g., `Awake`/`OnEnable`), not at edit-time seria
 
 ### Visual Search Patterns
 
-```
+```text
 ParentComponent (searches UP the hierarchy):
 
   Grandparent ←────────── (included unless OnlyAncestors = true)
@@ -283,6 +283,7 @@ Examples:
   ```
 
 - Modular systems via interfaces
+
   ```csharp
   public interface IInputProvider { Vector2 Move { get; } }
   [ParentComponent] private IInputProvider input; // PlayerInput, AIInput, etc.
@@ -363,7 +364,7 @@ public sealed class GameLifetimeScope : LifetimeScope
 }
 ```
 
-2. Build up runtime instances (DI + relational fields)
+1. Build up runtime instances (DI + relational fields)
 
 ```csharp
 using UnityEngine;
@@ -383,7 +384,7 @@ public sealed class Spawner : MonoBehaviour
 }
 ```
 
-3. Apply to whole hierarchies when needed
+1. Apply to whole hierarchies when needed
 
 ```csharp
 _resolver.AssignRelationalHierarchy(root, includeInactiveChildren: false);
@@ -397,7 +398,7 @@ _resolver.AssignRelationalHierarchy(root, includeInactiveChildren: false);
 - Add `RelationalComponentsInstaller` to the same GameObject.
 - Toggle "Assign Scene On Initialize" to run a one-time scene scan after the container builds.
 
-2. Instantiate prefabs with DI + relational assignment
+1. Instantiate prefabs with DI + relational assignment
 
 ```csharp
 using UnityEngine;
@@ -422,7 +423,7 @@ public sealed class Spawner
 }
 ```
 
-3. Apply to whole hierarchies
+1. Apply to whole hierarchies
 
 ```csharp
 Container.AssignRelationalHierarchy(root, includeInactiveChildren: true);
@@ -491,6 +492,7 @@ VContainer (1.16.x)
 
 - Runtime usage (LifetimeScope): Call `builder.RegisterRelationalComponents()` in `LifetimeScope.Configure`. The entry point runs automatically after the container builds.
 - Tests without LifetimeScope: Construct the entry point and call `Initialize()` yourself, and register your `AttributeMetadataCache` instance so the assigner uses it:
+
   ```csharp
   var cache = ScriptableObject.CreateInstance<AttributeMetadataCache>();
   // populate cache._relationalTypeMetadata with your test component types
@@ -508,7 +510,9 @@ VContainer (1.16.x)
   );
   entry.Initialize();
   ```
-- Inject vs BuildUp: Use `resolver.Inject(component)` before calling `resolver.AssignRelationalComponents(component)`.
+
+  - Inject vs BuildUp: Use `resolver.Inject(component)` before calling `resolver.AssignRelationalComponents(component)`.
+
 - EditMode reliability: In EditMode tests, prefer `[UnityTest]` and `yield return null` after creating objects and after initializing the entry point so Unity has a frame to register new objects before `FindObjectsOfType` runs and to allow assignments to complete.
 - Active scene filter: Entry points operate on the active scene only. In EditMode, create a new scene with `SceneManager.CreateScene`, set it active, and move your test hierarchy into it before calling `Initialize()`.
 - IncludeInactive: Control with `RelationalSceneAssignmentOptions(includeInactive: bool)`.

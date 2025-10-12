@@ -121,7 +121,7 @@ public class CharacterStats : AttributesComponent
 }
 ```
 
-2. Create an `AttributeEffect` asset (Project view → Create → Wallstop Studios → Unity Helpers → Attribute Effect):
+1. Create an `AttributeEffect` asset (Project view → Create → Wallstop Studios → Unity Helpers → Attribute Effect):
 
 - modifications: e.g., `{ attribute: "Speed", action: Multiplication, value: 1.5f }`
 - durationType: `Duration` with `duration = 5`
@@ -129,7 +129,7 @@ public class CharacterStats : AttributesComponent
 - effectTags: e.g., `[ "Haste" ]`
 - cosmeticEffects: prefab with `CosmeticEffectData` + `CosmeticEffectComponent` scripts
 
-3. Apply/remove at runtime:
+1. Apply/remove at runtime:
 
 ```csharp
 GameObject player = ...;
@@ -142,7 +142,7 @@ if (handle.HasValue)
 }
 ```
 
-4. Query tags anywhere:
+1. Query tags anywhere:
 
 ```csharp
 if (player.HasTag("Stunned"))

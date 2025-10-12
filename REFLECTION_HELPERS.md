@@ -86,7 +86,7 @@ setScore(p, 42);
 UnityEngine.Debug.Log((int)getScore(p)); // 42
 ```
 
-2. Struct note: use typed ref setter
+1. Struct note: use typed ref setter
 
 ```csharp
 public struct Stat { public int Value; }
@@ -99,7 +99,7 @@ setValue(ref s, 100);
 // s.Value == 100
 ```
 
-3. Typed property getter
+1. Typed property getter
 
 ```csharp
 var prop = typeof(Camera).GetProperty("orthographicSize");
@@ -107,7 +107,7 @@ var getSize = ReflectionHelpers.GetPropertyGetter<Camera, float>(prop);
 float size = getSize(UnityEngine.Camera.main);
 ```
 
-3b) Typed property setter
+1. Typed property setter (variant)
 
 ```csharp
 var prop = typeof(TestPropertyClass).GetProperty("InstanceProperty");
@@ -116,7 +116,7 @@ var obj = new TestPropertyClass();
 set(obj, 10);
 ```
 
-4. Fast static method invoker (two params, typed)
+1. Fast static method invoker (two params, typed)
 
 ```csharp
 MethodInfo concat = typeof(string).GetMethod(
@@ -126,7 +126,7 @@ var concat2 = ReflectionHelpers.GetStaticMethodInvoker<string, string, string>(c
 string joined = concat2("Hello ", "World");
 ```
 
-5. Low‑allocation constructors
+1. Low‑allocation constructors
 
 ```csharp
 // Parameterless constructor
@@ -140,7 +140,7 @@ var ctor = ReflectionHelpers.GetConstructor(ci);
 var dict = (Dictionary<string, int>)ctor(new object[] { 128 });
 ```
 
-6. Collection creators and HashSet adder
+1. Collection creators and HashSet adder
 
 ```csharp
 var makeArray = ReflectionHelpers.GetArrayCreator(typeof(Vector3));
@@ -156,7 +156,7 @@ add(set, 2);
 // set contains {1, 2}
 ```
 
-6b) Typed collection creators
+1. Typed collection creators
 
 ```csharp
 var makeArrayT = ReflectionHelpers.GetArrayCreator<int>();
@@ -171,7 +171,7 @@ var addT = ReflectionHelpers.GetHashSetAdder<int>();
 addT(intsSet, 5);
 ```
 
-7. Safe attribute scanning
+1. Safe attribute scanning
 
 ```csharp
 bool hasObsolete = ReflectionHelpers.HasAttributeSafe<ObsoleteAttribute>(typeof(MyComponent));

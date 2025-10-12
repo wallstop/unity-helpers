@@ -27,6 +27,8 @@ Unity Helpers provides tools for different roles and needs. Pick your path to ge
 
 **You want:** Faster iteration on game features without sacrificing performance
 
+<!-- markdownlint-disable MD036 -->
+
 **Your quick wins:**
 
 1. **[Random Number Generators](#random-number-generators)** - 10-15x faster with extensive API
@@ -904,6 +906,8 @@ See the in-depth guide: [Relational Components](RELATIONAL_COMPONENTS.md).
 - `IEnumerable.Infinite` — Cycle sequences without extra allocations. See: [Collections](MATH_AND_EXTENSIONS.md#collections).
 - `StringExtensions.LevenshteinDistance` — Edit distance for fuzzy matching. See: [Strings](MATH_AND_EXTENSIONS.md#strings).
 
+<a id="singleton-utilities-odin-compatible"></a>
+
 ### Singleton Utilities (ODIN‑compatible)
 
 - `RuntimeSingleton<T>` — Global component singleton with optional cross‑scene persistence. See the guide: [Singleton Utilities](SINGLETONS.md).
@@ -1711,7 +1715,104 @@ See also: [Buffering Pattern](#buffering-pattern)
 
 High-level helpers and extension methods that streamline day-to-day Unity work.
 
-Key picks:
+#### Context-Aware Logging with Custom Formatters
+
+Unity Helpers includes a powerful logging system with automatic context injection, custom formatters, and build-time stripping:
+
+**Key Features:**
+
+- **Automatic Context & Timing** — Every log includes GameObject name, component type, and timestamp
+- **Exception Overloads** — Pass exceptions directly: `this.LogError($"Failed to load {asset}", exception)`
+- **Custom Formatters** — Built-in support for colors, bold, italic, JSON, sizing, and extensible with your own
+- **Thread-Safe** — Automatically routes logs to Unity main thread when needed
+- **Build Stripping** — Controlled via scripting defines (`ENABLE_UBERLOGGING`, `DEBUG_LOGGING`, etc.)
+- **Per-Object Control** — Enable/disable logging globally or per-component
+
+**Quick Example:**
+
+```csharp
+using WallstopStudios.UnityHelpers.Core.Extension;
+
+public class PlayerController : MonoBehaviour
+{
+    void Start()
+    {
+        // Simple logging with automatic context
+        this.Log($"Player initialized");
+        // Output: 12.34|PlayerController[PlayerController]|Player initialized
+
+        // Rich formatting with colors and bold
+        int health = 100;
+        this.Log($"Health: {"100":b,#green}");
+        // Output (in Unity): 12.34|PlayerController[PlayerController]|Health: <b><color=#00FF00FF>100</color></b>
+
+        // JSON serialization
+        var data = new { x = 10, y = 20 };
+        this.LogWarn($"Position data: {data:json}");
+        // Output: 12.34|PlayerController[PlayerController]|Position data: {"x":10,"y":20}
+
+        // Exception logging
+        try
+        {
+            // ... risky operation
+        }
+        catch (Exception e)
+        {
+            this.LogError($"Failed to save game", e);
+            // Includes full exception with stack trace
+        }
+    }
+}
+```
+
+**Supported Format Tags:**
+
+- `b`, `bold`, `!` — **Bold text** (editor only)
+- `i`, `italic`, `_` — _Italic text_ (editor only)
+- `#colorName` or `#RRGGBB` — <span style="color:red">Colored text</span> (editor only)
+- `json` — JSON serialization (works everywhere)
+- `12` or `size=12` — Sized text 1-100 (editor only)
+- Stack multiple: `{value:b,#red,20}` → large, bold, red text
+
+**Custom Formatters:**
+
+```csharp
+using WallstopStudios.UnityHelpers.Core.Helper.Logging;
+
+// Add your own formatter
+UnityLogTagFormatter formatter = WallstopStudiosLogger.LogInstance;
+formatter.AddDecoration(
+    match: "upper",
+    format: value => value.ToString().ToUpper(),
+    tag: "Uppercase"
+);
+
+// Use it
+this.Log($"{"hello":upper}");  // Output: HELLO
+```
+
+**Build-Time Control:**
+
+```csharp
+// Logs are enabled by default in:
+// - Development builds (DEVELOPMENT_BUILD)
+// - Debug builds (DEBUG)
+// - Unity Editor (UNITY_EDITOR)
+
+// Override with scripting defines:
+// ENABLE_UBERLOGGING    - Enable all logs
+// DEBUG_LOGGING         - Enable Log() calls only
+// WARN_LOGGING          - Enable LogWarn() calls only
+// ERROR_LOGGING         - Enable LogError() calls only
+
+// Runtime control
+this.DisableLogging();          // Disable logs for this component
+this.EnableLogging();           // Re-enable logs for this component
+this.GlobalDisableLogging();    // Disable all logs
+this.GlobalEnableLogging();     // Re-enable all logs
+```
+
+**Other Key Helpers:**
 
 - `Helpers.Find<T>(tag)` and `HasComponent<T>()` — Fewer `GetComponent` calls, cached lookups by tag.
 - `GetOrAddComponent<T>()` — Idempotent component setup in initialization code.

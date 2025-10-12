@@ -132,7 +132,7 @@ Common pitfalls:
 
 Lifecycle diagram:
 
-```
+```text
 T.Instance ─┬─ Has _instance? ──▶ return
             │
             ├─ Find active T in scene? ──▶ set _instance, return
@@ -182,7 +182,7 @@ Asset management tips:
 
 Lookup order diagram:
 
-```
+```text
 Instance access:
   [1] Resources.LoadAll<T>(custom path from [ScriptableSingletonPath])
   [2] if none: Resources.Load<T>(type name)
@@ -192,7 +192,7 @@ Instance access:
 
 Auto‑creator flow (Editor):
 
-```
+```text
 On editor load:
   - Scan all ScriptableObjectSingleton<T> types
   - For each non-abstract type:
@@ -205,7 +205,7 @@ On editor load:
 
 Asset structure diagram:
 
-```
+```text
 Default (no attribute):
 Assets/
   Resources/

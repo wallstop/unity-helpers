@@ -41,7 +41,7 @@ float normalized = angle.PositiveMod(360f); // 330f
 
 Diagram (wrap-around on a ring of size 5):
 
-```
+```text
 Index:   0   1   2   3   4
            ↖           ↙
             \  +2 from 4  => 1
@@ -79,7 +79,7 @@ bool hit = a.Intersects(b); // true
 
 Diagram (segment intersection):
 
-```
+```text
 y↑           b.to (1,1)
  |             │
  |             │  b
@@ -114,7 +114,7 @@ if (p.TryGetValueAtNormalized(0.5f, out float y)) { /* y == 5 */ }
 
 Diagram (normalized parabola):
 
-```
+```text
 y↑          * vertex (0.5, 5)
  |        *
  |      *
@@ -141,7 +141,7 @@ List<Vector2> simplified = LineHelper.Simplify(points, epsilon: 0.1f);
 
 Diagram (original vs simplified):
 
-```
+```text
 Original:     *----*--*---*--*-----*
 Simplified:   *-----------*--------*
 
@@ -153,7 +153,7 @@ Visual:
 
 Convex hull (monotone chain / Jarvis examples used by helpers):
 
-```
+```text
 Points:     ·  ·   ·
           ·      ·   ·
             ·  ·
@@ -190,7 +190,7 @@ Diagrams:
 
 - RectTransform world rect (axis-aligned bounds of rotated UI):
 
-```
+```text
    • corner         ┌───────────────┐
       ╲             │   AABB (r)    │
        ╲  rotated   │   ┌──────┐    │
@@ -201,7 +201,7 @@ Diagrams:
 
 - Orthographic camera bounds (centered on camera):
 
-```
+```text
             ┌──────── view (Bounds) ────────┐
             │           height=2*size      │
             │         ┌────────────────┐    │
@@ -237,7 +237,7 @@ var dominant = pixels.GetAverageColor(ColorAveragingMethod.Dominant, alphaCutoff
 
 Diagram (dominant buckets):
 
-```
+```text
 RGB space buckets → counts
  [R][G][B] …  [R+Δ][G][B]  …  [R][G+Δ][B]  …
           ↑ pick max bucket centroid as dominant

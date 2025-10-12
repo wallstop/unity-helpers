@@ -462,6 +462,6 @@ if (player.HasTag("Invulnerable"))
 
 ---
 
-**Made with ❤️ by Wallstop Studios**
+### Made with ❤️ by Wallstop Studios
 
 _Effects System tutorial complete! Your designers can now create gameplay effects without code._

@@ -152,6 +152,8 @@ Check that the package appears in Package Manager under "Custom". You should see
 
 ## Three Quick Wins (5 Minutes)
 
+<a id="random-in-60-seconds"></a>
+
 ### 1. Random in 60 Seconds 🟢 Beginner
 
 **Problem:** Unity's `UnityEngine.Random` is slow and not seedable.
@@ -188,6 +190,8 @@ public class LootDrop : MonoBehaviour
 **Learn More:** [Random Performance](RANDOM_PERFORMANCE.md)
 
 ---
+
+<a id="component-wiring-in-60-seconds"></a>
 
 ### 2. Component Wiring in 60 Seconds 🟢 Beginner
 
@@ -240,6 +244,8 @@ public class Player : MonoBehaviour
   - VContainer: in `LifetimeScope.Configure`, call `builder.RegisterRelationalComponents()`.
   - Zenject: add `RelationalComponentsInstaller` to your `SceneContext` and (optionally) enable the scene scan on initialize.
 - Full guide with scenarios and testing tips: [Dependency Injection Integrations](RELATIONAL_COMPONENTS.md#dependency-injection-integrations)
+
+<a id="spatial-queries-in-60-seconds"></a>
 
 ### 3. Spatial Queries in 60 Seconds 🟡 Intermediate
 

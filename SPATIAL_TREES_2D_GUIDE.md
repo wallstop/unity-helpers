@@ -212,7 +212,7 @@ Diagram: ![RTree2D](Docs/Images/rtree_2d.svg)
 
 Use this decision flowchart to pick the right spatial tree:
 
-```
+```text
 START: Do your objects move frequently?
   │
   ├─ YES → Consider SpatialHash2D instead (see README)

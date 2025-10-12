@@ -12,7 +12,9 @@ Comprehensive documentation for all editor wizards, windows, and automation tool
 
 ## What Do You Want To Do? (Task-Based Index)
 
-**Optimize Sprite Memory & Performance**
+<!-- markdownlint-disable MD040 -->
+
+### Optimize Sprite Memory & Performance
 
 - Remove transparent padding → [Sprite Cropper](#sprite-cropper)
 - Adjust texture sizes automatically → [Fit Texture Size](#fit-texture-size)
@@ -20,7 +22,7 @@ Comprehensive documentation for all editor wizards, windows, and automation tool
 - Standardize sprite settings → [Sprite Settings Applier](#sprite-settings-applier)
 - Adjust sprite pivots → [Sprite Pivot Adjuster](#sprite-pivot-adjuster)
 
-**Create & Edit Animations**
+### Create & Edit Animations
 
 - Edit animation timing/frames visually → [Sprite Animation Editor](#sprite-animation-editor-animation-viewer-window)
 - Bulk-create animations from sprites → [Animation Creator](#animation-creator)
@@ -28,26 +30,26 @@ Comprehensive documentation for all editor wizards, windows, and automation tool
 - Add/edit animation events → [Animation Event Editor](#animation-event-editor)
 - Copy/sync animations between folders → [Animation Copier](#animation-copier)
 
-**Build Sprite Atlases**
+### Build Sprite Atlases
 
 - Create atlases with regex/labels → [Sprite Atlas Generator](#sprite-atlas-generator)
 
-**Validate & Fix Prefabs**
+### Validate & Fix Prefabs
 
 - Check prefabs for errors → [Prefab Checker](#prefab-checker)
 
-**Apply Visual Effects**
+### Apply Visual Effects
 
 - Blur textures (backgrounds, DOF) → [Image Blur Tool](#image-blur-tool)
 - Resize textures with filtering → [Texture Resizer](#texture-resizer)
 
-**Automate Setup & Maintenance**
+### Automate Setup & Maintenance
 
 - Auto-create singleton assets → [ScriptableObject Singleton Creator](#scriptableobject-singleton-creator)
 - Cache attribute metadata → [Attribute Metadata Cache Generator](#attribute-metadata-cache-generator)
 - Track sprite labels → [Sprite Label Processor](#sprite-label-processor)
 
-**Enhance Inspector Workflows**
+### Enhance Inspector Workflows
 
 - Conditional field display → [WShowIf Property Drawer](#wshowif-property-drawer)
 - Dropdown for strings/ints → [StringInList](#stringinlist-property-drawer) | [IntDropdown](#intdropdown-property-drawer)
