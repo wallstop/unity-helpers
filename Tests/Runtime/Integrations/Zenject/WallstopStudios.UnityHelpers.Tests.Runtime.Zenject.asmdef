@@ -7,7 +7,8 @@
         "WallstopStudios.UnityHelpers",
         "WallstopStudios.UnityHelpers.Integration.Zenject",
         "WallstopStudios.UnityHelpers.Tests.Runtime",
-        "Zenject"
+        "Zenject",
+        "WallstopStudios.UnityHelpers.Tests.Editor"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

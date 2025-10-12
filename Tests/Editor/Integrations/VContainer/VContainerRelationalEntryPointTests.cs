@@ -4,13 +4,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
     using System.Collections;
     using NUnit.Framework;
     using UnityEngine;
-    using UnityEngine.SceneManagement;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Integrations.VContainer;
     using WallstopStudios.UnityHelpers.Tags;
+    using WallstopStudios.UnityHelpers.Tests.Editor.Utils;
 
-    public sealed class VContainerRelationalEntryPointTests
+    public sealed class VContainerRelationalEntryPointTests : CommonTestBase
     {
         private sealed class Consumer : MonoBehaviour
         {
@@ -23,18 +23,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
         [UnityTest]
         public IEnumerator EntryPointAssignsSiblingOnActiveScene()
         {
-            Scene scene = SceneManager.CreateScene("VContainerTestScene");
-            SceneManager.SetActiveScene(scene);
+            CreateTempScene("VContainerTestScene");
 
-            GameObject go = new GameObject("Root");
+            GameObject go = NewGameObject("Root");
             go.AddComponent<SpriteRenderer>();
             Consumer consumer = go.AddComponent<Consumer>();
 
             // Give Unity a frame to register objects
             yield return null;
 
-            AttributeMetadataCache cache =
-                ScriptableObject.CreateInstance<AttributeMetadataCache>();
+            AttributeMetadataCache cache = CreateScriptableObject<AttributeMetadataCache>();
 #if UNITY_EDITOR
             AttributeMetadataCache.RelationalTypeMetadata relationalMetadata =
                 new AttributeMetadataCache.RelationalTypeMetadata(

@@ -1,7 +1,6 @@
 #if ZENJECT_PRESENT
 namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
 {
-    using System;
     using System.Reflection;
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Integrations.Zenject;

@@ -7,7 +7,8 @@
         "WallstopStudios.UnityHelpers",
         "WallstopStudios.UnityHelpers.Integration.VContainer",
         "WallstopStudios.UnityHelpers.Tests.Runtime",
-        "VContainer"
+        "VContainer",
+        "WallstopStudios.UnityHelpers.Tests.Editor"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

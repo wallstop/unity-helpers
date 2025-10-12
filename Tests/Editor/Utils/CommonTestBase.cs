@@ -5,8 +5,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils
     using System.Collections.Generic;
     using NUnit.Framework;
     using UnityEngine;
+    using UnityEngine.SceneManagement;
     using UnityEngine.TestTools;
     using Object = UnityEngine.Object;
+#if UNITY_EDITOR
+    using UnityEditor.SceneManagement;
+#endif
+
 
     /// <summary>
     /// Common test base that tracks spawned Unity objects and disposables
@@ -17,6 +22,43 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils
     {
         protected readonly List<Object> _trackedObjects = new();
         protected readonly List<IDisposable> _trackedDisposables = new();
+        protected readonly List<Scene> _trackedScenes = new();
+
+        protected T CreateScriptableObject<T>()
+            where T : ScriptableObject
+        {
+            return Track(ScriptableObject.CreateInstance<T>());
+        }
+
+        protected GameObject NewGameObject(string name = "GameObject")
+        {
+            return Track(new GameObject(name));
+        }
+
+        protected Scene CreateTempScene(string name, bool setActive = true)
+        {
+            Scene scene;
+#if UNITY_EDITOR
+            if (!Application.isPlaying)
+            {
+                // In EditMode tests, use EditorSceneManager as CreateScene is play-mode only
+                scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            }
+            else
+            {
+                scene = SceneManager.CreateScene(name);
+            }
+#else
+            scene = SceneManager.CreateScene(name);
+#endif
+
+            if (setActive)
+            {
+                SceneManager.SetActiveScene(scene);
+            }
+            _trackedScenes.Add(scene);
+            return scene;
+        }
 
         protected GameObject Track(GameObject obj)
         {
@@ -50,6 +92,25 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils
         [TearDown]
         public virtual void TearDown()
         {
+            // Close any tracked scenes first to ensure objects are not resurrected
+#if UNITY_EDITOR
+            if (_trackedScenes.Count > 0)
+            {
+                for (int i = _trackedScenes.Count - 1; i >= 0; i--)
+                {
+                    Scene scene = _trackedScenes[i];
+                    if (scene.IsValid())
+                    {
+                        try
+                        {
+                            EditorSceneManager.CloseScene(scene, true);
+                        }
+                        catch { }
+                    }
+                }
+                _trackedScenes.Clear();
+            }
+#endif
             if (_trackedDisposables.Count > 0)
             {
                 for (int i = _trackedDisposables.Count - 1; i >= 0; i--)
@@ -99,6 +160,25 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils
         [OneTimeTearDown]
         public virtual void OneTimeTearDown()
         {
+            // Close tracked scenes as a final safety net
+#if UNITY_EDITOR
+            if (_trackedScenes.Count > 0)
+            {
+                for (int i = _trackedScenes.Count - 1; i >= 0; i--)
+                {
+                    Scene scene = _trackedScenes[i];
+                    if (scene.IsValid())
+                    {
+                        try
+                        {
+                            EditorSceneManager.CloseScene(scene, true);
+                        }
+                        catch { }
+                    }
+                }
+                _trackedScenes.Clear();
+            }
+#endif
             if (_trackedObjects.Count > 0)
             {
                 Object[] snapshot = _trackedObjects.ToArray();

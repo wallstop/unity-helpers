@@ -4,13 +4,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
     using System.Collections;
     using NUnit.Framework;
     using UnityEngine;
-    using UnityEngine.SceneManagement;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Integrations.Zenject;
     using WallstopStudios.UnityHelpers.Tags;
+    using WallstopStudios.UnityHelpers.Tests.Editor.Utils;
 
-    public sealed class ZenjectRelationalInitializerTests
+    public sealed class ZenjectRelationalInitializerTests : CommonTestBase
     {
         private sealed class Consumer : MonoBehaviour
         {
@@ -23,17 +23,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
         [UnityTest]
         public IEnumerator InitializerAssignsSiblingOnActiveScene()
         {
-            Scene scene = SceneManager.CreateScene("ZenjectTestScene");
-            SceneManager.SetActiveScene(scene);
+            CreateTempScene("ZenjectTestScene");
 
-            GameObject go = new GameObject("Root");
+            GameObject go = NewGameObject("Root");
             go.AddComponent<SpriteRenderer>();
             Consumer consumer = go.AddComponent<Consumer>();
 
             yield return null;
 
-            AttributeMetadataCache cache =
-                ScriptableObject.CreateInstance<AttributeMetadataCache>();
+            AttributeMetadataCache cache = CreateScriptableObject<AttributeMetadataCache>();
 #if UNITY_EDITOR
             AttributeMetadataCache.RelationalTypeMetadata relationalMetadata =
                 new AttributeMetadataCache.RelationalTypeMetadata(

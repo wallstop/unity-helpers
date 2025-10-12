@@ -5,7 +5,8 @@
     "UnityEditor.TestRunner",
     "UnityEngine.TestRunner",
     "WallstopStudios.UnityHelpers",
-    "WallstopStudios.UnityHelpers.Integration.Zenject"
+    "WallstopStudios.UnityHelpers.Integration.Zenject",
+    "WallstopStudios.UnityHelpers.Tests.Editor"
   ],
   "includePlatforms": [
     "Editor"

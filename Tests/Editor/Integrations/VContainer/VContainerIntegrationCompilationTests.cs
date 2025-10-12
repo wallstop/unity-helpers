@@ -1,7 +1,6 @@
 #if VCONTAINER_PRESENT
 namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
 {
-    using System;
     using System.Reflection;
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Integrations.VContainer;
