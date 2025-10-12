@@ -1,44 +1,44 @@
 {
-    "name": "WallstopStudios.UnityHelpers.Tests.Runtime.Zenject",
-    "rootNamespace": "WallstopStudios.UnityHelpers.Tests.Integrations.Zenject",
-    "references": [
-        "UnityEditor.TestRunner",
-        "UnityEngine.TestRunner",
-        "WallstopStudios.UnityHelpers",
-        "WallstopStudios.UnityHelpers.Integration.Zenject",
-        "WallstopStudios.UnityHelpers.Tests.Runtime",
-        "Zenject",
-        "WallstopStudios.UnityHelpers.Tests.Editor"
-    ],
-    "includePlatforms": [],
-    "excludePlatforms": [],
-    "allowUnsafeCode": false,
-    "overrideReferences": true,
-    "precompiledReferences": [
-        "nunit.framework.dll",
-        "Zenject-usage.dll"
-    ],
-    "autoReferenced": false,
-    "defineConstraints": [
-        "UNITY_INCLUDE_TESTS",
-        "ZENJECT_PRESENT"
-    ],
+  "name": "WallstopStudios.UnityHelpers.Tests.Runtime.Zenject",
+  "rootNamespace": "WallstopStudios.UnityHelpers.Tests.Integrations.Zenject",
+  "references": [
+    "UnityEditor.TestRunner",
+    "UnityEngine.TestRunner",
+    "WallstopStudios.UnityHelpers",
+    "WallstopStudios.UnityHelpers.Integration.Zenject",
+    "WallstopStudios.UnityHelpers.Tests.Runtime",
+    "Zenject",
+    "WallstopStudios.UnityHelpers.Tests.Editor"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "nunit.framework.dll",
+    "Zenject-usage.dll"
+  ],
+  "autoReferenced": false,
+  "defineConstraints": [
+    "UNITY_INCLUDE_TESTS",
+    "ZENJECT_PRESENT"
+  ],
     "versionDefines": [
         {
             "name": "com.extenject.zenject",
-            "expression": ">= 0.0.0",
+            "expression": "",
             "define": "ZENJECT_PRESENT"
         },
         {
             "name": "com.modesttree.zenject",
-            "expression": ">= 0.0.0",
+            "expression": "",
             "define": "ZENJECT_PRESENT"
         },
         {
             "name": "com.svermeulen.extenject",
-            "expression": ">= 0.0.0",
+            "expression": "",
             "define": "ZENJECT_PRESENT"
         }
     ],
-    "noEngineReferences": false
+  "noEngineReferences": false
 }

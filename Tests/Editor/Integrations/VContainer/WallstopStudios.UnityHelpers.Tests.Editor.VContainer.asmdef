@@ -25,15 +25,14 @@
   "versionDefines": [
     {
       "name": "jp.cysharp.vcontainer",
-      "expression": ">= 1.0.0",
+      "expression": "",
       "define": "VCONTAINER_PRESENT"
     },
     {
       "name": "jp.hadashikick.vcontainer",
-      "expression": ">= 0.0.0",
+      "expression": "",
       "define": "VCONTAINER_PRESENT"
     }
   ],
   "noEngineReferences": false
 }
-
