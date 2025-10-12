@@ -1,10 +1,10 @@
 # Unity Helpers
 
-[![Unity 2021.3+](https://img.shields.io/badge/Unity-2021.3%2B-000000?logo=unity&logoColor=white)](https://unity.com/releases/editor/whats-new/2021.3)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![CSharpier](https://github.com/wallstop/unity-helpers/actions/workflows/csharpier.yml/badge.svg?branch=main)](https://github.com/wallstop/unity-helpers/actions/workflows/csharpier.yml)
-[![Markdown & JSON Lint/Format](https://github.com/wallstop/unity-helpers/actions/workflows/markdown-json.yml/badge.svg?branch=main)](https://github.com/wallstop/unity-helpers/actions/workflows/markdown-json.yml)
-[![Lint Docs Links](https://github.com/wallstop/unity-helpers/actions/workflows/lint-doc-links.yml/badge.svg?branch=main)](https://github.com/wallstop/unity-helpers/actions/workflows/lint-doc-links.yml)
+[![Unity 2021.3+](https://img.shields.io/badge/Unity-2021.3%2B-000000?logo=unity&logoColor=white)](https://unity.com/releases/editor/whats-new/2021.3)  
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)  
+[![CSharpier](https://github.com/wallstop/unity-helpers/actions/workflows/csharpier.yml/badge.svg?branch=main)](https://github.com/wallstop/unity-helpers/actions/workflows/csharpier.yml)  
+[![Markdown & JSON Lint/Format](https://github.com/wallstop/unity-helpers/actions/workflows/markdown-json.yml/badge.svg?branch=main)](https://github.com/wallstop/unity-helpers/actions/workflows/markdown-json.yml)  
+[![Lint Docs Links](https://github.com/wallstop/unity-helpers/actions/workflows/lint-doc-links.yml/badge.svg?branch=main)](https://github.com/wallstop/unity-helpers/actions/workflows/lint-doc-links.yml)  
 [![Npm Publish](https://github.com/wallstop/unity-helpers/actions/workflows/npm-publish.yml/badge.svg?branch=main)](https://github.com/wallstop/unity-helpers/actions/workflows/npm-publish.yml)
 
 A comprehensive collection of high-performance utilities, data structures, and editor tools for Unity game development. Unity Helpers provides everything from blazing-fast random number generators and spatial trees to powerful editor wizards and component relationship management.
@@ -3178,7 +3178,8 @@ How pooling + buffering help APIs
 
 ```csharp
 // VContainer — LifetimeScope
-using VContainer; using VContainer.Unity;
+using VContainer;
+using VContainer.Unity;
 using WallstopStudios.UnityHelpers.Integrations.VContainer;
 protected override void Configure(IContainerBuilder builder)
 {
@@ -3186,7 +3187,8 @@ protected override void Configure(IContainerBuilder builder)
 }
 
 // Zenject — prefab instantiation with DI + relations
-using Zenject; using WallstopStudios.UnityHelpers.Integrations.Zenject;
+using Zenject;
+using WallstopStudios.UnityHelpers.Integrations.Zenject;
 var enemy = Container.InstantiateComponentWithRelations(enemyPrefab, parent);
 ```
 
