@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json.schemastore.org/prettierrc",
+  "printWidth": 100,
+  "tabWidth": 2,
+  "useTabs": false,
+  "semi": true,
+  "singleQuote": false,
+  "trailingComma": "none",
+  "bracketSpacing": true,
+  "proseWrap": "preserve",
+  "endOfLine": "crlf",
+  "overrides": [
+    {
+      "files": ["*.asmdef", "*.asmref"],
+      "options": {
+        "parser": "json"
+      }
+    }
+  ]
+}
+

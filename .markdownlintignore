@@ -1,0 +1,8 @@
+node_modules/
+.git/
+Library/
+obj/
+Temp/
+Samples~/
+/.github/
+

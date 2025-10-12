@@ -1,0 +1,40 @@
+name: Markdown & JSON Lint/Format
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm i --no-audit --no-fund
+          fi
+
+      - name: Prettier check (Markdown)
+        run: npm run format:md:check
+
+      - name: Prettier check (JSON / asmdef / asmref)
+        run: npm run format:json:check
+
+      - name: Markdown lint
+        run: npm run lint:markdown
+

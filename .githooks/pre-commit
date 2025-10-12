@@ -1,6 +1,7 @@
 #!/usr/bin/env sh
 set -e
 
+# 1) Lint Markdown links via PowerShell script (existing behavior)
 run_pwsh() {
   pwsh -NoProfile -File scripts/lint-doc-links.ps1
 }
@@ -16,5 +17,33 @@ elif command -v powershell >/dev/null 2>&1; then
 else
   echo "PowerShell not found. Please install pwsh or powershell to run docs linter." >&2
   exit 1
+fi
+
+# 2) Format staged Markdown/JSON (incl. asmdef/asmref) with Prettier and re-stage
+if ! command -v npx >/dev/null 2>&1; then
+  echo "npx is required for formatting. Please install Node.js." >&2
+  exit 1
+fi
+
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM)
+
+# Collect file lists
+MD_FILES=$(echo "$STAGED_FILES" | grep -E '\.(md|markdown)$' || true)
+JSON_FILES=$(echo "$STAGED_FILES" | grep -E '\.(json|asmdef|asmref)$' || true)
+
+# Prettier format and re-add
+if [ -n "$MD_FILES" ]; then
+  echo "$MD_FILES" | xargs npx --no-install prettier --write --log-level warn
+  echo "$MD_FILES" | xargs git add
+fi
+
+if [ -n "$JSON_FILES" ]; then
+  echo "$JSON_FILES" | xargs npx --no-install prettier --write --log-level warn
+  echo "$JSON_FILES" | xargs git add
+fi
+
+# 3) Markdown lint for staged Markdown files
+if [ -n "$MD_FILES" ]; then
+  npx --no-install markdownlint $MD_FILES --config .markdownlint.json --ignore-path .markdownlintignore
 fi
 

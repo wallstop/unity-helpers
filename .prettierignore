@@ -1,0 +1,22 @@
+# Node / tooling
+node_modules/
+
+# Unity / build artifacts
+Library/
+obj/
+Temp/
+Logs/
+
+# GitHub
+.github/
+
+# Samples and external content
+Samples~/
+
+# Only format supported text/assets; Prettier globbing will still be constrained by scripts
+**/*.meta
+**/*.unity
+**/*.prefab
+**/*.mat
+**/*.asset
+
