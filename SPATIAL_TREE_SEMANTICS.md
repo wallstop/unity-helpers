@@ -43,11 +43,13 @@ Diagram notes
 ### When To Use (2D)
 
 - QuadTree2D
+
   - Use for broad-phase neighbor checks, visibility, and general spatial buckets where balanced performance and simplicity help.
   - Pros: Simple mental model, predictable, easy to rebuild or update.
   - Cons: Hotspots can create deeper trees; nearest-neighbor not optimal vs KDTree.
 
 - KDTree2D
+
   - Use for nearest-neighbor and precise point range queries at scale.
   - Pros: Excellent for NN queries, balanced variant gives consistent query time.
   - Cons: Balanced build costs; dynamic updates more expensive than QuadTree.
@@ -64,15 +66,18 @@ While KdTree3D and OctTree3D are both point‑based and target equivalent use ca
 Key reasons and scenarios:
 
 - Split planes and child assignment
+
   - KdTree3D splits by alternating axes (x, y, z); balanced builds use median selection, unbalanced builds split at node‑center. Points lying exactly on a split plane are deterministically assigned but may end up in different leaves between balanced vs unbalanced trees.
   - OctTree3D partitions space into eight octants at each node. Points on plane boundaries are classified using octant rules; borderline points may be grouped differently than in KdTree3D.
 
 - Bounds queries: half‑open vs closed edges
+
   - KdTree3D constructs an inclusive half‑open query box for per‑point checks and uses Unity `Bounds` for traversal. OctTree3D uses `BoundingBox3D` with inclusive‑max conversion and additional node‑level fast paths when a node is fully contained.
   - Minimum node size enforcement keeps node bounds non‑degenerate. Near boundary edges this can expand a node just enough to flip a fully‑contained check, changing whether the algorithm fast‑adds all points in a node or checks them individually.
   - Result impact: points exactly on max edges or at floating‑point limits can be included by one structure and excluded by the other in rare cases.
 
 - Range (sphere) queries
+
   - Both trees use exact per‑point distance checks. However, their traversal pruning and “node fully contained in sphere” checks differ (sphere vs AABB overlap/containment and different numeric guards). For points close to the query radius, minor numeric differences can alter inclusion.
 
 - Balanced vs unbalanced KdTree3D

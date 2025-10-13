@@ -74,6 +74,7 @@ Contents
 ## When To Use
 
 - `RuntimeSingleton<T>`
+
   - Cross‑scene services (thread dispatcher, audio router, global managers).
   - Utility components that should always be available via `T.Instance`.
   - Creating the instance on demand when not found in the scene.

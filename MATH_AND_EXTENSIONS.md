@@ -126,6 +126,7 @@ y↑          * vertex (0.5, 5)
 ```
 
 - Point-in-polygon
+
   - 2D and 3D (projected) tests; remarks on precision and assumptions.
 
 - Polyline simplification (Douglas–Peucker)
