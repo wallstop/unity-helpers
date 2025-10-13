@@ -2,9 +2,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 {
     using System;
     using System.Collections.Concurrent;
-    using UnityEditor;
     using UnityEngine;
     using Utils;
+#if UNITY_EDITOR
+    using UnityEditor;
+#endif
 
     /// <summary>
     /// Thread-safe dispatcher that enqueues work to run on Unity's main thread.
@@ -95,6 +97,48 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     Debug.LogException(e, this);
                 }
             }
+        }
+
+        /// <summary>
+        /// Posts an action to run on the main thread and returns a Task that completes after execution.
+        /// </summary>
+        public System.Threading.Tasks.Task RunAsync(Action action)
+        {
+            var tcs = new System.Threading.Tasks.TaskCompletionSource<bool>();
+            RunOnMainThread(() =>
+            {
+                try
+                {
+                    action();
+                    tcs.SetResult(true);
+                }
+                catch (Exception ex)
+                {
+                    tcs.SetException(ex);
+                }
+            });
+            return tcs.Task;
+        }
+
+        /// <summary>
+        /// Posts a function to run on the main thread and returns its result via Task.
+        /// </summary>
+        public System.Threading.Tasks.Task<T> Post<T>(Func<T> func)
+        {
+            var tcs = new System.Threading.Tasks.TaskCompletionSource<T>();
+            RunOnMainThread(() =>
+            {
+                try
+                {
+                    T result = func();
+                    tcs.SetResult(result);
+                }
+                catch (Exception ex)
+                {
+                    tcs.SetException(ex);
+                }
+            });
+            return tcs.Task;
         }
     }
 }

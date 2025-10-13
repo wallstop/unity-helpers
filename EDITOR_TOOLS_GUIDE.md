@@ -1974,3 +1974,7 @@ All tools are designed to work together seamlessly and follow consistent design 
 For questions, issues, or feature requests, please contact the Wallstop Studios team.
 
 - Integration note: The cache powers editor dropdowns and reflection shortcuts for the Effects system’s `AttributeModification.attribute` field. See [Effects System](EFFECTS_SYSTEM.md) for how attributes, effects, and tags fit together.
+
+### MultiFile Selector (UI Toolkit)
+
+- The `MultiFileSelectorElement` is primarily intended for Editor tooling. It can also be used in player builds, where it enumerates files under the application’s data root. In the Editor it integrates with `EditorPrefs` and Reveal-in-Finder; at runtime it falls back to `PlayerPrefs` and omits Editor-only affordances.

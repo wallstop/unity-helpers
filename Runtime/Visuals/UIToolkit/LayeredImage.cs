@@ -6,11 +6,13 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
     using System.Linq;
     using System.Runtime.CompilerServices;
     using System.Threading.Tasks;
-    using UnityEditor;
     using UnityEngine;
     using UnityEngine.UIElements;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Utils;
+#if UNITY_EDITOR
+    using UnityEditor;
+#endif
 
     public sealed class LayeredImage : VisualElement
     {

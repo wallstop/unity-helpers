@@ -36,10 +36,14 @@ namespace WallstopStudios.UnityHelpers.Utils
         /// This method modifies the texture in-place. Point sampling provides fast, sharp scaling
         /// but may produce pixelated results. Use Bilinear for smoother results.
         /// </remarks>
-        public static void Point(Texture2D tex, int newWidth, int newHeight)
+        public static void Point(Texture2D tex, int newWidth, int newHeight, bool apply = false)
         {
             ValidateInputs(tex, newWidth, newHeight);
             ThreadedScale(tex, newWidth, newHeight, false);
+            if (apply)
+            {
+                tex.Apply(updateMipmaps: false, makeNoLongerReadable: false);
+            }
         }
 
         /// <summary>
@@ -55,10 +59,14 @@ namespace WallstopStudios.UnityHelpers.Utils
         /// This method modifies the texture in-place. Bilinear interpolation provides smooth scaling
         /// with better visual quality than point sampling, at a slight performance cost.
         /// </remarks>
-        public static void Bilinear(Texture2D tex, int newWidth, int newHeight)
+        public static void Bilinear(Texture2D tex, int newWidth, int newHeight, bool apply = false)
         {
             ValidateInputs(tex, newWidth, newHeight);
             ThreadedScale(tex, newWidth, newHeight, true);
+            if (apply)
+            {
+                tex.Apply(updateMipmaps: false, makeNoLongerReadable: false);
+            }
         }
 
         private static void ValidateInputs(Texture2D tex, int newWidth, int newHeight)

@@ -117,6 +117,10 @@ namespace WallstopStudios.UnityHelpers.Editor
                     {
                         ExportLastReport();
                     }
+                    if (GUILayout.Button("Export Report (CSV)"))
+                    {
+                        ExportLastReportCsv();
+                    }
                 }
             }
             finally
@@ -1322,6 +1326,53 @@ namespace WallstopStudios.UnityHelpers.Editor
             catch (Exception e)
             {
                 this.LogError($"Failed to save report: {e.Message}");
+            }
+        }
+
+        private void ExportLastReportCsv()
+        {
+            if (_lastReport == null || _lastReport.items.Count == 0)
+            {
+                EditorUi.Info("Prefab Checker", "No report data to export.");
+                return;
+            }
+            string defaultPath = Application.dataPath + "/PrefabCheckerReport.csv";
+            string savePath = EditorUi.Suppress
+                ? defaultPath
+                : EditorUtility.SaveFilePanel(
+                    "Save Prefab Checker Report (CSV)",
+                    Application.dataPath,
+                    "PrefabCheckerReport",
+                    "csv"
+                );
+            if (string.IsNullOrWhiteSpace(savePath))
+            {
+                return;
+            }
+
+            try
+            {
+                using StreamWriter sw = new(savePath);
+                sw.WriteLine("Path,Message");
+                foreach (var item in _lastReport.items)
+                {
+                    string path = item.path?.Replace('"', '\'') ?? string.Empty;
+                    if (item.messages == null || item.messages.Length == 0)
+                    {
+                        sw.WriteLine($"\"{path}\",\"\"");
+                        continue;
+                    }
+                    foreach (string m in item.messages)
+                    {
+                        string msg = (m ?? string.Empty).Replace('"', '\'');
+                        sw.WriteLine($"\"{path}\",\"{msg}\"");
+                    }
+                }
+                this.Log($"Saved report to: {savePath}");
+            }
+            catch (Exception e)
+            {
+                this.LogError($"Failed to save CSV: {e.Message}");
             }
         }
     }

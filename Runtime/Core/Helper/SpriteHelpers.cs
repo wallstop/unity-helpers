@@ -1,8 +1,10 @@
 namespace WallstopStudios.UnityHelpers.Core.Helper
 {
     using Extension;
-    using UnityEditor;
     using UnityEngine;
+#if UNITY_EDITOR
+    using UnityEditor;
+#endif
 
     /// <summary>
     /// Sprite and texture utilities for editor workflows.

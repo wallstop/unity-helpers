@@ -1279,3 +1279,16 @@ See more details in [CONTRIBUTING](CONTRIBUTING.md).
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE.md) file for details.
+
+## 2.0 Release Notes (Highlights)
+
+- BinaryFormatter deprecated, still functional for trusted/legacy data:
+  - `SerializationType.SystemBinary` is `[Obsolete]`. Use `SerializationType.Json` (System.Text.Json + Unity converters) or `SerializationType.Protobuf` (protobuf-net) for new work. Keep BinaryFormatter for trusted, non‑portable data only.
+
+- GameObject JSON converter outputs structured JSON:
+  - `GameObjectConverter` now writes a JSON object with `name`, `type` (assembly-qualified), and `instanceId` rather than a stringified placeholder.
+
+- Minor robustness improvements:
+  - Guarded stray `UnityEditor` imports in runtime files to ensure clean player builds.
+
+See `SERIALIZATION.md` for AOT/IL2CPP guidance and Unity JSON options, and `EDITOR_TOOLS_GUIDE.md` for Editor tool usage details.

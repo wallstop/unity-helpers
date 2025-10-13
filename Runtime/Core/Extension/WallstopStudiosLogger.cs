@@ -74,6 +74,22 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             LoggingEnabled = false;
         }
 
+        /// <summary>
+        /// Gets whether global logging is enabled.
+        /// </summary>
+        public static bool IsGlobalLoggingEnabled()
+        {
+            return LoggingEnabled;
+        }
+
+        /// <summary>
+        /// Sets global logging enabled/disabled without requiring an Object instance.
+        /// </summary>
+        public static void SetGlobalLoggingEnabled(bool enabled)
+        {
+            LoggingEnabled = enabled;
+        }
+
         public static void EnableLogging(this Object component)
         {
             Disabled.Remove(component);

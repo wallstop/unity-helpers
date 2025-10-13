@@ -26,11 +26,18 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
             JsonSerializerOptions options
         )
         {
-            writer.WriteStringValue(
-                value == null
-                    ? "{}"
-                    : new { name = value.name, type = value.GetType().FullName }.ToString()
-            );
+            if (value == null)
+            {
+                writer.WriteNullValue();
+                return;
+            }
+
+            writer.WriteStartObject();
+            writer.WriteString("name", value.name);
+            // Use AssemblyQualifiedName to disambiguate type for diagnostics
+            writer.WriteString("type", value.GetType().AssemblyQualifiedName);
+            writer.WriteNumber("instanceId", value.GetInstanceID());
+            writer.WriteEndObject();
         }
     }
 }

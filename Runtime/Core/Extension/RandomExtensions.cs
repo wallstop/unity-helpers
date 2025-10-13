@@ -18,6 +18,74 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
     public static class RandomExtensions
     {
         /// <summary>
+        /// Returns an index sampled from the provided weights (unnormalized). Negative weights are treated as zero.
+        /// </summary>
+        public static int NextWeightedIndex(this IRandom random, IReadOnlyList<float> weights)
+        {
+            if (weights == null)
+            {
+                throw new ArgumentNullException(nameof(weights));
+            }
+            if (weights.Count == 0)
+            {
+                throw new ArgumentException("Weights cannot be empty", nameof(weights));
+            }
+            double total = 0;
+            for (int i = 0; i < weights.Count; i++)
+            {
+                if (weights[i] > 0)
+                {
+                    total += weights[i];
+                }
+            }
+            if (total <= 0)
+            {
+                throw new ArgumentException("Sum of weights must be > 0", nameof(weights));
+            }
+            double r = random.NextDouble() * total;
+            double acc = 0;
+            for (int i = 0; i < weights.Count; i++)
+            {
+                float w = weights[i];
+                if (w <= 0)
+                {
+                    continue;
+                }
+                acc += w;
+                if (r <= acc)
+                {
+                    return i;
+                }
+            }
+            return weights.Count - 1;
+        }
+
+        /// <summary>
+        /// Returns an element sampled according to the given weights list. Throws if lengths mismatch.
+        /// </summary>
+        public static T NextWeightedElement<T>(
+            this IRandom random,
+            IReadOnlyList<T> items,
+            IReadOnlyList<float> weights
+        )
+        {
+            if (items == null)
+            {
+                throw new ArgumentNullException(nameof(items));
+            }
+            if (weights == null)
+            {
+                throw new ArgumentNullException(nameof(weights));
+            }
+            if (items.Count != weights.Count)
+            {
+                throw new ArgumentException("Items and weights length must match.");
+            }
+            int idx = random.NextWeightedIndex(weights);
+            return items[idx];
+        }
+
+        /// <summary>
         /// Generates a random 2D vector with components in the range [-amplitude, amplitude].
         /// </summary>
         /// <param name="random">The random number generator to use.</param>
