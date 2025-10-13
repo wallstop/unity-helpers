@@ -109,6 +109,13 @@ jobs:
         with:
           commit_message: "chore(format): apply requested formatting"
           branch: ${{ steps.meta.outputs.head_ref }}
+          file_pattern: |
+            **/*.cs
+            **/*.md
+            **/*.markdown
+            **/*.json
+            **/*.asmdef
+            **/*.asmref
 
       - name: Create bot branch and PR (fork)
         if: ${{ steps.meta.outputs.same_repo != 'true' && steps.changes.outputs.has_changes == 'true' }}
@@ -122,7 +129,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -B "$BRANCH"
-          git add -A
+          # Stage only supported text files; avoid workflows to prevent permission issues
+          git add '**/*.cs' '**/*.md' '**/*.markdown' '**/*.json' '**/*.asmdef' '**/*.asmref'
           git commit -m "chore(format): apply requested formatting for PR #${{ steps.meta.outputs.pr }}"
           git remote add upstream "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
           git fetch upstream
@@ -247,6 +255,13 @@ jobs:
         with:
           commit_message: "chore(format): apply requested formatting"
           branch: ${{ steps.meta.outputs.head_ref }}
+          file_pattern: |
+            **/*.cs
+            **/*.md
+            **/*.markdown
+            **/*.json
+            **/*.asmdef
+            **/*.asmref
 
       - name: Create bot branch and PR (fork)
         if: ${{ steps.meta.outputs.same_repo != 'true' && steps.changes.outputs.has_changes == 'true' }}
@@ -260,7 +275,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -B "$BRANCH"
-          git add -A
+          # Stage only supported text files; avoid workflows to prevent permission issues
+          git add '**/*.cs' '**/*.md' '**/*.markdown' '**/*.json' '**/*.asmdef' '**/*.asmref'
           git commit -m "chore(format): apply requested formatting for PR #${{ steps.meta.outputs.pr }}"
           git remote add upstream "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
           git fetch upstream

@@ -38,6 +38,8 @@ jobs:
         with:
           commit_message: "chore(format): apply CSharpier formatting"
           branch: ${{ github.head_ref }}
+          file_pattern: |
+            **/*.cs
 
       - name: Verify formatting (CI gate)
         run: dotnet tool run csharpier check .
@@ -88,7 +90,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -B "$BRANCH"
-          git add -A
+          # Only stage C# files to avoid touching workflow YAML (requires special permissions)
+          git add '**/*.cs'
           git commit -m "chore(format): apply CSharpier formatting for PR #${{ github.event.pull_request.number }}"
           git remote add upstream "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
           git fetch upstream

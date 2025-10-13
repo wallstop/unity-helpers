@@ -53,6 +53,14 @@ jobs:
         with:
           commit_message: "chore(format): apply Prettier/markdownlint fixes"
           branch: ${{ github.head_ref }}
+          file_pattern: |
+            **/*.md
+            **/*.markdown
+            **/*.json
+            **/*.asmdef
+            **/*.asmref
+            **/*.yml
+            **/*.yaml
 
       - name: Prettier check (Markdown)
         run: npm run format:md:check
@@ -129,7 +137,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -B "$BRANCH"
-          git add -A
+          # Stage only files we format; avoid workflows to prevent permission issues
+          git add '**/*.md' '**/*.markdown' '**/*.json' '**/*.asmdef' '**/*.asmref' '**/*.yml' '**/*.yaml'
           git commit -m "chore(format): apply Prettier/markdownlint fixes for PR #${{ github.event.pull_request.number }}"
           git remote add upstream "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
           git fetch upstream
