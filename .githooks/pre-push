@@ -17,7 +17,7 @@ npx --no-install prettier --check "**/*.{yml,yaml}" || exit 1
 # 2) Markdownlint (uses repo config and ignore list)
 npx --no-install markdownlint "**/*.md" "**/*.markdown" --config .markdownlint.json --ignore-path .markdownlintignore || exit 1
 
-# 3) EOL/BOM policy (CRLF + UTF-8 BOM)
+# 3) EOL policy (CRLF, no UTF-8 BOM)
 if command -v pwsh >/dev/null 2>&1; then
   pwsh -NoProfile -File scripts/check-eol.ps1 -VerboseOutput
 elif command -v powershell >/dev/null 2>&1; then
@@ -39,4 +39,3 @@ if command -v lychee >/dev/null 2>&1; then
 else
   echo "lychee not found; skipping external link check. CI will run lychee." >&2
 fi
-

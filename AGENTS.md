@@ -20,7 +20,7 @@
 ## Coding Style & Naming Conventions
 
 - Indentation: 4 spaces for `*.cs`; 2 spaces for JSON/YAML/`*.asmdef`.
-- Line endings: CRLF; UTF-8 BOM per `.editorconfig`.
+- Line endings: CRLF; UTF-8 (no BOM) per `.editorconfig`.
 - C#: explicit types over `var`; braces required; `using` inside namespace.
 - Naming: PascalCase for types/public members; camelCase for fields/locals; interfaces prefixed `I` (e.g., `IResolver`); type params prefixed `T`; events start with `On...`.
 - Do not use underscores in function names, especially test function names.

@@ -40,6 +40,6 @@ jobs:
       - name: Markdown lint
         run: npm run lint:markdown
 
-      - name: Enforce EOL/BOM policy
+      - name: Enforce EOL (CRLF) and No BOM
         shell: pwsh
         run: ./scripts/check-eol.ps1 -VerboseOutput

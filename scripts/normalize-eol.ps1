@@ -28,7 +28,7 @@ function To-CrLf([string]$text) {
 
 $changed = 0
 $eolFixed = 0
-$bomAdded = 0
+$bomRemoved = 0
 $modified = New-Object System.Collections.Generic.List[string]
 
 $tracked = Get-TrackedFiles
@@ -50,15 +50,13 @@ foreach ($path in $tracked) {
 
     $fileChanged = $false
     if ($normalized -ne $text) { $fileChanged = $true; $eolFixed++ }
-    if (-not $hasBom) { $fileChanged = $true; $bomAdded++ }
+    # Remove BOM if present (we enforce UTF-8 without BOM)
+    if ($hasBom) { $fileChanged = $true; $bomRemoved++ }
 
     if ($fileChanged) {
         if (-not $DryRun) {
-            $out = New-Object System.Collections.Generic.List[byte]
-            # UTF-8 BOM
-            $out.AddRange([byte[]](0xEF,0xBB,0xBF))
-            $out.AddRange([System.Text.Encoding]::UTF8.GetBytes($normalized))
-            [System.IO.File]::WriteAllBytes($path, $out.ToArray())
+            # Write UTF-8 without BOM
+            [System.IO.File]::WriteAllBytes($path, [System.Text.Encoding]::UTF8.GetBytes($normalized))
         }
         $changed++
         $modified.Add($path) | Out-Null
@@ -66,6 +64,5 @@ foreach ($path in $tracked) {
     }
 }
 
-Write-Host "Files fixed: $changed (EOL:$eolFixed, BOM:$bomAdded)"
+Write-Host "Files fixed: $changed (EOL:$eolFixed, BOMRemoved:$bomRemoved)"
 if ($DryRun -and $changed -gt 0) { exit 2 }
-
