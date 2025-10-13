@@ -11,24 +11,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Integrations.VContainer;
     using WallstopStudios.UnityHelpers.Tags;
+    using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
-    public sealed class RelationalComponentsVContainerTests
+    public sealed class RelationalComponentsVContainerTests : CommonTestBase
     {
-        private readonly List<GameObject> _spawned = new();
-
-        [TearDown]
-        public void Cleanup()
-        {
-            for (int i = 0; i < _spawned.Count; i++)
-            {
-                if (_spawned[i] != null)
-                {
-                    UnityEngine.Object.DestroyImmediate(_spawned[i]);
-                }
-            }
-            _spawned.Clear();
-        }
-
         [Test]
         public void ResolverExtensionsUseBoundAssigner()
         {
@@ -85,45 +71,34 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
         public System.Collections.IEnumerator EntryPointAssignsActiveSceneComponents()
         {
             AttributeMetadataCache cache = CreateCacheFor(typeof(VContainerRelationalTester));
-            try
-            {
-                Scene scene = SceneManager.CreateScene("VContainerTestScene_Active");
-                SceneManager.SetActiveScene(scene);
-                ContainerBuilder builder = new();
-                builder.RegisterInstance(cache).AsSelf();
-                RecordingAssigner assigner = new RecordingAssigner();
-                builder.RegisterInstance(assigner).As<IRelationalComponentAssigner>();
-                IObjectResolver resolver = builder.Build();
+            Scene scene = CreateTempScene("VContainerTestScene_Active");
+            ContainerBuilder builder = new();
+            builder.RegisterInstance(cache).AsSelf();
+            RecordingAssigner assigner = new RecordingAssigner();
+            builder.RegisterInstance(assigner).As<IRelationalComponentAssigner>();
+            IObjectResolver resolver = builder.Build();
 
-                VContainerRelationalTester tester = CreateHierarchy();
-                GameObject rootObj = tester.transform.root.gameObject;
-                SceneManager.MoveGameObjectToScene(rootObj, scene);
-                yield return null;
+            VContainerRelationalTester tester = CreateHierarchy();
+            GameObject rootObj = tester.transform.root.gameObject;
+            SceneManager.MoveGameObjectToScene(rootObj, scene);
+            yield return null;
 
-                RelationalComponentEntryPoint entryPoint = new RelationalComponentEntryPoint(
-                    resolver.Resolve<IRelationalComponentAssigner>(),
-                    cache,
-                    RelationalSceneAssignmentOptions.Default
-                );
-                entryPoint.Initialize();
-                yield return null;
+            RelationalComponentEntryPoint entryPoint = new RelationalComponentEntryPoint(
+                resolver.Resolve<IRelationalComponentAssigner>(),
+                cache,
+                RelationalSceneAssignmentOptions.Default
+            );
+            entryPoint.Initialize();
+            yield return null;
 
-                Assert.IsTrue(
-                    tester.parentBody != null,
-                    "Entry point should assign parentBody in the active scene"
-                );
-                Assert.IsTrue(
-                    tester.childCollider != null,
-                    "Entry point should assign childCollider in the active scene"
-                );
-            }
-            finally
-            {
-                if (cache != null)
-                {
-                    UnityEngine.Object.DestroyImmediate(cache);
-                }
-            }
+            Assert.IsTrue(
+                tester.parentBody != null,
+                "Entry point should assign parentBody in the active scene"
+            );
+            Assert.IsTrue(
+                tester.childCollider != null,
+                "Entry point should assign childCollider in the active scene"
+            );
         }
 
         [Test]
@@ -258,51 +233,39 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
         public System.Collections.IEnumerator EntryPointIgnoresNonActiveScenes()
         {
             AttributeMetadataCache cache = CreateCacheFor(typeof(VContainerRelationalTester));
-            try
-            {
-                Scene active = SceneManager.CreateScene("VContainerActiveScene_Sep");
-                SceneManager.SetActiveScene(active);
+            Scene active = CreateTempScene("VContainerActiveScene_Sep");
+            ContainerBuilder builder = new();
+            builder.RegisterInstance(cache).AsSelf();
+            RecordingAssigner assigner = new RecordingAssigner();
+            builder.RegisterInstance(assigner).As<IRelationalComponentAssigner>();
+            IObjectResolver resolver = builder.Build();
 
-                ContainerBuilder builder = new();
-                builder.RegisterInstance(cache).AsSelf();
-                RecordingAssigner assigner = new RecordingAssigner();
-                builder.RegisterInstance(assigner).As<IRelationalComponentAssigner>();
-                IObjectResolver resolver = builder.Build();
+            VContainerRelationalTester testerA = CreateHierarchy();
+            SceneManager.MoveGameObjectToScene(testerA.transform.root.gameObject, active);
 
-                VContainerRelationalTester testerA = CreateHierarchy();
-                SceneManager.MoveGameObjectToScene(testerA.transform.root.gameObject, active);
+            Scene secondary = CreateTempScene("VContainerSecondaryScene_Sep", setActive: false);
+            VContainerRelationalTester testerB = CreateHierarchy();
+            SceneManager.MoveGameObjectToScene(testerB.transform.root.gameObject, secondary);
+            yield return null;
 
-                Scene secondary = SceneManager.CreateScene("VContainerSecondaryScene_Sep");
-                VContainerRelationalTester testerB = CreateHierarchy();
-                SceneManager.MoveGameObjectToScene(testerB.transform.root.gameObject, secondary);
-                yield return null;
+            RelationalComponentEntryPoint entryPoint = new RelationalComponentEntryPoint(
+                resolver.Resolve<IRelationalComponentAssigner>(),
+                cache,
+                new RelationalSceneAssignmentOptions(includeInactive: true)
+            );
+            entryPoint.Initialize();
+            yield return null;
 
-                RelationalComponentEntryPoint entryPoint = new RelationalComponentEntryPoint(
-                    resolver.Resolve<IRelationalComponentAssigner>(),
-                    cache,
-                    new RelationalSceneAssignmentOptions(includeInactive: true)
-                );
-                entryPoint.Initialize();
-                yield return null;
-
-                Assert.That(
-                    assigner.CallCount,
-                    Is.EqualTo(1),
-                    "Entry point should only process components from the active scene"
-                );
-                Assert.That(
-                    assigner.LastComponent,
-                    Is.SameAs(testerA),
-                    "Active scene tester should be assigned"
-                );
-            }
-            finally
-            {
-                if (cache != null)
-                {
-                    UnityEngine.Object.DestroyImmediate(cache);
-                }
-            }
+            Assert.That(
+                assigner.CallCount,
+                Is.EqualTo(1),
+                "Entry point should only process components from the active scene"
+            );
+            Assert.That(
+                assigner.LastComponent,
+                Is.SameAs(testerA),
+                "Active scene tester should be assigned"
+            );
         }
 
         [Test]
@@ -348,61 +311,87 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
         public System.Collections.IEnumerator EntryPointRespectsIncludeInactiveOption()
         {
             AttributeMetadataCache cache = CreateCacheFor(typeof(VContainerRelationalTester));
-            try
-            {
-                Scene scene = SceneManager.CreateScene("VContainerTestScene_Inactive");
-                SceneManager.SetActiveScene(scene);
-                ContainerBuilder builder = new();
-                builder.RegisterInstance(cache).AsSelf();
-                RecordingAssigner assigner = new RecordingAssigner();
-                builder.RegisterInstance(assigner).As<IRelationalComponentAssigner>();
-                IObjectResolver resolver = builder.Build();
+            Scene scene = CreateTempScene("VContainerTestScene_Inactive");
+            ContainerBuilder builder = new();
+            builder.RegisterInstance(cache).AsSelf();
+            RecordingAssigner assigner = new RecordingAssigner();
+            builder.RegisterInstance(assigner).As<IRelationalComponentAssigner>();
+            IObjectResolver resolver = builder.Build();
 
-                VContainerRelationalTester tester = CreateHierarchy();
-                tester.gameObject.SetActive(false);
-                GameObject rootObj = tester.transform.root.gameObject;
-                SceneManager.MoveGameObjectToScene(rootObj, scene);
-                yield return null;
+            VContainerRelationalTester tester = CreateHierarchy();
+            tester.gameObject.SetActive(false);
+            GameObject rootObj = tester.transform.root.gameObject;
+            SceneManager.MoveGameObjectToScene(rootObj, scene);
+            yield return null;
 
-                RelationalComponentEntryPoint disabledEntryPoint =
-                    new RelationalComponentEntryPoint(
-                        resolver.Resolve<IRelationalComponentAssigner>(),
-                        cache,
-                        new RelationalSceneAssignmentOptions(includeInactive: false)
-                    );
-                disabledEntryPoint.Initialize();
-                Assert.IsTrue(
-                    tester.parentBody == null,
-                    "Disabled option should skip inactive components"
-                );
-                Assert.IsTrue(
-                    tester.childCollider == null,
-                    "Disabled option should skip inactive components"
-                );
+            RelationalComponentEntryPoint disabledEntryPoint = new RelationalComponentEntryPoint(
+                resolver.Resolve<IRelationalComponentAssigner>(),
+                cache,
+                new RelationalSceneAssignmentOptions(includeInactive: false)
+            );
+            disabledEntryPoint.Initialize();
+            Assert.IsTrue(
+                tester.parentBody == null,
+                "Disabled option should skip inactive components"
+            );
+            Assert.IsTrue(
+                tester.childCollider == null,
+                "Disabled option should skip inactive components"
+            );
 
-                RelationalComponentEntryPoint enabledEntryPoint = new RelationalComponentEntryPoint(
-                    resolver.Resolve<IRelationalComponentAssigner>(),
-                    cache,
-                    new RelationalSceneAssignmentOptions(includeInactive: true)
-                );
-                enabledEntryPoint.Initialize();
-                yield return null;
-                Assert.IsTrue(
-                    tester.parentBody != null,
-                    "Enabled option should include inactive components"
-                );
-                Assert.IsTrue(
-                    tester.childCollider != null,
-                    "Enabled option should include inactive components"
-                );
-            }
-            finally
-            {
-                if (cache != null)
-                {
-                    UnityEngine.Object.DestroyImmediate(cache);
-                }
-            }
+            RelationalComponentEntryPoint enabledEntryPoint = new RelationalComponentEntryPoint(
+                resolver.Resolve<IRelationalComponentAssigner>(),
+                cache,
+                new RelationalSceneAssignmentOptions(includeInactive: true)
+            );
+            enabledEntryPoint.Initialize();
+            yield return null;
+            Assert.IsTrue(
+                tester.parentBody != null,
+                "Enabled option should include inactive components"
+            );
+            Assert.IsTrue(
+                tester.childCollider != null,
+                "Enabled option should include inactive components"
+            );
+        }
+
+        [UnityTest]
+        public System.Collections.IEnumerator EntryPointUsesMultiPassWhenConfigured()
+        {
+            AttributeMetadataCache cache = CreateCacheFor(typeof(VContainerRelationalTester));
+            Scene scene = CreateTempScene("VContainerMultiPassScene");
+            ContainerBuilder builder = new();
+            builder.RegisterInstance(cache).AsSelf();
+            RecordingAssigner assigner = new RecordingAssigner();
+            builder.RegisterInstance(assigner).As<IRelationalComponentAssigner>();
+            IObjectResolver resolver = builder.Build();
+
+            VContainerRelationalTester tester = CreateHierarchy();
+            SceneManager.MoveGameObjectToScene(tester.transform.root.gameObject, scene);
+            yield return null;
+
+            RelationalComponentEntryPoint entryPoint = new RelationalComponentEntryPoint(
+                resolver.Resolve<IRelationalComponentAssigner>(),
+                cache,
+                new RelationalSceneAssignmentOptions(
+                    includeInactive: true,
+                    useSinglePassScan: false
+                )
+            );
+            entryPoint.Initialize();
+            yield return null;
+
+            Assert.That(
+                assigner.CallCount,
+                Is.EqualTo(1),
+                "Multi-pass configuration should still assign each relational component once"
+            );
+            Assert.That(
+                assigner.LastComponent,
+                Is.SameAs(tester),
+                "Multi-pass configuration should target the tracked tester"
+            );
         }
 
         private VContainerRelationalTester CreateHierarchy()
@@ -421,16 +410,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
             return tester;
         }
 
-        private GameObject Track(GameObject gameObject)
+        private AttributeMetadataCache CreateCacheFor(Type componentType)
         {
-            _spawned.Add(gameObject);
-            return gameObject;
-        }
-
-        private static AttributeMetadataCache CreateCacheFor(Type componentType)
-        {
-            AttributeMetadataCache cache =
-                ScriptableObject.CreateInstance<AttributeMetadataCache>();
+            AttributeMetadataCache cache = Track(
+                ScriptableObject.CreateInstance<AttributeMetadataCache>()
+            );
 
             AttributeMetadataCache.RelationalFieldMetadata[] fields =
             {

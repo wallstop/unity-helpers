@@ -40,7 +40,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils
 #if UNITY_EDITOR
             if (!Application.isPlaying)
             {
-                // In EditMode tests, use EditorSceneManager as CreateScene is play-mode only
                 scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             }
             else
@@ -55,6 +54,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils
             {
                 SceneManager.SetActiveScene(scene);
             }
+
             _trackedScenes.Add(scene);
             return scene;
         }
@@ -102,6 +102,27 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils
                     {
                         try
                         {
+                            if (SceneManager.GetActiveScene() == scene)
+                            {
+                                int count = SceneManager.sceneCount;
+                                for (int j = 0; j < count; j++)
+                                {
+                                    Scene candidate = SceneManager.GetSceneAt(j);
+                                    if (
+                                        candidate.IsValid()
+                                        && candidate.isLoaded
+                                        && candidate != scene
+                                    )
+                                    {
+                                        SceneManager.SetActiveScene(candidate);
+                                        break;
+                                    }
+                                }
+                                if (SceneManager.sceneCount == 1)
+                                {
+                                    continue;
+                                }
+                            }
                             EditorSceneManager.CloseScene(scene, true);
                         }
                         catch { }
@@ -170,6 +191,27 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils
                     {
                         try
                         {
+                            if (SceneManager.GetActiveScene() == scene)
+                            {
+                                int count = SceneManager.sceneCount;
+                                for (int j = 0; j < count; j++)
+                                {
+                                    Scene candidate = SceneManager.GetSceneAt(j);
+                                    if (
+                                        candidate.IsValid()
+                                        && candidate.isLoaded
+                                        && candidate != scene
+                                    )
+                                    {
+                                        SceneManager.SetActiveScene(candidate);
+                                        break;
+                                    }
+                                }
+                                if (SceneManager.sceneCount == 1)
+                                {
+                                    continue;
+                                }
+                            }
                             EditorSceneManager.CloseScene(scene, true);
                         }
                         catch { }

@@ -11,8 +11,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Integrations.Zenject;
     using WallstopStudios.UnityHelpers.Tags;
+    using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
-    public sealed class RelationalComponentsZenjectTests
+    public sealed class RelationalComponentsZenjectTests : CommonTestBase
     {
         private DiContainer Container;
 
@@ -20,21 +21,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
         public void Setup()
         {
             Container = new DiContainer();
-        }
-
-        private readonly List<GameObject> _spawned = new();
-
-        [TearDown]
-        public void Cleanup()
-        {
-            for (int i = 0; i < _spawned.Count; i++)
-            {
-                if (_spawned[i] != null)
-                {
-                    UnityEngine.Object.DestroyImmediate(_spawned[i]);
-                }
-            }
-            _spawned.Clear();
         }
 
         [Test]
@@ -88,126 +74,126 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
         public System.Collections.IEnumerator SceneInitializerAssignsActiveSceneComponents()
         {
             AttributeMetadataCache cache = CreateCacheFor(typeof(ZenjectRelationalTester));
-            try
-            {
-                Container.BindInstance(cache);
-                RecordingAssigner assigner = new();
-                Container.Bind<IRelationalComponentAssigner>().FromInstance(assigner);
-                Container.BindInstance(RelationalSceneAssignmentOptions.Default);
-                Container.BindInterfacesTo<RelationalComponentSceneInitializer>().AsSingle();
+            Container.BindInstance(cache);
+            RecordingAssigner assigner = new();
+            Container.Bind<IRelationalComponentAssigner>().FromInstance(assigner);
+            Container.BindInstance(RelationalSceneAssignmentOptions.Default);
+            Container.BindInterfacesTo<RelationalComponentSceneInitializer>().AsSingle();
 
-                Scene scene = SceneManager.CreateScene("ZenjectTestScene_Active");
-                SceneManager.SetActiveScene(scene);
-                ZenjectRelationalTester tester = CreateHierarchy();
-                GameObject root = tester.transform.root.gameObject;
-                SceneManager.MoveGameObjectToScene(root, scene);
-                yield return null;
+            Scene scene = CreateTempScene("ZenjectTestScene_Active");
+            ZenjectRelationalTester tester = CreateHierarchy();
+            GameObject root = tester.transform.root.gameObject;
+            SceneManager.MoveGameObjectToScene(root, scene);
+            yield return null;
 
-                IInitializable initializer = Container.Resolve<IInitializable>();
-                initializer.Initialize();
-                yield return null;
+            IInitializable initializer = Container.Resolve<IInitializable>();
+            initializer.Initialize();
+            yield return null;
 
-                Assert.That(
-                    assigner.CallCount,
-                    Is.EqualTo(1),
-                    "Initializer should invoke assigner exactly once for the tester component"
-                );
-                Assert.That(
-                    assigner.LastComponent,
-                    Is.SameAs(tester),
-                    "Initializer should target the created tester instance"
-                );
-            }
-            finally
-            {
-                if (cache != null)
-                {
-                    UnityEngine.Object.DestroyImmediate(cache);
-                }
-            }
+            Assert.That(
+                assigner.CallCount,
+                Is.EqualTo(1),
+                "Initializer should invoke assigner exactly once for the tester component"
+            );
+            Assert.That(
+                assigner.LastComponent,
+                Is.SameAs(tester),
+                "Initializer should target the created tester instance"
+            );
         }
 
         [UnityTest]
         public System.Collections.IEnumerator SceneInitializerSkipsInactiveWhenOptionDisabled()
         {
             AttributeMetadataCache cache = CreateCacheFor(typeof(ZenjectRelationalTester));
-            try
-            {
-                Container.BindInstance(cache);
-                RecordingAssigner assigner = new();
-                Container.Bind<IRelationalComponentAssigner>().FromInstance(assigner);
-                Container.BindInstance(new RelationalSceneAssignmentOptions(false));
-                Container.BindInterfacesTo<RelationalComponentSceneInitializer>().AsSingle();
+            Container.BindInstance(cache);
+            RecordingAssigner assigner = new();
+            Container.Bind<IRelationalComponentAssigner>().FromInstance(assigner);
+            Container.BindInstance(new RelationalSceneAssignmentOptions(false));
+            Container.BindInterfacesTo<RelationalComponentSceneInitializer>().AsSingle();
 
-                Scene scene = SceneManager.CreateScene("ZenjectTestScene_InactiveFalse");
-                SceneManager.SetActiveScene(scene);
-                ZenjectRelationalTester tester = CreateHierarchy();
-                tester.gameObject.SetActive(false);
-                GameObject root = tester.transform.root.gameObject;
-                SceneManager.MoveGameObjectToScene(root, scene);
-                yield return null;
+            Scene scene = CreateTempScene("ZenjectTestScene_InactiveFalse");
+            ZenjectRelationalTester tester = CreateHierarchy();
+            tester.gameObject.SetActive(false);
+            GameObject root = tester.transform.root.gameObject;
+            SceneManager.MoveGameObjectToScene(root, scene);
+            yield return null;
 
-                IInitializable initializer = Container.Resolve<IInitializable>();
-                initializer.Initialize();
-                yield return null;
+            IInitializable initializer = Container.Resolve<IInitializable>();
+            initializer.Initialize();
+            yield return null;
 
-                Assert.That(
-                    assigner.CallCount,
-                    Is.EqualTo(0),
-                    "Initializer should skip inactive tester when IncludeInactive is false"
-                );
-            }
-            finally
-            {
-                if (cache != null)
-                {
-                    UnityEngine.Object.DestroyImmediate(cache);
-                }
-            }
+            Assert.That(
+                assigner.CallCount,
+                Is.EqualTo(0),
+                "Initializer should skip inactive tester when IncludeInactive is false"
+            );
         }
 
         [UnityTest]
         public System.Collections.IEnumerator SceneInitializerIncludesInactiveWhenOptionEnabled()
         {
             AttributeMetadataCache cache = CreateCacheFor(typeof(ZenjectRelationalTester));
-            try
-            {
-                Container.BindInstance(cache);
-                RecordingAssigner assigner = new();
-                Container.Bind<IRelationalComponentAssigner>().FromInstance(assigner);
-                Container.BindInstance(new RelationalSceneAssignmentOptions(true));
-                Container.BindInterfacesTo<RelationalComponentSceneInitializer>().AsSingle();
+            Container.BindInstance(cache);
+            RecordingAssigner assigner = new();
+            Container.Bind<IRelationalComponentAssigner>().FromInstance(assigner);
+            Container.BindInstance(new RelationalSceneAssignmentOptions(true));
+            Container.BindInterfacesTo<RelationalComponentSceneInitializer>().AsSingle();
 
-                Scene scene = SceneManager.CreateScene("ZenjectTestScene_InactiveTrue");
-                SceneManager.SetActiveScene(scene);
-                ZenjectRelationalTester tester = CreateHierarchy();
-                tester.gameObject.SetActive(false);
-                GameObject root = tester.transform.root.gameObject;
-                SceneManager.MoveGameObjectToScene(root, scene);
-                yield return null;
+            Scene scene = CreateTempScene("ZenjectTestScene_InactiveTrue");
+            ZenjectRelationalTester tester = CreateHierarchy();
+            tester.gameObject.SetActive(false);
+            GameObject root = tester.transform.root.gameObject;
+            SceneManager.MoveGameObjectToScene(root, scene);
+            yield return null;
 
-                IInitializable initializer = Container.Resolve<IInitializable>();
-                initializer.Initialize();
-                yield return null;
+            IInitializable initializer = Container.Resolve<IInitializable>();
+            initializer.Initialize();
+            yield return null;
 
-                Assert.That(
-                    assigner.CallCount,
-                    Is.EqualTo(1),
-                    "Initializer should include inactive tester when IncludeInactive is true"
-                );
-                Assert.That(
-                    assigner.LastComponent,
-                    Is.SameAs(tester),
-                    "Initializer should target the inactive tester component"
-                );
-            }
-            finally
-            {
-                if (cache != null)
-                {
-                    UnityEngine.Object.DestroyImmediate(cache);
-                }
-            }
+            Assert.That(
+                assigner.CallCount,
+                Is.EqualTo(1),
+                "Initializer should include inactive tester when IncludeInactive is true"
+            );
+            Assert.That(
+                assigner.LastComponent,
+                Is.SameAs(tester),
+                "Initializer should target the inactive tester component"
+            );
+        }
+
+        [UnityTest]
+        public System.Collections.IEnumerator SceneInitializerUsesMultiPassWhenConfigured()
+        {
+            AttributeMetadataCache cache = CreateCacheFor(typeof(ZenjectRelationalTester));
+            Container.BindInstance(cache);
+            RecordingAssigner assigner = new();
+            Container.Bind<IRelationalComponentAssigner>().FromInstance(assigner);
+            Container.BindInstance(
+                new RelationalSceneAssignmentOptions(true, useSinglePassScan: false)
+            );
+            Container.BindInterfacesTo<RelationalComponentSceneInitializer>().AsSingle();
+
+            Scene scene = CreateTempScene("ZenjectMultiPassScene");
+            ZenjectRelationalTester tester = CreateHierarchy();
+            SceneManager.MoveGameObjectToScene(tester.transform.root.gameObject, scene);
+            yield return null;
+
+            IInitializable initializer = Container.Resolve<IInitializable>();
+            initializer.Initialize();
+            yield return null;
+
+            Assert.That(
+                assigner.CallCount,
+                Is.EqualTo(1),
+                "Multi-pass configuration should assign each relational component once"
+            );
+            Assert.That(
+                assigner.LastComponent,
+                Is.SameAs(tester),
+                "Multi-pass configuration should target the tester in the active scene"
+            );
         }
 
         [Test]
@@ -229,46 +215,35 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
         public System.Collections.IEnumerator SceneInitializerIgnoresNonActiveScenes()
         {
             AttributeMetadataCache cache = CreateCacheFor(typeof(ZenjectRelationalTester));
-            try
-            {
-                RecordingAssigner assigner = new();
-                Container.BindInstance(cache);
-                Container.Bind<IRelationalComponentAssigner>().FromInstance(assigner);
-                Container.BindInstance(new RelationalSceneAssignmentOptions(true));
-                Container.BindInterfacesTo<RelationalComponentSceneInitializer>().AsSingle();
+            RecordingAssigner assigner = new();
+            Container.BindInstance(cache);
+            Container.Bind<IRelationalComponentAssigner>().FromInstance(assigner);
+            Container.BindInstance(new RelationalSceneAssignmentOptions(true));
+            Container.BindInterfacesTo<RelationalComponentSceneInitializer>().AsSingle();
 
-                Scene active = SceneManager.CreateScene("ZenjectActiveScene_Sep");
-                SceneManager.SetActiveScene(active);
-                ZenjectRelationalTester testerA = CreateHierarchy();
-                SceneManager.MoveGameObjectToScene(testerA.transform.root.gameObject, active);
+            Scene active = CreateTempScene("ZenjectActiveScene_Sep");
+            ZenjectRelationalTester testerA = CreateHierarchy();
+            SceneManager.MoveGameObjectToScene(testerA.transform.root.gameObject, active);
 
-                Scene secondary = SceneManager.CreateScene("ZenjectSecondaryScene_Sep");
-                ZenjectRelationalTester testerB = CreateHierarchy();
-                SceneManager.MoveGameObjectToScene(testerB.transform.root.gameObject, secondary);
-                yield return null;
+            Scene secondary = CreateTempScene("ZenjectSecondaryScene_Sep", setActive: false);
+            ZenjectRelationalTester testerB = CreateHierarchy();
+            SceneManager.MoveGameObjectToScene(testerB.transform.root.gameObject, secondary);
+            yield return null;
 
-                IInitializable initializer = Container.Resolve<IInitializable>();
-                initializer.Initialize();
-                yield return null;
+            IInitializable initializer = Container.Resolve<IInitializable>();
+            initializer.Initialize();
+            yield return null;
 
-                Assert.That(
-                    assigner.CallCount,
-                    Is.EqualTo(1),
-                    "Initializer should only process components from the active scene"
-                );
-                Assert.That(
-                    assigner.LastComponent,
-                    Is.SameAs(testerA),
-                    "Active scene tester should be assigned"
-                );
-            }
-            finally
-            {
-                if (cache != null)
-                {
-                    UnityEngine.Object.DestroyImmediate(cache);
-                }
-            }
+            Assert.That(
+                assigner.CallCount,
+                Is.EqualTo(1),
+                "Initializer should only process components from the active scene"
+            );
+            Assert.That(
+                assigner.LastComponent,
+                Is.SameAs(testerA),
+                "Active scene tester should be assigned"
+            );
         }
 
         [Test]
@@ -467,16 +442,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
             return tester;
         }
 
-        private GameObject Track(GameObject gameObject)
+        private AttributeMetadataCache CreateCacheFor(Type componentType)
         {
-            _spawned.Add(gameObject);
-            return gameObject;
-        }
-
-        private static AttributeMetadataCache CreateCacheFor(Type componentType)
-        {
-            AttributeMetadataCache cache =
-                ScriptableObject.CreateInstance<AttributeMetadataCache>();
+            AttributeMetadataCache cache = Track(
+                ScriptableObject.CreateInstance<AttributeMetadataCache>()
+            );
 
             AttributeMetadataCache.RelationalFieldMetadata[] fields =
             {

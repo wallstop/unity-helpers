@@ -8,8 +8,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
     using UnityEngine.Pool;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Integrations.VContainer;
+    using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
-    public sealed class RelationalObjectPoolsVContainerTests
+    public sealed class RelationalObjectPoolsVContainerTests : CommonTestBase
     {
         [Test]
         public void ComponentPoolGetWithRelationsInjectsAndAssigns()
@@ -20,12 +21,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
             ObjectPool<TestComponent> pool = RelationalObjectPools.CreatePoolWithRelations(
                 createFunc: () =>
                 {
-                    GameObject go = new GameObject("PooledRoot");
+                    GameObject go = Track(new GameObject("PooledRoot"));
                     go.AddComponent<Rigidbody>();
-                    GameObject middle = new GameObject("PooledMiddle");
+                    GameObject middle = Track(new GameObject("PooledMiddle"));
                     middle.transform.SetParent(go.transform);
                     TestComponent tester = middle.AddComponent<TestComponent>();
-                    GameObject child = new GameObject("PooledChild");
+                    GameObject child = Track(new GameObject("PooledChild"));
                     child.transform.SetParent(middle.transform);
                     child.AddComponent<CapsuleCollider>();
                     return tester;
@@ -38,9 +39,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
             Assert.IsTrue(comp.parentBody != null);
             Assert.IsTrue(comp.childCollider != null);
 
-            GameObject root = comp.transform.root.gameObject;
             pool.Release(comp);
-            UnityEngine.Object.DestroyImmediate(root);
+            pool.Clear();
         }
 
         [Test]
@@ -49,12 +49,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
             ContainerBuilder builder = new ContainerBuilder();
             IObjectResolver resolver = builder.Build();
 
-            GameObject prefab = new GameObject("PrefabRoot");
+            GameObject prefab = Track(new GameObject("PrefabRoot"));
             prefab.AddComponent<Rigidbody>();
-            GameObject mid = new GameObject("PrefabMiddle");
+            GameObject mid = Track(new GameObject("PrefabMiddle"));
             mid.transform.SetParent(prefab.transform);
             TestComponent prefabComp = mid.AddComponent<TestComponent>();
-            GameObject child = new GameObject("PrefabChild");
+            GameObject child = Track(new GameObject("PrefabChild"));
             child.transform.SetParent(mid.transform);
             child.AddComponent<CapsuleCollider>();
 
@@ -62,7 +62,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
                 prefab
             );
 
-            GameObject instance = pool.GetWithRelations(resolver);
+            GameObject instance = Track(pool.GetWithRelations(resolver));
             TestComponent comp = instance.GetComponentInChildren<TestComponent>(true);
 
             Assert.IsTrue(comp != null);
@@ -70,8 +70,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
             Assert.IsTrue(comp.childCollider != null);
 
             pool.Release(instance);
-            UnityEngine.Object.DestroyImmediate(prefab);
-            UnityEngine.Object.DestroyImmediate(instance);
+            pool.Clear();
         }
 
         private sealed class TestComponent : MonoBehaviour

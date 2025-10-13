@@ -6,6 +6,7 @@ namespace WallstopStudios.UnityHelpers.Tests.TestUtils
     using System.Threading.Tasks;
     using NUnit.Framework;
     using UnityEngine;
+    using UnityEngine.SceneManagement;
     using UnityEngine.TestTools;
     using Object = UnityEngine.Object;
 
@@ -70,6 +71,93 @@ namespace WallstopStudios.UnityHelpers.Tests.TestUtils
                 _trackedAsyncDisposals.Add(producer);
             }
             return producer;
+        }
+
+        /// <summary>
+        /// Creates a temporary scene that is automatically unloaded during teardown.
+        /// </summary>
+        /// <param name="name">Scene name.</param>
+        /// <param name="setActive">Whether to set the scene as active immediately.</param>
+        protected Scene CreateTempScene(string name, bool setActive = true)
+        {
+            Scene previousActive = SceneManager.GetActiveScene();
+            Scene scene = SceneManager.CreateScene(name);
+
+            if (setActive)
+            {
+                SceneManager.SetActiveScene(scene);
+            }
+
+            TrackAsyncDisposal(async () =>
+            {
+                if (!scene.IsValid())
+                {
+                    return;
+                }
+
+                Scene currentActive = SceneManager.GetActiveScene();
+                if (currentActive == scene)
+                {
+                    bool restored = false;
+                    if (
+                        previousActive.IsValid()
+                        && previousActive.isLoaded
+                        && previousActive != scene
+                    )
+                    {
+                        SceneManager.SetActiveScene(previousActive);
+                        restored = true;
+                    }
+                    else
+                    {
+                        int count = SceneManager.sceneCount;
+                        for (int i = 0; i < count; i++)
+                        {
+                            Scene candidate = SceneManager.GetSceneAt(i);
+                            if (!candidate.IsValid() || !candidate.isLoaded || candidate == scene)
+                            {
+                                continue;
+                            }
+
+                            SceneManager.SetActiveScene(candidate);
+                            restored = true;
+                            break;
+                        }
+                    }
+
+                    if (!restored)
+                    {
+                        Scene fallback = SceneManager.CreateScene("RuntimeTestFallbackScene");
+                        SceneManager.SetActiveScene(fallback);
+                        TrackAsyncDisposal(async () =>
+                        {
+                            AsyncOperation unloadFallback = SceneManager.UnloadSceneAsync(fallback);
+                            if (unloadFallback == null)
+                            {
+                                return;
+                            }
+                            while (!unloadFallback.isDone)
+                            {
+                                await Task.Yield();
+                            }
+                            return;
+                        });
+                    }
+                }
+
+                AsyncOperation unload = SceneManager.UnloadSceneAsync(scene);
+                if (unload == null)
+                {
+                    return;
+                }
+
+                while (!unload.isDone)
+                {
+                    await Task.Yield();
+                }
+            });
+
+            return scene;
         }
 
         /// <summary>
