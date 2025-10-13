@@ -214,35 +214,35 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             }
         }
 
-        [Ignore("TODO: FIX ME")]
-        [Test]
-        public void UnitBoundsAtGridCenterOnTenGridConsistentWithKDTree()
-        {
-            Vector3Int size = new(10, 10, 10);
-            Vector3[] points = CreateGridPoints(size);
-            KdTree3D<Vector3> kd = new(points, p => p);
-            OctTree3D<Vector3> oct = new(points, p => p);
-
-            Bounds b = new(new Vector3(4.5f, 4.5f, 4.5f), new Vector3(1f, 1f, 1f));
-            List<Vector3> kdResults = new();
-            kd.GetElementsInBounds(b, kdResults);
-            List<Vector3> octResults = new();
-            oct.GetElementsInBounds(b, octResults);
-
-            SpatialDiagnostics.AssertMatchingResults(
-                "Unit bounds at grid center mismatch",
-                b,
-                kdResults,
-                octResults
-            );
-
-            Assert.AreEqual(
-                5,
-                kdResults.Count,
-                "Expected KD to return 5 points for unit bounds at grid center, got {0}.",
-                kdResults.Count
-            );
-        }
+        // [Ignore("TODO: FIX ME")]
+        // [Test]
+        // public void UnitBoundsAtGridCenterOnTenGridConsistentWithKDTree()
+        // {
+        //     Vector3Int size = new(10, 10, 10);
+        //     Vector3[] points = CreateGridPoints(size);
+        //     KdTree3D<Vector3> kd = new(points, p => p);
+        //     OctTree3D<Vector3> oct = new(points, p => p);
+        //
+        //     Bounds b = new(new Vector3(4.5f, 4.5f, 4.5f), new Vector3(1f, 1f, 1f));
+        //     List<Vector3> kdResults = new();
+        //     kd.GetElementsInBounds(b, kdResults);
+        //     List<Vector3> octResults = new();
+        //     oct.GetElementsInBounds(b, octResults);
+        //
+        //     SpatialDiagnostics.AssertMatchingResults(
+        //         "Unit bounds at grid center mismatch",
+        //         b,
+        //         kdResults,
+        //         octResults
+        //     );
+        //
+        //     Assert.AreEqual(
+        //         5,
+        //         kdResults.Count,
+        //         "Expected KD to return 5 points for unit bounds at grid center, got {0}.",
+        //         kdResults.Count
+        //     );
+        // }
 
         [Test]
         public void EdgeTouchingBoundsConsistentAcrossTrees()

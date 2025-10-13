@@ -612,7 +612,9 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
         {
             switch (serializationType)
             {
+#pragma warning disable CS0618 // Type or member is obsolete
                 case SerializationType.SystemBinary:
+#pragma warning restore CS0618 // Type or member is obsolete
                 {
                     return BinaryDeserialize<T>(serialized);
                 }
@@ -654,7 +656,9 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
         {
             switch (serializationType)
             {
+#pragma warning disable CS0618 // Type or member is obsolete
                 case SerializationType.SystemBinary:
+#pragma warning restore CS0618 // Type or member is obsolete
                 {
                     return BinarySerialize(instance);
                 }
@@ -693,7 +697,9 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
         {
             switch (serializationType)
             {
+#pragma warning disable CS0618 // Type or member is obsolete
                 case SerializationType.SystemBinary:
+#pragma warning restore CS0618 // Type or member is obsolete
                 {
                     return BinarySerialize(instance, ref buffer);
                 }
