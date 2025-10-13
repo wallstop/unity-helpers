@@ -301,12 +301,10 @@ Based on your needs:
 ### For Gameplay Programmers
 
 1. **Master the Effects System** - Data-driven buffs/debuffs
-
    - Start: [Effects System TL;DR](EFFECTS_SYSTEM.md#tldr--what-problem-this-solves)
    - Why: Build status effects without writing repetitive code
 
 2. **Use Spatial Trees for AI** - Efficient awareness systems
-
    - Start: [Spatial Trees 2D Guide](SPATIAL_TREES_2D_GUIDE.md)
    - Why: Make enemy AI scale to hundreds of units
 
@@ -317,12 +315,10 @@ Based on your needs:
 ### For Tools/Editor Programmers
 
 1. **Explore Editor Tools** - Automate your asset pipeline
-
    - Start: [Editor Tools Guide](EDITOR_TOOLS_GUIDE.md)
    - Why: 20+ tools for sprites, animations, validation, and more
 
 2. **Use ScriptableObject Singletons** - Global settings management
-
    - Start: [Singletons Guide](SINGLETONS.md)
    - Why: Auto-created, ODIN-compatible config assets
 
@@ -333,12 +329,10 @@ Based on your needs:
 ### For Performance-Focused Developers
 
 1. **Study Data Structures** - Choose the right container
-
    - Start: [Data Structures Guide](DATA_STRUCTURES.md)
    - Why: Heaps, tries, sparse sets, and more with clear trade-offs
 
 2. **Use Advanced Math Helpers** - Avoid common pitfalls
-
    - Start: [Math & Extensions](MATH_AND_EXTENSIONS.md)
    - Why: Robust modulo, geometry, color averaging, and more
 

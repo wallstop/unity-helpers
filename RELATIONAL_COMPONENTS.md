@@ -239,29 +239,23 @@ Examples:
 ## Common Options (All Attributes)
 
 - `Optional` (default: false)
-
   - If `false`, logs a descriptive error when no match is found
   - If `true`, suppresses the error (field remains null/empty)
 
 - `IncludeInactive` (default: true)
-
   - If `true`, includes disabled components and inactive GameObjects
   - If `false`, only assigns enabled components on active-in-hierarchy objects
 
 - `SkipIfAssigned` (default: false)
-
   - If `true`, preserves existing non-null value (single) or non-empty collection
 
 - `MaxCount` (default: 0 = unlimited)
-
   - Applies to arrays, lists, and hash sets; ignored for single fields
 
 - `TagFilter`
-
   - Exact tag match using `CompareTag`
 
 - `NameFilter`
-
   - Case-sensitive substring match on the GameObject name
 
 - `AllowInterfaces` (default: true)
@@ -438,26 +432,21 @@ Notes
 ## Troubleshooting
 
 - Fields remain null in the Inspector
-
   - Expected in Edit Mode. These attributes assign at runtime only and are not serialized. Check at runtime or log values.
 
 - Nothing assigned at runtime
-
   - Ensure you call `AssignRelationalComponents()` or the specific `Assign*Components()` in `Awake()` or `OnEnable()`.
   - Verify filters: `TagFilter` must match an existing tag; `NameFilter` is case-sensitive.
   - Check depth limits: `OnlyAncestors`/`OnlyDescendants` may exclude self; `MaxDepth` may be too small.
   - For interface/base type fields, confirm `AllowInterfaces = true` (default) or use a concrete type.
 
 - Inactive or disabled components unexpectedly included
-
   - These are included by default. Set `IncludeInactive = false` to restrict to enabled components on active GameObjects.
 
 - Too many results or large allocations
-
   - Cap with `MaxCount` and/or `MaxDepth`. Prefer `List<T>` or `HashSet<T>` when you plan to mutate the collection after assignment.
 
 - Child search doesn’t find the nearest match you expect
-
   - Children are traversed breadth-first. If you want the nearest by hierarchy level, this is correct; if you need a custom order, gather a collection and sort manually.
 
 - I only need one category (e.g., parents)

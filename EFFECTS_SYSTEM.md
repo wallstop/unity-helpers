@@ -219,12 +219,10 @@ Q: When should I use tags vs checking stats?
 ## Troubleshooting
 
 - Attribute name doesn’t apply
-
   - Ensure the `attribute` field matches a public/private `Attribute` field name on an `AttributesComponent` subclass.
   - Regenerate the Attribute Metadata Cache to update editor dropdowns.
 
 - Effect didn’t clean up cosmetics
-
   - Confirm `RequiresInstance` is set correctly and components either clean up themselves (`CleansUpSelf`) or are destroyed by `EffectHandler`.
 
 - Duration didn’t refresh on reapply
