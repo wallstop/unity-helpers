@@ -168,6 +168,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
                     typeof(Rigidbody).AssemblyQualifiedName,
                     false
                 ),
+                new AttributeMetadataCache.RelationalFieldMetadata(
+                    nameof(TestComponent.childCollider),
+                    AttributeMetadataCache.RelationalAttributeKind.Child,
+                    AttributeMetadataCache.FieldKind.Single,
+                    typeof(CapsuleCollider).AssemblyQualifiedName,
+                    false
+                ),
             };
             AttributeMetadataCache.RelationalTypeMetadata[] relational =
             {
@@ -207,7 +214,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
             yield return null;
 
             listener.OnSceneLoaded(additive, LoadSceneMode.Additive);
-            yield return null;
+            yield return new WaitForSecondsRealtime(0.1f);
 
             Assert.IsTrue(comp.parentBody != null);
         }
