@@ -11,4 +11,3 @@ What it shows
 
 - `PcgRandom` construction with a seed and sampling `Next`, `NextFloat`, `NextGaussian`.
 - `NextOf` to pick elements from lists.
-

@@ -12,4 +12,3 @@ What it shows
 - `QuadTree2D<T>` created from points with a transformer and radius query.
 - `KdTree2D<T>` approximate nearest neighbors.
 - `SpatialHash2D<T>` bucketed insertion and radius query.
-

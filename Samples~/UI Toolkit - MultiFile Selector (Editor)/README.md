@@ -11,4 +11,3 @@ What it shows
 
 - Creating and adding `MultiFileSelectorElement` to an EditorWindow.
 - Hooks for `OnFilesSelected` and `OnCancelled`.
-

@@ -19,4 +19,3 @@ Notes
 
 - You can adjust filters on attributes: `Optional`, `IncludeInactive`, `TagFilter`, `NameFilter`, and `MaxCount` for collections.
 - For DI integrations, see the separate VContainer/Zenject samples.
-

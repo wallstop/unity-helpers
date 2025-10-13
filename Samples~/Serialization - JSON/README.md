@@ -12,4 +12,3 @@ What it shows
 - `Serializer.JsonStringify` and `Serializer.JsonDeserialize<T>` for text workflows.
 - `Serializer.JsonSerialize` and `Serializer.JsonDeserialize<T>(byte[])` for UTF-8 bytes.
 - Using `Serializer.CreateFastJsonOptions()` for hot paths.
-

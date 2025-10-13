@@ -7,7 +7,6 @@
 1. **Dependencies** (injected via constructor/properties/fields)
 2. **Hierarchy references** (SpriteRenderer, Rigidbody2D, child colliders, etc.)
 
-
 Doing this manually means writing boilerplate in every component.
 
 **The Solution:** Unity Helpers' Zenject integration automatically wires up relational component fields **right after** DI injection completes - giving you the best of both worlds with zero extra code.
@@ -232,6 +231,7 @@ Container.BindFactory<Enemy, EnemyFactory>()
 The installer component provides these settings:
 
 **Assign Scene On Initialize** *(default: true)*
+
 - When enabled, automatically wires all scene components with relational attributes after the container builds
 - Disable if you want to manually control when scene wiring happens
 
@@ -283,7 +283,6 @@ Or enable auto-prewarm on the `AttributeMetadataCache` asset:
 
 1. Create: `Assets > Create > Wallstop Studios > Unity Helpers > Attribute Metadata Cache`
 2. Enable **"Prewarm Relational On Load"** in the Inspector
-
 
 ---
 

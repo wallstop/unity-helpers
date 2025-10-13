@@ -11,4 +11,3 @@ What it shows
 
 - Creating a `Canvas` and an `EnhancedImage` at runtime.
 - Setting an HDR tint via `HdrColor` (values > 1).
-
