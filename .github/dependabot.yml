@@ -15,7 +15,6 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
-    versioning-strategy: increase # always move to latest stable that satisfies constraints
     assignees:
       - wallstop
     reviewers:
