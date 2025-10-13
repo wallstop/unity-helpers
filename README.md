@@ -639,7 +639,6 @@ Quaternion rot = random.NextRotation(); // Random rotation
 
 // Distributions
 float gaussian = random.NextGaussian(mean: 0f, stdDev: 1f);
-float triangular = random.NextTriangular(min: 0f, max: 1f, mode: 0.5f);
 
 // Collections
 T item = random.NextOf(collection);     // Random element

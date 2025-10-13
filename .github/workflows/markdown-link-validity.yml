@@ -1,0 +1,32 @@
+name: Markdown Link Validity
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  link-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run lychee link checker (repo-wide)
+        uses: lycheeverse/lychee-action@v2
+        with:
+          # Include fragments ensures anchors are validated
+          args: >-
+            -c .lychee.toml
+            --no-progress
+            --include-fragments
+            --verbose
+            --max-concurrency 12
+            --timeout 20
+            --retry-wait-time 2
+            --max-retries 2
+            "./**/*.md"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
