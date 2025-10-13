@@ -1,4 +1,4 @@
-verbose = true
+verbosity = "info"
 no_progress = true
 max_concurrency = 4
 exclude_mail = true
@@ -10,8 +10,9 @@ retry_wait_time = 2     # seconds between retries
 max_redirects = 10
 user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
 
-# Treat rate-limiting as non-fatal in CI
-accept = [429]
+# Treat successes and rate-limiting as acceptable in CI
+# Accept all 2xx as valid plus 429 (rate limited)
+accept = ["200..=299", 429]
 
 # Only check web links
 scheme = ["https", "http"]
@@ -23,4 +24,3 @@ exclude = [
   "^https?://0\\.0\\.0\\.0",
   "^file://"
 ]
-

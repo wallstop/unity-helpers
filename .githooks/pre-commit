@@ -1,7 +1,12 @@
 #!/usr/bin/env sh
 set -e
 
-# 1) Lint Markdown links via PowerShell script (existing behavior)
+# 0) Ensure .NET tools available (for CSharpier)
+if command -v dotnet >/dev/null 2>&1; then
+  dotnet tool restore >/dev/null 2>&1 || true
+fi
+
+# 1) Lint Markdown link text style (PowerShell script)
 run_pwsh() {
   pwsh -NoProfile -File scripts/lint-doc-links.ps1
 }
@@ -19,7 +24,7 @@ else
   exit 1
 fi
 
-# 2) Format staged Markdown/JSON (incl. asmdef/asmref) with Prettier and re-stage
+# 2) Format staged Markdown/JSON/YAML with Prettier and re-stage
 if ! command -v npx >/dev/null 2>&1; then
   echo "npx is required for formatting. Please install Node.js." >&2
   exit 1
@@ -28,8 +33,9 @@ fi
 STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM)
 
 # Collect file lists
-MD_FILES=$(echo "$STAGED_FILES" | grep -E '\.(md|markdown)$' || true)
-JSON_FILES=$(echo "$STAGED_FILES" | grep -E '\.(json|asmdef|asmref)$' || true)
+MD_FILES=$(echo "$STAGED_FILES" | grep -E '\\.(md|markdown)$' || true)
+JSON_FILES=$(echo "$STAGED_FILES" | grep -E '\\.(json|asmdef|asmref)$' || true)
+YAML_FILES=$(echo "$STAGED_FILES" | grep -E '\\.(yml|yaml)$' || true)
 
 # Prettier format and re-add
 if [ -n "$MD_FILES" ]; then
@@ -42,8 +48,28 @@ if [ -n "$JSON_FILES" ]; then
   echo "$JSON_FILES" | xargs git add
 fi
 
-# 3) Markdown lint for staged Markdown files
+if [ -n "$YAML_FILES" ]; then
+  echo "$YAML_FILES" | xargs npx --no-install prettier --write --log-level warn
+  echo "$YAML_FILES" | xargs git add
+fi
+
+# 3) Format staged C# files with CSharpier (if available) and re-stage
+CS_FILES=$(echo "$STAGED_FILES" | grep -E '\\.cs$' || true)
+if [ -n "$CS_FILES" ] && command -v dotnet >/dev/null 2>&1; then
+  # Use local tool version to format paths; fall back to repo-wide if necessary
+  dotnet tool run csharpier $CS_FILES >/dev/null 2>&1 || dotnet tool run csharpier . >/dev/null 2>&1 || true
+  echo "$CS_FILES" | xargs git add
+fi
+
+# 4) Markdown lint for staged Markdown files
 if [ -n "$MD_FILES" ]; then
   npx --no-install markdownlint $MD_FILES --config .markdownlint.json --ignore-path .markdownlintignore
+fi
+
+# 5) Optional YAML lint on staged YAML (if yamllint present)
+if [ -n "$YAML_FILES" ]; then
+  if command -v yamllint >/dev/null 2>&1; then
+    echo "$YAML_FILES" | xargs yamllint -c .yamllint.yaml
+  fi
 fi
 

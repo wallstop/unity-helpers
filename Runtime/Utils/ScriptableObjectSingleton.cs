@@ -1,7 +1,6 @@
 namespace WallstopStudios.UnityHelpers.Utils
 {
     using System;
-    using System.Linq;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.Helper;

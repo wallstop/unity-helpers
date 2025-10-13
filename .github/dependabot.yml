@@ -1,5 +1,6 @@
 version: 2
 updates:
+  # GitHub Actions workflow updates
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
@@ -9,17 +10,19 @@ updates:
     reviewers:
       - wallstop
 
-  - package-ecosystem: "npm"
+  # NuGet: .csproj/props/targets and .config/dotnet-tools.json (local tools)
+  - package-ecosystem: "nuget"
     directory: "/"
     schedule:
       interval: "daily"
-    versioning-strategy: increase
+    versioning-strategy: increase # always move to latest stable that satisfies constraints
     assignees:
       - wallstop
     reviewers:
       - wallstop
 
-  - package-ecosystem: "nuget"
+  # npm/UPM: package.json at repo root (Unity package manifest)
+  - package-ecosystem: "npm"
     directory: "/"
     schedule:
       interval: "daily"

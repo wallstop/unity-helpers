@@ -4,7 +4,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     using System.Collections;
     using System.Collections.Generic;
     using System.Runtime.CompilerServices;
-    using Extension;
     using Helper;
     using ProtoBuf;
     using UnityEngine;

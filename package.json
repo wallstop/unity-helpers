@@ -84,12 +84,15 @@
     "format:md:check": "prettier --check \"**/*.{md,markdown}\"",
     "format:json": "prettier --write \"**/*.{json,asmdef,asmref}\"",
     "format:json:check": "prettier --check \"**/*.{json,asmdef,asmref}\"",
+    "format:yaml": "prettier --write \"**/*.{yml,yaml}\"",
+    "format:yaml:check": "prettier --check \"**/*.{yml,yaml}\"",
     "lint:markdown": "markdownlint \"**/*.md\" \"**/*.markdown\" --config .markdownlint.json --ignore-path .markdownlintignore",
-    "validate:content": "npm run lint:docs && npm run lint:markdown && npm run format:md:check && npm run format:json:check",
+    "validate:content": "npm run lint:docs && npm run lint:markdown && npm run format:md:check && npm run format:json:check && npm run format:yaml:check",
+    "validate:prepush": "npm run validate:content && npm run eol:check",
     "prepublishOnly": "npm run validate:content"
   },
   "devDependencies": {
     "markdownlint-cli": "^0.40.0",
-    "prettier": "^3.3.3"
+    "prettier": "3.3.3"
   }
 }

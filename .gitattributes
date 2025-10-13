@@ -2,7 +2,7 @@
 # Line endings
 #
 # Enforce CRLF in the working tree for all text files to align with
-# .editorconfig (end_of_line = crlf, charset = utf-8-bom) and avoid
+# .editorconfig (end_of_line = crlf, charset = utf-8 without BOM) and avoid
 # formatter diffs on Linux runners.
 ###############################################################################
 * text=auto eol=crlf

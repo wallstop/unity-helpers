@@ -3,6 +3,7 @@
 ## Why This Integration Matters
 
 **The Problem:** When using dependency injection with Zenject, you often need to wire up both:
+
 1. **Dependencies** (injected via constructor/properties/fields)
 2. **Hierarchy references** (SpriteRenderer, Rigidbody2D, child colliders, etc.)
 
@@ -13,6 +14,7 @@ Doing this manually means writing boilerplate in every component.
 ### ⚡ Quick Example: Before vs After
 
 **Before (Manual):**
+
 ```csharp
 public class Enemy : MonoBehaviour
 {
@@ -36,6 +38,7 @@ public class Enemy : MonoBehaviour
 ```
 
 **After (With Integration):**
+
 ```csharp
 public class Enemy : MonoBehaviour
 {
@@ -228,6 +231,7 @@ Container.BindFactory<Enemy, EnemyFactory>()
 The installer component provides these settings:
 
 **Assign Scene On Initialize** *(default: true)*
+
 - When enabled, automatically wires all scene components with relational attributes after the container builds
 - Disable if you want to manually control when scene wiring happens
 
@@ -276,6 +280,7 @@ Container.BindInterfacesTo<GameBootstrap>().AsSingle();
 ```
 
 Or enable auto-prewarm on the `AttributeMetadataCache` asset:
+
 1. Create: `Assets > Create > Wallstop Studios > Unity Helpers > Attribute Metadata Cache`
 2. Enable **"Prewarm Relational On Load"** in the Inspector
 
@@ -310,6 +315,7 @@ Or enable auto-prewarm on the `AttributeMetadataCache` asset:
 ### Do I need to call AssignRelationalComponents() in Awake()?
 
 **No!** The integration handles this automatically:
+
 - **Scene objects:** Wired when you enable "Assign Scene On Initialize" (recommended)
 - **Runtime objects:** Wired when you call `InstantiateComponentWithRelations()`
 
@@ -318,6 +324,7 @@ Only call `AssignRelationalComponents()` manually if you need fine-grained contr
 ### Does this work without Zenject?
 
 **Yes!** The integration gracefully falls back to standard Unity Helpers behavior if Zenject isn't detected. You can:
+
 - Adopt incrementally without breaking existing code
 - Use in projects that mix DI and non-DI components
 - Remove Zenject later without refactoring all your components
@@ -327,6 +334,7 @@ Only call `AssignRelationalComponents()` manually if you need fine-grained contr
 **Minimal:** Relational component assignment happens once per component at initialization time. After that, there's zero runtime overhead - the references are just regular fields.
 
 **Optimization tips:**
+
 - Use `MaxDepth` to limit hierarchy traversal
 - Use `TagFilter` or `NameFilter` to narrow searches
 - Use `OnlyDescendants`/`OnlyAncestors` to exclude self when appropriate
@@ -334,6 +342,7 @@ Only call `AssignRelationalComponents()` manually if you need fine-grained contr
 ### Zenject vs Extenject?
 
 This integration works with **all** Zenject variants:
+
 - **Zenject** (original)
 - **Extenject** (community fork)
 - **Zenject (Modesttree)** (updated original)
@@ -345,15 +354,18 @@ Unity Helpers automatically detects which one you're using.
 ## 📚 Learn More
 
 **Unity Helpers Documentation:**
+
 - [Relational Components Guide](../../RELATIONAL_COMPONENTS.md) - Complete attribute reference and recipes
 - [Getting Started](../../GETTING_STARTED.md) - Unity Helpers quick start guide
 - [Main README](../../README.md) - Full feature overview
 
 **Zenject Documentation:**
+
 - [Zenject GitHub](https://github.com/modesttree/Zenject) - Official Zenject documentation
 - [Extenject GitHub](https://github.com/svermeulen/Extenject) - Community fork with updates
 
 **Troubleshooting:**
+
 - [Relational Components Troubleshooting](../../RELATIONAL_COMPONENTS.md#troubleshooting) - Detailed solutions
 - [DI Integration Testing Guide](../../RELATIONAL_COMPONENTS.md#di-integrations-testing-and-edge-cases) - Advanced scenarios
 
@@ -384,6 +396,6 @@ Both integrations provide the same relational component features - choose based 
 
 ---
 
-**Made with ❤️ by Wallstop Studios**
+## Made with ❤️ by Wallstop Studios
 
 *Unity Helpers is production-ready and actively maintained. [Star the repo](https://github.com/wallstop/unity-helpers) if you find it useful!*

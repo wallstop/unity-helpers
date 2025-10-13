@@ -1,0 +1,41 @@
+name: YAML Format + Lint
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  yaml-checks:
+    name: Prettier and yamllint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: 'npm'
+          cache-dependency-path: package.json
+
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm i --no-audit --no-fund
+          fi
+
+      - name: Prettier check (YAML)
+        run: npm run format:yaml:check
+
+      - name: yamllint
+        uses: ibiqlik/action-yamllint@v3.1.1
+        with:
+          file_or_dir: .
+          config_file: .yamllint.yaml
+          strict: true

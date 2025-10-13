@@ -89,11 +89,13 @@ START: What are you serializing?
 ### Quick Reference
 
 - **Use JSON for:**
+
   - Player/tool settings, human-readable saves, serverless workflows, text diffs
   - Quick iteration and debugging
   - First-time save system implementation
 
 - **Use Protobuf for:**
+
   - Network payloads and large, bandwidth-sensitive saves
   - Cases where schema evolves across versions
   - Mobile games where save file size matters

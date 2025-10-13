@@ -1,0 +1,149 @@
+name: CSharpier Auto Format
+
+on:
+  pull_request:
+  pull_request_target:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  format:
+    name: Format and propose changes
+    if: ${{ github.event_name != 'pull_request_target' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore .NET tools
+        run: dotnet tool restore
+
+      - name: Run CSharpier (format repository)
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+        run: dotnet tool run csharpier format
+
+      - name: Commit formatting changes to PR branch (same-repo PRs only)
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore(format): apply CSharpier formatting"
+          branch: ${{ github.head_ref }}
+
+      - name: Verify formatting (CI gate)
+        run: dotnet tool run csharpier check .
+
+  format_fork:
+    name: Fork PR bot formatting PR
+    if: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.repo.full_name != github.repository }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout fork PR HEAD
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.ref }}
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Install CSharpier (pinned)
+        run: dotnet tool install -g csharpier --version 1.1.2
+
+      - name: Run CSharpier (format repository)
+        run: ~/.dotnet/tools/csharpier .
+
+      - name: Detect changes
+        id: changes
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create bot branch and push to base repo
+        if: steps.changes.outputs.has_changes == 'true'
+        shell: bash
+        env:
+          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          BRANCH="bot/csharpier/pr-${{ github.event.pull_request.number }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$BRANCH"
+          git add -A
+          git commit -m "chore(format): apply CSharpier formatting for PR #${{ github.event.pull_request.number }}"
+          git remote add upstream "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
+          git fetch upstream
+          git push upstream "$BRANCH" --force
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+
+      - name: Open or update formatting PR in base repo
+        if: steps.changes.outputs.has_changes == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const baseRef = context.payload.pull_request.base.ref;
+            const headBranch = `bot/csharpier/pr-${prNumber}`;
+            const {owner, repo} = context.repo;
+            const title = `chore(format): Apply CSharpier to PR #${prNumber}`;
+            const body = [
+              `This automated PR applies CSharpier formatting to the changes from PR #${prNumber}.`,
+              '',
+              `- Source PR (fork): #${prNumber}`,
+              `- Target branch: ${baseRef}`,
+              '',
+              'If this PR is merged, it will include the contributor\'s changes plus required formatting.',
+              'You can then close the original PR or ask the author to rebase.',
+            ].join('\n');
+
+            // Check if a PR from this branch already exists
+            const existing = await github.rest.pulls.list({ owner, repo, state: 'open', head: `${owner}:${headBranch}` });
+            if (existing.data.length === 0) {
+              await github.rest.pulls.create({ owner, repo, head: headBranch, base: baseRef, title, body });
+            }
+
+      - name: Comment link on original PR
+        if: steps.changes.outputs.has_changes == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const {owner, repo} = context.repo;
+            const headBranch = `bot/csharpier/pr-${prNumber}`;
+            // Find the formatting PR we just created or updated
+            const resp = await github.rest.pulls.list({ owner, repo, state: 'open', head: `${owner}:${headBranch}` });
+            if (resp.data.length > 0) {
+              const fmtPr = resp.data[0];
+              const body = `A formatting PR has been opened: #${fmtPr.number} (applies CSharpier to this PR).`;
+              // Avoid duplicate comments by checking recent comments
+              const comments = await github.rest.issues.listComments({ owner, repo, issue_number: prNumber, per_page: 50 });
+              const already = comments.data.some(
+                (c) =>
+                  c.body &&
+                  c.body.includes(`#${fmtPr.number}`) &&
+                  c.user &&
+                  c.user.login === 'github-actions[bot]'
+              );
+              if (!already) {
+                await github.rest.issues.createComment({ owner, repo, issue_number: prNumber, body });
+              }
+            }
