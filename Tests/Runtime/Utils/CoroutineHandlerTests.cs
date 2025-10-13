@@ -20,7 +20,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             Track(instance.gameObject);
 
             Assert.IsTrue(CoroutineHandler.HasInstance);
-            Assert.IsNotNull(instance);
+            Assert.IsTrue(instance != null);
             yield return null;
         }
 

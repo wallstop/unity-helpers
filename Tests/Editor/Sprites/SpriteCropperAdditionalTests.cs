@@ -36,7 +36,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             AssetDatabase.Refresh();
 
             TextureImporter imp = AssetImporter.GetAtPath(src) as TextureImporter;
-            Assert.IsNotNull(imp);
+            Assert.IsTrue(imp != null);
             imp.textureType = TextureImporterType.Sprite;
             imp.spriteImportMode = SpriteImportMode.Single;
             imp.isReadable = true;
@@ -61,13 +61,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
 
             string dst = (Root + "/Cropped_pad_src.png").Replace('\\', '/');
             Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(dst);
-            Assert.IsNotNull(tex);
+            Assert.IsTrue(tex != null);
             // Expected size: (10 + 2 + 1) x (10 + 3 + 0) = 13x13
             Assert.That(tex.width, Is.EqualTo(13));
             Assert.That(tex.height, Is.EqualTo(13));
 
             TextureImporter newImp = AssetImporter.GetAtPath(dst) as TextureImporter;
-            Assert.IsNotNull(newImp);
+            Assert.IsTrue(newImp != null);
             Vector2 pivot = newImp.spritePivot;
             // Expected pivot in pixels = (10-3, 10-2) = (7,8) → normalized (7/13, 8/13)
             Assert.That(pivot.x, Is.InRange(7f / 13f - 1e-3f, 7f / 13f + 1e-3f));
@@ -83,7 +83,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             AssetDatabase.Refresh();
 
             TextureImporter imp = AssetImporter.GetAtPath(src) as TextureImporter;
-            Assert.IsNotNull(imp);
+            Assert.IsTrue(imp != null);
             imp.textureType = TextureImporterType.Sprite;
             imp.spriteImportMode = SpriteImportMode.Single;
             imp.isReadable = true;
@@ -117,7 +117,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             AssetDatabase.Refresh();
 
             TextureImporter imp = AssetImporter.GetAtPath(src) as TextureImporter;
-            Assert.IsNotNull(imp);
+            Assert.IsTrue(imp != null);
             imp.textureType = TextureImporterType.Sprite;
             imp.spriteImportMode = SpriteImportMode.Single;
             imp.isReadable = false; // start unreadable
@@ -137,12 +137,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
 
             // Original should be restored to unreadable
             imp = AssetImporter.GetAtPath(src) as TextureImporter;
-            Assert.IsNotNull(imp);
+            Assert.IsTrue(imp != null);
             Assert.That(imp.isReadable, Is.False);
 
             string dst = (Root + "/Cropped_readable_toggle.png").Replace('\\', '/');
             TextureImporter newImp = AssetImporter.GetAtPath(dst) as TextureImporter;
-            Assert.IsNotNull(newImp);
+            Assert.IsTrue(newImp != null);
             Assert.That(
                 newImp.isReadable,
                 Is.False,
@@ -165,7 +165,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
 
             string dst2 = (Root + "/Cropped_readable_toggle.png").Replace('\\', '/');
             newImp = AssetImporter.GetAtPath(dst2) as TextureImporter;
-            Assert.IsNotNull(newImp);
+            Assert.IsTrue(newImp != null);
             Assert.That(newImp.isReadable, Is.True);
         }
 
@@ -194,12 +194,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             AssetDatabase.Refresh();
             string dst = (Root + "/Cropped_all_transparent.png").Replace('\\', '/');
             Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(dst);
-            Assert.IsNotNull(tex);
+            Assert.IsTrue(tex != null);
             Assert.That(tex.width, Is.EqualTo(1));
             Assert.That(tex.height, Is.EqualTo(1));
 
             TextureImporter newImp = AssetImporter.GetAtPath(dst) as TextureImporter;
-            Assert.IsNotNull(newImp);
+            Assert.IsTrue(newImp != null);
             Vector2 pivot = newImp.spritePivot;
             Assert.That(pivot.x, Is.InRange(0.49f, 0.51f));
             Assert.That(pivot.y, Is.InRange(0.49f, 0.51f));
@@ -213,7 +213,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             AssetDatabase.Refresh();
 
             TextureImporter imp = AssetImporter.GetAtPath(src) as TextureImporter;
-            Assert.IsNotNull(imp);
+            Assert.IsTrue(imp != null);
             imp.textureType = TextureImporterType.Sprite;
             imp.spriteImportMode = SpriteImportMode.Multiple;
             imp.SaveAndReimport();
@@ -232,7 +232,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             string dst = (Root + "/Cropped_multi.png").Replace('\\', '/');
             Assert.That(File.Exists(RelToFull(dst)), Is.False);
             Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(src);
-            Assert.IsNotNull(tex);
+            Assert.IsTrue(tex != null);
             Assert.That(tex.width, Is.EqualTo(16));
             Assert.That(tex.height, Is.EqualTo(16));
         }

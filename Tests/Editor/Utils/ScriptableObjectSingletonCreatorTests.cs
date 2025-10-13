@@ -67,7 +67,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils
             // Assert: no duplicate folder created and asset placed in reused folder
             Assert.IsTrue(AssetDatabase.IsValidFolder("Assets/Resources/cASEtest"));
             Assert.IsFalse(AssetDatabase.IsValidFolder("Assets/Resources/CaseTest 1"));
-            Assert.IsNotNull(AssetDatabase.LoadAssetAtPath<Object>(assetPath));
+            Assert.IsTrue(AssetDatabase.LoadAssetAtPath<Object>(assetPath) != null);
         }
 
         [UnityTest]
@@ -89,8 +89,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils
             yield return null;
 
             // Assert: no duplicate asset created alongside
-            Assert.IsNull(
-                AssetDatabase.LoadAssetAtPath<Object>(targetFolder + "/Duplicate 1.asset")
+            Assert.IsTrue(
+                AssetDatabase.LoadAssetAtPath<Object>(targetFolder + "/Duplicate 1.asset") == null
             );
         }
 
@@ -106,10 +106,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils
             yield return null;
 
             // Assert: no asset created at the ambiguous path
-            Assert.IsNull(
+            Assert.IsTrue(
                 AssetDatabase.LoadAssetAtPath<Object>(
                     "Assets/Resources/CreatorTests/Collision/NameCollision.asset"
-                )
+                ) == null
             );
         }
 

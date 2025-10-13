@@ -70,6 +70,7 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
 
         private readonly AnimatedSpriteLayer[] _layers;
         private readonly Texture2D[] _computed;
+        internal Texture2D[] ComputedTexturesForTests => _computed;
         private readonly Color _backgroundColor;
         private readonly Rect? _largestArea;
         private readonly Stopwatch _timer;

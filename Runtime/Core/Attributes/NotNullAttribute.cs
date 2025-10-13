@@ -13,9 +13,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         {
 #if UNITY_EDITOR
             IEnumerable<FieldInfo> properties =
-                WallstopStudios.UnityHelpers.Core.Helper.ReflectionHelpers.GetFieldsWithAttribute<NotNullAttribute>(
-                    o.GetType()
-                );
+                Helper.ReflectionHelpers.GetFieldsWithAttribute<NotNullAttribute>(o.GetType());
 
             foreach (FieldInfo field in properties)
             {

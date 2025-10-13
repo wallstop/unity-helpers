@@ -34,7 +34,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             AssetDatabase.Refresh();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
-            Assert.IsNotNull(imp, "Importer should exist");
+            Assert.IsTrue(imp != null, "Importer should exist");
             imp.maxTextureSize = 128;
             imp.SaveAndReimport();
 
@@ -42,16 +42,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
                 ScriptableObject.CreateInstance<FitTextureSizeWindow>()
             );
             window._fitMode = FitMode.GrowOnly;
-            window._textureSourcePaths = new System.Collections.Generic.List<UnityEngine.Object>
+            window._textureSourcePaths = new System.Collections.Generic.List<Object>
             {
-                AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(Root),
+                AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
 
             int count = window.CalculateTextureChanges(true);
             Assert.That(count, Is.GreaterThanOrEqualTo(1), "Expected at least one change");
 
             imp = AssetImporter.GetAtPath(path) as TextureImporter;
-            Assert.IsNotNull(imp);
+            Assert.IsTrue(imp != null);
             Assert.That(
                 imp.maxTextureSize,
                 Is.EqualTo(512),
@@ -67,7 +67,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             AssetDatabase.Refresh();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
-            Assert.IsNotNull(imp, "Importer should exist");
+            Assert.IsTrue(imp != null, "Importer should exist");
             imp.maxTextureSize = 2048;
             imp.SaveAndReimport();
 
@@ -75,16 +75,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
                 ScriptableObject.CreateInstance<FitTextureSizeWindow>()
             );
             window._fitMode = FitMode.ShrinkOnly;
-            window._textureSourcePaths = new System.Collections.Generic.List<UnityEngine.Object>
+            window._textureSourcePaths = new System.Collections.Generic.List<Object>
             {
-                AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(Root),
+                AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
 
             int count = window.CalculateTextureChanges(true);
             Assert.That(count, Is.GreaterThanOrEqualTo(1), "Expected at least one change");
 
             imp = AssetImporter.GetAtPath(path) as TextureImporter;
-            Assert.IsNotNull(imp);
+            Assert.IsTrue(imp != null);
             Assert.That(
                 imp.maxTextureSize,
                 Is.EqualTo(256),
@@ -100,7 +100,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             AssetDatabase.Refresh();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
-            Assert.IsNotNull(imp, "Importer should exist");
+            Assert.IsTrue(imp != null, "Importer should exist");
             imp.maxTextureSize = 1024;
             imp.SaveAndReimport();
 
@@ -108,15 +108,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
                 ScriptableObject.CreateInstance<FitTextureSizeWindow>()
             );
             window._fitMode = FitMode.ShrinkOnly;
-            window._textureSourcePaths = new System.Collections.Generic.List<UnityEngine.Object>
+            window._textureSourcePaths = new System.Collections.Generic.List<Object>
             {
-                AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(Root),
+                AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
             int count = window.CalculateTextureChanges(true);
             Assert.That(count, Is.GreaterThanOrEqualTo(1), "Expected at least one change");
 
             imp = AssetImporter.GetAtPath(path) as TextureImporter;
-            Assert.IsNotNull(imp);
+            Assert.IsTrue(imp != null);
             Assert.That(imp.maxTextureSize, Is.EqualTo(256), "Should keep exact POT");
         }
 
@@ -128,7 +128,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             AssetDatabase.Refresh();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
-            Assert.IsNotNull(imp, "Importer should exist");
+            Assert.IsTrue(imp != null, "Importer should exist");
             imp.maxTextureSize = 2048;
             imp.SaveAndReimport();
 
@@ -136,15 +136,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
                 ScriptableObject.CreateInstance<FitTextureSizeWindow>()
             );
             window._fitMode = FitMode.ShrinkOnly;
-            window._textureSourcePaths = new System.Collections.Generic.List<UnityEngine.Object>
+            window._textureSourcePaths = new System.Collections.Generic.List<Object>
             {
-                AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(Root),
+                AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
             int count = window.CalculateTextureChanges(true);
             Assert.That(count, Is.GreaterThanOrEqualTo(1), "Expected at least one change");
 
             imp = AssetImporter.GetAtPath(path) as TextureImporter;
-            Assert.IsNotNull(imp);
+            Assert.IsTrue(imp != null);
             Assert.That(imp.maxTextureSize, Is.EqualTo(256), "Should shrink to 256");
         }
 
@@ -156,7 +156,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             AssetDatabase.Refresh();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
-            Assert.IsNotNull(imp);
+            Assert.IsTrue(imp != null);
             imp.maxTextureSize = 2048;
             imp.SaveAndReimport();
 
@@ -164,16 +164,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
                 ScriptableObject.CreateInstance<FitTextureSizeWindow>()
             );
             window._fitMode = FitMode.GrowOnly;
-            window._textureSourcePaths = new System.Collections.Generic.List<UnityEngine.Object>
+            window._textureSourcePaths = new System.Collections.Generic.List<Object>
             {
-                AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(Root),
+                AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
             int count = window.CalculateTextureChanges(true);
 
             // Expect no change because it's already large enough (GrowOnly)
             Assert.That(count, Is.EqualTo(0));
             imp = AssetImporter.GetAtPath(path) as TextureImporter;
-            Assert.IsNotNull(imp);
+            Assert.IsTrue(imp != null);
             Assert.That(imp.maxTextureSize, Is.EqualTo(2048));
         }
 
@@ -185,7 +185,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             AssetDatabase.Refresh();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
-            Assert.IsNotNull(imp);
+            Assert.IsTrue(imp != null);
             imp.maxTextureSize = 32;
             imp.SaveAndReimport();
 
@@ -195,16 +195,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             window._fitMode = FitMode.RoundToNearest;
             window._minAllowedTextureSize = 256;
             window._maxAllowedTextureSize = 8192;
-            window._textureSourcePaths = new System.Collections.Generic.List<UnityEngine.Object>
+            window._textureSourcePaths = new System.Collections.Generic.List<Object>
             {
-                AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(Root),
+                AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
 
             int count = window.CalculateTextureChanges(true);
             Assert.That(count, Is.GreaterThanOrEqualTo(1));
 
             imp = AssetImporter.GetAtPath(path) as TextureImporter;
-            Assert.IsNotNull(imp);
+            Assert.IsTrue(imp != null);
             Assert.That(imp.maxTextureSize, Is.EqualTo(256));
         }
 
@@ -217,7 +217,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             AssetDatabase.Refresh();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
-            Assert.IsNotNull(imp);
+            Assert.IsTrue(imp != null);
             imp.maxTextureSize = 128;
             imp.SaveAndReimport();
 
@@ -227,16 +227,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             window._fitMode = FitMode.GrowOnly;
             window._minAllowedTextureSize = 32;
             window._maxAllowedTextureSize = 8192;
-            window._textureSourcePaths = new System.Collections.Generic.List<UnityEngine.Object>
+            window._textureSourcePaths = new System.Collections.Generic.List<Object>
             {
-                AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(Root),
+                AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
 
             int count = window.CalculateTextureChanges(true);
             Assert.That(count, Is.GreaterThanOrEqualTo(1));
 
             imp = AssetImporter.GetAtPath(path) as TextureImporter;
-            Assert.IsNotNull(imp);
+            Assert.IsTrue(imp != null);
             Assert.That(imp.maxTextureSize, Is.EqualTo(8192));
         }
 
@@ -248,7 +248,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             AssetDatabase.Refresh();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
-            Assert.IsNotNull(imp);
+            Assert.IsTrue(imp != null);
             imp.maxTextureSize = 128;
             imp.SaveAndReimport();
 
@@ -257,15 +257,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             );
             window._fitMode = FitMode.RoundToNearest;
             window._applyToAndroid = true;
-            window._textureSourcePaths = new System.Collections.Generic.List<UnityEngine.Object>
+            window._textureSourcePaths = new System.Collections.Generic.List<Object>
             {
-                AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(Root),
+                AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
 
             _ = window.CalculateTextureChanges(true);
 
             imp = AssetImporter.GetAtPath(path) as TextureImporter;
-            Assert.IsNotNull(imp);
+            Assert.IsTrue(imp != null);
             TextureImporterPlatformSettings android = imp.GetPlatformTextureSettings("Android");
             Assert.IsTrue(android.overridden);
             Assert.That(android.maxTextureSize, Is.EqualTo(256));
@@ -282,8 +282,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
 
             TextureImporter spriteImp = AssetImporter.GetAtPath(spritePath) as TextureImporter;
             TextureImporter texImp = AssetImporter.GetAtPath(texPath) as TextureImporter;
-            Assert.IsNotNull(spriteImp);
-            Assert.IsNotNull(texImp);
+            Assert.IsTrue(spriteImp != null);
+            Assert.IsTrue(texImp != null);
             spriteImp.textureType = TextureImporterType.Sprite;
             spriteImp.maxTextureSize = 1024;
             texImp.textureType = TextureImporterType.Default;
@@ -296,9 +296,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             );
             window._fitMode = FitMode.ShrinkOnly;
             window._onlySprites = true;
-            window._textureSourcePaths = new System.Collections.Generic.List<UnityEngine.Object>
+            window._textureSourcePaths = new System.Collections.Generic.List<Object>
             {
-                AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(Root),
+                AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
 
             _ = window.CalculateTextureChanges(true);
@@ -331,9 +331,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             window._fitMode = FitMode.GrowOnly;
             window._nameFilter = "hero";
             window._useRegexForName = false;
-            window._textureSourcePaths = new System.Collections.Generic.List<UnityEngine.Object>
+            window._textureSourcePaths = new System.Collections.Generic.List<Object>
             {
-                AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(Root),
+                AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
 
             _ = window.CalculateTextureChanges(true);
@@ -366,9 +366,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             window._fitMode = FitMode.GrowOnly;
             window._nameFilter = "^item\\d{2}$";
             window._useRegexForName = true;
-            window._textureSourcePaths = new System.Collections.Generic.List<UnityEngine.Object>
+            window._textureSourcePaths = new System.Collections.Generic.List<Object>
             {
-                AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(Root),
+                AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
 
             _ = window.CalculateTextureChanges(true);
@@ -388,9 +388,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             CreatePng(unlabeledPath, 300, 100, Color.gray);
             AssetDatabase.Refresh();
 
-            UnityEngine.Object labeledObj = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(
-                labeledPath
-            );
+            Object labeledObj = AssetDatabase.LoadAssetAtPath<Object>(labeledPath);
             AssetDatabase.SetLabels(labeledObj, new[] { "FitMe", "TagA" });
             AssetDatabase.SaveAssets();
 
@@ -406,9 +404,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             );
             window._fitMode = FitMode.GrowOnly;
             window._labelFilterCsv = "FitMe";
-            window._textureSourcePaths = new System.Collections.Generic.List<UnityEngine.Object>
+            window._textureSourcePaths = new System.Collections.Generic.List<Object>
             {
-                AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(Root),
+                AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
 
             _ = window.CalculateTextureChanges(true);
@@ -435,7 +433,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             aImp.SaveAndReimport();
             bImp.SaveAndReimport();
 
-            UnityEngine.Object aObj = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(aPath);
+            Object aObj = AssetDatabase.LoadAssetAtPath<Object>(aPath);
             Selection.objects = new[] { aObj };
 
             FitTextureSizeWindow window = Track(
@@ -467,9 +465,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             FitTextureSizeWindow window = Track(
                 ScriptableObject.CreateInstance<FitTextureSizeWindow>()
             );
-            window._textureSourcePaths = new System.Collections.Generic.List<UnityEngine.Object>
+            window._textureSourcePaths = new System.Collections.Generic.List<Object>
             {
-                AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(Root),
+                AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
 
             // Case-sensitive search for lower-case 'hero' should not match 'Hero'
@@ -494,7 +492,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             CreatePng(path, 300, 100, Color.gray);
             AssetDatabase.Refresh();
 
-            UnityEngine.Object obj = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(path);
+            Object obj = AssetDatabase.LoadAssetAtPath<Object>(path);
             AssetDatabase.SetLabels(obj, new[] { "FitMe" });
             AssetDatabase.SaveAssets();
 
@@ -508,9 +506,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             window._fitMode = FitMode.GrowOnly;
             window._labelFilterCsv = "fitme";
             window._caseSensitiveNameFilter = true;
-            window._textureSourcePaths = new System.Collections.Generic.List<UnityEngine.Object>
+            window._textureSourcePaths = new System.Collections.Generic.List<Object>
             {
-                AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(Root),
+                AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
 
             // Case-sensitive 'fitme' should not match 'FitMe'
@@ -541,9 +539,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             );
             window._fitMode = FitMode.RoundToNearest;
             window._applyToStandalone = true;
-            window._textureSourcePaths = new System.Collections.Generic.List<UnityEngine.Object>
+            window._textureSourcePaths = new System.Collections.Generic.List<Object>
             {
-                AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(Root),
+                AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
 
             _ = window.CalculateTextureChanges(true);
@@ -570,9 +568,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             );
             window._fitMode = FitMode.RoundToNearest;
             window._applyToiOS = true;
-            window._textureSourcePaths = new System.Collections.Generic.List<UnityEngine.Object>
+            window._textureSourcePaths = new System.Collections.Generic.List<Object>
             {
-                AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(Root),
+                AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
 
             _ = window.CalculateTextureChanges(true);
@@ -596,9 +594,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             CreatePng(directFile, 300, 100, Color.gray);
             AssetDatabase.Refresh();
 
-            UnityEngine.Object labeledObj = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(
-                labeledUnderFolder
-            );
+            Object labeledObj = AssetDatabase.LoadAssetAtPath<Object>(labeledUnderFolder);
             AssetDatabase.SetLabels(labeledObj, new[] { "OnlyMe" });
             AssetDatabase.SaveAssets();
 
@@ -611,12 +607,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             directImp.SaveAndReimport();
 
             // Select folder and the direct file simultaneously
-            UnityEngine.Object folderObj = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(
-                folder
-            );
-            UnityEngine.Object directObj = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(
-                directFile
-            );
+            Object folderObj = AssetDatabase.LoadAssetAtPath<Object>(folder);
+            Object directObj = AssetDatabase.LoadAssetAtPath<Object>(directFile);
             Selection.objects = new[] { folderObj, directObj };
 
             FitTextureSizeWindow window = Track(
@@ -658,9 +650,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
                 ScriptableObject.CreateInstance<FitTextureSizeWindow>()
             );
             window._fitMode = FitMode.GrowOnly;
-            window._textureSourcePaths = new System.Collections.Generic.List<UnityEngine.Object>
+            window._textureSourcePaths = new System.Collections.Generic.List<Object>
             {
-                AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(Root),
+                AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
 
             int changed = window.CalculateTextureChanges(true);
@@ -682,7 +674,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             AssetDatabase.Refresh();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
-            Assert.IsNotNull(imp);
+            Assert.IsTrue(imp != null);
             imp.maxTextureSize = 2048;
             imp.SaveAndReimport();
 
@@ -690,16 +682,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
                 ScriptableObject.CreateInstance<FitTextureSizeWindow>()
             );
             window._fitMode = FitMode.RoundToNearest;
-            window._textureSourcePaths = new System.Collections.Generic.List<UnityEngine.Object>
+            window._textureSourcePaths = new System.Collections.Generic.List<Object>
             {
-                AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(Root),
+                AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
 
             int count = window.CalculateTextureChanges(true);
             Assert.That(count, Is.GreaterThanOrEqualTo(1));
 
             imp = AssetImporter.GetAtPath(path) as TextureImporter;
-            Assert.IsNotNull(imp);
+            Assert.IsTrue(imp != null);
             Assert.That(imp.maxTextureSize, Is.EqualTo(256));
         }
 
@@ -712,7 +704,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             AssetDatabase.Refresh();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
-            Assert.IsNotNull(imp);
+            Assert.IsTrue(imp != null);
             imp.maxTextureSize = 128;
             imp.SaveAndReimport();
 
@@ -720,16 +712,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
                 ScriptableObject.CreateInstance<FitTextureSizeWindow>()
             );
             window._fitMode = FitMode.RoundToNearest;
-            window._textureSourcePaths = new System.Collections.Generic.List<UnityEngine.Object>
+            window._textureSourcePaths = new System.Collections.Generic.List<Object>
             {
-                AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(Root),
+                AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
 
             int count = window.CalculateTextureChanges(true);
             Assert.That(count, Is.GreaterThanOrEqualTo(1));
 
             imp = AssetImporter.GetAtPath(path) as TextureImporter;
-            Assert.IsNotNull(imp);
+            Assert.IsTrue(imp != null);
             Assert.That(imp.maxTextureSize, Is.EqualTo(512));
         }
 

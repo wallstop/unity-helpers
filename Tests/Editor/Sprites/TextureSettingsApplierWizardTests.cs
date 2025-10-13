@@ -48,9 +48,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             };
 
             // Set directories list
-            window.directories = new System.Collections.Generic.List<UnityEngine.Object>
+            window.directories = new System.Collections.Generic.List<Object>
             {
-                AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(Root),
+                AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
 
             // Configure changes
@@ -69,8 +69,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             AssetDatabase.Refresh();
             TextureImporter impA = AssetImporter.GetAtPath(a) as TextureImporter;
             TextureImporter impB = AssetImporter.GetAtPath(b) as TextureImporter;
-            Assert.IsNotNull(impA);
-            Assert.IsNotNull(impB);
+            Assert.IsTrue(impA != null);
+            Assert.IsTrue(impB != null);
 
             // Verify a subset of settings applied
             Assert.That(impA.isReadable, Is.False); // isReadOnly=true → not readable

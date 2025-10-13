@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Tests.Serialization
+﻿namespace WallstopStudios.UnityHelpers.Tests.Serialization
 {
     using System;
     using System.Collections;
@@ -259,14 +259,18 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
                 Values = new List<int> { 1 },
             };
 
+#pragma warning disable CS0618 // Type or member is obsolete
             byte[] result = Serializer.Serialize(msg, SerializationType.SystemBinary);
+#pragma warning restore CS0618 // Type or member is obsolete
 
             Assert.NotNull(result);
             Assert.Greater(result.Length, 0);
 
             TestMessage deserialized = Serializer.Deserialize<TestMessage>(
                 result,
+#pragma warning disable CS0618 // Type or member is obsolete
                 SerializationType.SystemBinary
+#pragma warning restore CS0618 // Type or member is obsolete
             );
             Assert.AreEqual(msg.Id, deserialized.Id);
             Assert.AreEqual(msg.Name, deserialized.Name);
@@ -368,7 +372,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
             TestMessage msg = new() { Id = 111, Name = "BufferBinary" };
             byte[] buffer = null;
 
+#pragma warning disable CS0618 // Type or member is obsolete
             int length = Serializer.Serialize(msg, SerializationType.SystemBinary, ref buffer);
+#pragma warning restore CS0618 // Type or member is obsolete
 
             Assert.Greater(length, 0);
             Assert.NotNull(buffer);
@@ -377,7 +383,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
             byte[] data = buffer.Take(length).ToArray();
             TestMessage deserialized = Serializer.Deserialize<TestMessage>(
                 data,
+#pragma warning disable CS0618 // Type or member is obsolete
                 SerializationType.SystemBinary
+#pragma warning restore CS0618 // Type or member is obsolete
             );
             Assert.AreEqual(msg.Id, deserialized.Id);
         }
@@ -444,7 +452,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
             foreach (
                 SerializationType type in new[]
                 {
+#pragma warning disable CS0618 // Type or member is obsolete
                     SerializationType.SystemBinary,
+#pragma warning restore CS0618 // Type or member is obsolete
                     SerializationType.Protobuf,
                     SerializationType.Json,
                 }
@@ -867,7 +877,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
             foreach (
                 SerializationType type in new[]
                 {
+#pragma warning disable CS0618 // Type or member is obsolete
                     SerializationType.SystemBinary,
+#pragma warning restore CS0618 // Type or member is obsolete
                     SerializationType.Protobuf,
                 }
             )

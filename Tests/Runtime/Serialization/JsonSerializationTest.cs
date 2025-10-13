@@ -34,15 +34,24 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         public void UnityEngineObjectSerializationWorks()
         {
             GameObject testGo = new("Test GameObject", typeof(SpriteRenderer));
+            int expectedId = testGo.GetInstanceID();
             string json = testGo.ToJson();
             Assert.IsFalse(string.IsNullOrWhiteSpace(json), json);
             Assert.AreNotEqual("{}", json);
-            Assert.IsTrue(json.Contains("name = Test GameObject"), json);
-            Assert.IsTrue(json.Contains("type = UnityEngine.GameObject"), json);
+
+            using System.Text.Json.JsonDocument doc = System.Text.Json.JsonDocument.Parse(json);
+            System.Text.Json.JsonElement root = doc.RootElement;
+            Assert.AreEqual(System.Text.Json.JsonValueKind.Object, root.ValueKind);
+            Assert.True(root.TryGetProperty("name", out var name));
+            Assert.True(root.TryGetProperty("type", out var type));
+            Assert.True(root.TryGetProperty("instanceId", out var id));
+            Assert.AreEqual("Test GameObject", name.GetString());
+            StringAssert.Contains("UnityEngine.GameObject", type.GetString());
+            Assert.AreEqual(expectedId, id.GetInt32());
         }
 
-        [Test]
-        public void NullGameObjectSerializationWorks()
+        [UnityEngine.TestTools.UnityTest]
+        public System.Collections.IEnumerator NullGameObjectSerializationWorks()
         {
             GameObject testGo = null;
             string json = testGo.ToJson();
@@ -50,7 +59,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
 
             testGo = new GameObject();
             testGo.Destroy();
-            Assert.IsFalse(string.IsNullOrWhiteSpace(json), json);
+            yield return null; // allow Unity to nullify destroyed object
+            Assert.IsTrue(testGo == null);
+            json = testGo.ToJson();
             Assert.AreEqual("null", json);
         }
 

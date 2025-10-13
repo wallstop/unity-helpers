@@ -119,16 +119,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         private bool _unchangedFoldout;
         private bool _orphansFoldout;
         private Vector2 _previewScroll;
-        private string _filterText = string.Empty;
-        private bool _filterUseRegex;
-        private bool _sortAscending = true;
+        internal string _filterText = string.Empty;
+        internal bool _filterUseRegex;
+        internal bool _sortAscending = true;
 
-        private enum AnimationStatus
+        public enum AnimationStatus
         {
-            Unknown,
-            New,
-            Changed,
-            Unchanged,
+            Unknown = 0,
+            New = 1,
+            Changed = 2,
+            Unchanged = 3,
         }
 
         internal enum CopyMode
@@ -138,7 +138,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             New,
         }
 
-        private sealed class AnimationFileInfo
+        internal sealed class AnimationFileInfo
         {
             public string RelativePath { get; set; }
             public string FullPath { get; set; }
@@ -291,12 +291,37 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             bool canAnalyze = ArePathsValid();
             bool analysisDone = !_analysisNeeded;
 
-            int selectedNew = _newAnimations.Count(a => a.Selected);
-            int selectedChanged = _changedAnimations.Count(a => a.Selected);
+            int selectedNew = 0;
+            foreach (AnimationFileInfo newAnimation in _newAnimations)
+            {
+                if (newAnimation.Selected)
+                {
+                    ++selectedNew;
+                }
+            }
+
+            int selectedChanged = 0;
+            foreach (AnimationFileInfo changedAnimation in _changedAnimations)
+            {
+                if (changedAnimation.Selected)
+                {
+                    ++selectedChanged;
+                }
+            }
+
+            int selectedUnchanged = 0;
+            foreach (AnimationFileInfo unchangedAnimation in _unchangedAnimations)
+            {
+                if (unchangedAnimation.Selected)
+                {
+                    ++selectedUnchanged;
+                }
+            }
+
             int selectedAll =
                 selectedNew
                 + selectedChanged
-                + (_includeUnchangedInCopyAll ? _unchangedAnimations.Count(a => a.Selected) : 0);
+                + (_includeUnchangedInCopyAll ? selectedUnchanged : 0);
 
             bool canCopyNew = canAnalyze && analysisDone && selectedNew > 0;
             bool canCopyChanged = canAnalyze && analysisDone && selectedChanged > 0;
@@ -342,14 +367,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             if (GUILayout.Button($"Copy All ({totalToCopyAll})"))
             {
                 string overwriteWarning =
-                    selectedChanged
-                        + (
-                            _includeUnchangedInCopyAll
-                                ? _unchangedAnimations.Count(a => a.Selected)
-                                : 0
-                        )
-                    > 0
-                        ? $" This will overwrite {selectedChanged + (_includeUnchangedInCopyAll ? _unchangedAnimations.Count(a => a.Selected) : 0)} existing files."
+                    selectedChanged + (_includeUnchangedInCopyAll ? selectedUnchanged : 0) > 0
+                        ? $" This will overwrite {selectedChanged + (_includeUnchangedInCopyAll ? selectedUnchanged : 0)} existing files."
                         : "";
                 if (
                     Confirm(
@@ -372,8 +391,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             bool canAnalyze = ArePathsValid();
             bool analysisDone = !_analysisNeeded;
-            bool hasUnchanged = _unchangedAnimations.Any();
-            bool hasOrphans = _destinationOrphans.Any();
+            bool hasUnchanged = _unchangedAnimations.Count > 0;
+            bool hasOrphans = _destinationOrphans.Count > 0;
 
             _dryRun = EditorGUILayout.ToggleLeft("Dry Run (no changes)", _dryRun);
 
@@ -943,9 +962,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 return;
             }
 
-            List<AnimationFileInfo> animationsToDelete = _unchangedAnimations
-                .Where(a => a is { Selected: true })
-                .ToList();
+            List<AnimationFileInfo> animationsToDelete = new List<AnimationFileInfo>();
+            for (int i = 0; i < _unchangedAnimations.Count; i++)
+            {
+                AnimationFileInfo a = _unchangedAnimations[i];
+                if (a != null && a.Selected)
+                {
+                    animationsToDelete.Add(a);
+                }
+            }
 
             if (animationsToDelete.Count == 0)
             {
@@ -1192,9 +1217,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 return;
             }
             IEnumerable<AnimationFileInfo> filtered = ApplyFilterAndSort(items);
-            AnimationFileInfo[] animationFileInfos =
-                filtered as AnimationFileInfo[] ?? filtered.ToArray();
-            int count = animationFileInfos.Length;
+            IList<AnimationFileInfo> animationFileInfos = filtered.AsList();
+            int count = animationFileInfos.Count;
             if (count == 0)
             {
                 using (new EditorGUILayout.HorizontalScope())
@@ -1217,36 +1241,41 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 {
                     if (GUILayout.Button("Select All", GUILayout.Width(100)))
                     {
-                        foreach (AnimationFileInfo info in animationFileInfos)
+                        for (int i = 0; i < animationFileInfos.Count; i++)
                         {
+                            AnimationFileInfo info = animationFileInfos[i];
                             info.Selected = true;
                         }
                     }
                     if (GUILayout.Button("Select None", GUILayout.Width(100)))
                     {
-                        foreach (AnimationFileInfo info in animationFileInfos)
+                        for (int i = 0; i < animationFileInfos.Count; i++)
                         {
+                            AnimationFileInfo info = animationFileInfos[i];
                             info.Selected = false;
                         }
                     }
                     if (GUILayout.Button("Select Filtered", GUILayout.Width(120)))
                     {
-                        foreach (AnimationFileInfo info in animationFileInfos)
+                        for (int i = 0; i < animationFileInfos.Count; i++)
                         {
+                            AnimationFileInfo info = animationFileInfos[i];
                             info.Selected = true;
                         }
                     }
                     if (GUILayout.Button("Clear Filtered", GUILayout.Width(120)))
                     {
-                        foreach (AnimationFileInfo info in animationFileInfos)
+                        for (int i = 0; i < animationFileInfos.Count; i++)
                         {
+                            AnimationFileInfo info = animationFileInfos[i];
                             info.Selected = false;
                         }
                     }
                 }
 
-                foreach (AnimationFileInfo info in animationFileInfos)
+                for (int i = 0; i < animationFileInfos.Count; i++)
                 {
+                    AnimationFileInfo info = animationFileInfos[i];
                     using (new EditorGUILayout.HorizontalScope())
                     {
                         info.Selected = EditorGUILayout.Toggle(info.Selected, GUILayout.Width(20));
@@ -1272,38 +1301,77 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
         }
 
-        private IEnumerable<AnimationFileInfo> ApplyFilterAndSort(List<AnimationFileInfo> items)
+        internal IEnumerable<AnimationFileInfo> ApplyFilterAndSort(List<AnimationFileInfo> items)
         {
-            IEnumerable<AnimationFileInfo> query = items;
-            if (!string.IsNullOrWhiteSpace(_filterText))
+            if (items == null || items.Count == 0)
             {
-                if (_filterUseRegex)
+                yield break;
+            }
+
+            using (Buffers<AnimationFileInfo>.List.Get(out List<AnimationFileInfo> filtered))
+            {
+                if (string.IsNullOrWhiteSpace(_filterText))
+                {
+                    for (int i = 0; i < items.Count; i++)
+                    {
+                        AnimationFileInfo it = items[i];
+                        if (it != null)
+                        {
+                            filtered.Add(it);
+                        }
+                    }
+                }
+                else if (_filterUseRegex)
                 {
                     try
                     {
-                        Regex rx = new(_filterText, RegexOptions.IgnoreCase);
-                        query = query.Where(i =>
-                            i is { FileName: not null } && rx.IsMatch(i.FileName)
-                        );
+                        Regex rx = new Regex(_filterText, RegexOptions.IgnoreCase);
+                        for (int i = 0; i < items.Count; i++)
+                        {
+                            AnimationFileInfo it = items[i];
+                            if (it != null && it.FileName != null && rx.IsMatch(it.FileName))
+                            {
+                                filtered.Add(it);
+                            }
+                        }
                     }
                     catch (Exception ex)
                     {
                         this.LogWarn($"Invalid regex '{_filterText}': {ex.Message}");
-                        query = Enumerable.Empty<AnimationFileInfo>();
                     }
                 }
                 else
                 {
-                    query = query.Where(i =>
-                        i is { FileName: not null }
-                        && i.FileName.IndexOf(_filterText, StringComparison.OrdinalIgnoreCase) >= 0
-                    );
+                    for (int i = 0; i < items.Count; i++)
+                    {
+                        AnimationFileInfo it = items[i];
+                        if (
+                            it != null
+                            && it.FileName != null
+                            && it.FileName.IndexOf(_filterText, StringComparison.OrdinalIgnoreCase)
+                                >= 0
+                        )
+                        {
+                            filtered.Add(it);
+                        }
+                    }
+                }
+
+                filtered.Sort(
+                    (a, b) =>
+                    {
+                        string an = a?.FileName ?? string.Empty;
+                        string bn = b?.FileName ?? string.Empty;
+                        int cmp = string.Compare(an, bn, StringComparison.OrdinalIgnoreCase);
+                        return _sortAscending ? cmp : -cmp;
+                    }
+                );
+
+                for (int i = 0; i < filtered.Count; i++)
+                {
+                    yield return filtered[i];
                 }
             }
-            query = _sortAscending
-                ? query.OrderBy(i => i.FileName, StringComparer.OrdinalIgnoreCase)
-                : query.OrderByDescending(i => i.FileName, StringComparer.OrdinalIgnoreCase);
-            return query;
         }
 
         internal void MirrorDeleteDestinationAnimations()
@@ -1313,9 +1381,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 return;
             }
 
-            List<AnimationFileInfo> toDelete = _destinationOrphans
-                .Where(a => a is { Selected: true })
-                .ToList();
+            List<AnimationFileInfo> toDelete = new List<AnimationFileInfo>();
+            for (int i = 0; i < _destinationOrphans.Count; i++)
+            {
+                AnimationFileInfo a = _destinationOrphans[i];
+                if (a != null && a.Selected)
+                {
+                    toDelete.Add(a);
+                }
+            }
             if (toDelete.Count == 0)
             {
                 Info("Nothing to Delete", "No destination orphans are selected.");
@@ -1456,15 +1530,17 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     bool useSource
                 )
                 {
-                    AnimationFileInfo[] arr = ApplyFilterAndSort(list.ToList()).ToArray();
-                    sb.AppendLine($"== {inputTitle} ({arr.Length}) ==");
-                    foreach (AnimationFileInfo info in arr)
+                    var arr = ApplyFilterAndSort(list.ToList()).AsList();
+                    sb.AppendLine($"== {inputTitle} ({arr.Count}) ==");
+                    for (int i = 0; i < arr.Count; i++)
                     {
+                        AnimationFileInfo info = arr[i];
                         string path = useSource ? info.RelativePath : info.DestinationRelativePath;
                         sb.AppendLine(
                             $"[{(info.Selected ? 'x' : ' ')}] {info.FileName}  ->  {path}"
                         );
                     }
+
                     sb.AppendLine();
                 }
 

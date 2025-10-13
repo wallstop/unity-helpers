@@ -6,13 +6,14 @@
     "UnityEngine.TestRunner",
     "WallstopStudios.UnityHelpers",
     "WallstopStudios.UnityHelpers.Integration.Zenject",
-    "WallstopStudios.UnityHelpers.Tests.Editor"
+    "WallstopStudios.UnityHelpers.Tests.Editor",
+    "Zenject"
   ],
   "includePlatforms": ["Editor"],
   "excludePlatforms": [],
   "allowUnsafeCode": false,
   "overrideReferences": true,
-  "precompiledReferences": ["nunit.framework.dll"],
+  "precompiledReferences": ["nunit.framework.dll", "Zenject-usage.dll"],
   "autoReferenced": false,
   "defineConstraints": ["UNITY_INCLUDE_TESTS", "ZENJECT_PRESENT"],
   "versionDefines": [

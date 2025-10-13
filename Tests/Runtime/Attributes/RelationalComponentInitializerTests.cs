@@ -10,22 +10,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
     [TestFixture]
     public sealed class RelationalComponentInitializerTests
     {
-        private static bool CacheContainsField(string cacheFieldName, FieldInfo field)
+        private static bool CacheContainsField(string cache, FieldInfo field)
         {
-            Type rh = typeof(ReflectionHelpers);
-            FieldInfo fi = rh.GetField(
-                cacheFieldName,
-                BindingFlags.Static | BindingFlags.NonPublic
-            );
-            Assert.IsNotNull(fi, $"Missing cache field '{cacheFieldName}' on ReflectionHelpers.");
-
-            object dict = fi.GetValue(null);
-            Assert.IsNotNull(dict, $"Cache '{cacheFieldName}' should be initialized.");
-
-            MethodInfo contains = dict.GetType().GetMethod("ContainsKey");
-            Assert.IsNotNull(contains, "Cache dictionary missing ContainsKey method.");
-
-            return (bool)contains.Invoke(dict, new object[] { field });
+            return cache == "FieldGetterCache"
+                ? ReflectionHelpers.IsFieldGetterCached(field)
+                : ReflectionHelpers.IsFieldSetterCached(field);
         }
 
         [Test]

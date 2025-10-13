@@ -286,6 +286,62 @@ Or enable auto-prewarm on the `AttributeMetadataCache` asset:
 
 ---
 
+## 🧰 Additional Helpers & Recipes
+
+### One-liners for DI + Relational Wiring
+
+```csharp
+// Inject + assign a single component
+Container.InjectWithRelations(component);
+
+// Instantiate a component prefab + assign
+var comp = Container.InstantiateComponentWithRelations(prefabComp, parent);
+
+// Inject + assign a whole hierarchy
+Container.InjectGameObjectWithRelations(root, includeInactiveChildren: true);
+
+// Instantiate a GameObject prefab + inject + assign hierarchy
+var go = Container.InstantiateGameObjectWithRelations(prefabGo, parent);
+```
+
+### Additive Scenes & Options
+
+In the `RelationalComponentsInstaller`, enable “Assign Scene On Initialize” and “Listen For Additive Scenes”. You can also control scanning behavior via options:
+
+```csharp
+public sealed class GameInstaller : MonoInstaller
+{
+    public override void InstallBindings()
+    {
+        // Bind assigner (done by installer automatically if used)
+        // Container.Bind<IRelationalComponentAssigner>().To<RelationalComponentAssigner>().AsSingle();
+
+        // Configure scan options used by the initializer/listener
+        Container.BindInstance(new RelationalSceneAssignmentOptions(
+            includeInactive: true,
+            useSinglePassScan: true
+        ));
+
+        // Register initializer + additive scene listener (installer toggles also available)
+        Container.BindInterfacesTo<RelationalComponentSceneInitializer>().AsSingle();
+        Container.BindInterfacesTo<RelationalSceneLoadListener>().AsSingle();
+    }
+}
+```
+
+### Pools
+
+Use DI-aware Zenject memory pools to assign on spawn automatically:
+
+```csharp
+public class EnemyPool : RelationalMemoryPool<Enemy> {}
+
+// Or with a spawn parameter
+public class BulletPool : RelationalMemoryPool<Vector3, Bullet> {}
+```
+
+---
+
 ## ❓ Troubleshooting
 
 ### My relational fields are null even with the integration

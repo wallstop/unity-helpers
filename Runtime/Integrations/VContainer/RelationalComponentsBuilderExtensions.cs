@@ -49,7 +49,8 @@ namespace WallstopStudios.UnityHelpers.Integrations.VContainer
         /// </example>
         public static void RegisterRelationalComponents(
             this IContainerBuilder builder,
-            RelationalSceneAssignmentOptions? options = null
+            RelationalSceneAssignmentOptions? options = null,
+            bool enableAdditiveSceneListener = true
         )
         {
             if (builder == null)
@@ -72,6 +73,11 @@ namespace WallstopStudios.UnityHelpers.Integrations.VContainer
                 .AsSelf();
 
             builder.RegisterEntryPoint<RelationalComponentEntryPoint>().WithParameter(resolved);
+
+            if (enableAdditiveSceneListener)
+            {
+                builder.RegisterEntryPoint<RelationalSceneLoadListener>().WithParameter(resolved);
+            }
         }
     }
 }

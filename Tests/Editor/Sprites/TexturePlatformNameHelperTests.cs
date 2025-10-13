@@ -23,6 +23,24 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             bool hasIOS = System.Array.IndexOf(names, "iOS") >= 0;
             Assert.IsTrue(hasIPhone || hasIOS);
         }
+
+        [Test]
+        public void CachesResultsAndIsSorted()
+        {
+            string[] a = TexturePlatformNameHelper.GetKnownPlatformNames();
+            string[] b = TexturePlatformNameHelper.GetKnownPlatformNames();
+            // Expect the exact same reference due to caching
+            Assert.AreSame(a, b);
+
+            // Verify ascending ordinal order
+            for (int i = 1; i < a.Length; i++)
+            {
+                Assert.LessOrEqual(
+                    string.Compare(a[i - 1], a[i], System.StringComparison.Ordinal),
+                    0
+                );
+            }
+        }
     }
 #endif
 }

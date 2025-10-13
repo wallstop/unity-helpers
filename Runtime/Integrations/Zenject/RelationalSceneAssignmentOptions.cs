@@ -2,6 +2,7 @@
 namespace WallstopStudios.UnityHelpers.Integrations.Zenject
 {
     using System;
+    using WallstopStudios.UnityHelpers.Core.Helper;
 
     /// <summary>
     /// Controls how the Zenject integration scans the scene for relational components.
@@ -22,25 +23,36 @@ namespace WallstopStudios.UnityHelpers.Integrations.Zenject
         /// When true the initializer will scan inactive scene objects so that relational fields are
         /// populated even for disabled hierarchies. Defaults to <c>true</c>.
         /// </param>
-        public RelationalSceneAssignmentOptions(bool includeInactive)
+        /// <param name="useSinglePassScan">
+        /// When true uses a single-pass scene scan for performance (recommended). Defaults to
+        /// <c>true</c>.
+        /// </param>
+        public RelationalSceneAssignmentOptions(bool includeInactive, bool useSinglePassScan = true)
         {
             IncludeInactive = includeInactive;
+            UseSinglePassScan = useSinglePassScan;
         }
 
         /// <summary>
         /// Options used when no explicit configuration is supplied.
         /// </summary>
-        public static RelationalSceneAssignmentOptions Default => new(includeInactive: true);
+        public static RelationalSceneAssignmentOptions Default => new(true, true);
 
         /// <summary>
         /// Gets whether inactive GameObjects should be included when scanning the scene.
         /// </summary>
         public bool IncludeInactive { get; }
 
+        /// <summary>
+        /// Gets whether to use a single-pass scene scan to locate relational components.
+        /// </summary>
+        public bool UseSinglePassScan { get; }
+
         /// <inheritdoc />
         public bool Equals(RelationalSceneAssignmentOptions other)
         {
-            return IncludeInactive == other.IncludeInactive;
+            return IncludeInactive == other.IncludeInactive
+                && UseSinglePassScan == other.UseSinglePassScan;
         }
 
         /// <inheritdoc />
@@ -52,12 +64,9 @@ namespace WallstopStudios.UnityHelpers.Integrations.Zenject
         /// <inheritdoc />
         public override int GetHashCode()
         {
-            return IncludeInactive.GetHashCode();
+            return Objects.HashCode(IncludeInactive, UseSinglePassScan);
         }
 
-        /// <summary>
-        /// Equality operator.
-        /// </summary>
         /// <summary>
         /// Equality operator.
         /// </summary>
@@ -69,9 +78,6 @@ namespace WallstopStudios.UnityHelpers.Integrations.Zenject
             return left.Equals(right);
         }
 
-        /// <summary>
-        /// Inequality operator.
-        /// </summary>
         /// <summary>
         /// Inequality operator.
         /// </summary>

@@ -5,7 +5,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
     using UnityEngine;
     using UnityEditor;
     using System.Collections.Generic;
-    using System.Linq;
     using System.IO;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using Object = UnityEngine.Object;
@@ -115,13 +114,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
 
                     if (ContextFoldoutStates[foldoutKey])
                     {
-                        List<DirectoryUsageData> pathsNotAlreadyInTop = allPaths
-                            .Skip(topN)
-                            .ToList();
-                        if (pathsNotAlreadyInTop.Any())
+                        int remaining = allPaths.Length - topN;
+                        if (remaining > 0)
                         {
-                            foreach (DirectoryUsageData dirData in pathsNotAlreadyInTop)
+                            for (int idx = topN; idx < allPaths.Length; idx++)
                             {
+                                DirectoryUsageData dirData = allPaths[idx];
                                 Rect moreHistoryButtonRect = new(
                                     startX + 30f,
                                     currentY,
@@ -213,8 +211,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
                     bool isExpanded = ContextFoldoutStates.GetValueOrDefault(foldoutKey, false);
                     if (isExpanded)
                     {
+                        int remaining = allPaths.Length - topN;
+                        if (remaining < 1)
+                        {
+                            remaining = 1;
+                        }
                         height +=
-                            Mathf.Max(1, allPaths.Skip(topN).Count())
+                            remaining
                             * (
                                 EditorGUIUtility.singleLineHeight
                                 + EditorGUIUtility.standardVerticalSpacing
@@ -271,8 +274,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
                     bool isExpanded = ContextFoldoutStates.GetValueOrDefault(foldoutKey, false);
                     if (isExpanded)
                     {
+                        int remaining = allPaths.Length - topN;
+                        if (remaining < 1)
+                        {
+                            remaining = 1;
+                        }
                         height +=
-                            Mathf.Max(1, allPaths.Skip(topN).Count())
+                            remaining
                             * (
                                 EditorGUIUtility.singleLineHeight
                                 + EditorGUIUtility.standardVerticalSpacing
@@ -765,11 +773,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
                         return;
                     }
 
-                    DirectoryUsageData[] pathsNotAlreadyInTop = allPaths.Skip(topN).ToArray();
-                    if (0 < pathsNotAlreadyInTop.Length)
+                    int remaining = allPaths.Length - topN;
+                    if (remaining > 0)
                     {
-                        foreach (DirectoryUsageData dirData in pathsNotAlreadyInTop)
+                        for (int idx = topN; idx < allPaths.Length; idx++)
                         {
+                            DirectoryUsageData dirData = allPaths[idx];
                             if (
                                 GUILayout.Button(
                                     new GUIContent(

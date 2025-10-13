@@ -227,10 +227,7 @@ namespace WallstopStudios.UnityHelpers.Tags
                 if (inst != null && inst._prewarmRelationalOnLoad)
                 {
                     RelationalComponentInitializer.Report report =
-                        Core.Attributes.RelationalComponentInitializer.Initialize(
-                            types: null,
-                            logSummary: false
-                        );
+                        RelationalComponentInitializer.Initialize(types: null, logSummary: false);
                     Debug.Log(
                         $"AttributeMetadataCache: Relational prewarm enabled. TypesWarmed={report.TypesWarmed}, FieldsWarmed={report.FieldsWarmed}, Warnings={report.Warnings}, Errors={report.Errors}."
                     );

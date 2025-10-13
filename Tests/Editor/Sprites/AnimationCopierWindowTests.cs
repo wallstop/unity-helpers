@@ -185,7 +185,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         private static void ModifyClip(string relPath)
         {
             AnimationClip clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(relPath);
-            Assert.IsNotNull(clip);
+            Assert.IsTrue(clip != null);
             clip.frameRate = clip.frameRate + 1f;
             EditorUtility.SetDirty(clip);
         }

@@ -98,13 +98,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Core.Attributes
             GameObject go2 = NewGameObject("NonRelational");
             NonRelational non = go2.AddComponent<NonRelational>();
 
-            Assert.IsNull(consumer.SR, "Precondition: relational field should start null");
+            Assert.IsTrue(consumer.SR == null, "Precondition: relational field should start null");
 
             List<Component> items = new List<Component> { consumer, null, non.transform };
             assigner.Assign(items);
 
-            Assert.IsNotNull(
-                consumer.SR,
+            Assert.IsTrue(
+                consumer.SR != null,
                 "Relational field should be assigned by Assign(IEnumerable<Component>)"
             );
 

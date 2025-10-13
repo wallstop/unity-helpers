@@ -47,7 +47,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 // Collect candidate types once and detect simple name collisions (same class name, different namespaces)
                 List<Type> allCandidates = new();
                 foreach (
-                    Type t in WallstopStudios.UnityHelpers.Core.Helper.ReflectionHelpers.GetTypesDerivedFrom(
+                    Type t in ReflectionHelpers.GetTypesDerivedFrom(
                         typeof(UnityHelpers.Utils.ScriptableObjectSingleton<>),
                         includeAbstract: false
                     )

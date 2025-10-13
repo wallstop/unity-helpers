@@ -57,14 +57,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
                 Is.SameAs(tester),
                 "Assigner should receive the same component instance"
             );
-            Assert.That(
-                tester.parentBody,
-                Is.Not.Null,
+            Assert.IsTrue(
+                tester.parentBody != null,
                 "ParentComponent assignment should set parentBody"
             );
-            Assert.That(
-                tester.childCollider,
-                Is.Not.Null,
+            Assert.IsTrue(
+                tester.childCollider != null,
                 "ChildComponent assignment should set childCollider"
             );
         }
@@ -76,14 +74,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
 
             Container.AssignRelationalComponents(tester);
 
-            Assert.That(
-                tester.parentBody,
-                Is.Not.Null,
+            Assert.IsTrue(
+                tester.parentBody != null,
                 "Fallback should assign parentBody without a bound assigner"
             );
-            Assert.That(
-                tester.childCollider,
-                Is.Not.Null,
+            Assert.IsTrue(
+                tester.childCollider != null,
                 "Fallback should assign childCollider without a bound assigner"
             );
         }
@@ -219,14 +215,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
         {
             ZenjectRelationalTester tester = CreateHierarchy();
             Container.AssignRelationalHierarchy(tester.gameObject, includeInactiveChildren: false);
-            Assert.That(
-                tester.parentBody,
-                Is.Not.Null,
+            Assert.IsTrue(
+                tester.parentBody != null,
                 "AssignRelationalHierarchy should assign parentBody"
             );
-            Assert.That(
-                tester.childCollider,
-                Is.Not.Null,
+            Assert.IsTrue(
+                tester.childCollider != null,
                 "AssignRelationalHierarchy should assign childCollider"
             );
         }
@@ -298,24 +292,20 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
                 rootTester.gameObject,
                 includeInactiveChildren: false
             );
-            Assert.That(
-                rootTester.parentBody,
-                Is.Not.Null,
+            Assert.IsTrue(
+                rootTester.parentBody != null,
                 "Root tester should be assigned even when includeInactiveChildren is false"
             );
-            Assert.That(
-                rootTester.childCollider,
-                Is.Not.Null,
+            Assert.IsTrue(
+                rootTester.childCollider != null,
                 "Root tester should be assigned even when includeInactiveChildren is false"
             );
-            Assert.That(
-                subTester.parentBody,
-                Is.Null,
+            Assert.IsTrue(
+                subTester.parentBody == null,
                 "Inactive sub tester should be skipped when includeInactiveChildren is false"
             );
-            Assert.That(
-                subTester.childCollider,
-                Is.Null,
+            Assert.IsTrue(
+                subTester.childCollider == null,
                 "Inactive sub tester should be skipped when includeInactiveChildren is false"
             );
 
@@ -324,14 +314,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
                 rootTester.gameObject,
                 includeInactiveChildren: true
             );
-            Assert.That(
-                subTester.parentBody,
-                Is.Not.Null,
+            Assert.IsTrue(
+                subTester.parentBody != null,
                 "Inactive sub tester should be assigned when includeInactiveChildren is true"
             );
-            Assert.That(
-                subTester.childCollider,
-                Is.Not.Null,
+            Assert.IsTrue(
+                subTester.childCollider != null,
                 "Inactive sub tester should be assigned when includeInactiveChildren is true"
             );
         }
@@ -377,14 +365,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
                 Is.SameAs(instance),
                 "Instantiate should target the created tester instance"
             );
-            Assert.That(
-                instance.parentBody,
-                Is.Not.Null,
+            Assert.IsTrue(
+                instance.parentBody != null,
                 "ParentComponent should be assigned from override parent"
             );
-            Assert.That(
-                instance.childCollider,
-                Is.Not.Null,
+            Assert.IsTrue(
+                instance.childCollider != null,
                 "ChildComponent should be assigned from prefab child collider"
             );
         }
@@ -403,14 +389,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
             );
             Track(instance.gameObject);
 
-            Assert.That(
-                instance.parentBody,
-                Is.Not.Null,
+            Assert.IsTrue(
+                instance.parentBody != null,
                 "ParentComponent should be assigned from override parent without a bound assigner"
             );
-            Assert.That(
-                instance.childCollider,
-                Is.Not.Null,
+            Assert.IsTrue(
+                instance.childCollider != null,
                 "ChildComponent should be assigned without a bound assigner"
             );
         }
@@ -429,14 +413,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
             );
             Track(instance.gameObject);
 
-            Assert.That(
-                instance.parentBody,
-                Is.Not.Null,
+            Assert.IsTrue(
+                instance.parentBody != null,
                 "ParentComponent should be assigned from override parent"
             );
-            Assert.That(
-                instance.childCollider,
-                Is.Not.Null,
+            Assert.IsTrue(
+                instance.childCollider != null,
                 "ChildComponent should be assigned from prefab child collider"
             );
         }

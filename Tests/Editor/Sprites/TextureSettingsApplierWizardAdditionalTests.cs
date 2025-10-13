@@ -75,8 +75,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
 
             impIncluded = AssetImporter.GetAtPath(included) as TextureImporter;
             impOther = AssetImporter.GetAtPath(other) as TextureImporter;
-            Assert.IsNotNull(impIncluded);
-            Assert.IsNotNull(impOther);
+            Assert.IsTrue(impIncluded != null);
+            Assert.IsTrue(impOther != null);
 
             Assert.That(impIncluded.isReadable, Is.False);
             Assert.That(impIncluded.wrapMode, Is.EqualTo(TextureWrapMode.Clamp));
@@ -187,7 +187,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             AssetDatabase.Refresh();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
-            Assert.IsNotNull(imp);
+            Assert.IsTrue(imp != null);
             TextureImporterPlatformSettings ops = imp.GetPlatformTextureSettings("Standalone");
             Assert.IsTrue(ops.overridden);
             Assert.AreEqual(256, ops.maxTextureSize);
@@ -203,7 +203,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
 
             // Set importer to desired state first
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
-            Assert.IsNotNull(imp);
+            Assert.IsTrue(imp != null);
             imp.wrapMode = TextureWrapMode.Clamp;
             imp.filterMode = FilterMode.Bilinear;
             TextureImporterPlatformSettings ps = imp.GetDefaultPlatformTextureSettings();

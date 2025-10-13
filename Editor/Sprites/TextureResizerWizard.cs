@@ -122,7 +122,29 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 }
             }
 
-            textures = textures.Where(t => t != null).Distinct().OrderBy(t => t.name).ToList();
+            // Remove nulls, de-dupe, and order by name without LINQ
+            using (Buffers<Texture2D>.HashSet.Get(out HashSet<Texture2D> distinct))
+            using (Buffers<Texture2D>.List.Get(out List<Texture2D> ordered))
+            {
+                for (int i = 0; i < textures.Count; i++)
+                {
+                    Texture2D t = textures[i];
+                    if (t == null)
+                    {
+                        continue;
+                    }
+                    if (distinct.Add(t))
+                    {
+                        ordered.Add(t);
+                    }
+                }
+
+                ordered.Sort(
+                    static (a, b) => string.Compare(a.name, b.name, StringComparison.Ordinal)
+                );
+                textures.Clear();
+                textures.AddRange(ordered);
+            }
 
             if (textures.Count <= 0 || numResizes <= 0)
             {

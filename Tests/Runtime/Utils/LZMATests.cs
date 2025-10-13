@@ -24,7 +24,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [Test]
         public void DecompressingGarbageThrows()
         {
-            byte[] garbage = new byte[] { 1, 2, 3, 4, 5 };
+            byte[] garbage = { 1, 2, 3, 4, 5 };
             Assert.Throws<Exception>(() => LZMA.Decompress(garbage));
         }
     }

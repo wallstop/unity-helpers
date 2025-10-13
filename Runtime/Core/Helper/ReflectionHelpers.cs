@@ -52,10 +52,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
     {
         // Cache for type resolution by name
 #if !SINGLE_THREADED
-        private static readonly System.Collections.Concurrent.ConcurrentDictionary<
-            string,
-            Type
-        > TypeResolutionCache = new(StringComparer.Ordinal);
+        private static readonly ConcurrentDictionary<string, Type> TypeResolutionCache = new(
+            StringComparer.Ordinal
+        );
 #else
         private static readonly Dictionary<string, Type> TypeResolutionCache = new(
             StringComparer.Ordinal
@@ -383,6 +382,17 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         {
             // ReSharper disable once ConvertClosureToMethodGroup
             return ListCreators.GetOrAdd(elementType, type => GetListCreator(type)).Invoke();
+        }
+
+        // Test helpers to avoid reflection in tests when asserting cache state
+        internal static bool IsFieldGetterCached(FieldInfo field)
+        {
+            return field != null && FieldGetterCache.ContainsKey(field);
+        }
+
+        internal static bool IsFieldSetterCached(FieldInfo field)
+        {
+            return field != null && FieldSetterCache.ContainsKey(field);
         }
 
         /// <summary>
@@ -3715,7 +3725,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #if UNITY_EDITOR
             try
             {
-                TypeCache.TypeCollection list = UnityEditor.TypeCache.GetTypesDerivedFrom<T>();
+                TypeCache.TypeCollection list = TypeCache.GetTypesDerivedFrom<T>();
                 return list.Where(t =>
                     t != null && (includeAbstract || (t.IsClass && !t.IsAbstract))
                 );
@@ -3749,7 +3759,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #if UNITY_EDITOR
             try
             {
-                TypeCache.TypeCollection list = UnityEditor.TypeCache.GetTypesDerivedFrom(baseType);
+                TypeCache.TypeCollection list = TypeCache.GetTypesDerivedFrom(baseType);
                 return list.Where(t =>
                     t != null && (includeAbstract || (t.IsClass && !t.IsAbstract))
                 );
@@ -3801,8 +3811,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #if UNITY_EDITOR
             try
             {
-                TypeCache.TypeCollection types =
-                    UnityEditor.TypeCache.GetTypesWithAttribute<TAttribute>();
+                TypeCache.TypeCollection types = TypeCache.GetTypesWithAttribute<TAttribute>();
                 return types.Where(t =>
                     t != null && (includeAbstract || (t.IsClass && !t.IsAbstract))
                 );
@@ -3857,7 +3866,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             try
             {
                 TypeCache.MethodCollection methods =
-                    UnityEditor.TypeCache.GetMethodsWithAttribute<TAttribute>();
+                    TypeCache.GetMethodsWithAttribute<TAttribute>();
                 IEnumerable<MethodInfo> filtered = methods;
                 if (within != null)
                 {
@@ -3894,7 +3903,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             try
             {
                 TypeCache.FieldInfoCollection fields =
-                    UnityEditor.TypeCache.GetFieldsWithAttribute<TAttribute>();
+                    TypeCache.GetFieldsWithAttribute<TAttribute>();
                 IEnumerable<FieldInfo> filtered = fields;
                 if (within != null)
                 {

@@ -260,6 +260,58 @@ Or enable auto-prewarm on the `AttributeMetadataCache` asset:
 
 ---
 
+## 🧰 Additional Helpers & Recipes
+
+### One-liners for DI + Relational Wiring
+
+```csharp
+// Inject + assign a single component
+resolver.InjectWithRelations(component);
+
+// Instantiate a component prefab + inject + assign
+var comp = resolver.InstantiateComponentWithRelations(prefabComp, parent);
+
+// Inject + assign a whole hierarchy
+resolver.InjectGameObjectWithRelations(root, includeInactiveChildren: true);
+
+// Instantiate a GameObject prefab + inject + assign hierarchy
+var go = resolver.InstantiateGameObjectWithRelations(prefabGo, parent);
+```
+
+### Additive Scenes & Options
+
+The registration can enable an additive-scene listener that hydrates relational fields in newly loaded scenes, and you can customize scan behavior:
+
+```csharp
+protected override void Configure(IContainerBuilder builder)
+{
+    var options = new RelationalSceneAssignmentOptions(
+        includeInactive: true,
+        useSinglePassScan: true
+    );
+    builder.RegisterRelationalComponents(options, enableAdditiveSceneListener: true);
+}
+```
+
+### Pools
+
+Use DI-aware pools to auto-inject and assign on rent:
+
+```csharp
+// Component pool
+var pool = RelationalObjectPools.CreatePoolWithRelations(
+    resolver,
+    createFunc: () => Instantiate(componentPrefab)
+);
+var item = pool.GetWithRelations(resolver);
+
+// GameObject pool
+var goPool = RelationalObjectPools.CreateGameObjectPoolWithRelations(prefab);
+var instance = goPool.GetWithRelations(resolver);
+```
+
+---
+
 ## ❓ Troubleshooting
 
 ### My relational fields are null even with the integration

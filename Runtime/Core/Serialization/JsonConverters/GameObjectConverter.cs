@@ -36,6 +36,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
             writer.WriteString("name", value.name);
             // Use AssemblyQualifiedName to disambiguate type for diagnostics
             writer.WriteString("type", value.GetType().AssemblyQualifiedName);
+            // Emit the actual Unity instance ID without transformation for correctness.
             writer.WriteNumber("instanceId", value.GetInstanceID());
             writer.WriteEndObject();
         }

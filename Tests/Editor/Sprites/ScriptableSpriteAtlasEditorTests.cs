@@ -57,7 +57,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
 
             string atlasPath = Path.Combine(Root, "TestAtlas.spriteatlas").Replace('\\', '/');
             SpriteAtlas atlas = AssetDatabase.LoadAssetAtPath<SpriteAtlas>(atlasPath);
-            Assert.IsNotNull(atlas, ".spriteatlas should be generated");
+            Assert.IsTrue(atlas != null, ".spriteatlas should be generated");
         }
 
         private static void EnsureFolder(string relPath)

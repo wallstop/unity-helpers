@@ -1,6 +1,5 @@
 namespace WallstopStudios.UnityHelpers.Tests.Visuals
 {
-    using System.Reflection;
     using NUnit.Framework;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
@@ -17,10 +16,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
             EnhancedImage image = CreateEnhancedImage(out Material baseMaterial);
             image.color = new Color(0.2f, 0.4f, 0.6f, 0.8f);
 
-            InvokeLifecycle(image, "Start");
+            image.InvokeStartForTests();
 
             Material cached = image.material;
-            Assert.That(cached, Is.Not.Null);
+            Assert.IsTrue(cached != null);
             Assert.AreNotSame(baseMaterial, cached);
             Assert.IsTrue(cached.GetColor("_Color").Approximately(image.color));
         }
@@ -29,13 +28,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
         public void HdrColorAboveSdrOverridesMaterialColor()
         {
             EnhancedImage image = CreateEnhancedImage(out _);
-            InvokeLifecycle(image, "Start");
+            image.InvokeStartForTests();
 
             Color hdr = new(2f, 0.5f, 0.25f, 1f);
             image.HdrColor = hdr;
 
             Material cached = image.material;
-            Assert.That(cached, Is.Not.Null);
+            Assert.IsTrue(cached != null);
             Assert.IsTrue(cached.GetColor("_Color").Approximately(hdr));
         }
 
@@ -45,11 +44,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
             EnhancedImage image = CreateEnhancedImage(out _);
             Texture2D mask = Track(new Texture2D(4, 4, TextureFormat.RGBA32, false, false));
 
-            typeof(EnhancedImage)
-                .GetField("_shapeMask", BindingFlags.Instance | BindingFlags.NonPublic)
-                ?.SetValue(image, mask);
+            image._shapeMask = mask;
 
-            InvokeLifecycle(image, "Start");
+            image.InvokeStartForTests();
 
             Texture maskInMaterial = image.material.GetTexture("_ShapeMask");
             Assert.That(maskInMaterial, Is.SameAs(mask));
@@ -59,21 +56,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
         public void OnDestroyReleasesCachedMaterialInstance()
         {
             EnhancedImage image = CreateEnhancedImage(out _);
-            InvokeLifecycle(image, "Start");
+            image.InvokeStartForTests();
 
-            FieldInfo cachedField = typeof(EnhancedImage).GetField(
-                "_cachedMaterialInstance",
-                BindingFlags.Instance | BindingFlags.NonPublic
-            );
-            Assert.That(cachedField, Is.Not.Null);
+            Material cachedBefore = image.CachedMaterialInstanceForTests;
+            Assert.IsTrue(cachedBefore != null);
 
-            Material cachedBefore = (Material)cachedField.GetValue(image);
-            Assert.That(cachedBefore, Is.Not.Null);
+            image.InvokeOnDestroyForTests();
 
-            InvokeLifecycle(image, "OnDestroy");
-
-            Material cachedAfter = (Material)cachedField.GetValue(image);
-            Assert.That(cachedAfter, Is.Null);
+            Material cachedAfter = image.CachedMaterialInstanceForTests;
+            Assert.IsTrue(cachedAfter == null);
             Assert.That(cachedBefore == null, Is.True);
         }
 
@@ -83,17 +74,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
             EnhancedImage image = CreateEnhancedImage(out _);
             image.material = null;
 
-            InvokeLifecycle(image, "Start");
+            image.InvokeStartForTests();
 
-            FieldInfo field = typeof(EnhancedImage).GetField(
-                "_cachedMaterialInstance",
-                BindingFlags.Instance | BindingFlags.NonPublic
-            );
-            Assert.That(field, Is.Not.Null);
-            Material cached = (Material)field.GetValue(image);
-            Assert.That(
-                cached,
-                Is.Null,
+            Material cached = image.CachedMaterialInstanceForTests;
+            Assert.IsTrue(
+                cached == null,
                 "Expected no instance to be created when material is null."
             );
         }
@@ -105,10 +90,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
             image.color = new Color(0.1f, 0.2f, 0.3f, 0.9f);
             image.HdrColor = new Color(0.4f, 0.4f, 0.4f, 0.4f);
 
-            InvokeLifecycle(image, "Start");
+            image.InvokeStartForTests();
 
             Material cached = image.material;
-            Assert.That(cached, Is.Not.Null);
+            Assert.IsTrue(cached != null);
             Assert.AreNotSame(baseMaterial, cached);
             Assert.IsTrue(
                 cached.GetColor("_Color").Approximately(image.color),
@@ -120,9 +105,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
         public void MaterialInstanceIsReusedAcrossUpdates()
         {
             EnhancedImage image = CreateEnhancedImage(out _);
-            InvokeLifecycle(image, "Start");
+            image.InvokeStartForTests();
             Material first = image.material;
-            Assert.That(first, Is.Not.Null);
+            Assert.IsTrue(first != null);
 
             image.HdrColor = new Color(1.1f, 0.2f, 0.3f, 1f);
             Material second = image.material;
@@ -137,11 +122,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
         public void StartDoesNotDuplicateExistingInstance()
         {
             EnhancedImage image = CreateEnhancedImage(out _);
-            InvokeLifecycle(image, "Start");
+            image.InvokeStartForTests();
             Material first = image.material;
-            Assert.That(first, Is.Not.Null);
+            Assert.IsTrue(first != null);
 
-            InvokeLifecycle(image, "Start");
+            image.InvokeStartForTests();
             Material second = image.material;
             Assert.That(
                 second,
@@ -153,11 +138,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
         private EnhancedImage CreateEnhancedImage(out Material baseMaterial)
         {
             Shader shader = Shader.Find("UI/Default");
-            Assert.That(
-                shader,
-                Is.Not.Null,
-                "Expected UI/Default shader to be available for tests."
-            );
+            Assert.IsTrue(shader != null, "Expected UI/Default shader to be available for tests.");
 
             baseMaterial = Track(new Material(shader));
 
@@ -167,18 +148,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
             return image;
         }
 
-        private static void InvokeLifecycle(EnhancedImage image, string methodName)
-        {
-            MethodInfo method = typeof(EnhancedImage).GetMethod(
-                methodName,
-                BindingFlags.Instance | BindingFlags.NonPublic
-            );
-            Assert.That(
-                method,
-                Is.Not.Null,
-                $"Expected method {methodName} to exist on EnhancedImage."
-            );
-            method.Invoke(image, null);
-        }
+        // No reflection lifecycle helpers needed; use internal wrappers on EnhancedImage
     }
 }

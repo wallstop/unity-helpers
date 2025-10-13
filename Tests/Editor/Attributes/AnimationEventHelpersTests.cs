@@ -93,6 +93,22 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Attributes
 
             CollectionAssert.AreEquivalent(expected, methods.Select(method => method.Name));
         }
+
+        [Test]
+        public void GetPossibleAnimatorEventsAreSortedByName()
+        {
+            List<MethodInfo> methods = AnimationEventHelpers.GetPossibleAnimatorEventsForType(
+                typeof(AnimationEventSignatureHost)
+            );
+            // Ensure ascending ordinal sort by method name
+            for (int i = 1; i < methods.Count; i++)
+            {
+                Assert.LessOrEqual(
+                    string.Compare(methods[i - 1].Name, methods[i].Name, StringComparison.Ordinal),
+                    0
+                );
+            }
+        }
     }
 
     internal enum AnimationEventSignal

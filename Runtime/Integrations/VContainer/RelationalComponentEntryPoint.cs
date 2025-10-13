@@ -9,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Integrations.VContainer
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Tags;
     using WallstopStudios.UnityHelpers.Utils;
+    using Object = UnityEngine.Object;
 
     /// <summary>
     /// Entry point registered with VContainer to hydrate relational attributes once the container is
@@ -71,38 +72,117 @@ namespace WallstopStudios.UnityHelpers.Integrations.VContainer
 
             if (relationalTypes.Count == 0)
             {
+                // Fallback: scan all components once and assign when type has relational fields
+                bool includeInactiveAll = _options.IncludeInactive;
+                Component[] allComponents = includeInactiveAll
+                    ? Object.FindObjectsOfType<Component>(true)
+                    : Object.FindObjectsOfType<Component>(false);
+
+                for (int i = 0; i < allComponents.Length; i++)
+                {
+                    Component c = allComponents[i];
+                    if (c == null || c.gameObject.scene != SceneManager.GetActiveScene())
+                    {
+                        continue;
+                    }
+
+                    if (_assigner.HasRelationalAssignments(c.GetType()))
+                    {
+                        _assigner.Assign(c);
+                    }
+                }
                 return;
             }
 
             bool includeInactive = _options.IncludeInactive;
             Scene activeScene = SceneManager.GetActiveScene();
 
-            foreach (Type componentType in relationalTypes)
+            if (_options.UseSinglePassScan)
             {
-                if (componentType == null)
+                using PooledResource<HashSet<Type>> pooledSet = Buffers<Type>.HashSet.Get(
+                    out HashSet<Type> relationalSet
+                );
+                for (int i = 0; i < relationalTypes.Count; i++)
                 {
-                    continue;
+                    Type t = relationalTypes[i];
+                    if (t != null)
+                    {
+                        relationalSet.Add(t);
+                    }
                 }
 
-                UnityEngine.Object[] located = includeInactive
-                    ? UnityEngine.Object.FindObjectsOfType(componentType, true)
-                    : UnityEngine.Object.FindObjectsOfType(componentType, false);
+                Component[] all = includeInactive
+                    ? Object.FindObjectsOfType<Component>(true)
+                    : Object.FindObjectsOfType<Component>(false);
 
-                foreach (UnityEngine.Object candidate in located)
+                for (int i = 0; i < all.Length; i++)
                 {
-                    if (candidate is not Component component)
+                    Component c = all[i];
+                    if (c == null || c.gameObject.scene != activeScene)
                     {
                         continue;
                     }
 
-                    if (component.gameObject.scene != activeScene)
+                    Type t = c.GetType();
+                    while (t != null && typeof(Component).IsAssignableFrom(t))
                     {
-                        continue;
+                        if (relationalSet.Contains(t))
+                        {
+                            _assigner.Assign(c);
+                            break;
+                        }
+                        t = t.BaseType;
                     }
-
-                    _assigner.Assign(component);
                 }
             }
+            else
+            {
+                foreach (Type componentType in relationalTypes)
+                {
+                    if (componentType == null)
+                    {
+                        continue;
+                    }
+
+                    Object[] located = includeInactive
+                        ? Object.FindObjectsOfType(componentType, true)
+                        : Object.FindObjectsOfType(componentType, false);
+
+                    foreach (Object t in located)
+                    {
+                        if (t is not Component component)
+                        {
+                            continue;
+                        }
+
+                        if (component.gameObject.scene != activeScene)
+                        {
+                            continue;
+                        }
+
+                        _assigner.Assign(component);
+                    }
+                }
+            }
+
+            // Safety net in Editor/tests: also walk scene roots to catch any missed
+#if UNITY_EDITOR
+            if (!Application.isPlaying)
+            {
+                using PooledResource<List<GameObject>> rootGoBuffer = Buffers<GameObject>.List.Get(
+                    out List<GameObject> roots
+                );
+                activeScene.GetRootGameObjects(roots);
+                foreach (GameObject root in roots)
+                {
+                    if (root == null)
+                    {
+                        continue;
+                    }
+                    _assigner.AssignHierarchy(root, includeInactive);
+                }
+            }
+#endif
         }
     }
 }

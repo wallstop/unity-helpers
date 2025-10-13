@@ -1170,7 +1170,11 @@ using WallstopStudios.UnityHelpers.Integrations.VContainer;
 
 protected override void Configure(IContainerBuilder builder)
 {
-    builder.RegisterRelationalComponents();
+    // Register assigner + one-time scene scan + additive listener (default)
+    builder.RegisterRelationalComponents(
+        RelationalSceneAssignmentOptions.Default,
+        enableAdditiveSceneListener: true
+    );
 }
 
 // Zenject — prefab instantiation with DI + relations
@@ -1181,6 +1185,34 @@ var enemy = Container.InstantiateComponentWithRelations(enemyPrefab, parent);
 ```
 
 See the full guide with scenarios, troubleshooting, and testing patterns: [Relational Components Guide](RELATIONAL_COMPONENTS.md)
+
+### Additional Helpers
+
+- VContainer:
+  - `resolver.InjectWithRelations(component)` — inject + assign a single instance
+  - `resolver.InstantiateComponentWithRelations(prefab, parent)` — instantiate + inject + assign
+  - `resolver.InjectGameObjectWithRelations(root, includeInactiveChildren)` — inject hierarchy + assign
+  - `resolver.InstantiateGameObjectWithRelations(prefab, parent)` — instantiate GO + inject + assign
+
+- Zenject:
+  - `container.InjectWithRelations(component)` — inject + assign a single instance
+  - `container.InstantiateComponentWithRelations(prefab, parent)` — instantiate + assign
+  - `container.InjectGameObjectWithRelations(root, includeInactiveChildren)` — inject hierarchy + assign
+  - `container.InstantiateGameObjectWithRelations(prefab, parent)` — instantiate GO + inject + assign
+
+### Additive Scene Loads
+
+- VContainer: `RegisterRelationalComponents(..., enableAdditiveSceneListener: true)` registers a listener that hydrates components in newly loaded scenes.
+- Zenject: `RelationalComponentsInstaller` exposes a toggle “Listen For Additive Scenes” to register the same behavior.
+  - Only the newly loaded scene is processed; other loaded scenes are not re‑scanned.
+
+### Performance Options
+
+- One-time scene scan runs after container build; additive scenes are handled incrementally.
+- Single-pass scan (default) reduces `FindObjectsOfType` calls by scanning once and checking type ancestry.
+  - VContainer: `new RelationalSceneAssignmentOptions(includeInactive: true, useSinglePassScan: true)`
+  - Zenject: `new RelationalSceneAssignmentOptions(includeInactive: true, useSinglePassScan: true)`
+- Per-object paths (instantiate/inject helpers, pools) avoid global scans entirely for objects created via DI.
 
 ---
 

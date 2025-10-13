@@ -39,6 +39,13 @@ namespace WallstopStudios.UnityHelpers.Integrations.Zenject
         )]
         private bool _includeInactiveObjects = true;
 
+        [SerializeField]
+        [Tooltip(
+            "When enabled, registers a listener that assigns relational fields for additively loaded"
+                + " scenes as they are loaded."
+        )]
+        private bool _listenForAdditiveScenes = true;
+
         public override void InstallBindings()
         {
             AttributeMetadataCache cacheInstance = AttributeMetadataCache.Instance;
@@ -65,6 +72,17 @@ namespace WallstopStudios.UnityHelpers.Integrations.Zenject
                 }
 
                 Container.BindInterfacesTo<RelationalComponentSceneInitializer>().AsSingle();
+            }
+
+            if (_listenForAdditiveScenes)
+            {
+                if (!Container.HasBinding(typeof(RelationalSceneAssignmentOptions)))
+                {
+                    Container.BindInstance(
+                        new RelationalSceneAssignmentOptions(_includeInactiveObjects)
+                    );
+                }
+                Container.BindInterfacesTo<RelationalSceneLoadListener>().AsSingle();
             }
         }
     }

@@ -6,7 +6,6 @@ namespace WallstopStudios.UnityHelpers.Editor
     using System.Collections.Generic;
     using System.Diagnostics;
     using System.IO;
-    using System.Linq;
     using System.Reflection;
     using UnityEditor;
     using UnityEditorInternal;
@@ -1271,18 +1270,31 @@ namespace WallstopStudios.UnityHelpers.Editor
         }
 
         [Serializable]
-        private sealed class ScanReport
+        internal sealed class ScanReport
         {
             public readonly string[] folders;
             public readonly List<Item> items = new();
 
             public ScanReport(IEnumerable<string> folders)
             {
-                this.folders = folders?.ToArray() ?? Array.Empty<string>();
+                if (folders == null)
+                {
+                    this.folders = Array.Empty<string>();
+                    return;
+                }
+                // Manual copy to avoid LINQ
+                using (Buffers<string>.List.Get(out List<string> list))
+                {
+                    foreach (string s in folders)
+                    {
+                        list.Add(s);
+                    }
+                    this.folders = list.ToArray();
+                }
             }
 
             [Serializable]
-            public sealed class Item
+            internal sealed class Item
             {
                 public string path;
                 public string[] messages;
@@ -1290,7 +1302,11 @@ namespace WallstopStudios.UnityHelpers.Editor
 
             public void Add(string path, List<string> messages)
             {
-                items.Add(new Item { path = path, messages = messages.ToArray() });
+                string[] arr =
+                    messages != null && messages.Count > 0
+                        ? messages.ToArray()
+                        : Array.Empty<string>();
+                items.Add(new Item { path = path, messages = arr });
             }
         }
 
@@ -1354,7 +1370,7 @@ namespace WallstopStudios.UnityHelpers.Editor
             {
                 using StreamWriter sw = new(savePath);
                 sw.WriteLine("Path,Message");
-                foreach (var item in _lastReport.items)
+                foreach (ScanReport.Item item in _lastReport.items)
                 {
                     string path = item.path?.Replace('"', '\'') ?? string.Empty;
                     if (item.messages == null || item.messages.Length == 0)

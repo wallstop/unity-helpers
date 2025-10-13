@@ -141,7 +141,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
 #if UNITY_2022_2_OR_NEWER
             uint num = value.refreshRateRatio.numerator;
             uint den = value.refreshRateRatio.denominator;
-            int hz = den != 0 ? (int)System.Math.Round((double)num / den) : 0;
+            int hz = den != 0 ? (int)Math.Round((double)num / den) : 0;
             writer.WriteNumber(RefreshRateProp, hz);
             writer.WritePropertyName(RefreshRatioProp);
             writer.WriteStartObject();

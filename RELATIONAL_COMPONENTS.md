@@ -479,7 +479,21 @@ Beginner-friendly overview
 
 VContainer (1.16.x)
 
-- Runtime usage (LifetimeScope): Call `builder.RegisterRelationalComponents()` in `LifetimeScope.Configure`. The entry point runs automatically after the container builds.
+- Runtime usage (LifetimeScope): Call `builder.RegisterRelationalComponents()` in `LifetimeScope.Configure`. The entry point runs automatically after the container builds. You can enable an additive-scene listener and customize scan options:
+
+  ```csharp
+  using VContainer;
+  using VContainer.Unity;
+  using WallstopStudios.UnityHelpers.Integrations.VContainer;
+
+  protected override void Configure(IContainerBuilder builder)
+  {
+      // Single-pass scan + additive scene listener
+      var options = new RelationalSceneAssignmentOptions(includeInactive: true, useSinglePassScan: true);
+      builder.RegisterRelationalComponents(options, enableAdditiveSceneListener: true);
+  }
+  ```
+
 - Tests without LifetimeScope: Construct the entry point and call `Initialize()` yourself, and register your `AttributeMetadataCache` instance so the assigner uses it:
 
   ```csharp
@@ -500,7 +514,8 @@ VContainer (1.16.x)
   entry.Initialize();
   ```
 
-  - Inject vs BuildUp: Use `resolver.Inject(component)` before calling `resolver.AssignRelationalComponents(component)`.
+  - Inject vs BuildUp: Use `resolver.InjectWithRelations(component)` to inject + assign in one call, or `resolver.Inject(component)` then `resolver.AssignRelationalComponents(component)`.
+  - Prefabs & GameObjects: `resolver.InstantiateComponentWithRelations(prefab, parent)` or `resolver.InstantiateGameObjectWithRelations(prefab, parent)`; to inject existing hierarchies use `resolver.InjectGameObjectWithRelations(root)`.
 
 - EditMode reliability: In EditMode tests, prefer `[UnityTest]` and `yield return null` after creating objects and after initializing the entry point so Unity has a frame to register new objects before `FindObjectsOfType` runs and to allow assignments to complete.
 - Active scene filter: Entry points operate on the active scene only. In EditMode, create a new scene with `SceneManager.CreateScene`, set it active, and move your test hierarchy into it before calling `Initialize()`.
@@ -508,10 +523,16 @@ VContainer (1.16.x)
 
 Zenject/Extenject
 
-- Runtime usage: Add `RelationalComponentsInstaller` to your `SceneContext`. It binds `IRelationalComponentAssigner` and runs `RelationalComponentSceneInitializer` once the container is ready.
+- Runtime usage: Add `RelationalComponentsInstaller` to your `SceneContext`. It binds `IRelationalComponentAssigner` and runs `RelationalComponentSceneInitializer` once the container is ready. The installer exposes toggles to assign on initialize and to listen for additive scenes.
 - Tests: Bind a concrete `AttributeMetadataCache` instance and construct the assigner with that cache. Then resolve `IInitializable` and call `Initialize()`.
 - EditMode reliability: As with VContainer, consider `[UnityTest]` with a `yield return null` after creating objects and after calling `Initialize()` to allow Unity to register objects and complete assignments.
-- Active scene filter: The initializer operates on the active scene only. Create and set an active scene and move your test hierarchy into it before calling `Initialize()`.
+- Active scene filter: Initial one-time scan operates on the active scene only. The additive-scene listener processes only newly loaded scenes (not all loaded scenes).
+  - Prefabs & GameObjects: `container.InstantiateComponentWithRelations(...)`, `container.InstantiateGameObjectWithRelations(...)`, or `container.InjectGameObjectWithRelations(root)`; to inject + assign a single instance: `container.InjectWithRelations(component)`.
+
+### Object Pools (DI-aware)
+
+- Zenject: use `RelationalMemoryPool<T>` (or `<TParam, T>`) to assign relational fields in `OnSpawned` automatically.
+- VContainer: create pools with `RelationalObjectPools.CreatePoolWithRelations(...)` and rent via `pool.GetWithRelations(resolver)` to inject + assign.
 
 Common pitfalls and how to avoid them
 

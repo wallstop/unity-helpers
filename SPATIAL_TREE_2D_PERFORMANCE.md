@@ -21,77 +21,80 @@ This document contains performance benchmarks for the 2D spatial tree implementa
 ## Performance Benchmarks
 
 <!-- SPATIAL_TREE_BENCHMARKS_START -->
+
+### Datasets
+
 <!-- tabs:start -->
 
-### 1,000,000 entries
+#### **1,000,000 entries**
 
-#### Construction
+##### Construction
 
 | Construction      | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D    |
 | ----------------- | ------------------- | --------------------- | ---------- | ---------- |
-| 1,000,000 entries | 4 (0.244s)          | 6 (0.153s)            | 4 (0.222s) | 2 (0.386s) |
+| 1,000,000 entries | 4 (0.246s)          | 4 (0.224s)            | 3 (0.265s) | 3 (0.284s) |
 
-#### Elements In Range
+##### Elements In Range
 
 | Elements In Range           | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | --------------------------- | ------------------- | --------------------- | ---------- | ------- |
 | Full (~span/2) (r=499.5)    | 59                  | 58                    | 56         | 7       |
-| Half (~span/4) (r=249.8)    | 236                 | 236                   | 217        | 28      |
-| Quarter (~span/8) (r=124.9) | 946                 | 945                   | 816        | 119     |
-| Tiny (~span/1000) (r=1)     | 101,504             | 105,285               | 142,984    | 106,816 |
+| Half (~span/4) (r=249.8)    | 238                 | 235                   | 214        | 28      |
+| Quarter (~span/8) (r=124.9) | 947                 | 937                   | 812        | 119     |
+| Tiny (~span/1000) (r=1)     | 102,826             | 104,147               | 143,155    | 106,922 |
 
-#### Get Elements In Bounds
+##### Get Elements In Bounds
 
 | Get Elements In Bounds     | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | -------------------------- | ------------------- | --------------------- | ---------- | ------- |
-| Full (size=999.0x999.0)    | 380                 | 382                   | 344        | 17      |
-| Half (size=499.5x499.5)    | 1,851               | 1,843                 | 1,236      | 75      |
-| Quarter (size=249.8x249.8) | 7,483               | 7,248                 | 3,887      | 377     |
-| Unit (size=1)              | 147,825             | 152,474               | 196,544    | 110,185 |
+| Full (size=999.0x999.0)    | 375                 | 376                   | 299        | 17      |
+| Half (size=499.5x499.5)    | 1,748               | 1,734                 | 1,212      | 82      |
+| Quarter (size=249.8x249.8) | 6,948               | 7,069                 | 3,770      | 378     |
+| Unit (size=1)              | 147,771             | 151,269               | 195,483    | 103,640 |
 
-#### Approximate Nearest Neighbors
+##### Approximate Nearest Neighbors
 
 | Approximate Nearest Neighbors | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | ----------------------------- | ------------------- | --------------------- | ---------- | ------- |
-| 500 neighbors                 | 8,454               | 16,901                | 12,715     | 69,581  |
-| 100 neighbors                 | 77,855              | 76,370                | 78,317     | 175,585 |
-| 10 neighbors                  | 377,857             | 352,657               | 225,271    | 281,743 |
-| 1 neighbor                    | 516,596             | 504,358               | 276,636    | 296,533 |
+| 500 neighbors                 | 8,432               | 16,941                | 12,659     | 63,928  |
+| 100 neighbors                 | 79,012              | 76,134                | 79,369     | 151,190 |
+| 10 neighbors                  | 354,172             | 336,281               | 253,028    | 235,497 |
+| 1 neighbor                    | 532,502             | 534,697               | 263,337    | 293,872 |
 
-### 100,000 entries
+#### **100,000 entries**
 
-#### Construction
+##### Construction
 
 | Construction    | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D  | RTree2D     |
 | --------------- | ------------------- | --------------------- | ----------- | ----------- |
-| 100,000 entries | 50 (0.020s)         | 83 (0.012s)           | 50 (0.020s) | 50 (0.020s) |
+| 100,000 entries | 48 (0.021s)         | 78 (0.013s)           | 48 (0.020s) | 47 (0.021s) |
 
-#### Elements In Range
+##### Elements In Range
 
 | Elements In Range           | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | --------------------------- | ------------------- | --------------------- | ---------- | ------- |
-| Full (~span/2) (r=199.5)    | 601                 | 601                   | 601        | 74      |
-| Half (~span/4) (r=99.75)    | 1,353               | 1,358                 | 1,248      | 186     |
-| Quarter (~span/8) (r=49.88) | 4,667               | 5,176                 | 4,299      | 724     |
-| Tiny (~span/1000) (r=1)     | 127,432             | 127,776               | 178,260    | 145,496 |
+| Full (~span/2) (r=199.5)    | 594                 | 595                   | 593        | 71      |
+| Half (~span/4) (r=99.75)    | 1,351               | 1,343                 | 1,233      | 184     |
+| Quarter (~span/8) (r=49.88) | 4,671               | 5,126                 | 4,259      | 723     |
+| Tiny (~span/1000) (r=1)     | 127,392             | 126,389               | 176,895    | 144,540 |
 
-#### Get Elements In Bounds
+##### Get Elements In Bounds
 
 | Get Elements In Bounds     | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | -------------------------- | ------------------- | --------------------- | ---------- | ------- |
-| Full (size=399.0x249.0)    | 4,571               | 4,588                 | 4,675      | 232     |
-| Half (size=199.5x124.5)    | 9,686               | 12,037                | 8,043      | 973     |
-| Quarter (size=99.75x62.25) | 25,538              | 33,097                | 19,916     | 3,832   |
-| Unit (size=1)              | 182,094             | 183,264               | 244,353    | 154,606 |
+| Full (size=399.0x249.0)    | 4,421               | 4,503                 | 4,627      | 224     |
+| Half (size=199.5x124.5)    | 9,403               | 11,733                | 7,704      | 944     |
+| Quarter (size=99.75x62.25) | 25,758              | 31,652                | 18,828     | 3,742   |
+| Unit (size=1)              | 180,077             | 181,814               | 233,505    | 152,910 |
 
-#### Approximate Nearest Neighbors
+##### Approximate Nearest Neighbors
 
 | Approximate Nearest Neighbors | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | ----------------------------- | ------------------- | --------------------- | ---------- | ------- |
-| 500 neighbors                 | 9,965               | 9,922                 | 11,666     | 69,077  |
-| 100 neighbors                 | 49,164              | 92,888                | 55,324     | 216,799 |
-| 10 neighbors                  | 474,916             | 390,202               | 265,444    | 350,326 |
-| 1 neighbor                    | 474,933             | 543,573               | 323,662    | 372,714 |
+| 500 neighbors                 | 9,927               | 9,842                 | 11,635     | 69,488  |
+| 100 neighbors                 | 49,376              | 92,059                | 54,962     | 231,627 |
+| 10 neighbors                  | 441,663             | 355,038               | 293,832    | 351,079 |
+| 1 neighbor                    | 497,313             | 544,855               | 300,128    | 361,623 |
 
 #### **10,000 entries**
 
@@ -99,103 +102,103 @@ This document contains performance benchmarks for the 2D spatial tree implementa
 
 | Construction   | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D   | RTree2D      |
 | -------------- | ------------------- | --------------------- | ------------ | ------------ |
-| 10,000 entries | 537 (0.002s)        | 801 (0.001s)          | 542 (0.002s) | 504 (0.002s) |
+| 10,000 entries | 353 (0.003s)        | 801 (0.001s)          | 544 (0.002s) | 492 (0.002s) |
 
 ##### Elements In Range
 
 | Elements In Range           | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | --------------------------- | ------------------- | --------------------- | ---------- | ------- |
-| Full (~span/2) (r=49.50)    | 5,935               | 5,938                 | 5,944      | 735     |
-| Half (~span/4) (r=24.75)    | 22,275              | 22,241                | 13,866     | 2,926   |
-| Quarter (~span/8) (r=12.38) | 44,200              | 51,396                | 38,060     | 12,233  |
-| Tiny (~span/1000) (r=1)     | 166,755             | 161,974               | 232,843    | 168,516 |
+| Full (~span/2) (r=49.50)    | 5,935               | 5,879                 | 5,944      | 732     |
+| Half (~span/4) (r=24.75)    | 22,254              | 22,068                | 13,875     | 2,919   |
+| Quarter (~span/8) (r=12.38) | 43,998              | 50,921                | 38,084     | 12,201  |
+| Tiny (~span/1000) (r=1)     | 155,617             | 160,627               | 231,057    | 167,961 |
 
 ##### Get Elements In Bounds
 
 | Get Elements In Bounds     | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | -------------------------- | ------------------- | --------------------- | ---------- | ------- |
-| Full (size=99.00x99.00)    | 46,195              | 46,083                | 46,681     | 2,426   |
-| Half (size=49.50x49.50)    | 167,388             | 148,478               | 36,590     | 9,339   |
-| Quarter (size=24.75x24.75) | 75,940              | 104,014               | 75,785     | 35,720  |
-| Unit (size=1)              | 239,397             | 231,168               | 318,259    | 179,268 |
+| Full (size=99.00x99.00)    | 44,596              | 44,865                | 45,270     | 2,414   |
+| Half (size=49.50x49.50)    | 164,082             | 143,516               | 35,724     | 9,281   |
+| Quarter (size=24.75x24.75) | 73,832              | 100,527               | 70,871     | 35,446  |
+| Unit (size=1)              | 235,343             | 229,783               | 298,780    | 180,227 |
 
 ##### Approximate Nearest Neighbors
 
 | Approximate Nearest Neighbors | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | ----------------------------- | ------------------- | --------------------- | ---------- | ------- |
-| 500 neighbors                 | 13,166              | 13,003                | 14,458     | 64,265  |
-| 100 neighbors                 | 62,425              | 56,807                | 96,006     | 221,880 |
-| 10 neighbors                  | 395,764             | 419,775               | 284,603    | 415,788 |
-| 1 neighbor                    | 597,510             | 602,338               | 369,442    | 459,139 |
+| 500 neighbors                 | 13,121              | 12,981                | 13,535     | 65,370  |
+| 100 neighbors                 | 61,965              | 56,598                | 95,886     | 234,525 |
+| 10 neighbors                  | 415,886             | 374,183               | 316,122    | 417,759 |
+| 1 neighbor                    | 568,132             | 638,935               | 352,718    | 411,584 |
 
-### 1,000 entries
+#### **1,000 entries**
 
-#### Construction
+##### Construction
 
 | Construction  | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D     | RTree2D        |
 | ------------- | ------------------- | --------------------- | -------------- | -------------- |
-| 1,000 entries | 5,327 (0.000s)      | 7,739 (0.000s)        | 4,952 (0.000s) | 4,764 (0.000s) |
+| 1,000 entries | 5,205 (0.000s)      | 3,790 (0.000s)        | 4,833 (0.000s) | 4,401 (0.000s) |
 
-#### Elements In Range
+##### Elements In Range
 
 | Elements In Range          | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | -------------------------- | ------------------- | --------------------- | ---------- | ------- |
-| Full (~span/2) (r=24.50)   | 58,072              | 57,956                | 57,377     | 7,419   |
-| Half (~span/4) (r=12.25)   | 60,307              | 76,412                | 57,036     | 14,715  |
-| Quarter (~span/8) (r=6.13) | 95,578              | 108,397               | 95,395     | 38,031  |
-| Tiny (~span/1000) (r=1)    | 238,625             | 236,418               | 334,236    | 251,174 |
+| Full (~span/2) (r=24.50)   | 58,096              | 57,658                | 56,538     | 7,385   |
+| Half (~span/4) (r=12.25)   | 60,182              | 76,032                | 56,614     | 14,679  |
+| Quarter (~span/8) (r=6.13) | 95,596              | 106,311               | 94,617     | 37,986  |
+| Tiny (~span/1000) (r=1)    | 238,748             | 228,920               | 333,022    | 251,146 |
 
-#### Get Elements In Bounds
+##### Get Elements In Bounds
 
 | Get Elements In Bounds    | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | ------------------------- | ------------------- | --------------------- | ---------- | ------- |
-| Full (size=49.00x19.00)   | 496,607             | 498,142               | 539,878    | 24,229  |
-| Half (size=24.50x9.5)     | 165,447             | 287,325               | 127,121    | 75,159  |
-| Quarter (size=12.25x4.75) | 255,238             | 273,498               | 194,690    | 176,327 |
-| Unit (size=1)             | 338,275             | 335,033               | 453,237    | 279,167 |
+| Full (size=49.00x19.00)   | 414,739             | 470,320               | 515,549    | 24,063  |
+| Half (size=24.50x9.5)     | 164,697             | 287,309               | 120,277    | 74,699  |
+| Quarter (size=12.25x4.75) | 267,097             | 285,429               | 182,478    | 175,655 |
+| Unit (size=1)             | 338,316             | 334,893               | 415,411    | 279,184 |
 
-#### Approximate Nearest Neighbors
+##### Approximate Nearest Neighbors
 
 | Approximate Nearest Neighbors | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | ----------------------------- | ------------------- | --------------------- | ---------- | ------- |
-| 500 neighbors                 | 46,525              | 47,120                | 38,307     | 69,953  |
-| 100 neighbors                 | 80,804              | 78,180                | 92,282     | 268,937 |
-| 10 neighbors                  | 520,835             | 601,494               | 416,276    | 506,668 |
-| 1 neighbor                    | 725,705             | 581,979               | 388,981    | 591,498 |
+| 500 neighbors                 | 46,284              | 47,202                | 40,221     | 70,459  |
+| 100 neighbors                 | 80,808              | 78,302                | 92,322     | 273,121 |
+| 10 neighbors                  | 474,758             | 538,241               | 425,873    | 480,648 |
+| 1 neighbor                    | 750,345             | 599,094               | 387,663    | 589,145 |
 
-### 100 entries
+#### **100 entries**
 
-#### Construction
+##### Construction
 
 | Construction | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D      | RTree2D         |
 | ------------ | ------------------- | --------------------- | --------------- | --------------- |
-| 100 entries  | 42,553 (0.000s)     | 21,929 (0.000s)       | 29,325 (0.000s) | 21,786 (0.000s) |
+| 100 entries  | 37,593 (0.000s)     | 35,714 (0.000s)       | 27,472 (0.000s) | 22,522 (0.000s) |
 
-#### Elements In Range
+##### Elements In Range
 
 | Elements In Range          | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | -------------------------- | ------------------- | --------------------- | ---------- | ------- |
-| Full (~span/2) (r=4.5)     | 504,629             | 463,895               | 509,215    | 72,746  |
-| Half (~span/4) (r=2.25)    | 425,242             | 430,575               | 256,046    | 236,805 |
-| Quarter (~span/8) (r=1.13) | 425,958             | 430,848               | 593,604    | 338,080 |
-| Tiny (~span/1000) (r=1)    | 424,528             | 430,448               | 591,691    | 338,365 |
+| Full (~span/2) (r=4.5)     | 500,291             | 502,276               | 507,569    | 72,648  |
+| Half (~span/4) (r=2.25)    | 427,794             | 432,046               | 256,551    | 236,627 |
+| Quarter (~span/8) (r=1.13) | 427,304             | 432,189               | 592,069    | 338,168 |
+| Tiny (~span/1000) (r=1)    | 418,333             | 431,984               | 546,375    | 338,262 |
 
-#### Get Elements In Bounds
+##### Get Elements In Bounds
 
 | Get Elements In Bounds   | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | ------------------------ | ------------------- | --------------------- | ---------- | ------- |
-| Full (size=9x9)          | 2,269,583           | 2,434,901             | 2,501,705  | 224,429 |
-| Half (size=4.5x4.5)      | 566,944             | 555,712               | 360,504    | 369,394 |
-| Quarter (size=2.25x2.25) | 592,102             | 565,569               | 753,693    | 390,919 |
-| Unit (size=1)            | 592,678             | 595,395               | 784,153    | 386,053 |
+| Full (size=9x9)          | 2,211,065           | 2,397,486             | 2,468,162  | 222,527 |
+| Half (size=4.5x4.5)      | 564,152             | 485,481               | 348,572    | 366,318 |
+| Quarter (size=2.25x2.25) | 585,009             | 519,317               | 754,164    | 359,418 |
+| Unit (size=1)            | 585,765             | 503,496               | 754,022    | 392,014 |
 
-#### Approximate Nearest Neighbors
+##### Approximate Nearest Neighbors
 
 | Approximate Nearest Neighbors | KDTree2D (Balanced) | KDTree2D (Unbalanced) | QuadTree2D | RTree2D |
 | ----------------------------- | ------------------- | --------------------- | ---------- | ------- |
-| 100 neighbors (max)           | 165,219             | 164,632               | 200,629    | 306,317 |
-| 10 neighbors                  | 610,304             | 516,470               | 619,678    | 760,800 |
-| 1 neighbor                    | 499,393             | 737,678               | 642,498    | 823,829 |
+| 100 neighbors (max)           | 164,874             | 154,248               | 194,218    | 322,083 |
+| 10 neighbors                  | 576,064             | 513,406               | 590,270    | 731,734 |
+| 1 neighbor                    | 586,842             | 718,754               | 631,970    | 803,155 |
 
 <!-- tabs:end -->
 <!-- SPATIAL_TREE_BENCHMARKS_END -->

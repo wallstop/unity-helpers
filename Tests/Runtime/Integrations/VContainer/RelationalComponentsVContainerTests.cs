@@ -51,14 +51,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
                 Is.SameAs(tester),
                 "Assigner should receive the same component instance"
             );
-            Assert.That(
-                tester.parentBody,
-                Is.Not.Null,
+            Assert.IsTrue(
+                tester.parentBody != null,
                 "ParentComponent assignment should set parentBody"
             );
-            Assert.That(
-                tester.childCollider,
-                Is.Not.Null,
+            Assert.IsTrue(
+                tester.childCollider != null,
                 "ChildComponent assignment should set childCollider"
             );
         }
@@ -73,14 +71,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
 
             resolver.AssignRelationalComponents(tester);
 
-            Assert.That(
-                tester.parentBody,
-                Is.Not.Null,
+            Assert.IsTrue(
+                tester.parentBody != null,
                 "Fallback should assign parentBody without a bound assigner"
             );
-            Assert.That(
-                tester.childCollider,
-                Is.Not.Null,
+            Assert.IsTrue(
+                tester.childCollider != null,
                 "Fallback should assign childCollider without a bound assigner"
             );
         }
@@ -112,14 +108,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
                 entryPoint.Initialize();
                 yield return null;
 
-                Assert.That(
-                    tester.parentBody,
-                    Is.Not.Null,
+                Assert.IsTrue(
+                    tester.parentBody != null,
                     "Entry point should assign parentBody in the active scene"
                 );
-                Assert.That(
-                    tester.childCollider,
-                    Is.Not.Null,
+                Assert.IsTrue(
+                    tester.childCollider != null,
                     "Entry point should assign childCollider in the active scene"
                 );
             }
@@ -147,14 +141,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
                 Is.SameAs(tester),
                 "BuildUpWithRelations should return the same component instance"
             );
-            Assert.That(
-                tester.parentBody,
-                Is.Not.Null,
+            Assert.IsTrue(
+                tester.parentBody != null,
                 "BuildUpWithRelations should assign parentBody"
             );
-            Assert.That(
-                tester.childCollider,
-                Is.Not.Null,
+            Assert.IsTrue(
+                tester.childCollider != null,
                 "BuildUpWithRelations should assign childCollider"
             );
         }
@@ -182,14 +174,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
             IObjectResolver resolver = builder.Build();
             VContainerRelationalTester tester = CreateHierarchy();
             resolver.AssignRelationalHierarchy(tester.gameObject, includeInactiveChildren: false);
-            Assert.That(
-                tester.parentBody,
-                Is.Not.Null,
+            Assert.IsTrue(
+                tester.parentBody != null,
                 "AssignRelationalHierarchy should assign parentBody"
             );
-            Assert.That(
-                tester.childCollider,
-                Is.Not.Null,
+            Assert.IsTrue(
+                tester.childCollider != null,
                 "AssignRelationalHierarchy should assign childCollider"
             );
         }
@@ -232,24 +222,20 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
                 rootTester.gameObject,
                 includeInactiveChildren: false
             );
-            Assert.That(
-                rootTester.parentBody,
-                Is.Not.Null,
+            Assert.IsTrue(
+                rootTester.parentBody != null,
                 "Root tester should be assigned even when includeInactiveChildren is false"
             );
-            Assert.That(
-                rootTester.childCollider,
-                Is.Not.Null,
+            Assert.IsTrue(
+                rootTester.childCollider != null,
                 "Root tester should be assigned even when includeInactiveChildren is false"
             );
-            Assert.That(
-                subTester.parentBody,
-                Is.Null,
+            Assert.IsTrue(
+                subTester.parentBody == null,
                 "Inactive sub tester should be skipped when includeInactiveChildren is false"
             );
-            Assert.That(
-                subTester.childCollider,
-                Is.Null,
+            Assert.IsTrue(
+                subTester.childCollider == null,
                 "Inactive sub tester should be skipped when includeInactiveChildren is false"
             );
 
@@ -258,14 +244,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
                 rootTester.gameObject,
                 includeInactiveChildren: true
             );
-            Assert.That(
-                subTester.parentBody,
-                Is.Not.Null,
+            Assert.IsTrue(
+                subTester.parentBody != null,
                 "Inactive sub tester should be assigned when includeInactiveChildren is true"
             );
-            Assert.That(
-                subTester.childCollider,
-                Is.Not.Null,
+            Assert.IsTrue(
+                subTester.childCollider != null,
                 "Inactive sub tester should be assigned when includeInactiveChildren is true"
             );
         }
@@ -339,25 +323,23 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
             child.transform.SetParent(middle.transform);
 
             // Expect an error about missing child component due to IncludeInactive=false on attribute
-            UnityEngine.TestTools.LogAssert.Expect(
-                UnityEngine.LogType.Error,
+            LogAssert.Expect(
+                LogType.Error,
                 new System.Text.RegularExpressions.Regex(
                     ".*Unable to find child component of type UnityEngine\\.CapsuleCollider for field 'childCollider'.*"
                 )
             );
             resolver.AssignRelationalComponents(tester);
-            Assert.That(tester.parentBody, Is.Not.Null, "Parent assignment should succeed");
-            Assert.That(
-                tester.childCollider,
-                Is.Null,
+            Assert.IsTrue(tester.parentBody != null, "Parent assignment should succeed");
+            Assert.IsTrue(
+                tester.childCollider == null,
                 "Child assignment should ignore inactive child when IncludeInactive is false"
             );
 
             child.SetActive(true);
             resolver.AssignRelationalComponents(tester);
-            Assert.That(
-                tester.childCollider,
-                Is.Not.Null,
+            Assert.IsTrue(
+                tester.childCollider != null,
                 "Child assignment should include active child when IncludeInactive is false"
             );
         }
@@ -389,14 +371,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
                         new RelationalSceneAssignmentOptions(includeInactive: false)
                     );
                 disabledEntryPoint.Initialize();
-                Assert.That(
-                    tester.parentBody,
-                    Is.Null,
+                Assert.IsTrue(
+                    tester.parentBody == null,
                     "Disabled option should skip inactive components"
                 );
-                Assert.That(
-                    tester.childCollider,
-                    Is.Null,
+                Assert.IsTrue(
+                    tester.childCollider == null,
                     "Disabled option should skip inactive components"
                 );
 
@@ -407,14 +387,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
                 );
                 enabledEntryPoint.Initialize();
                 yield return null;
-                Assert.That(
-                    tester.parentBody,
-                    Is.Not.Null,
+                Assert.IsTrue(
+                    tester.parentBody != null,
                     "Enabled option should include inactive components"
                 );
-                Assert.That(
-                    tester.childCollider,
-                    Is.Not.Null,
+                Assert.IsTrue(
+                    tester.childCollider != null,
                     "Enabled option should include inactive components"
                 );
             }
