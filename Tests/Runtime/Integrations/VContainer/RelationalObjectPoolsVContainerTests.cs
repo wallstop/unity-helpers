@@ -22,10 +22,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
                 {
                     GameObject go = new GameObject("PooledRoot");
                     go.AddComponent<Rigidbody>();
+                    GameObject middle = new GameObject("PooledMiddle");
+                    middle.transform.SetParent(go.transform);
+                    TestComponent tester = middle.AddComponent<TestComponent>();
                     GameObject child = new GameObject("PooledChild");
-                    child.transform.SetParent(go.transform);
+                    child.transform.SetParent(middle.transform);
                     child.AddComponent<CapsuleCollider>();
-                    return go.AddComponent<TestComponent>();
+                    return tester;
                 }
             );
 
@@ -35,8 +38,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
             Assert.IsTrue(comp.parentBody != null);
             Assert.IsTrue(comp.childCollider != null);
 
+            GameObject root = comp.transform.root.gameObject;
             pool.Release(comp);
-            UnityEngine.Object.DestroyImmediate(comp.gameObject);
+            UnityEngine.Object.DestroyImmediate(root);
         }
 
         [Test]

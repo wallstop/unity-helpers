@@ -94,12 +94,12 @@ namespace WallstopStudios.UnityHelpers.Integrations.VContainer
 
             // Safety net in Editor/tests: walk scene roots to catch any missed components
 #if UNITY_EDITOR
-            AssignBySceneRoots(scene, includeInactive);
-
-            // In EditMode, object registration can lag a frame after scene creation.
-            // Schedule a follow-up pass to catch late-registered components.
             if (!Application.isPlaying)
             {
+                AssignBySceneRoots(scene, includeInactive);
+
+                // In EditMode, object registration can lag a frame after scene creation.
+                // Schedule a follow-up pass to catch late-registered components.
                 UnityEditor.EditorApplication.delayCall += () =>
                 {
                     if (scene.IsValid())

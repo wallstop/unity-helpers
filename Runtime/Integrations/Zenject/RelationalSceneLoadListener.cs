@@ -95,12 +95,12 @@ namespace WallstopStudios.UnityHelpers.Integrations.Zenject
 
             // Safety net in Editor/tests: also walk scene roots
 #if UNITY_EDITOR
-            AssignBySceneRoots(scene, includeInactive);
-
-            // In EditMode, some components may be registered on the following editor tick.
-            // Schedule a delayed pass to ensure complete hydration in tests/tools.
             if (!Application.isPlaying)
             {
+                AssignBySceneRoots(scene, includeInactive);
+
+                // In EditMode, some components may be registered on the following editor tick.
+                // Schedule a delayed pass to ensure complete hydration in tests/tools.
                 UnityEditor.EditorApplication.delayCall += () =>
                 {
                     if (scene.IsValid())

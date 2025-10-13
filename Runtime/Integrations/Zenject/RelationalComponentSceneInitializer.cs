@@ -159,18 +159,21 @@ namespace WallstopStudios.UnityHelpers.Integrations.Zenject
 
             // Safety net in Editor/tests: also walk scene roots to ensure coverage
 #if UNITY_EDITOR
-            using PooledResource<List<GameObject>> rootGoBuffer = Buffers<GameObject>.List.Get(
-                out List<GameObject> roots
-            );
-            activeScene.GetRootGameObjects(roots);
-            foreach (GameObject root in roots)
+            if (!Application.isPlaying)
             {
-                if (root == null)
+                using PooledResource<List<GameObject>> rootGoBuffer = Buffers<GameObject>.List.Get(
+                    out List<GameObject> roots
+                );
+                activeScene.GetRootGameObjects(roots);
+                foreach (GameObject root in roots)
                 {
-                    continue;
-                }
+                    if (root == null)
+                    {
+                        continue;
+                    }
 
-                _assigner.AssignHierarchy(root, includeInactive);
+                    _assigner.AssignHierarchy(root, includeInactive);
+                }
             }
 #endif
         }
