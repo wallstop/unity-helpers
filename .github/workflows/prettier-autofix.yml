@@ -1,4 +1,4 @@
-name: CSharpier Auto Format
+name: Prettier Auto Fix
 
 on:
   pull_request:
@@ -10,7 +10,7 @@ permissions:
   pull-requests: write
 
 jobs:
-  format:
+  autofix:
     name: Format and propose changes
     if: ${{ github.event_name != 'pull_request_target' }}
     runs-on: ubuntu-latest
@@ -20,29 +20,57 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          dotnet-version: "8.0.x"
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: package.json
 
-      - name: Restore .NET tools
-        run: dotnet tool restore
+      - name: Install dependencies
+        if: ${{ github.event.pull_request.user.login == 'dependabot[bot]' }}
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm i --no-audit --no-fund
+          fi
 
-      - name: Run CSharpier (format repository)
-        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'dependabot[bot]' }}
-        run: dotnet tool run csharpier format
+      - name: Run Prettier (write fixes)
+        if: ${{ github.event.pull_request.user.login == 'dependabot[bot]' }}
+        run: |
+          npm run format:md
+          npm run format:json
+          npm run format:yaml
+
+      - name: Markdownlint (auto-fix)
+        if: ${{ github.event.pull_request.user.login == 'dependabot[bot]' }}
+        run: npx markdownlint "**/*.md" "**/*.markdown" --config .markdownlint.json --ignore-path .markdownlintignore --fix
 
       - name: Commit formatting changes to PR branch (Dependabot only)
         if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'dependabot[bot]' }}
         uses: stefanzweifel/git-auto-commit-action@v7
         with:
-          commit_message: "chore(format): apply CSharpier formatting"
+          commit_message: "chore(format): apply Prettier/markdownlint fixes"
           branch: ${{ github.head_ref }}
 
-      - name: Verify formatting (CI gate)
-        run: dotnet tool run csharpier check .
+      - name: Prettier check (Markdown)
+        run: npm run format:md:check
 
-  format_fork:
+      - name: Prettier check (JSON / asmdef / asmref)
+        run: npm run format:json:check
+
+      - name: Prettier check (YAML)
+        run: npm run format:yaml:check
+
+      - name: Markdown lint (CI gate)
+        run: npm run lint:markdown
+
+      - name: Enforce EOL (CRLF) and No BOM
+        shell: pwsh
+        run: ./scripts/check-eol.ps1 -VerboseOutput
+
+  autofix_fork:
     name: Fork PR bot formatting PR (Dependabot only)
     if: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.repo.full_name != github.repository && github.event.pull_request.user.login == 'dependabot[bot]' }}
     runs-on: ubuntu-latest
@@ -55,16 +83,29 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          dotnet-version: "8.0.x"
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: package.json
 
-      - name: Install CSharpier (pinned)
-        run: dotnet tool install -g csharpier --version 1.1.2
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm i --no-audit --no-fund
+          fi
 
-      - name: Run CSharpier (format repository)
-        run: ~/.dotnet/tools/csharpier .
+      - name: Run Prettier (write fixes)
+        run: |
+          npm run format:md
+          npm run format:json
+          npm run format:yaml
+
+      - name: Markdownlint (auto-fix)
+        run: npx markdownlint "**/*.md" "**/*.markdown" --config .markdownlint.json --ignore-path .markdownlintignore --fix
 
       - name: Detect changes
         id: changes
@@ -84,12 +125,12 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          BRANCH="bot/csharpier/pr-${{ github.event.pull_request.number }}"
+          BRANCH="bot/prettier/pr-${{ github.event.pull_request.number }}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -B "$BRANCH"
           git add -A
-          git commit -m "chore(format): apply CSharpier formatting for PR #${{ github.event.pull_request.number }}"
+          git commit -m "chore(format): apply Prettier/markdownlint fixes for PR #${{ github.event.pull_request.number }}"
           git remote add upstream "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
           git fetch upstream
           git push upstream "$BRANCH" --force
@@ -102,11 +143,11 @@ jobs:
           script: |
             const prNumber = context.payload.pull_request.number;
             const baseRef = context.payload.pull_request.base.ref;
-            const headBranch = `bot/csharpier/pr-${prNumber}`;
+            const headBranch = `bot/prettier/pr-${prNumber}`;
             const {owner, repo} = context.repo;
-            const title = `chore(format): Apply CSharpier to PR #${prNumber}`;
+            const title = `chore(format): Apply Prettier/markdownlint to PR #${prNumber}`;
             const body = [
-              `This automated PR applies CSharpier formatting to the changes from PR #${prNumber}.`,
+              `This automated PR applies Prettier and markdownlint fixes to the changes from PR #${prNumber}.`,
               '',
               `- Source PR (fork): #${prNumber}`,
               `- Target branch: ${baseRef}`,
@@ -115,7 +156,6 @@ jobs:
               'You can then close the original PR or ask the author to rebase.',
             ].join('\n');
 
-            // Check if a PR from this branch already exists
             const existing = await github.rest.pulls.list({ owner, repo, state: 'open', head: `${owner}:${headBranch}` });
             if (existing.data.length === 0) {
               await github.rest.pulls.create({ owner, repo, head: headBranch, base: baseRef, title, body });
@@ -128,13 +168,11 @@ jobs:
           script: |
             const prNumber = context.payload.pull_request.number;
             const {owner, repo} = context.repo;
-            const headBranch = `bot/csharpier/pr-${prNumber}`;
-            // Find the formatting PR we just created or updated
+            const headBranch = `bot/prettier/pr-${prNumber}`;
             const resp = await github.rest.pulls.list({ owner, repo, state: 'open', head: `${owner}:${headBranch}` });
             if (resp.data.length > 0) {
               const fmtPr = resp.data[0];
-              const body = `A formatting PR has been opened: #${fmtPr.number} (applies CSharpier to this PR).`;
-              // Avoid duplicate comments by checking recent comments
+              const body = `A formatting PR has been opened: #${fmtPr.number} (applies Prettier/markdownlint fixes to this PR).`;
               const comments = await github.rest.issues.listComments({ owner, repo, issue_number: prNumber, per_page: 50 });
               const already = comments.data.some(
                 (c) =>

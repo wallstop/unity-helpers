@@ -309,5 +309,3 @@ __pycache__/
 # Ensure Unity package samples are included
 !Samples~/
 !Samples~/**
-package-lock.json
-package-lock.json.meta
