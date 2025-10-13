@@ -1,0 +1,42 @@
+#!/usr/bin/env sh
+set -e
+
+# Mirror key CI checks before pushing
+
+# Ensure Node is available
+if ! command -v npx >/dev/null 2>&1; then
+  echo "npx is required. Please install Node.js." >&2
+  exit 1
+fi
+
+# 1) Prettier checks (Markdown, JSON, asmdef/asmref, YAML)
+npx --no-install prettier --check "**/*.{md,markdown}" || exit 1
+npx --no-install prettier --check "**/*.{json,asmdef,asmref}" || exit 1
+npx --no-install prettier --check "**/*.{yml,yaml}" || exit 1
+
+# 2) Markdownlint (uses repo config and ignore list)
+npx --no-install markdownlint "**/*.md" "**/*.markdown" --config .markdownlint.json --ignore-path .markdownlintignore || exit 1
+
+# 3) EOL/BOM policy (CRLF + UTF-8 BOM)
+if command -v pwsh >/dev/null 2>&1; then
+  pwsh -NoProfile -File scripts/check-eol.ps1 -VerboseOutput
+elif command -v powershell >/dev/null 2>&1; then
+  powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-eol.ps1 -VerboseOutput
+else
+  echo "PowerShell not found; skipping EOL validation." >&2
+fi
+
+# 4) Optional YAML lint (if yamllint installed)
+if command -v yamllint >/dev/null 2>&1; then
+  yamllint -c .yamllint.yaml .
+else
+  echo "yamllint not found; skipping YAML lint. CI will catch issues." >&2
+fi
+
+# 5) Optional external link check (if lychee installed)
+if command -v lychee >/dev/null 2>&1; then
+  lychee -c .lychee.toml --no-progress --verbose "./**/*.md"
+else
+  echo "lychee not found; skipping external link check. CI will run lychee." >&2
+fi
+
