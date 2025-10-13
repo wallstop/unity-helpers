@@ -19,4 +19,3 @@
   // Don’t flag the two trailing spaces used for hard line breaks in Markdown
   "MD009": { "strict": false }
 }
-
