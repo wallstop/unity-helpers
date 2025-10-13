@@ -1,6 +1,6 @@
 # Unity Helpers
 
-[![Unity 2021.3+](https://img.shields.io/badge/Unity-2021.3%2B-000000?logo=unity&logoColor=white)](https://unity.com/releases/editor/whats-new/2021.3)
+[![Unity 2021.3+](https://img.shields.io/badge/Unity-2021.3%2B-000000?logo=unity&logoColor=white)](https://unity.com/releases/2021-lts)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![CSharpier](https://github.com/wallstop/unity-helpers/actions/workflows/csharpier.yml/badge.svg?branch=main)](https://github.com/wallstop/unity-helpers/actions/workflows/csharpier.yml)
 [![Markdown & JSON Lint/Format](https://github.com/wallstop/unity-helpers/actions/workflows/markdown-json.yml/badge.svg?branch=main)](https://github.com/wallstop/unity-helpers/actions/workflows/markdown-json.yml)

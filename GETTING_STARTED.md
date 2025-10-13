@@ -396,8 +396,8 @@ Pick one feature that solves your immediate problem:
 
 **Ready to dive deeper?** Return to the [main README](README.md) for the complete feature list.
 
-**Building something cool?** We'd love to hear about it! Share your experience in
-[GitHub Discussions](https://github.com/wallstop/unity-helpers/discussions).
+**Building something cool?** We'd love to hear about it! Share your experience by opening an
+[issue](https://github.com/wallstop/unity-helpers/issues).
 
 ---
 
