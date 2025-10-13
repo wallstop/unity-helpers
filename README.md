@@ -2,7 +2,7 @@
 
 [![Unity 2021.3+](https://img.shields.io/badge/Unity-2021.3%2B-000000?logo=unity&logoColor=white)](https://unity.com/releases/2021-lts)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![CSharpier](https://github.com/wallstop/unity-helpers/actions/workflows/csharpier.yml/badge.svg?branch=main)](https://github.com/wallstop/unity-helpers/actions/workflows/csharpier.yml)
+[![CSharpier](https://github.com/wallstop/unity-helpers/actions/workflows/csharpier-autofix.yml/badge.svg?branch=main)](https://github.com/wallstop/unity-helpers/actions/workflows/csharpier-autofix.yml)
 [![Markdown & JSON Lint/Format](https://github.com/wallstop/unity-helpers/actions/workflows/markdown-json.yml/badge.svg?branch=main)](https://github.com/wallstop/unity-helpers/actions/workflows/markdown-json.yml)
 [![Lint Docs Links](https://github.com/wallstop/unity-helpers/actions/workflows/lint-doc-links.yml/badge.svg?branch=main)](https://github.com/wallstop/unity-helpers/actions/workflows/lint-doc-links.yml)
 [![Npm Publish](https://github.com/wallstop/unity-helpers/actions/workflows/npm-publish.yml/badge.svg?branch=main)](https://github.com/wallstop/unity-helpers/actions/workflows/npm-publish.yml)
