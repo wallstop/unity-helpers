@@ -34,7 +34,7 @@ jobs:
 
       - name: Commit formatting changes to PR branch (same-repo PRs only)
         if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: "chore(format): apply CSharpier formatting"
           branch: ${{ github.head_ref }}
