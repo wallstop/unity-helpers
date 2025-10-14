@@ -1,4 +1,4 @@
-﻿namespace WallstopStudios.UnityHelpers.Editor.Core.Helper
+namespace WallstopStudios.UnityHelpers.Editor.Core.Helper
 {
     using System;
     using System.Collections.Generic;

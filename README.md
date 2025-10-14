@@ -1180,4 +1180,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE.md) f
 - Minor robustness improvements:
   - Guarded stray `UnityEditor` imports in runtime files to ensure clean player builds.
 
-See `SERIALIZATION.md` for AOT/IL2CPP guidance and Unity JSON options, and `EDITOR_TOOLS_GUIDE.md` for Editor tool usage details.
+See [Serialization guide](SERIALIZATION.md) for AOT/IL2CPP guidance and Unity JSON options, and [Editor tools guide](EDITOR_TOOLS_GUIDE.md) for Editor tool usage details.
