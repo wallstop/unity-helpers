@@ -101,6 +101,85 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
             );
         }
 
+        [UnityTest]
+        public System.Collections.IEnumerator SceneLoadListenerAssignsAdditiveSceneSinglePass()
+        {
+            AttributeMetadataCache cache = CreateCacheFor(typeof(VContainerRelationalTester));
+            RelationalComponentAssigner assigner = new RelationalComponentAssigner(cache);
+            RelationalSceneAssignmentOptions options = new RelationalSceneAssignmentOptions(
+                includeInactive: true,
+                useSinglePassScan: true
+            );
+            RelationalSceneLoadListener listener = new RelationalSceneLoadListener(
+                assigner,
+                cache,
+                options
+            );
+            listener.Initialize();
+            TrackDisposable(listener);
+
+            Scene additive = CreateTempScene(
+                "VContainer_Additive_Runtime_Single",
+                setActive: false
+            );
+
+            VContainerRelationalTester tester = CreateHierarchy();
+            GameObject root = tester.transform.root.gameObject;
+            SceneManager.MoveGameObjectToScene(root, additive);
+
+            yield return null;
+
+            listener.OnSceneLoaded(additive, LoadSceneMode.Additive);
+            yield return null;
+
+            Assert.IsTrue(
+                tester.parentBody != null,
+                "Scene load listener should assign parentBody in single-pass mode"
+            );
+            Assert.IsTrue(
+                tester.childCollider != null,
+                "Scene load listener should assign childCollider in single-pass mode"
+            );
+        }
+
+        [UnityTest]
+        public System.Collections.IEnumerator SceneLoadListenerAssignsAdditiveSceneMultiPass()
+        {
+            AttributeMetadataCache cache = CreateCacheFor(typeof(VContainerRelationalTester));
+            RelationalComponentAssigner assigner = new RelationalComponentAssigner(cache);
+            RelationalSceneAssignmentOptions options = new RelationalSceneAssignmentOptions(
+                includeInactive: true,
+                useSinglePassScan: false
+            );
+            RelationalSceneLoadListener listener = new RelationalSceneLoadListener(
+                assigner,
+                cache,
+                options
+            );
+            listener.Initialize();
+            TrackDisposable(listener);
+
+            Scene additive = CreateTempScene("VContainer_Additive_Runtime_Multi", setActive: false);
+
+            VContainerRelationalTester tester = CreateHierarchy();
+            GameObject root = tester.transform.root.gameObject;
+            SceneManager.MoveGameObjectToScene(root, additive);
+
+            yield return null;
+
+            listener.OnSceneLoaded(additive, LoadSceneMode.Additive);
+            yield return null;
+
+            Assert.IsTrue(
+                tester.parentBody != null,
+                "Scene load listener should assign parentBody in multi-pass mode"
+            );
+            Assert.IsTrue(
+                tester.childCollider != null,
+                "Scene load listener should assign childCollider in multi-pass mode"
+            );
+        }
+
         [Test]
         public void BuildUpWithRelationsAssignsFields()
         {
