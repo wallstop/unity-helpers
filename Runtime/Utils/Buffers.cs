@@ -1113,21 +1113,21 @@ namespace WallstopStudios.UnityHelpers.Utils
     /// This struct implements IDisposable to enable automatic resource return via 'using' statements.
     /// The resource is returned to its pool when Dispose is called, typically at the end of a 'using' block.
     /// </remarks>
-    public readonly struct PooledResource<T> : IDisposable
+    public struct PooledResource<T> : IDisposable
     {
         /// <summary>
         /// The pooled resource instance. Access this to use the resource.
         /// </summary>
         public readonly T resource;
         private readonly Action<T> _onDispose;
-        private readonly bool _initialized;
+        private bool _initialized;
 
         /// <summary>
         /// Creates a new PooledResource wrapping the specified resource with a disposal action.
         /// </summary>
         /// <param name="resource">The resource to wrap.</param>
         /// <param name="onDispose">The action to invoke when disposing, typically returning the resource to a pool.</param>
-        internal PooledResource(T resource, Action<T> onDispose)
+        public PooledResource(T resource, Action<T> onDispose)
         {
             _initialized = true;
             this.resource = resource;
@@ -1144,7 +1144,7 @@ namespace WallstopStudios.UnityHelpers.Utils
             {
                 return;
             }
-
+            _initialized = false;
             _onDispose(resource);
         }
     }

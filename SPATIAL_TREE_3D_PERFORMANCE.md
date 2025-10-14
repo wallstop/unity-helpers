@@ -33,34 +33,34 @@ This document contains performance benchmarks for the 3D spatial tree implementa
 
 | Construction      | KDTree3D (Balanced) | KDTree3D (Unbalanced) | OctTree3D  | RTree3D    |
 | ----------------- | ------------------- | --------------------- | ---------- | ---------- |
-| 1,000,000 entries | 1 (0.508s)          | 3 (0.304s)            | 4 (0.241s) | 1 (0.737s) |
+| 1,000,000 entries | 2 (0.462s)          | 2 (0.334s)            | 4 (0.238s) | 2 (0.415s) |
 
 ##### Elements In Range
 
 | Elements In Range           | KDTree3D (Balanced) | KDTree3D (Unbalanced) | OctTree3D | RTree3D |
 | --------------------------- | ------------------- | --------------------- | --------- | ------- |
 | Full (~span/2) (r=49.50)    | 17                  | 20                    | 32        | 15      |
-| Half (~span/4) (r=24.75)    | 133                 | 162                   | 245       | 167     |
-| Quarter (~span/8) (r=12.38) | 924                 | 1,215                 | 1,668     | 1,516   |
-| Tiny (~span/1000) (r=1)     | 23,192              | 23,394                | 137,947   | 75,463  |
+| Half (~span/4) (r=24.75)    | 127                 | 157                   | 244       | 159     |
+| Quarter (~span/8) (r=12.38) | 934                 | 1,205                 | 1,662     | 1,521   |
+| Tiny (~span/1000) (r=1)     | 23,474              | 23,256                | 136,339   | 76,528  |
 
 ##### Get Elements In Bounds
 
 | Get Elements In Bounds           | KDTree3D (Balanced) | KDTree3D (Unbalanced) | OctTree3D | RTree3D |
 | -------------------------------- | ------------------- | --------------------- | --------- | ------- |
-| Full (size≈99.00x99.00x99.00)    | 34                  | 39                    | 210       | 20      |
-| Half (size≈49.50x49.50x49.50)    | 39                  | 45                    | 1,295     | 277     |
-| Quarter (size≈24.75x24.75x24.75) | 39                  | 47                    | 3,977     | 2,508   |
-| Unit (size=1)                    | 39                  | 47                    | 180,603   | 76,876  |
+| Full (size≈99.00x99.00x99.00)    | 32                  | 38                    | 183       | 20      |
+| Half (size≈49.50x49.50x49.50)    | 38                  | 44                    | 1,296     | 269     |
+| Quarter (size≈24.75x24.75x24.75) | 39                  | 45                    | 4,051     | 2,514   |
+| Unit (size=1)                    | 40                  | 47                    | 176,851   | 71,895  |
 
 ##### Approximate Nearest Neighbors
 
 | Approximate Nearest Neighbors | KDTree3D (Balanced) | KDTree3D (Unbalanced) | OctTree3D | RTree3D |
 | ----------------------------- | ------------------- | --------------------- | --------- | ------- |
-| 500 neighbors                 | 5,838               | 10,192                | 2,297     | 306     |
-| 100 neighbors                 | 64,970              | 74,311                | 10,846    | 3,390   |
-| 10 neighbors                  | 407,029             | 420,234               | 15,963    | 7,817   |
-| 1 neighbor                    | 524,410             | 460,319               | 19,781    | 8,325   |
+| 500 neighbors                 | 5,917               | 10,145                | 2,299     | 305     |
+| 100 neighbors                 | 65,265              | 72,176                | 10,753    | 3,343   |
+| 10 neighbors                  | 406,365             | 415,717               | 15,601    | 7,643   |
+| 1 neighbor                    | 550,998             | 479,367               | 19,376    | 8,299   |
 
 #### **100,000 entries**
 
@@ -68,34 +68,34 @@ This document contains performance benchmarks for the 3D spatial tree implementa
 
 | Construction    | KDTree3D (Balanced) | KDTree3D (Unbalanced) | OctTree3D   | RTree3D     |
 | --------------- | ------------------- | --------------------- | ----------- | ----------- |
-| 100,000 entries | 34 (0.029s)         | 46 (0.022s)           | 63 (0.016s) | 43 (0.023s) |
+| 100,000 entries | 35 (0.029s)         | 48 (0.021s)           | 66 (0.015s) | 41 (0.024s) |
 
 ##### Elements In Range
 
 | Elements In Range           | KDTree3D (Balanced) | KDTree3D (Unbalanced) | OctTree3D | RTree3D |
 | --------------------------- | ------------------- | --------------------- | --------- | ------- |
-| Full (~span/2) (r=49.50)    | 334                 | 483                   | 772       | 212     |
-| Half (~span/4) (r=24.75)    | 1,010               | 1,436                 | 2,027     | 851     |
-| Quarter (~span/8) (r=12.38) | 2,549               | 3,971                 | 5,974     | 3,427   |
-| Tiny (~span/1000) (r=1)     | 26,431              | 29,461                | 176,120   | 100,009 |
+| Full (~span/2) (r=49.50)    | 328                 | 476                   | 767       | 198     |
+| Half (~span/4) (r=24.75)    | 1,000               | 1,424                 | 2,024     | 856     |
+| Quarter (~span/8) (r=12.38) | 2,519               | 3,929                 | 5,943     | 3,444   |
+| Tiny (~span/1000) (r=1)     | 26,289              | 29,307                | 174,966   | 101,213 |
 
 ##### Get Elements In Bounds
 
 | Get Elements In Bounds          | KDTree3D (Balanced) | KDTree3D (Unbalanced) | OctTree3D | RTree3D |
 | ------------------------------- | ------------------- | --------------------- | --------- | ------- |
-| Full (size≈99.00x99.00x9)       | 633                 | 763                   | 2,698     | 352     |
-| Half (size≈49.50x49.50x4.5)     | 731                 | 896                   | 9,274     | 3,479   |
-| Quarter (size≈24.75x24.75x2.25) | 744                 | 922                   | 47,175    | 24,173  |
-| Unit (size=1)                   | 747                 | 932                   | 242,902   | 102,272 |
+| Full (size≈99.00x99.00x9)       | 636                 | 764                   | 2,638     | 349     |
+| Half (size≈49.50x49.50x4.5)     | 741                 | 903                   | 9,365     | 3,477   |
+| Quarter (size≈24.75x24.75x2.25) | 755                 | 933                   | 48,138    | 24,155  |
+| Unit (size=1)                   | 759                 | 940                   | 246,230   | 101,413 |
 
 ##### Approximate Nearest Neighbors
 
 | Approximate Nearest Neighbors | KDTree3D (Balanced) | KDTree3D (Unbalanced) | OctTree3D | RTree3D |
 | ----------------------------- | ------------------- | --------------------- | --------- | ------- |
-| 500 neighbors                 | 6,663               | 11,970                | 1,625     | 272     |
-| 100 neighbors                 | 38,566              | 43,933                | 9,229     | 2,270   |
-| 10 neighbors                  | 441,954             | 327,003               | 18,991    | 7,712   |
-| 1 neighbor                    | 424,183             | 297,081               | 29,888    | 12,033  |
+| 500 neighbors                 | 6,677               | 12,019                | 1,631     | 271     |
+| 100 neighbors                 | 38,824              | 44,184                | 9,263     | 2,236   |
+| 10 neighbors                  | 449,797             | 330,300               | 19,167    | 7,478   |
+| 1 neighbor                    | 426,499             | 310,941               | 30,037    | 11,896  |
 
 #### **10,000 entries**
 
@@ -103,34 +103,34 @@ This document contains performance benchmarks for the 3D spatial tree implementa
 
 | Construction   | KDTree3D (Balanced) | KDTree3D (Unbalanced) | OctTree3D    | RTree3D      |
 | -------------- | ------------------- | --------------------- | ------------ | ------------ |
-| 10,000 entries | 447 (0.002s)        | 272 (0.004s)          | 601 (0.002s) | 427 (0.002s) |
+| 10,000 entries | 466 (0.002s)        | 473 (0.002s)          | 615 (0.002s) | 450 (0.002s) |
 
 ##### Elements In Range
 
 | Elements In Range           | KDTree3D (Balanced) | KDTree3D (Unbalanced) | OctTree3D | RTree3D |
 | --------------------------- | ------------------- | --------------------- | --------- | ------- |
-| Full (~span/2) (r=49.50)    | 4,748               | 4,578                 | 9,034     | 2,064   |
-| Half (~span/4) (r=24.75)    | 5,907               | 6,440                 | 8,855     | 4,269   |
-| Quarter (~span/8) (r=12.38) | 5,868               | 6,456                 | 11,150    | 7,507   |
-| Tiny (~span/1000) (r=1)     | 40,827              | 38,708                | 220,189   | 157,694 |
+| Full (~span/2) (r=49.50)    | 4,683               | 4,522                 | 8,927     | 2,011   |
+| Half (~span/4) (r=24.75)    | 5,822               | 6,362                 | 8,898     | 3,899   |
+| Quarter (~span/8) (r=12.38) | 5,798               | 6,791                 | 11,108    | 7,083   |
+| Tiny (~span/1000) (r=1)     | 40,628              | 38,481                | 218,875   | 158,338 |
 
 ##### Get Elements In Bounds
 
 | Get Elements In Bounds         | KDTree3D (Balanced) | KDTree3D (Unbalanced) | OctTree3D | RTree3D |
 | ------------------------------ | ------------------- | --------------------- | --------- | ------- |
-| Full (size≈99.00x9x9)          | 6,416               | 6,427                 | 26,247    | 3,579   |
-| Half (size≈49.50x4.5x4.5)      | 7,236               | 7,279                 | 45,827    | 37,451  |
-| Quarter (size≈24.75x2.25x2.25) | 7,394               | 7,453                 | 167,260   | 120,971 |
-| Unit (size=1)                  | 7,491               | 7,509                 | 321,908   | 163,490 |
+| Full (size≈99.00x9x9)          | 6,478               | 6,481                 | 26,295    | 3,562   |
+| Half (size≈49.50x4.5x4.5)      | 7,367               | 7,417                 | 46,056    | 37,401  |
+| Quarter (size≈24.75x2.25x2.25) | 7,531               | 7,578                 | 169,110   | 120,511 |
+| Unit (size=1)                  | 7,612               | 7,626                 | 325,145   | 161,706 |
 
 ##### Approximate Nearest Neighbors
 
 | Approximate Nearest Neighbors | KDTree3D (Balanced) | KDTree3D (Unbalanced) | OctTree3D | RTree3D |
 | ----------------------------- | ------------------- | --------------------- | --------- | ------- |
-| 500 neighbors                 | 9,685               | 10,626                | 636       | 186     |
-| 100 neighbors                 | 51,212              | 68,755                | 5,907     | 2,255   |
-| 10 neighbors                  | 417,879             | 449,838               | 26,902    | 12,870  |
-| 1 neighbor                    | 660,089             | 564,985               | 44,974    | 21,929  |
+| 500 neighbors                 | 9,732               | 10,597                | 637       | 185     |
+| 100 neighbors                 | 51,320              | 69,698                | 5,914     | 2,235   |
+| 10 neighbors                  | 435,223             | 421,196               | 27,006    | 12,804  |
+| 1 neighbor                    | 664,302             | 592,441               | 45,255    | 21,503  |
 
 #### **1,000 entries**
 
@@ -138,34 +138,34 @@ This document contains performance benchmarks for the 3D spatial tree implementa
 
 | Construction  | KDTree3D (Balanced) | KDTree3D (Unbalanced) | OctTree3D      | RTree3D        |
 | ------------- | ------------------- | --------------------- | -------------- | -------------- |
-| 1,000 entries | 3,551 (0.000s)      | 3,597 (0.000s)        | 3,963 (0.000s) | 3,951 (0.000s) |
+| 1,000 entries | 3,617 (0.000s)      | 5,141 (0.000s)        | 3,954 (0.000s) | 4,130 (0.000s) |
 
 ##### Elements In Range
 
 | Elements In Range          | KDTree3D (Balanced) | KDTree3D (Unbalanced) | OctTree3D | RTree3D |
 | -------------------------- | ------------------- | --------------------- | --------- | ------- |
-| Full (~span/2) (r=4.5)     | 11,889              | 13,977                | 24,840    | 21,558  |
-| Half (~span/4) (r=2.25)    | 52,048              | 61,813                | 123,986   | 147,568 |
-| Quarter (~span/8) (r=1.13) | 62,056              | 63,090                | 338,282   | 222,311 |
-| Tiny (~span/1000) (r=1)    | 62,061              | 60,803                | 338,028   | 220,654 |
+| Full (~span/2) (r=4.5)     | 11,802              | 13,903                | 24,582    | 21,692  |
+| Half (~span/4) (r=2.25)    | 51,580              | 61,355                | 123,544   | 144,993 |
+| Quarter (~span/8) (r=1.13) | 61,600              | 63,517                | 337,985   | 224,573 |
+| Tiny (~span/1000) (r=1)    | 61,597              | 63,370                | 337,192   | 215,561 |
 
 ##### Get Elements In Bounds
 
 | Get Elements In Bounds        | KDTree3D (Balanced) | KDTree3D (Unbalanced) | OctTree3D | RTree3D |
 | ----------------------------- | ------------------- | --------------------- | --------- | ------- |
-| Full (size≈9x9x9)             | 58,850              | 63,749                | 320,982   | 35,389  |
-| Half (size≈4.5x4.5x4.5)       | 64,139              | 70,415                | 196,205   | 168,950 |
-| Quarter (size≈2.25x2.25x2.25) | 64,869              | 72,077                | 496,709   | 236,781 |
-| Unit (size=1)                 | 64,865              | 73,115                | 497,719   | 237,572 |
+| Full (size≈9x9x9)             | 59,706              | 64,466                | 323,948   | 35,609  |
+| Half (size≈4.5x4.5x4.5)       | 65,193              | 71,417                | 199,275   | 177,711 |
+| Quarter (size≈2.25x2.25x2.25) | 65,932              | 73,139                | 502,862   | 234,032 |
+| Unit (size=1)                 | 65,955              | 74,000                | 502,591   | 234,547 |
 
 ##### Approximate Nearest Neighbors
 
 | Approximate Nearest Neighbors | KDTree3D (Balanced) | KDTree3D (Unbalanced) | OctTree3D | RTree3D |
 | ----------------------------- | ------------------- | --------------------- | --------- | ------- |
-| 500 neighbors                 | 15,543              | 14,687                | 3,259     | 622     |
-| 100 neighbors                 | 70,021              | 66,063                | 15,576    | 4,154   |
-| 10 neighbors                  | 423,735             | 416,232               | 74,338    | 33,030  |
-| 1 neighbor                    | 691,738             | 632,114               | 84,636    | 44,251  |
+| 500 neighbors                 | 15,674              | 14,692                | 3,264     | 621     |
+| 100 neighbors                 | 70,092              | 63,853                | 15,646    | 4,137   |
+| 10 neighbors                  | 436,821             | 416,753               | 74,823    | 32,560  |
+| 1 neighbor                    | 709,835             | 663,405               | 84,669    | 43,468  |
 
 #### **100 entries**
 
@@ -173,33 +173,33 @@ This document contains performance benchmarks for the 3D spatial tree implementa
 
 | Construction | KDTree3D (Balanced) | KDTree3D (Unbalanced) | OctTree3D       | RTree3D         |
 | ------------ | ------------------- | --------------------- | --------------- | --------------- |
-| 100 entries  | 36,363 (0.000s)     | 32,467 (0.000s)       | 22,522 (0.000s) | 17,985 (0.000s) |
+| 100 entries  | 35,714 (0.000s)     | 32,051 (0.000s)       | 27,397 (0.000s) | 21,413 (0.000s) |
 
 ##### Elements In Range
 
 | Elements In Range          | KDTree3D (Balanced) | KDTree3D (Unbalanced) | OctTree3D | RTree3D |
 | -------------------------- | ------------------- | --------------------- | --------- | ------- |
-| Full (~span/2) (r=4.5)     | 125,428             | 126,400               | 292,761   | 190,037 |
-| Half (~span/4) (r=2.25)    | 145,842             | 147,953               | 315,761   | 306,447 |
-| Quarter (~span/8) (r=1.13) | 146,012             | 149,154               | 390,179   | 416,622 |
-| Tiny (~span/1000) (r=1)    | 146,038             | 149,179               | 392,548   | 419,108 |
+| Full (~span/2) (r=4.5)     | 123,749             | 124,911               | 295,441   | 173,986 |
+| Half (~span/4) (r=2.25)    | 144,742             | 146,831               | 317,894   | 305,105 |
+| Quarter (~span/8) (r=1.13) | 144,970             | 148,219               | 392,233   | 422,688 |
+| Tiny (~span/1000) (r=1)    | 144,979             | 148,160               | 394,402   | 397,230 |
 
 ##### Get Elements In Bounds
 
 | Get Elements In Bounds  | KDTree3D (Balanced) | KDTree3D (Unbalanced) | OctTree3D | RTree3D |
 | ----------------------- | ------------------- | --------------------- | --------- | ------- |
-| Full (size≈9x4x1)       | 529,034             | 526,832               | 1,832,248 | 326,622 |
-| Half (size≈4.5x2x1)     | 558,166             | 565,767               | 513,823   | 462,243 |
-| Quarter (size≈2.25x1x1) | 572,641             | 569,761               | 767,483   | 673,328 |
-| Unit (size=1)           | 572,991             | 570,221               | 767,909   | 734,376 |
+| Full (size≈9x4x1)       | 542,170             | 541,750               | 1,808,352 | 327,419 |
+| Half (size≈4.5x2x1)     | 567,151             | 574,657               | 499,944   | 457,996 |
+| Quarter (size≈2.25x1x1) | 581,138             | 575,322               | 777,105   | 728,444 |
+| Unit (size=1)           | 580,654             | 547,510               | 776,427   | 729,736 |
 
 ##### Approximate Nearest Neighbors
 
 | Approximate Nearest Neighbors | KDTree3D (Balanced) | KDTree3D (Unbalanced) | OctTree3D | RTree3D |
 | ----------------------------- | ------------------- | --------------------- | --------- | ------- |
-| 100 neighbors (max)           | 92,047              | 88,429                | 66,597    | 65,937  |
-| 10 neighbors                  | 582,351             | 493,565               | 95,528    | 101,563 |
-| 1 neighbor                    | 805,526             | 608,704               | 170,178   | 224,276 |
+| 100 neighbors (max)           | 92,016              | 88,604                | 69,691    | 65,613  |
+| 10 neighbors                  | 622,325             | 548,943               | 105,436   | 99,977  |
+| 1 neighbor                    | 876,886             | 640,575               | 172,804   | 210,070 |
 
 <!-- tabs:end -->
 <!-- SPATIAL_TREE_3D_BENCHMARKS_END -->
