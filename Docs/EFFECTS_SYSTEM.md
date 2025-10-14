@@ -194,6 +194,194 @@ if (player.HasTag("Stunned"))
 - Prefer shared cosmetics where feasible; instantiate only when state must be isolated per application.
 - If reapplication should refresh timers, set `resetDurationOnReapplication = true` on the effect.
 
+### Type-Safe Effect References with Enums
+
+Instead of managing effects through inspector references or Resources.Load calls, consider using an enum-based registry for centralized, type-safe access to all your effects:
+
+**The Pattern:**
+
+```csharp
+// 1. Define an enum for all your effects
+public enum EffectType
+{
+    HastePotion,
+    StrengthBuff,
+    PoisonDebuff,
+    ShieldBuff,
+    FireDamageOverTime,
+}
+
+// 2. Create a centralized registry
+public class EffectRegistry : ScriptableObject
+{
+    [System.Serializable]
+    private class EffectEntry
+    {
+        public EffectType type;
+        public AttributeEffect effect;
+    }
+
+    [SerializeField] private EffectEntry[] effects;
+    private Dictionary<EffectType, AttributeEffect> effectLookup;
+
+    private void OnEnable()
+    {
+        effectLookup = effects.ToDictionary(e => e.type, e => e.effect);
+    }
+
+    public AttributeEffect GetEffect(EffectType type)
+    {
+        return effectLookup.TryGetValue(type, out AttributeEffect effect)
+            ? effect
+            : null;
+    }
+}
+
+// 3. Usage - type-safe and refactorable
+public class PlayerAbilities : MonoBehaviour
+{
+    [SerializeField] private EffectRegistry effectRegistry;
+
+    public void DrinkHastePotion()
+    {
+        // Compiler ensures this effect exists
+        AttributeEffect haste = effectRegistry.GetEffect(EffectType.HastePotion);
+        this.ApplyEffect(haste);
+
+        // Typos are caught at compile time
+        // effectRegistry.GetEffect(EffectType.HastPotoin); // ❌ Won't compile
+    }
+}
+```
+
+**Using DisplayName for Editor-Friendly Names:**
+
+```csharp
+using System.ComponentModel;
+
+public enum EffectType
+{
+    [Description("Haste Potion")]
+    HastePotion,
+
+    [Description("Strength Buff (10s)")]
+    StrengthBuff,
+
+    [Description("Poison DoT")]
+    PoisonDebuff,
+
+    [Description("Shield (+50 Defense)")]
+    ShieldBuff,
+}
+
+// Custom PropertyDrawer can display Description in inspector
+// Or use Unity's [InspectorName] attribute in Unity 2021.2+:
+// [InspectorName("Haste Potion")] HastePotion,
+```
+
+**Cached Name Pattern for Performance:**
+
+If you're doing frequent lookups or displaying effect names in UI, cache the enum-to-string mappings:
+
+```csharp
+public static class EffectTypeExtensions
+{
+    private static readonly Dictionary<EffectType, string> DisplayNames = new()
+    {
+        { EffectType.HastePotion, "Haste Potion" },
+        { EffectType.StrengthBuff, "Strength Buff" },
+        { EffectType.PoisonDebuff, "Poison" },
+        { EffectType.ShieldBuff, "Shield" },
+    };
+
+    public static string GetDisplayName(this EffectType type)
+    {
+        return DisplayNames.TryGetValue(type, out string name)
+            ? name
+            : type.ToString();
+    }
+}
+
+// Usage in UI
+void UpdateEffectTooltip(EffectType effectType)
+{
+    tooltipText.text = effectType.GetDisplayName();
+    // No allocations, no typos, refactor-safe
+}
+```
+
+**Benefits:**
+
+✅ **Type safety** - Compiler catches typos and missing effects
+✅ **Refactoring** - Rename effects across entire codebase reliably
+✅ **Autocomplete** - IDE suggests all available effects
+✅ **Performance** - Dictionary lookup faster than Resources.Load
+✅ **No magic strings** - Effect references are code symbols, not brittle strings
+
+**Drawbacks:**
+
+⚠️ **Centralization** - All effects must be registered in the enum and registry
+⚠️ **Designer friction** - Programmers must add enum entries for new effects
+⚠️ **Scalability** - With 100+ effects, enum becomes unwieldy (consider categories)
+⚠️ **Asset decoupling** - Effects are tied to code enum, harder to add via mods/DLC
+
+**When to Use:**
+
+- ✅ Small to medium projects (< 50 effects)
+- ✅ Programmer-driven effect creation
+- ✅ Need strong refactoring safety
+- ✅ Want compile-time validation
+
+**When to Avoid:**
+
+- ❌ Designer-driven workflows (they can't add enum entries)
+- ❌ Modding/DLC systems (effects defined outside codebase)
+- ❌ Very large effect catalogs (enums become bloated)
+- ❌ Rapid prototyping (slows iteration)
+
+---
+
+**Integration with Unity Helpers' Built-in Enum Utilities:**
+
+This package already includes high-performance `EnumDisplayNameAttribute` and `ToCachedName()` extensions (see `EnumExtensions.cs:437-478`). You can leverage these for optimal performance:
+
+```csharp
+using WallstopStudios.UnityHelpers.Core.Attributes;
+using WallstopStudios.UnityHelpers.Core.Extension;
+
+public enum EffectType
+{
+    [EnumDisplayName("Haste Potion")]
+    HastePotion,
+
+    [EnumDisplayName("Strength Buff (10s)")]
+    StrengthBuff,
+
+    [EnumDisplayName("Poison DoT")]
+    PoisonDebuff,
+}
+
+// High-performance cached display name (zero allocation after first call)
+void UpdateEffectTooltip(EffectType effectType)
+{
+    tooltipText.text = effectType.ToDisplayName(); // Uses EnumDisplayNameCache<T>
+}
+
+// Or use ToCachedName() for the enum's field name without attributes
+void LogEffect(EffectType effectType)
+{
+    Debug.Log($"Applied: {effectType.ToCachedName()}"); // Uses EnumNameCache<T>
+}
+```
+
+**Performance characteristics:**
+
+- `ToDisplayName()`: O(1) lookup, zero allocations (array-based for enums ≤256 values)
+- `ToCachedName()`: O(1) lookup, zero allocations, thread-safe with concurrent dictionary
+- Both use aggressive inlining and avoid boxing
+
+This eliminates the need to manually maintain a `DisplayNames` dictionary as shown in the earlier example—the package already provides optimized caching infrastructure.
+
 ## FAQ
 
 Q: Why didn’t I get an `EffectHandle`?
