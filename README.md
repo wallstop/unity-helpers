@@ -106,6 +106,8 @@ player.RemoveAllEffectsWithTag("Haste");   // Batch removal
 - Cosmetic VFX/SFX that spawn/despawn automatically
 - Designer-friendly iteration without code changes
 
+**Beyond buffs:** Tags become a powerful capability system for AI decisions, permission gates, state management, and complex gameplay interactions (invulnerability, stealth, elemental systems).
+
 [📖 Full Guide](Docs/EFFECTS_SYSTEM.md) | [🚀 5-Minute Tutorial](Docs/EFFECTS_SYSTEM_TUTORIAL.md)
 
 ---
@@ -709,6 +711,8 @@ if (player.HasTag("Stunned")) { /* disable input */ }
 - `ModifierDurationType.Infinite` — persists until `RemoveEffect(handle)` is called.
 - `AttributeModification` order: Addition → Multiplication → Override.
 - `CosmeticEffectData.RequiresInstancing` — instance per application or reuse shared presenters.
+
+**Power Pattern:** Tags aren't just for buffs—use them to build robust capability systems for invulnerability, AI decision-making, permission gates, state management, and elemental interactions. See [Advanced Scenarios](Docs/EFFECTS_SYSTEM.md#advanced-scenarios-beyond-buffs-and-debuffs) for patterns.
 
 Further reading: see the full guide [Effects System](Docs/EFFECTS_SYSTEM.md).
 
