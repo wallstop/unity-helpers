@@ -39,3 +39,12 @@ if command -v lychee >/dev/null 2>&1; then
 else
   echo "lychee not found; skipping external link check. CI will run lychee." >&2
 fi
+
+# 6) Test lifecycle lint
+if command -v pwsh >/dev/null 2>&1; then
+  pwsh -NoProfile -File scripts/lint-tests.ps1 -VerboseOutput
+elif command -v powershell >/dev/null 2>&1; then
+  powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-tests.ps1 -VerboseOutput
+else
+  echo  'PowerShell not found; skipping test lints.' >&2 
+fi

@@ -277,6 +277,10 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
         None = 0,
 
         /// <summary>Legacy .NET BinaryFormatter. Trusted/ephemeral data only.</summary>
+        [Obsolete(
+            "BinaryFormatter is obsolete and unsafe for untrusted data. "
+                + "Prefer Json or Protobuf for new code."
+        )]
         SystemBinary = 1,
 
         /// <summary>protobuf-net compact binary. Best for networking and high-performance.</summary>
@@ -608,7 +612,9 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
         {
             switch (serializationType)
             {
+#pragma warning disable CS0618 // Type or member is obsolete
                 case SerializationType.SystemBinary:
+#pragma warning restore CS0618 // Type or member is obsolete
                 {
                     return BinaryDeserialize<T>(serialized);
                 }
@@ -650,7 +656,9 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
         {
             switch (serializationType)
             {
+#pragma warning disable CS0618 // Type or member is obsolete
                 case SerializationType.SystemBinary:
+#pragma warning restore CS0618 // Type or member is obsolete
                 {
                     return BinarySerialize(instance);
                 }
@@ -689,7 +697,9 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
         {
             switch (serializationType)
             {
+#pragma warning disable CS0618 // Type or member is obsolete
                 case SerializationType.SystemBinary:
+#pragma warning restore CS0618 // Type or member is obsolete
                 {
                     return BinarySerialize(instance, ref buffer);
                 }
@@ -1495,6 +1505,35 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
         }
 
         /// <summary>
+        /// Asynchronously reads JSON with cancellation.
+        /// </summary>
+        public static async Task<T> ReadFromJsonFileAsync<T>(
+            string path,
+            System.Threading.CancellationToken cancellationToken
+        )
+        {
+            using FileStream fs = new(
+                path,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.Read,
+                4096,
+                useAsync: true
+            );
+            using Utils.PooledResource<PooledBufferStream> lease = PooledBufferStream.Rent(
+                out PooledBufferStream stream
+            );
+            byte[] buffer = new byte[8192];
+            int read;
+            while ((read = await fs.ReadAsync(buffer, 0, buffer.Length, cancellationToken)) > 0)
+            {
+                stream.Write(buffer, 0, read);
+            }
+            ArraySegment<byte> seg = stream.GetWrittenSegment();
+            return JsonDeserialize<T>(seg.Array.AsSpan(0, seg.Count).ToArray());
+        }
+
+        /// <summary>
         /// Writes an instance to a JSON file (UTF‑8).
         /// </summary>
         /// <typeparam name="T">Instance type.</typeparam>
@@ -1518,6 +1557,29 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
         {
             string jsonAsText = JsonStringify(input, pretty);
             await File.WriteAllTextAsync(path, jsonAsText);
+        }
+
+        /// <summary>
+        /// Asynchronously writes an instance to a JSON file (UTF‑8) with cancellation.
+        /// </summary>
+        public static async Task WriteToJsonFileAsync<T>(
+            T input,
+            string path,
+            bool pretty,
+            System.Threading.CancellationToken cancellationToken
+        )
+        {
+            string jsonAsText = JsonStringify(input, pretty);
+            byte[] bytes = SerializerEncoding.Encoding.GetBytes(jsonAsText);
+            using FileStream fs = new(
+                path,
+                FileMode.Create,
+                FileAccess.Write,
+                FileShare.None,
+                4096,
+                useAsync: true
+            );
+            await fs.WriteAsync(bytes, 0, bytes.Length, cancellationToken);
         }
 
         /// <summary>
@@ -1548,6 +1610,45 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
         {
             string jsonAsText = JsonStringify(input, options);
             await File.WriteAllTextAsync(path, jsonAsText);
+        }
+
+        /// <summary>
+        /// Attempts to read JSON into an instance, returns false if file missing or invalid.
+        /// </summary>
+        public static bool TryReadFromJsonFile<T>(string path, out T value)
+        {
+            try
+            {
+                if (!File.Exists(path))
+                {
+                    value = default;
+                    return false;
+                }
+                string json = File.ReadAllText(path);
+                value = JsonDeserialize<T>(json);
+                return true;
+            }
+            catch
+            {
+                value = default;
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Attempts to write JSON to a file, returns false on failure.
+        /// </summary>
+        public static bool TryWriteToJsonFile<T>(T input, string path, bool pretty = true)
+        {
+            try
+            {
+                WriteToJsonFile(input, path, pretty);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
     }
 

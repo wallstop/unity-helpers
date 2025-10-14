@@ -1,8 +1,10 @@
 #if VCONTAINER_PRESENT
 namespace WallstopStudios.UnityHelpers.Integrations.VContainer
 {
+    using System;
     using System.Collections.Generic;
     using global::VContainer;
+    using global::VContainer.Unity;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Utils;
@@ -56,6 +58,27 @@ namespace WallstopStudios.UnityHelpers.Integrations.VContainer
     /// </example>
     public static class ObjectResolverRelationalExtensions
     {
+        /// <summary>
+        /// Injects <paramref name="component"/> with VContainer and assigns its relational fields.
+        /// </summary>
+        /// <typeparam name="T">The component type.</typeparam>
+        /// <param name="resolver">The VContainer object resolver.</param>
+        /// <param name="component">The component instance to inject and hydrate.</param>
+        /// <returns>The same component instance.</returns>
+        public static T InjectWithRelations<T>(this IObjectResolver resolver, T component)
+            where T : Component
+        {
+            if (component == null)
+            {
+                return null;
+            }
+
+            // Use Inject for compatibility with VContainer 1.16.x
+            resolver?.Inject(component);
+            resolver.AssignRelationalComponents(component);
+            return component;
+        }
+
         /// <summary>
         /// Assigns all relational fields on a component using the container's registered
         /// <see cref="IRelationalComponentAssigner"/> if present, with a safe fallback to the
@@ -165,6 +188,79 @@ namespace WallstopStudios.UnityHelpers.Integrations.VContainer
             resolver?.Inject(component);
             resolver.AssignRelationalComponents(component);
             return component;
+        }
+
+        /// <summary>
+        /// Instantiates a prefab that has component <typeparamref name="T"/> on the root, injects it
+        /// using VContainer and assigns relational fields.
+        /// </summary>
+        /// <typeparam name="T">Component type on the prefab root.</typeparam>
+        /// <param name="resolver">The VContainer object resolver.</param>
+        /// <param name="prefab">Prefab that contains <typeparamref name="T"/>.</param>
+        /// <param name="parent">Optional parent transform for the new instance.</param>
+        /// <returns>The instantiated component with DI and relational fields populated.</returns>
+        public static T InstantiateComponentWithRelations<T>(
+            this IObjectResolver resolver,
+            T prefab,
+            Transform parent = null
+        )
+            where T : Component
+        {
+            if (prefab == null)
+            {
+                throw new ArgumentNullException(nameof(prefab));
+            }
+
+            T instance = UnityEngine.Object.Instantiate(prefab, parent);
+            return resolver.BuildUpWithRelations(instance);
+        }
+
+        /// <summary>
+        /// Instantiates a GameObject prefab, injects its hierarchy with VContainer, then assigns
+        /// relational fields for all components beneath the root.
+        /// </summary>
+        /// <param name="resolver">The VContainer object resolver.</param>
+        /// <param name="prefab">GameObject prefab to instantiate.</param>
+        /// <param name="parent">Optional parent transform.</param>
+        /// <param name="includeInactiveChildren">Whether to include inactive children when assigning.</param>
+        /// <returns>The instantiated GameObject.</returns>
+        public static GameObject InstantiateGameObjectWithRelations(
+            this IObjectResolver resolver,
+            GameObject prefab,
+            Transform parent = null,
+            bool includeInactiveChildren = true
+        )
+        {
+            if (prefab == null)
+            {
+                throw new ArgumentNullException(nameof(prefab));
+            }
+
+            GameObject instance = UnityEngine.Object.Instantiate(prefab, parent);
+            resolver.InjectGameObjectWithRelations(instance, includeInactiveChildren);
+            return instance;
+        }
+
+        /// <summary>
+        /// Injects all components on <paramref name="root"/> and its children, then assigns
+        /// relational fields for the hierarchy.
+        /// </summary>
+        /// <param name="resolver">The VContainer object resolver.</param>
+        /// <param name="root">Root GameObject to inject and hydrate.</param>
+        /// <param name="includeInactiveChildren">Whether to include inactive children when assigning.</param>
+        public static void InjectGameObjectWithRelations(
+            this IObjectResolver resolver,
+            GameObject root,
+            bool includeInactiveChildren = true
+        )
+        {
+            if (root == null)
+            {
+                return;
+            }
+
+            resolver?.InjectGameObject(root);
+            resolver.AssignRelationalHierarchy(root, includeInactiveChildren);
         }
 
         private static bool TryResolveAssigner(

@@ -54,6 +54,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
                 new[] { relationalMetadata }
             );
             cache.ForceRebuildForTests();
+            yield return null;
 #endif
 
             RelationalComponentAssigner assigner = new RelationalComponentAssigner(cache);
@@ -68,8 +69,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
 
             yield return null;
 
-            Assert.NotNull(consumer);
-            Assert.NotNull(consumer.SR, "Relational field should be assigned by initializer");
+            Assert.IsTrue(consumer != null);
+            Assert.IsTrue(
+                consumer.SR != null,
+                "Relational field should be assigned by initializer"
+            );
         }
     }
 }

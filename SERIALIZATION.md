@@ -646,3 +646,18 @@ References
 - Replace direct `System.Text.Json.JsonSerializer` calls in app code with `Serializer.JsonSerialize/JsonDeserialize/JsonStringify`, or with `Serializer.Serialize/Deserialize` + `SerializationType.Json` to centralize options and Unity converters.
 - Replace any custom protobuf helpers with `Serializer.ProtoSerialize/ProtoDeserialize` or the generic `Serializer.Serialize/Deserialize` APIs. Ensure models are annotated with `[ProtoContract]` and stable `[ProtoMember(n)]` tags.
 - For existing binary saves using BinaryFormatter, prefer migrating to Json or Protobuf. If you must keep BinaryFormatter, scope it to trusted, same-version caches only.
+
+## 2.0 changes
+
+- BinaryFormatter (`SerializationType.SystemBinary`) is deprecated but remains functional for trusted/legacy scenarios. Prefer:
+  - `SerializationType.Json` (System.Text.Json with Unity-aware converters) for readable, diffable content.
+  - `SerializationType.Protobuf` (protobuf-net) for compact, high-performance binary payloads.
+
+## IL2CPP / AOT guidance
+
+System.Text.Json can require extra care under AOT (e.g., IL2CPP):
+
+- Prefer explicit `JsonSerializerOptions` and concrete generic APIs over `object`-based serialization to reduce reflection.
+- For hot POCO models, consider adding a source-generated context (JsonSerializerContext) in your game assembly and pass it to `JsonSerializer` calls.
+- If you rely on many custom converters, ensure they are referenced by code so the linker doesn't strip them. The UnityHelpers converters are referenced via options by default.
+- Avoid deserializing `System.Type` from untrusted input (see `TypeConverter`); this is intended for trusted configs/tools.

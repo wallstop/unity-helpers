@@ -70,6 +70,7 @@ namespace WallstopStudios.UnityHelpers.Visuals.UGUI
         /// Stores the dedicated material instance produced by <see cref="UpdateMaterialInstance"/>.
         /// </summary>
         private Material _cachedMaterialInstance;
+        internal Material CachedMaterialInstanceForTests => _cachedMaterialInstance;
 
         /// <summary>
         /// HDR-capable tint applied to the instantiated material. Values above 1 keep their intensity instead of being clamped.
@@ -214,5 +215,10 @@ namespace WallstopStudios.UnityHelpers.Visuals.UGUI
                 _cachedMaterialInstance = null;
             }
         }
+
+        // Test helpers to avoid reflection
+        internal void InvokeStartForTests() => Start();
+
+        internal void InvokeOnDestroyForTests() => OnDestroy();
     }
 }

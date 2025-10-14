@@ -4,7 +4,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     using System;
     using System.Collections.Generic;
     using System.IO;
-    using System.Linq;
     using UnityEditor;
     using UnityEngine;
     using CustomEditors;
@@ -74,20 +73,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
         // Optional: named per-platform overrides
         public List<PlatformOverrideEntry> platformOverrides = new();
-        private static readonly string[] KnownPlatforms = new[]
-        {
-            "DefaultTexturePlatform",
-            "Standalone",
-            "iPhone",
-            "Android",
-            "WebGL",
-            "tvOS",
-            "XboxOne",
-            "PS4",
-            "PS5",
-            "Switch",
-        };
         private int _addPlatformIndex;
+        private readonly Dictionary<int, int> _replaceSelectionByIndex = new();
 
         // Flow options
         public bool requireChangesBeforeApply = true; // If true, stats are checked and apply is skipped if nothing changes.
@@ -210,6 +197,37 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         $"Unknown platform name '{name}'. It will be passed to Unity importer as-is.",
                         MessageType.Info
                     );
+
+                    // Quick fix UX: allow replacing with a known platform directly
+                    EditorGUILayout.BeginHorizontal();
+                    EditorGUILayout.LabelField("Replace With", GUILayout.Width(90));
+                    int currentChoice = 0;
+                    if (_replaceSelectionByIndex.TryGetValue(i, out int tmp))
+                    {
+                        currentChoice = tmp;
+                    }
+                    currentChoice = EditorGUILayout.Popup(currentChoice, knownNames);
+                    _replaceSelectionByIndex[i] = currentChoice;
+                    if (GUILayout.Button("Replace", GUILayout.Width(80)))
+                    {
+                        if (0 <= currentChoice && currentChoice < knownNames.Length)
+                        {
+                            platformOverrides[i].platformName = knownNames[currentChoice];
+                            Repaint();
+                        }
+                    }
+                    // Heuristic quick button for common typo: iOS -> iPhone
+                    if (string.Equals(name, "iOS", StringComparison.OrdinalIgnoreCase))
+                    {
+                        int idx = Array.IndexOf(knownNames, "iPhone");
+                        if (idx >= 0 && GUILayout.Button("Use iPhone", GUILayout.Width(90)))
+                        {
+                            platformOverrides[i].platformName = "iPhone";
+                            _replaceSelectionByIndex[i] = idx;
+                            Repaint();
+                        }
+                    }
+                    EditorGUILayout.EndHorizontal();
                 }
             }
 
@@ -294,13 +312,17 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 return;
             }
 
-            if (
-                platformOverrides.Any(p =>
-                    string.Equals(p.platformName?.Trim(), name, StringComparison.Ordinal)
-                )
-            )
+            for (int i = 0; i < (platformOverrides?.Count ?? 0); i++)
             {
-                return;
+                PlatformOverrideEntry p = platformOverrides[i];
+                string existing = p?.platformName;
+                if (
+                    !string.IsNullOrEmpty(existing)
+                    && string.Equals(existing.Trim(), name, StringComparison.Ordinal)
+                )
+                {
+                    return;
+                }
             }
             platformOverrides.Add(new PlatformOverrideEntry { platformName = name });
         }
@@ -362,86 +384,127 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         private List<string> GetTargetTexturePaths()
         {
             // Build extension filter (normalize)
-            HashSet<string> allowedExtensions = new(StringComparer.OrdinalIgnoreCase);
-            foreach (string extRaw in spriteFileExtensions ?? Enumerable.Empty<string>())
-            {
-                if (string.IsNullOrWhiteSpace(extRaw))
-                {
-                    continue;
-                }
-
-                string ext = extRaw.StartsWith(".") ? extRaw : "." + extRaw;
-                _ = allowedExtensions.Add(ext);
-            }
-
-            // Collect folders
-            List<string> folderAssetPaths = new();
-            foreach (Object directory in directories ?? Enumerable.Empty<Object>())
-            {
-                if (directory == null)
-                {
-                    continue;
-                }
-
-                string assetPath = AssetDatabase.GetAssetPath(directory);
-                if (!string.IsNullOrWhiteSpace(assetPath) && AssetDatabase.IsValidFolder(assetPath))
-                {
-                    folderAssetPaths.Add(assetPath);
-                }
-            }
-
-            HashSet<string> unique = new(StringComparer.OrdinalIgnoreCase);
-            if (folderAssetPaths.Count > 0)
-            {
-                using PooledResource<string[]> folderLease = WallstopFastArrayPool<string>.Get(
-                    folderAssetPaths.Count,
-                    out string[] folders
-                );
-                for (int i = 0; i < folderAssetPaths.Count; i++)
-                {
-                    folders[i] = folderAssetPaths[i];
-                }
-
-                string[] guids = AssetDatabase.FindAssets("t:Texture2D", folders);
-                for (int i = 0; i < guids.Length; i++)
-                {
-                    string p = AssetDatabase.GUIDToAssetPath(guids[i]);
-                    if (string.IsNullOrWhiteSpace(p))
-                    {
-                        continue;
-                    }
-
-                    string ext = Path.GetExtension(p);
-                    if (allowedExtensions.Count > 0 && !allowedExtensions.Contains(ext))
-                    {
-                        continue;
-                    }
-
-                    _ = unique.Add(p);
-                }
-            }
-
-            foreach (
-                Texture2D t in textures?.Where(t => t != null).Distinct()
-                    ?? Enumerable.Empty<Texture2D>()
+            using (
+                SetBuffers<string>
+                    .GetHashSetPool(StringComparer.OrdinalIgnoreCase)
+                    .Get(out HashSet<string> allowedExtensions)
             )
             {
-                string p = AssetDatabase.GetAssetPath(t);
-                if (string.IsNullOrWhiteSpace(p))
+                if (spriteFileExtensions != null)
                 {
-                    continue;
+                    foreach (string extRaw in spriteFileExtensions)
+                    {
+                        if (string.IsNullOrWhiteSpace(extRaw))
+                        {
+                            continue;
+                        }
+
+                        string ext = extRaw.StartsWith(".") ? extRaw : "." + extRaw;
+                        _ = allowedExtensions.Add(ext);
+                    }
                 }
 
-                string ext = Path.GetExtension(p);
-                if (allowedExtensions.Count > 0 && !allowedExtensions.Contains(ext))
+                // Collect folders
+                using (Buffers<string>.List.Get(out List<string> folderAssetPaths))
                 {
-                    continue;
-                }
+                    if (directories != null)
+                    {
+                        foreach (Object directory in directories)
+                        {
+                            if (directory == null)
+                            {
+                                continue;
+                            }
 
-                _ = unique.Add(p);
+                            string assetPath = AssetDatabase.GetAssetPath(directory);
+                            if (
+                                !string.IsNullOrWhiteSpace(assetPath)
+                                && AssetDatabase.IsValidFolder(assetPath)
+                            )
+                            {
+                                folderAssetPaths.Add(assetPath);
+                            }
+                        }
+                    }
+
+                    using (
+                        SetBuffers<string>
+                            .GetHashSetPool(StringComparer.OrdinalIgnoreCase)
+                            .Get(out HashSet<string> unique)
+                    )
+                    {
+                        if (folderAssetPaths.Count > 0)
+                        {
+                            using PooledResource<string[]> folderLease =
+                                WallstopFastArrayPool<string>.Get(
+                                    folderAssetPaths.Count,
+                                    out string[] folders
+                                );
+                            for (int i = 0; i < folderAssetPaths.Count; i++)
+                            {
+                                folders[i] = folderAssetPaths[i];
+                            }
+
+                            string[] guids = AssetDatabase.FindAssets("t:Texture2D", folders);
+                            for (int i = 0; i < guids.Length; i++)
+                            {
+                                string p = AssetDatabase.GUIDToAssetPath(guids[i]);
+                                if (string.IsNullOrWhiteSpace(p))
+                                {
+                                    continue;
+                                }
+
+                                string ext = Path.GetExtension(p);
+                                if (allowedExtensions.Count > 0 && !allowedExtensions.Contains(ext))
+                                {
+                                    continue;
+                                }
+
+                                _ = unique.Add(p);
+                            }
+                        }
+
+                        // De-dupe textures and skip nulls without LINQ
+                        using (Buffers<Texture2D>.HashSet.Get(out HashSet<Texture2D> texSet))
+                        {
+                            if (textures != null)
+                            {
+                                for (int ti = 0; ti < textures.Count; ti++)
+                                {
+                                    Texture2D t = textures[ti];
+                                    if (t == null)
+                                    {
+                                        continue;
+                                    }
+                                    if (!texSet.Add(t))
+                                    {
+                                        continue;
+                                    }
+
+                                    string p = AssetDatabase.GetAssetPath(t);
+                                    if (string.IsNullOrWhiteSpace(p))
+                                    {
+                                        continue;
+                                    }
+
+                                    string ext = Path.GetExtension(p);
+                                    if (
+                                        allowedExtensions.Count > 0
+                                        && !allowedExtensions.Contains(ext)
+                                    )
+                                    {
+                                        continue;
+                                    }
+
+                                    _ = unique.Add(p);
+                                }
+                            }
+                        }
+
+                        return new List<string>(unique);
+                    }
+                }
             }
-
-            return new List<string>(unique);
         }
 
         public void CalculateStats()

@@ -6,11 +6,13 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
     using System.Linq;
     using System.Runtime.CompilerServices;
     using System.Threading.Tasks;
-    using UnityEditor;
     using UnityEngine;
     using UnityEngine.UIElements;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Utils;
+#if UNITY_EDITOR
+    using UnityEditor;
+#endif
 
     public sealed class LayeredImage : VisualElement
     {
@@ -68,6 +70,7 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
 
         private readonly AnimatedSpriteLayer[] _layers;
         private readonly Texture2D[] _computed;
+        internal Texture2D[] ComputedTexturesForTests => _computed;
         private readonly Color _backgroundColor;
         private readonly Rect? _largestArea;
         private readonly Stopwatch _timer;

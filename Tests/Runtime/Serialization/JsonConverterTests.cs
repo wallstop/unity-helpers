@@ -7,9 +7,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
     using UnityEngine.Rendering;
     using UnityEngine.SceneManagement;
     using WallstopStudios.UnityHelpers.Core.Serialization;
+    using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
     [TestFixture]
-    public sealed class JsonConverterTests
+    public sealed class JsonConverterTests : CommonTestBase
     {
         [Test]
         public void QuaternionConverterSerializeAndDeserializeSuccess()
@@ -757,14 +758,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         [Test]
         public void GameObjectConverterSerializeValidGameObjectSuccess()
         {
-            GameObject original = new("TestObject");
+            GameObject original = Track(new GameObject("TestObject"));
             string json = Serializer.JsonStringify(original);
 
             Assert.IsFalse(string.IsNullOrWhiteSpace(json));
             Assert.IsTrue(json.Contains("TestObject"));
             Assert.IsTrue(json.Contains("UnityEngine.GameObject"));
-
-            UnityEngine.Object.DestroyImmediate(original);
         }
 
         [Test]
@@ -779,7 +778,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         [Test]
         public void GameObjectConverterSerializeDestroyedGameObjectReturnsEmptyObject()
         {
-            GameObject original = new("TestObject");
+            GameObject original = Track(new GameObject("TestObject"));
             UnityEngine.Object.DestroyImmediate(original);
 
             string json = Serializer.JsonStringify(original);
@@ -1088,10 +1087,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         [Test]
         public void BoundingSphereConverterSerializeAndDeserializeSuccess()
         {
-            UnityEngine.BoundingSphere original = new(new Vector3(1, 2, 3), 4f);
+            BoundingSphere original = new(new Vector3(1, 2, 3), 4f);
             string json = Serializer.JsonStringify(original);
-            UnityEngine.BoundingSphere deserialized =
-                Serializer.JsonDeserialize<UnityEngine.BoundingSphere>(json);
+            BoundingSphere deserialized = Serializer.JsonDeserialize<BoundingSphere>(json);
             Assert.AreEqual(original.position, deserialized.position);
             Assert.AreEqual(original.radius, deserialized.radius);
         }
@@ -1120,11 +1118,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         [Test]
         public void SceneConverterSerializeAndDeserializeSuccess()
         {
-            Scene scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+            Scene scene = SceneManager.GetActiveScene();
             string json = Serializer.JsonStringify(scene);
-            Scene deserialized = Serializer.JsonDeserialize<UnityEngine.SceneManagement.Scene>(
-                json
-            );
+            Scene deserialized = Serializer.JsonDeserialize<Scene>(json);
             Assert.IsTrue(deserialized.IsValid());
             Assert.AreEqual(scene.name, deserialized.name);
         }

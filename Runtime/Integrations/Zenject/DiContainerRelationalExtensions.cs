@@ -51,6 +51,26 @@ namespace WallstopStudios.UnityHelpers.Integrations.Zenject
     public static class DiContainerRelationalExtensions
     {
         /// <summary>
+        /// Injects <paramref name="component"/> with Zenject and assigns its relational fields.
+        /// </summary>
+        /// <typeparam name="T">The component type.</typeparam>
+        /// <param name="container">The Zenject container.</param>
+        /// <param name="component">The component instance to inject and hydrate.</param>
+        /// <returns>The same component instance.</returns>
+        public static T InjectWithRelations<T>(this DiContainer container, T component)
+            where T : Component
+        {
+            if (component == null)
+            {
+                return null;
+            }
+
+            container?.Inject(component);
+            container.AssignRelationalComponents(component);
+            return component;
+        }
+
+        /// <summary>
         /// Assigns all relational fields on a component using the container-registered
         /// <see cref="IRelationalComponentAssigner"/>, with a safe fallback to the non-DI path.
         /// </summary>
@@ -124,9 +144,9 @@ namespace WallstopStudios.UnityHelpers.Integrations.Zenject
                 out List<Component> components
             );
             root.GetComponentsInChildren(includeInactiveChildren, components);
-            for (int i = 0; i < components.Count; i++)
+            foreach (Component component in components)
             {
-                components[i].AssignRelationalComponents();
+                component.AssignRelationalComponents();
             }
         }
 
@@ -159,6 +179,53 @@ namespace WallstopStudios.UnityHelpers.Integrations.Zenject
             T instance = container.InstantiatePrefabForComponent<T>(prefab, parent);
             container.AssignRelationalComponents(instance);
             return instance;
+        }
+
+        /// <summary>
+        /// Instantiates a GameObject prefab with Zenject, injects the hierarchy and assigns
+        /// relational fields across the new instance.
+        /// </summary>
+        /// <param name="container">The Zenject container.</param>
+        /// <param name="prefab">GameObject prefab.</param>
+        /// <param name="parent">Optional parent transform.</param>
+        /// <param name="includeInactiveChildren">Include inactive children when assigning.</param>
+        /// <returns>The instantiated GameObject.</returns>
+        public static GameObject InstantiateGameObjectWithRelations(
+            this DiContainer container,
+            GameObject prefab,
+            Transform parent = null,
+            bool includeInactiveChildren = true
+        )
+        {
+            if (prefab == null)
+            {
+                throw new ArgumentNullException(nameof(prefab));
+            }
+
+            GameObject instance = container.InstantiatePrefab(prefab, parent);
+            container.InjectGameObjectWithRelations(instance, includeInactiveChildren);
+            return instance;
+        }
+
+        /// <summary>
+        /// Injects all components on <paramref name="root"/> and children with Zenject, then assigns
+        /// relational fields across the hierarchy.
+        /// </summary>
+        /// <param name="container">The Zenject container.</param>
+        /// <param name="root">Root GameObject.</param>
+        /// <param name="includeInactiveChildren">Include inactive children when assigning.</param>
+        public static void InjectGameObjectWithRelations(
+            this DiContainer container,
+            GameObject root,
+            bool includeInactiveChildren = true
+        )
+        {
+            if (root == null)
+            {
+                return;
+            }
+            container?.InjectGameObject(root);
+            container.AssignRelationalHierarchy(root, includeInactiveChildren);
         }
 
         private static IRelationalComponentAssigner ResolveAssigner(DiContainer container)

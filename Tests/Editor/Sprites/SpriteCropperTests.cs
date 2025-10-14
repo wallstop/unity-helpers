@@ -36,7 +36,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
 
             // Ensure sprite importer single + readable
             TextureImporter imp = AssetImporter.GetAtPath(src) as TextureImporter;
-            Assert.IsNotNull(imp);
+            Assert.IsTrue(imp != null);
             imp.textureType = TextureImporterType.Sprite;
             imp.spriteImportMode = SpriteImportMode.Single;
             imp.spritePivot = new Vector2(0.5f, 0.5f); // center
@@ -45,9 +45,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
 
             SpriteCropper window = Track(ScriptableObject.CreateInstance<SpriteCropper>());
             window._overwriteOriginals = true;
-            window._inputDirectories = new System.Collections.Generic.List<UnityEngine.Object>
+            window._inputDirectories = new System.Collections.Generic.List<Object>
             {
-                AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(Root),
+                AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
             window.FindFilesToProcess();
             window.ProcessFoundSprites();
@@ -56,13 +56,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
 
             // Source should be overwritten and cropped to 10x10
             Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(src);
-            Assert.IsNotNull(tex);
+            Assert.IsTrue(tex != null);
             Assert.That(tex.width, Is.EqualTo(10));
             Assert.That(tex.height, Is.EqualTo(10));
 
             // Pivot should remain effectively center after crop
             imp = AssetImporter.GetAtPath(src) as TextureImporter;
-            Assert.IsNotNull(imp);
+            Assert.IsTrue(imp != null);
             Assert.That(imp.spriteImportMode, Is.EqualTo(SpriteImportMode.Single));
             Vector2 pivot = imp.spritePivot;
             Assert.That(pivot.x, Is.InRange(0.49f, 0.51f));
@@ -86,10 +86,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
 
             SpriteCropper window = Track(ScriptableObject.CreateInstance<SpriteCropper>());
             window._overwriteOriginals = false;
-            window._outputDirectory = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(outDir);
-            window._inputDirectories = new System.Collections.Generic.List<UnityEngine.Object>
+            window._outputDirectory = AssetDatabase.LoadAssetAtPath<Object>(outDir);
+            window._inputDirectories = new System.Collections.Generic.List<Object>
             {
-                AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(Root),
+                AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
             window.FindFilesToProcess();
             window.ProcessFoundSprites();
@@ -100,7 +100,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             Assert.That(File.Exists(RelToFull(dst)), Is.True, "Cropped output should exist");
 
             Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(dst);
-            Assert.IsNotNull(tex);
+            Assert.IsTrue(tex != null);
             Assert.That(tex.width, Is.EqualTo(4));
             Assert.That(tex.height, Is.EqualTo(4));
         }

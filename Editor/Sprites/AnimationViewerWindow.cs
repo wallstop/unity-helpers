@@ -54,7 +54,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         private const string DirToolName = "SpriteAnimationEditor";
         private const string DirContextKey = "Clips";
 
-        private sealed class EditorLayerData
+        internal sealed class EditorLayerData
         {
             public AnimationClip SourceClip { get; }
             public List<Sprite> Sprites { get; }
@@ -65,7 +65,17 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             public EditorLayerData(AnimationClip clip)
             {
                 SourceClip = clip;
-                Sprites = clip.GetSpritesFromClip()?.ToList();
+                Sprites = new List<Sprite>();
+                if (clip != null)
+                {
+                    foreach (Sprite s in clip.GetSpritesFromClip())
+                    {
+                        if (s != null)
+                        {
+                            Sprites.Add(s);
+                        }
+                    }
+                }
                 OriginalClipFps =
                     clip.frameRate > 0 ? clip.frameRate : AnimatedSpriteLayer.FrameRate;
 
@@ -442,7 +452,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 AnimationClip clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(assetPath);
                 if (clip != null)
                 {
-                    if (_loadedEditorLayers.All(layer => layer.SourceClip != clip))
+                    bool noneMatch = true;
+                    for (int i = 0; i < _loadedEditorLayers.Count; i++)
+                    {
+                        if (_loadedEditorLayers[i]?.SourceClip == clip)
+                        {
+                            noneMatch = false;
+                            break;
+                        }
+                    }
+                    if (noneMatch)
                     {
                         AddEditorLayer(clip);
                         clipsAddedCount++;
@@ -500,7 +519,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 if (obj is AnimationClip clip)
                 {
-                    bool alreadyExists = _loadedEditorLayers.Any(layer => layer.SourceClip == clip);
+                    bool alreadyExists = false;
+                    for (int i = 0; i < _loadedEditorLayers.Count; i++)
+                    {
+                        if (_loadedEditorLayers[i]?.SourceClip == clip)
+                        {
+                            alreadyExists = true;
+                            break;
+                        }
+                    }
                     if (!alreadyExists)
                     {
                         AddEditorLayer(clip);
@@ -615,7 +642,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
         private void AddEditorLayer(AnimationClip clip)
         {
-            if (clip == null || _loadedEditorLayers.Any(layer => layer.SourceClip == clip))
+            bool exists = false;
+            for (int i = 0; i < _loadedEditorLayers.Count; i++)
+            {
+                if (_loadedEditorLayers[i]?.SourceClip == clip)
+                {
+                    exists = true;
+                    break;
+                }
+            }
+            if (clip == null || exists)
             {
                 string clipName = clip != null ? clip.name : "<null>";
                 this.LogWarn($"Clip '{clipName}' is null or already loaded.");
@@ -649,7 +685,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             if (_activeEditorLayer == layerToRemove)
             {
-                SetActiveEditorLayer(_loadedEditorLayers.FirstOrDefault());
+                SetActiveEditorLayer(_loadedEditorLayers.Count > 0 ? _loadedEditorLayers[0] : null);
             }
 
             RebuildLoadedClipsUI();

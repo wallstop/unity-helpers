@@ -55,7 +55,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
                 out TextureImporter importer
             );
             Assert.IsTrue(changed, "Expected API to apply changes");
-            Assert.IsNotNull(importer);
+            Assert.IsTrue(importer != null);
             importer.SaveAndReimport();
 
             TextureImporterPlatformSettings ps = importer.GetDefaultPlatformTextureSettings();
@@ -88,7 +88,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
                 out TextureImporter importer
             );
             Assert.IsTrue(changed, "Expected override to apply");
-            Assert.IsNotNull(importer);
+            Assert.IsTrue(importer != null);
             importer.SaveAndReimport();
 
             TextureImporterPlatformSettings ops = importer.GetPlatformTextureSettings("Standalone");
@@ -120,7 +120,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
                 out TextureImporter importer
             );
             Assert.IsTrue(changed, "Expected override to apply even for unknown platform name");
-            Assert.IsNotNull(importer);
+            Assert.IsTrue(importer != null);
             importer.SaveAndReimport();
 
             TextureImporterPlatformSettings ops = importer.GetPlatformTextureSettings(

@@ -51,7 +51,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
 
             AssetDatabase.Refresh();
             Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
-            Assert.IsNotNull(tex, "Texture should exist after resize");
+            Assert.IsTrue(tex != null, "Texture should exist after resize");
             Assert.That(tex.width, Is.EqualTo(32), "Width should double");
             Assert.That(tex.height, Is.EqualTo(20), "Height should double");
         }
@@ -125,7 +125,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             wizard.heightMultiplier = 1f;
             wizard.scalingResizeAlgorithm = TextureResizerWizard.ResizeAlgorithm.Point;
             DefaultAsset outAsset = AssetDatabase.LoadAssetAtPath<DefaultAsset>(OutRoot);
-            Assert.IsNotNull(outAsset, "Output folder asset missing");
+            Assert.IsTrue(outAsset != null, "Output folder asset missing");
             wizard.outputFolder = outAsset;
             wizard.OnWizardCreate();
 
@@ -136,7 +136,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
 
             string outPath = Path.Combine(OutRoot, "out.png").Replace('\\', '/');
             Texture2D outTex = AssetDatabase.LoadAssetAtPath<Texture2D>(outPath);
-            Assert.IsNotNull(outTex, "Expected resized texture in output folder");
+            Assert.IsTrue(outTex != null, "Expected resized texture in output folder");
             Assert.That(outTex.width, Is.EqualTo(16));
             Assert.That(outTex.height, Is.EqualTo(8));
         }
@@ -176,7 +176,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             AssetDatabase.Refresh();
 
             TextureImporter importer = AssetImporter.GetAtPath(path) as TextureImporter;
-            Assert.IsNotNull(importer);
+            Assert.IsTrue(importer != null);
             importer.isReadable = false;
             importer.SaveAndReimport();
 
@@ -196,7 +196,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
 
             AssetDatabase.Refresh();
             importer = AssetImporter.GetAtPath(path) as TextureImporter;
-            Assert.IsNotNull(importer);
+            Assert.IsTrue(importer != null);
             Assert.IsFalse(importer.isReadable, "Importer readability should be restored");
         }
 

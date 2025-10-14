@@ -389,6 +389,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 return lines;
             }
 
+            // Add an intermediate heading so tab headers (####) increment correctly from h3.
+            lines.Add("### Datasets");
+            lines.Add(string.Empty);
             lines.Add("<!-- tabs:start -->");
             lines.Add(string.Empty);
             foreach ((DatasetSpec dataset, List<string> datasetLines) in datasetOutputs)

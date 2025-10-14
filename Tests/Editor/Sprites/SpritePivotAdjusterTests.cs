@@ -35,7 +35,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             AssetDatabase.Refresh();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
-            Assert.IsNotNull(imp);
+            Assert.IsTrue(imp != null);
             imp.textureType = TextureImporterType.Sprite;
             imp.spriteImportMode = SpriteImportMode.Single;
             imp.isReadable = true;
@@ -45,9 +45,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             SpritePivotAdjuster window = Track(
                 ScriptableObject.CreateInstance<SpritePivotAdjuster>()
             );
-            window._directoryPaths = new System.Collections.Generic.List<UnityEngine.Object>
+            window._directoryPaths = new System.Collections.Generic.List<Object>
             {
-                AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(Root),
+                AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
             window._alphaCutoff = 0.01f;
             window._skipUnchanged = false;

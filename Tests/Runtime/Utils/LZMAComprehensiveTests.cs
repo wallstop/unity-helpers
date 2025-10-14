@@ -11,7 +11,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         public void RoundtripVariousSizes()
         {
             Random random = new(12345);
-            int[] sizes = new[] { 0, 1, 3, 5, 32, 64, 257, 1024, 4096 };
+            int[] sizes = { 0, 1, 3, 5, 32, 64, 257, 1024, 4096 };
             foreach (int length in sizes)
             {
                 byte[] data = new byte[length];

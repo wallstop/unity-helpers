@@ -99,7 +99,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 
                 PropertyInfo prop = t.GetProperty(
                     "CurrentContext",
-                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static
+                    BindingFlags.Public | BindingFlags.Static
                 );
                 if (prop == null)
                 {

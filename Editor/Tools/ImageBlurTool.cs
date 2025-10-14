@@ -3,12 +3,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools
     using System;
     using System.Collections.Generic;
     using System.IO;
-    using System.Linq;
     using System.Threading.Tasks;
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Extension;
-    using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.CustomEditors;
     using WallstopStudios.UnityHelpers.Editor.Utils;
     using Object = UnityEngine.Object;
@@ -92,16 +90,39 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools
                 nameof(ImageBlurTool)
             );
 
-            if (
-                _serializedObject.ApplyModifiedProperties()
-                || !_lastSeenImageSources.SequenceEqual(imageSources)
-            )
+            bool changed = _serializedObject.ApplyModifiedProperties();
+            if (!changed)
+            {
+                int aCount = _lastSeenImageSources.Count;
+                int bCount = imageSources.Count;
+                if (aCount != bCount)
+                {
+                    changed = true;
+                }
+                else
+                {
+                    for (int i = 0; i < aCount; i++)
+                    {
+                        if (!ReferenceEquals(_lastSeenImageSources[i], imageSources[i]))
+                        {
+                            changed = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (changed)
             {
                 _lastSeenImageSources.Clear();
                 _lastSeenImageSources.AddRange(imageSources);
                 _manualTextures.Clear();
-                foreach (Object directory in imageSources.Where(Objects.NotNull))
+                for (int i = 0; i < imageSources.Count; i++)
                 {
+                    Object directory = imageSources[i];
+                    if (directory == null)
+                    {
+                        continue;
+                    }
                     string path = AssetDatabase.GetAssetPath(directory);
                     if (string.IsNullOrWhiteSpace(path))
                     {
@@ -171,9 +192,30 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools
                     _scrollPosition,
                     GUILayout.Height(200)
                 );
-                foreach (Texture2D tex in _manualTextures.Concat(_orderedTextures).Distinct())
+                using (
+                    WallstopStudios.UnityHelpers.Utils.Buffers<Texture2D>.HashSet.Get(
+                        out HashSet<Texture2D> seen
+                    )
+                )
                 {
-                    EditorGUILayout.ObjectField(tex.name, tex, typeof(Texture2D), false);
+                    for (int i = 0; i < _manualTextures.Count; i++)
+                    {
+                        Texture2D t = _manualTextures[i];
+                        if (t == null || !seen.Add(t))
+                        {
+                            continue;
+                        }
+                        EditorGUILayout.ObjectField(t.name, t, typeof(Texture2D), false);
+                    }
+                    for (int i = 0; i < _orderedTextures.Count; i++)
+                    {
+                        Texture2D t = _orderedTextures[i];
+                        if (t == null || !seen.Add(t))
+                        {
+                            continue;
+                        }
+                        EditorGUILayout.ObjectField(t.name, t, typeof(Texture2D), false);
+                    }
                 }
                 EditorGUILayout.EndScrollView();
 
@@ -223,7 +265,36 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools
         private void ApplyBlurToSelectedTextures()
         {
             int processedCount = 0;
-            Texture2D[] toProcess = _manualTextures.Concat(_orderedTextures).Distinct().ToArray();
+            Texture2D[] toProcess;
+            using (
+                WallstopStudios.UnityHelpers.Utils.Buffers<Texture2D>.HashSet.Get(
+                    out HashSet<Texture2D> seen
+                )
+            )
+            using (
+                WallstopStudios.UnityHelpers.Utils.Buffers<Texture2D>.List.Get(
+                    out List<Texture2D> combined
+                )
+            )
+            {
+                for (int i = 0; i < _manualTextures.Count; i++)
+                {
+                    Texture2D t = _manualTextures[i];
+                    if (t != null && seen.Add(t))
+                    {
+                        combined.Add(t);
+                    }
+                }
+                for (int i = 0; i < _orderedTextures.Count; i++)
+                {
+                    Texture2D t = _orderedTextures[i];
+                    if (t != null && seen.Add(t))
+                    {
+                        combined.Add(t);
+                    }
+                }
+                toProcess = combined.ToArray();
+            }
             foreach (Texture2D originalTexture in toProcess)
             {
                 string assetPath = AssetDatabase.GetAssetPath(originalTexture);

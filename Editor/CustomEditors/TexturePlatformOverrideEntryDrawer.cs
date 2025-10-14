@@ -8,17 +8,26 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
     [CustomPropertyDrawer(typeof(TextureSettingsApplierWindow.PlatformOverrideEntry))]
     public sealed class TexturePlatformOverrideEntryDrawer : PropertyDrawer
     {
+        private static string[] _cachedChoices;
+        private static string[] _lastKnownRef;
+
         private static string[] GetChoices()
         {
             string[] known = TexturePlatformNameHelper.GetKnownPlatformNames();
+            if (ReferenceEquals(known, _lastKnownRef) && _cachedChoices != null)
+            {
+                return _cachedChoices;
+            }
+
             string[] arr = new string[known.Length + 1];
             for (int i = 0; i < known.Length; i++)
             {
                 arr[i] = known[i];
             }
-
             arr[arr.Length - 1] = "Custom";
-            return arr;
+            _lastKnownRef = known;
+            _cachedChoices = arr;
+            return _cachedChoices;
         }
 
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)

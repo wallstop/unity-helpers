@@ -3,11 +3,42 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 #if UNITY_EDITOR
     using System;
     using System.Collections.Generic;
+    using UnityEngine.SceneManagement;
     using UnityEditor;
+    using UnityEditor.SceneManagement;
+    using WallstopStudios.UnityHelpers.Utils;
 
     internal static class TexturePlatformNameHelper
     {
         private static string[] _cached;
+        private static readonly Dictionary<BuildTargetGroup, string> Map = new()
+        {
+            { BuildTargetGroup.Standalone, "Standalone" },
+            { BuildTargetGroup.iOS, "iPhone" },
+            { BuildTargetGroup.tvOS, "tvOS" },
+            { BuildTargetGroup.Android, "Android" },
+            { BuildTargetGroup.WebGL, "WebGL" },
+            { BuildTargetGroup.PS4, "PS4" },
+            { BuildTargetGroup.PS5, "PS5" },
+            { BuildTargetGroup.XboxOne, "XboxOne" },
+            { BuildTargetGroup.Switch, "Switch" },
+        };
+
+        static TexturePlatformNameHelper()
+        {
+            // Proactively invalidate cache on common editor lifecycle events where domain
+            // reload may be disabled. This keeps results correct while enabling caching.
+            AssemblyReloadEvents.beforeAssemblyReload += ClearCache;
+            EditorApplication.playModeStateChanged += _ => ClearCache();
+            EditorSceneManager.activeSceneChangedInEditMode += (_, _) => ClearCache();
+            SceneManager.sceneLoaded += (_, _) => ClearCache();
+            EditorApplication.projectChanged += ClearCache;
+        }
+
+        private static void ClearCache()
+        {
+            _cached = null;
+        }
 
         public static string[] GetKnownPlatformNames()
         {
@@ -16,62 +47,42 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 return _cached;
             }
 
-            List<string> names = new(16) { "DefaultTexturePlatform" };
+            // Use a pooled set during build to avoid duplicate checks (O(1) membership) with minimal allocations.
+            using PooledResource<HashSet<string>> setLease = Buffers<string>.HashSet.Get(
+                out HashSet<string> set
+            );
+            _ = set.Add("DefaultTexturePlatform");
 
-            // Map BuildTargetGroup to importer platform names
-            Dictionary<BuildTargetGroup, string> map = new()
+            // Enum.GetValues returns a typed array; cast once to avoid boxing per element.
+            BuildTargetGroup[] groups = (BuildTargetGroup[])
+                Enum.GetValues(typeof(BuildTargetGroup));
+            for (int i = 0; i < groups.Length; i++)
             {
-                { BuildTargetGroup.Standalone, "Standalone" },
-#if UNITY_IOS || UNITY_TVOS || true
-                { BuildTargetGroup.iOS, "iPhone" },
-                { BuildTargetGroup.tvOS, "tvOS" },
-#endif
-                { BuildTargetGroup.Android, "Android" },
-                { BuildTargetGroup.WebGL, "WebGL" },
-#if UNITY_PS4 || true
-                { BuildTargetGroup.PS4, "PS4" },
-#endif
-#if UNITY_PS5 || true
-                { BuildTargetGroup.PS5, "PS5" },
-#endif
-#if UNITY_XBOXONE || true
-                { BuildTargetGroup.XboxOne, "XboxOne" },
-#endif
-#if UNITY_SWITCH || true
-                { BuildTargetGroup.Switch, "Switch" },
-#endif
-            };
-
-            Array values = Enum.GetValues(typeof(BuildTargetGroup));
-            for (int i = 0; i < values.Length; i++)
-            {
-                BuildTargetGroup g = (BuildTargetGroup)values.GetValue(i);
+                BuildTargetGroup g = groups[i];
                 if (g == BuildTargetGroup.Unknown)
                 {
                     continue;
                 }
 
-                // Old/obsolete groups may exist; include them as ToString fallback
-                if (map.TryGetValue(g, out string name))
+                if (Map.TryGetValue(g, out string mapped))
                 {
-                    if (!names.Contains(name))
-                    {
-                        names.Add(name);
-                    }
+                    _ = set.Add(mapped);
                 }
                 else
                 {
                     string n = g.ToString();
-                    if (!string.IsNullOrEmpty(n) && !names.Contains(n))
+                    if (!string.IsNullOrEmpty(n))
                     {
-                        names.Add(n);
+                        _ = set.Add(n);
                     }
                 }
             }
 
-            names.Sort(StringComparer.Ordinal);
-            _cached = names.ToArray();
-            return _cached;
+            string[] arr = new string[set.Count];
+            set.CopyTo(arr);
+            Array.Sort(arr, StringComparer.Ordinal);
+            _cached = arr;
+            return arr;
         }
     }
 #endif

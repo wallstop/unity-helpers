@@ -2,7 +2,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Core.Helper
 {
     using System;
     using System.Collections.Generic;
-    using System.Linq;
     using System.Reflection;
     using UnityEditor;
     using UnityEngine;
@@ -17,188 +16,215 @@ namespace WallstopStudios.UnityHelpers.Editor.Core.Helper
         static AnimationEventHelpers()
         {
             List<(Type, string)> ignoreDerived = new();
-            Dictionary<Type, List<MethodInfo>> typesToMethods = TypeCache
-                .GetTypesDerivedFrom<MonoBehaviour>()
-                .Where(type => type.IsClass && !type.IsAbstract)
-                .ToDictionary(
-                    type => type,
-                    type =>
-                    {
-                        List<MethodInfo> definedMethods = GetPossibleAnimatorEventsForType(type)
-                            .Where(method =>
-                            {
-                                // Only include methods where the attribute is directly defined
-                                if (
-                                    !method.IsAttributeDefined<AnimationEventAttribute>(
-                                        out _,
-                                        inherit: false
-                                    )
-                                )
-                                {
-                                    return false;
-                                }
+            Dictionary<Type, List<MethodInfo>> typesToMethods = new();
 
-                                // Only include methods that are declared on this type
-                                return method.DeclaringType == type;
-                            })
-                            .ToList();
-
-                        // Only include inherited methods if this type has its own handlers
-                        if (definedMethods.Count > 0)
-                        {
-                            // Also include inherited methods that explicitly allow derived types
-                            List<MethodInfo> inheritedMethods = GetPossibleAnimatorEventsForType(
-                                    type
-                                )
-                                .Where(method =>
-                                {
-                                    // Skip if not attributed
-                                    if (
-                                        !method.IsAttributeDefined<AnimationEventAttribute>(
-                                            out _,
-                                            inherit: false
-                                        )
-                                    )
-                                    {
-                                        return false;
-                                    }
-
-                                    // Skip if declared on this type (already handled)
-                                    if (method.DeclaringType == type)
-                                    {
-                                        return false;
-                                    }
-
-                                    // Include inherited methods that allow derived
-                                    if (
-                                        method.IsAttributeDefined(
-                                            out AnimationEventAttribute attribute,
-                                            inherit: false
-                                        )
-                                    )
-                                    {
-                                        return !attribute.ignoreDerived;
-                                    }
-
-                                    return false;
-                                })
-                                .Select(method =>
-                                    // Get the method from its declaring type to ensure consistent MethodInfo references
-                                    method.DeclaringType.GetMethod(
-                                        method.Name,
-                                        BindingFlags.Instance
-                                            | BindingFlags.Public
-                                            | BindingFlags.NonPublic,
-                                        null,
-                                        method
-                                            .GetParameters()
-                                            .Select(p => p.ParameterType)
-                                            .ToArray(),
-                                        null
-                                    )
-                                )
-                                .ToList();
-
-                            definedMethods.AddRange(inheritedMethods);
-                        }
-                        foreach (MethodInfo definedMethod in definedMethods)
-                        {
-                            // Only consider attributes on our specific method
-                            if (
-                                !definedMethod.IsAttributeDefined<AnimationEventAttribute>(
-                                    out _,
-                                    inherit: false
-                                )
-                            )
-                            {
-                                continue;
-                            }
-
-                            if (
-                                definedMethod.IsAttributeDefined(
-                                    out AnimationEventAttribute attribute,
-                                    inherit: false
-                                ) && attribute.ignoreDerived
-                            )
-                            {
-                                ignoreDerived.Add((type, definedMethod.Name));
-                            }
-                        }
-
-                        return definedMethods;
-                    }
-                );
-
-            using PooledResource<List<KeyValuePair<Type, List<MethodInfo>>>> methodBufferResource =
-                Buffers<KeyValuePair<Type, List<MethodInfo>>>.List.Get();
-            List<KeyValuePair<Type, List<MethodInfo>>> methodBuffer = methodBufferResource.resource;
-            foreach (KeyValuePair<Type, List<MethodInfo>> entry in typesToMethods)
+            TypeCache.TypeCollection monoTypes = TypeCache.GetTypesDerivedFrom<MonoBehaviour>();
+            for (int i = 0; i < monoTypes.Count; i++)
             {
-                methodBuffer.Add(entry);
-            }
-            foreach (KeyValuePair<Type, List<MethodInfo>> entry in methodBuffer)
-            {
-                if (entry.Value.Count <= 0)
+                Type type = monoTypes[i];
+                if (type == null || !type.IsClass || type.IsAbstract)
                 {
-                    _ = typesToMethods.Remove(entry.Key);
+                    continue;
                 }
 
-                Type key = entry.Key;
-                foreach ((Type type, string methodName) in ignoreDerived)
+                List<MethodInfo> definedMethods = GetPossibleAnimatorEventsForType(type);
+                // Filter: only methods directly declared on this type and attributed
+                for (int m = definedMethods.Count - 1; m >= 0; m--)
                 {
-                    if (key == type)
+                    MethodInfo method = definedMethods[m];
+                    if (method.DeclaringType != type)
                     {
+                        definedMethods.RemoveAt(m);
                         continue;
                     }
-
-                    if (!key.IsSubclassOf(type))
+                    if (!method.IsAttributeDefined<AnimationEventAttribute>(out _, inherit: false))
                     {
-                        continue;
+                        definedMethods.RemoveAt(m);
                     }
+                }
 
-                    entry.Value.RemoveAll(method => method.Name == methodName);
+                if (definedMethods.Count > 0)
+                {
+                    // Include inherited methods that explicitly allow derived
+                    List<MethodInfo> allPossible = GetPossibleAnimatorEventsForType(type);
+                    for (int m = 0; m < allPossible.Count; m++)
+                    {
+                        MethodInfo candidate = allPossible[m];
+                        if (candidate.DeclaringType == type)
+                        {
+                            continue;
+                        }
+                        if (
+                            !candidate.IsAttributeDefined<AnimationEventAttribute>(
+                                out AnimationEventAttribute attribute,
+                                inherit: false
+                            )
+                        )
+                        {
+                            continue;
+                        }
+                        if (attribute.ignoreDerived)
+                        {
+                            continue;
+                        }
+
+                        // Re-resolve method on its declaring type with exact parameter types
+                        ParameterInfo[] parameters = candidate.GetParameters();
+                        Type[] paramTypes;
+                        if (parameters is { Length: > 0 })
+                        {
+                            paramTypes = new Type[parameters.Length];
+                            for (int pi = 0; pi < parameters.Length; pi++)
+                            {
+                                paramTypes[pi] = parameters[pi].ParameterType;
+                            }
+                        }
+                        else
+                        {
+                            paramTypes = Array.Empty<Type>();
+                        }
+
+                        MethodInfo resolved = candidate.DeclaringType.GetMethod(
+                            candidate.Name,
+                            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                            null,
+                            paramTypes,
+                            null
+                        );
+                        if (resolved != null)
+                        {
+                            definedMethods.Add(resolved);
+                        }
+                    }
+                }
+
+                for (int m = 0; m < definedMethods.Count; m++)
+                {
+                    MethodInfo definedMethod = definedMethods[m];
+                    if (
+                        definedMethod.IsAttributeDefined(
+                            out AnimationEventAttribute attr,
+                            inherit: false
+                        ) && attr.ignoreDerived
+                    )
+                    {
+                        ignoreDerived.Add((type, definedMethod.Name));
+                    }
+                }
+
+                if (definedMethods.Count > 0)
+                {
+                    typesToMethods[type] = definedMethods;
+                }
+            }
+
+            using (
+                PooledResource<List<KeyValuePair<Type, List<MethodInfo>>>> methodBufferResource =
+                    Buffers<KeyValuePair<Type, List<MethodInfo>>>.List.Get()
+            )
+            {
+                List<KeyValuePair<Type, List<MethodInfo>>> methodBuffer =
+                    methodBufferResource.resource;
+                foreach (KeyValuePair<Type, List<MethodInfo>> entry in typesToMethods)
+                {
+                    methodBuffer.Add(entry);
+                }
+
+                foreach (KeyValuePair<Type, List<MethodInfo>> entry in methodBuffer)
+                {
                     if (entry.Value.Count <= 0)
                     {
                         _ = typesToMethods.Remove(entry.Key);
-                        break;
+                        continue;
+                    }
+
+                    Type key = entry.Key;
+                    for (int i = 0; i < ignoreDerived.Count; i++)
+                    {
+                        (Type baseType, string methodName) = ignoreDerived[i];
+                        if (key == baseType)
+                        {
+                            continue;
+                        }
+                        if (!key.IsSubclassOf(baseType))
+                        {
+                            continue;
+                        }
+
+                        // Remove inherited methods with this name
+                        for (int midx = entry.Value.Count - 1; midx >= 0; midx--)
+                        {
+                            if (entry.Value[midx].Name == methodName)
+                            {
+                                entry.Value.RemoveAt(midx);
+                            }
+                        }
+                        if (entry.Value.Count <= 0)
+                        {
+                            _ = typesToMethods.Remove(entry.Key);
+                            break;
+                        }
                     }
                 }
             }
 
-            TypesToMethods = typesToMethods.ToDictionary(
-                kvp => kvp.Key,
-                kvp => (IReadOnlyList<MethodInfo>)kvp.Value
-            );
+            // Project to IReadOnlyList without LINQ
+            Dictionary<Type, IReadOnlyList<MethodInfo>> ro = new();
+            foreach (KeyValuePair<Type, List<MethodInfo>> kvp in typesToMethods)
+            {
+                ro[kvp.Key] = kvp.Value;
+            }
+            TypesToMethods = ro;
         }
 
         public static List<MethodInfo> GetPossibleAnimatorEventsForType(Type type)
         {
-            return type.GetMethods(
-                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
-                )
-                .Where(p =>
-                    p.ReturnType == typeof(void)
-                    && (
-                        p.GetParameters().Select(q => q.ParameterType).SequenceEqual(new Type[] { })
-                        || p.GetParameters()
-                            .Select(q => q.ParameterType)
-                            .SequenceEqual(new Type[] { typeof(int) })
-                        || p.GetParameters()
-                            .Select(q => q.ParameterType.BaseType)
-                            .SequenceEqual(new Type[] { typeof(Enum) })
-                        || p.GetParameters()
-                            .Select(q => q.ParameterType)
-                            .SequenceEqual(new Type[] { typeof(float) })
-                        || p.GetParameters()
-                            .Select(q => q.ParameterType)
-                            .SequenceEqual(new Type[] { typeof(string) })
-                        || p.GetParameters()
-                            .Select(q => q.ParameterType)
-                            .SequenceEqual(new Type[] { typeof(UnityEngine.Object) })
-                    )
-                )
-                .OrderBy(method => method.Name)
-                .ToList();
+            MethodInfo[] methods = type.GetMethods(
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+            );
+            using (Buffers<MethodInfo>.List.Get(out List<MethodInfo> result))
+            {
+                for (int i = 0; i < methods.Length; i++)
+                {
+                    MethodInfo m = methods[i];
+                    if (m.ReturnType != typeof(void))
+                    {
+                        continue;
+                    }
+
+                    ParameterInfo[] ps = m.GetParameters();
+                    bool ok;
+                    if (ps == null || ps.Length == 0)
+                    {
+                        ok = true;
+                    }
+                    else if (ps.Length == 1)
+                    {
+                        Type pt = ps[0].ParameterType;
+                        ok =
+                            pt == typeof(int)
+                            || pt == typeof(float)
+                            || pt == typeof(string)
+                            || pt == typeof(UnityEngine.Object)
+                            || (pt.BaseType == typeof(Enum));
+                    }
+                    else
+                    {
+                        ok = false;
+                    }
+
+                    if (ok)
+                    {
+                        result.Add(m);
+                    }
+                }
+
+                result.Sort(
+                    static (a, b) => string.Compare(a.Name, b.Name, StringComparison.Ordinal)
+                );
+                // Return a new list to avoid exposing pooled instance
+                return new List<MethodInfo>(result);
+            }
         }
     }
 }

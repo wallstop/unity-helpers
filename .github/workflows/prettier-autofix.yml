@@ -28,7 +28,6 @@ jobs:
           cache-dependency-path: package.json
 
       - name: Install dependencies
-        if: ${{ github.event.pull_request.user.login == 'dependabot[bot]' }}
         run: |
           if [ -f package-lock.json ]; then
             npm ci
@@ -147,7 +146,7 @@ jobs:
 
       - name: Open or update formatting PR in base repo
         if: steps.changes.outputs.has_changes == 'true'
-        uses: actions/github-script@v8
+        uses: actions/github-script@v7
         with:
           script: |
             const prNumber = context.payload.pull_request.number;
@@ -172,7 +171,7 @@ jobs:
 
       - name: Comment link on original PR
         if: steps.changes.outputs.has_changes == 'true'
-        uses: actions/github-script@v8
+        uses: actions/github-script@v7
         with:
           script: |
             const prNumber = context.payload.pull_request.number;

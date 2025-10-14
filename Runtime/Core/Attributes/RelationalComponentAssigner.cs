@@ -2,6 +2,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 {
     using System;
     using System.Collections.Generic;
+    using System.Linq;
     using Tags;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Utils;
@@ -39,14 +40,58 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             AttributeMetadataCache cache = _metadataCache ?? AttributeMetadataCache.Instance;
             if (cache == null)
             {
-                return false;
+                // Fallback to reflection-based discovery when no cache is available
+                return HasRelationalAttributesViaReflection(componentType);
             }
 
-            return cache.TryGetRelationalFields(
-                    componentType,
-                    out AttributeMetadataCache.RelationalFieldMetadata[] fields
+            Type current = componentType;
+            while (current != null && typeof(Component).IsAssignableFrom(current))
+            {
+                if (
+                    cache.TryGetRelationalFields(
+                        current,
+                        out AttributeMetadataCache.RelationalFieldMetadata[] fields
+                    )
+                    && fields.Length > 0
                 )
-                && fields.Length > 0;
+                {
+                    return true;
+                }
+                current = current.BaseType;
+            }
+
+            // Fallback: inspect fields via reflection to detect relational attributes
+            return HasRelationalAttributesViaReflection(componentType);
+        }
+
+        private static bool HasRelationalAttributesViaReflection(Type componentType)
+        {
+            Type current = componentType;
+            while (current != null && typeof(Component).IsAssignableFrom(current))
+            {
+                // Prefer ReflectionHelpers so Editor TypeCache can accelerate lookups
+                bool has =
+                    Helper
+                        .ReflectionHelpers.GetFieldsWithAttribute<ParentComponentAttribute>(current)
+                        .Any()
+                    || Helper
+                        .ReflectionHelpers.GetFieldsWithAttribute<ChildComponentAttribute>(current)
+                        .Any()
+                    || Helper
+                        .ReflectionHelpers.GetFieldsWithAttribute<SiblingComponentAttribute>(
+                            current
+                        )
+                        .Any();
+
+                if (has)
+                {
+                    return true;
+                }
+
+                current = current.BaseType;
+            }
+
+            return false;
         }
 
         /// <inheritdoc />

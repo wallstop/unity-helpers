@@ -4,7 +4,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     using System;
     using System.Collections.Generic;
     using System.IO;
-    using System.Linq;
     using System.Text.RegularExpressions;
     using UnityEditor;
     using UnityEngine;
@@ -485,9 +484,17 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 bool matchesSearch = true;
                 if (searchTerms.Length > 0)
                 {
-                    matchesSearch = searchTerms.All(term =>
-                        currentName.Contains(term, StringComparison.OrdinalIgnoreCase)
-                    );
+                    for (int si = 0; si < searchTerms.Length; si++)
+                    {
+                        if (
+                            currentName.IndexOf(searchTerms[si], StringComparison.OrdinalIgnoreCase)
+                            < 0
+                        )
+                        {
+                            matchesSearch = false;
+                            break;
+                        }
+                    }
                 }
 
                 if (matchesSearch)
@@ -614,10 +621,21 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 );
             }
 
-            bool canBulkName =
-                animationData is { Count: > 0 }
-                && animationData.Any(data => data.frames?.Count > 0)
-                && !string.IsNullOrWhiteSpace(text);
+            bool canBulkName = animationData is { Count: > 0 } && !string.IsNullOrWhiteSpace(text);
+            if (canBulkName)
+            {
+                bool anyFrames = false;
+                for (int i = 0; i < animationData.Count; i++)
+                {
+                    List<Sprite> fr = animationData[i]?.frames;
+                    if (fr != null && fr.Count > 0)
+                    {
+                        anyFrames = true;
+                        break;
+                    }
+                }
+                canBulkName = anyFrames;
+            }
 
             using (new EditorGUI.DisabledScope(!canBulkName))
             {
@@ -694,16 +712,25 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 }
             }
 
-            if (
-                !canBulkName
-                && animationData is { Count: > 0 }
-                && animationData.Any(data => data.frames?.Count > 0)
-            )
+            if (!canBulkName && animationData is { Count: > 0 })
             {
-                EditorGUILayout.HelpBox(
-                    "Enter text in the 'Text' field above to enable bulk naming operations.",
-                    MessageType.Info
-                );
+                bool anyFrames = false;
+                for (int i = 0; i < animationData.Count; i++)
+                {
+                    List<Sprite> fr = animationData[i]?.frames;
+                    if (fr != null && fr.Count > 0)
+                    {
+                        anyFrames = true;
+                        break;
+                    }
+                }
+                if (anyFrames)
+                {
+                    EditorGUILayout.HelpBox(
+                        "Enter text in the 'Text' field above to enable bulk naming operations.",
+                        MessageType.Info
+                    );
+                }
             }
 
             EditorGUILayout.Space();
@@ -747,7 +774,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 foreach (AnimationData data in animationData)
                 {
                     string lowerName = (data.animationName ?? string.Empty).ToLowerInvariant();
-                    if (searchTerms.All(term => lowerName.Contains(term)))
+                    bool allMatch = true;
+                    for (int i = 0; i < searchTerms.Length; i++)
+                    {
+                        if (lowerName.IndexOf(searchTerms[i], StringComparison.Ordinal) < 0)
+                        {
+                            allMatch = false;
+                            break;
+                        }
+                    }
+                    if (allMatch)
                     {
                         dataToCreate.Add(data);
                     }
@@ -987,8 +1023,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
 
             List<string> searchPaths = new();
-            foreach (Object source in animationSources.Where(Objects.NotNull))
+            for (int i = 0; i < animationSources.Count; i++)
             {
+                Object source = animationSources[i];
+                if (source == null)
+                {
+                    continue;
+                }
                 string path = AssetDatabase.GetAssetPath(source);
                 if (!string.IsNullOrWhiteSpace(path) && AssetDatabase.IsValidFolder(path))
                 {
@@ -1291,7 +1332,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         continue;
                     }
 
-                    bool hasAnyIndex = entries.Any(e => e.index >= 0);
+                    bool hasAnyIndex = entries.Exists(e => e.index >= 0);
                     if (strictNumericOrdering)
                     {
                         if (hasAnyIndex)
@@ -1445,7 +1486,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 string dir = kvp.Key;
                 foreach ((string baseKey, List<(int index, Sprite sprite)> entries) in kvp.Value)
                 {
-                    bool hasAnyIndex = entries.Any(e => e.index >= 0);
+                    bool hasAnyIndex = entries.Exists(e => e.index >= 0);
                     if (strictNumericOrdering)
                     {
                         if (hasAnyIndex)
@@ -1517,7 +1558,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         folder = folderName,
                         baseName = baseKey,
                         count = entries.Count,
-                        hasIndex = entries.Any(e => e.index >= 0),
+                        hasIndex = entries.Exists(e => e.index >= 0),
                     };
                     _autoParsePreview.Add(rec);
                 }

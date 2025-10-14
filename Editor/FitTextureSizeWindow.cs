@@ -4,7 +4,6 @@ namespace WallstopStudios.UnityHelpers.Editor
     using System;
     using System.Collections.Generic;
     using System.IO;
-    using System.Linq;
     using System.Text.RegularExpressions;
     using UnityEditor;
     using UnityEngine;
@@ -410,20 +409,32 @@ namespace WallstopStudios.UnityHelpers.Editor
             // Reset the label-query GUIDs set for a fresh collection
             _labelQueryGuids.Clear();
 
-            if (!uniqueAssetPaths.Any())
+            if (uniqueAssetPaths.Count == 0)
             {
                 if (_useSelectionOnly)
                 {
                     // Selection-only mode with no folders selected: rely on direct GUIDs only.
                 }
-                else if (_textureSourcePaths.Any(o => o != null))
-                {
-                    this.LogWarn($"No valid source folders found in the list.");
-                }
                 else
                 {
-                    this.Log($"No source folders specified. Searching entire 'Assets' folder.");
-                    searchPaths.Add("Assets");
+                    bool anyNonNull = false;
+                    for (int i = 0; i < _textureSourcePaths.Count; i++)
+                    {
+                        if (_textureSourcePaths[i] != null)
+                        {
+                            anyNonNull = true;
+                            break;
+                        }
+                    }
+                    if (anyNonNull)
+                    {
+                        this.LogWarn($"No valid source folders found in the list.");
+                    }
+                    else
+                    {
+                        this.Log($"No source folders specified. Searching entire 'Assets' folder.");
+                        searchPaths.Add("Assets");
+                    }
                 }
             }
             else
@@ -490,21 +501,34 @@ namespace WallstopStudios.UnityHelpers.Editor
             bool hasLabelFilterCsv = !string.IsNullOrWhiteSpace(_labelFilterCsv);
             if (hasLabelFilterCsv)
             {
-                parsedLabels = _labelFilterCsv
-                    .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
-                    .Select(s => s.Trim())
-                    .Where(s => s.Length > 0)
-                    .ToArray();
-                if (parsedLabels.Length > 0)
+                string raw = _labelFilterCsv;
+                char[] seps = { ',', ';' };
+                string[] parts = raw.Split(seps, StringSplitOptions.RemoveEmptyEntries);
+                // Trim and filter empties without LINQ
+                int count = 0;
+                for (int i = 0; i < parts.Length; i++)
                 {
+                    string item = parts[i] != null ? parts[i].Trim() : string.Empty;
+                    if (!string.IsNullOrEmpty(item))
+                    {
+                        parts[count++] = item;
+                    }
+                }
+                if (count > 0)
+                {
+                    parsedLabels = new string[count];
+                    for (int i = 0; i < count; i++)
+                    {
+                        parsedLabels[i] = parts[i];
+                    }
+
                     labelSetRes = Buffers<string>.HashSet.Get(out labelSet);
                     for (int i = 0; i < parsedLabels.Length; i++)
                     {
-                        _ = labelSet.Add(
-                            _caseSensitiveNameFilter
-                                ? parsedLabels[i]
-                                : parsedLabels[i].ToLowerInvariant()
-                        );
+                        string norm = _caseSensitiveNameFilter
+                            ? parsedLabels[i]
+                            : parsedLabels[i].ToLowerInvariant();
+                        _ = labelSet.Add(norm);
                     }
                 }
             }

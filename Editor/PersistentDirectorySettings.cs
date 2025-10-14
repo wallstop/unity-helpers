@@ -5,7 +5,6 @@ namespace WallstopStudios.UnityHelpers.Editor
     using UnityEngine;
     using UnityEditor;
     using System.Collections.Generic;
-    using System.Linq;
     using System.IO;
     using UnityEngine.Serialization;
     using WallstopStudios.UnityHelpers.Core.Helper;
@@ -119,12 +118,29 @@ namespace WallstopStudios.UnityHelpers.Editor
                 string[] guids = AssetDatabase.FindAssets(
                     "t:" + nameof(PersistentDirectorySettings)
                 );
-                List<string> candidatePaths = guids
-                    .Select(AssetDatabase.GUIDToAssetPath)
-                    .Where(p => !string.IsNullOrWhiteSpace(p))
-                    .Select(SanitizePath)
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .ToList();
+                List<string> candidatePaths = new();
+                using (
+                    WallstopStudios
+                        .UnityHelpers.Utils.SetBuffers<string>.GetHashSetPool(
+                            StringComparer.OrdinalIgnoreCase
+                        )
+                        .Get(out HashSet<string> seen)
+                )
+                {
+                    for (int i = 0; i < guids.Length; i++)
+                    {
+                        string path = AssetDatabase.GUIDToAssetPath(guids[i]);
+                        if (string.IsNullOrWhiteSpace(path))
+                        {
+                            continue;
+                        }
+                        string sanitized = SanitizePath(path);
+                        if (seen.Add(sanitized))
+                        {
+                            candidatePaths.Add(sanitized);
+                        }
+                    }
+                }
 
                 PersistentDirectorySettings target =
                     AssetDatabase.LoadAssetAtPath<PersistentDirectorySettings>(targetAssetPath);
@@ -292,12 +308,48 @@ namespace WallstopStudios.UnityHelpers.Editor
                 return Array.Empty<DirectoryUsageData>();
             }
 
-            DirectoryUsageData[] sortedDirectories = context
-                .directories.OrderByDescending(directoryData => directoryData.count)
-                .ThenByDescending(directoryData => directoryData.lastUsedTicks)
-                .ToArray();
+            List<DirectoryUsageData> list = context.directories;
+            if (list == null || list.Count == 0)
+            {
+                return Array.Empty<DirectoryUsageData>();
+            }
 
-            return topOnly ? sortedDirectories.Take(topN).ToArray() : sortedDirectories;
+            DirectoryUsageData[] sortedDirectories = new DirectoryUsageData[list.Count];
+            for (int i = 0; i < list.Count; i++)
+            {
+                sortedDirectories[i] = list[i];
+            }
+            Array.Sort(
+                sortedDirectories,
+                static (a, b) =>
+                {
+                    int cmp = b.count.CompareTo(a.count);
+                    if (cmp != 0)
+                    {
+                        return cmp;
+                    }
+                    return b.lastUsedTicks.CompareTo(a.lastUsedTicks);
+                }
+            );
+
+            if (topOnly)
+            {
+                int n =
+                    topN < 0
+                        ? 0
+                        : (topN > sortedDirectories.Length ? sortedDirectories.Length : topN);
+                if (n == sortedDirectories.Length)
+                {
+                    return sortedDirectories;
+                }
+                DirectoryUsageData[] result = new DirectoryUsageData[n];
+                for (int i = 0; i < n; i++)
+                {
+                    result[i] = sortedDirectories[i];
+                }
+                return result;
+            }
+            return sortedDirectories;
         }
 
         private static void MergeSettings(

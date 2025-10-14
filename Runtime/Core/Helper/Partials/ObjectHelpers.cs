@@ -3,11 +3,14 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
     using System;
     using System.Collections.Generic;
     using Extension;
-    using UnityEditor;
     using UnityEngine;
     using UnityEngine.SceneManagement;
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
+#if UNITY_EDITOR
+    using UnityEditor;
+#endif
+
 #if UNITY_EDITOR
     using UnityEditor.SceneManagement;
 #endif
