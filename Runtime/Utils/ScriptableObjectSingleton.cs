@@ -24,7 +24,7 @@ namespace WallstopStudios.UnityHelpers.Utils
     ///
     /// If multiple assets are found, a warning is logged and the first result ordered by name is returned.
     /// The editor utility “ScriptableObject Singleton Creator” automatically creates and relocates assets to
-    /// the correct path on editor load — see EDITOR_TOOLS_GUIDE.md#scriptableobject-singleton-creator.
+    /// the correct path on editor load — see Docs/EDITOR_TOOLS_GUIDE.md#scriptableobject-singleton-creator.
     ///
     /// ODIN compatibility: When the <c>ODIN_INSPECTOR</c> symbol is defined, this class derives from
     /// <c>Sirenix.OdinInspector.SerializedScriptableObject</c>; otherwise it derives from <see cref="ScriptableObject"/>.

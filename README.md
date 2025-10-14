@@ -22,11 +22,11 @@ Unity Helpers eliminates entire categories of repetitive work with production-re
 
 ---
 
-**📚 New to Unity Helpers?** Start here: [Getting Started Guide](GETTING_STARTED.md)
+**📚 New to Unity Helpers?** Start here: [Getting Started Guide](Docs/GETTING_STARTED.md)
 
-**🔍 Looking for something specific?** Check the [Feature Index](INDEX.md)
+**🔍 Looking for something specific?** Check the [Feature Index](Docs/INDEX.md)
 
-**❓ Need a definition?** See the [Glossary](GLOSSARY.md)
+**❓ Need a definition?** See the [Glossary](Docs/GLOSSARY.md)
 
 ---
 
@@ -43,7 +43,7 @@ Unity Helpers eliminates entire categories of repetitive work with production-re
 | 💾 Need save/load system             | [**Serialization**](#serialization) - Unity types just work                              | 10 minutes    |
 | 🛠️ Manual sprite workflows           | [**Editor Tools**](#editor-tools) - 20+ automation tools                                 | 3 minutes     |
 
-**Not sure where to start?** → [Getting Started Guide](GETTING_STARTED.md) walks through the top 3 features in 5 minutes.
+**Not sure where to start?** → [Getting Started Guide](Docs/GETTING_STARTED.md) walks through the top 3 features in 5 minutes.
 
 ---
 
@@ -79,7 +79,7 @@ void Awake() => this.AssignRelationalComponents();
 
 **Bonus:** Works with VContainer/Zenject for automatic DI + relational wiring!
 
-[📖 Learn More](RELATIONAL_COMPONENTS.md) | [🎯 DI Integration](Samples~/DI%20-%20VContainer/README.md)
+[📖 Learn More](Docs/RELATIONAL_COMPONENTS.md) | [🎯 DI Integration](Samples~/DI%20-%20VContainer/README.md)
 
 ---
 
@@ -106,7 +106,7 @@ player.RemoveAllEffectsWithTag("Haste");   // Batch removal
 - Cosmetic VFX/SFX that spawn/despawn automatically
 - Designer-friendly iteration without code changes
 
-[📖 Full Guide](EFFECTS_SYSTEM.md) | [🚀 5-Minute Tutorial](EFFECTS_SYSTEM_TUTORIAL.md)
+[📖 Full Guide](Docs/EFFECTS_SYSTEM.md) | [🚀 5-Minute Tutorial](Docs/EFFECTS_SYSTEM_TUTORIAL.md)
 
 ---
 
@@ -136,7 +136,7 @@ byte[] data = Serializer.JsonSerialize(saveData);
 
 **Real-world impact:** Ship updates without worrying about corrupting player saves.
 
-[📖 Serialization Guide](SERIALIZATION.md)
+[📖 Serialization Guide](Docs/SERIALIZATION.md)
 
 ---
 
@@ -186,7 +186,7 @@ void ProcessEnemies(QuadTree2D<Enemy> enemyTree) {
 - **Prefab Checker**: Validate 200 prefabs for missing references → 1 click (was: manual QA)
 - **Atlas Generator**: Create sprite atlases from regex/labels → automated (was: manual setup)
 
-[📖 Editor Tools Guide](EDITOR_TOOLS_GUIDE.md)
+[📖 Editor Tools Guide](Docs/EDITOR_TOOLS_GUIDE.md)
 
 ---
 
@@ -267,7 +267,7 @@ int distance = playerName.LevenshteinDistance("jon");  // "john" = 1, close matc
 string apiKey = "user_name".ToPascalCase();  // "UserName"
 ```
 
-**Full list:** [Math & Extensions Guide](MATH_AND_EXTENSIONS.md) | [Reflection Helpers](REFLECTION_HELPERS.md)
+**Full list:** [Math & Extensions Guide](Docs/MATH_AND_EXTENSIONS.md) | [Reflection Helpers](Docs/REFLECTION_HELPERS.md)
 
 ---
 
@@ -275,13 +275,13 @@ string apiKey = "user_name".ToPascalCase();  // "UserName"
 
 These powerful utilities solve specific problems that waste hours if you implement them yourself:
 
-| Feature                                                              | What It Does                                          | Time Saved                         |
-| -------------------------------------------------------------------- | ----------------------------------------------------- | ---------------------------------- |
-| **[Predictive Targeting](MATH_AND_EXTENSIONS.md#predictive-target)** | Perfect ballistics for turrets/missiles in one call   | 2-3 hours per shooting system      |
-| **[Coroutine Jitter](MATH_AND_EXTENSIONS.md#unity-extensions)**      | Prevents 100 enemies polling on same frame            | Eliminates frame spikes            |
-| **[IL-Emitted Reflection](REFLECTION_HELPERS.md)**                   | 100x faster than System.Reflection, IL2CPP safe       | Critical for serialization/modding |
-| **[SmartDestroy()](MATH_AND_EXTENSIONS.md#lifecycle-helpers)**       | Editor/runtime safe destruction (no scene corruption) | Prevents countless debugging hours |
-| **[Convex/Concave Hulls](HULLS.md)**                                 | Generate territory borders from point clouds          | 4-6 hours per hull algorithm       |
+| Feature                                                                   | What It Does                                          | Time Saved                         |
+| ------------------------------------------------------------------------- | ----------------------------------------------------- | ---------------------------------- |
+| **[Predictive Targeting](Docs/MATH_AND_EXTENSIONS.md#predictive-target)** | Perfect ballistics for turrets/missiles in one call   | 2-3 hours per shooting system      |
+| **[Coroutine Jitter](Docs/MATH_AND_EXTENSIONS.md#unity-extensions)**      | Prevents 100 enemies polling on same frame            | Eliminates frame spikes            |
+| **[IL-Emitted Reflection](Docs/REFLECTION_HELPERS.md)**                   | 100x faster than System.Reflection, IL2CPP safe       | Critical for serialization/modding |
+| **[SmartDestroy()](Docs/MATH_AND_EXTENSIONS.md#lifecycle-helpers)**       | Editor/runtime safe destruction (no scene corruption) | Prevents countless debugging hours |
+| **[Convex/Concave Hulls](Docs/HULLS.md)**                                 | Generate territory borders from point clouds          | 4-6 hours per hull algorithm       |
 
 ---
 
@@ -435,8 +435,8 @@ Create a `link.xml` file in your `Assets` folder to prevent stripping:
 
 - [Unity Manual: Managed Code Stripping](https://docs.unity3d.com/Manual/ManagedCodeStripping.html)
 - [Protobuf-net and IL2CPP](https://github.com/protobuf-net/protobuf-net#il2cpp)
-- [Serialization Guide: IL2CPP Warning](SERIALIZATION.md#️-il2cpp-and-code-stripping-warning)
-- [Reflection Helpers: IL2CPP Warning](REFLECTION_HELPERS.md#️-il2cpp-code-stripping-considerations)
+- [Serialization Guide: IL2CPP Warning](Docs/SERIALIZATION.md#️-il2cpp-and-code-stripping-warning)
+- [Reflection Helpers: IL2CPP Warning](Docs/REFLECTION_HELPERS.md#️-il2cpp-code-stripping-considerations)
 
 ---
 
@@ -444,7 +444,7 @@ Create a `link.xml` file in your `Assets` folder to prevent stripping:
 
 > 💡 **First time?** Skip to section #1 ([Relational Components](#1--auto-wire-components)) - it has the biggest immediate impact.
 
-Already read the [Top 5 Time-Savers](#-top-5-time-savers)? Jump directly to the [Core Features](#core-features) reference below, or check out the comprehensive [Getting Started Guide](GETTING_STARTED.md).
+Already read the [Top 5 Time-Savers](#-top-5-time-savers)? Jump directly to the [Core Features](#core-features) reference below, or check out the comprehensive [Getting Started Guide](Docs/GETTING_STARTED.md).
 
 ---
 
@@ -527,7 +527,7 @@ IRandom replay = new IllusionFlow(seed: 12345);
 - Use `PRNG.Instance` for a thread-local default, or use each generator's `TypeName.Instance` (e.g., `IllusionFlow.Instance`, `PcgRandom.Instance`).
 - Alternatively, create one separate instance per thread.
 
-[📊 Performance Comparison](RANDOM_PERFORMANCE.md)
+[📊 Performance Comparison](Docs/RANDOM_PERFORMANCE.md)
 
 ---
 
@@ -596,9 +596,9 @@ tree.GetElementsInRange(center, radius: 50f, results);
 - Single queries
 - Already using Unity's physics system
 
-[📊 2D Benchmarks](SPATIAL_TREE_2D_PERFORMANCE.md) | [📊 3D Benchmarks](SPATIAL_TREE_3D_PERFORMANCE.md)
+[📊 2D Benchmarks](Docs/SPATIAL_TREE_2D_PERFORMANCE.md) | [📊 3D Benchmarks](Docs/SPATIAL_TREE_3D_PERFORMANCE.md)
 
-For behavior details and edge cases, see: [Spatial Tree Semantics](SPATIAL_TREE_SEMANTICS.md)
+For behavior details and edge cases, see: [Spatial Tree Semantics](Docs/SPATIAL_TREE_SEMANTICS.md)
 
 ---
 
@@ -654,7 +654,7 @@ public class Enemy : MonoBehaviour
 }
 ```
 
-See the in-depth guide: [Relational Components](RELATIONAL_COMPONENTS.md).
+See the in-depth guide: [Relational Components](Docs/RELATIONAL_COMPONENTS.md).
 
 ---
 
@@ -710,7 +710,7 @@ if (player.HasTag("Stunned")) { /* disable input */ }
 - `AttributeModification` order: Addition → Multiplication → Override.
 - `CosmeticEffectData.RequiresInstancing` — instance per application or reuse shared presenters.
 
-Further reading: see the full guide [Effects System](EFFECTS_SYSTEM.md).
+Further reading: see the full guide [Effects System](Docs/EFFECTS_SYSTEM.md).
 
 ---
 
@@ -824,7 +824,7 @@ NetworkMessage again = Serializer.Deserialize<NetworkMessage>(buffer.AsSpan(0, l
 - LZMA compression utilities (see `Runtime/Utils/LZMA.cs`)
 - Type‑safe serialization and pooled buffers/writers to reduce GC
 
-[Full guide: Serialization](SERIALIZATION.md)
+[Full guide: Serialization](Docs/SERIALIZATION.md)
 
 ---
 
@@ -867,7 +867,7 @@ List<string> matches = commandTrie.GetWordsWithPrefix("tel");
 // Returns: ["teleport", "tell"]
 ```
 
-[Full guide: Data Structures](DATA_STRUCTURES.md)
+[Full guide: Data Structures](Docs/DATA_STRUCTURES.md)
 
 ---
 
@@ -875,7 +875,7 @@ List<string> matches = commandTrie.GetWordsWithPrefix("tel");
 
 Numeric helpers, geometry primitives, Unity extensions, colors, collections, strings, directions.
 
-See the guide: [Core Math & Extensions](MATH_AND_EXTENSIONS.md).
+See the guide: [Core Math & Extensions](Docs/MATH_AND_EXTENSIONS.md).
 
 #### At a Glance
 
@@ -897,7 +897,7 @@ See the guide: [Core Math & Extensions](MATH_AND_EXTENSIONS.md).
 - `RuntimeSingleton<T>` — Global component singleton with optional cross‑scene persistence.
 - `ScriptableObjectSingleton<T>` — Global settings/data singleton loaded from `Resources/`, auto‑created by the editor tool.
 
-See the guide: [Singleton Utilities](SINGLETONS.md) and the tool: [ScriptableObject Singleton Creator](EDITOR_TOOLS_GUIDE.md#scriptableobject-singleton-creator).
+See the guide: [Singleton Utilities](Docs/SINGLETONS.md) and the tool: [ScriptableObject Singleton Creator](Docs/EDITOR_TOOLS_GUIDE.md#scriptableobject-singleton-creator).
 
 ---
 
@@ -911,7 +911,7 @@ Unity Helpers includes 20+ editor tools to streamline your workflow:
 - **Validation**: Prefab Checker with comprehensive validation rules
 - **Automation**: ScriptableObject Singleton Creator, Attribute Cache Generator
 
-[📖 Complete Editor Tools Documentation](EDITOR_TOOLS_GUIDE.md)
+[📖 Complete Editor Tools Documentation](Docs/EDITOR_TOOLS_GUIDE.md)
 
 **Quick Access:**
 
@@ -1012,7 +1012,7 @@ void ProcessLargeDataset(int size)
 
 - When the define is present, optional assemblies under `Runtime/Integrations/*` compile automatically and expose helpers like `RelationalComponentsInstaller` (Zenject) and `RegisterRelationalComponents()` (VContainer).
 - If you use UPM, no manual defines are required — the package IDs above trigger symbols via `versionDefines` in the asmdefs.
-- For test scenarios without LifetimeScope (VContainer) or SceneContext (Zenject), see [DI Integrations: Testing and Edge Cases](RELATIONAL_COMPONENTS.md#di-integrations-testing-and-edge-cases) for step‑by‑step patterns.
+- For test scenarios without LifetimeScope (VContainer) or SceneContext (Zenject), see [DI Integrations: Testing and Edge Cases](Docs/RELATIONAL_COMPONENTS.md#di-integrations-testing-and-edge-cases) for step‑by‑step patterns.
 
 **Quick start:**
 
@@ -1041,7 +1041,7 @@ using WallstopStudios.UnityHelpers.Integrations.Zenject;
 var enemy = Container.InstantiateComponentWithRelations(enemyPrefab, parent);
 ```
 
-See the full guide with scenarios, troubleshooting, and testing patterns: [Relational Components Guide](RELATIONAL_COMPONENTS.md)
+See the full guide with scenarios, troubleshooting, and testing patterns: [Relational Components Guide](Docs/RELATIONAL_COMPONENTS.md)
 
 ### Additional Helpers
 
@@ -1081,15 +1081,15 @@ Unity Helpers is built with performance as a top priority:
 
 - 10-15x faster than Unity.Random (655-885M ops/sec vs 65-85M ops/sec)
 - Zero GC pressure with thread-local instances
-- [📊 Full Random Performance Benchmarks](RANDOM_PERFORMANCE.md)
+- [📊 Full Random Performance Benchmarks](Docs/RANDOM_PERFORMANCE.md)
 
 **Spatial Queries:**
 
 - O(log n) tree queries vs O(n) linear search
 - 100-1000x faster for large datasets
 - QuadTree2D: 10,000 objects = ~13 checks vs 10,000 checks
-- [📊 2D Performance Benchmarks](SPATIAL_TREE_2D_PERFORMANCE.md)
-- [📊 3D Performance Benchmarks](SPATIAL_TREE_3D_PERFORMANCE.md)
+- [📊 2D Performance Benchmarks](Docs/SPATIAL_TREE_2D_PERFORMANCE.md)
+- [📊 3D Performance Benchmarks](Docs/SPATIAL_TREE_3D_PERFORMANCE.md)
 
 **Memory Management:**
 
@@ -1101,7 +1101,7 @@ Unity Helpers is built with performance as a top priority:
 
 - IL-emitted delegates 10-100x faster than System.Reflection
 - Safe for IL2CPP and AOT platforms
-- [📊 Reflection Performance](REFLECTION_HELPERS.md)
+- [📊 Reflection Performance](Docs/REFLECTION_HELPERS.md)
 
 ---
 
@@ -1109,40 +1109,40 @@ Unity Helpers is built with performance as a top priority:
 
 **Start Here:**
 
-- 🚀 Getting Started — [Getting Started Guide](GETTING_STARTED.md)
-- 🔍 Feature Index — [Complete A-Z Index](INDEX.md)
-- 📖 Glossary — [Term Definitions](GLOSSARY.md)
+- 🚀 Getting Started — [Getting Started Guide](Docs/GETTING_STARTED.md)
+- 🔍 Feature Index — [Complete A-Z Index](Docs/INDEX.md)
+- 📖 Glossary — [Term Definitions](Docs/GLOSSARY.md)
 
 **Core Guides:**
 
-- Serialization Guide — [Serialization](SERIALIZATION.md)
-- Editor Tools Guide — [Editor Tools](EDITOR_TOOLS_GUIDE.md)
-- Math & Extensions — [Core Math & Extensions](MATH_AND_EXTENSIONS.md)
-- Singletons — [Singleton Utilities](SINGLETONS.md)
-- Relational Components — [Relational Components](RELATIONAL_COMPONENTS.md)
-- Effects System — [Effects System](EFFECTS_SYSTEM.md)
-- Data Structures — [Data Structures](DATA_STRUCTURES.md)
+- Serialization Guide — [Serialization](Docs/SERIALIZATION.md)
+- Editor Tools Guide — [Editor Tools](Docs/EDITOR_TOOLS_GUIDE.md)
+- Math & Extensions — [Core Math & Extensions](Docs/MATH_AND_EXTENSIONS.md)
+- Singletons — [Singleton Utilities](Docs/SINGLETONS.md)
+- Relational Components — [Relational Components](Docs/RELATIONAL_COMPONENTS.md)
+- Effects System — [Effects System](Docs/EFFECTS_SYSTEM.md)
+- Data Structures — [Data Structures](Docs/DATA_STRUCTURES.md)
 
 **Spatial Trees:**
 
-- 2D Spatial Trees Guide — [2D Spatial Trees Guide](SPATIAL_TREES_2D_GUIDE.md)
-- 3D Spatial Trees Guide — [3D Spatial Trees Guide](SPATIAL_TREES_3D_GUIDE.md)
-- Spatial Tree Semantics — [Spatial Tree Semantics](SPATIAL_TREE_SEMANTICS.md)
-- Spatial Tree 2D Performance — [Spatial Tree 2D Performance](SPATIAL_TREE_2D_PERFORMANCE.md)
-- Spatial Tree 3D Performance — [Spatial Tree 3D Performance](SPATIAL_TREE_3D_PERFORMANCE.md)
-- Hulls (Convex vs Concave) — [Hulls](HULLS.md)
+- 2D Spatial Trees Guide — [2D Spatial Trees Guide](Docs/SPATIAL_TREES_2D_GUIDE.md)
+- 3D Spatial Trees Guide — [3D Spatial Trees Guide](Docs/SPATIAL_TREES_3D_GUIDE.md)
+- Spatial Tree Semantics — [Spatial Tree Semantics](Docs/SPATIAL_TREE_SEMANTICS.md)
+- Spatial Tree 2D Performance — [Spatial Tree 2D Performance](Docs/SPATIAL_TREE_2D_PERFORMANCE.md)
+- Spatial Tree 3D Performance — [Spatial Tree 3D Performance](Docs/SPATIAL_TREE_3D_PERFORMANCE.md)
+- Hulls (Convex vs Concave) — [Hulls](Docs/HULLS.md)
 
 **Performance & Reference:**
 
-- Random Performance — [Random Performance](RANDOM_PERFORMANCE.md)
-- Reflection Helpers — [Reflection Helpers](REFLECTION_HELPERS.md)
+- Random Performance — [Random Performance](Docs/RANDOM_PERFORMANCE.md)
+- Reflection Helpers — [Reflection Helpers](Docs/REFLECTION_HELPERS.md)
 
 **Project Info:**
 
-- Changelog — [Changelog](CHANGELOG.md)
-- License — [License](LICENSE.md)
-- Third‑Party Notices — [Third‑Party Notices](THIRD_PARTY_NOTICES.md)
-- Contributing — [Contributing](CONTRIBUTING.md)
+- Changelog — [Changelog](Docs/CHANGELOG.md)
+- License — [License](Docs/LICENSE.md)
+- Third‑Party Notices — [Third‑Party Notices](Docs/THIRD_PARTY_NOTICES.md)
+- Contributing — [Contributing](Docs/CONTRIBUTING.md)
 
 ---
 
@@ -1161,13 +1161,13 @@ Contributions are welcome! Please feel free to submit a Pull Request.
   - Or run the Actions workflow manually: Actions → "Opt-in Formatting" → Run workflow → enter the PR number.
 - Not everything is auto-fixable: link checks and YAML linting may still require manual changes.
 
-See more details in [CONTRIBUTING](CONTRIBUTING.md).
+See more details in [CONTRIBUTING](Docs/CONTRIBUTING.md).
 
 ---
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE.md) file for details.
+This project is licensed under the MIT License - see the [LICENSE](Docs/LICENSE.md) file for details.
 
 ## 2.0 Release Notes (Highlights)
 
@@ -1180,4 +1180,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE.md) f
 - Minor robustness improvements:
   - Guarded stray `UnityEditor` imports in runtime files to ensure clean player builds.
 
-See [Serialization guide](SERIALIZATION.md) for AOT/IL2CPP guidance and Unity JSON options, and [Editor tools guide](EDITOR_TOOLS_GUIDE.md) for Editor tool usage details.
+See [Serialization guide](Docs/SERIALIZATION.md) for AOT/IL2CPP guidance and Unity JSON options, and [Editor tools guide](Docs/EDITOR_TOOLS_GUIDE.md) for Editor tool usage details.

@@ -73,7 +73,7 @@ Jump directly to the solution you need:
 
 - Slow random number generation → [Random Generators](#random-in-60-seconds)
 - Too many objects to search → [Spatial Queries](#spatial-queries-in-60-seconds)
-- Frame drops from allocations → [Buffering Pattern](README.md#buffering-pattern)
+- Frame drops from allocations → [Buffering Pattern](../README.md#buffering-pattern)
 
 **Workflow Issues?**
 
@@ -91,7 +91,7 @@ Jump directly to the solution you need:
 
 Comprehensive deep-dive (best for team leads and senior developers):
 
-1. Read [Main Documentation](README.md) - Full feature overview
+1. Read [Main Documentation](../README.md) - Full feature overview
 2. Review [Features Documentation](FEATURES.md) - Detailed API documentation
 3. Explore category-specific guides as needed
 
@@ -100,7 +100,7 @@ Comprehensive deep-dive (best for team leads and senior developers):
 See it working first, understand the theory later:
 
 1. Follow the [3 Quick Wins](#three-quick-wins-5-minutes) below
-2. Clone relevant examples from [Use Cases](README.md#use-cases--examples)
+2. Clone relevant examples from [Use Cases](../README.md#use-cases--examples)
 3. Modify examples for your specific needs
 4. Read the detailed guides when you need to go deeper
 
@@ -321,7 +321,7 @@ Based on your needs:
    - Why: Robust modulo, geometry, color averaging, and more
 
 3. **Adopt the Buffering Pattern** - Zero-allocation queries
-   - Start: [Buffering Pattern](README.md#buffering-pattern)
+   - Start: [Buffering Pattern](../README.md#buffering-pattern)
    - Why: Stable GC even under load
 
 ---
@@ -378,7 +378,7 @@ Pick one feature that solves your immediate problem:
 
 ---
 
-**Ready to dive deeper?** Return to the [main README](README.md) for the complete feature list.
+**Ready to dive deeper?** Return to the [main README](../README.md) for the complete feature list.
 
 **Building something cool?** We'd love to hear about it! Share your experience by opening an
 [issue](https://github.com/wallstop/unity-helpers/issues).
@@ -389,7 +389,7 @@ Pick one feature that solves your immediate problem:
 
 **Core Guides:**
 
-- [Main README](README.md) - Complete feature overview
+- [Main README](../README.md) - Complete feature overview
 - [Feature Index](INDEX.md) - Alphabetical reference
 - [Glossary](GLOSSARY.md) - Term definitions
 
