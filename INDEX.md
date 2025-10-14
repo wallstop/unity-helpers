@@ -17,8 +17,14 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 **Animation Event Editor** - Visual event editing with sprite preview
 → [Editor Tools Guide](EDITOR_TOOLS_GUIDE.md#animation-event-editor)
 
+**AnimatedSpriteLayer** - Data structure for sprite animation layers
+→ [Visual Components](VISUAL_COMPONENTS.md#animatedspritelayer)
+
+**AnimatorEnumStateMachine** - Type-safe enum-based animator control
+→ [Utility Components](UTILITY_COMPONENTS.md#animatorenumstatemachine)
+
 **Async Extensions** - Await AsyncOperation with Task/ValueTask
-→ [README - API Index](README.md#api-index)
+→ [Math & Extensions](MATH_AND_EXTENSIONS.md#async-coroutine-interop)
 
 **Attribute** - Dynamic numeric value with modifications
 → [Effects System](EFFECTS_SYSTEM.md) | [Glossary](GLOSSARY.md#attribute)
@@ -55,11 +61,26 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 **Camera Extensions** - OrthographicBounds and helpers
 → [Math & Extensions](MATH_AND_EXTENSIONS.md#unity-extensions)
 
+**CenterPointOffset** - Define logical center points separate from transform pivot
+→ [Utility Components](UTILITY_COMPONENTS.md#centerpointoffset)
+
 **ChildComponent** - Auto-wire components from children
 → [Relational Components](RELATIONAL_COMPONENTS.md) | [README](README.md#component-attributes)
 
+**ChildSpawner** - Conditional prefab instantiation with environment filtering
+→ [Utility Components](UTILITY_COMPONENTS.md#childspawner)
+
+**CircleLineRenderer** - Dynamic circle visualization synced to CircleCollider2D
+→ [Utility Components](UTILITY_COMPONENTS.md#circlelinerenderer)
+
+**CollisionProxy** - Event-based 2D collision detection without inheritance
+→ [Utility Components](UTILITY_COMPONENTS.md#collisionproxy)
+
 **Color Utilities** - Averaging (LAB/HSV/Weighted/Dominant), hex conversion
 → [Math & Extensions](MATH_AND_EXTENSIONS.md#color-utilities)
+
+**CoroutineHandler** - Singleton MonoBehaviour for coroutine hosting
+→ [Utility Components](UTILITY_COMPONENTS.md#coroutinehandler)
 
 **CosmeticEffectData** - Presenters for effect cosmetics
 → [Effects System](EFFECTS_SYSTEM.md)
@@ -77,8 +98,8 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 **Deque** - Double-ended queue
 → [Data Structures](DATA_STRUCTURES.md#deque-double-ended-queue) | [README](README.md#data-structures)
 
-**Dictionary Extensions** - GetOrAdd, GetOrElse helpers
-→ [README - API Index](README.md#api-index)
+**Dictionary Extensions** - GetOrAdd, GetOrElse, Merge, ContentEquals
+→ [Math & Extensions](MATH_AND_EXTENSIONS.md#collections)
 
 **Disjoint Set** - Union-find for connectivity
 → [Data Structures](DATA_STRUCTURES.md#disjoint-set-union-find) | [README](README.md#data-structures)
@@ -106,7 +127,10 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [Effects System Guide](EFFECTS_SYSTEM.md) | [README](README.md#effects-attributes-and-tags)
 
 **EnhancedImage** - Unity Image with HDR color and shape masks
-→ [Editor Tools Guide](EDITOR_TOOLS_GUIDE.md#enhancedimage-editor)
+→ [Visual Components](VISUAL_COMPONENTS.md#enhancedimage-ugui) | [Editor Tools Guide](EDITOR_TOOLS_GUIDE.md#enhancedimage-editor)
+
+**Enum Extensions** - Zero-allocation flag checks, cached names, display names
+→ [Math & Extensions](MATH_AND_EXTENSIONS.md#enum-helpers)
 
 ---
 
@@ -136,7 +160,7 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [Data Structures](DATA_STRUCTURES.md#binary-heap-priority-queue) | [README](README.md#data-structures)
 
 **Helpers Class** - General utilities (layers, sprites, components)
-→ [README - Helpers & Extensions](README.md#helpers--extensions)
+→ [Helper Utilities](HELPER_UTILITIES.md#gameplay-helpers) | [README - Helpers & Extensions](README.md#helpers--extensions)
 
 **Hulls** - Convex vs concave hull algorithms
 → [Hulls Guide](HULLS.md)
@@ -174,6 +198,9 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 
 ## L
 
+**LayeredImage** - UI Toolkit element for composited sprite animations
+→ [Visual Components](VISUAL_COMPONENTS.md#layeredimage)
+
 **Line2D / Line3D** - Line segment operations
 → [Math & Extensions](MATH_AND_EXTENSIONS.md#geometry)
 
@@ -191,7 +218,10 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [Math & Extensions Guide](MATH_AND_EXTENSIONS.md) | [README](README.md#core-math--extensions)
 
 **MatchColliderToSprite** - Sync collider shape to sprite
-→ [Editor Tools Guide](EDITOR_TOOLS_GUIDE.md#matchcollidertosprite-editor)
+→ [Utility Components](UTILITY_COMPONENTS.md#matchcollidertosprite) | [Editor Tools Guide](EDITOR_TOOLS_GUIDE.md#matchcollidertosprite-editor)
+
+**MatchTransform** - Follow another transform with offset and timing control
+→ [Utility Components](UTILITY_COMPONENTS.md#matchtransform)
 
 ---
 
@@ -209,6 +239,9 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 ---
 
 ## O
+
+**Oscillator** - Automatic circular/elliptical motion component
+→ [Utility Components](UTILITY_COMPONENTS.md#oscillator)
 
 **OctTree3D** - 3D spatial tree (octree)
 → [3D Spatial Trees](SPATIAL_TREES_3D_GUIDE.md) | [3D Performance](SPATIAL_TREE_3D_PERFORMANCE.md)
@@ -233,7 +266,10 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [Math & Extensions](MATH_AND_EXTENSIONS.md#geometry)
 
 **PolygonCollider2DOptimizer** - Simplify collider points
-→ [Editor Tools Guide](EDITOR_TOOLS_GUIDE.md#polygoncollider2doptimizer-editor)
+→ [Utility Components](UTILITY_COMPONENTS.md#polygoncollider2doptimizer) | [Editor Tools Guide](EDITOR_TOOLS_GUIDE.md#polygoncollider2doptimizer-editor)
+
+**Predictive Aiming** - Calculate where to aim at moving targets
+→ [Helper Utilities](HELPER_UTILITIES.md#predictive-aiming)
 
 **Pooled Buffers** - Reusable memory allocations
 → [README - Buffering Pattern](README.md#buffering-pattern) | [Glossary](GLOSSARY.md#pooled-buffers)
@@ -267,8 +303,8 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 
 ## R
 
-**Random Extensions** - Random vectors, colors, selections
-→ [README - API Index](README.md#api-index)
+**Random Extensions** - Random vectors, colors, weighted selection, subset sampling
+→ [Math & Extensions](MATH_AND_EXTENSIONS.md#random-generators)
 
 **Random Generators** - 12 high-performance PRNG implementations
 → [README - Random Generators](README.md#random-number-generators) | [Random Performance](RANDOM_PERFORMANCE.md)
@@ -349,8 +385,17 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 **Sprite Sheet Animation Creator** - Convert sprite sheets to clips
 → [Editor Tools Guide](EDITOR_TOOLS_GUIDE.md#sprite-sheet-animation-creator)
 
-**String Extensions** - Casing, encoding, Levenshtein distance
-→ [Math & Extensions](MATH_AND_EXTENSIONS.md#strings) | [README - API Index](README.md#api-index)
+**SpriteRendererMetadata** - Stack-based color and material management
+→ [Utility Components](UTILITY_COMPONENTS.md#spriterenderermetadata)
+
+**SpriteRendererSync** - Mirror SpriteRenderer properties to another renderer
+→ [Utility Components](UTILITY_COMPONENTS.md#spriterenderersyncer)
+
+**StartTracker** - Track MonoBehaviour Start() lifecycle event
+→ [Utility Components](UTILITY_COMPONENTS.md#starttracker)
+
+**String Extensions** - Casing, encoding, Levenshtein distance, Base64, analysis
+→ [Math & Extensions](MATH_AND_EXTENSIONS.md#strings)
 
 **StringInList** - String dropdown property drawer
 → [Editor Tools Guide](EDITOR_TOOLS_GUIDE.md#stringinlist-property-drawer) | [README - API Index](README.md#api-index)
@@ -378,8 +423,8 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 **Unity Extensions** - Rect/Bounds, Camera, Rigidbody2D, Grid helpers
 → [Math & Extensions](MATH_AND_EXTENSIONS.md#unity-extensions) | [README - API Index](README.md#api-index)
 
-**UnityMainThreadDispatcher** - Execute work on main thread
-→ [README - API Index](README.md#api-index)
+**UnityMainThreadDispatcher** - Execute work on main thread from background threads
+→ [Helper Utilities](HELPER_UTILITIES.md#threading)
 
 ---
 
