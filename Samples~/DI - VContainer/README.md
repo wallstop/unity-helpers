@@ -485,8 +485,8 @@ Only call `AssignRelationalComponents()` manually if you're not using the DI int
 
 **Unity Helpers Documentation:**
 
-- [Relational Components Guide](../../RELATIONAL_COMPONENTS.md) - Complete attribute reference and recipes
-- [Getting Started](../../GETTING_STARTED.md) - Unity Helpers quick start guide
+- [Relational Components Guide](../../Docs/RELATIONAL_COMPONENTS.md) - Complete attribute reference and recipes
+- [Getting Started](../../Docs/GETTING_STARTED.md) - Unity Helpers quick start guide
 - [Main README](../../README.md) - Full feature overview
 
 **VContainer Documentation:**
@@ -496,8 +496,8 @@ Only call `AssignRelationalComponents()` manually if you're not using the DI int
 
 **Troubleshooting:**
 
-- [Relational Components Troubleshooting](../../RELATIONAL_COMPONENTS.md#troubleshooting) - Detailed solutions
-- [DI Integration Testing Guide](../../RELATIONAL_COMPONENTS.md#di-integrations-testing-and-edge-cases) - Advanced scenarios
+- [Relational Components Troubleshooting](../../Docs/RELATIONAL_COMPONENTS.md#troubleshooting) - Detailed solutions
+- [DI Integration Testing Guide](../../Docs/RELATIONAL_COMPONENTS.md#di-integrations-testing-and-edge-cases) - Advanced scenarios
 
 ---
 
@@ -506,10 +506,11 @@ Only call `AssignRelationalComponents()` manually if you're not using the DI int
 1. **Try the sample scene:** Open `VContainer_Sample.unity` and press Play
 2. **Read the scripts:** See how `GameLifetimeScope` and `Spawner` work
 3. **Add to your project:** Copy the pattern to your own LifetimeScope
-4. **Explore attributes:** Check out the [Relational Components Guide](../../RELATIONAL_COMPONENTS.md) for all options
+4. **Explore attributes:** Check out the [Relational Components Guide](../../Docs/RELATIONAL_COMPONENTS.md) for all options
 
 ---
 
 ## Made with ❤️ by Wallstop Studios
 
 *Unity Helpers is production-ready and actively maintained. [Star the repo](https://github.com/wallstop/unity-helpers) if you find it useful!*
+

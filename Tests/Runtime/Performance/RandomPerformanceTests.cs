@@ -41,7 +41,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             BenchmarkReadmeUpdater.UpdateSection(
                 "RANDOM_BENCHMARKS",
                 tableLines,
-                "RANDOM_PERFORMANCE.md"
+                "Docs/RANDOM_PERFORMANCE.md"
             );
 
             void LogRow(string row)

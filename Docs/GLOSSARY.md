@@ -16,7 +16,7 @@ Quick reference for terms used throughout Unity Helpers documentation.
 - Reusing pre-allocated collections (List, arrays) to minimize GC allocations
 - Pass a buffer to API methods that clear and fill it with results
 - Critical for performance in hot paths (per-frame queries)
-- See: [Buffering Pattern](README.md#buffering-pattern)
+- See: [Buffering Pattern](../README.md#buffering-pattern)
 
 ### Immutable Tree
 
@@ -39,7 +39,7 @@ Quick reference for terms used throughout Unity Helpers documentation.
 - Reusable memory allocations managed by `Buffers<T>` or `WallstopArrayPool<T>`
 - Reduces GC pressure by recycling collections instead of allocating new ones
 - Use with `using` statements for automatic cleanup
-- See: [Buffering Pattern](README.md#buffering-pattern)
+- See: [Buffering Pattern](../README.md#buffering-pattern)
 
 ### Relational Components
 
@@ -111,7 +111,7 @@ Quick reference for terms used throughout Unity Helpers documentation.
 - Grid-based spatial structure with fixed cell size
 - Excellent for many moving objects uniformly distributed
 - O(1) insertion with fast approximate queries
-- See: [README - Choosing Spatial Structures](README.md#choosing-spatial-structures)
+- See: [README - Choosing Spatial Structures](../README.md#choosing-spatial-structures)
 
 ### Trie (Prefix Tree)
 
@@ -310,4 +310,4 @@ Universal Render Pipeline
 
 - [Feature Index](INDEX.md) - Alphabetical feature index
 - [Getting Started Guide](GETTING_STARTED.md) - Quick start guide
-- [Main Documentation](README.md) - Main documentation
+- [Main Documentation](../README.md) - Main documentation

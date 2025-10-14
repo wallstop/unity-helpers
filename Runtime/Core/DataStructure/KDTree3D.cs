@@ -17,7 +17,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     /// <para>Semantics: Due to algorithmic choices (axis-aligned splitting, half-open containment checks,
     /// minimum node-size enforcement, and tie-handling on split planes), KdTree3D (balanced and unbalanced)
     /// may return different edge-case results compared to OctTree3D for identical inputs/queries—especially for
-    /// points lying exactly on query boundaries or split planes. See SPATIAL_TREE_SEMANTICS.md for details.</para>
+    /// points lying exactly on query boundaries or split planes. See Docs/SPATIAL_TREE_SEMANTICS.md for details.</para>
     /// </remarks>
     [Serializable]
     public sealed class KdTree3D<T> : ISpatialTree3D<T>

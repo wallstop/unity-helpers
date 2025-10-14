@@ -16,7 +16,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     /// <para>Cons: Immutable structure by design; rebuild when positions change frequently.</para>
     /// <para>Semantics: OctTree3D uses octant subdivision and inclusive half-open containment checks with internal
     /// fast-paths when nodes are fully contained. These choices can lead to different results from KdTree3D for points
-    /// on boundaries or when numeric precision interacts with minimum node-size adjustments. See SPATIAL_TREE_SEMANTICS.md.</para>
+    /// on boundaries or when numeric precision interacts with minimum node-size adjustments. See Docs/SPATIAL_TREE_SEMANTICS.md.</para>
     /// </remarks>
     [Serializable]
     public sealed class OctTree3D<T> : ISpatialTree3D<T>
