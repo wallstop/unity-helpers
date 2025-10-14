@@ -314,114 +314,102 @@ Notes:
 
 ## Dependency Injection Integrations
 
-Unity Helpers provides optional integration assemblies that only compile when Zenject or VContainer is present in your project. Install the corresponding DI package via the Unity Package Manager and the helpers become available automatically (no additional scripting defines required).
+**Stop choosing between DI and clean hierarchy references** - Unity Helpers provides seamless integrations with Zenject and VContainer that automatically wire up your relational component fields right after dependency injection completes.
 
-Why use the DI integrations
+### The DI Pain Point
 
-- Eliminate boilerplate: hydrate relational fields after DI injection automatically.
-- Consistent behavior: integrates with constructor/property injection and works with runtime instantiation.
-- Safe fallback: if the DI binding is missing, falls back to the non-DI path so fields still populate.
-
-Supported package IDs (auto-detected)
-
-- Zenject/Extenject: `com.extenject.zenject`, `com.modesttree.zenject`, `com.svermeulen.extenject`
-- VContainer: `jp.cysharp.vcontainer`, `jp.hadashikick.vcontainer`
-
-Manual or source imports (no UPM)
-
-- If you import Zenject/VContainer as source, a .unitypackage, or a plain DLL, Unity cannot infer package IDs and the `versionDefines` in the asmdefs won’t trigger.
-- Add scripting defines in Project Settings to enable the integrations:
-  - `Project Settings > Player > Other Settings > Scripting Define Symbols`
-  - Add `ZENJECT_PRESENT` when Zenject/Extenject is present and/or `VCONTAINER_PRESENT` when VContainer is present.
-  - Set defines per target platform (Standalone, Android, iOS, etc.).
-  - After adding, Unity recompiles and the optional assemblies under `Runtime/Integrations/*` compile automatically.
-
-### Quick Start — VContainer
-
-1. Register integration in your `LifetimeScope`
+Without these integrations, you're stuck writing `Awake()` methods full of `GetComponent` boilerplate **even when using a DI framework**:
 
 ```csharp
-using VContainer;
-using VContainer.Unity;
-using WallstopStudios.UnityHelpers.Integrations.VContainer;
-
-public sealed class GameLifetimeScope : LifetimeScope
+public class Enemy : MonoBehaviour
 {
-    protected override void Configure(IContainerBuilder builder)
-    {
-        // Registers IRelationalComponentAssigner and a scene entry point
-        builder.RegisterRelationalComponents();
+    [Inject] private IHealthSystem _health;  // ✅ DI handles this
 
-        // Or customize scanning (active objects only)
-        // builder.RegisterRelationalComponents(new RelationalSceneAssignmentOptions(includeInactive: false));
+    private Animator _animator;               // ❌ Still manual boilerplate
+    private Rigidbody2D _rigidbody;          // ❌ Still manual boilerplate
+
+    void Awake()
+    {
+        _animator = GetComponent<Animator>();
+        _rigidbody = GetComponent<Rigidbody2D>();
+        // ... 15 more lines of GetComponent hell
     }
 }
 ```
 
-1. Build up runtime instances (DI + relational fields)
+### The Integration Solution
+
+With the DI integrations, **everything just works**:
 
 ```csharp
-using UnityEngine;
-using VContainer;
-using WallstopStudios.UnityHelpers.Integrations.VContainer;
-
-public sealed class Spawner : MonoBehaviour
+public class Enemy : MonoBehaviour
 {
-    [Inject] private IObjectResolver _resolver;
-    [SerializeField] private Enemy _enemyPrefab;
+    [Inject] private IHealthSystem _health;         // ✅ DI injection
+    [SiblingComponent] private Animator _animator;  // ✅ Relational auto-wiring
+    [SiblingComponent] private Rigidbody2D _rigidbody; // ✅ Relational auto-wiring
 
-    public Enemy Spawn(Transform parent)
-    {
-        Enemy enemy = Instantiate(_enemyPrefab, parent);
-        return _resolver.BuildUpWithRelations(enemy);
-    }
+    // No Awake() needed! Both DI and hierarchy references wired automatically
 }
 ```
 
-1. Apply to whole hierarchies when needed
+### Why Use the DI Integrations
 
-```csharp
-_resolver.AssignRelationalHierarchy(root, includeInactiveChildren: false);
-```
+- **Zero boilerplate** - No `Awake()` method needed, no manual `GetComponent` calls, no validation code
+- **Consistent behavior** - Works seamlessly with constructor/property/field injection and runtime instantiation
+- **Safe fallback** - Gracefully degrades to standard behavior if DI binding is missing
+- **Risk-free adoption** - Use incrementally, mix DI and non-DI components freely
 
-### Quick Start — Zenject
+### Supported Packages (Auto-detected)
 
-1. Add the installer to your SceneContext
+Unity Helpers automatically detects these packages via UPM:
 
-- Add a `SceneContext` to your scene.
-- Add `RelationalComponentsInstaller` to the same GameObject.
-- Toggle "Assign Scene On Initialize" to run a one-time scene scan after the container builds.
+- **Zenject/Extenject**: `com.extenject.zenject`, `com.modesttree.zenject`, `com.svermeulen.extenject`
+- **VContainer**: `jp.cysharp.vcontainer`, `jp.hadashikick.vcontainer`
 
-1. Instantiate prefabs with DI + relational assignment
+> 💡 **UPM packages work out-of-the-box** - No scripting defines needed!
 
-```csharp
-using UnityEngine;
-using Zenject;
-using WallstopStudios.UnityHelpers.Integrations.Zenject;
+### Manual or Source Imports (Non-UPM)
 
-public sealed class Spawner
-{
-    readonly DiContainer _container;
-    readonly Enemy _enemyPrefab;
+If you import Zenject/VContainer as source code, .unitypackage, or raw DLLs (not via UPM), you need to manually add scripting defines:
 
-    public Spawner(DiContainer container, Enemy enemyPrefab)
-    {
-        _container = container;
-        _enemyPrefab = enemyPrefab;
-    }
+1. Open `Project Settings > Player > Other Settings > Scripting Define Symbols`
+2. Add the appropriate define(s) for your target platforms:
+   - `ZENJECT_PRESENT` - When using Zenject/Extenject
+   - `VCONTAINER_PRESENT` - When using VContainer
+3. Unity will recompile and the integration assemblies under `Runtime/Integrations/*` will activate automatically
 
-    public Enemy Spawn(Transform parent)
-    {
-        return _container.InstantiateComponentWithRelations(_enemyPrefab, parent);
-    }
-}
-```
+### VContainer at a Glance
 
-1. Apply to whole hierarchies
+- **Enable once per scope**
 
-```csharp
-Container.AssignRelationalHierarchy(root, includeInactiveChildren: true);
-```
+  ```csharp
+  builder.RegisterRelationalComponents(
+      new RelationalSceneAssignmentOptions(includeInactive: true, useSinglePassScan: true),
+      enableAdditiveSceneListener: true
+  );
+  ```
+
+- **Runtime helpers**
+  - `_resolver.InstantiateComponentWithRelations(componentPrefab, parent)`
+  - `_resolver.InstantiateGameObjectWithRelations(rootPrefab, parent, includeInactiveChildren: true)`
+  - `_resolver.AssignRelationalHierarchy(existingRoot, includeInactiveChildren: true)`
+  - `RelationalObjectPools.CreatePoolWithRelations(...)` + `pool.GetWithRelations(resolver)`
+
+- **Full walkthrough**: [DI – VContainer sample](Samples~/DI%20-%20VContainer/README.md)
+
+### Zenject at a Glance
+
+- **Install once per scene**
+  - Add `RelationalComponentsInstaller` to your `SceneContext`.
+  - Toggles cover include-inactive scanning, single-pass strategy, and additive-scene listening.
+
+- **Runtime helpers**
+  - `_container.InstantiateComponentWithRelations(componentPrefab, parent)`
+  - `_container.InstantiateGameObjectWithRelations(rootPrefab, parent, includeInactiveChildren: true)`
+  - `_container.AssignRelationalHierarchy(existingRoot, includeInactiveChildren: true)`
+  - Subclass `RelationalMemoryPool<T>` to hydrate pooled items on spawn.
+
+- **Full walkthrough**: [DI – Zenject sample](Samples~/DI%20-%20Zenject/README.md)
 
 Notes
 

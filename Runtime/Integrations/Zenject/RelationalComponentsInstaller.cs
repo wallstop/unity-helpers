@@ -12,9 +12,13 @@ namespace WallstopStudios.UnityHelpers.Integrations.Zenject
     /// </summary>
     /// <remarks>
     /// Add this installer to your <c>SceneContext</c> to:
-    /// - Bind <see cref="IRelationalComponentAssigner"/> as a singleton
+    /// - Bind <see cref="IRelationalComponentAssigner"/> as a singleton (if nobody else already did)
     /// - Optionally register <see cref="RelationalComponentSceneInitializer"/> to populate relational
     ///   fields after container construction
+    /// - Optionally register <see cref="RelationalSceneLoadListener"/> so additively loaded scenes
+    ///   receive the same hydration pass
+    /// Serialized toggles expose these behaviours plus the shared
+    /// <see cref="RelationalSceneAssignmentOptions"/> (include inactive objects, scan strategy).
     /// </remarks>
     /// <example>
     /// <code>

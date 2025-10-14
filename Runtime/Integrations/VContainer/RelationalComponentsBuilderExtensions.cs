@@ -14,6 +14,8 @@ namespace WallstopStudios.UnityHelpers.Integrations.VContainer
     /// <remarks>
     /// Registers the shared <see cref="IRelationalComponentAssigner"/> as a singleton and schedules a
     /// scene-wide entry point that hydrates all relational fields after the container has been built.
+    /// Optionally wires <see cref="RelationalSceneLoadListener"/> so future additive scenes receive
+    /// the same treatment.
     /// </remarks>
     public static class RelationalComponentsBuilderExtensions
     {
@@ -25,6 +27,10 @@ namespace WallstopStudios.UnityHelpers.Integrations.VContainer
         /// <param name="options">
         /// Optional settings to control how the active scene is scanned (e.g., include inactive
         /// objects). When <c>null</c>, <see cref="RelationalSceneAssignmentOptions.Default"/> is used.
+        /// </param>
+        /// <param name="enableAdditiveSceneListener">
+        /// When true registers <see cref="RelationalSceneLoadListener"/> so additively loaded scenes
+        /// are hydrated with the same options. Disable when you manage additive scenes manually.
         /// </param>
         /// <example>
         /// <code>

@@ -2,14 +2,18 @@
 
 ## Why This Integration Matters
 
-**The Problem:** When using dependency injection with VContainer, you often need to wire up both:
+**Stop Writing GetComponent Boilerplate in Every Single Script**
 
-1. **Dependencies** (injected via constructor/properties)
-2. **Hierarchy references** (SpriteRenderer, Rigidbody2D, child colliders, etc.)
+When using dependency injection with VContainer, you've solved half the problem - your service dependencies get injected cleanly. But you're **still stuck** writing repetitive `GetComponent` boilerplate for hierarchy references in every. single. MonoBehaviour.
 
-Doing this manually means writing boilerplate in every component.
+**The Painful Reality:**
 
-**The Solution:** Unity Helpers' VContainer integration automatically wires up relational component fields **right after** DI injection completes - giving you the best of both worlds with zero extra code.
+1. **Dependencies** → ✅ Handled by VContainer (IHealthSystem, IAudioService, etc.)
+2. **Hierarchy references** → ❌ Still manual hell (SpriteRenderer, Rigidbody2D, child colliders, etc.)
+
+You're using a modern DI framework but still writing 2008-era Unity boilerplate. **Unity Helpers fixes this.**
+
+**The Solution:** This integration automatically wires up relational component fields **right after** DI injection completes - giving you the best of both worlds with **literally zero extra code per component**.
 
 ### ⚡ Quick Example: Before vs After
 
@@ -53,7 +57,9 @@ public class Enemy : MonoBehaviour
 }
 ```
 
-**Time Saved:** 10-20 lines of boilerplate per component × hundreds of components = **weeks** of development time.
+**⏱️ Time Saved:** 10-20 lines of boilerplate per component × hundreds of components = **weeks** of development time.
+**🧠 Mental Load Eliminated:** No more context-switching between DI patterns and Unity hierarchy patterns.
+**🐛 Bugs Prevented:** Automatic validation catches missing references **before** they cause runtime errors.
 
 ---
 
@@ -61,53 +67,77 @@ public class Enemy : MonoBehaviour
 
 ### Step 1: Register the Integration
 
-In your `LifetimeScope`, add one line:
+In your `LifetimeScope`, enable the integration (the sample exposes the three toggles below in the inspector so you can experiment without touching code):
 
 ```csharp
+using UnityEngine;
 using VContainer;
 using VContainer.Unity;
 using WallstopStudios.UnityHelpers.Integrations.VContainer;
 
-public class GameLifetimeScope : LifetimeScope
+public sealed class GameLifetimeScope : LifetimeScope
 {
+    [SerializeField] private bool _includeInactiveSceneObjects = true;
+    [SerializeField] private bool _useSinglePassScan = true;
+    [SerializeField] private bool _listenForAdditiveScenes = true;
+
     protected override void Configure(IContainerBuilder builder)
     {
         // Your existing registrations...
         builder.Register<PlayerController>(Lifetime.Singleton);
         builder.Register<IHealthSystem, HealthSystem>(Lifetime.Scoped);
 
-        // ✨ Add this line to enable relational components with DI
-        builder.RegisterRelationalComponents();
+        RelationalSceneAssignmentOptions options = new RelationalSceneAssignmentOptions(
+            _includeInactiveSceneObjects,
+            _useSinglePassScan
+        );
+
+        // ✨ Scene scan + optional additive-scene listener
+        builder.RegisterRelationalComponents(options, _listenForAdditiveScenes);
     }
 }
 ```
 
-**That's it!** All scene components with relational attributes are now automatically wired after DI injection.
+**That's it!** All scene components with relational attributes are now automatically wired after DI injection, and additively loaded scenes can opt-in to the same treatment.
+
+> 💡 **Beginner tip:** Not sure what these options do? Leave them all enabled (the defaults). You can always tune them later.
+>
+> - `includeInactiveSceneObjects` → Wires disabled GameObjects too (usually what you want)
+> - `useSinglePassScan` → Faster scanning (always leave this on)
+> - `listenForAdditiveScenes` → Auto-wires newly loaded scenes (great for multi-scene setups)
 
 ### Step 2: Use With Runtime Instantiation
 
-When spawning prefabs at runtime, use `BuildUpWithRelations` instead of just `Instantiate`:
+When spawning prefabs at runtime, use the helpers that combine instantiation, DI, and relational assignment:
 
 ```csharp
 using UnityEngine;
 using VContainer;
 using WallstopStudios.UnityHelpers.Integrations.VContainer;
 
-public class EnemySpawner : MonoBehaviour
+public sealed class EnemySpawner : MonoBehaviour
 {
     [Inject] private IObjectResolver _resolver;
     [SerializeField] private Enemy _enemyPrefab;
+    [SerializeField] private GameObject _enemySquadPrefab;
 
-    public void SpawnEnemy(Vector3 position)
+    public Enemy SpawnEnemy(Transform parent)
     {
-        Enemy enemy = Instantiate(_enemyPrefab, position, Quaternion.identity);
+        return _resolver.InstantiateComponentWithRelations(_enemyPrefab, parent);
+    }
 
-        // ✨ Performs both DI injection AND relational component wiring
-        _resolver.BuildUpWithRelations(enemy);
+    public GameObject SpawnEnemySquad(Transform parent)
+    {
+        return _resolver.InstantiateGameObjectWithRelations(
+            _enemySquadPrefab,
+            parent,
+            includeInactiveChildren: true
+        );
+    }
 
-        // enemy._healthSystem is injected
-        // enemy._animator, enemy._rigidbody are auto-wired
-        // Ready to use immediately!
+    public void HydrateExisting(GameObject root)
+    {
+        _resolver.AssignRelationalHierarchy(root, includeInactiveChildren: true);
     }
 }
 ```
@@ -118,11 +148,11 @@ public class EnemySpawner : MonoBehaviour
 
 This sample provides a complete working example:
 
-- **Scripts/GameLifetimeScope.cs** - Example LifetimeScope with integration registered
-- **Scripts/Spawner.cs** - Runtime instantiation using `BuildUpWithRelations()`
+- **Scripts/GameLifetimeScope.cs** - LifetimeScope with inspector-driven options for include-inactive, scan strategy, and additive-scene listening
+- **Scripts/Spawner.cs** - Demonstrates `InstantiateComponentWithRelations`, `InstantiateGameObjectWithRelations`, pooling helpers, and hydrating existing hierarchies
 - **Scripts/RelationalConsumer.cs** - Component demonstrating relational attributes
 - **Prefabs/RelationalConsumer.prefab** - Example prefab with relational fields
-- **Prefabs/Spawner.prefab** - Spawner prefab showing runtime usage
+- **Prefabs/Spawner.prefab** - Spawner prefab wired to the helper methods above
 - **Scenes/VContainer_Sample.unity** - Complete working scene ready to play
 
 ### How to Import This Sample
@@ -135,11 +165,15 @@ This sample provides a complete working example:
 
 ---
 
-## 🎯 Common Use Cases
+## 🎯 Common Use Cases (By Experience Level)
 
-### Scene Objects with Both DI and Hierarchy References
+### 🟢 Beginner: "I just want my components to work"
 
-Perfect for player controllers, managers, and gameplay systems:
+**Perfect for:** Player controllers, enemy AI, simple gameplay scripts
+
+**What you get:** No more `GetComponent` calls, no more null reference exceptions from missing components
+
+**Example:**
 
 ```csharp
 public class PlayerController : MonoBehaviour
@@ -164,49 +198,129 @@ public class PlayerController : MonoBehaviour
 }
 ```
 
-### Runtime-Spawned Prefabs
+### 🟡 Intermediate: "I'm spawning objects at runtime"
 
-For enemies, projectiles, and dynamic objects:
+**Perfect for:** Enemy spawners, projectile systems, object pooling
+
+**What you get:** One-line instantiation that handles DI injection + hierarchy wiring automatically
+
+**Example:**
 
 ```csharp
-public class ProjectileSpawner : MonoBehaviour
+public sealed class ProjectileSpawner : MonoBehaviour
 {
     [Inject] private IObjectResolver _resolver;
     [SerializeField] private Projectile _projectilePrefab;
 
-    public void Fire(Vector3 position, Vector3 direction)
+    public Projectile Fire(Vector3 position, Vector3 forward)
     {
-        Projectile projectile = Instantiate(_projectilePrefab, position, Quaternion.identity);
-
-        // Both DI injection and relational component wiring happen here
-        _resolver.BuildUpWithRelations(projectile);
-
-        projectile.Launch(direction);
+        Projectile projectile = _resolver.InstantiateComponentWithRelations(_projectilePrefab);
+        projectile.transform.SetPositionAndRotation(position, Quaternion.LookRotation(forward));
+        projectile.Launch(forward);
+        return projectile;
     }
 }
 ```
 
-### Complex Prefab Hierarchies
+### 🔴 Advanced: "I have complex hierarchies and custom workflows"
 
-For UI panels, vehicles, or multi-part systems:
+**Perfect for:** UI systems, vehicles with multiple parts, procedural generation, custom object pools
+
+**What you get:** Full control over when and how wiring happens, with helpers for every scenario
+
+**Example:**
 
 ```csharp
-public class VehicleFactory : MonoBehaviour
+public sealed class VehicleFactory : MonoBehaviour
 {
     [Inject] private IObjectResolver _resolver;
     [SerializeField] private GameObject _vehiclePrefab;
 
-    public GameObject CreateVehicle()
+    public GameObject CreateVehicle(Transform parent)
     {
-        GameObject vehicle = Instantiate(_vehiclePrefab);
-
-        // Wire up entire hierarchy - all nested components get DI + relational wiring
-        _resolver.AssignRelationalHierarchy(vehicle, includeInactiveChildren: true);
-
-        return vehicle;
+        return _resolver.InstantiateGameObjectWithRelations(
+            _vehiclePrefab,
+            parent,
+            includeInactiveChildren: true
+        );
     }
 }
 ```
+
+---
+
+## 💡 Real-World Impact: A Day in the Life
+
+### Without This Integration
+
+**Morning:** You start work on a new enemy type.
+
+```csharp
+public class FlyingEnemy : MonoBehaviour
+{
+    [Inject] private IHealthSystem _health;
+    [Inject] private IAudioService _audio;
+
+    private Animator _animator;
+    private Rigidbody2D _rigidbody;
+    private SpriteRenderer _sprite;
+    private Collider2D[] _hitboxes;
+    private Transform _weaponMount;
+
+    void Awake()
+    {
+        _animator = GetComponent<Animator>();
+        if (_animator == null) Debug.LogError("Missing Animator on FlyingEnemy!");
+
+        _rigidbody = GetComponent<Rigidbody2D>();
+        if (_rigidbody == null) Debug.LogError("Missing Rigidbody2D on FlyingEnemy!");
+
+        _sprite = GetComponent<SpriteRenderer>();
+        if (_sprite == null) Debug.LogError("Missing SpriteRenderer on FlyingEnemy!");
+
+        _hitboxes = GetComponentsInChildren<Collider2D>();
+        if (_hitboxes.Length == 0) Debug.LogWarning("No hitboxes found on FlyingEnemy!");
+
+        _weaponMount = transform.Find("WeaponMount");
+        if (_weaponMount == null) Debug.LogError("Missing WeaponMount on FlyingEnemy!");
+
+        // Finally, actual game logic can start...
+    }
+}
+```
+
+**10 minutes later:** You've written 20+ lines of boilerplate before writing any actual game logic.
+
+**30 minutes later:** Null reference exception in the build! You forgot to add the SpriteRenderer to the prefab.
+
+**60 minutes later:** You're manually wiring up the 8th enemy variant of the day...
+
+### With This Integration
+
+**Morning:** You start work on a new enemy type.
+
+```csharp
+public class FlyingEnemy : MonoBehaviour
+{
+    [Inject] private IHealthSystem _health;
+    [Inject] private IAudioService _audio;
+
+    [SiblingComponent] private Animator _animator;
+    [SiblingComponent] private Rigidbody2D _rigidbody;
+    [SiblingComponent] private SpriteRenderer _sprite;
+    [ChildComponent] private Collider2D[] _hitboxes;
+    [ChildComponent(NameFilter = "WeaponMount")] private Transform _weaponMount;
+
+    // Start writing game logic immediately
+    void Start() => _animator.Play("Idle");
+}
+```
+
+**2 minutes later:** You're done with wiring and writing game logic.
+
+**10 minutes later:** You've shipped 5 enemy variants with zero boilerplate.
+
+**Never:** You never see "Missing component" runtime errors because validation happens automatically with helpful messages.
 
 ---
 
@@ -220,14 +334,15 @@ By default, inactive GameObjects are included in the initial scene scan. To scan
 protected override void Configure(IContainerBuilder builder)
 {
     builder.RegisterRelationalComponents(
-        new RelationalSceneAssignmentOptions(includeInactive: false)
+        new RelationalSceneAssignmentOptions(includeInactive: false),
+        enableAdditiveSceneListener: false
     );
 }
 ```
 
-### Manual Component Wiring (Without BuildUp)
+### Manual Wiring Helpers
 
-If you need to wire relational components without DI injection:
+If you need to hydrate instances that were created outside of the resolver:
 
 ```csharp
 [Inject] private IObjectResolver _resolver;
@@ -236,6 +351,11 @@ void WireComponentOnly(MonoBehaviour component)
 {
     // Only assigns relational component fields, skips DI injection
     _resolver.AssignRelationalComponents(component);
+}
+
+void WireHierarchy(GameObject root)
+{
+    _resolver.AssignRelationalHierarchy(root, includeInactiveChildren: true);
 }
 ```
 
@@ -300,7 +420,6 @@ Use DI-aware pools to auto-inject and assign on rent:
 ```csharp
 // Component pool
 var pool = RelationalObjectPools.CreatePoolWithRelations(
-    resolver,
     createFunc: () => Instantiate(componentPrefab)
 );
 var item = pool.GetWithRelations(resolver);
@@ -326,8 +445,8 @@ var instance = goPool.GetWithRelations(resolver);
    - These are different from `[Inject]` - you can use both on the same component
 
 3. **Runtime instantiation not working?**
-   - Use `_resolver.BuildUpWithRelations(component)` instead of just `Instantiate()`
-   - Regular `Instantiate()` won't trigger the integration
+   - Use `_resolver.InstantiateComponentWithRelations(...)`, `_resolver.InstantiateGameObjectWithRelations(...)`, or `_resolver.AssignRelationalHierarchy(...)`
+   - Regular `Instantiate()` on its own won't trigger relational wiring
 
 4. **Check your filters:**
    - `TagFilter` must match an existing Unity tag exactly
@@ -338,7 +457,7 @@ var instance = goPool.GetWithRelations(resolver);
 **No!** The integration handles this automatically:
 
 - **Scene objects:** Wired during scene initialization (after container builds)
-- **Runtime objects:** Wired when you call `BuildUpWithRelations()`
+- **Runtime objects:** Wired when you call any of the helper methods (`InstantiateComponentWithRelations`, `InstantiateGameObjectWithRelations`, `AssignRelationalHierarchy`, or the pooling `GetWithRelations` helpers)
 
 Only call `AssignRelationalComponents()` manually if you're not using the DI integration.
 

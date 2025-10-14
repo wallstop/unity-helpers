@@ -3,6 +3,9 @@ namespace Samples.UnityHelpers.DI.VContainer
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
 
+    /// <summary>
+    /// Minimal component that demonstrates how relational attributes are hydrated by the DI integration.
+    /// </summary>
     public sealed class RelationalConsumer : MonoBehaviour
     {
         [SiblingComponent]
@@ -10,8 +13,8 @@ namespace Samples.UnityHelpers.DI.VContainer
 
         private void Awake()
         {
-            // In scenes, this is hydrated by the VContainer entry point after the container builds.
-            // For runtime instances, see Spawner.Build.
+            // In scenes the lifetime scope entry point (or additive-scene listener) hydrates this field.
+            // For runtime instances, see the different spawn helpers in Spawner.
             if (_spriteRenderer != null)
             {
                 _spriteRenderer.color = Color.cyan;

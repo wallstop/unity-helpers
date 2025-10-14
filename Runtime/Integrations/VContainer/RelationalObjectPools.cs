@@ -8,14 +8,14 @@ namespace WallstopStudios.UnityHelpers.Integrations.VContainer
     using UnityEngine.Pool;
 
     /// <summary>
-    /// Helpers for creating UnityEngine.Pool object pools that run DI injection and relational
-    /// assignment when items are retrieved from the pool.
+    /// Helpers for creating UnityEngine.Pool object pools plus extensions that hydrate pooled items
+    /// through VContainer when you rent them via <see cref="GetWithRelations{T}(ObjectPool{T},IObjectResolver)"/>.
     /// </summary>
     public static class RelationalObjectPools
     {
         /// <summary>
-        /// Creates a component pool that injects and hydrates relational fields when an item is
-        /// retrieved from the pool.
+        /// Creates a component pool to be combined with <see cref="GetWithRelations{T}(ObjectPool{T},IObjectResolver)"/>
+        /// so items are injected and hydrated on rental time.
         /// </summary>
         public static ObjectPool<T> CreatePoolWithRelations<T>(
             Func<T> createFunc,
@@ -45,8 +45,9 @@ namespace WallstopStudios.UnityHelpers.Integrations.VContainer
         }
 
         /// <summary>
-        /// Creates a GameObject pool that injects the hierarchy and assigns relational fields when an
-        /// item is retrieved.
+        /// Creates a GameObject pool to be combined with
+        /// <see cref="GetWithRelations(ObjectPool{GameObject},IObjectResolver)"/> so hierarchies are
+        /// injected and hydrated on rental time.
         /// </summary>
         public static ObjectPool<GameObject> CreateGameObjectPoolWithRelations(
             GameObject prefab,
