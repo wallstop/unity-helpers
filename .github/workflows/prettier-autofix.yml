@@ -28,7 +28,6 @@ jobs:
           cache-dependency-path: package.json
 
       - name: Install dependencies
-        if: ${{ github.event.pull_request.user.login == 'dependabot[bot]' }}
         run: |
           if [ -f package-lock.json ]; then
             npm ci
