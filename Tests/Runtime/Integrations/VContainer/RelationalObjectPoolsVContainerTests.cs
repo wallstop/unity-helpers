@@ -1,7 +1,6 @@
 #if VCONTAINER_PRESENT
 namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
 {
-    using System;
     using global::VContainer;
     using NUnit.Framework;
     using UnityEngine;
@@ -12,10 +11,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
 
     public sealed class RelationalObjectPoolsVContainerTests : CommonTestBase
     {
+        [SetUp]
+        public void CommonSetup()
+        {
+            ReflexTestSupport.EnsureReflexSettings();
+        }
+
         [Test]
         public void ComponentPoolGetWithRelationsInjectsAndAssigns()
         {
-            ContainerBuilder builder = new ContainerBuilder();
+            ContainerBuilder builder = new();
             IObjectResolver resolver = builder.Build();
 
             ObjectPool<TestComponent> pool = RelationalObjectPools.CreatePoolWithRelations(
@@ -46,7 +51,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
         [Test]
         public void GameObjectPoolGetWithRelationsInjectsAndAssigns()
         {
-            ContainerBuilder builder = new ContainerBuilder();
+            ContainerBuilder builder = new();
             IObjectResolver resolver = builder.Build();
 
             GameObject prefab = Track(new GameObject("PrefabRoot"));

@@ -272,6 +272,67 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         }
 
         /// <summary>
+        /// Converts a Task returning a tuple with two elements to a Unity coroutine (IEnumerator), optionally invoking a callback with the tuple elements.
+        /// </summary>
+        /// <typeparam name="T1">The type of the first tuple element.</typeparam>
+        /// <typeparam name="T2">The type of the second tuple element.</typeparam>
+        /// <param name="task">The task to convert.</param>
+        /// <param name="onResult">Optional callback invoked with the tuple elements. Can be null.</param>
+        /// <returns>An IEnumerator that can be used with StartCoroutine.</returns>
+        /// <remarks>
+        /// <para>Null handling: Task cannot be null. onResult can be null.</para>
+        /// <para>Thread safety: Must be iterated on Unity main thread. No Unity main thread requirement for task execution.</para>
+        /// <para>Performance: Delegates work to the generic Task overload. O(1) per iteration.</para>
+        /// <para>Allocations: Iterator allocation only.</para>
+        /// <para>Edge cases: Returns immediately if task is complete. Propagates task exceptions.</para>
+        /// </remarks>
+        /// <exception cref="Exception">Throws the task's exception if the task is faulted.</exception>
+        public static IEnumerator AsCoroutine<T1, T2>(
+            this Task<(T1 First, T2 Second)> task,
+            Action<T1, T2> onResult = null
+        )
+        {
+            return task.AsCoroutine(tuple =>
+            {
+                if (onResult != null)
+                {
+                    onResult(tuple.First, tuple.Second);
+                }
+            });
+        }
+
+        /// <summary>
+        /// Converts a Task returning a tuple with three elements to a Unity coroutine (IEnumerator), optionally invoking a callback with the tuple elements.
+        /// </summary>
+        /// <typeparam name="T1">The type of the first tuple element.</typeparam>
+        /// <typeparam name="T2">The type of the second tuple element.</typeparam>
+        /// <typeparam name="T3">The type of the third tuple element.</typeparam>
+        /// <param name="task">The task to convert.</param>
+        /// <param name="onResult">Optional callback invoked with the tuple elements. Can be null.</param>
+        /// <returns>An IEnumerator that can be used with StartCoroutine.</returns>
+        /// <remarks>
+        /// <para>Null handling: Task cannot be null. onResult can be null.</para>
+        /// <para>Thread safety: Must be iterated on Unity main thread. No Unity main thread requirement for task execution.</para>
+        /// <para>Performance: Delegates work to the generic Task overload. O(1) per iteration.</para>
+        /// <para>Allocations: Iterator allocation only.</para>
+        /// <para>Edge cases: Returns immediately if task is complete. Propagates task exceptions.</para>
+        /// </remarks>
+        /// <exception cref="Exception">Throws the task's exception if the task is faulted.</exception>
+        public static IEnumerator AsCoroutine<T1, T2, T3>(
+            this Task<(T1 First, T2 Second, T3 Third)> task,
+            Action<T1, T2, T3> onResult = null
+        )
+        {
+            return task.AsCoroutine(tuple =>
+            {
+                if (onResult != null)
+                {
+                    onResult(tuple.First, tuple.Second, tuple.Third);
+                }
+            });
+        }
+
+        /// <summary>
         /// Converts a ValueTask to a Unity coroutine (IEnumerator).
         /// </summary>
         /// <param name="task">The ValueTask to convert.</param>
@@ -346,6 +407,67 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
 
             onResult?.Invoke(innerTask.Result);
+        }
+
+        /// <summary>
+        /// Converts a ValueTask returning a tuple with two elements to a Unity coroutine (IEnumerator), optionally invoking a callback with the tuple elements.
+        /// </summary>
+        /// <typeparam name="T1">The type of the first tuple element.</typeparam>
+        /// <typeparam name="T2">The type of the second tuple element.</typeparam>
+        /// <param name="task">The ValueTask to convert.</param>
+        /// <param name="onResult">Optional callback invoked with the tuple elements. Can be null.</param>
+        /// <returns>An IEnumerator that can be used with StartCoroutine.</returns>
+        /// <remarks>
+        /// <para>Null handling: ValueTask is a value type and cannot be null. onResult can be null.</para>
+        /// <para>Thread safety: Must be iterated on Unity main thread. No Unity main thread requirement for task execution.</para>
+        /// <para>Performance: Delegates work to the generic ValueTask overload. O(1) per iteration.</para>
+        /// <para>Allocations: Iterator allocation only.</para>
+        /// <para>Edge cases: Returns immediately if task is complete. Propagates task exceptions.</para>
+        /// </remarks>
+        /// <exception cref="Exception">Throws the task's exception if the task is faulted.</exception>
+        public static IEnumerator AsCoroutine<T1, T2>(
+            this ValueTask<(T1 First, T2 Second)> task,
+            Action<T1, T2> onResult = null
+        )
+        {
+            return task.AsCoroutine(tuple =>
+            {
+                if (onResult != null)
+                {
+                    onResult(tuple.First, tuple.Second);
+                }
+            });
+        }
+
+        /// <summary>
+        /// Converts a ValueTask returning a tuple with three elements to a Unity coroutine (IEnumerator), optionally invoking a callback with the tuple elements.
+        /// </summary>
+        /// <typeparam name="T1">The type of the first tuple element.</typeparam>
+        /// <typeparam name="T2">The type of the second tuple element.</typeparam>
+        /// <typeparam name="T3">The type of the third tuple element.</typeparam>
+        /// <param name="task">The ValueTask to convert.</param>
+        /// <param name="onResult">Optional callback invoked with the tuple elements. Can be null.</param>
+        /// <returns>An IEnumerator that can be used with StartCoroutine.</returns>
+        /// <remarks>
+        /// <para>Null handling: ValueTask is a value type and cannot be null. onResult can be null.</para>
+        /// <para>Thread safety: Must be iterated on Unity main thread. No Unity main thread requirement for task execution.</para>
+        /// <para>Performance: Delegates work to the generic ValueTask overload. O(1) per iteration.</para>
+        /// <para>Allocations: Iterator allocation only.</para>
+        /// <para>Edge cases: Returns immediately if task is complete. Propagates task exceptions.</para>
+        /// </remarks>
+        /// <exception cref="Exception">Throws the task's exception if the task is faulted.</exception>
+        public static IEnumerator AsCoroutine<T1, T2, T3>(
+            this ValueTask<(T1 First, T2 Second, T3 Third)> task,
+            Action<T1, T2, T3> onResult = null
+        )
+        {
+            return task.AsCoroutine(tuple =>
+            {
+                if (onResult != null)
+                {
+                    onResult(tuple.First, tuple.Second, tuple.Third);
+                }
+            });
         }
 
         // IEnumerator to Task/ValueTask conversions

@@ -34,20 +34,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
 
             AttributeMetadataCache cache = CreateScriptableObject<AttributeMetadataCache>();
 #if UNITY_EDITOR
-            AttributeMetadataCache.RelationalTypeMetadata relationalMetadata =
-                new AttributeMetadataCache.RelationalTypeMetadata(
-                    typeof(Consumer).AssemblyQualifiedName,
-                    new[]
-                    {
-                        new AttributeMetadataCache.RelationalFieldMetadata(
-                            "_spriteRenderer",
-                            AttributeMetadataCache.RelationalAttributeKind.Sibling,
-                            AttributeMetadataCache.FieldKind.Single,
-                            typeof(SpriteRenderer).AssemblyQualifiedName,
-                            false
-                        ),
-                    }
-                );
+            AttributeMetadataCache.RelationalTypeMetadata relationalMetadata = new(
+                typeof(Consumer).AssemblyQualifiedName,
+                new[]
+                {
+                    new AttributeMetadataCache.RelationalFieldMetadata(
+                        "_spriteRenderer",
+                        AttributeMetadataCache.RelationalAttributeKind.Sibling,
+                        AttributeMetadataCache.FieldKind.Single,
+                        typeof(SpriteRenderer).AssemblyQualifiedName,
+                        false
+                    ),
+                }
+            );
 
             cache.SetMetadata(
                 System.Array.Empty<string>(),
@@ -58,8 +57,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
             yield return null;
 #endif
 
-            RelationalComponentAssigner assigner = new RelationalComponentAssigner(cache);
-            RelationalComponentEntryPoint entry = new RelationalComponentEntryPoint(
+            RelationalComponentAssigner assigner = new(cache);
+            RelationalComponentEntryPoint entry = new(
                 assigner,
                 cache,
                 RelationalSceneAssignmentOptions.Default

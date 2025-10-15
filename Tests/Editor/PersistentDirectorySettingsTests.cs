@@ -2,7 +2,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
 {
 #if UNITY_EDITOR
     using NUnit.Framework;
-    using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Editor;
 

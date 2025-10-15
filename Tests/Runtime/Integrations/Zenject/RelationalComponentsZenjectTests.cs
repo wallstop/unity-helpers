@@ -20,6 +20,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
         [SetUp]
         public void Setup()
         {
+            ReflexTestSupport.EnsureReflexSettings();
             Container = new DiContainer();
         }
 
@@ -200,16 +201,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
         public System.Collections.IEnumerator SceneLoadListenerAssignsAdditiveSceneSinglePass()
         {
             AttributeMetadataCache cache = CreateCacheFor(typeof(ZenjectRelationalTester));
-            RelationalComponentAssigner assigner = new RelationalComponentAssigner(cache);
-            RelationalSceneAssignmentOptions options = new RelationalSceneAssignmentOptions(
+            RelationalComponentAssigner assigner = new(cache);
+            RelationalSceneAssignmentOptions options = new(
                 includeInactive: true,
                 useSinglePassScan: true
             );
-            RelationalSceneLoadListener listener = new RelationalSceneLoadListener(
-                assigner,
-                cache,
-                options
-            );
+            RelationalSceneLoadListener listener = new(assigner, cache, options);
             listener.Initialize();
             TrackDisposable(listener);
 
@@ -238,16 +235,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
         public System.Collections.IEnumerator SceneLoadListenerAssignsAdditiveSceneMultiPass()
         {
             AttributeMetadataCache cache = CreateCacheFor(typeof(ZenjectRelationalTester));
-            RelationalComponentAssigner assigner = new RelationalComponentAssigner(cache);
-            RelationalSceneAssignmentOptions options = new RelationalSceneAssignmentOptions(
+            RelationalComponentAssigner assigner = new(cache);
+            RelationalSceneAssignmentOptions options = new(
                 includeInactive: true,
                 useSinglePassScan: false
             );
-            RelationalSceneLoadListener listener = new RelationalSceneLoadListener(
-                assigner,
-                cache,
-                options
-            );
+            RelationalSceneLoadListener listener = new(assigner, cache, options);
             listener.Initialize();
             TrackDisposable(listener);
 
@@ -526,14 +519,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
 
             AttributeMetadataCache.RelationalFieldMetadata[] fields =
             {
-                new AttributeMetadataCache.RelationalFieldMetadata(
+                new(
                     nameof(ZenjectRelationalTester.parentBody),
                     AttributeMetadataCache.RelationalAttributeKind.Parent,
                     AttributeMetadataCache.FieldKind.Single,
                     typeof(Rigidbody).AssemblyQualifiedName,
                     isInterface: false
                 ),
-                new AttributeMetadataCache.RelationalFieldMetadata(
+                new(
                     nameof(ZenjectRelationalTester.childCollider),
                     AttributeMetadataCache.RelationalAttributeKind.Child,
                     AttributeMetadataCache.FieldKind.Single,
@@ -544,10 +537,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
 
             AttributeMetadataCache.RelationalTypeMetadata[] relationalTypes =
             {
-                new AttributeMetadataCache.RelationalTypeMetadata(
-                    componentType.AssemblyQualifiedName,
-                    fields
-                ),
+                new(componentType.AssemblyQualifiedName, fields),
             };
 
             cache._relationalTypeMetadata = relationalTypes;

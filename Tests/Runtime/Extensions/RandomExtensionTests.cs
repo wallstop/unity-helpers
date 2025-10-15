@@ -446,6 +446,61 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         }
 
         [Test]
+        public void NextWeightedElement()
+        {
+            List<string> items = new() { "rare", "common" };
+            List<float> weights = new() { 1f, 99f };
+            HashSet<string> seen = new();
+            int commonCount = 0;
+            int rareCount = 0;
+            for (int i = 0; i < 1000; ++i)
+            {
+                string result = PRNG.Instance.NextWeightedElement(items, weights);
+                seen.Add(result);
+                if (result == "common")
+                {
+                    commonCount++;
+                }
+                else if (result == "rare")
+                {
+                    rareCount++;
+                }
+            }
+
+            Assert.AreEqual(2, seen.Count);
+            Assert.Greater(commonCount, rareCount);
+            Assert.Greater(commonCount, 900);
+        }
+
+        [Test]
+        public void NextWeightedElementThrowsOnNullItems()
+        {
+            List<float> weights = new() { 1f };
+            Assert.Throws<ArgumentNullException>(() =>
+                PRNG.Instance.NextWeightedElement<string>(null, weights)
+            );
+        }
+
+        [Test]
+        public void NextWeightedElementThrowsOnNullWeights()
+        {
+            List<string> items = new() { "item" };
+            Assert.Throws<ArgumentNullException>(() =>
+                PRNG.Instance.NextWeightedElement(items, (IReadOnlyList<float>)null)
+            );
+        }
+
+        [Test]
+        public void NextWeightedElementThrowsOnMismatchedCounts()
+        {
+            List<string> items = new() { "item" };
+            List<float> weights = new() { 1f, 2f };
+            Assert.Throws<ArgumentException>(() =>
+                PRNG.Instance.NextWeightedElement(items, weights)
+            );
+        }
+
+        [Test]
         public void NextWeighted()
         {
             List<(string, float)> items = new() { ("rare", 1f), ("common", 99f) };

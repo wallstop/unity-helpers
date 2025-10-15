@@ -79,7 +79,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils
             string occupiedPath = targetFolder + "/Duplicate.asset";
             if (AssetDatabase.LoadAssetAtPath<Object>(occupiedPath) == null)
             {
-                TextAsset ta = new TextAsset("occupied");
+                TextAsset ta = new("occupied");
                 AssetDatabase.CreateAsset(ta, occupiedPath);
             }
 

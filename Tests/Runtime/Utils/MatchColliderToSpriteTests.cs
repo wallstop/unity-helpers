@@ -26,10 +26,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             // Define a physics shape for the sprite (a simple rectangle)
             Vector2[] physicsShape =
             {
-                new Vector2(-0.5f, -0.5f),
-                new Vector2(-0.5f, 0.5f),
-                new Vector2(0.5f, 0.5f),
-                new Vector2(0.5f, -0.5f),
+                new(-0.5f, -0.5f),
+                new(-0.5f, 0.5f),
+                new(0.5f, 0.5f),
+                new(0.5f, -0.5f),
             };
             _testSprite.OverridePhysicsShape(new[] { physicsShape });
         }

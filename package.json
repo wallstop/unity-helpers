@@ -1,6 +1,6 @@
 {
   "name": "com.wallstop-studios.unity-helpers",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "displayName": "Unity Helpers",
   "description": "Various Unity Helper Library",
   "dependencies": {},
@@ -42,6 +42,11 @@
       "displayName": "DI – Zenject",
       "description": "SceneContext installer, scene-wide assignment, and prefab instantiation with relations.",
       "path": "Samples~/DI - Zenject"
+    },
+    {
+      "displayName": "DI – Reflex",
+      "description": "SceneScope installer, scene scan, and runtime Container helpers.",
+      "path": "Samples~/DI - Reflex"
     },
     {
       "displayName": "Relational Components – Basic",

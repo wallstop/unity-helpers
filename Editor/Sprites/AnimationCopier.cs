@@ -962,7 +962,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 return;
             }
 
-            List<AnimationFileInfo> animationsToDelete = new List<AnimationFileInfo>();
+            List<AnimationFileInfo> animationsToDelete = new();
             for (int i = 0; i < _unchangedAnimations.Count; i++)
             {
                 AnimationFileInfo a = _unchangedAnimations[i];
@@ -1325,7 +1325,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 {
                     try
                     {
-                        Regex rx = new Regex(_filterText, RegexOptions.IgnoreCase);
+                        Regex rx = new(_filterText, RegexOptions.IgnoreCase);
                         for (int i = 0; i < items.Count; i++)
                         {
                             AnimationFileInfo it = items[i];
@@ -1381,7 +1381,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 return;
             }
 
-            List<AnimationFileInfo> toDelete = new List<AnimationFileInfo>();
+            List<AnimationFileInfo> toDelete = new();
             for (int i = 0; i < _destinationOrphans.Count; i++)
             {
                 AnimationFileInfo a = _destinationOrphans[i];

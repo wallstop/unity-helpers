@@ -38,7 +38,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         [Test]
         public void Vector2RoundTrip()
         {
-            Vector2 v = new Vector2(1.5f, -2.25f);
+            Vector2 v = new(1.5f, -2.25f);
             Vector2 again = RoundTrip(v);
             Assert.AreEqual(v.x, again.x, 0f, "Vector2 x should match");
             Assert.AreEqual(v.y, again.y, 0f, "Vector2 y should match");
@@ -47,7 +47,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         [Test]
         public void Vector3RoundTrip()
         {
-            Vector3 v = new Vector3(-1.5f, 2.75f, 3.25f);
+            Vector3 v = new(-1.5f, 2.75f, 3.25f);
             Vector3 again = RoundTrip(v);
             Assert.AreEqual(v.x, again.x, 0f, "Vector3 x should match");
             Assert.AreEqual(v.y, again.y, 0f, "Vector3 y should match");
@@ -57,12 +57,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         [Test]
         public void Vector2IntAndVector3IntRoundTrip()
         {
-            Vector2Int v2i = new Vector2Int(int.MinValue + 1, int.MaxValue - 1);
+            Vector2Int v2i = new(int.MinValue + 1, int.MaxValue - 1);
             Vector2Int v2iAgain = RoundTrip(v2i);
             Assert.AreEqual(v2i.x, v2iAgain.x, "Vector2Int x should match");
             Assert.AreEqual(v2i.y, v2iAgain.y, "Vector2Int y should match");
 
-            Vector3Int v3i = new Vector3Int(1, -2, 3);
+            Vector3Int v3i = new(1, -2, 3);
             Vector3Int v3iAgain = RoundTrip(v3i);
             Assert.AreEqual(v3i.x, v3iAgain.x, "Vector3Int x should match");
             Assert.AreEqual(v3i.y, v3iAgain.y, "Vector3Int y should match");
@@ -72,7 +72,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         [Test]
         public void QuaternionRoundTrip()
         {
-            Quaternion q = new Quaternion(0.1f, 0.2f, 0.3f, 0.9f);
+            Quaternion q = new(0.1f, 0.2f, 0.3f, 0.9f);
             Quaternion again = RoundTrip(q);
             Assert.AreEqual(q.x, again.x, 0f, "Quaternion x should match");
             Assert.AreEqual(q.y, again.y, 0f, "Quaternion y should match");
@@ -83,14 +83,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         [Test]
         public void ColorAndColor32RoundTrip()
         {
-            Color c = new Color(0.1f, 0.2f, 0.3f, 0.4f);
+            Color c = new(0.1f, 0.2f, 0.3f, 0.4f);
             Color cAgain = RoundTrip(c);
             Assert.AreEqual(c.r, cAgain.r, 0f, "Color r should match");
             Assert.AreEqual(c.g, cAgain.g, 0f, "Color g should match");
             Assert.AreEqual(c.b, cAgain.b, 0f, "Color b should match");
             Assert.AreEqual(c.a, cAgain.a, 0f, "Color a should match");
 
-            Color32 c32 = new Color32(10, 20, 30, 40);
+            Color32 c32 = new(10, 20, 30, 40);
             Color32 c32Again = RoundTrip(c32);
             Assert.AreEqual(c32.r, c32Again.r, "Color32 r should match");
             Assert.AreEqual(c32.g, c32Again.g, "Color32 g should match");
@@ -113,11 +113,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         [Test]
         public void RectAndRectIntRoundTrip()
         {
-            Rect r = new Rect(1.5f, 2.5f, 10f, 20f);
+            Rect r = new(1.5f, 2.5f, 10f, 20f);
             Rect rAgain = RoundTrip(r);
             Assert.AreEqual(r, rAgain, "Rect should round-trip by value");
 
-            RectInt ri = new RectInt(1, 2, 3, 4);
+            RectInt ri = new(1, 2, 3, 4);
             RectInt riAgain = RoundTrip(ri);
             Assert.AreEqual(ri, riAgain, "RectInt should round-trip by value");
         }
@@ -125,12 +125,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         [Test]
         public void BoundsAndBoundsIntRoundTrip()
         {
-            Bounds b = new Bounds(new Vector3(1, 2, 3), new Vector3(4, 5, 6));
+            Bounds b = new(new Vector3(1, 2, 3), new Vector3(4, 5, 6));
             Bounds bAgain = RoundTrip(b);
             Assert.AreEqual(b.center, bAgain.center, "Bounds center should round-trip");
             Assert.AreEqual(b.size, bAgain.size, "Bounds size should round-trip");
 
-            BoundsInt bi = new BoundsInt(new Vector3Int(1, 2, 3), new Vector3Int(4, 5, 6));
+            BoundsInt bi = new(new Vector3Int(1, 2, 3), new Vector3Int(4, 5, 6));
             BoundsInt biAgain = RoundTrip(bi);
             Assert.AreEqual(bi.position, biAgain.position, "BoundsInt position should round-trip");
             Assert.AreEqual(bi.size, biAgain.size, "BoundsInt size should round-trip");
@@ -139,7 +139,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         [Test]
         public void ResolutionRoundTrip()
         {
-            Resolution r = new Resolution { width = 800, height = 600 };
+            Resolution r = new() { width = 800, height = 600 };
             Resolution rAgain = RoundTrip(r);
             Assert.AreEqual(r.width, rAgain.width, "Resolution width should round-trip");
             Assert.AreEqual(r.height, rAgain.height, "Resolution height should round-trip");
@@ -219,7 +219,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         [Test]
         public void CompositePayloadWithCollectionsRoundTrips()
         {
-            Composite payload = new Composite
+            Composite payload = new()
             {
                 fv2 = new FastVector2Int(-3, 7),
                 fv3 = new FastVector3Int(1, -2, 3),

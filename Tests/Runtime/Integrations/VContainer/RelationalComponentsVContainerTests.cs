@@ -15,6 +15,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
 
     public sealed class RelationalComponentsVContainerTests : CommonTestBase
     {
+        [SetUp]
+        public void CommonSetup()
+        {
+            ReflexTestSupport.EnsureReflexSettings();
+        }
+
         [Test]
         public void ResolverExtensionsUseBoundAssigner()
         {
@@ -74,7 +80,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
             Scene scene = CreateTempScene("VContainerTestScene_Active");
             ContainerBuilder builder = new();
             builder.RegisterInstance(cache).AsSelf();
-            RecordingAssigner assigner = new RecordingAssigner();
+            RecordingAssigner assigner = new();
             builder.RegisterInstance(assigner).As<IRelationalComponentAssigner>();
             IObjectResolver resolver = builder.Build();
 
@@ -83,7 +89,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
             SceneManager.MoveGameObjectToScene(rootObj, scene);
             yield return null;
 
-            RelationalComponentEntryPoint entryPoint = new RelationalComponentEntryPoint(
+            RelationalComponentEntryPoint entryPoint = new(
                 resolver.Resolve<IRelationalComponentAssigner>(),
                 cache,
                 RelationalSceneAssignmentOptions.Default
@@ -105,16 +111,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
         public System.Collections.IEnumerator SceneLoadListenerAssignsAdditiveSceneSinglePass()
         {
             AttributeMetadataCache cache = CreateCacheFor(typeof(VContainerRelationalTester));
-            RelationalComponentAssigner assigner = new RelationalComponentAssigner(cache);
-            RelationalSceneAssignmentOptions options = new RelationalSceneAssignmentOptions(
+            RelationalComponentAssigner assigner = new(cache);
+            RelationalSceneAssignmentOptions options = new(
                 includeInactive: true,
                 useSinglePassScan: true
             );
-            RelationalSceneLoadListener listener = new RelationalSceneLoadListener(
-                assigner,
-                cache,
-                options
-            );
+            RelationalSceneLoadListener listener = new(assigner, cache, options);
             listener.Initialize();
             TrackDisposable(listener);
 
@@ -146,16 +148,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
         public System.Collections.IEnumerator SceneLoadListenerAssignsAdditiveSceneMultiPass()
         {
             AttributeMetadataCache cache = CreateCacheFor(typeof(VContainerRelationalTester));
-            RelationalComponentAssigner assigner = new RelationalComponentAssigner(cache);
-            RelationalSceneAssignmentOptions options = new RelationalSceneAssignmentOptions(
+            RelationalComponentAssigner assigner = new(cache);
+            RelationalSceneAssignmentOptions options = new(
                 includeInactive: true,
                 useSinglePassScan: false
             );
-            RelationalSceneLoadListener listener = new RelationalSceneLoadListener(
-                assigner,
-                cache,
-                options
-            );
+            RelationalSceneLoadListener listener = new(assigner, cache, options);
             listener.Initialize();
             TrackDisposable(listener);
 
@@ -315,7 +313,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
             Scene active = CreateTempScene("VContainerActiveScene_Sep");
             ContainerBuilder builder = new();
             builder.RegisterInstance(cache).AsSelf();
-            RecordingAssigner assigner = new RecordingAssigner();
+            RecordingAssigner assigner = new();
             builder.RegisterInstance(assigner).As<IRelationalComponentAssigner>();
             IObjectResolver resolver = builder.Build();
 
@@ -327,7 +325,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
             SceneManager.MoveGameObjectToScene(testerB.transform.root.gameObject, secondary);
             yield return null;
 
-            RelationalComponentEntryPoint entryPoint = new RelationalComponentEntryPoint(
+            RelationalComponentEntryPoint entryPoint = new(
                 resolver.Resolve<IRelationalComponentAssigner>(),
                 cache,
                 new RelationalSceneAssignmentOptions(includeInactive: true)
@@ -393,7 +391,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
             Scene scene = CreateTempScene("VContainerTestScene_Inactive");
             ContainerBuilder builder = new();
             builder.RegisterInstance(cache).AsSelf();
-            RecordingAssigner assigner = new RecordingAssigner();
+            RecordingAssigner assigner = new();
             builder.RegisterInstance(assigner).As<IRelationalComponentAssigner>();
             IObjectResolver resolver = builder.Build();
 
@@ -403,7 +401,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
             SceneManager.MoveGameObjectToScene(rootObj, scene);
             yield return null;
 
-            RelationalComponentEntryPoint disabledEntryPoint = new RelationalComponentEntryPoint(
+            RelationalComponentEntryPoint disabledEntryPoint = new(
                 resolver.Resolve<IRelationalComponentAssigner>(),
                 cache,
                 new RelationalSceneAssignmentOptions(includeInactive: false)
@@ -418,7 +416,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
                 "Disabled option should skip inactive components"
             );
 
-            RelationalComponentEntryPoint enabledEntryPoint = new RelationalComponentEntryPoint(
+            RelationalComponentEntryPoint enabledEntryPoint = new(
                 resolver.Resolve<IRelationalComponentAssigner>(),
                 cache,
                 new RelationalSceneAssignmentOptions(includeInactive: true)
@@ -442,7 +440,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
             Scene scene = CreateTempScene("VContainerMultiPassScene");
             ContainerBuilder builder = new();
             builder.RegisterInstance(cache).AsSelf();
-            RecordingAssigner assigner = new RecordingAssigner();
+            RecordingAssigner assigner = new();
             builder.RegisterInstance(assigner).As<IRelationalComponentAssigner>();
             IObjectResolver resolver = builder.Build();
 
@@ -450,7 +448,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
             SceneManager.MoveGameObjectToScene(tester.transform.root.gameObject, scene);
             yield return null;
 
-            RelationalComponentEntryPoint entryPoint = new RelationalComponentEntryPoint(
+            RelationalComponentEntryPoint entryPoint = new(
                 resolver.Resolve<IRelationalComponentAssigner>(),
                 cache,
                 new RelationalSceneAssignmentOptions(
@@ -497,14 +495,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
 
             AttributeMetadataCache.RelationalFieldMetadata[] fields =
             {
-                new AttributeMetadataCache.RelationalFieldMetadata(
+                new(
                     nameof(VContainerRelationalTester.parentBody),
                     AttributeMetadataCache.RelationalAttributeKind.Parent,
                     AttributeMetadataCache.FieldKind.Single,
                     typeof(Rigidbody).AssemblyQualifiedName,
                     isInterface: false
                 ),
-                new AttributeMetadataCache.RelationalFieldMetadata(
+                new(
                     nameof(VContainerRelationalTester.childCollider),
                     AttributeMetadataCache.RelationalAttributeKind.Child,
                     AttributeMetadataCache.FieldKind.Single,
@@ -515,10 +513,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
 
             AttributeMetadataCache.RelationalTypeMetadata[] relationalTypes =
             {
-                new AttributeMetadataCache.RelationalTypeMetadata(
-                    componentType.AssemblyQualifiedName,
-                    fields
-                ),
+                new(componentType.AssemblyQualifiedName, fields),
             };
 
             cache._relationalTypeMetadata = relationalTypes;
