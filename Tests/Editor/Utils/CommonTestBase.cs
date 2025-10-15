@@ -3,6 +3,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils
     using System;
     using System.Collections;
     using System.Collections.Generic;
+    using System.Reflection;
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.SceneManagement;
@@ -19,6 +20,22 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils
     /// </summary>
     public abstract class CommonTestBase
     {
+        [SetUp]
+        public virtual void BaseSetUp()
+        {
+#if REFLEX_PRESENT
+            Type supportType = Type.GetType(
+                "WallstopStudios.UnityHelpers.Tests.TestUtils.ReflexTestSupport, WallstopStudios.UnityHelpers.Tests.Runtime",
+                throwOnError: false
+            );
+            MethodInfo ensureMethod = supportType?.GetMethod(
+                "EnsureReflexSettings",
+                BindingFlags.Public | BindingFlags.Static
+            );
+            ensureMethod?.Invoke(null, null);
+#endif
+        }
+
         protected readonly List<Object> _trackedObjects = new();
         protected readonly List<IDisposable> _trackedDisposables = new();
         protected readonly List<Scene> _trackedScenes = new();

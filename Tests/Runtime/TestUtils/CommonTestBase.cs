@@ -16,6 +16,17 @@ namespace WallstopStudios.UnityHelpers.Tests.TestUtils
     /// </summary>
     public abstract class CommonTestBase
     {
+        /// <summary>
+        /// Ensures ReflexSettings singleton is present when the Reflex package is installed so tests do not hit assertions.
+        /// </summary>
+        [SetUp]
+        public virtual void BaseSetUp()
+        {
+#if REFLEX_PRESENT
+            ReflexTestSupport.EnsureReflexSettings();
+#endif
+        }
+
         // Per-test tracked UnityEngine.Objects
         protected readonly List<Object> _trackedObjects = new();
 

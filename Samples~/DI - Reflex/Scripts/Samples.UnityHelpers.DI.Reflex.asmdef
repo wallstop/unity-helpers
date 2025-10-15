@@ -1,0 +1,26 @@
+{
+  "name": "Samples.UnityHelpers.DI.Reflex",
+  "rootNamespace": "Samples.UnityHelpers.DI.Reflex",
+  "references": [
+    "WallstopStudios.UnityHelpers",
+    "WallstopStudios.UnityHelpers.Integration.Reflex",
+    "Reflex"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [
+    "REFLEX_PRESENT"
+  ],
+  "versionDefines": [
+    {
+      "name": "com.gustavopsantos.reflex",
+      "expression": "0.0.1",
+      "define": "REFLEX_PRESENT"
+    }
+  ],
+  "noEngineReferences": false
+}

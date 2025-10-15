@@ -31,14 +31,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         [Test]
         public void AdaptersCollectionsRoundTrip()
         {
-            List<FastVector3Int> list = new List<FastVector3Int>
-            {
-                new(1, 2, 3),
-                new(-4, 5, -6),
-                new(7, 0, -1),
-            };
+            List<FastVector3Int> list = new() { new(1, 2, 3), new(-4, 5, -6), new(7, 0, -1) };
 
-            Dictionary<string, FastVector2Int> map = new Dictionary<string, FastVector2Int>
+            Dictionary<string, FastVector2Int> map = new()
             {
                 ["a"] = new(9, -9),
                 ["b"] = new(0, 1),
@@ -76,7 +71,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         [Test]
         public void CompositePayloadRoundTrips()
         {
-            CompositePayload payload = new CompositePayload
+            CompositePayload payload = new()
             {
                 fv2 = new FastVector2Int(-3, 7),
                 fv3 = new FastVector3Int(1, -2, 3),
@@ -147,7 +142,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         [Test]
         public void CompositePayloadRoundTripsWithFastOptions()
         {
-            CompositePayload payload = new CompositePayload
+            CompositePayload payload = new()
             {
                 fv2 = new FastVector2Int(9, -4),
                 fv3 = new FastVector3Int(5, 6, -7),

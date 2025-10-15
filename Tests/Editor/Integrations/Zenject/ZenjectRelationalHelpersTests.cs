@@ -1,15 +1,11 @@
 #if ZENJECT_PRESENT
 namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
 {
-    using System.Collections;
     using global::Zenject;
     using NUnit.Framework;
     using UnityEngine;
-    using UnityEngine.SceneManagement;
-    using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Integrations.Zenject;
-    using WallstopStudios.UnityHelpers.Tags;
     using WallstopStudios.UnityHelpers.Tests.Editor.Utils;
 
     public sealed class ZenjectRelationalHelpersTests : CommonTestBase
@@ -26,7 +22,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
         [Test]
         public void InjectWithRelationsAssignsFields()
         {
-            DiContainer container = new DiContainer();
+            DiContainer container = new();
 
             // Build hierarchy: Parent(Rigidbody) -> Middle(TestComponent) -> Child(CapsuleCollider)
             GameObject parent = NewGameObject("Root");
@@ -47,7 +43,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
         [Test]
         public void InjectGameObjectWithRelationsAssignsHierarchy()
         {
-            DiContainer container = new DiContainer();
+            DiContainer container = new();
 
             GameObject root = NewGameObject("Root");
             root.AddComponent<Rigidbody>();
@@ -67,13 +63,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
         [Test]
         public void InstantiateGameObjectWithRelationsAssignsHierarchy()
         {
-            DiContainer container = new DiContainer();
+            DiContainer container = new();
 
             GameObject prefab = NewGameObject("PrefabRoot");
             prefab.AddComponent<Rigidbody>();
             GameObject mid = NewGameObject("PrefabMiddle");
             mid.transform.SetParent(prefab.transform);
-            TestComponent prefabComp = mid.AddComponent<TestComponent>();
+            _ = mid.AddComponent<TestComponent>();
             GameObject child = NewGameObject("PrefabChild");
             child.transform.SetParent(mid.transform);
             child.AddComponent<CapsuleCollider>();
@@ -90,8 +86,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
         public void RelationalMemoryPoolAssignsOnSpawn()
         {
             // Create a pool and inject a container into the private field using reflection
-            RelationalMemoryPool<TestComponent> pool = new RelationalMemoryPool<TestComponent>();
-            DiContainer container = new DiContainer();
+            RelationalMemoryPool<TestComponent> pool = new();
+            DiContainer container = new();
 
             pool._container = container;
 
@@ -105,7 +101,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
             child.AddComponent<CapsuleCollider>();
 
             // Call OnSpawned indirectly via protected method using a small helper
-            PoolHarness harness = new PoolHarness(pool);
+            PoolHarness harness = new(pool);
             harness.InvokeOnSpawned(comp);
 
             Assert.IsTrue(comp.parentBody != null);

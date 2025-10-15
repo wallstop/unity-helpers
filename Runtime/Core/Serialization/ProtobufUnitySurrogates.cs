@@ -15,10 +15,9 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
         [ProtoMember(2)]
         public float y;
 
-        public static implicit operator Vector2Surrogate(Vector2 v) =>
-            new Vector2Surrogate { x = v.x, y = v.y };
+        public static implicit operator Vector2Surrogate(Vector2 v) => new() { x = v.x, y = v.y };
 
-        public static implicit operator Vector2(Vector2Surrogate s) => new Vector2(s.x, s.y);
+        public static implicit operator Vector2(Vector2Surrogate s) => new(s.x, s.y);
     }
 
     [ProtoContract]
@@ -34,14 +33,14 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
         public float z;
 
         public static implicit operator Vector3Surrogate(Vector3 v) =>
-            new Vector3Surrogate
+            new()
             {
                 x = v.x,
                 y = v.y,
                 z = v.z,
             };
 
-        public static implicit operator Vector3(Vector3Surrogate s) => new Vector3(s.x, s.y, s.z);
+        public static implicit operator Vector3(Vector3Surrogate s) => new(s.x, s.y, s.z);
     }
 
     [ProtoContract]
@@ -60,7 +59,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
         public float w;
 
         public static implicit operator QuaternionSurrogate(Quaternion q) =>
-            new QuaternionSurrogate
+            new()
             {
                 x = q.x,
                 y = q.y,
@@ -69,7 +68,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             };
 
         public static implicit operator Quaternion(QuaternionSurrogate s) =>
-            new Quaternion(s.x, s.y, s.z, s.w);
+            new(s.x, s.y, s.z, s.w);
     }
 
     [ProtoContract]
@@ -88,7 +87,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
         public float a;
 
         public static implicit operator ColorSurrogate(Color c) =>
-            new ColorSurrogate
+            new()
             {
                 r = c.r,
                 g = c.g,
@@ -96,7 +95,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                 a = c.a,
             };
 
-        public static implicit operator Color(ColorSurrogate s) => new Color(s.r, s.g, s.b, s.a);
+        public static implicit operator Color(ColorSurrogate s) => new(s.r, s.g, s.b, s.a);
     }
 
     [ProtoContract]
@@ -115,7 +114,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
         public byte a;
 
         public static implicit operator Color32Surrogate(Color32 c) =>
-            new Color32Surrogate
+            new()
             {
                 r = c.r,
                 g = c.g,
@@ -123,8 +122,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                 a = c.a,
             };
 
-        public static implicit operator Color32(Color32Surrogate s) =>
-            new Color32(s.r, s.g, s.b, s.a);
+        public static implicit operator Color32(Color32Surrogate s) => new(s.r, s.g, s.b, s.a);
     }
 
     [ProtoContract]
@@ -143,7 +141,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
         public float height;
 
         public static implicit operator RectSurrogate(Rect r) =>
-            new RectSurrogate
+            new()
             {
                 x = r.x,
                 y = r.y,
@@ -151,8 +149,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                 height = r.height,
             };
 
-        public static implicit operator Rect(RectSurrogate s) =>
-            new Rect(s.x, s.y, s.width, s.height);
+        public static implicit operator Rect(RectSurrogate s) => new(s.x, s.y, s.width, s.height);
     }
 
     [ProtoContract]
@@ -171,7 +168,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
         public int height;
 
         public static implicit operator RectIntSurrogate(RectInt r) =>
-            new RectIntSurrogate
+            new()
             {
                 x = r.x,
                 y = r.y,
@@ -180,7 +177,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             };
 
         public static implicit operator RectInt(RectIntSurrogate s) =>
-            new RectInt(s.x, s.y, s.width, s.height);
+            new(s.x, s.y, s.width, s.height);
     }
 
     [ProtoContract]
@@ -205,7 +202,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
         public float sz;
 
         public static implicit operator BoundsSurrogate(Bounds b) =>
-            new BoundsSurrogate
+            new()
             {
                 cx = b.center.x,
                 cy = b.center.y,
@@ -216,7 +213,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             };
 
         public static implicit operator Bounds(BoundsSurrogate s) =>
-            new Bounds(new Vector3(s.cx, s.cy, s.cz), new Vector3(s.sx, s.sy, s.sz));
+            new(new Vector3(s.cx, s.cy, s.cz), new Vector3(s.sx, s.sy, s.sz));
     }
 
     [ProtoContract]
@@ -241,7 +238,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
         public int sz;
 
         public static implicit operator BoundsIntSurrogate(BoundsInt b) =>
-            new BoundsIntSurrogate
+            new()
             {
                 px = b.position.x,
                 py = b.position.y,
@@ -252,7 +249,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             };
 
         public static implicit operator BoundsInt(BoundsIntSurrogate s) =>
-            new BoundsInt(new Vector3Int(s.px, s.py, s.pz), new Vector3Int(s.sx, s.sy, s.sz));
+            new(new Vector3Int(s.px, s.py, s.pz), new Vector3Int(s.sx, s.sy, s.sz));
     }
 
     [ProtoContract]
@@ -265,10 +262,9 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
         public int y;
 
         public static implicit operator Vector2IntSurrogate(Vector2Int v) =>
-            new Vector2IntSurrogate { x = v.x, y = v.y };
+            new() { x = v.x, y = v.y };
 
-        public static implicit operator Vector2Int(Vector2IntSurrogate s) =>
-            new Vector2Int(s.x, s.y);
+        public static implicit operator Vector2Int(Vector2IntSurrogate s) => new(s.x, s.y);
     }
 
     [ProtoContract]
@@ -284,15 +280,14 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
         public int z;
 
         public static implicit operator Vector3IntSurrogate(Vector3Int v) =>
-            new Vector3IntSurrogate
+            new()
             {
                 x = v.x,
                 y = v.y,
                 z = v.z,
             };
 
-        public static implicit operator Vector3Int(Vector3IntSurrogate s) =>
-            new Vector3Int(s.x, s.y, s.z);
+        public static implicit operator Vector3Int(Vector3IntSurrogate s) => new(s.x, s.y, s.z);
     }
 
     [ProtoContract]
@@ -309,7 +304,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
 
         [Obsolete("Obsolete")]
         public static implicit operator ResolutionSurrogate(Resolution r) =>
-            new ResolutionSurrogate
+            new()
             {
                 width = r.width,
                 height = r.height,
@@ -318,7 +313,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
 
         public static implicit operator Resolution(ResolutionSurrogate s)
         {
-            Resolution r = new Resolution { width = s.width, height = s.height };
+            Resolution r = new() { width = s.width, height = s.height };
 #if !UNITY_2022_2_OR_NEWER
             r.refreshRate = s.refreshRate;
 #endif

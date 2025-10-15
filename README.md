@@ -79,7 +79,7 @@ void Awake() => this.AssignRelationalComponents();
 
 **Bonus:** Works with VContainer/Zenject for automatic DI + relational wiring!
 
-[📖 Learn More](Docs/RELATIONAL_COMPONENTS.md) | [🎯 DI Integration](Samples~/DI%20-%20VContainer/README.md)
+[📖 Learn More](Docs/RELATIONAL_COMPONENTS.md) | [🎯 DI – VContainer](Samples~/DI%20-%20VContainer/README.md) | [🎯 DI – Zenject](Samples~/DI%20-%20Zenject/README.md) | [🎯 DI – Reflex](Samples~/DI%20-%20Reflex/README.md)
 
 ---
 
@@ -1004,24 +1004,27 @@ void ProcessLargeDataset(int size)
 
 - Zenject/Extenject: `com.extenject.zenject`, `com.modesttree.zenject`, `com.svermeulen.extenject`
 - VContainer: `jp.cysharp.vcontainer`, `jp.hadashikick.vcontainer`
+- Reflex: `com.gustavopsantos.reflex`
 
 **Manual or source imports (no UPM):**
 
 - Add scripting defines in `Project Settings > Player > Other Settings > Scripting Define Symbols`:
   - `ZENJECT_PRESENT` when Zenject/Extenject is present
   - `VCONTAINER_PRESENT` when VContainer is present
+  - `REFLEX_PRESENT` when Reflex is present
 - Add the define per target platform (e.g., Standalone, Android, iOS).
 
 **Notes:**
 
-- When the define is present, optional assemblies under `Runtime/Integrations/*` compile automatically and expose helpers like `RelationalComponentsInstaller` (Zenject) and `RegisterRelationalComponents()` (VContainer).
+- When the define is present, optional assemblies under `Runtime/Integrations/*` compile automatically and expose helpers like `RelationalComponentsInstaller` (Zenject/Reflex) and `RegisterRelationalComponents()` (VContainer).
 - If you use UPM, no manual defines are required — the package IDs above trigger symbols via `versionDefines` in the asmdefs.
 - For test scenarios without LifetimeScope (VContainer) or SceneContext (Zenject), see [DI Integrations: Testing and Edge Cases](Docs/RELATIONAL_COMPONENTS.md#di-integrations-testing-and-edge-cases) for step‑by‑step patterns.
 
 **Quick start:**
 
 - **VContainer**: in your `LifetimeScope.Configure`, call `builder.RegisterRelationalComponents()`.
-- **Zenject**: add `RelationalComponentsInstaller` to your `SceneContext` (toggle scene scan if desired).
+- **Zenject/Extenject**: add `RelationalComponentsInstaller` to your `SceneContext` (toggle scene scan if desired).
+- **Reflex**: place `RelationalComponentsInstaller` on the same GameObject as your `SceneScope` to bind the assigner, run the scene scan, and (optionally) listen for additive scenes. Use `container.InjectWithRelations(...)` / `InstantiateGameObjectWithRelations(...)` for DI-friendly hydration.
 
 ```csharp
 // VContainer — LifetimeScope

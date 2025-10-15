@@ -44,6 +44,11 @@
       "path": "Samples~/DI - Zenject"
     },
     {
+      "displayName": "DI – Reflex",
+      "description": "SceneScope installer, scene scan, and runtime Container helpers.",
+      "path": "Samples~/DI - Reflex"
+    },
+    {
       "displayName": "Relational Components – Basic",
       "description": "Attribute-based auto-wiring without DI; parent/sibling/child examples.",
       "path": "Samples~/Relational Components - Basic"

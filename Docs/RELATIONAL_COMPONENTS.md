@@ -314,7 +314,7 @@ Notes:
 
 ## Dependency Injection Integrations
 
-**Stop choosing between DI and clean hierarchy references** - Unity Helpers provides seamless integrations with Zenject and VContainer that automatically wire up your relational component fields right after dependency injection completes.
+**Stop choosing between DI and clean hierarchy references** - Unity Helpers provides seamless integrations with Zenject/Extenject, VContainer, and Reflex that automatically wire up your relational component fields right after dependency injection completes.
 
 ### The DI Pain Point
 
@@ -365,17 +365,19 @@ Unity Helpers automatically detects these packages via UPM:
 
 - **Zenject/Extenject**: `com.extenject.zenject`, `com.modesttree.zenject`, `com.svermeulen.extenject`
 - **VContainer**: `jp.cysharp.vcontainer`, `jp.hadashikick.vcontainer`
+- **Reflex**: `com.gustavopsantos.reflex`
 
 > 💡 **UPM packages work out-of-the-box** - No scripting defines needed!
 
 ### Manual or Source Imports (Non-UPM)
 
-If you import Zenject/VContainer as source code, .unitypackage, or raw DLLs (not via UPM), you need to manually add scripting defines:
+If you import Zenject/VContainer/Reflex as source code, .unitypackage, or raw DLLs (not via UPM), you need to manually add scripting defines:
 
 1. Open `Project Settings > Player > Other Settings > Scripting Define Symbols`
 2. Add the appropriate define(s) for your target platforms:
    - `ZENJECT_PRESENT` - When using Zenject/Extenject
    - `VCONTAINER_PRESENT` - When using VContainer
+   - `REFLEX_PRESENT` - When using Reflex
 3. Unity will recompile and the integration assemblies under `Runtime/Integrations/*` will activate automatically
 
 ### VContainer at a Glance
@@ -410,6 +412,22 @@ If you import Zenject/VContainer as source code, .unitypackage, or raw DLLs (not
   - Subclass `RelationalMemoryPool<T>` to hydrate pooled items on spawn.
 
 - **Full walkthrough**: [DI – Zenject sample](Samples~/DI%20-%20Zenject/README.md)
+
+### Reflex at a Glance
+
+- **Install once per scene**
+  - Reflex creates a `SceneScope` in each scene. Add `RelationalComponentsInstaller` to the same GameObject (or a child) to bind the relational assigner, run the initial scene scan, and optionally register the additive-scene listener.
+  - Toggles mirror the runtime helpers: include inactive objects, choose scan strategy, and enable additive listening.
+
+- **Runtime helpers**
+  - `_container.InjectWithRelations(existingComponent)` to inject DI fields and hydrate relational attributes on existing objects.
+  - `_container.InstantiateComponentWithRelations(componentPrefab, parent)` for component prefabs.
+  - `_container.InstantiateGameObjectWithRelations(rootPrefab, parent, includeInactiveChildren: true)` for full hierarchies.
+  - `_container.AssignRelationalHierarchy(existingRoot, includeInactiveChildren: true)` to hydrate arbitrary hierarchies after manual instantiation.
+
+- **Full walkthrough**: [DI – Reflex sample](Samples~/DI%20-%20Reflex/README.md)
+
+- Reflex shares the same fallback behaviour: if the assigner is not bound, the helpers call `AssignRelationalComponents()` directly so you can adopt incrementally.
 
 Notes
 

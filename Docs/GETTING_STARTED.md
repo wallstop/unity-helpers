@@ -223,12 +223,14 @@ public class Player : MonoBehaviour
 
 ---
 
-#### Using With DI Containers (VContainer/Zenject)
+#### Using With DI Containers (VContainer/Zenject/Reflex)
 
 - If you use dependency injection, you can auto-populate relational fields right after DI injection.
 - Quick setup:
   - VContainer: in `LifetimeScope.Configure`, call `builder.RegisterRelationalComponents()`.
-  - Zenject: add `RelationalComponentsInstaller` to your `SceneContext` and (optionally) enable the scene scan on initialize.
+  - Zenject/Extenject: add `RelationalComponentsInstaller` to your `SceneContext` and (optionally) enable the scene scan on initialize.
+  - Reflex: attach `RelationalComponentsInstaller` alongside your `SceneScope`. The installer binds the assigner, hydrates the active scene, and can listen for additive scenes. Use `ContainerRelationalExtensions` helpers (`InjectWithRelations`, `InstantiateGameObjectWithRelations`, etc.) when spawning objects through the container.
+- Samples: [DI – VContainer](../Samples~/DI%20-%20VContainer/README.md), [DI – Zenject](../Samples~/DI%20-%20Zenject/README.md), [DI – Reflex](../Samples~/DI%20-%20Reflex/README.md)
 - Full guide with scenarios and testing tips: [Dependency Injection Integrations](RELATIONAL_COMPONENTS.md#dependency-injection-integrations)
 
 <a id="spatial-queries-in-60-seconds"></a>

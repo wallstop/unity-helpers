@@ -27,7 +27,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Tools
         [Test]
         public void BlurredTextureMatchesInputDimensions()
         {
-            Texture2D tex = new Texture2D(8, 8, TextureFormat.RGBA32, false);
+            Texture2D tex = new(8, 8, TextureFormat.RGBA32, false);
             for (int y = 0; y < tex.height; y++)
             {
                 for (int x = 0; x < tex.width; x++)

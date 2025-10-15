@@ -1,12 +1,9 @@
 #if VCONTAINER_PRESENT
 namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
 {
-    using System.Collections;
     using global::VContainer;
     using NUnit.Framework;
     using UnityEngine;
-    using UnityEngine.SceneManagement;
-    using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Integrations.VContainer;
     using WallstopStudios.UnityHelpers.Tags;
@@ -26,7 +23,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
         [Test]
         public void InjectWithRelationsAssignsFields()
         {
-            ContainerBuilder builder = new ContainerBuilder();
+            ContainerBuilder builder = new();
             IObjectResolver resolver = builder.Build();
 
             // Build hierarchy: Parent(Rigidbody) -> Middle(TestComponent) -> Child(CapsuleCollider)
@@ -49,7 +46,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
         [Test]
         public void InstantiateComponentWithRelationsAssignsFields()
         {
-            ContainerBuilder builder = new ContainerBuilder();
+            ContainerBuilder builder = new();
             IObjectResolver resolver = builder.Build();
 
             // Build prefab hierarchy: Root(Rigidbody) -> Middle(TestComponent) -> Child(CapsuleCollider)
@@ -74,7 +71,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
         [Test]
         public void InjectGameObjectWithRelationsAssignsHierarchy()
         {
-            ContainerBuilder builder = new ContainerBuilder();
+            ContainerBuilder builder = new();
             IObjectResolver resolver = builder.Build();
 
             GameObject root = NewGameObject("Root");
@@ -95,7 +92,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
         [Test]
         public void InstantiateGameObjectWithRelationsAssignsHierarchy()
         {
-            ContainerBuilder builder = new ContainerBuilder();
+            ContainerBuilder builder = new();
             IObjectResolver resolver = builder.Build();
 
             GameObject prefab = NewGameObject("PrefabRoot");
@@ -122,7 +119,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
 
             AttributeMetadataCache.RelationalFieldMetadata[] fields =
             {
-                new AttributeMetadataCache.RelationalFieldMetadata(
+                new(
                     nameof(BaseWithSibling._spriteRenderer),
                     AttributeMetadataCache.RelationalAttributeKind.Sibling,
                     AttributeMetadataCache.FieldKind.Single,
@@ -132,15 +129,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
             };
             AttributeMetadataCache.RelationalTypeMetadata[] relational =
             {
-                new AttributeMetadataCache.RelationalTypeMetadata(
-                    typeof(BaseWithSibling).AssemblyQualifiedName,
-                    fields
-                ),
+                new(typeof(BaseWithSibling).AssemblyQualifiedName, fields),
             };
             cache._relationalTypeMetadata = relational;
             cache.ForceRebuildForTests();
 
-            ContainerBuilder builder = new ContainerBuilder();
+            ContainerBuilder builder = new();
             builder.RegisterInstance(cache).AsSelf();
             builder
                 .RegisterInstance(new RelationalComponentAssigner(cache))
