@@ -60,6 +60,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper.Logging
                 Func<string, object, string> formatter
             )>
         > _matchingDecorations = new();
+        private readonly Dictionary<string, (int priority, int index)> _decorationLookup = new(
+            StringComparer.OrdinalIgnoreCase
+        );
         private readonly StringBuilder _cachedStringBuilder = new();
         private readonly List<string> _cachedDecorators = new();
         private readonly HashSet<string> _appliedTags = new(StringComparer.OrdinalIgnoreCase);
@@ -379,89 +382,50 @@ namespace WallstopStudios.UnityHelpers.Core.Helper.Logging
             bool force = false
         )
         {
-            bool stopLooping = false;
-            foreach (
-                KeyValuePair<
-                    int,
+            if (_decorationLookup.TryGetValue(tag, out (int priority, int index) existing))
+            {
+                if (!force)
+                {
+                    return false;
+                }
+
+                if (existing.priority == priority)
+                {
                     List<(
                         string tag,
                         bool editorOnly,
                         Func<string, bool> predicate,
                         Func<string, object, string> formatter
-                    )>
-                > entry in _matchingDecorations
-            )
-            {
-                for (int i = 0; i < entry.Value.Count; i++)
-                {
-                    (
-                        string tag,
-                        bool editorOnly,
-                        Func<string, bool> predicate,
-                        Func<string, object, string> formatter
-                    ) existingDecoration = entry.Value[i];
-                    if (
-                        !string.Equals(
-                            existingDecoration.tag,
-                            tag,
-                            StringComparison.OrdinalIgnoreCase
-                        )
-                    )
-                    {
-                        continue;
-                    }
+                    )> decorationsAtPriority = _matchingDecorations[priority];
 
-                    if (force)
-                    {
-                        if (priority != entry.Key)
-                        {
-                            entry.Value.RemoveAt(i);
-                            if (entry.Value.Count == 0)
-                            {
-                                _matchingDecorations.Remove(entry.Key);
-                            }
-
-                            stopLooping = true;
-                            break;
-                        }
-
-                        entry.Value[i] = (tag, editorOnly, predicate, format);
-                        return true;
-                    }
-                    return false;
+                    decorationsAtPriority[existing.index] = (tag, editorOnly, predicate, format);
+                    _decorationLookup[tag] = (priority, existing.index);
+                    return true;
                 }
 
-                if (stopLooping)
-                {
-                    break;
-                }
+                RemoveDecorationInternal(existing.priority, existing.index);
             }
 
-            if (
-                !_matchingDecorations.TryGetValue(
-                    priority,
-                    out List<(
-                        string tag,
-                        bool editorOnly,
-                        Func<string, bool> predicate,
-                        Func<string, object, string> formatter
-                    )> matchingDecorations
-                )
-            )
+            List<(
+                string tag,
+                bool editorOnly,
+                Func<string, bool> predicate,
+                Func<string, object, string> formatter
+            )> matchingDecorations;
+            if (!_matchingDecorations.TryGetValue(priority, out matchingDecorations))
             {
-                _matchingDecorations[priority] = new List<(
+                matchingDecorations = new List<(
                     string tag,
                     bool editorOnly,
                     Func<string, bool> predicate,
                     Func<string, object, string> formatter
-                )>
-                {
-                    (tag, editorOnly, predicate, format),
-                };
-                return true;
+                )>(1);
+                _matchingDecorations[priority] = matchingDecorations;
             }
 
+            int indexToInsert = matchingDecorations.Count;
             matchingDecorations.Add((tag, editorOnly, predicate, format));
+            _decorationLookup[tag] = (priority, indexToInsert);
             return true;
         }
 
@@ -481,35 +445,57 @@ namespace WallstopStudios.UnityHelpers.Core.Helper.Logging
             ) decoration
         )
         {
-            foreach (
-                KeyValuePair<
-                    int,
-                    List<(
-                        string tag,
-                        bool editorOnly,
-                        Func<string, bool> predicate,
-                        Func<string, object, string> formatter
-                    )>
-                > entry in _matchingDecorations
-            )
+            if (!_decorationLookup.TryGetValue(tag, out (int priority, int index) existing))
             {
-                for (int i = 0; i < entry.Value.Count; ++i)
-                {
-                    decoration = entry.Value[i];
-                    if (string.Equals(tag, decoration.tag, StringComparison.OrdinalIgnoreCase))
-                    {
-                        entry.Value.RemoveAt(i);
-                        if (entry.Value.Count == 0)
-                        {
-                            _matchingDecorations.Remove(entry.Key);
-                        }
-                        return true;
-                    }
-                }
+                decoration = default;
+                return false;
             }
 
-            decoration = default;
-            return false;
+            decoration = RemoveDecorationInternal(existing.priority, existing.index);
+            return true;
+        }
+
+        private (
+            string tag,
+            bool editorOnly,
+            Func<string, bool> predicate,
+            Func<string, object, string> formatter
+        ) RemoveDecorationInternal(int priority, int index)
+        {
+            List<(
+                string tag,
+                bool editorOnly,
+                Func<string, bool> predicate,
+                Func<string, object, string> formatter
+            )> decorationsAtPriority = _matchingDecorations[priority];
+
+            (
+                string tag,
+                bool editorOnly,
+                Func<string, bool> predicate,
+                Func<string, object, string> formatter
+            ) removed = decorationsAtPriority[index];
+
+            decorationsAtPriority.RemoveAt(index);
+            _decorationLookup.Remove(removed.tag);
+
+            for (int i = index; i < decorationsAtPriority.Count; ++i)
+            {
+                (
+                    string tag,
+                    bool editorOnly,
+                    Func<string, bool> predicate,
+                    Func<string, object, string> formatter
+                ) entry = decorationsAtPriority[i];
+                _decorationLookup[entry.tag] = (priority, i);
+            }
+
+            if (decorationsAtPriority.Count == 0)
+            {
+                _matchingDecorations.Remove(priority);
+            }
+
+            return removed;
         }
 
         [HideInCallstack]

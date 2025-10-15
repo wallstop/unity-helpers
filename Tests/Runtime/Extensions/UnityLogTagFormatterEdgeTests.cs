@@ -256,5 +256,89 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             formatted = formatter.Log($"{"value":demo}", pretty: false);
             Assert.AreEqual("<P1>value</P1>", formatted);
         }
+
+        [Test]
+        public void ForceOverrideAtSamePriorityReplacesFormatter()
+        {
+            UnityLogTagFormatter formatter = new(createDefaultDecorators: false);
+
+            formatter.AddDecoration(
+                match: "demo",
+                format: value => $"<Initial>{value}</Initial>",
+                tag: "Demo",
+                priority: 3,
+                editorOnly: false,
+                force: true
+            );
+            formatter.AddDecoration(
+                match: "demo",
+                format: value => $"<Updated>{value}</Updated>",
+                tag: "Demo",
+                priority: 3,
+                editorOnly: false,
+                force: true
+            );
+
+            string formatted = formatter.Log($"{"value":demo}", pretty: false);
+            Assert.AreEqual("<Updated>value</Updated>", formatted);
+        }
+
+        [Test]
+        public void DuplicateTagWithoutForceReturnsFalse()
+        {
+            UnityLogTagFormatter formatter = new(createDefaultDecorators: false);
+
+            bool firstResult = formatter.AddDecoration(
+                match: "demo",
+                format: value => $"<Initial>{value}</Initial>",
+                tag: "Demo",
+                priority: 0,
+                editorOnly: false,
+                force: false
+            );
+            Assert.IsTrue(firstResult);
+
+            bool secondResult = formatter.AddDecoration(
+                match: "demo",
+                format: value => $"<Ignored>{value}</Ignored>",
+                tag: "Demo",
+                priority: 10,
+                editorOnly: false,
+                force: false
+            );
+            Assert.IsFalse(secondResult);
+
+            string formatted = formatter.Log($"{"value":demo}", pretty: false);
+            Assert.AreEqual("<Initial>value</Initial>", formatted);
+        }
+
+        [Test]
+        public void RemoveDecorationRemovesFormatter()
+        {
+            UnityLogTagFormatter formatter = new(createDefaultDecorators: false);
+
+            formatter.AddDecoration(
+                match: "demo",
+                format: value => $"<Removed>{value}</Removed>",
+                tag: "Demo",
+                priority: 0,
+                editorOnly: false,
+                force: true
+            );
+
+            (
+                string tag,
+                bool editorOnly,
+                Func<string, bool> predicate,
+                Func<string, object, string> formatterDelegate
+            ) removedDecoration;
+            bool removed = formatter.RemoveDecoration("Demo", out removedDecoration);
+
+            Assert.IsTrue(removed);
+            Assert.AreEqual("Demo", removedDecoration.tag);
+
+            string formatted = formatter.Log($"{"value":demo}", pretty: false);
+            Assert.AreEqual("value", formatted);
+        }
     }
 }
