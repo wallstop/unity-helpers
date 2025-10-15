@@ -281,6 +281,91 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             Assert.IsTrue(exceptionThrown);
         }
 
+        [UnityTest]
+        public IEnumerator TaskTupleAsCoroutineCompletesSuccessfully()
+        {
+            Task<(int, string)> task = CreateDelayedTask(() => (7, "lucky"));
+
+            int first = 0;
+            string second = null;
+            yield return task.AsCoroutine(
+                (value, label) =>
+                {
+                    first = value;
+                    second = label;
+                }
+            );
+
+            Assert.AreEqual(7, first);
+            Assert.AreEqual("lucky", second);
+        }
+
+        [UnityTest]
+        public IEnumerator TaskTupleAsCoroutineWorksWithoutCallback()
+        {
+            Task<(int, string)> task = CreateDelayedTask(() => (5, "five"));
+
+            yield return task.AsCoroutine();
+
+            Assert.AreEqual((5, "five"), task.Result);
+        }
+
+        [UnityTest]
+        public IEnumerator TaskTupleAsCoroutineThrowsOnFaultedTask()
+        {
+            Task<(int, string)> task = CreateFaultedTask<(int, string)>();
+
+            bool exceptionThrown = false;
+            IEnumerator coroutine = task.AsCoroutine((_, _) => { });
+
+            while (true)
+            {
+                try
+                {
+                    if (!coroutine.MoveNext())
+                    {
+                        break;
+                    }
+                }
+                catch (InvalidOperationException)
+                {
+                    exceptionThrown = true;
+                    break;
+                }
+                catch (AggregateException e)
+                {
+                    exceptionThrown = e.Flatten()
+                        .InnerExceptions.Any(inner => inner is InvalidOperationException);
+                    break;
+                }
+                yield return null;
+            }
+
+            Assert.IsTrue(exceptionThrown);
+        }
+
+        [UnityTest]
+        public IEnumerator TaskTripleAsCoroutineCompletesSuccessfully()
+        {
+            Task<(int, string, bool)> task = CreateDelayedTask(() => (1, "one", true));
+
+            int first = 0;
+            string second = null;
+            bool third = false;
+            yield return task.AsCoroutine(
+                (value, label, flag) =>
+                {
+                    first = value;
+                    second = label;
+                    third = flag;
+                }
+            );
+
+            Assert.AreEqual(1, first);
+            Assert.AreEqual("one", second);
+            Assert.IsTrue(third);
+        }
+
         // Tests for ValueTask.AsCoroutine()
         [UnityTest]
         public IEnumerator ValueTaskAsCoroutineCompletesSuccessfully()
@@ -398,6 +483,100 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             }
 
             Assert.IsTrue(exceptionThrown);
+        }
+
+        [UnityTest]
+        public IEnumerator ValueTaskTupleAsCoroutineCompletesSuccessfully()
+        {
+            ValueTask<(int, string)> task = new(CreateDelayedTask(() => (2, "two")));
+
+            int first = 0;
+            string second = null;
+            yield return task.AsCoroutine(
+                (value, label) =>
+                {
+                    first = value;
+                    second = label;
+                }
+            );
+
+            Assert.AreEqual(2, first);
+            Assert.AreEqual("two", second);
+        }
+
+        [UnityTest]
+        public IEnumerator ValueTaskTupleAsCoroutineCompletesImmediatelyWhenAlreadyDone()
+        {
+            ValueTask<(int, string)> task = new((3, "three"));
+
+            int first = 0;
+            string second = null;
+            yield return task.AsCoroutine(
+                (value, label) =>
+                {
+                    first = value;
+                    second = label;
+                }
+            );
+
+            Assert.AreEqual(3, first);
+            Assert.AreEqual("three", second);
+        }
+
+        [UnityTest]
+        public IEnumerator ValueTaskTupleAsCoroutineThrowsOnFaultedTask()
+        {
+            ValueTask<(int, string)> task = new(CreateFaultedTask<(int, string)>());
+
+            bool exceptionThrown = false;
+            IEnumerator coroutine = task.AsCoroutine((_, _) => { });
+
+            while (true)
+            {
+                try
+                {
+                    if (!coroutine.MoveNext())
+                    {
+                        break;
+                    }
+                }
+                catch (InvalidOperationException)
+                {
+                    exceptionThrown = true;
+                    break;
+                }
+                catch (AggregateException e)
+                {
+                    exceptionThrown = e.Flatten()
+                        .InnerExceptions.Any(inner => inner is InvalidOperationException);
+                    break;
+                }
+                yield return null;
+            }
+
+            Assert.IsTrue(exceptionThrown);
+        }
+
+        [UnityTest]
+        public IEnumerator ValueTaskTripleAsCoroutineCompletesSuccessfully()
+        {
+            ValueTask<(int, string, bool)> task = new(CreateDelayedTask(() => (4, "four", true)));
+
+            int first = 0;
+            string second = null;
+            bool third = false;
+            yield return task.AsCoroutine(
+                (value, label, flag) =>
+                {
+                    first = value;
+                    second = label;
+                    third = flag;
+                }
+            );
+
+            Assert.AreEqual(4, first);
+            Assert.AreEqual("four", second);
+            Assert.IsTrue(third);
         }
 
         // Tests for IEnumerator.AsTask()
