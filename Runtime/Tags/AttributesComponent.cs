@@ -48,7 +48,7 @@ namespace WallstopStudios.UnityHelpers.Tags
         /// </summary>
         public event Action<string, float, float> OnAttributeModified;
 
-        private readonly Dictionary<string, Func<object, Attribute>> _attributeFieldGetters;
+        private Dictionary<string, Func<object, Attribute>> _attributeFieldGetters;
         private readonly HashSet<EffectHandle> _effectHandles;
 
         [SiblingComponent]
@@ -62,7 +62,6 @@ namespace WallstopStudios.UnityHelpers.Tags
         /// </summary>
         protected AttributesComponent()
         {
-            _attributeFieldGetters = AttributeUtilities.GetOptimizedAttributeFields(GetType());
             _effectHandles = new HashSet<EffectHandle>();
         }
 
@@ -72,6 +71,7 @@ namespace WallstopStudios.UnityHelpers.Tags
         /// </summary>
         protected virtual void Awake()
         {
+            EnsureAttributeFieldGettersInitialized();
             this.AssignSiblingComponents();
             _effectHandler.Register(this);
         }
@@ -217,8 +217,9 @@ namespace WallstopStudios.UnityHelpers.Tags
             }
         }
 
-        private bool TryGetAttribute(string attributeName, out Attribute attribute)
+        protected bool TryGetAttribute(string attributeName, out Attribute attribute)
         {
+            EnsureAttributeFieldGettersInitialized();
             if (
                 !_attributeFieldGetters.TryGetValue(
                     attributeName,
@@ -232,6 +233,16 @@ namespace WallstopStudios.UnityHelpers.Tags
 
             attribute = getter(this);
             return true;
+        }
+
+        protected void EnsureAttributeFieldGettersInitialized()
+        {
+            if (_attributeFieldGetters != null)
+            {
+                return;
+            }
+
+            _attributeFieldGetters = AttributeUtilities.GetOptimizedAttributeFields(GetType());
         }
     }
 }
