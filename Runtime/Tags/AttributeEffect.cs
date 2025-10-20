@@ -9,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Tags
     using Core.Extension;
     using Core.Helper;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Utils;
 #if ODIN_INSPECTOR
     using Sirenix.OdinInspector;
 #endif
@@ -52,6 +53,7 @@ namespace WallstopStudios.UnityHelpers.Tags
     /// </para>
     /// </remarks>
     [Serializable]
+    [CreateAssetMenu(menuName = "Wallstop Studios/Unity Helpers/Attribute Effect")]
     public sealed class AttributeEffect :
 #if ODIN_INSPECTOR
         SerializedScriptableObject
@@ -72,7 +74,7 @@ namespace WallstopStudios.UnityHelpers.Tags
         /// The list of attribute modifications to apply when this effect is activated.
         /// Each modification specifies an attribute name, action type, and value.
         /// </summary>
-        public readonly List<AttributeModification> modifications = new();
+        public List<AttributeModification> modifications = new();
 
         /// <summary>
         /// Specifies how long this effect should persist (Instant, Duration, or Infinite).
@@ -150,6 +152,23 @@ namespace WallstopStudios.UnityHelpers.Tags
                 case IReadOnlyList<string> list:
                 {
                     return HasAnyTag(list);
+                }
+                case HashSet<string> hashSet:
+                {
+                    foreach (string candidate in hashSet)
+                    {
+                        if (string.IsNullOrEmpty(candidate))
+                        {
+                            continue;
+                        }
+
+                        if (HasTag(candidate))
+                        {
+                            return true;
+                        }
+                    }
+
+                    return false;
                 }
             }
 
@@ -229,20 +248,18 @@ namespace WallstopStudios.UnityHelpers.Tags
         /// <param name="attributeName">The attribute to filter by.</param>
         /// <param name="buffer">The destination buffer. Existing entries are preserved.</param>
         /// <returns>The number of modifications added to <paramref name="buffer"/>.</returns>
-        /// <exception cref="ArgumentNullException">Thrown when <paramref name="buffer"/> is <c>null</c>.</exception>
-        public int GetModifications(string attributeName, List<AttributeModification> buffer)
+        public List<AttributeModification> GetModifications(
+            string attributeName,
+            List<AttributeModification> buffer = null
+        )
         {
-            if (buffer == null)
-            {
-                throw new ArgumentNullException(nameof(buffer));
-            }
-
+            buffer ??= new List<AttributeModification>();
+            buffer.Clear();
             if (modifications == null || string.IsNullOrEmpty(attributeName))
             {
-                return 0;
+                return buffer;
             }
 
-            int initialCount = buffer.Count;
             for (int i = 0; i < modifications.Count; ++i)
             {
                 AttributeModification modification = modifications[i];
@@ -252,7 +269,7 @@ namespace WallstopStudios.UnityHelpers.Tags
                 }
             }
 
-            return buffer.Count - initialCount;
+            return buffer;
         }
 
         /// <summary>
@@ -260,7 +277,7 @@ namespace WallstopStudios.UnityHelpers.Tags
         /// These are applied when the effect becomes active and removed when it expires.
         /// </summary>
         [JsonIgnore]
-        public readonly List<CosmeticEffectData> cosmeticEffects = new();
+        public List<CosmeticEffectData> cosmeticEffects = new();
 
         private List<string> CosmeticEffectsForJson =>
             cosmeticEffects?.Select(cosmeticEffectData => cosmeticEffectData.name).ToList()
@@ -290,7 +307,9 @@ namespace WallstopStudios.UnityHelpers.Tags
                 return nameof(AttributeEffect);
             }
 
-            StringBuilder descriptionBuilder = new();
+            using PooledResource<StringBuilder> stringBuilderBuffer = Buffers.StringBuilder.Get(
+                out StringBuilder descriptionBuilder
+            );
             for (int i = 0; i < modifications.Count; ++i)
             {
                 AttributeModification modification = modifications[i];

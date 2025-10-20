@@ -131,15 +131,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
             Assert.IsFalse(effect.ModifiesAttribute("Speed"));
 
             List<AttributeModification> buffer = new();
-            int added = effect.GetModifications(nameof(TestAttributesComponent.health), buffer);
-            Assert.AreEqual(2, added);
+            effect.GetModifications(nameof(TestAttributesComponent.health), buffer);
             Assert.AreEqual(2, buffer.Count);
             Assert.AreEqual(nameof(TestAttributesComponent.health), buffer[0].attribute);
             Assert.AreEqual(nameof(TestAttributesComponent.health), buffer[1].attribute);
 
-            int addedMissing = effect.GetModifications("Speed", buffer);
-            Assert.AreEqual(0, addedMissing);
-            Assert.AreEqual(2, buffer.Count);
+            effect.GetModifications("Speed", buffer);
+            Assert.AreEqual(0, buffer.Count);
         }
 
         [UnityTest]

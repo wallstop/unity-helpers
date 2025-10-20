@@ -4,7 +4,6 @@ namespace WallstopStudios.UnityHelpers.Tags
     using System.Collections.Generic;
     using Core.Extension;
     using UnityEngine;
-    using WallstopStudios.UnityHelpers.Utils;
 
     /// <summary>
     /// Tag system for gameplay state: applies, counts, and queries string-based tags on a GameObject.
