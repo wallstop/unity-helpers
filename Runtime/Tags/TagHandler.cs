@@ -399,8 +399,18 @@ namespace WallstopStudios.UnityHelpers.Tags
         /// <summary>
         /// Determines whether none of the specified tags are active.
         /// </summary>
-        /// <param name="effectTags">The collection of tags to check.</param>
-        /// <returns><c>true</c> if none of the tags are currently active; otherwise, <c>false</c>.</returns>
+        /// <param name="effectTags">The collection of tags to inspect.</param>
+        /// <returns>
+        /// <c>true</c> when the collection is <c>null</c>, empty, or every tag is currently inactive; otherwise, <c>false</c>.
+        /// </returns>
+        /// <example>
+        /// <code>
+        /// if (tagHandler.HasNoneOfTags(new[] { "Stunned", "Frozen" }))
+        /// {
+        ///     EnablePlayerInput();
+        /// }
+        /// </code>
+        /// </example>
         public bool HasNoneOfTags(IEnumerable<string> effectTags)
         {
             if (effectTags == null)
@@ -414,8 +424,10 @@ namespace WallstopStudios.UnityHelpers.Tags
         /// <summary>
         /// Determines whether none of the specified tags are active.
         /// </summary>
-        /// <param name="effectTags">The list of tags to check.</param>
-        /// <returns><c>true</c> if none of the tags are currently active; otherwise, <c>false</c>.</returns>
+        /// <param name="effectTags">The list of tags to inspect.</param>
+        /// <returns>
+        /// <c>true</c> when the list is <c>null</c>, empty, or every tag is currently inactive; otherwise, <c>false</c>.
+        /// </returns>
         public bool HasNoneOfTags(IReadOnlyList<string> effectTags)
         {
             if (effectTags == null)
@@ -430,8 +442,18 @@ namespace WallstopStudios.UnityHelpers.Tags
         /// Attempts to retrieve the active instance count for the specified tag.
         /// </summary>
         /// <param name="effectTag">The tag whose count should be retrieved.</param>
-        /// <param name="count">When this method returns, contains the active count for the tag if found; otherwise, zero.</param>
+        /// <param name="count">
+        /// When this method returns, contains the active count for the tag (cast to <see cref="int"/>) if found; otherwise, zero.
+        /// </param>
         /// <returns><c>true</c> if the tag is currently tracked; otherwise, <c>false</c>.</returns>
+        /// <example>
+        /// <code>
+        /// if (tagHandler.TryGetTagCount("Poisoned", out int stacks) && stacks >= 3)
+        /// {
+        ///     TriggerCriticalWarning();
+        /// }
+        /// </code>
+        /// </example>
         public bool TryGetTagCount(string effectTag, out int count)
         {
             if (string.IsNullOrEmpty(effectTag))
@@ -451,9 +473,21 @@ namespace WallstopStudios.UnityHelpers.Tags
         }
 
         /// <summary>
-        /// Copies the currently active tags into the provided buffer.
+        /// Retrieves the set of currently active tags into an optional buffer.
         /// </summary>
-        /// <param name="buffer">The list to populate with active tags.</param>
+        /// <param name="buffer">
+        /// Optional list to populate. When <c>null</c>, a new list is created. The buffer is cleared before population.
+        /// </param>
+        /// <returns>The populated buffer containing all active tags.</returns>
+        /// <example>
+        /// <code>
+        /// List&lt;string&gt; activeTags = tagHandler.GetActiveTags(_reusableTagBuffer);
+        /// if (activeTags.Contains("Rooted"))
+        /// {
+        ///     DisableMovement();
+        /// }
+        /// </code>
+        /// </example>
         public List<string> GetActiveTags(List<string> buffer = null)
         {
             buffer ??= new List<string>();
@@ -472,11 +506,22 @@ namespace WallstopStudios.UnityHelpers.Tags
         }
 
         /// <summary>
-        /// Retrieves all active effect handles that contributed the specified tag.
+        /// Collects all active effect handles that currently contribute the specified tag.
         /// </summary>
         /// <param name="effectTag">The tag to query.</param>
-        /// <param name="buffer">The list to populate with effect handles.</param>
-        /// <returns><c>true</c> if one or more handles were added to the buffer; otherwise, <c>false</c>.</returns>
+        /// <param name="buffer">
+        /// Optional list to populate. When <c>null</c>, a new list is created. The buffer is cleared before population.
+        /// </param>
+        /// <returns>The populated buffer containing matching effect handles.</returns>
+        /// <example>
+        /// <code>
+        /// List&lt;EffectHandle&gt; handles = tagHandler.GetHandlesWithTag("Burning", _handleBuffer);
+        /// foreach (EffectHandle handle in handles)
+        /// {
+        ///     effectHandler.RemoveEffect(handle);
+        /// }
+        /// </code>
+        /// </example>
         public List<EffectHandle> GetHandlesWithTag(
             string effectTag,
             List<EffectHandle> buffer = null
@@ -514,10 +559,25 @@ namespace WallstopStudios.UnityHelpers.Tags
         }
 
         /// <summary>
-        /// Removes all instances of the specified tag, returning the removed effect handles.
+        /// Removes all instances of the specified tag and returns the contributing effect handles.
         /// </summary>
         /// <param name="effectTag">The tag to remove.</param>
-        /// <param name="buffer">Buffer of removed effect handles.</param>
+        /// <param name="buffer">
+        /// Optional list that receives the handles whose effects applied <paramref name="effectTag"/>.
+        /// When <c>null</c>, a new list is created. The buffer is cleared before population.
+        /// </param>
+        /// <returns>
+        /// The populated buffer of handles whose tags were removed. The buffer is empty when the tag was not active.
+        /// </returns>
+        /// <example>
+        /// <code>
+        /// List&lt;EffectHandle&gt; dispelled = tagHandler.RemoveTag("Stunned", _handles);
+        /// foreach (EffectHandle handle in dispelled)
+        /// {
+        ///     NotifyDispel(handle);
+        /// }
+        /// </code>
+        /// </example>
         public List<EffectHandle> RemoveTag(string effectTag, List<EffectHandle> buffer = null)
         {
             buffer ??= new List<EffectHandle>();

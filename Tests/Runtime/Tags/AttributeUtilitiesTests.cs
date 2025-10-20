@@ -80,6 +80,52 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
             Assert.IsTrue(entity.HasAnyTag(list));
         }
 
+        [UnityTest]
+        public IEnumerator GetActiveTagsExtensionHandlesBuffers()
+        {
+            GameObject entity = CreateTrackedGameObject("Tagged", typeof(TagHandler));
+            yield return null;
+            TagHandler handler = entity.GetComponent<TagHandler>();
+            handler.ApplyTag("Buff");
+            handler.ApplyTag("Shield");
+
+            List<string> initial = entity.GetActiveTags();
+            CollectionAssert.AreEquivalent(new[] { "Buff", "Shield" }, initial);
+
+            List<string> reusable = new() { "Sentinel" };
+            List<string> reused = entity.GetActiveTags(reusable);
+            Assert.AreSame(reusable, reused);
+            CollectionAssert.AreEquivalent(new[] { "Buff", "Shield" }, reused);
+            Assert.IsFalse(reused.Contains("Sentinel"));
+        }
+
+        [UnityTest]
+        public IEnumerator GetHandlesWithTagExtensionCreatesBuffers()
+        {
+            GameObject entity = CreateTrackedGameObject("Entity", typeof(TestAttributesComponent));
+            yield return null;
+            EffectHandler effectHandler = entity.GetComponent<EffectHandler>();
+
+            AttributeEffect effect = CreateEffect(
+                "Buff",
+                e =>
+                {
+                    e.effectTags.Add("Buff");
+                }
+            );
+            EffectHandle handle = effectHandler.ApplyEffect(effect).Value;
+
+            List<EffectHandle> handles = entity.GetHandlesWithTag("Buff");
+            Assert.AreEqual(1, handles.Count);
+            Assert.AreEqual(handle, handles[0]);
+
+            List<EffectHandle> reusable = new() { EffectHandle.CreateInstance(effect) };
+            List<EffectHandle> reused = entity.GetHandlesWithTag("Buff", reusable);
+            Assert.AreSame(reusable, reused);
+            Assert.AreEqual(1, reused.Count);
+            Assert.AreEqual(handle, reused[0]);
+        }
+
         [Test]
         public void AttributeEffectQueryHelpersReturnExpectedResults()
         {
@@ -479,8 +525,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
             Assert.IsTrue(entity.IsEffectActive(effect));
             Assert.AreEqual(1, entity.GetEffectStackCount(effect));
 
-            List<EffectHandle> activeEffects = new();
-            Assert.IsTrue(entity.GetActiveEffects(activeEffects));
+            List<EffectHandle> activeEffects = entity.GetActiveEffects(new List<EffectHandle>());
             Assert.AreEqual(1, activeEffects.Count);
 
             EffectHandle activeHandle = handlesBuffer[0];
@@ -512,6 +557,62 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
             Assert.IsEmpty(tagsBuffer);
             handlesBuffer.Clear();
             Assert.AreEqual(0, entity.GetHandlesWithTag("Buff", handlesBuffer).Count);
+        }
+
+        [UnityTest]
+        public IEnumerator ApplyEffectsNoAllocAppendsToProvidedHandlesBuffer()
+        {
+            GameObject entity = CreateTrackedGameObject("Entity", typeof(TestAttributesComponent));
+            yield return null;
+
+            List<AttributeEffect> effects = new() { CreateEffect("BuffA"), CreateEffect("BuffB") };
+
+            EffectHandle sentinel = EffectHandle.CreateInstance(CreateEffect("Sentinel"));
+            List<EffectHandle> handles = new() { sentinel };
+            entity.ApplyEffectsNoAlloc(effects, handles);
+
+            Assert.AreEqual(effects.Count + 1, handles.Count);
+            Assert.AreEqual(sentinel, handles[0]);
+        }
+
+        [UnityTest]
+        public IEnumerator GetActiveEffectsClearsBufferBeforePopulation()
+        {
+            GameObject entity = CreateTrackedGameObject("Entity", typeof(TestAttributesComponent));
+            yield return null;
+            EffectHandler handler = entity.GetComponent<EffectHandler>();
+
+            AttributeEffect effect = CreateEffect("Tracked");
+            EffectHandle handle = handler.ApplyEffect(effect).Value;
+
+            EffectHandle sentinel = EffectHandle.CreateInstance(CreateEffect("Sentinel"));
+            List<EffectHandle> buffer = new() { sentinel };
+            List<EffectHandle> populated = entity.GetActiveEffects(buffer);
+            Assert.AreSame(buffer, populated);
+            Assert.AreEqual(1, populated.Count);
+            Assert.AreEqual(handle, populated[0]);
+            Assert.AreNotEqual(sentinel, populated[0]);
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator RefreshEffectIgnorePolicyExtensionRefreshesWhenDisallowed()
+        {
+            GameObject entity = CreateTrackedGameObject("Entity", typeof(TestAttributesComponent));
+            yield return null;
+            AttributeEffect effect = CreateEffect(
+                "Policy",
+                e =>
+                {
+                    e.duration = 0.2f;
+                    e.resetDurationOnReapplication = false;
+                }
+            );
+
+            EffectHandle handle = entity.ApplyEffect(effect).Value;
+            yield return null;
+            Assert.IsFalse(entity.RefreshEffect(handle));
+            Assert.IsTrue(entity.RefreshEffect(handle, ignoreReapplicationPolicy: true));
         }
 
         [UnityTest]

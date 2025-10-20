@@ -178,5 +178,55 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
             Assert.AreEqual(0, handler.GetHandlesWithTag("Buff", handles).Count);
             yield return null;
         }
+
+        [UnityTest]
+        public IEnumerator GetActiveTagsReturnsNewBufferWhenNeeded()
+        {
+            GameObject entity = CreateTrackedGameObject("Tags", typeof(TagHandler));
+            TagHandler handler = entity.GetComponent<TagHandler>();
+
+            handler.ApplyTag("Buff");
+            handler.ApplyTag("Shield");
+
+            List<string> firstCall = handler.GetActiveTags();
+            Assert.IsNotNull(firstCall);
+            CollectionAssert.AreEquivalent(new[] { "Buff", "Shield" }, firstCall);
+
+            List<string> reusable = new() { "Sentinel" };
+            List<string> secondCall = handler.GetActiveTags(reusable);
+            Assert.AreSame(reusable, secondCall);
+            CollectionAssert.AreEquivalent(new[] { "Buff", "Shield" }, secondCall);
+            Assert.IsFalse(secondCall.Contains("Sentinel"));
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator RemoveTagReturnsContributingHandles()
+        {
+            GameObject entity = CreateTrackedGameObject("Entity", typeof(TestAttributesComponent));
+            yield return null;
+            TagHandler handler = entity.GetComponent<TagHandler>();
+            EffectHandler effectHandler = entity.GetComponent<EffectHandler>();
+
+            AttributeEffect effect = CreateEffect(
+                "Buff",
+                e =>
+                {
+                    e.effectTags.Add("Buff");
+                }
+            );
+            EffectHandle handle = effectHandler.ApplyEffect(effect).Value;
+
+            List<EffectHandle> removed = handler.RemoveTag("Buff");
+            Assert.AreEqual(1, removed.Count);
+            Assert.AreEqual(handle, removed[0]);
+            Assert.IsFalse(handler.HasTag("Buff"));
+            Assert.AreEqual(0, handler.GetHandlesWithTag("Buff").Count);
+
+            List<EffectHandle> empty = handler.RemoveTag("Missing");
+            Assert.IsNotNull(empty);
+            Assert.AreEqual(0, empty.Count);
+            yield return null;
+        }
     }
 }

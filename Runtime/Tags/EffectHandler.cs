@@ -236,19 +236,16 @@ namespace WallstopStudios.UnityHelpers.Tags
         /// <summary>
         /// Copies all active effect handles into the provided buffer.
         /// </summary>
-        /// <param name="buffer">The list to populate with active effect handles.</param>
-        /// <exception cref="ArgumentNullException">Thrown when <paramref name="buffer"/> is <c>null</c>.</exception>
-        public void GetActiveEffects(List<EffectHandle> buffer)
+        /// <param name="buffer">
+        /// Optional list to populate. When <c>null</c>, a new list is created. The buffer is cleared before population.
+        /// </param>
+        /// <returns>The populated buffer containing all currently active effect handles.</returns>
+        public List<EffectHandle> GetActiveEffects(List<EffectHandle> buffer = null)
         {
-            if (buffer == null)
-            {
-                throw new ArgumentNullException(nameof(buffer));
-            }
-
-            for (int i = 0; i < _appliedEffects.Count; ++i)
-            {
-                buffer.Add(_appliedEffects[i]);
-            }
+            buffer ??= new List<EffectHandle>();
+            buffer.Clear();
+            buffer.AddRange(_appliedEffects);
+            return buffer;
         }
 
         /// <summary>
