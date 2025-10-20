@@ -77,7 +77,7 @@ void Awake() {
 void Awake() => this.AssignRelationalComponents();
 ```
 
-**Bonus:** Works with VContainer/Zenject for automatic DI + relational wiring!
+**Bonus:** Works with VContainer/Zenject/Reflex for automatic DI + relational wiring!
 
 [📖 Learn More](Docs/RELATIONAL_COMPONENTS.md) | [🎯 DI – VContainer](Samples~/DI%20-%20VContainer/README.md) | [🎯 DI – Zenject](Samples~/DI%20-%20Zenject/README.md) | [🎯 DI – Reflex](Samples~/DI%20-%20Reflex/README.md)
 
@@ -1018,7 +1018,7 @@ void ProcessLargeDataset(int size)
 
 - When the define is present, optional assemblies under `Runtime/Integrations/*` compile automatically and expose helpers like `RelationalComponentsInstaller` (Zenject/Reflex) and `RegisterRelationalComponents()` (VContainer).
 - If you use UPM, no manual defines are required — the package IDs above trigger symbols via `versionDefines` in the asmdefs.
-- For test scenarios without LifetimeScope (VContainer) or SceneContext (Zenject), see [DI Integrations: Testing and Edge Cases](Docs/RELATIONAL_COMPONENTS.md#di-integrations-testing-and-edge-cases) for step‑by‑step patterns.
+- For test scenarios without LifetimeScope (VContainer), SceneContext (Zenject), or SceneScope (Reflex), see [DI Integrations: Testing and Edge Cases](Docs/RELATIONAL_COMPONENTS.md#di-integrations-testing-and-edge-cases) for step‑by‑step patterns.
 
 **Quick start:**
 
@@ -1046,6 +1046,12 @@ using Zenject;
 using WallstopStudios.UnityHelpers.Integrations.Zenject;
 
 var enemy = Container.InstantiateComponentWithRelations(enemyPrefab, parent);
+
+// Reflex — prefab instantiation with DI + relations
+using Reflex.Core;
+using WallstopStudios.UnityHelpers.Integrations.Reflex;
+
+var enemy = container.InstantiateComponentWithRelations(enemyPrefab, parent);
 ```
 
 See the full guide with scenarios, troubleshooting, and testing patterns: [Relational Components Guide](Docs/RELATIONAL_COMPONENTS.md)
@@ -1064,10 +1070,17 @@ See the full guide with scenarios, troubleshooting, and testing patterns: [Relat
   - `container.InjectGameObjectWithRelations(root, includeInactiveChildren)` — inject hierarchy + assign
   - `container.InstantiateGameObjectWithRelations(prefab, parent)` — instantiate GO + inject + assign
 
+- Reflex:
+  - `container.InjectWithRelations(component)` — inject + assign a single instance
+  - `container.InstantiateComponentWithRelations(prefab, parent)` — instantiate + inject + assign
+  - `container.InjectGameObjectWithRelations(root, includeInactiveChildren)` — inject hierarchy + assign
+  - `container.InstantiateGameObjectWithRelations(prefab, parent)` — instantiate GO + inject + assign
+
 ### Additive Scene Loads
 
 - VContainer: `RegisterRelationalComponents(..., enableAdditiveSceneListener: true)` registers a listener that hydrates components in newly loaded scenes.
-- Zenject: `RelationalComponentsInstaller` exposes a toggle “Listen For Additive Scenes” to register the same behavior.
+- Zenject: `RelationalComponentsInstaller` exposes a toggle "Listen For Additive Scenes" to register the same behavior.
+- Reflex: `RelationalComponentsInstaller` exposes a toggle "Listen For Additive Scenes" to register the same behavior.
   - Only the newly loaded scene is processed; other loaded scenes are not re‑scanned.
 
 ### Performance Options
@@ -1076,6 +1089,7 @@ See the full guide with scenarios, troubleshooting, and testing patterns: [Relat
 - Single-pass scan (default) reduces `FindObjectsOfType` calls by scanning once and checking type ancestry.
   - VContainer: `new RelationalSceneAssignmentOptions(includeInactive: true, useSinglePassScan: true)`
   - Zenject: `new RelationalSceneAssignmentOptions(includeInactive: true, useSinglePassScan: true)`
+  - Reflex: `new RelationalSceneAssignmentOptions(includeInactive: true, useSinglePassScan: true)`
 - Per-object paths (instantiate/inject helpers, pools) avoid global scans entirely for objects created via DI.
 
 ---
