@@ -111,6 +111,151 @@ namespace WallstopStudios.UnityHelpers.Tags
         public List<string> effectTags = new();
 
         /// <summary>
+        /// Determines whether this effect applies the specified tag.
+        /// </summary>
+        /// <param name="effectTag">The tag to check.</param>
+        /// <returns><c>true</c> if the tag is present; otherwise, <c>false</c>.</returns>
+        public bool HasTag(string effectTag)
+        {
+            if (effectTags == null || string.IsNullOrEmpty(effectTag))
+            {
+                return false;
+            }
+
+            for (int i = 0; i < effectTags.Count; ++i)
+            {
+                if (string.Equals(effectTags[i], effectTag, StringComparison.Ordinal))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Determines whether this effect applies any of the specified tags.
+        /// </summary>
+        /// <param name="effectTagsToCheck">The tags to inspect.</param>
+        /// <returns><c>true</c> if at least one tag is applied; otherwise, <c>false</c>.</returns>
+        public bool HasAnyTag(IEnumerable<string> effectTagsToCheck)
+        {
+            if (effectTags == null || effectTagsToCheck == null)
+            {
+                return false;
+            }
+
+            switch (effectTagsToCheck)
+            {
+                case IReadOnlyList<string> list:
+                {
+                    return HasAnyTag(list);
+                }
+            }
+
+            foreach (string candidate in effectTagsToCheck)
+            {
+                if (string.IsNullOrEmpty(candidate))
+                {
+                    continue;
+                }
+
+                if (HasTag(candidate))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Determines whether this effect applies any of the specified tags.
+        /// Optimized for indexed collections.
+        /// </summary>
+        /// <param name="effectTagsToCheck">The tags to inspect.</param>
+        /// <returns><c>true</c> if at least one tag is applied; otherwise, <c>false</c>.</returns>
+        public bool HasAnyTag(IReadOnlyList<string> effectTagsToCheck)
+        {
+            if (effectTags == null || effectTagsToCheck == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < effectTagsToCheck.Count; ++i)
+            {
+                string candidate = effectTagsToCheck[i];
+                if (string.IsNullOrEmpty(candidate))
+                {
+                    continue;
+                }
+
+                if (HasTag(candidate))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Determines whether this effect contains modifications for the specified attribute.
+        /// </summary>
+        /// <param name="attributeName">The attribute name to inspect.</param>
+        /// <returns><c>true</c> if the effect modifies <paramref name="attributeName"/>; otherwise, <c>false</c>.</returns>
+        public bool ModifiesAttribute(string attributeName)
+        {
+            if (modifications == null || string.IsNullOrEmpty(attributeName))
+            {
+                return false;
+            }
+
+            for (int i = 0; i < modifications.Count; ++i)
+            {
+                AttributeModification modification = modifications[i];
+                if (string.Equals(modification.attribute, attributeName, StringComparison.Ordinal))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Copies all modifications that affect the specified attribute into the provided buffer.
+        /// </summary>
+        /// <param name="attributeName">The attribute to filter by.</param>
+        /// <param name="buffer">The destination buffer. Existing entries are preserved.</param>
+        /// <returns>The number of modifications added to <paramref name="buffer"/>.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="buffer"/> is <c>null</c>.</exception>
+        public int GetModifications(string attributeName, List<AttributeModification> buffer)
+        {
+            if (buffer == null)
+            {
+                throw new ArgumentNullException(nameof(buffer));
+            }
+
+            if (modifications == null || string.IsNullOrEmpty(attributeName))
+            {
+                return 0;
+            }
+
+            int initialCount = buffer.Count;
+            for (int i = 0; i < modifications.Count; ++i)
+            {
+                AttributeModification modification = modifications[i];
+                if (string.Equals(modification.attribute, attributeName, StringComparison.Ordinal))
+                {
+                    buffer.Add(modification);
+                }
+            }
+
+            return buffer.Count - initialCount;
+        }
+
+        /// <summary>
         /// A list of cosmetic effect data that defines visual and audio feedback for this effect.
         /// These are applied when the effect becomes active and removed when it expires.
         /// </summary>

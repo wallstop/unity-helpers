@@ -1,6 +1,7 @@
 namespace WallstopStudios.UnityHelpers.Tests.Tags
 {
     using System.Collections;
+    using System.Collections.Generic;
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.TestTools;
@@ -236,6 +237,196 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
 
             Assert.LessOrEqual(entity.transform.childCount, initialChildCount);
             Assert.AreEqual(1, RecordingCosmeticComponent.RemovedCount);
+        }
+
+        [UnityTest]
+        public IEnumerator IsEffectActiveReflectsState()
+        {
+            (
+                GameObject entity,
+                EffectHandler handler,
+                TestAttributesComponent attributes,
+                TagHandler tags
+            ) = CreateEntity();
+            yield return null;
+
+            AttributeEffect effect = CreateEffect("Buff");
+            Assert.IsFalse(handler.IsEffectActive(effect));
+
+            EffectHandle handle = handler.ApplyEffect(effect).Value;
+            Assert.IsTrue(handler.IsEffectActive(effect));
+
+            handler.RemoveEffect(handle);
+            Assert.IsFalse(handler.IsEffectActive(effect));
+        }
+
+        [UnityTest]
+        public IEnumerator GetEffectStackCountSupportsMultipleHandles()
+        {
+            (
+                GameObject entity,
+                EffectHandler handler,
+                TestAttributesComponent attributes,
+                TagHandler tags
+            ) = CreateEntity();
+            yield return null;
+
+            AttributeEffect effect = CreateEffect(
+                "Stacking",
+                e =>
+                {
+                    e.durationType = ModifierDurationType.Infinite;
+                }
+            );
+
+            EffectHandle first = handler.ApplyEffect(effect).Value;
+            EffectHandle second = handler.ApplyEffect(effect).Value;
+
+            Assert.AreEqual(2, handler.GetEffectStackCount(effect));
+
+            handler.RemoveEffect(first);
+            Assert.AreEqual(1, handler.GetEffectStackCount(effect));
+
+            handler.RemoveEffect(second);
+            Assert.AreEqual(0, handler.GetEffectStackCount(effect));
+        }
+
+        [UnityTest]
+        public IEnumerator GetActiveEffectsPopulatesBuffer()
+        {
+            (
+                GameObject entity,
+                EffectHandler handler,
+                TestAttributesComponent attributes,
+                TagHandler tags
+            ) = CreateEntity();
+            yield return null;
+
+            AttributeEffect effect = CreateEffect(
+                "Active",
+                e =>
+                {
+                    e.durationType = ModifierDurationType.Infinite;
+                }
+            );
+
+            EffectHandle first = handler.ApplyEffect(effect).Value;
+            EffectHandle second = handler.ApplyEffect(effect).Value;
+
+            List<EffectHandle> buffer = new();
+            handler.GetActiveEffects(buffer);
+            CollectionAssert.AreEquivalent(new[] { first, second }, buffer);
+
+            handler.RemoveEffect(first);
+            buffer.Clear();
+            handler.GetActiveEffects(buffer);
+            CollectionAssert.AreEqual(new[] { second }, buffer);
+
+            handler.RemoveEffect(second);
+        }
+
+        [UnityTest]
+        public IEnumerator TryGetRemainingDurationReportsTime()
+        {
+            (
+                GameObject entity,
+                EffectHandler handler,
+                TestAttributesComponent attributes,
+                TagHandler tags
+            ) = CreateEntity();
+            yield return null;
+
+            AttributeEffect effect = CreateEffect(
+                "Timed",
+                e =>
+                {
+                    e.duration = 0.5f;
+                }
+            );
+
+            EffectHandle handle = handler.ApplyEffect(effect).Value;
+            Assert.IsTrue(handler.TryGetRemainingDuration(handle, out float remaining));
+            Assert.Greater(remaining, 0f);
+            Assert.LessOrEqual(remaining, effect.duration);
+
+            handler.RemoveEffect(handle);
+            Assert.IsFalse(handler.TryGetRemainingDuration(handle, out float afterRemoval));
+            Assert.AreEqual(0f, afterRemoval);
+        }
+
+        [UnityTest]
+        public IEnumerator EnsureHandleRefreshesDurationWhenRequested()
+        {
+            (
+                GameObject entity,
+                EffectHandler handler,
+                TestAttributesComponent attributes,
+                TagHandler tags
+            ) = CreateEntity();
+            yield return null;
+
+            AttributeEffect effect = CreateEffect(
+                "Refreshable",
+                e =>
+                {
+                    e.duration = 0.2f;
+                    e.resetDurationOnReapplication = true;
+                }
+            );
+
+            EffectHandle handle = handler.ApplyEffect(effect).Value;
+            Assert.IsTrue(handler.TryGetRemainingDuration(handle, out float initialRemaining));
+            yield return null;
+            Assert.IsTrue(handler.TryGetRemainingDuration(handle, out float beforeRefresh));
+            Assert.Less(beforeRefresh, initialRemaining);
+
+            EffectHandle? ensured = handler.EnsureHandle(effect);
+            Assert.IsTrue(ensured.HasValue);
+            Assert.AreEqual(handle, ensured.Value);
+            Assert.IsTrue(handler.TryGetRemainingDuration(handle, out float afterRefresh));
+            Assert.Greater(afterRefresh, beforeRefresh);
+
+            yield return null;
+            Assert.IsTrue(handler.TryGetRemainingDuration(handle, out float beforeNoRefresh));
+            EffectHandle? ensuredNoRefresh = handler.EnsureHandle(effect, refreshDuration: false);
+            Assert.IsTrue(ensuredNoRefresh.HasValue);
+            Assert.AreEqual(handle, ensuredNoRefresh.Value);
+            Assert.IsTrue(handler.TryGetRemainingDuration(handle, out float afterNoRefresh));
+            Assert.LessOrEqual(afterNoRefresh, beforeNoRefresh);
+
+            handler.RemoveEffect(handle);
+        }
+
+        [UnityTest]
+        public IEnumerator RefreshEffectHonorsReapplicationPolicy()
+        {
+            (
+                GameObject entity,
+                EffectHandler handler,
+                TestAttributesComponent attributes,
+                TagHandler tags
+            ) = CreateEntity();
+            yield return null;
+
+            AttributeEffect effect = CreateEffect(
+                "Policy",
+                e =>
+                {
+                    e.duration = 0.3f;
+                    e.resetDurationOnReapplication = false;
+                }
+            );
+
+            EffectHandle handle = handler.ApplyEffect(effect).Value;
+            yield return null;
+            Assert.IsTrue(handler.TryGetRemainingDuration(handle, out float beforeRefresh));
+
+            Assert.IsFalse(handler.RefreshEffect(handle));
+            Assert.IsTrue(handler.RefreshEffect(handle, ignoreReapplicationPolicy: true));
+            Assert.IsTrue(handler.TryGetRemainingDuration(handle, out float afterRefresh));
+            Assert.Greater(afterRefresh, beforeRefresh);
+
+            handler.RemoveEffect(handle);
         }
 
         private (

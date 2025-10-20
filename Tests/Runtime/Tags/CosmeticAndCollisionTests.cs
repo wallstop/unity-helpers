@@ -111,7 +111,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
             yield return null;
             Assert.IsFalse(collider.enabled);
 
-            handler.RemoveTag(CollisionSenses.CollisionDisabledTag, allInstances: false);
+            handler.RemoveTag(CollisionSenses.CollisionDisabledTag);
             yield return null;
             Assert.IsTrue(collider.enabled);
         }

@@ -80,6 +80,68 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
             Assert.IsTrue(entity.HasAnyTag(list));
         }
 
+        [Test]
+        public void AttributeEffectQueryHelpersReturnExpectedResults()
+        {
+            AttributeEffect effect = CreateEffect(
+                "Query",
+                e =>
+                {
+                    e.effectTags.Add("Buff");
+                    e.effectTags.Add("Shield");
+                    e.modifications.Add(
+                        new AttributeModification
+                        {
+                            attribute = nameof(TestAttributesComponent.health),
+                            action = ModificationAction.Addition,
+                            value = 5f,
+                        }
+                    );
+                    e.modifications.Add(
+                        new AttributeModification
+                        {
+                            attribute = nameof(TestAttributesComponent.armor),
+                            action = ModificationAction.Addition,
+                            value = 3f,
+                        }
+                    );
+                    e.modifications.Add(
+                        new AttributeModification
+                        {
+                            attribute = nameof(TestAttributesComponent.health),
+                            action = ModificationAction.Multiplication,
+                            value = 1.1f,
+                        }
+                    );
+                }
+            );
+
+            Assert.IsTrue(effect.HasTag("Buff"));
+            Assert.IsFalse(effect.HasTag("Missing"));
+
+            HashSet<string> query = new() { "Missing", "Shield" };
+            Assert.IsTrue(effect.HasAnyTag(query));
+            IReadOnlyList<string> list = new List<string> { "Other", "Buff" };
+            Assert.IsTrue(effect.HasAnyTag(list));
+            List<string> none = new() { "Missing" };
+            Assert.IsFalse(effect.HasAnyTag(none));
+
+            Assert.IsTrue(effect.ModifiesAttribute(nameof(TestAttributesComponent.health)));
+            Assert.IsTrue(effect.ModifiesAttribute(nameof(TestAttributesComponent.armor)));
+            Assert.IsFalse(effect.ModifiesAttribute("Speed"));
+
+            List<AttributeModification> buffer = new();
+            int added = effect.GetModifications(nameof(TestAttributesComponent.health), buffer);
+            Assert.AreEqual(2, added);
+            Assert.AreEqual(2, buffer.Count);
+            Assert.AreEqual(nameof(TestAttributesComponent.health), buffer[0].attribute);
+            Assert.AreEqual(nameof(TestAttributesComponent.health), buffer[1].attribute);
+
+            int addedMissing = effect.GetModifications("Speed", buffer);
+            Assert.AreEqual(0, addedMissing);
+            Assert.AreEqual(2, buffer.Count);
+        }
+
         [UnityTest]
         public IEnumerator ApplyEffectAddsAttributesCosmeticsAndTags()
         {
@@ -368,6 +430,90 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
             TestAttributesComponent attributes = entity.GetComponent<TestAttributesComponent>();
             Assert.AreEqual(100f, attributes.health.CurrentValue);
             Assert.IsFalse(entity.HasTag("Buff"));
+        }
+
+        [UnityTest]
+        public IEnumerator ExtensionHelpersBridgeTagAndEffectQueries()
+        {
+            GameObject entity = CreateTrackedGameObject("Entity", typeof(TestAttributesComponent));
+            yield return null;
+
+            AttributeEffect effect = CreateEffect(
+                "Utility",
+                e =>
+                {
+                    e.duration = 0.3f;
+                    e.resetDurationOnReapplication = true;
+                    e.effectTags.Add("Buff");
+                    e.modifications.Add(
+                        new AttributeModification
+                        {
+                            attribute = nameof(TestAttributesComponent.health),
+                            action = ModificationAction.Addition,
+                            value = 5f,
+                        }
+                    );
+                }
+            );
+
+            List<string> tagsBuffer = new();
+            List<EffectHandle> handlesBuffer = new();
+
+            Assert.IsFalse(entity.HasAllTags(new[] { "Buff" }));
+            EffectHandle? handle = entity.ApplyEffect(effect);
+            Assert.IsTrue(handle.HasValue);
+
+            Assert.IsTrue(entity.HasAllTags(new[] { "Buff" }));
+            Assert.IsFalse(entity.HasAllTags(new[] { "Buff", "Missing" }));
+            Assert.IsTrue(entity.HasNoneOfTags(new[] { "Missing" }));
+            List<string> none = new() { "Buff" };
+            Assert.IsFalse(entity.HasNoneOfTags(none));
+
+            Assert.IsTrue(entity.TryGetTagCount("Buff", out int tagCount));
+            Assert.AreEqual(1, tagCount);
+
+            Assert.AreNotEqual(0, entity.GetActiveTags(tagsBuffer).Count);
+            CollectionAssert.Contains(tagsBuffer, "Buff");
+
+            Assert.AreNotEqual(0, entity.GetHandlesWithTag("Buff", handlesBuffer).Count);
+            Assert.AreEqual(1, handlesBuffer.Count);
+
+            Assert.IsTrue(entity.IsEffectActive(effect));
+            Assert.AreEqual(1, entity.GetEffectStackCount(effect));
+
+            List<EffectHandle> activeEffects = new();
+            Assert.IsTrue(entity.GetActiveEffects(activeEffects));
+            Assert.AreEqual(1, activeEffects.Count);
+
+            EffectHandle activeHandle = handlesBuffer[0];
+            Assert.IsTrue(entity.TryGetRemainingDuration(activeHandle, out float remaining));
+            Assert.Greater(remaining, 0f);
+
+            yield return null;
+            Assert.IsTrue(entity.TryGetRemainingDuration(activeHandle, out float beforeEnsure));
+
+            EffectHandle? ensured = entity.EnsureHandle(effect);
+            Assert.IsTrue(ensured.HasValue);
+            Assert.AreEqual(activeHandle, ensured.Value);
+            Assert.IsTrue(entity.TryGetRemainingDuration(activeHandle, out float afterEnsure));
+            Assert.Greater(afterEnsure, beforeEnsure);
+
+            yield return null;
+            Assert.IsTrue(entity.TryGetRemainingDuration(activeHandle, out float beforeNoRefresh));
+            EffectHandle? ensuredNoRefresh = entity.EnsureHandle(effect, refreshDuration: false);
+            Assert.IsTrue(ensuredNoRefresh.HasValue);
+            Assert.AreEqual(activeHandle, ensuredNoRefresh.Value);
+            Assert.IsTrue(entity.TryGetRemainingDuration(activeHandle, out float afterNoRefresh));
+            Assert.LessOrEqual(afterNoRefresh, beforeNoRefresh);
+
+            Assert.IsTrue(entity.RefreshEffect(activeHandle));
+
+            entity.RemoveAllEffects();
+            tagsBuffer.Clear();
+            Assert.AreEqual(0, entity.GetActiveTags(tagsBuffer).Count);
+            Assert.IsEmpty(tagsBuffer);
+            handlesBuffer.Clear();
+            Assert.AreEqual(0, entity.GetHandlesWithTag("Buff", handlesBuffer).Count);
         }
 
         [UnityTest]

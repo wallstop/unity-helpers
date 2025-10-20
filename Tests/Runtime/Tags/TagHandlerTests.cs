@@ -33,18 +33,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
 
             handler.ApplyTag("Buff");
             handler.ApplyTag("Buff");
-            handler.RemoveTag("Buff", allInstances: false);
-            handler.RemoveTag("Buff", allInstances: false);
+            handler.ApplyTag("Buff");
+            handler.RemoveTag("Buff");
 
             Assert.AreEqual(new[] { "Buff" }, added);
+            Assert.AreEqual(2, changed.Count);
             Assert.AreEqual(("Buff", 2U), changed[0]);
-            Assert.AreEqual(("Buff", 1U), changed[1]);
+            Assert.AreEqual(("Buff", 3U), changed[1]);
             Assert.AreEqual(new[] { "Buff" }, removed);
             yield return null;
         }
 
         [UnityTest]
-        public IEnumerator RemoveTagAllInstancesClearsWithoutEvents()
+        public IEnumerator RemoveTagAllInstancesClearsWithEvents()
         {
             GameObject entity = CreateTrackedGameObject("Tags", typeof(TagHandler));
             TagHandler handler = entity.GetComponent<TagHandler>();
@@ -53,10 +54,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
             handler.OnTagRemoved += _ => ++removedCount;
 
             handler.ApplyTag("Buff");
-            handler.RemoveTag("Buff", allInstances: true);
+            handler.RemoveTag("Buff");
 
             Assert.IsFalse(handler.HasTag("Buff"));
-            Assert.AreEqual(0, removedCount);
+            Assert.AreEqual(1, removedCount);
             yield return null;
         }
 
@@ -102,6 +103,79 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
             handler.ForceApplyTags(handle);
             Assert.IsTrue(handler.ForceRemoveTags(handle));
             Assert.IsFalse(handler.ForceRemoveTags(handle));
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator HasAllTagsAndHasNoneTagSupport()
+        {
+            GameObject entity = CreateTrackedGameObject("Tags", typeof(TagHandler));
+            TagHandler handler = entity.GetComponent<TagHandler>();
+
+            handler.ApplyTag("Buff");
+            handler.ApplyTag("Shield");
+
+            Assert.IsTrue(handler.HasAllTags(new[] { "Buff" }));
+            List<string> required = new() { "Buff", "Shield" };
+            Assert.IsTrue(handler.HasAllTags(required));
+            Assert.IsFalse(handler.HasAllTags(new[] { "Buff", "Missing" }));
+
+            List<string> none = new() { "Missing", "Other" };
+            Assert.IsTrue(handler.HasNoneOfTags(none));
+            none[1] = "Buff";
+            Assert.IsFalse(handler.HasNoneOfTags(none));
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator TryGetTagCountAndActiveTagsPopulateBuffer()
+        {
+            GameObject entity = CreateTrackedGameObject("Tags", typeof(TagHandler));
+            TagHandler handler = entity.GetComponent<TagHandler>();
+
+            handler.ApplyTag("Buff");
+            handler.ApplyTag("Buff");
+            handler.ApplyTag("Shield");
+
+            Assert.IsTrue(handler.TryGetTagCount("Buff", out int buffCount));
+            Assert.AreEqual(2, buffCount);
+            Assert.IsFalse(handler.TryGetTagCount("Missing", out int missingCount));
+            Assert.AreEqual(0, missingCount);
+
+            List<string> active = new();
+            handler.GetActiveTags(active);
+            CollectionAssert.AreEquivalent(new[] { "Buff", "Shield" }, active);
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator GetHandlesWithTagTracksHandleLifecycle()
+        {
+            GameObject entity = CreateTrackedGameObject("Entity", typeof(TestAttributesComponent));
+            TagHandler handler = entity.GetComponent<TagHandler>();
+            EffectHandler effectHandler = entity.GetComponent<EffectHandler>();
+
+            AttributeEffect effect = CreateEffect(
+                "Buff",
+                e =>
+                {
+                    e.effectTags.Add("Buff");
+                }
+            );
+            EffectHandle handle = effectHandler.ApplyEffect(effect).Value;
+
+            List<EffectHandle> handles = new();
+            Assert.AreNotEqual(0, handler.GetHandlesWithTag("Buff", handles).Count);
+            Assert.AreEqual(1, handles.Count);
+            Assert.AreEqual(handle, handles[0]);
+
+            handles.Clear();
+            handler.RemoveTag("Buff");
+            Assert.AreEqual(0, handler.GetHandlesWithTag("Buff", handles).Count);
+
+            handles.Clear();
+            effectHandler.RemoveEffect(handle);
+            Assert.AreEqual(0, handler.GetHandlesWithTag("Buff", handles).Count);
             yield return null;
         }
     }
