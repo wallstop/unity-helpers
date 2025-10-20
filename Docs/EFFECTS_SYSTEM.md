@@ -382,9 +382,149 @@ void LogEffect(EffectType effectType)
 
 This eliminates the need to manually maintain a `DisplayNames` dictionary as shown in the earlier example—the package already provides optimized caching infrastructure.
 
+## API Reference
+
+### AttributeEffect Query Methods
+
+**Checking for Tags:**
+
+```csharp
+// Check if effect has a specific tag
+bool hasTag = effect.HasTag("Haste");
+
+// Check if effect has any of the specified tags
+bool hasAny = effect.HasAnyTag(new[] { "Haste", "Speed", "Boost" });
+bool hasAnyFromList = effect.HasAnyTag(myTagList); // IReadOnlyList<string> overload
+```
+
+**Checking for Attribute Modifications:**
+
+```csharp
+// Check if effect modifies a specific attribute
+bool modifiesSpeed = effect.ModifiesAttribute("Speed");
+
+// Get all modifications for a specific attribute
+using var lease = Buffers<AttributeModification>.List.Get(out List<AttributeModification> mods);
+effect.GetModifications("Speed", mods);
+foreach (AttributeModification mod in mods)
+{
+    Debug.Log($"Action: {mod.action}, Value: {mod.value}");
+}
+```
+
+### TagHandler Query Methods
+
+**Basic Tag Queries:**
+
+```csharp
+// Check if a single tag is active
+if (player.HasTag("Stunned"))
+{
+    DisableInput();
+}
+
+// Check if any of the tags are active
+if (player.HasAnyTag(new[] { "Stunned", "Frozen", "Sleeping" }))
+{
+    PreventMovement();
+}
+
+// Check if all tags are active
+if (player.HasAllTags(new[] { "Wet", "Grounded" }))
+{
+    ApplyElectricShock();
+}
+
+// Check if none of the tags are active
+if (player.HasNoneOfTags(new[] { "Invulnerable", "Untargetable" }))
+{
+    AllowDamage();
+}
+```
+
+**Tag Count Queries:**
+
+```csharp
+// Get the active count for a tag
+if (player.TryGetTagCount("Poisoned", out int stacks) && stacks >= 3)
+{
+    TriggerCriticalPoisonWarning();
+}
+
+// Get all active tags
+List<string> activeTags = player.GetActiveTags();
+foreach (string tag in activeTags)
+{
+    Debug.Log($"Active tag: {tag}");
+}
+```
+
+**Collection Type Support:**
+
+All tag query methods support multiple collection types with optimized implementations:
+
+- `IReadOnlyList<string>` (optimized with index-based iteration)
+- `List<string>`
+- `HashSet<string>`
+- `SortedSet<string>`
+- `Queue<string>`
+- `Stack<string>`
+- `LinkedList<string>`
+- Any `IEnumerable<string>`
+
+```csharp
+// Example with different collection types
+HashSet<string> immunityTags = new() { "Invulnerable", "Immune" };
+if (player.HasAnyTag(immunityTags))
+{
+    PreventDamage();
+}
+
+List<string> crowdControlTags = new() { "Stunned", "Rooted", "Silenced" };
+if (player.HasNoneOfTags(crowdControlTags))
+{
+    EnableAllAbilities();
+}
+```
+
+### EffectHandler Query Methods
+
+**Effect State Queries:**
+
+```csharp
+// Check if a specific effect is currently active
+if (effectHandler.IsEffectActive(hasteEffect))
+{
+    ShowHasteIndicator();
+}
+
+// Get the stack count for an effect
+int hasteStacks = effectHandler.GetEffectStackCount(hasteEffect);
+Debug.Log($"Haste stacks: {hasteStacks}");
+
+// Get remaining duration for a specific effect instance
+if (effectHandler.TryGetRemainingDuration(effectHandle, out float remaining))
+{
+    UpdateDurationUI(remaining);
+}
+```
+
+**Effect Manipulation:**
+
+```csharp
+// Refresh an effect's duration
+if (effectHandler.RefreshEffect(effectHandle))
+{
+    Debug.Log("Effect duration refreshed");
+}
+
+// Refresh effect ignoring reapplication policy
+effectHandler.RefreshEffect(effectHandle, ignoreReapplicationPolicy: true);
+```
+
 ## FAQ
 
-Q: Why didn’t I get an `EffectHandle`?
+Q: Why didn't I get an `EffectHandle`?
 
 - Instant effects modify the base value permanently and do not return a handle (`null`). Duration/Infinite do.
 
@@ -403,6 +543,14 @@ Q: Two systems apply the same tag. Who owns removal?
 Q: When should I use tags vs checking stats?
 
 - Use tags to represent categorical states (e.g., Stunned/Poisoned/Invulnerable) independent from numeric values. Check stats for numeric thresholds or calculations.
+
+Q: How do I check if an effect modifies a specific attribute?
+
+- Use `effect.ModifiesAttribute("AttributeName")` to check if an effect contains modifications for a specific attribute, or `effect.GetModifications("AttributeName", buffer)` to retrieve all modifications for that attribute.
+
+Q: How do I query tag counts or check multiple tags at once?
+
+- Use `TryGetTagCount(tag, out int count)` to get the active count for a tag, `HasAllTags(tags)` to check if all tags are active, or `HasNoneOfTags(tags)` to check if none are active.
 
 ## Troubleshooting
 

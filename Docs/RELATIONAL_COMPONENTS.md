@@ -10,7 +10,14 @@ Auto-wire components in your hierarchy without `GetComponent` boilerplate. These
 - `ParentComponent` — up the transform hierarchy
 - `ChildComponent` — down the transform hierarchy (breadth-first)
 
-Each works with single fields, arrays, `List<T>`, and `HashSet<T>`, supports optional assignment, filters (tag/name), depth limits, max results, and interface/base-type resolution.
+**Collection Type Support:** Each attribute works with:
+
+- Single fields (e.g., `Transform`)
+- Arrays (e.g., `Collider2D[]`)
+- **Lists** (e.g., `List<Rigidbody2D>`)
+- **HashSets** (e.g., `HashSet<Renderer>`)
+
+All attributes support optional assignment, filters (tag/name), depth limits, max results, and interface/base-type resolution.
 
 Having issues? Jump to Troubleshooting: see [Troubleshooting](#troubleshooting).
 
@@ -197,7 +204,8 @@ Examples:
 [SiblingComponent] private Animator animator;                 // required by default
 [SiblingComponent(Optional = true)] private Rigidbody2D rb;   // optional
 [SiblingComponent(TagFilter = "Visual", NameFilter = "Sprite")] private Component[] visuals;
-[SiblingComponent(MaxCount = 2)] private List<Collider2D> firstTwo;
+[SiblingComponent(MaxCount = 2)] private List<Collider2D> firstTwo;  // List<T> supported
+[SiblingComponent] private HashSet<Renderer> allRenderers;     // HashSet<T> supported
 ```
 
 ### ParentComponent
@@ -232,7 +240,10 @@ Examples:
 // First matching descendant with a tag
 [ChildComponent(OnlyDescendants = true, TagFilter = "Weapon")] private Collider2D weaponCollider;
 
-// Gather into a hash set (unique results) and limit count
+// Gather into a List (preserves insertion order)
+[ChildComponent(OnlyDescendants = true)] private List<MeshRenderer> childRenderers;
+
+// Gather into a HashSet (unique results, no duplicates) and limit count
 [ChildComponent(OnlyDescendants = true, MaxCount = 10)] private HashSet<Rigidbody2D> firstTenRigidbodies;
 ```
 
@@ -260,6 +271,39 @@ Examples:
 
 - `AllowInterfaces` (default: true)
   - If `true`, can assign by interface or base type; set `false` to restrict to concrete types
+
+### Choosing the Right Collection Type
+
+**Use Arrays (`T[]`)** when:
+
+- Collection size is fixed or rarely changes
+- Need the smallest memory footprint
+- Interoperating with APIs that require arrays
+
+**Use Lists (`List<T>`)** when:
+
+- Need insertion order preserved
+- Plan to add/remove elements after assignment
+- Want indexed access with `[]` operator
+- Need compatibility with most LINQ operations
+
+**Use HashSets (`HashSet<T>`)** when:
+
+- Need guaranteed uniqueness (no duplicates)
+- Performing frequent membership tests (`Contains()`)
+- Order doesn't matter
+- Want O(1) lookup performance
+
+```csharp
+// Arrays: Fixed size, minimal overhead
+[ChildComponent] private Collider2D[] colliders;
+
+// Lists: Dynamic, ordered, index-based access
+[ChildComponent] private List<Renderer> renderers;
+
+// HashSets: Unique, fast lookups, unordered
+[ChildComponent] private HashSet<AudioSource> audioSources;
+```
 
 ## Recipes
 
@@ -564,7 +608,8 @@ Common pitfalls and how to avoid them
 
 **DI Integration Samples:**
 
-- [VContainer Integration](Samples~/DI%20-%20VContainer/README.md) - Complete VContainer setup guide
-- [Zenject Integration](Samples~/DI%20-%20Zenject/README.md) - Complete Zenject setup guide
+- [VContainer Integration](../Samples~/DI%20-%20VContainer/README.md) - Complete VContainer setup guide
+- [Zenject Integration](../Samples~/DI%20-%20Zenject/README.md) - Complete Zenject setup guide
+- [Reflex Integration](../Samples~/DI%20-%20Reflex/README.md) - Complete Reflex setup guide
 
 **Need help?** [Open an issue](https://github.com/wallstop/unity-helpers/issues) | [Troubleshooting](#troubleshooting)
