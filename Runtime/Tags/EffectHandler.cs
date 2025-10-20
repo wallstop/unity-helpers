@@ -184,6 +184,185 @@ namespace WallstopStudios.UnityHelpers.Tags
             _appliedEffects.Clear();
         }
 
+        /// <summary>
+        /// Determines whether the specified effect is currently active on this handler.
+        /// </summary>
+        /// <param name="effect">The effect to check.</param>
+        /// <returns><c>true</c> if at least one handle for the effect is active; otherwise, <c>false</c>.</returns>
+        public bool IsEffectActive(AttributeEffect effect)
+        {
+            if (effect == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < _appliedEffects.Count; ++i)
+            {
+                EffectHandle handle = _appliedEffects[i];
+                if (handle.effect == effect)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Gets the number of active handles for the specified effect.
+        /// </summary>
+        /// <param name="effect">The effect to count.</param>
+        /// <returns>The number of active handles associated with <paramref name="effect"/>.</returns>
+        public int GetEffectStackCount(AttributeEffect effect)
+        {
+            if (effect == null)
+            {
+                return 0;
+            }
+
+            int count = 0;
+            for (int i = 0; i < _appliedEffects.Count; ++i)
+            {
+                EffectHandle handle = _appliedEffects[i];
+                if (handle.effect == effect)
+                {
+                    ++count;
+                }
+            }
+
+            return count;
+        }
+
+        /// <summary>
+        /// Copies all active effect handles into the provided buffer.
+        /// </summary>
+        /// <param name="buffer">
+        /// Optional list to populate. When <c>null</c>, a new list is created. The buffer is cleared before population.
+        /// </param>
+        /// <returns>The populated buffer containing all currently active effect handles.</returns>
+        public List<EffectHandle> GetActiveEffects(List<EffectHandle> buffer = null)
+        {
+            buffer ??= new List<EffectHandle>();
+            buffer.Clear();
+            buffer.AddRange(_appliedEffects);
+            return buffer;
+        }
+
+        /// <summary>
+        /// Attempts to retrieve the remaining duration for the specified effect handle.
+        /// </summary>
+        /// <param name="handle">The handle to inspect.</param>
+        /// <param name="remainingDuration">When this method returns, contains the remaining time in seconds, or zero if unavailable.</param>
+        /// <returns><c>true</c> if the handle has a tracked duration; otherwise, <c>false</c>.</returns>
+        public bool TryGetRemainingDuration(EffectHandle handle, out float remainingDuration)
+        {
+            long handleId = handle.id;
+            if (!_effectExpirations.TryGetValue(handleId, out float expiration))
+            {
+                remainingDuration = 0f;
+                return false;
+            }
+
+            float timeRemaining = expiration - Time.time;
+            if (timeRemaining < 0f)
+            {
+                timeRemaining = 0f;
+            }
+
+            remainingDuration = timeRemaining;
+            return true;
+        }
+
+        /// <summary>
+        /// Ensures an effect handle exists for the specified effect, optionally refreshing its duration if already active.
+        /// </summary>
+        /// <param name="effect">The effect to apply or refresh.</param>
+        /// <returns>An active handle for the effect, or <c>null</c> for instant effects.</returns>
+        public EffectHandle? EnsureHandle(AttributeEffect effect)
+        {
+            return EnsureHandle(effect, refreshDuration: true);
+        }
+
+        /// <summary>
+        /// Ensures an effect handle exists for the specified effect, optionally refreshing its duration if already active.
+        /// </summary>
+        /// <param name="effect">The effect to apply or refresh.</param>
+        /// <param name="refreshDuration">
+        /// When <c>true</c>, attempts to refresh the effect's duration when it is already active and supports reapplication.
+        /// </param>
+        /// <returns>An active handle for the effect, or <c>null</c> for instant effects.</returns>
+        public EffectHandle? EnsureHandle(AttributeEffect effect, bool refreshDuration)
+        {
+            if (effect == null)
+            {
+                return null;
+            }
+
+            for (int i = 0; i < _appliedEffects.Count; ++i)
+            {
+                EffectHandle handle = _appliedEffects[i];
+                if (handle.effect == effect)
+                {
+                    if (refreshDuration)
+                    {
+                        _ = RefreshEffect(handle);
+                    }
+
+                    return handle;
+                }
+            }
+
+            return ApplyEffect(effect);
+        }
+
+        /// <summary>
+        /// Attempts to refresh the duration of the specified effect handle.
+        /// </summary>
+        /// <param name="handle">The handle to refresh.</param>
+        /// <returns><c>true</c> if the duration was refreshed; otherwise, <c>false</c>.</returns>
+        public bool RefreshEffect(EffectHandle handle)
+        {
+            return RefreshEffect(handle, ignoreReapplicationPolicy: false);
+        }
+
+        /// <summary>
+        /// Attempts to refresh the duration of the specified effect handle.
+        /// </summary>
+        /// <param name="handle">The handle to refresh.</param>
+        /// <param name="ignoreReapplicationPolicy">
+        /// When <c>true</c>, refreshes the duration even if <see cref="AttributeEffect.resetDurationOnReapplication"/> is <c>false</c>.
+        /// </param>
+        /// <returns><c>true</c> if the duration was refreshed; otherwise, <c>false</c>.</returns>
+        public bool RefreshEffect(EffectHandle handle, bool ignoreReapplicationPolicy)
+        {
+            AttributeEffect effect = handle.effect;
+            if (effect == null)
+            {
+                return false;
+            }
+
+            if (effect.durationType != ModifierDurationType.Duration)
+            {
+                return false;
+            }
+
+            if (!ignoreReapplicationPolicy && !effect.resetDurationOnReapplication)
+            {
+                return false;
+            }
+
+            long handleId = handle.id;
+            if (!_effectExpirations.ContainsKey(handleId))
+            {
+                return false;
+            }
+
+            float newExpiration = Time.time + effect.duration;
+            _effectExpirations[handleId] = newExpiration;
+            _effectHandlesById[handleId] = handle;
+            return true;
+        }
+
         private void InternalRemoveEffect(EffectHandle handle)
         {
             foreach (AttributesComponent attributesComponent in _attributes)

@@ -251,6 +251,304 @@ namespace WallstopStudios.UnityHelpers.Tags
         }
 
         /// <summary>
+        /// Checks whether all of the specified tags are currently active.
+        /// Optimized for different collection types with specialized implementations.
+        /// </summary>
+        /// <param name="effectTags">The collection of tags to check.</param>
+        /// <returns><c>true</c> if all tags are active; otherwise, <c>false</c>. Returns <c>false</c> when <paramref name="effectTags"/> is <c>null</c>.</returns>
+        public bool HasAllTags(IEnumerable<string> effectTags)
+        {
+            if (effectTags == null)
+            {
+                return false;
+            }
+
+            switch (effectTags)
+            {
+                case IReadOnlyList<string> list:
+                {
+                    return HasAllTags(list);
+                }
+                case HashSet<string> hashSet:
+                {
+                    foreach (string effectTag in hashSet)
+                    {
+                        if (string.IsNullOrEmpty(effectTag))
+                        {
+                            continue;
+                        }
+                        if (!_tagCount.ContainsKey(effectTag))
+                        {
+                            return false;
+                        }
+                    }
+
+                    return true;
+                }
+                case SortedSet<string> sortedSet:
+                {
+                    foreach (string effectTag in sortedSet)
+                    {
+                        if (string.IsNullOrEmpty(effectTag))
+                        {
+                            continue;
+                        }
+                        if (!_tagCount.ContainsKey(effectTag))
+                        {
+                            return false;
+                        }
+                    }
+
+                    return true;
+                }
+                case Queue<string> queue:
+                {
+                    foreach (string effectTag in queue)
+                    {
+                        if (string.IsNullOrEmpty(effectTag))
+                        {
+                            continue;
+                        }
+                        if (!_tagCount.ContainsKey(effectTag))
+                        {
+                            return false;
+                        }
+                    }
+
+                    return true;
+                }
+                case Stack<string> stack:
+                {
+                    foreach (string effectTag in stack)
+                    {
+                        if (string.IsNullOrEmpty(effectTag))
+                        {
+                            continue;
+                        }
+                        if (!_tagCount.ContainsKey(effectTag))
+                        {
+                            return false;
+                        }
+                    }
+
+                    return true;
+                }
+                case LinkedList<string> linkedList:
+                {
+                    foreach (string effectTag in linkedList)
+                    {
+                        if (string.IsNullOrEmpty(effectTag))
+                        {
+                            continue;
+                        }
+                        if (!_tagCount.ContainsKey(effectTag))
+                        {
+                            return false;
+                        }
+                    }
+
+                    return true;
+                }
+            }
+
+            foreach (string effectTag in effectTags)
+            {
+                if (string.IsNullOrEmpty(effectTag))
+                {
+                    continue;
+                }
+                if (!_tagCount.ContainsKey(effectTag))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Checks whether all of the specified tags are active.
+        /// Optimized for IReadOnlyList with index-based iteration.
+        /// </summary>
+        /// <param name="effectTags">The list of tags to check.</param>
+        /// <returns><c>true</c> if all of the tags are active, or if the list is empty; otherwise, <c>false</c>.</returns>
+        public bool HasAllTags(IReadOnlyList<string> effectTags)
+        {
+            if (effectTags == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < effectTags.Count; ++i)
+            {
+                string effectTag = effectTags[i];
+                if (string.IsNullOrEmpty(effectTag))
+                {
+                    continue;
+                }
+
+                if (!_tagCount.ContainsKey(effectTag))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Determines whether none of the specified tags are active.
+        /// </summary>
+        /// <param name="effectTags">The collection of tags to inspect.</param>
+        /// <returns>
+        /// <c>true</c> when the collection is <c>null</c>, empty, or every tag is currently inactive; otherwise, <c>false</c>.
+        /// </returns>
+        /// <example>
+        /// <code>
+        /// if (tagHandler.HasNoneOfTags(new[] { "Stunned", "Frozen" }))
+        /// {
+        ///     EnablePlayerInput();
+        /// }
+        /// </code>
+        /// </example>
+        public bool HasNoneOfTags(IEnumerable<string> effectTags)
+        {
+            if (effectTags == null)
+            {
+                return true;
+            }
+
+            return !HasAnyTag(effectTags);
+        }
+
+        /// <summary>
+        /// Determines whether none of the specified tags are active.
+        /// </summary>
+        /// <param name="effectTags">The list of tags to inspect.</param>
+        /// <returns>
+        /// <c>true</c> when the list is <c>null</c>, empty, or every tag is currently inactive; otherwise, <c>false</c>.
+        /// </returns>
+        public bool HasNoneOfTags(IReadOnlyList<string> effectTags)
+        {
+            if (effectTags == null)
+            {
+                return true;
+            }
+
+            return !HasAnyTag(effectTags);
+        }
+
+        /// <summary>
+        /// Attempts to retrieve the active instance count for the specified tag.
+        /// </summary>
+        /// <param name="effectTag">The tag whose count should be retrieved.</param>
+        /// <param name="count">
+        /// When this method returns, contains the active count for the tag (cast to <see cref="int"/>) if found; otherwise, zero.
+        /// </param>
+        /// <returns><c>true</c> if the tag is currently tracked; otherwise, <c>false</c>.</returns>
+        /// <example>
+        /// <code>
+        /// if (tagHandler.TryGetTagCount("Poisoned", out int stacks) && stacks >= 3)
+        /// {
+        ///     TriggerCriticalWarning();
+        /// }
+        /// </code>
+        /// </example>
+        public bool TryGetTagCount(string effectTag, out int count)
+        {
+            if (string.IsNullOrEmpty(effectTag))
+            {
+                count = default;
+                return false;
+            }
+
+            if (_tagCount.TryGetValue(effectTag, out uint uintCount))
+            {
+                count = unchecked((int)uintCount);
+                return true;
+            }
+
+            count = default;
+            return false;
+        }
+
+        /// <summary>
+        /// Retrieves the set of currently active tags into an optional buffer.
+        /// </summary>
+        /// <param name="buffer">
+        /// Optional list to populate. When <c>null</c>, a new list is created. The buffer is cleared before population.
+        /// </param>
+        /// <returns>The populated buffer containing all active tags.</returns>
+        /// <example>
+        /// <code>
+        /// List&lt;string&gt; activeTags = tagHandler.GetActiveTags(_reusableTagBuffer);
+        /// if (activeTags.Contains("Rooted"))
+        /// {
+        ///     DisableMovement();
+        /// }
+        /// </code>
+        /// </example>
+        public List<string> GetActiveTags(List<string> buffer = null)
+        {
+            buffer ??= new List<string>();
+            buffer.Clear();
+            foreach (KeyValuePair<string, uint> entry in _tagCount)
+            {
+                if (entry.Value == 0)
+                {
+                    continue;
+                }
+
+                buffer.Add(entry.Key);
+            }
+
+            return buffer;
+        }
+
+        /// <summary>
+        /// Collects all active effect handles that currently contribute the specified tag.
+        /// </summary>
+        /// <param name="effectTag">The tag to query.</param>
+        /// <param name="buffer">
+        /// Optional list to populate. When <c>null</c>, a new list is created. The buffer is cleared before population.
+        /// </param>
+        /// <returns>The populated buffer containing matching effect handles.</returns>
+        /// <example>
+        /// <code>
+        /// List&lt;EffectHandle&gt; handles = tagHandler.GetHandlesWithTag("Burning", _handleBuffer);
+        /// foreach (EffectHandle handle in handles)
+        /// {
+        ///     effectHandler.RemoveEffect(handle);
+        /// }
+        /// </code>
+        /// </example>
+        public List<EffectHandle> GetHandlesWithTag(
+            string effectTag,
+            List<EffectHandle> buffer = null
+        )
+        {
+            buffer ??= new List<EffectHandle>();
+            buffer.Clear();
+            if (string.IsNullOrEmpty(effectTag))
+            {
+                return buffer;
+            }
+
+            foreach (EffectHandle handle in _effectHandles.Values)
+            {
+                if (
+                    handle.effect.effectTags != null
+                    && handle.effect.effectTags.Contains(effectTag)
+                )
+                {
+                    buffer.Add(handle);
+                }
+            }
+
+            return buffer;
+        }
+
+        /// <summary>
         /// Applies a tag, incrementing its count. If the tag is new, raises <see cref="OnTagAdded"/>.
         /// Otherwise, raises <see cref="OnTagCountChanged"/>.
         /// </summary>
@@ -261,22 +559,52 @@ namespace WallstopStudios.UnityHelpers.Tags
         }
 
         /// <summary>
-        /// Removes one or all instances of a tag.
+        /// Removes all instances of the specified tag and returns the contributing effect handles.
         /// </summary>
         /// <param name="effectTag">The tag to remove.</param>
-        /// <param name="allInstances">
-        /// If true, completely removes the tag regardless of count.
-        /// If false, decrements the count by 1, removing it only when count reaches 0.
+        /// <param name="buffer">
+        /// Optional list that receives the handles whose effects applied <paramref name="effectTag"/>.
+        /// When <c>null</c>, a new list is created. The buffer is cleared before population.
         /// </param>
-        public void RemoveTag(string effectTag, bool allInstances)
+        /// <returns>
+        /// The populated buffer of handles whose tags were removed. The buffer is empty when the tag was not active.
+        /// </returns>
+        /// <example>
+        /// <code>
+        /// List&lt;EffectHandle&gt; dispelled = tagHandler.RemoveTag("Stunned", _handles);
+        /// foreach (EffectHandle handle in dispelled)
+        /// {
+        ///     NotifyDispel(handle);
+        /// }
+        /// </code>
+        /// </example>
+        public List<EffectHandle> RemoveTag(string effectTag, List<EffectHandle> buffer = null)
         {
-            if (allInstances)
+            buffer ??= new List<EffectHandle>();
+            buffer.Clear();
+            if (string.IsNullOrEmpty(effectTag))
             {
-                _tagCount.Remove(effectTag);
-                return;
+                return buffer;
             }
 
-            InternalRemoveTag(effectTag);
+            foreach (EffectHandle handle in _effectHandles.Values)
+            {
+                if (
+                    handle.effect.effectTags != null
+                    && handle.effect.effectTags.Contains(effectTag)
+                )
+                {
+                    buffer.Add(handle);
+                }
+            }
+
+            foreach (EffectHandle handle in buffer)
+            {
+                ForceRemoveTags(handle);
+            }
+
+            InternalRemoveTag(effectTag, allInstances: true);
+            return buffer;
         }
 
         /// <summary>
@@ -292,7 +620,7 @@ namespace WallstopStudios.UnityHelpers.Tags
                 return;
             }
 
-            ForceApplyEffect(handle.effect);
+            ApplyEffectTags(handle.effect);
         }
 
         /// <summary>
@@ -302,10 +630,7 @@ namespace WallstopStudios.UnityHelpers.Tags
         /// <param name="effect">The effect containing tags to apply.</param>
         public void ForceApplyEffect(AttributeEffect effect)
         {
-            foreach (string effectTag in effect.effectTags)
-            {
-                InternalApplyTag(effectTag);
-            }
+            ApplyEffectTags(effect);
         }
 
         /// <summary>
@@ -321,11 +646,7 @@ namespace WallstopStudios.UnityHelpers.Tags
                 return false;
             }
 
-            foreach (string effectTag in appliedHandle.effect.effectTags)
-            {
-                InternalRemoveTag(effectTag);
-            }
-
+            RemoveEffectTags(appliedHandle.effect);
             return true;
         }
 
@@ -346,7 +667,7 @@ namespace WallstopStudios.UnityHelpers.Tags
             }
         }
 
-        private void InternalRemoveTag(string effectTag)
+        private void InternalRemoveTag(string effectTag, bool allInstances)
         {
             if (!_tagCount.TryGetValue(effectTag, out uint count))
             {
@@ -355,7 +676,14 @@ namespace WallstopStudios.UnityHelpers.Tags
 
             if (count != 0)
             {
-                --count;
+                if (!allInstances)
+                {
+                    --count;
+                }
+                else
+                {
+                    count = 0;
+                }
             }
 
             if (count == 0)
@@ -367,6 +695,32 @@ namespace WallstopStudios.UnityHelpers.Tags
             {
                 _tagCount[effectTag] = count;
                 OnTagCountChanged?.Invoke(effectTag, count);
+            }
+        }
+
+        private void ApplyEffectTags(AttributeEffect effect)
+        {
+            if (effect.effectTags == null)
+            {
+                return;
+            }
+
+            foreach (string effectTag in effect.effectTags)
+            {
+                InternalApplyTag(effectTag);
+            }
+        }
+
+        private void RemoveEffectTags(AttributeEffect effect)
+        {
+            if (effect.effectTags == null)
+            {
+                return;
+            }
+
+            foreach (string effectTag in effect.effectTags)
+            {
+                InternalRemoveTag(effectTag, allInstances: false);
             }
         }
     }

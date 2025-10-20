@@ -2,6 +2,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 {
     using System;
     using System.Collections.Concurrent;
+    using System.Threading.Tasks;
     using UnityEngine;
     using Utils;
 #if UNITY_EDITOR
@@ -104,7 +105,8 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// </summary>
         public System.Threading.Tasks.Task RunAsync(Action action)
         {
-            var tcs = new System.Threading.Tasks.TaskCompletionSource<bool>();
+            TaskCompletionSource<bool> tcs =
+                new System.Threading.Tasks.TaskCompletionSource<bool>();
             RunOnMainThread(() =>
             {
                 try
@@ -125,7 +127,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// </summary>
         public System.Threading.Tasks.Task<T> Post<T>(Func<T> func)
         {
-            var tcs = new System.Threading.Tasks.TaskCompletionSource<T>();
+            TaskCompletionSource<T> tcs = new System.Threading.Tasks.TaskCompletionSource<T>();
             RunOnMainThread(() =>
             {
                 try
