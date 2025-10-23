@@ -16,19 +16,19 @@ This page explains how the 2D and 3D spatial structures compare in terms of corr
 
 Illustrations:
 
-![QuadTree2D](Docs/Images/quadtree_2d.svg)
+![QuadTree2D](Images/quadtree_2d.svg)
 
-![KDTree2D](Docs/Images/kdtree_2d.svg)
+![KDTree2D](Images/kdtree_2d.svg)
 
-![RTree2D](Docs/Images/rtree_2d.svg)
+![RTree2D](Images/rtree_2d.svg)
 
 3D Variants
 
-![Octree3D](Docs/Images/octree_3d.svg)
+![Octree3D](Images/octree_3d.svg)
 
-![KDTree3D](Docs/Images/kdtree_3d.svg)
+![KDTree3D](Images/kdtree_3d.svg)
 
-![RTree3D](Docs/Images/rtree_3d.svg)
+![RTree3D](Images/rtree_3d.svg)
 
 Diagram notes
 
@@ -91,7 +91,7 @@ Key reasons and scenarios:
 
 ## Boundary Semantics
 
-![Query Boundaries](Docs/Images/query_boundaries.svg)
+![Query Boundaries](Images/query_boundaries.svg)
 
 Tips
 

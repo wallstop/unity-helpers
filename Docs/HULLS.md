@@ -18,7 +18,7 @@ This guide explains convex and concave hulls, when to use each, and how they dif
 
 Illustration:
 
-![Convex Hull](Docs/Images/convex_hull.svg)
+![Convex Hull](Images/convex_hull.svg)
 
 ## Concave Hull
 
@@ -31,7 +31,7 @@ Illustration:
 
 Illustration:
 
-![Concave Hull](Docs/Images/concave_hull.svg)
+![Concave Hull](Images/concave_hull.svg)
 
 ## Choosing Between Them
 

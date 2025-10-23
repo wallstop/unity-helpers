@@ -188,7 +188,7 @@ See [Buffering Pattern](../README.md#buffering-pattern) for the complete guide a
 - Pros: Simple structure; predictable performance; incremental updates straightforward.
 - Cons: Data hotspots deepen local trees; nearest neighbors slower than KDTree.
 
-Diagram: ![QuadTree2D](Docs/Images/quadtree_2d.svg)
+Diagram: ![QuadTree2D](Images/quadtree_2d.svg)
 
 ### KDTree2D
 
@@ -197,7 +197,7 @@ Diagram: ![QuadTree2D](Docs/Images/quadtree_2d.svg)
 - Pros: Strong NN performance; balanced variant gives consistent query time.
 - Cons: Costly to maintain under heavy churn; unbalanced variant can degrade.
 
-Diagram: ![KDTree2D](Docs/Images/kdtree_2d.svg)
+Diagram: ![KDTree2D](Images/kdtree_2d.svg)
 
 ### RTree2D
 
@@ -206,7 +206,7 @@ Diagram: ![KDTree2D](Docs/Images/kdtree_2d.svg)
 - Pros: Great for large bounds queries; matches bounds semantics.
 - Cons: Overlapping MBRs can increase node visits; not optimal for point NN.
 
-Diagram: ![RTree2D](Docs/Images/rtree_2d.svg)
+Diagram: ![RTree2D](Images/rtree_2d.svg)
 
 ## Choosing a Structure
 

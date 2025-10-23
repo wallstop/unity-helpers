@@ -1,8 +1,10 @@
 namespace WallstopStudios.UnityHelpers.Tags
 {
     using System;
+    using System.Text.Json.Serialization;
     using Core.Extension;
     using Core.Helper;
+    using ProtoBuf;
 
     /// <summary>
     /// Declarative change to an <see cref="Attribute"/> value (add, multiply, or override).
@@ -46,17 +48,20 @@ namespace WallstopStudios.UnityHelpers.Tags
     /// </para>
     /// </remarks>
     [Serializable]
+    [ProtoContract]
     public struct AttributeModification : IEquatable<AttributeModification>
     {
         /// <summary>
         /// The name of the attribute to modify. This should match a field name in an <see cref="AttributesComponent"/> subclass.
         /// </summary>
         [StringInList(typeof(AttributeUtilities), nameof(AttributeUtilities.GetAllAttributeNames))]
+        [ProtoMember(1)]
         public string attribute;
 
         /// <summary>
         /// The type of modification action to perform (Addition, Multiplication, or Override).
         /// </summary>
+        [ProtoMember(2)]
         public ModificationAction action;
 
         /// <summary>
@@ -65,7 +70,16 @@ namespace WallstopStudios.UnityHelpers.Tags
         /// <para>- Multiplication: The multiplier to apply (e.g., 1.5 for +50%, 0.5 for -50%)</para>
         /// <para>- Override: The new absolute value to set</para>
         /// </summary>
+        [ProtoMember(3)]
         public float value;
+
+        [JsonConstructor]
+        public AttributeModification(string attribute, ModificationAction action, float value)
+        {
+            this.attribute = attribute;
+            this.action = action;
+            this.value = value;
+        }
 
         /// <summary>
         /// Converts this modification to a JSON string representation.

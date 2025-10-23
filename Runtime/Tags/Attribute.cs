@@ -41,7 +41,6 @@ namespace WallstopStudios.UnityHelpers.Tags
     /// </para>
     /// </remarks>
     [Serializable]
-    [ProtoContract]
     public sealed class Attribute
         : IEquatable<Attribute>,
             IEquatable<float>,
@@ -92,50 +91,8 @@ namespace WallstopStudios.UnityHelpers.Tags
 
         private bool _currentValueCalculated;
 
-        /// <summary>
-        /// Recalculates the current value by applying all active modifications to the base value.
-        /// Modifications are sorted and applied in order: Addition, Multiplication, then Override.
-        /// </summary>
-        internal void CalculateCurrentValue()
-        {
-            float calculatedValue = _baseValue;
-            using PooledResource<List<AttributeModification>> modificationBuffer =
-                Buffers<AttributeModification>.List.Get();
-            List<AttributeModification> modifications = modificationBuffer.resource;
-            foreach (
-                KeyValuePair<EffectHandle, List<AttributeModification>> entry in _modifications
-            )
-            {
-                modifications.AddRange(entry.Value);
-            }
-
-            modifications.Sort((a, b) => ((int)a.action).CompareTo((int)b.action));
-
-            foreach (AttributeModification attributeModification in modifications)
-            {
-                ApplyAttributeModification(attributeModification, ref calculatedValue);
-            }
-
-            _currentValue = calculatedValue;
-            _currentValueCalculated = true;
-        }
-
         private readonly Dictionary<EffectHandle, List<AttributeModification>> _modifications =
             new();
-
-        /// <summary>
-        /// Implicitly converts an Attribute to its current float value.
-        /// </summary>
-        /// <param name="attribute">The attribute to convert.</param>
-        /// <returns>The current value of the attribute.</returns>
-        public static implicit operator float(Attribute attribute) => attribute.CurrentValue;
-
-        /// <summary>
-        /// Implicitly converts a float value to an Attribute with that base value.
-        /// </summary>
-        /// <param name="value">The base value for the attribute.</param>
-        /// <returns>A new Attribute with the specified base value.</returns>
-        public static implicit operator Attribute(float value) => new(value);
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Attribute"/> class with a base value of 0.
@@ -165,6 +122,49 @@ namespace WallstopStudios.UnityHelpers.Tags
             _currentValue = currentValue;
             _currentValueCalculated = true;
         }
+
+        /// <summary>
+        /// Recalculates the current value by applying all active modifications to the base value.
+        /// Modifications are sorted and applied in order: Addition, Multiplication, then Override.
+        /// </summary>
+        internal void CalculateCurrentValue()
+        {
+            float calculatedValue = _baseValue;
+            using PooledResource<List<AttributeModification>> modificationBuffer =
+                Buffers<AttributeModification>.List.Get(
+                    out List<AttributeModification> modifications
+                );
+            foreach (
+                KeyValuePair<EffectHandle, List<AttributeModification>> entry in _modifications
+            )
+            {
+                modifications.AddRange(entry.Value);
+            }
+
+            modifications.Sort((a, b) => ((int)a.action).CompareTo((int)b.action));
+
+            foreach (AttributeModification attributeModification in modifications)
+            {
+                ApplyAttributeModification(attributeModification, ref calculatedValue);
+            }
+
+            _currentValue = calculatedValue;
+            _currentValueCalculated = true;
+        }
+
+        /// <summary>
+        /// Implicitly converts an Attribute to its current float value.
+        /// </summary>
+        /// <param name="attribute">The attribute to convert.</param>
+        /// <returns>The current value of the attribute.</returns>
+        public static implicit operator float(Attribute attribute) => attribute.CurrentValue;
+
+        /// <summary>
+        /// Implicitly converts a float value to an Attribute with that base value.
+        /// </summary>
+        /// <param name="value">The base value for the attribute.</param>
+        /// <returns>A new Attribute with the specified base value.</returns>
+        public static implicit operator Attribute(float value) => new(value);
 
         /// <summary>
         /// Applies a temporary additive modification to the attribute.

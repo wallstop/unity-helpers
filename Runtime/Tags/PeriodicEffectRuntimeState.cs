@@ -7,24 +7,23 @@ namespace WallstopStudios.UnityHelpers.Tags
     /// </summary>
     internal sealed class PeriodicEffectRuntimeState
     {
-        internal PeriodicEffectRuntimeState(PeriodicEffectDefinition definition, float startTime)
-        {
-            Definition = definition;
-            ExecutedTicks = 0;
-            float clampedInterval = Mathf.Max(0.01f, definition.interval);
-            Interval = clampedInterval;
-            NextTickTime = startTime + Mathf.Max(0f, definition.initialDelay);
-        }
-
-        internal PeriodicEffectDefinition Definition { get; }
-
-        internal float Interval { get; }
+        internal bool IsComplete => definition.maxTicks > 0 && ExecutedTicks >= definition.maxTicks;
 
         internal float NextTickTime { get; private set; }
 
         internal int ExecutedTicks { get; private set; }
 
-        internal bool IsComplete => Definition.maxTicks > 0 && ExecutedTicks >= Definition.maxTicks;
+        internal readonly PeriodicEffectDefinition definition;
+        internal readonly float interval;
+
+        internal PeriodicEffectRuntimeState(PeriodicEffectDefinition definition, float startTime)
+        {
+            this.definition = definition;
+            ExecutedTicks = 0;
+            float clampedInterval = Mathf.Max(0.01f, definition.interval);
+            interval = clampedInterval;
+            NextTickTime = startTime + Mathf.Max(0f, definition.initialDelay);
+        }
 
         internal bool TryConsumeTick(float currentTime)
         {
@@ -34,7 +33,7 @@ namespace WallstopStudios.UnityHelpers.Tags
             }
 
             ++ExecutedTicks;
-            NextTickTime = currentTime + Interval;
+            NextTickTime = currentTime + interval;
             return true;
         }
     }

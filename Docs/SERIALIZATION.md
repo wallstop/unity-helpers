@@ -8,7 +8,7 @@
 
 Visuals
 
-![Serialization Flow](Docs/Images/serialization_flow.svg)
+![Serialization Flow](Images/serialization_flow.svg)
 
 This package provides fast, compact serialization for save systems, configuration, and networking with a unified API.
 

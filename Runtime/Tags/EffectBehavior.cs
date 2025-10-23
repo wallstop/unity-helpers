@@ -42,38 +42,38 @@ namespace WallstopStudios.UnityHelpers.Tags
     /// </summary>
     public readonly struct EffectBehaviorContext
     {
-        public EffectBehaviorContext(EffectHandler handler, EffectHandle handle, float deltaTime)
-        {
-            Handler = handler;
-            Handle = handle;
-            DeltaTime = deltaTime;
-        }
-
-        /// <summary>
-        /// Gets the handler managing the effect.
-        /// </summary>
-        public EffectHandler Handler { get; }
-
-        /// <summary>
-        /// Gets the handle associated with this behaviour invocation.
-        /// </summary>
-        public EffectHandle Handle { get; }
-
         /// <summary>
         /// Gets the effect asset backing the handle.
         /// </summary>
-        public AttributeEffect Effect => Handle.effect;
+        public AttributeEffect Effect => handle.effect;
 
         /// <summary>
         /// Gets the GameObject targeted by the effect handler.
         /// </summary>
-        public GameObject Target => Handler.gameObject;
+        public GameObject Target => handler.gameObject;
 
         /// <summary>
         /// Gets the deltaTime used for the current invocation. For <see cref="EffectBehavior.OnApply"/>,
         /// this value is zero.
         /// </summary>
-        public float DeltaTime { get; }
+        public readonly float deltaTime;
+
+        /// <summary>
+        /// Gets the handler managing the effect.
+        /// </summary>
+        public readonly EffectHandler handler;
+
+        /// <summary>
+        /// Gets the handle associated with this behaviour invocation.
+        /// </summary>
+        public readonly EffectHandle handle;
+
+        public EffectBehaviorContext(EffectHandler handler, EffectHandle handle, float deltaTime)
+        {
+            this.handler = handler;
+            this.handle = handle;
+            this.deltaTime = deltaTime;
+        }
     }
 
     /// <summary>
@@ -81,30 +81,30 @@ namespace WallstopStudios.UnityHelpers.Tags
     /// </summary>
     public readonly struct PeriodicEffectTickContext
     {
+        /// <summary>
+        /// Gets the periodic definition that produced this tick.
+        /// </summary>
+        public readonly PeriodicEffectDefinition definition;
+
+        /// <summary>
+        /// Gets the number of ticks executed so far, including this one.
+        /// </summary>
+        public readonly int executedTicks;
+
+        /// <summary>
+        /// Gets the timestamp when the tick occurred.
+        /// </summary>
+        public readonly float currentTime;
+
         public PeriodicEffectTickContext(
             PeriodicEffectDefinition definition,
             int executedTicks,
             float currentTime
         )
         {
-            Definition = definition;
-            ExecutedTicks = executedTicks;
-            CurrentTime = currentTime;
+            this.definition = definition;
+            this.executedTicks = executedTicks;
+            this.currentTime = currentTime;
         }
-
-        /// <summary>
-        /// Gets the periodic definition that produced this tick.
-        /// </summary>
-        public PeriodicEffectDefinition Definition { get; }
-
-        /// <summary>
-        /// Gets the number of ticks executed so far, including this one.
-        /// </summary>
-        public int ExecutedTicks { get; }
-
-        /// <summary>
-        /// Gets the timestamp when the tick occurred.
-        /// </summary>
-        public float CurrentTime { get; }
     }
 }

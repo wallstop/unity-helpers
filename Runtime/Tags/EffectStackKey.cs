@@ -1,6 +1,7 @@
 namespace WallstopStudios.UnityHelpers.Tags
 {
     using System;
+    using WallstopStudios.UnityHelpers.Core.Helper;
 
     /// <summary>
     /// Key used to group effect handles for stacking decisions.
@@ -56,12 +57,12 @@ namespace WallstopStudios.UnityHelpers.Tags
         {
             return _group switch
             {
-                EffectStackGroup.Reference => HashCode.Combine(_group, _effect),
-                EffectStackGroup.CustomKey => HashCode.Combine(
+                EffectStackGroup.Reference => Objects.HashCode(_group, _effect),
+                EffectStackGroup.CustomKey => Objects.HashCode(
                     _group,
                     _customKey != null ? StringComparer.Ordinal.GetHashCode(_customKey) : 0
                 ),
-                _ => _group.GetHashCode(),
+                _ => Objects.HashCode(_group),
             };
         }
 
