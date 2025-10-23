@@ -7,6 +7,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags.Helpers
     {
         private static readonly HashSet<int> InstanceIds = new();
 
+        public static List<EffectBehaviorContext> ApplyContexts { get; } = new();
+
+        public static List<EffectBehaviorContext> TickContexts { get; } = new();
+
+        public static List<PeriodicInvocation> PeriodicInvocations { get; } = new();
+
+        public static List<EffectBehaviorContext> RemoveContexts { get; } = new();
+
         public static int ApplyCount { get; private set; }
 
         public static int TickCount { get; private set; }
@@ -24,6 +32,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags.Helpers
             PeriodicTickCount = 0;
             RemoveCount = 0;
             InstanceIds.Clear();
+            ApplyContexts.Clear();
+            TickContexts.Clear();
+            PeriodicInvocations.Clear();
+            RemoveContexts.Clear();
         }
 
         private void OnEnable()
@@ -34,11 +46,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags.Helpers
         public override void OnApply(EffectBehaviorContext context)
         {
             ++ApplyCount;
+            ApplyContexts.Add(context);
         }
 
         public override void OnTick(EffectBehaviorContext context)
         {
             ++TickCount;
+            TickContexts.Add(context);
         }
 
         public override void OnPeriodicTick(
@@ -47,11 +61,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags.Helpers
         )
         {
             ++PeriodicTickCount;
+            PeriodicInvocations.Add(new PeriodicInvocation(context, tickContext));
         }
 
         public override void OnRemove(EffectBehaviorContext context)
         {
             ++RemoveCount;
+            RemoveContexts.Add(context);
+        }
+
+        public readonly struct PeriodicInvocation
+        {
+            public PeriodicInvocation(
+                EffectBehaviorContext context,
+                PeriodicEffectTickContext tickContext
+            )
+            {
+                Context = context;
+                TickContext = tickContext;
+            }
+
+            public EffectBehaviorContext Context { get; }
+
+            public PeriodicEffectTickContext TickContext { get; }
         }
     }
 }
