@@ -2,7 +2,7 @@
 
 Visual
 
-![Singletons Lifecycle](Docs/Images/singletons_lifecycle.svg)
+![Singletons Lifecycle](Images/singletons_lifecycle.svg)
 
 This package includes two lightweight, production‑ready singleton helpers that make global access patterns safe, consistent, and testable:
 
@@ -403,7 +403,7 @@ Use alternatives when one or more of these apply:
 
 Use this chart to pick an approach based on constraints:
 
-![Data Distribution Strategy](Docs/Images/data_distribution_decision.svg)
+![Data Distribution Strategy](Images/data_distribution_decision.svg)
 
 <a id="troubleshooting"></a>
 

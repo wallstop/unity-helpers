@@ -4,6 +4,7 @@ namespace WallstopStudios.UnityHelpers.Tags
     using System.Collections.Generic;
     using System.ComponentModel;
     using System.Globalization;
+    using System.Runtime.CompilerServices;
     using System.Runtime.Serialization;
     using System.Text.Json.Serialization;
     using Core.Extension;
@@ -40,7 +41,6 @@ namespace WallstopStudios.UnityHelpers.Tags
     /// </para>
     /// </remarks>
     [Serializable]
-    [ProtoContract]
     public sealed class Attribute
         : IEquatable<Attribute>,
             IEquatable<float>,
@@ -91,50 +91,8 @@ namespace WallstopStudios.UnityHelpers.Tags
 
         private bool _currentValueCalculated;
 
-        /// <summary>
-        /// Recalculates the current value by applying all active modifications to the base value.
-        /// Modifications are sorted and applied in order: Addition, Multiplication, then Override.
-        /// </summary>
-        internal void CalculateCurrentValue()
-        {
-            float calculatedValue = _baseValue;
-            using PooledResource<List<AttributeModification>> modificationBuffer =
-                Buffers<AttributeModification>.List.Get();
-            List<AttributeModification> modifications = modificationBuffer.resource;
-            foreach (
-                KeyValuePair<EffectHandle, List<AttributeModification>> entry in _modifications
-            )
-            {
-                modifications.AddRange(entry.Value);
-            }
-
-            modifications.Sort((a, b) => ((int)a.action).CompareTo((int)b.action));
-
-            foreach (AttributeModification attributeModification in modifications)
-            {
-                ApplyAttributeModification(attributeModification, ref calculatedValue);
-            }
-
-            _currentValue = calculatedValue;
-            _currentValueCalculated = true;
-        }
-
         private readonly Dictionary<EffectHandle, List<AttributeModification>> _modifications =
             new();
-
-        /// <summary>
-        /// Implicitly converts an Attribute to its current float value.
-        /// </summary>
-        /// <param name="attribute">The attribute to convert.</param>
-        /// <returns>The current value of the attribute.</returns>
-        public static implicit operator float(Attribute attribute) => attribute.CurrentValue;
-
-        /// <summary>
-        /// Implicitly converts a float value to an Attribute with that base value.
-        /// </summary>
-        /// <param name="value">The base value for the attribute.</param>
-        /// <returns>A new Attribute with the specified base value.</returns>
-        public static implicit operator Attribute(float value) => new(value);
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Attribute"/> class with a base value of 0.
@@ -166,11 +124,173 @@ namespace WallstopStudios.UnityHelpers.Tags
         }
 
         /// <summary>
+        /// Recalculates the current value by applying all active modifications to the base value.
+        /// Modifications are sorted and applied in order: Addition, Multiplication, then Override.
+        /// </summary>
+        internal void CalculateCurrentValue()
+        {
+            float calculatedValue = _baseValue;
+            using PooledResource<List<AttributeModification>> modificationBuffer =
+                Buffers<AttributeModification>.List.Get(
+                    out List<AttributeModification> modifications
+                );
+            foreach (
+                KeyValuePair<EffectHandle, List<AttributeModification>> entry in _modifications
+            )
+            {
+                modifications.AddRange(entry.Value);
+            }
+
+            modifications.Sort();
+            foreach (AttributeModification attributeModification in modifications)
+            {
+                ApplyAttributeModification(attributeModification, ref calculatedValue);
+            }
+
+            _currentValue = calculatedValue;
+            _currentValueCalculated = true;
+        }
+
+        /// <summary>
+        /// Implicitly converts an Attribute to its current float value.
+        /// </summary>
+        /// <param name="attribute">The attribute to convert.</param>
+        /// <returns>The current value of the attribute.</returns>
+        public static implicit operator float(Attribute attribute) => attribute.CurrentValue;
+
+        /// <summary>
+        /// Implicitly converts a float value to an Attribute with that base value.
+        /// </summary>
+        /// <param name="value">The base value for the attribute.</param>
+        /// <returns>A new Attribute with the specified base value.</returns>
+        public static implicit operator Attribute(float value) => new(value);
+
+        /// <summary>
+        /// Applies a temporary additive modification to the attribute.
+        /// </summary>
+        /// <param name="value">The amount to add to the attribute's calculated value.</param>
+        /// <returns>
+        /// An effect handle that can later be supplied to <see cref="RemoveAttributeModification(EffectHandle)"/>
+        /// to revoke this addition.
+        /// </returns>
+        /// <exception cref="ArgumentException">
+        /// Thrown when <paramref name="value"/> is not a finite number.
+        /// </exception>
+        public EffectHandle Add(float value)
+        {
+            ValidateInput(value);
+
+            EffectHandle handle = EffectHandle.CreateInstanceInternal();
+            AttributeModification modification = new()
+            {
+                action = ModificationAction.Addition,
+                value = value,
+            };
+            ApplyAttributeModification(modification, handle);
+            return handle;
+        }
+
+        /// <summary>
+        /// Applies a temporary subtractive modification to the attribute.
+        /// </summary>
+        /// <param name="value">The amount to subtract from the attribute's calculated value.</param>
+        /// <returns>
+        /// An effect handle that can later be supplied to <see cref="RemoveAttributeModification(EffectHandle)"/>
+        /// to revoke this subtraction.
+        /// </returns>
+        /// <exception cref="ArgumentException">
+        /// Thrown when <paramref name="value"/> is not a finite number.
+        /// </exception>
+        public EffectHandle Subtract(float value)
+        {
+            ValidateInput(value);
+
+            EffectHandle handle = EffectHandle.CreateInstanceInternal();
+            AttributeModification modification = new()
+            {
+                action = ModificationAction.Addition,
+                // Subtraction is represented as a negative additive modifier to preserve modifier ordering.
+                value = -value,
+            };
+            ApplyAttributeModification(modification, handle);
+            return handle;
+        }
+
+        /// <summary>
+        /// Applies a temporary division-based modification to the attribute.
+        /// </summary>
+        /// <param name="value">
+        /// The divisor that will be applied to the attribute's calculated value.
+        /// </param>
+        /// <returns>
+        /// An effect handle that can later be supplied to <see cref="RemoveAttributeModification(EffectHandle)"/>
+        /// to revoke this division.
+        /// </returns>
+        /// <exception cref="ArgumentException">
+        /// Thrown when <paramref name="value"/> is zero or not a finite number.
+        /// </exception>
+        public EffectHandle Divide(float value)
+        {
+            ValidateInput(value);
+
+            if (value == 0f)
+            {
+                throw new ArgumentException("Cannot divide by zero.", nameof(value));
+            }
+
+            EffectHandle handle = EffectHandle.CreateInstanceInternal();
+            AttributeModification modification = new()
+            {
+                action = ModificationAction.Multiplication,
+                // Apply division by multiplying by the reciprocal to maintain multiplication ordering guarantees.
+                value = 1f / value,
+            };
+            ApplyAttributeModification(modification, handle);
+            return handle;
+        }
+
+        /// <summary>
+        /// Applies a temporary multiplicative modification to the attribute.
+        /// </summary>
+        /// <param name="value">The multiplier to apply to the attribute's calculated value.</param>
+        /// <returns>
+        /// An effect handle that can later be supplied to <see cref="RemoveAttributeModification(EffectHandle)"/>
+        /// to revoke this multiplication.
+        /// </returns>
+        /// <exception cref="ArgumentException">
+        /// Thrown when <paramref name="value"/> is not a finite number.
+        /// </exception>
+        public EffectHandle Multiply(float value)
+        {
+            ValidateInput(value);
+
+            EffectHandle handle = EffectHandle.CreateInstanceInternal();
+            AttributeModification modification = new()
+            {
+                action = ModificationAction.Multiplication,
+                value = value,
+            };
+            ApplyAttributeModification(modification, handle);
+            return handle;
+        }
+
+        /// <summary>
         /// Clears the cached current value, forcing it to be recalculated on next access.
         /// </summary>
         public void ClearCache()
         {
             _currentValueCalculated = false;
+        }
+
+        private static void ValidateInput(float value, [CallerMemberName] string caller = null)
+        {
+            if (!float.IsFinite(value))
+            {
+                throw new ArgumentException(
+                    $"Cannot {caller?.ToLowerInvariant()} by infinity or NaN.",
+                    nameof(value)
+                );
+            }
         }
 
         /// <summary>

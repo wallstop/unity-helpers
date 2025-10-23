@@ -5,6 +5,7 @@
 - **⭐ Build buff/debuff systems without writing custom code for every effect.**
 - Data‑driven ScriptableObjects: designers create 100s of effects, programmers build system once.
 - **Time saved: Weeks of boilerplate eliminated + designers empowered to iterate freely.**
+- **✨ Attributes are NOT required!** Use the system purely for tag-based state management and timed cosmetic effects.
 
 ### ⭐ The Designer Empowerment Killer Feature
 
@@ -88,7 +89,7 @@ Visuals
 
 - `Attribute` — A dynamic numeric value with a base and a calculated current value. Current value applies all active modifications.
 - `AttributeModification` — Declarative change to an `Attribute`. Actions: Addition, Multiplication, Override. Applied in that order.
-- `AttributeEffect` — ScriptableObject asset bundling modifications, tags, cosmetic data, and duration policy.
+- `AttributeEffect` — ScriptableObject asset bundling modifications, tags, cosmetic data, duration policy, periodic tick schedules, and optional runtime behaviours.
 - `EffectHandle` — Opaque identifier for a specific application instance (for Duration/Infinite effects). Used to remove one stack.
 - `AttributesComponent` — Base MonoBehaviour exposing modifiable `Attribute` fields (e.g., Health, Speed) on your character.
 - `EffectHandler` — Component that applies/removes effects, tracks durations, forwards modifications to `AttributesComponent`, applies tags and cosmetics.
@@ -115,8 +116,9 @@ Instant effects modify base values permanently and return `null` instead of a ha
 ```csharp
 public class CharacterStats : AttributesComponent
 {
-    public Attribute Health = 100f;
+    public Attribute MaxHealth = 100f;
     public Attribute Speed = 5f;
+    public Attribute AttackDamage = 10f;
     public Attribute Defense = 10f;
 }
 ```
@@ -151,6 +153,635 @@ if (player.HasTag("Stunned"))
 }
 ```
 
+## Understanding Attributes: What to Model and What to Avoid
+
+**Important: Attributes are NOT required!** The Effects System is extremely powerful even when used solely for tag-based state management and cosmetic effects.
+
+### What Makes a Good Attribute?
+
+Attributes work best for values that are:
+
+- **Primarily modified by the effects system** (buffs, debuffs, equipment)
+- **Derived from a base value** (MaxHealth, Speed, AttackDamage, Defense)
+- **Calculated values** where you need to see the result of all modifications
+
+### What Makes a Poor Attribute?
+
+**❌ DON'T use Attributes for "current" values like CurrentHealth, CurrentMana, or CurrentAmmo!**
+
+**Why?** These values are frequently modified by multiple systems:
+
+- Combat system subtracts health on damage
+- Healing system adds health
+- Regeneration ticks add health over time
+- Death system resets health to zero
+- Save/load system restores health
+
+**The Problem:**
+
+```csharp
+// ❌ BAD: CurrentHealth as an Attribute
+public class PlayerStats : AttributesComponent
+{
+    public Attribute CurrentHealth = 100f; // DON'T DO THIS!
+    public Attribute MaxHealth = 100f;     // This is fine
+}
+
+// Multiple systems modify CurrentHealth:
+void TakeDamage(float damage)
+{
+    // Direct mutation bypasses the effects system
+    playerStats.CurrentHealth.BaseValue -= damage;
+
+    // Problem 1: If an effect was modifying CurrentHealth,
+    //           it still applies! Now calculations are wrong.
+    // Problem 2: If you remove an effect, it may restore
+    //           the ORIGINAL base value, undoing damage taken.
+    // Problem 3: Save/load becomes complicated - do you save
+    //           base or current? What about active modifiers?
+}
+```
+
+**The Solution - Separate Current and Max:**
+
+```csharp
+// ✅ GOOD: CurrentHealth is a regular field, MaxHealth is an Attribute
+public class PlayerStats : AttributesComponent
+{
+    // Regular field - modified by combat/healing systems directly
+    private float currentHealth = 100f;
+
+    // Attribute - modified by buffs/effects
+    public Attribute MaxHealth = 100f;
+
+    public float CurrentHealth
+    {
+        get => currentHealth;
+        set => currentHealth = Mathf.Clamp(value, 0, MaxHealth.Value);
+    }
+
+    void Start()
+    {
+        // Initialize current health to max
+        currentHealth = MaxHealth.Value;
+
+        // When max health changes, clamp current health
+        MaxHealth.OnValueChanged += (oldMax, newMax) =>
+        {
+            // If max decreased, ensure current doesn't exceed new max
+            if (currentHealth > newMax)
+            {
+                currentHealth = newMax;
+            }
+        };
+    }
+}
+
+// Combat system can now safely modify current health
+void TakeDamage(float damage)
+{
+    playerStats.CurrentHealth -= damage; // Simple and correct
+}
+
+// Effects system modifies max health
+void ApplyHealthBuff()
+{
+    // MaxHealth × 1.5 (buffs max, current stays same)
+    player.ApplyEffect(healthBuffEffect);
+}
+```
+
+### Attribute Best Practices
+
+**✅ DO use Attributes for:**
+
+- **MaxHealth, MaxMana, MaxStamina** - caps that buffs modify
+- **Speed, MovementSpeed** - continuous values modified by effects
+- **AttackDamage, Defense, CritChance** - combat stats
+- **CooldownReduction, CastSpeed** - multiplicative modifiers
+- **CarryCapacity, JumpHeight** - gameplay parameters
+
+**❌ DON'T use Attributes for:**
+
+- **CurrentHealth, CurrentMana** - depleting resources with complex mutation
+- **Position, Rotation** - physics/transform state
+- **Inventory count, Currency** - discrete counts from multiple sources
+- **Quest progress, Level** - progression state
+- **Input state, UI state** - transient application state
+
+### Why This Matters
+
+When you use Attributes for frequently-mutated "current" values:
+
+1. **State conflicts** - Effects system and other systems fight over the value
+2. **Save/load bugs** - Unclear whether to save base value or current value with modifiers
+3. **Unexpected restorations** - Removing an effect may restore old base value, losing damage/healing
+4. **Performance overhead** - Recalculating modifications on every damage tick
+5. **Complexity** - Need to carefully coordinate between effects and direct mutations
+
+**The Golden Rule:** If a value is modified by systems outside the effects system regularly (combat, regeneration, consumption), it should NOT be an Attribute. Use a regular field instead, and let Attributes handle the maximums/limits.
+
+## Using Tags WITHOUT Attributes
+
+Even without any Attributes, the Effects System is extremely powerful for tag-based state management and cosmetic effects.
+
+### When to Use Tags Without Attributes
+
+You should consider tag-only effects when:
+
+- Managing categorical states ("Stunned", "Invisible", "InDialogue")
+- Implementing temporary permissions ("CanDash", "CanDoubleJump")
+- Coordinating system interactions ("InCombat", "InCutscene")
+- Creating purely visual effects (particles, overlays) with timed lifetimes
+- Building capability systems without numeric modifiers
+
+### Example: Pure Tag Effects
+
+```csharp
+// No AttributesComponent needed!
+public class StealthCharacter : MonoBehaviour
+{
+    [SerializeField] private AttributeEffect invisibilityEffect;
+    [SerializeField] private AttributeEffect stunnedEffect;
+
+    void Start()
+    {
+        // Apply invisibility for 5 seconds
+        // InvisibilityEffect.asset:
+        //   - durationType: Duration (5 seconds)
+        //   - effectTags: ["Invisible", "Stealthy"]
+        //   - modifications: (EMPTY - no attributes needed!)
+        //   - cosmeticEffects: shimmer particles
+        this.ApplyEffect(invisibilityEffect);
+    }
+
+    void Update()
+    {
+        // Check tags to gate behavior
+        if (this.HasTag("Stunned"))
+        {
+            // Prevent all actions
+            return;
+        }
+
+        // AI can't detect invisible characters
+        if (!this.HasTag("Invisible"))
+        {
+            BroadcastPosition();
+        }
+    }
+}
+```
+
+### Example: Tag Lifetimes for Cosmetics
+
+Tags with durations provide automatic cleanup for visual effects:
+
+```csharp
+// Create a "ShowDamageIndicator" effect:
+// DamageIndicator.asset:
+//   - durationType: Duration (1.5 seconds)
+//   - effectTags: ["DamageIndicator"]
+//   - modifications: (EMPTY)
+//   - cosmeticEffects: DamageNumbersPrefab
+
+public class CombatFeedback : MonoBehaviour
+{
+    [SerializeField] private AttributeEffect damageIndicator;
+
+    public void ShowDamage(float amount)
+    {
+        // Apply effect - cosmetic spawns automatically
+        this.ApplyEffect(damageIndicator);
+
+        // After 1.5 seconds, cosmetic is automatically cleaned up
+        // No manual cleanup code needed!
+    }
+}
+```
+
+### Benefits of Tag-Only Usage
+
+✅ **Simpler setup** - No AttributesComponent required
+✅ **Automatic cleanup** - Duration-based tags clean up themselves
+✅ **Reference counting** - Multiple sources work naturally
+✅ **Cosmetic integration** - Visual effects lifecycle managed automatically
+✅ **System decoupling** - Any system can query tags without dependencies
+
+### Tag-Only Patterns
+
+**1. Temporary Permissions:**
+
+```csharp
+// PowerUpEffect.asset:
+//   - durationType: Duration (10 seconds)
+//   - effectTags: ["CanDash", "CanDoubleJump", "PoweredUp"]
+//   - modifications: (EMPTY)
+
+public void GrantPowerUp()
+{
+    player.ApplyEffect(powerUpEffect);
+    // Player now has special abilities for 10 seconds
+}
+```
+
+**2. State Management:**
+
+```csharp
+// DialogueStateEffect.asset:
+//   - durationType: Infinite
+//   - effectTags: ["InDialogue", "InputDisabled"]
+
+EffectHandle? dialogueHandle = player.ApplyEffect(dialogueState);
+// ... dialogue system runs ...
+player.RemoveEffect(dialogueHandle.Value);
+```
+
+**3. Visual-Only Effects:**
+
+```csharp
+// LevelUpEffect.asset:
+//   - durationType: Duration (2 seconds)
+//   - effectTags: ["LevelingUp"]
+//   - cosmeticEffects: GlowParticles, LevelUpSound
+
+player.ApplyEffect(levelUpEffect);
+// Particles and sound play, then clean up automatically
+```
+
+## Cosmetic Effects - Complete Guide
+
+Cosmetic effects handle the visual and audio presentation of effects. They provide a clean separation between gameplay logic (tags, attributes) and presentation (particles, sounds, UI).
+
+### Architecture Overview
+
+**Component Hierarchy:**
+
+```text
+CosmeticEffectData (Container GameObject/Prefab)
+  └─ CosmeticEffectComponent (Base class - abstract)
+       └─ Your custom implementations:
+           - ParticleCosmeticEffect
+           - AudioCosmeticEffect
+           - UICosmeticEffect
+           - AnimationCosmeticEffect
+```
+
+### Creating a Cosmetic Effect
+
+### Step 1: Create a prefab with CosmeticEffectData\*\*
+
+1. Create new GameObject in scene
+2. Add Component → `CosmeticEffectData`
+3. Add your custom cosmetic components (particle systems, audio sources, etc.)
+4. Save as prefab
+5. Reference this prefab in your `AttributeEffect.cosmeticEffects` list
+
+### Step 2: Implement CosmeticEffectComponent subclasses\*\*
+
+```csharp
+using UnityEngine;
+using WallstopStudios.UnityHelpers.Tags;
+
+public class ParticleCosmeticEffect : CosmeticEffectComponent
+{
+    [SerializeField] private ParticleSystem particles;
+
+    // RequiresInstance = true creates a new instance per application
+    // RequiresInstance = false shares one instance across all applications
+    public override bool RequiresInstance => true;
+
+    // CleansUpSelf = true means you handle destruction yourself
+    // CleansUpSelf = false means EffectHandler destroys the GameObject
+    public override bool CleansUpSelf => false;
+
+    public override void OnApplyEffect(GameObject target)
+    {
+        base.OnApplyEffect(target);
+
+        // Attach cosmetic to target
+        transform.SetParent(target.transform);
+        transform.localPosition = Vector3.zero;
+
+        // Start visual effect
+        particles.Play();
+    }
+
+    public override void OnRemoveEffect(GameObject target)
+    {
+        base.OnRemoveEffect(target);
+
+        // Stop particles
+        particles.Stop();
+
+        // If CleansUpSelf = false, GameObject is destroyed automatically
+        // If CleansUpSelf = true, you must handle destruction
+    }
+}
+```
+
+### RequiresInstance: Shared vs Instanced
+
+**RequiresInstance = false (Shared):**
+
+- One cosmetic instance is reused for all applications
+- Best for: UI overlays, status icons, shared audio managers
+- Lower memory footprint
+- All targets share the same cosmetic GameObject
+
+```csharp
+public class StatusIconCosmetic : CosmeticEffectComponent
+{
+    public override bool RequiresInstance => false; // SHARED
+
+    [SerializeField] private Image iconImage;
+    private int activeCount = 0;
+
+    public override void OnApplyEffect(GameObject target)
+    {
+        base.OnApplyEffect(target);
+        activeCount++;
+
+        // Show icon if this is first application
+        if (activeCount == 1)
+        {
+            iconImage.enabled = true;
+        }
+    }
+
+    public override void OnRemoveEffect(GameObject target)
+    {
+        base.OnRemoveEffect(target);
+        activeCount--;
+
+        // Hide icon when no more applications
+        if (activeCount == 0)
+        {
+            iconImage.enabled = false;
+        }
+    }
+}
+```
+
+**RequiresInstance = true (Instanced):**
+
+- New cosmetic instance created for each application
+- Best for: Particles, per-effect animations, independent visuals
+- Each application has isolated state
+- Higher memory cost, but full independence
+
+```csharp
+public class FireParticleCosmetic : CosmeticEffectComponent
+{
+    public override bool RequiresInstance => true; // INSTANCED
+
+    [SerializeField] private ParticleSystem fireParticles;
+
+    public override void OnApplyEffect(GameObject target)
+    {
+        base.OnApplyEffect(target);
+
+        // Each instance is independent
+        transform.SetParent(target.transform);
+        transform.localPosition = Vector3.zero;
+        fireParticles.Play();
+    }
+}
+```
+
+### CleansUpSelf: Automatic vs Manual Cleanup
+
+**CleansUpSelf = false (Automatic - Default):**
+
+- EffectHandler destroys the GameObject when effect is removed
+- Simplest option for most cases
+- Immediate cleanup
+
+```csharp
+public class SimpleParticleEffect : CosmeticEffectComponent
+{
+    public override bool CleansUpSelf => false; // AUTOMATIC
+
+    public override void OnRemoveEffect(GameObject target)
+    {
+        base.OnRemoveEffect(target);
+        // GameObject destroyed automatically by EffectHandler
+    }
+}
+```
+
+**CleansUpSelf = true (Manual Cleanup):**
+
+- You are responsible for destroying the GameObject
+- Use when you need delayed cleanup (fade out animations, particle finish)
+- More control over cleanup timing
+
+```csharp
+public class FadeOutEffect : CosmeticEffectComponent
+{
+    public override bool CleansUpSelf => true; // MANUAL
+
+    [SerializeField] private float fadeOutDuration = 1f;
+    private bool isRemoving = false;
+
+    public override void OnRemoveEffect(GameObject target)
+    {
+        base.OnRemoveEffect(target);
+
+        if (!isRemoving)
+        {
+            isRemoving = true;
+            StartCoroutine(FadeOutAndDestroy());
+        }
+    }
+
+    private IEnumerator FadeOutAndDestroy()
+    {
+        // Fade out over time
+        float elapsed = 0f;
+        SpriteRenderer sprite = GetComponent<SpriteRenderer>();
+        Color originalColor = sprite.color;
+
+        while (elapsed < fadeOutDuration)
+        {
+            elapsed += Time.deltaTime;
+            float alpha = 1f - (elapsed / fadeOutDuration);
+            sprite.color = new Color(originalColor.r, originalColor.g, originalColor.b, alpha);
+            yield return null;
+        }
+
+        // Now safe to destroy
+        Destroy(gameObject);
+    }
+}
+```
+
+### Complete Cosmetic Examples
+
+#### Example 1: Buff Visual with Particles and Sound\*\*
+
+```csharp
+public class BuffCosmetic : CosmeticEffectComponent
+{
+    [SerializeField] private ParticleSystem buffParticles;
+    [SerializeField] private AudioSource audioSource;
+    [SerializeField] private AudioClip applySound;
+    [SerializeField] private AudioClip removeSound;
+
+    public override bool RequiresInstance => true;
+    public override bool CleansUpSelf => false;
+
+    public override void OnApplyEffect(GameObject target)
+    {
+        base.OnApplyEffect(target);
+
+        // Position cosmetic on target
+        transform.SetParent(target.transform);
+        transform.localPosition = Vector3.zero;
+
+        // Play effects
+        buffParticles.Play();
+        audioSource.PlayOneShot(applySound);
+    }
+
+    public override void OnRemoveEffect(GameObject target)
+    {
+        base.OnRemoveEffect(target);
+
+        audioSource.PlayOneShot(removeSound);
+        buffParticles.Stop();
+        // Automatic cleanup after this
+    }
+}
+```
+
+#### Example 2: Status UI Overlay (Shared)\*\*
+
+```csharp
+public class StatusOverlayCosmetic : CosmeticEffectComponent
+{
+    [SerializeField] private SpriteRenderer overlaySprite;
+    [SerializeField] private Color overlayColor = Color.red;
+
+    public override bool RequiresInstance => false; // SHARED
+    public override bool CleansUpSelf => false;
+
+    private SpriteRenderer targetSprite;
+
+    public override void OnApplyEffect(GameObject target)
+    {
+        base.OnApplyEffect(target);
+
+        targetSprite = target.GetComponent<SpriteRenderer>();
+        if (targetSprite != null)
+        {
+            // Tint the sprite
+            targetSprite.color = overlayColor;
+        }
+    }
+
+    public override void OnRemoveEffect(GameObject target)
+    {
+        base.OnRemoveEffect(target);
+
+        if (targetSprite != null)
+        {
+            // Restore original color
+            targetSprite.color = Color.white;
+        }
+    }
+}
+```
+
+#### Example 3: Animation Trigger\*\*
+
+```csharp
+public class AnimationCosmetic : CosmeticEffectComponent
+{
+    [SerializeField] private string applyTrigger = "BuffApplied";
+    [SerializeField] private string removeTrigger = "BuffRemoved";
+
+    public override bool RequiresInstance => false;
+
+    public override void OnApplyEffect(GameObject target)
+    {
+        base.OnApplyEffect(target);
+
+        Animator animator = target.GetComponent<Animator>();
+        if (animator != null)
+        {
+            animator.SetTrigger(applyTrigger);
+        }
+    }
+
+    public override void OnRemoveEffect(GameObject target)
+    {
+        base.OnRemoveEffect(target);
+
+        Animator animator = target.GetComponent<Animator>();
+        if (animator != null)
+        {
+            animator.SetTrigger(removeTrigger);
+        }
+    }
+}
+```
+
+### Combining Multiple Cosmetics
+
+A single effect can have multiple cosmetic components with different behaviors:
+
+```csharp
+// PoisonEffect prefab:
+//   - CosmeticEffectData
+//   - PoisonParticles (RequiresInstance = true)  // One per stack
+//   - PoisonStatusIcon (RequiresInstance = false) // Shared UI element
+//   - PoisonAudioLoop (RequiresInstance = true)   // One audio loop per stack
+```
+
+### Cosmetic Lifecycle
+
+**Application Flow:**
+
+1. `AttributeEffect` applied to GameObject
+2. `EffectHandler` checks `cosmeticEffects` list
+3. For each `CosmeticEffectData`:
+   - If `RequiresInstancing = true`: Instantiate and parent to target
+   - If `RequiresInstancing = false`: Reuse existing instance
+4. Call `OnApplyEffect(target)` on all components
+5. Cosmetics remain active while effect is active
+
+**Removal Flow:**
+
+1. Effect expires or is manually removed
+2. `EffectHandler` calls `OnRemoveEffect(target)` on all components
+3. For each component:
+   - If `CleansUpSelf = false`: EffectHandler destroys GameObject immediately
+   - If `CleansUpSelf = true`: Component handles its own destruction
+
+### Best Practices
+
+**Performance:**
+
+- ✅ Prefer `RequiresInstance = false` when possible (lower overhead)
+- ✅ Use object pooling for frequently spawned instanced cosmetics
+- ✅ Keep `OnApplyEffect` and `OnRemoveEffect` lightweight
+- ❌ Avoid expensive operations in these callbacks
+
+**Architecture:**
+
+- ✅ One responsibility per cosmetic component (particles, audio, UI separate)
+- ✅ Store references in `OnApplyEffect`, use them in `OnRemoveEffect`
+- ✅ Always call `base.OnApplyEffect()` and `base.OnRemoveEffect()`
+- ❌ Don't access gameplay logic from cosmetics (maintain separation)
+
+**Cleanup:**
+
+- ✅ Use `CleansUpSelf = false` unless you need delayed cleanup
+- ✅ If using `CleansUpSelf = true`, ensure you always destroy the GameObject
+- ✅ Handle null targets gracefully (target may be destroyed early)
+- ❌ Don't leak GameObjects by forgetting to clean up
+
 ## Recipes
 
 ### 1) Buff with % Speed for 5s (refreshable)
@@ -158,12 +789,38 @@ if (player.HasTag("Stunned"))
 - Effect: Multiplication `Speed *= 1.5f`, `Duration=5`, `resetDurationOnReapplication=true`, tag `Haste`.
 - Apply to extend: reapply before expiry to reset the timer.
 
-### 2) Poison: −5 Health instantly and "Poisoned" tag for 10s
+### 2) Poison: "Poisoned" tag for 10s with periodic damage
 
-- modifications: Addition `{ attribute: "Health", value: -5f }`
-- durationType: Duration `10s`
+- periodicEffects: add a definition with `interval = 1s`, `maxTicks = 10`, and an empty `modifications` array (ticks drive behaviours)
+- behaviors: attach a `PoisonDamageBehavior` that applies damage during `OnPeriodicTick` (sample below)
+- durationType: Duration `10s` (or Infinite if the periodic schedule should drive expiry)
 - effectTags: `[ "Poisoned" ]`
 - cosmetics: particles + UI icon
+- Optional: add an immediate modification for on-apply burst damage
+
+```csharp
+[CreateAssetMenu(menuName = "Combat/Effects/Poison Damage")]
+public sealed class PoisonDamageBehavior : EffectBehavior
+{
+    [SerializeField]
+    private float damagePerTick = 5f;
+
+    public override void OnPeriodicTick(
+        EffectBehaviorContext context,
+        PeriodicEffectTickContext tickContext
+    )
+    {
+        if (!context.Target.TryGetComponent(out PlayerHealth health))
+        {
+            return;
+        }
+
+        health.ApplyDamage(damagePerTick);
+    }
+}
+```
+
+Pair this with a health component that owns mutable current-health state instead of modelling `CurrentHealth` as an Attribute.
 
 ### 3) Equipment Aura: +10 Defense while equipped
 
@@ -178,13 +835,32 @@ if (player.HasTag("Stunned"))
 
 ### 5) Stacking Multiple Instances
 
-- Apply the same effect multiple times → multiple `EffectHandle`s; remove one handle to remove one stack.
-- Use tags to gate behaviour regardless of which instance applied it.
+- Set `stackingMode` on the effect asset to control reapplication:
+  - `Stack` keeps separate handles (respecting `maximumStacks`, trimming the oldest when the cap is reached).
+  - `Refresh` reuses the first handle; set `resetDurationOnReapplication = true` if the timer should reset on reapply.
+  - `Replace` removes existing handles in the same group before adding a new one.
+  - `Ignore` rejects duplicate applications.
+- Use `stackGroup = CustomKey` with a shared `stackGroupKey` when different assets should share a stack identity.
+- Inspect active stacks with `EffectHandler.GetEffectStackCount(effect)` or tag counts for debugging and UI.
 
 ### 6) Shared vs Instanced Cosmetics
 
 - In `CosmeticEffectData`, set a component’s `RequiresInstance = true` for per‑application instances (e.g., particles).
 - Keep `RequiresInstance = false` for shared presenters (e.g., status icon overlay).
+
+### Periodic Tick Payloads
+
+- Populate the `periodicEffects` list on an `AttributeEffect` to schedule damage/heal-over-time, resource regen, or scripted pulses without external coroutines.
+- Each definition supports `initialDelay`, `interval`, and `maxTicks` (0 = infinite) plus its own `AttributeModification` bundle applied on every tick.
+- Periodic payloads run only for Duration/Infinite effects; they automatically stop after `maxTicks` or when the effect handle is removed.
+- Combine multiple definitions for mixed cadences (e.g., fast minor regen + slower burst heals).
+
+### Effect Behaviours
+
+- Attach `EffectBehavior` ScriptableObjects to the `behaviors` list for per-handle runtime logic.
+- The system clones behaviours on apply and calls `OnApply`, `OnTick` (each frame), `OnPeriodicTick` (after periodic payloads fire), and `OnRemove`.
+- Behaviours are ideal for integrating bespoke systems (e.g., camera shakes, AI hooks, quest tracking) while keeping designer-authored effects data-driven.
+- Keep behaviours stateless or store per-handle state on the cloned instance; clean up in `OnRemove`.
 
 ## Best Practices
 
@@ -523,6 +1199,10 @@ effectHandler.RefreshEffect(effectHandle, ignoreReapplicationPolicy: true);
 ```
 
 ## FAQ
+
+Q: Should I use an Attribute for CurrentHealth?
+
+- **No!** Use Attributes for values primarily modified by the effects system (MaxHealth, Speed, AttackDamage). CurrentHealth is modified by multiple systems (combat, healing, regeneration) and should be a regular field. See "Understanding Attributes: What to Model and What to Avoid" section above for details. Mixing direct mutations with effect modifications causes state conflicts and save/load bugs.
 
 Q: Why didn't I get an `EffectHandle`?
 

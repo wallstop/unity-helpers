@@ -16,7 +16,7 @@ This guide covers several foundational data structures used across the library a
 - Pros: Constant-time, cache-friendly, no reallocations at steady size.
 - Cons: Fixed capacity unless resized; must handle wrap-around.
 
-![Cyclic Buffer](Docs/Images/cyclic_buffer.svg)
+![Cyclic Buffer](Images/cyclic_buffer.svg)
 
 When to use vs .NET queues
 
@@ -58,7 +58,7 @@ Tips and pitfalls
 - Pros: Flexible ends; generalizes queue and stack behavior.
 - Cons: Implementation complexity for block-based layouts.
 
-![Deque](Docs/Images/deque.svg)
+![Deque](Images/deque.svg)
 
 When to use vs `Queue<T>` / `Stack<T>`
 
@@ -95,7 +95,7 @@ Tips
 - Pros: Simple; great constant factors; contiguous memory.
 - Cons: Not ideal for decrease-key unless augmented.
 
-![Heap](Docs/Images/heap.svg)
+![Heap](Images/heap.svg)
 
 When to use vs `SortedSet<T>`
 
@@ -140,7 +140,7 @@ Tips
 - Pros: Extremely fast for bulk unions/finds; minimal memory.
 - Cons: Not suited for deletions or enumerating members without extra indexes.
 
-![Disjoint Set](Docs/Images/disjoint_set.svg)
+![Disjoint Set](Images/disjoint_set.svg)
 
 When to use
 
@@ -183,7 +183,7 @@ Tips
 - Pros: Very fast, cache-friendly on dense array; stable indices optional.
 - Cons: Requires ID space for indices; sparse array sized by max ID.
 
-![Sparse Set](Docs/Images/sparse_set.svg)
+![Sparse Set](Images/sparse_set.svg)
 
 When to use vs `HashSet<T>`
 
@@ -225,7 +225,7 @@ Tips
 - Pros: Predictable per-character traversal; supports prefix enumeration.
 - Cons: Memory overhead vs hash tables; compact with radix/compressed tries.
 
-![Trie](Docs/Images/trie.svg)
+![Trie](Images/trie.svg)
 
 When to use vs dictionaries
 
@@ -264,7 +264,7 @@ Tips
 - Pros: Extremely compact; very fast bitwise operations.
 - Cons: Fixed maximum size unless dynamically extended; needs index mapping.
 
-![Bitset](Docs/Images/bitset.svg)
+![Bitset](Images/bitset.svg)
 
 When to use vs `bool[]` / `HashSet<int>`
 

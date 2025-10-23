@@ -121,6 +121,26 @@ namespace WallstopStudios.UnityHelpers.Tags
             IEnumerable<AttributeModification> attributeModifications
         )
         {
+            if (attributeModifications is IReadOnlyList<AttributeModification> readonlyList)
+            {
+                for (int i = 0; i < readonlyList.Count; ++i)
+                {
+                    AttributeModification modification = readonlyList[i];
+                    if (!TryGetAttribute(modification.attribute, out Attribute attribute))
+                    {
+                        continue;
+                    }
+
+                    float oldValue = attribute;
+                    attribute.ApplyAttributeModification(modification);
+                    float currentValue = attribute;
+
+                    OnAttributeModified?.Invoke(modification.attribute, oldValue, currentValue);
+                }
+
+                return;
+            }
+
             foreach (AttributeModification modification in attributeModifications)
             {
                 if (!TryGetAttribute(modification.attribute, out Attribute attribute))

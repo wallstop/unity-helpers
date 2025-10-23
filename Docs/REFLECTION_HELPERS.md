@@ -7,7 +7,7 @@
 
 Visual
 
-![Reflection Scan](Docs/Images/reflection_scan.svg)
+![Reflection Scan](Images/reflection_scan.svg)
 
 ReflectionHelpers is a set of utilities for high‑performance reflection in Unity projects. It generates and caches delegates to access fields and properties, call methods and constructors, and quickly create common collections — with safe fallbacks when dynamic IL isn’t available.
 

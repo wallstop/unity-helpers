@@ -71,8 +71,6 @@ public class Enemy : MonoBehaviour
 2. Add the `RelationalComponentsInstaller` component to the same GameObject
 3. Enable **"Assign Scene On Initialize"** to automatically wire all scene components after the container builds (recommended)
 
-![SceneContext Setup](../../Docs/Images/zenject_setup.png)
-
 > 💡 **Beginner tip:** Enable both checkboxes in the inspector:
 >
 > - ✅ **Assign Scene On Initialize** → Auto-wires all scene objects (saves you from calling it manually)

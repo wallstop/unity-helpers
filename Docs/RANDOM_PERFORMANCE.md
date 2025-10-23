@@ -71,7 +71,7 @@ Threading
 
 Visual
 
-![Random Generators](Docs/Images/random_generators.svg)
+![Random Generators](Images/random_generators.svg)
 
 This document contains performance benchmarks for the various random number generators included in Unity Helpers.
 

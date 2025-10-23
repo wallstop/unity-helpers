@@ -178,7 +178,7 @@ See [Buffering Pattern](../README.md#buffering-pattern) for the complete guide a
 - Pros: Good spatial locality; intuitive partitioning; balanced performance.
 - Cons: Nearest neighbors slower than KDTree on pure point data.
 
-![Octree3D](Docs/Images/octree_3d.svg)
+![Octree3D](Images/octree_3d.svg)
 
 ### KDTree3D
 
@@ -187,7 +187,7 @@ See [Buffering Pattern](../README.md#buffering-pattern) for the complete guide a
 - Pros: Strong NN performance; balanced variant gives consistent query time.
 - Cons: Costly to maintain under heavy churn; unbalanced variant can degrade.
 
-![KDTree3D](Docs/Images/kdtree_3d.svg)
+![KDTree3D](Images/kdtree_3d.svg)
 
 ### RTree3D
 
@@ -196,7 +196,7 @@ See [Buffering Pattern](../README.md#buffering-pattern) for the complete guide a
 - Pros: Great for large bounds queries; matches volumetric semantics.
 - Cons: Overlapping boxes can increase node visits; not optimal for point NN.
 
-![RTree3D](Docs/Images/rtree_3d.svg)
+![RTree3D](Images/rtree_3d.svg)
 
 ## Choosing a Structure
 

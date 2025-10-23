@@ -18,6 +18,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 
         // Prevents re-entrant execution during domain reloads/asset refreshes
         private static bool _isEnsuring;
+        private static int _assetEditingScopeDepth;
 
         // Controls whether informational logs are emitted. Warnings still always log.
         internal static bool VerboseLogging { get; set; }
@@ -41,6 +42,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 
             _isEnsuring = true;
             AssetDatabase.StartAssetEditing();
+            _assetEditingScopeDepth++;
             bool anyChanges = false;
             try
             {
@@ -94,10 +96,24 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                     }
 
                     string resolvedResourcesRoot = EnsureAndResolveFolderPath(ResourcesRoot);
+                    if (string.IsNullOrWhiteSpace(resolvedResourcesRoot))
+                    {
+                        Debug.LogError(
+                            "ScriptableObjectSingletonCreator: Unable to resolve required Resources root folder. Aborting singleton auto-creation."
+                        );
+                        break;
+                    }
 
                     string resourcesSubFolder = GetResourcesSubFolder(derivedType);
                     string targetFolderRequested = CombinePaths(ResourcesRoot, resourcesSubFolder);
                     string targetFolder = EnsureAndResolveFolderPath(targetFolderRequested);
+                    if (string.IsNullOrWhiteSpace(targetFolder))
+                    {
+                        Debug.LogError(
+                            $"ScriptableObjectSingletonCreator: Unable to ensure folder '{targetFolderRequested}' for singleton {derivedType.FullName}. Skipping asset creation."
+                        );
+                        continue;
+                    }
 
                     string targetAssetPath = CombinePaths(
                         targetFolder,
@@ -156,6 +172,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             finally
             {
                 AssetDatabase.StopAssetEditing();
+                if (_assetEditingScopeDepth > 0)
+                {
+                    _assetEditingScopeDepth--;
+                }
                 _isEnsuring = false;
 
                 if (anyChanges)
@@ -448,31 +468,119 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             {
                 string desiredName = parts[i];
 
-                // Find an existing subfolder that matches the desired segment, ignoring case
-                string[] subFolders = AssetDatabase.GetSubFolders(current);
-                string matchedExisting = null;
-                if (subFolders != null)
-                {
-                    foreach (string sub in subFolders)
-                    {
-                        // sub is like "Assets/Resources" — compare only the terminal name
-                        int lastSlash = sub.LastIndexOf('/', sub.Length - 1);
-                        string terminal = lastSlash >= 0 ? sub.Substring(lastSlash + 1) : sub;
-                        if (
-                            string.Equals(terminal, desiredName, StringComparison.OrdinalIgnoreCase)
-                        )
-                        {
-                            matchedExisting = sub;
-                            break;
-                        }
-                    }
-                }
+                string matchedExisting = FindMatchingSubfolder(current, desiredName);
 
                 if (string.IsNullOrEmpty(matchedExisting))
                 {
-                    AssetDatabase.CreateFolder(current, desiredName);
-                    current = current + "/" + desiredName;
-                    LogVerbose($"ScriptableObjectSingletonCreator: Created folder '{current}'.");
+                    string intendedPath = current + "/" + desiredName;
+                    string createdGuid = AssetDatabase.CreateFolder(current, desiredName);
+                    string createdPath = string.Empty;
+                    if (!string.IsNullOrEmpty(createdGuid))
+                    {
+                        createdPath = NormalizePath(AssetDatabase.GUIDToAssetPath(createdGuid));
+                    }
+
+                    string actualPath = FindMatchingSubfolder(current, desiredName);
+                    if (string.IsNullOrEmpty(actualPath))
+                    {
+                        actualPath = createdPath;
+                    }
+
+                    bool intendedValid = AssetDatabase.IsValidFolder(intendedPath);
+                    bool actualValid =
+                        !string.IsNullOrEmpty(actualPath)
+                        && AssetDatabase.IsValidFolder(actualPath);
+
+                    if (!intendedValid && !actualValid)
+                    {
+                        bool directoryExists =
+                            Directory.Exists(intendedPath)
+                            || (!string.IsNullOrEmpty(actualPath) && Directory.Exists(actualPath));
+                        if (directoryExists || !string.IsNullOrEmpty(createdGuid))
+                        {
+                            ForceAssetDatabaseSync();
+                        }
+
+                        intendedValid = AssetDatabase.IsValidFolder(intendedPath);
+                        if (!intendedValid)
+                        {
+                            actualPath = FindMatchingSubfolder(current, desiredName);
+                            if (
+                                string.IsNullOrEmpty(actualPath)
+                                && !string.IsNullOrEmpty(createdGuid)
+                            )
+                            {
+                                actualPath = NormalizePath(
+                                    AssetDatabase.GUIDToAssetPath(createdGuid)
+                                );
+                            }
+
+                            actualValid =
+                                !string.IsNullOrEmpty(actualPath)
+                                && AssetDatabase.IsValidFolder(actualPath);
+                        }
+                        else
+                        {
+                            actualPath = intendedPath;
+                            actualValid = true;
+                        }
+                    }
+
+                    if (intendedValid)
+                    {
+                        current = ResolveExistingFolderPath(intendedPath);
+                        LogVerbose(
+                            $"ScriptableObjectSingletonCreator: Created folder '{current}'."
+                        );
+                        continue;
+                    }
+
+                    if (
+                        actualValid
+                        && string.Equals(
+                            actualPath,
+                            intendedPath,
+                            StringComparison.OrdinalIgnoreCase
+                        )
+                    )
+                    {
+                        string renameError = AssetDatabase.MoveAsset(actualPath, intendedPath);
+                        if (string.IsNullOrEmpty(renameError))
+                        {
+                            LogVerbose(
+                                $"ScriptableObjectSingletonCreator: Renamed folder '{actualPath}' to '{intendedPath}' to correct casing."
+                            );
+                            current = ResolveExistingFolderPath(intendedPath);
+                            continue;
+                        }
+
+                        LogVerbose(
+                            $"ScriptableObjectSingletonCreator: Reusing newly created folder '{actualPath}' when casing correction to '{intendedPath}' failed: {renameError}."
+                        );
+                        current = ResolveExistingFolderPath(actualPath);
+                        continue;
+                    }
+
+                    if (actualValid && AssetDatabase.IsValidFolder(actualPath))
+                    {
+                        bool deleted = AssetDatabase.DeleteAsset(actualPath);
+                        if (!deleted)
+                        {
+                            Debug.LogWarning(
+                                $"ScriptableObjectSingletonCreator: Unexpected folder '{actualPath}' was created while attempting to create '{intendedPath}', but it could not be removed."
+                            );
+                        }
+
+                        Debug.LogError(
+                            $"ScriptableObjectSingletonCreator: Expected to create folder '{intendedPath}', but Unity created '{actualPath}'. Aborting to avoid duplicate folders."
+                        );
+                        return string.Empty;
+                    }
+
+                    Debug.LogError(
+                        $"ScriptableObjectSingletonCreator: Failed to create folder '{intendedPath}'."
+                    );
+                    return string.Empty;
                 }
                 else
                 {
@@ -561,6 +669,33 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             return current;
         }
 
+        private static string FindMatchingSubfolder(string parent, string desiredName)
+        {
+            if (string.IsNullOrWhiteSpace(parent) || string.IsNullOrWhiteSpace(desiredName))
+            {
+                return null;
+            }
+
+            string[] subFolders = AssetDatabase.GetSubFolders(parent);
+            if (subFolders == null || subFolders.Length == 0)
+            {
+                return null;
+            }
+
+            for (int i = 0; i < subFolders.Length; i++)
+            {
+                string sub = subFolders[i];
+                int lastSlash = sub.LastIndexOf('/', sub.Length - 1);
+                string terminal = lastSlash >= 0 ? sub.Substring(lastSlash + 1) : sub;
+                if (string.Equals(terminal, desiredName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return sub;
+                }
+            }
+
+            return null;
+        }
+
         private static string ResolveExistingFolderPath(string intended)
         {
             if (string.IsNullOrWhiteSpace(intended))
@@ -619,6 +754,28 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             }
 
             return current;
+        }
+
+        private static void ForceAssetDatabaseSync()
+        {
+            if (_assetEditingScopeDepth > 0)
+            {
+                AssetDatabase.StopAssetEditing();
+                try
+                {
+                    AssetDatabase.SaveAssets();
+                    AssetDatabase.Refresh();
+                }
+                finally
+                {
+                    AssetDatabase.StartAssetEditing();
+                }
+            }
+            else
+            {
+                AssetDatabase.SaveAssets();
+                AssetDatabase.Refresh();
+            }
         }
 
         private static void LogVerbose(string message)

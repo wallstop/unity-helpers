@@ -34,6 +34,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils
             yield return null;
             DeleteAssetIfExists("Assets/Resources/CustomPath/CustomPathSingleton.asset");
             yield return null;
+            DeleteFolderIfEmpty("Assets/Resources/CustomPath");
+            yield return null;
 
             // For nested test types, Unity cannot create valid .asset files (no script file).
             // Instead, create in-memory instances so the singleton loader can discover them via FindObjectsOfTypeAll.
@@ -79,6 +81,43 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
             }
+        }
+
+        private static void DeleteFolderIfEmpty(string folderPath)
+        {
+            if (string.IsNullOrWhiteSpace(folderPath))
+            {
+                return;
+            }
+
+            if (!AssetDatabase.IsValidFolder(folderPath))
+            {
+                return;
+            }
+
+            string[] subFolders = AssetDatabase.GetSubFolders(folderPath);
+            if (subFolders != null && subFolders.Length > 0)
+            {
+                return;
+            }
+
+            string[] assetGuids = AssetDatabase.FindAssets(string.Empty, new[] { folderPath });
+            for (int i = 0; i < assetGuids.Length; i++)
+            {
+                string guid = assetGuids[i];
+                string assetPath = AssetDatabase.GUIDToAssetPath(guid);
+                if (
+                    !string.IsNullOrEmpty(assetPath)
+                    && !string.Equals(assetPath, folderPath, System.StringComparison.Ordinal)
+                )
+                {
+                    return;
+                }
+            }
+
+            AssetDatabase.DeleteAsset(folderPath);
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
         }
 
         private static TType CreateInMemoryInstance<TType>()
@@ -143,6 +182,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils
             yield return null;
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
+            yield return null;
+            DeleteFolderIfEmpty("Assets/Resources/CustomPath");
             yield return null;
             // Prefer public API surface over reflection to clean up the cached instance
             if (TestSingleton.HasInstance)

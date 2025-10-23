@@ -72,6 +72,11 @@ namespace WallstopStudios.UnityHelpers.Tags
             return new EffectHandle(Interlocked.Increment(ref Id), effect);
         }
 
+        internal static EffectHandle CreateInstanceInternal()
+        {
+            return new EffectHandle(Interlocked.Increment(ref Id), null);
+        }
+
         private EffectHandle(long id, AttributeEffect effect)
         {
             this.id = id;

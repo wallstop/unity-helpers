@@ -4,6 +4,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
     using System.Collections.Generic;
     using System.Linq;
     using System.Runtime.Serialization;
+    using System.Text.Json;
     using System.Text.Json.Serialization;
     using NUnit.Framework;
     using UnityEngine;
@@ -42,9 +43,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
             using System.Text.Json.JsonDocument doc = System.Text.Json.JsonDocument.Parse(json);
             System.Text.Json.JsonElement root = doc.RootElement;
             Assert.AreEqual(System.Text.Json.JsonValueKind.Object, root.ValueKind);
-            Assert.True(root.TryGetProperty("name", out var name));
-            Assert.True(root.TryGetProperty("type", out var type));
-            Assert.True(root.TryGetProperty("instanceId", out var id));
+            Assert.True(root.TryGetProperty("name", out JsonElement name));
+            Assert.True(root.TryGetProperty("type", out JsonElement type));
+            Assert.True(root.TryGetProperty("instanceId", out JsonElement id));
             Assert.AreEqual("Test GameObject", name.GetString());
             StringAssert.Contains("UnityEngine.GameObject", type.GetString());
             Assert.AreEqual(expectedId, id.GetInt32());
