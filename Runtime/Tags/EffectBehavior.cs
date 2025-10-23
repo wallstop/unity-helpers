@@ -3,9 +3,70 @@ namespace WallstopStudios.UnityHelpers.Tags
     using UnityEngine;
 
     /// <summary>
-    /// Base class for authoring custom effect behaviours.
-    /// Instances are cloned per applied handle so derived classes can keep state.
+    /// Base class for authoring custom effect behaviours that respond to the lifecycle of an active <see cref="AttributeEffect"/>.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Each behaviour asset is cloned per <see cref="EffectHandle"/>, which means derived classes can safely store mutable state
+    /// between calls to <see cref="OnApply(EffectBehaviorContext)"/>, <see cref="OnTick(EffectBehaviorContext)"/>,
+    /// <see cref="OnPeriodicTick(EffectBehaviorContext, PeriodicEffectTickContext)"/>, and <see cref="OnRemove(EffectBehaviorContext)"/>.
+    /// </para>
+    /// <para>
+    /// Attach behaviour assets to <see cref="AttributeEffect.behaviors"/> to augment the data-driven attribute pipeline with bespoke
+    /// gameplay logic, visual or audio feedback, or integration hooks into other game systems.
+    /// </para>
+    /// <para>
+    /// All callbacks are synchronously invoked by <see cref="EffectHandler"/> on the main thread, ensuring safe interaction with Unity APIs.
+    /// </para>
+    /// </remarks>
+    /// <example>
+    /// <code language="csharp">
+    /// using UnityEngine;
+    /// using WallstopStudios.UnityHelpers.Tags;
+    ///
+    /// [CreateAssetMenu(menuName = "Game/Effects/Burning Behaviour")]
+    /// public sealed class BurningBehavior : EffectBehavior
+    /// {
+    ///     [SerializeField]
+    ///     private GameObject flamePrefab;
+    ///
+    ///     private GameObject spawnedInstance;
+    ///
+    ///     public override void OnApply(EffectBehaviorContext context)
+    ///     {
+    ///         if (flamePrefab == null)
+    ///         {
+    ///             return;
+    ///         }
+    ///
+    ///         Transform parent = context.Target.transform;
+    ///         spawnedInstance = Object.Instantiate(flamePrefab, parent.position, parent.rotation, parent);
+    ///     }
+    ///
+    ///     public override void OnPeriodicTick(EffectBehaviorContext context, PeriodicEffectTickContext tickContext)
+    ///     {
+    ///         // Cancel the effect early once the periodic bundle has executed three times.
+    ///         if (tickContext.executedTicks >= 3)
+    ///         {
+    ///             context.handler.RemoveEffect(context.handle);
+    ///         }
+    ///     }
+    ///
+    ///     public override void OnRemove(EffectBehaviorContext context)
+    ///     {
+    ///         if (spawnedInstance != null)
+    ///         {
+    ///             Object.Destroy(spawnedInstance);
+    ///             spawnedInstance = null;
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// // Assign the behaviour asset to an AttributeEffect so it is cloned per application.
+    /// AttributeEffect burnEffect = ScriptableObject.CreateInstance&lt;AttributeEffect&gt;();
+    /// burnEffect.behaviors.Add(burningBehaviorAsset);
+    /// </code>
+    /// </example>
     public abstract class EffectBehavior : ScriptableObject
     {
         /// <summary>
