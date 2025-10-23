@@ -24,7 +24,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Core.Attributes
         }
 
         [Test]
-        public void HasRelationalAssignments_RespectsMetadata()
+        public void HasRelationalAssignmentsRespectsMetadata()
         {
             AttributeMetadataCache cache = CreateScriptableObject<AttributeMetadataCache>();
 
@@ -62,7 +62,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Core.Attributes
         }
 
         [Test]
-        public void Assign_IEnumerable_AssignsOnlyRelationalTypes_AndSkipsNulls()
+        public void AssignIEnumerableAssignsOnlyRelationalTypesAndSkipsNulls()
         {
             AttributeMetadataCache cache = CreateScriptableObject<AttributeMetadataCache>();
 

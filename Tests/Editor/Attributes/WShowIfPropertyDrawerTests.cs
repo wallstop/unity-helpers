@@ -111,6 +111,126 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Attributes
             Assert.That(shownHeight, Is.GreaterThan(0f));
         }
 
+        [Test]
+        public void FloatConditionMatchesExpectedValue()
+        {
+            TestContainer container = CreateScriptableObject<TestContainer>();
+            SerializedObject serializedObject = new(container);
+            serializedObject.Update();
+
+            SerializedProperty dependentProperty = serializedObject.FindProperty(
+                nameof(TestContainer.floatDependent)
+            );
+            Assert.NotNull(dependentProperty);
+
+            WShowIfPropertyDrawer drawer = CreateDrawer(
+                new WShowIfAttribute(
+                    nameof(TestContainer.floatCondition),
+                    expectedValues: new object[] { 3.5f }
+                )
+            );
+
+            container.floatCondition = 0f;
+            serializedObject.Update();
+            float hiddenHeight = drawer.GetPropertyHeight(dependentProperty, GUIContent.none);
+            Assert.That(hiddenHeight, Is.Zero);
+
+            container.floatCondition = 3.5f;
+            serializedObject.Update();
+            float shownHeight = drawer.GetPropertyHeight(dependentProperty, GUIContent.none);
+            Assert.That(shownHeight, Is.GreaterThan(0f));
+        }
+
+        [Test]
+        public void DoubleConditionMatchesEquivalentIntExpectedValue()
+        {
+            TestContainer container = CreateScriptableObject<TestContainer>();
+            SerializedObject serializedObject = new(container);
+            serializedObject.Update();
+
+            SerializedProperty dependentProperty = serializedObject.FindProperty(
+                nameof(TestContainer.doubleDependent)
+            );
+            Assert.NotNull(dependentProperty);
+
+            WShowIfPropertyDrawer drawer = CreateDrawer(
+                new WShowIfAttribute(
+                    nameof(TestContainer.doubleCondition),
+                    expectedValues: new object[] { 7 }
+                )
+            );
+
+            container.doubleCondition = 2.5d;
+            serializedObject.Update();
+            float hiddenHeight = drawer.GetPropertyHeight(dependentProperty, GUIContent.none);
+            Assert.That(hiddenHeight, Is.Zero);
+
+            container.doubleCondition = 7d;
+            serializedObject.Update();
+            float shownHeight = drawer.GetPropertyHeight(dependentProperty, GUIContent.none);
+            Assert.That(shownHeight, Is.GreaterThan(0f));
+        }
+
+        [Test]
+        public void IntConditionMatchesExpectedValue()
+        {
+            TestContainer container = CreateScriptableObject<TestContainer>();
+            SerializedObject serializedObject = new(container);
+            serializedObject.Update();
+
+            SerializedProperty dependentProperty = serializedObject.FindProperty(
+                nameof(TestContainer.intDependent)
+            );
+            Assert.NotNull(dependentProperty);
+
+            WShowIfPropertyDrawer drawer = CreateDrawer(
+                new WShowIfAttribute(
+                    nameof(TestContainer.intCondition),
+                    expectedValues: new object[] { 42 }
+                )
+            );
+
+            container.intCondition = 7;
+            serializedObject.Update();
+            float hiddenHeight = drawer.GetPropertyHeight(dependentProperty, GUIContent.none);
+            Assert.That(hiddenHeight, Is.Zero);
+
+            container.intCondition = 42;
+            serializedObject.Update();
+            float shownHeight = drawer.GetPropertyHeight(dependentProperty, GUIContent.none);
+            Assert.That(shownHeight, Is.GreaterThan(0f));
+        }
+
+        [Test]
+        public void StringConditionMatchesExpectedValues()
+        {
+            TestContainer container = CreateScriptableObject<TestContainer>();
+            SerializedObject serializedObject = new(container);
+            serializedObject.Update();
+
+            SerializedProperty dependentProperty = serializedObject.FindProperty(
+                nameof(TestContainer.stringDependent)
+            );
+            Assert.NotNull(dependentProperty);
+
+            WShowIfPropertyDrawer drawer = CreateDrawer(
+                new WShowIfAttribute(
+                    nameof(TestContainer.stringCondition),
+                    expectedValues: new object[] { "alpha", "beta" }
+                )
+            );
+
+            container.stringCondition = "gamma";
+            serializedObject.Update();
+            float hiddenHeight = drawer.GetPropertyHeight(dependentProperty, GUIContent.none);
+            Assert.That(hiddenHeight, Is.Zero);
+
+            container.stringCondition = "alpha";
+            serializedObject.Update();
+            float shownHeight = drawer.GetPropertyHeight(dependentProperty, GUIContent.none);
+            Assert.That(shownHeight, Is.GreaterThan(0f));
+        }
+
         private static WShowIfPropertyDrawer CreateDrawer(WShowIfAttribute attribute)
         {
             WShowIfPropertyDrawer drawer = new();
@@ -140,6 +260,26 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Attributes
                 expectedValues: new object[] { ModifierDurationType.Instant }
             )]
             public int inverseDependent;
+
+            public float floatCondition;
+
+            [WShowIf(nameof(floatCondition), expectedValues: new object[] { 3.5f })]
+            public int floatDependent;
+
+            public double doubleCondition;
+
+            [WShowIf(nameof(doubleCondition), expectedValues: new object[] { 7 })]
+            public int doubleDependent;
+
+            public int intCondition;
+
+            [WShowIf(nameof(intCondition), expectedValues: new object[] { 42 })]
+            public int intDependent;
+
+            public string stringCondition;
+
+            [WShowIf(nameof(stringCondition), expectedValues: new object[] { "alpha", "beta" })]
+            public int stringDependent;
         }
     }
 }

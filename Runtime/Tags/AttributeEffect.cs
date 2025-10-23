@@ -16,6 +16,55 @@ namespace WallstopStudios.UnityHelpers.Tags
 #endif
 
     /// <summary>
+    /// Determines which handles are considered the "same stack" when evaluating stacking policies.
+    /// </summary>
+    public enum EffectStackGroup
+    {
+        [Obsolete("Please use a valid EffectStackGroup instead.")]
+        None = 0,
+
+        /// <summary>
+        /// Uses the effect asset reference. Each ScriptableObject instance is its own group.
+        /// </summary>
+        Reference = 1,
+
+        /// <summary>
+        /// Uses a custom string key supplied via <see cref="AttributeEffect.stackGroupKey"/>.
+        /// Effects with matching keys share a stack regardless of asset reference.
+        /// </summary>
+        CustomKey = 2,
+    }
+
+    /// <summary>
+    /// Describes how additional applications of an effect interact with existing stacks.
+    /// </summary>
+    public enum EffectStackingMode
+    {
+        [Obsolete("Please use a valid EffectStackingMode instead.")]
+        None = 0,
+
+        /// <summary>
+        /// Always create a new stack (subject to optional stack limit).
+        /// </summary>
+        Stack = 1,
+
+        /// <summary>
+        /// Reuse the first existing stack and refresh duration if possible.
+        /// </summary>
+        Refresh = 2,
+
+        /// <summary>
+        /// Remove existing stacks sharing the same group before creating a new one.
+        /// </summary>
+        Replace = 3,
+
+        /// <summary>
+        /// Ignore new applications when a stack is already active.
+        /// </summary>
+        Ignore = 4,
+    }
+
+    /// <summary>
     /// Reusable, data‑driven bundle of stat modifications, tags, and cosmetic feedback.
     /// Serves as the authoring unit for buffs, debuffs, and status effects.
     /// </summary>
@@ -78,6 +127,11 @@ namespace WallstopStudios.UnityHelpers.Tags
         public List<AttributeModification> modifications = new();
 
         /// <summary>
+        /// Periodic modifier sets executed on a cadence while the effect remains active.
+        /// </summary>
+        public List<PeriodicEffectDefinition> periodicEffects = new();
+
+        /// <summary>
         /// Specifies how long this effect should persist (Instant, Duration, or Infinite).
         /// </summary>
         public ModifierDurationType durationType = ModifierDurationType.Duration;
@@ -129,6 +183,34 @@ namespace WallstopStudios.UnityHelpers.Tags
         /// </summary>
         [JsonIgnore]
         public List<CosmeticEffectData> cosmeticEffects = new();
+
+        /// <summary>
+        /// Custom behaviours instantiated per active handle.
+        /// </summary>
+        [JsonIgnore]
+        public List<EffectBehavior> behaviors = new();
+
+        /// <summary>
+        /// Determines how this effect groups stacks for stacking decisions.
+        /// </summary>
+        public EffectStackGroup stackGroup = EffectStackGroup.Reference;
+
+        /// <summary>
+        /// Optional stack key used when <see cref="stackGroup"/> is set to <see cref="EffectStackGroup.CustomKey"/>.
+        /// </summary>
+        public string stackGroupKey;
+
+        /// <summary>
+        /// Determines how successive applications interact with existing stacks for the same group.
+        /// </summary>
+        public EffectStackingMode stackingMode = EffectStackingMode.Refresh;
+
+        /// <summary>
+        /// Optional cap on simultaneous stacks when <see cref="stackingMode"/> is <see cref="EffectStackingMode.Stack"/>.
+        /// A value of 0 means unlimited stacks.
+        /// </summary>
+        [Min(0)]
+        public int maximumStacks;
 
         /// <summary>
         /// Determines whether this effect applies the specified tag.
@@ -391,6 +473,16 @@ namespace WallstopStudios.UnityHelpers.Tags
             }
 
             return descriptionBuilder.ToString();
+        }
+
+        internal EffectStackKey GetStackKey()
+        {
+            if (stackGroup == EffectStackGroup.CustomKey && !string.IsNullOrEmpty(stackGroupKey))
+            {
+                return EffectStackKey.CreateCustom(stackGroupKey);
+            }
+
+            return EffectStackKey.CreateReference(this);
         }
 
         /// <summary>

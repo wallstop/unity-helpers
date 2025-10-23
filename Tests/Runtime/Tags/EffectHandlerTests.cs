@@ -16,6 +16,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
         {
             ResetEffectHandleId();
             RecordingCosmeticComponent.ResetCounters();
+            RecordingEffectBehavior.Reset();
         }
 
         [UnityTest]
@@ -276,6 +277,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
                 e =>
                 {
                     e.durationType = ModifierDurationType.Infinite;
+                    e.stackingMode = EffectStackingMode.Stack;
                 }
             );
 
@@ -307,6 +309,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
                 e =>
                 {
                     e.durationType = ModifierDurationType.Infinite;
+                    e.stackingMode = EffectStackingMode.Stack;
                 }
             );
 
@@ -427,6 +430,194 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
             Assert.Greater(afterRefresh, beforeRefresh);
 
             handler.RemoveEffect(handle);
+        }
+
+        [UnityTest]
+        public IEnumerator PeriodicEffectAppliesTicksAndStops()
+        {
+            (
+                GameObject entity,
+                EffectHandler handler,
+                TestAttributesComponent attributes,
+                TagHandler tags
+            ) = CreateEntity();
+            yield return null;
+
+            AttributeEffect effect = CreateEffect(
+                "Periodic",
+                e =>
+                {
+                    e.durationType = ModifierDurationType.Infinite;
+                    PeriodicEffectDefinition periodic = new() { interval = 0.1f, maxTicks = 3 };
+                    periodic.modifications.Add(
+                        new AttributeModification
+                        {
+                            attribute = nameof(TestAttributesComponent.health),
+                            action = ModificationAction.Addition,
+                            value = -10f,
+                        }
+                    );
+                    e.periodicEffects.Add(periodic);
+                }
+            );
+
+            EffectHandle handle = handler.ApplyEffect(effect).Value;
+            yield return new WaitForSeconds(0.35f);
+            Assert.AreEqual(70f, attributes.health.CurrentValue, 0.01f);
+
+            yield return new WaitForSeconds(0.2f);
+            handler.RemoveEffect(handle);
+            Assert.AreEqual(70f, attributes.health.CurrentValue, 0.01f);
+        }
+
+        [UnityTest]
+        public IEnumerator EffectBehaviorReceivesCallbacks()
+        {
+            (
+                GameObject entity,
+                EffectHandler handler,
+                TestAttributesComponent attributes,
+                TagHandler tags
+            ) = CreateEntity();
+            yield return null;
+
+            AttributeEffect effect = CreateEffect(
+                "Behavior",
+                e =>
+                {
+                    e.duration = 0.25f;
+                    e.periodicEffects.Add(
+                        new PeriodicEffectDefinition { interval = 0.05f, maxTicks = 2 }
+                    );
+                }
+            );
+
+            RecordingEffectBehavior behavior = Track(
+                ScriptableObject.CreateInstance<RecordingEffectBehavior>()
+            );
+            effect.behaviors.Add(behavior);
+
+            EffectHandle handle = handler.ApplyEffect(effect).Value;
+            Assert.AreEqual(1, RecordingEffectBehavior.ApplyCount);
+
+            yield return null;
+            Assert.Greater(RecordingEffectBehavior.TickCount, 0);
+
+            yield return new WaitForSeconds(0.12f);
+            Assert.GreaterOrEqual(RecordingEffectBehavior.PeriodicTickCount, 1);
+
+            handler.RemoveEffect(handle);
+            Assert.AreEqual(1, RecordingEffectBehavior.RemoveCount);
+        }
+
+        [UnityTest]
+        public IEnumerator StackingModeStackRespectsMaximumStacks()
+        {
+            (
+                GameObject entity,
+                EffectHandler handler,
+                TestAttributesComponent attributes,
+                TagHandler tags
+            ) = CreateEntity();
+            yield return null;
+
+            AttributeEffect effect = CreateEffect(
+                "Stacking",
+                e =>
+                {
+                    e.durationType = ModifierDurationType.Infinite;
+                    e.stackingMode = EffectStackingMode.Stack;
+                    e.maximumStacks = 2;
+                }
+            );
+
+            EffectHandle first = handler.ApplyEffect(effect).Value;
+            EffectHandle second = handler.ApplyEffect(effect).Value;
+            EffectHandle third = handler.ApplyEffect(effect).Value;
+
+            List<EffectHandle> active = handler.GetActiveEffects();
+            Assert.AreEqual(2, active.Count);
+            CollectionAssert.DoesNotContain(active, first);
+            CollectionAssert.Contains(active, second);
+            CollectionAssert.Contains(active, third);
+
+            handler.RemoveAllEffects();
+        }
+
+        [UnityTest]
+        public IEnumerator StackingModeReplaceSwapsHandles()
+        {
+            (
+                GameObject entity,
+                EffectHandler handler,
+                TestAttributesComponent attributes,
+                TagHandler tags
+            ) = CreateEntity();
+            yield return null;
+
+            AttributeEffect effect = CreateEffect(
+                "Replace",
+                e =>
+                {
+                    e.durationType = ModifierDurationType.Infinite;
+                    e.stackingMode = EffectStackingMode.Replace;
+                }
+            );
+
+            EffectHandle first = handler.ApplyEffect(effect).Value;
+            EffectHandle second = handler.ApplyEffect(effect).Value;
+
+            List<EffectHandle> active = handler.GetActiveEffects();
+            Assert.AreEqual(1, active.Count);
+            Assert.AreEqual(second, active[0]);
+            Assert.AreNotEqual(first, second);
+
+            handler.RemoveAllEffects();
+        }
+
+        [UnityTest]
+        public IEnumerator CustomStackGroupSharesAcrossEffects()
+        {
+            (
+                GameObject entity,
+                EffectHandler handler,
+                TestAttributesComponent attributes,
+                TagHandler tags
+            ) = CreateEntity();
+            yield return null;
+
+            AttributeEffect effectA = CreateEffect(
+                "GroupA",
+                e =>
+                {
+                    e.durationType = ModifierDurationType.Infinite;
+                    e.stackGroup = EffectStackGroup.CustomKey;
+                    e.stackGroupKey = "shared";
+                    e.stackingMode = EffectStackingMode.Replace;
+                }
+            );
+            AttributeEffect effectB = CreateEffect(
+                "GroupB",
+                e =>
+                {
+                    e.durationType = ModifierDurationType.Infinite;
+                    e.stackGroup = EffectStackGroup.CustomKey;
+                    e.stackGroupKey = "shared";
+                    e.stackingMode = EffectStackingMode.Replace;
+                }
+            );
+
+            EffectHandle first = handler.ApplyEffect(effectA).Value;
+            EffectHandle second = handler.ApplyEffect(effectB).Value;
+
+            List<EffectHandle> active = handler.GetActiveEffects();
+            Assert.AreEqual(1, active.Count);
+            Assert.AreEqual(second, active[0]);
+            Assert.IsFalse(handler.IsEffectActive(effectA));
+            Assert.IsTrue(handler.IsEffectActive(effectB));
+            Assert.AreNotEqual(first, second);
+
+            handler.RemoveAllEffects();
         }
 
         private (

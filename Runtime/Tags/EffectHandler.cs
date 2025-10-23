@@ -67,6 +67,9 @@ namespace WallstopStudios.UnityHelpers.Tags
             List<CosmeticEffectData>
         > _instancedCosmeticEffects = new();
 
+        private readonly Dictionary<EffectStackKey, List<EffectHandle>> _handlesByStackKey = new();
+        private readonly Dictionary<long, EffectStackKey> _stackKeyByHandleId = new();
+
         // Stores expiration time of duration effects (We store by Id because it's much cheaper to iterate Guids than it is EffectHandles
         private readonly Dictionary<long, float> _effectExpirations = new();
         private readonly Dictionary<long, EffectHandle> _effectHandlesById = new();
@@ -74,6 +77,13 @@ namespace WallstopStudios.UnityHelpers.Tags
         // Used only to save allocations in Update()
         private readonly List<long> _expiredEffectIds = new();
         private readonly List<EffectHandle> _appliedEffects = new();
+        private readonly List<EffectHandle> _handleBuffer = new();
+        private readonly Dictionary<long, List<PeriodicEffectRuntimeState>> _periodicEffectStates =
+            new();
+        private readonly List<long> _periodicRemovalBuffer = new();
+        private readonly Dictionary<long, List<EffectBehavior>> _behaviorsByHandleId = new();
+        private readonly List<long> _behaviorHandleIdsBuffer = new();
+        private readonly List<long> _periodicHandleIdsBuffer = new();
 
         private bool _initialized;
 
@@ -118,51 +128,109 @@ namespace WallstopStudios.UnityHelpers.Tags
         /// </remarks>
         public EffectHandle? ApplyEffect(AttributeEffect effect)
         {
-            EffectHandle? maybeHandle = null;
-
-            if (effect.durationType != ModifierDurationType.Instant)
+            if (effect == null)
             {
-                if (effect.durationType == ModifierDurationType.Duration)
-                {
-                    foreach (EffectHandle appliedEffect in _appliedEffects)
-                    {
-                        if (appliedEffect.effect == null)
-                        {
-                            continue;
-                        }
+                return null;
+            }
 
-                        string serializableName = appliedEffect.effect.name;
-                        if (string.Equals(effect.name, serializableName, StringComparison.Ordinal))
+            if (effect.durationType == ModifierDurationType.Instant)
+            {
+                if (RequiresHandle(effect))
+                {
+                    this.LogWarn(
+                        $"Effect {effect:json} defines periodic or behaviour data but is Instant. These features require a Duration or Infinite effect."
+                    );
+                }
+
+                InternalApplyEffect(effect);
+                return null;
+            }
+
+            EffectStackKey stackKey = effect.GetStackKey();
+            List<EffectHandle> existingHandles = TryGetStackHandles(stackKey);
+
+            switch (effect.stackingMode)
+            {
+                case EffectStackingMode.Ignore:
+                {
+                    if (existingHandles is { Count: > 0 })
+                    {
+                        return existingHandles[0];
+                    }
+
+                    break;
+                }
+                case EffectStackingMode.Refresh:
+                {
+                    if (existingHandles is { Count: > 0 })
+                    {
+                        EffectHandle handle = existingHandles[0];
+                        InternalApplyEffect(handle);
+                        return handle;
+                    }
+
+                    break;
+                }
+                case EffectStackingMode.Replace:
+                {
+                    if (existingHandles is { Count: > 0 })
+                    {
+                        _handleBuffer.Clear();
+                        _handleBuffer.AddRange(existingHandles);
+                        for (int i = 0; i < _handleBuffer.Count; ++i)
                         {
-                            maybeHandle = appliedEffect;
-                            break;
+                            RemoveEffect(_handleBuffer[i]);
+                        }
+                        _handleBuffer.Clear();
+                    }
+
+                    break;
+                }
+                case EffectStackingMode.Stack:
+                {
+                    if (existingHandles is { Count: > 0 } && effect.maximumStacks > 0)
+                    {
+                        while (existingHandles.Count >= effect.maximumStacks)
+                        {
+                            EffectHandle oldestHandle = existingHandles[0];
+                            RemoveEffect(oldestHandle);
                         }
                     }
-                }
 
-                maybeHandle ??= EffectHandle.CreateInstance(effect);
-            }
-
-            if (maybeHandle.HasValue)
-            {
-                EffectHandle handle = maybeHandle.Value;
-                InternalApplyEffect(handle);
-                if (
-                    effect.durationType == ModifierDurationType.Duration
-                    && (effect.resetDurationOnReapplication || !_appliedEffects.Contains(handle))
-                )
-                {
-                    long handleId = handle.id;
-                    _effectExpirations[handleId] = Time.time + effect.duration;
-                    _effectHandlesById[handleId] = handle;
+                    break;
                 }
             }
-            else
+
+            EffectHandle newHandle = EffectHandle.CreateInstance(effect);
+            RegisterStackHandle(stackKey, newHandle);
+            InternalApplyEffect(newHandle);
+            return newHandle;
+        }
+
+        private static bool RequiresHandle(AttributeEffect effect)
+        {
+            return (effect.periodicEffects is { Count: > 0 })
+                || (effect.behaviors is { Count: > 0 });
+        }
+
+        private List<EffectHandle> TryGetStackHandles(EffectStackKey stackKey)
+        {
+            _ = _handlesByStackKey.TryGetValue(stackKey, out List<EffectHandle> handles);
+            return handles;
+        }
+
+        private void RegisterStackHandle(EffectStackKey stackKey, EffectHandle handle)
+        {
+            long handleId = handle.id;
+            _stackKeyByHandleId[handleId] = stackKey;
+
+            if (!_handlesByStackKey.TryGetValue(stackKey, out List<EffectHandle> handles))
             {
-                InternalApplyEffect(effect);
+                handles = new List<EffectHandle>();
+                _handlesByStackKey.Add(stackKey, handles);
             }
 
-            return maybeHandle;
+            handles.Add(handle);
         }
 
         /// <summary>
@@ -173,15 +241,55 @@ namespace WallstopStudios.UnityHelpers.Tags
         {
             InternalRemoveEffect(handle);
             _ = _appliedEffects.Remove(handle);
+            DeregisterHandle(handle);
         }
 
         public void RemoveAllEffects()
         {
-            foreach (EffectHandle handle in _appliedEffects.ToArray())
+            _handleBuffer.Clear();
+            _handleBuffer.AddRange(_appliedEffects);
+            foreach (EffectHandle handle in _handleBuffer)
             {
-                InternalRemoveEffect(handle);
+                RemoveEffect(handle);
             }
             _appliedEffects.Clear();
+            _handleBuffer.Clear();
+        }
+
+        private void DeregisterHandle(EffectHandle handle)
+        {
+            long handleId = handle.id;
+            if (_stackKeyByHandleId.TryGetValue(handleId, out EffectStackKey stackKey))
+            {
+                if (_handlesByStackKey.TryGetValue(stackKey, out List<EffectHandle> handles))
+                {
+                    handles.Remove(handle);
+                    if (handles.Count == 0)
+                    {
+                        _handlesByStackKey.Remove(stackKey);
+                    }
+                }
+
+                _stackKeyByHandleId.Remove(handleId);
+            }
+
+            _periodicEffectStates.Remove(handleId);
+
+            if (_behaviorsByHandleId.Remove(handleId, out List<EffectBehavior> behaviorInstances))
+            {
+                EffectBehaviorContext context = new EffectBehaviorContext(this, handle, 0f);
+                for (int i = 0; i < behaviorInstances.Count; ++i)
+                {
+                    EffectBehavior behavior = behaviorInstances[i];
+                    if (behavior == null)
+                    {
+                        continue;
+                    }
+
+                    behavior.OnRemove(context);
+                    Destroy(behavior);
+                }
+            }
         }
 
         /// <summary>
@@ -396,15 +504,22 @@ namespace WallstopStudios.UnityHelpers.Tags
                 _appliedEffects.Add(handle);
             }
 
+            long handleId = handle.id;
+            _effectHandlesById[handleId] = handle;
+
             AttributeEffect effect = handle.effect;
             if (effect.durationType == ModifierDurationType.Duration)
             {
-                if (effect.resetDurationOnReapplication || !exists)
+                if (!exists || effect.resetDurationOnReapplication)
                 {
-                    long handleId = handle.id;
                     _effectExpirations[handleId] = Time.time + effect.duration;
-                    _effectHandlesById[handleId] = handle;
                 }
+            }
+
+            if (!exists)
+            {
+                RegisterPeriodicRuntime(handle);
+                RegisterBehaviors(handle);
             }
 
             if (!_initialized && _tagHandler == null)
@@ -435,6 +550,13 @@ namespace WallstopStudios.UnityHelpers.Tags
 
         private void InternalApplyEffect(AttributeEffect effect)
         {
+            if (effect.durationType == ModifierDurationType.Instant && RequiresHandle(effect))
+            {
+                this.LogWarn(
+                    $"Effect {effect:json} defines periodic or behaviour data but is Instant. These features require a Duration or Infinite effect."
+                );
+            }
+
             if (!_initialized && _tagHandler == null)
             {
                 this.AssignRelationalComponents();
@@ -455,6 +577,116 @@ namespace WallstopStudios.UnityHelpers.Tags
                 foreach (AttributesComponent attributesComponent in _attributes)
                 {
                     attributesComponent.ForceApplyAttributeModifications(effect);
+                }
+            }
+        }
+
+        private void RegisterPeriodicRuntime(EffectHandle handle)
+        {
+            AttributeEffect effect = handle.effect;
+            if (effect.periodicEffects is not { Count: > 0 })
+            {
+                return;
+            }
+
+            List<PeriodicEffectRuntimeState> runtimeStates = null;
+            float startTime = Time.time;
+
+            foreach (PeriodicEffectDefinition definition in effect.periodicEffects)
+            {
+                if (definition == null)
+                {
+                    continue;
+                }
+
+                (runtimeStates ??= new List<PeriodicEffectRuntimeState>()).Add(
+                    new PeriodicEffectRuntimeState(definition, startTime)
+                );
+            }
+
+            if (runtimeStates is { Count: > 0 })
+            {
+                _periodicEffectStates[handle.id] = runtimeStates;
+            }
+        }
+
+        private void RegisterBehaviors(EffectHandle handle)
+        {
+            AttributeEffect effect = handle.effect;
+            if (effect.behaviors is not { Count: > 0 })
+            {
+                return;
+            }
+
+            List<EffectBehavior> instances = null;
+            foreach (EffectBehavior behavior in effect.behaviors)
+            {
+                if (behavior == null)
+                {
+                    continue;
+                }
+
+                EffectBehavior clone = Instantiate(behavior);
+                (instances ??= new List<EffectBehavior>(effect.behaviors.Count)).Add(clone);
+            }
+
+            if (instances == null || instances.Count == 0)
+            {
+                return;
+            }
+
+            EffectBehaviorContext context = new EffectBehaviorContext(this, handle, 0f);
+            for (int i = 0; i < instances.Count; ++i)
+            {
+                EffectBehavior instance = instances[i];
+                if (instance == null)
+                {
+                    continue;
+                }
+
+                instance.OnApply(context);
+            }
+
+            _behaviorsByHandleId[handle.id] = instances;
+        }
+
+        private void ApplyPeriodicTick(
+            EffectHandle handle,
+            PeriodicEffectRuntimeState runtimeState,
+            float currentTime,
+            float deltaTime
+        )
+        {
+            PeriodicEffectDefinition definition = runtimeState.Definition;
+            if (_attributes is { Count: > 0 } && definition.modifications is { Count: > 0 })
+            {
+                foreach (AttributesComponent attributesComponent in _attributes)
+                {
+                    attributesComponent.ApplyAttributeModifications(definition.modifications, null);
+                }
+            }
+
+            if (
+                _behaviorsByHandleId.TryGetValue(handle.id, out List<EffectBehavior> behaviors)
+                && behaviors.Count > 0
+            )
+            {
+                EffectBehaviorContext context = new EffectBehaviorContext(this, handle, deltaTime);
+                PeriodicEffectTickContext tickContext = new PeriodicEffectTickContext(
+                    definition,
+                    runtimeState.ExecutedTicks,
+                    currentTime
+                );
+
+                for (int i = 0; i < behaviors.Count; ++i)
+                {
+                    EffectBehavior behavior = behaviors[i];
+                    if (behavior == null)
+                    {
+                        continue;
+                    }
+
+                    behavior.OnPeriodicTick(context, tickContext);
                 }
             }
         }
@@ -622,6 +854,13 @@ namespace WallstopStudios.UnityHelpers.Tags
 
         private void Update()
         {
+            ProcessEffectExpirations();
+            ProcessBehaviorTicks();
+            ProcessPeriodicEffects();
+        }
+
+        private void ProcessEffectExpirations()
+        {
             if (_effectExpirations.Count <= 0)
             {
                 return;
@@ -631,19 +870,130 @@ namespace WallstopStudios.UnityHelpers.Tags
             float currentTime = Time.time;
             foreach (KeyValuePair<long, float> entry in _effectExpirations)
             {
-                if (entry.Value < currentTime)
+                if (entry.Value <= currentTime)
                 {
                     _expiredEffectIds.Add(entry.Key);
                 }
             }
 
-            foreach (long expiredHandleId in _expiredEffectIds)
+            for (int i = 0; i < _expiredEffectIds.Count; ++i)
             {
+                long expiredHandleId = _expiredEffectIds[i];
                 if (_effectHandlesById.TryGetValue(expiredHandleId, out EffectHandle expiredHandle))
                 {
                     RemoveEffect(expiredHandle);
                 }
             }
+
+            _expiredEffectIds.Clear();
+        }
+
+        private void ProcessBehaviorTicks()
+        {
+            if (_behaviorsByHandleId.Count <= 0)
+            {
+                return;
+            }
+
+            _behaviorHandleIdsBuffer.Clear();
+            _behaviorHandleIdsBuffer.AddRange(_behaviorsByHandleId.Keys);
+            float deltaTime = Time.deltaTime;
+
+            for (int i = 0; i < _behaviorHandleIdsBuffer.Count; ++i)
+            {
+                long handleId = _behaviorHandleIdsBuffer[i];
+                if (!_effectHandlesById.TryGetValue(handleId, out EffectHandle handle))
+                {
+                    continue;
+                }
+
+                if (!_behaviorsByHandleId.TryGetValue(handleId, out List<EffectBehavior> behaviors))
+                {
+                    continue;
+                }
+
+                EffectBehaviorContext context = new EffectBehaviorContext(this, handle, deltaTime);
+                for (int j = 0; j < behaviors.Count; ++j)
+                {
+                    EffectBehavior behavior = behaviors[j];
+                    if (behavior == null)
+                    {
+                        continue;
+                    }
+
+                    behavior.OnTick(context);
+                }
+            }
+
+            _behaviorHandleIdsBuffer.Clear();
+        }
+
+        private void ProcessPeriodicEffects()
+        {
+            if (_periodicEffectStates.Count <= 0)
+            {
+                return;
+            }
+
+            float currentTime = Time.time;
+            float deltaTime = Time.deltaTime;
+            _periodicRemovalBuffer.Clear();
+            _periodicHandleIdsBuffer.Clear();
+            _periodicHandleIdsBuffer.AddRange(_periodicEffectStates.Keys);
+
+            for (int handleIndex = 0; handleIndex < _periodicHandleIdsBuffer.Count; ++handleIndex)
+            {
+                long handleId = _periodicHandleIdsBuffer[handleIndex];
+                if (!_effectHandlesById.TryGetValue(handleId, out EffectHandle handle))
+                {
+                    _periodicRemovalBuffer.Add(handleId);
+                    continue;
+                }
+
+                if (
+                    !_periodicEffectStates.TryGetValue(
+                        handleId,
+                        out List<PeriodicEffectRuntimeState> runtimes
+                    )
+                )
+                {
+                    continue;
+                }
+
+                bool hasActive = false;
+
+                for (int i = 0; i < runtimes.Count; ++i)
+                {
+                    PeriodicEffectRuntimeState runtimeState = runtimes[i];
+                    if (runtimeState == null)
+                    {
+                        continue;
+                    }
+
+                    while (runtimeState.TryConsumeTick(currentTime))
+                    {
+                        ApplyPeriodicTick(handle, runtimeState, currentTime, deltaTime);
+                    }
+
+                    if (!runtimeState.IsComplete)
+                    {
+                        hasActive = true;
+                    }
+                }
+
+                if (!hasActive)
+                {
+                    _periodicRemovalBuffer.Add(handleId);
+                }
+            }
+
+            for (int i = 0; i < _periodicRemovalBuffer.Count; ++i)
+            {
+                _periodicEffectStates.Remove(_periodicRemovalBuffer[i]);
+            }
+
+            _periodicRemovalBuffer.Clear();
+            _periodicHandleIdsBuffer.Clear();
         }
     }
 }

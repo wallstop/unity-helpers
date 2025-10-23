@@ -61,8 +61,9 @@ public class PlayerStats : AttributesComponent
 {
     // Define attributes that effects can modify
     public Attribute Speed = 5f;
-    public Attribute Health = 100f;
-    public Attribute Damage = 10f;
+    public Attribute MaxHealth = 100f;
+    public Attribute AttackDamage = 10f;
+    public Attribute Defense = 5f;
 
     void Start()
     {
@@ -80,6 +81,15 @@ public class PlayerStats : AttributesComponent
 - Calculates final value automatically (Add → Multiply → Override)
 - Raises events when value changes
 
+**⚠️ Important: Use Attributes for "max" or "rate" values, NOT "current" depleting values!**
+
+- ✅ **MaxHealth** - modified by buffs (good)
+- ❌ **CurrentHealth** - modified by damage/healing from many systems (bad - causes state conflicts)
+- ✅ **AttackDamage** - modified by strength buffs (good)
+- ✅ **Speed** - modified by haste/slow effects (good)
+
+If a value is frequently modified by systems outside the effects system (like health being reduced by damage), use a regular field instead. See the main documentation for details.
+
 ---
 
 ## Step 2: Add Stats to Your Player (30 seconds)
@@ -88,8 +98,9 @@ public class PlayerStats : AttributesComponent
 2. Add Component → `PlayerStats`
 3. Set values in Inspector:
    - Speed: `5`
-   - Health: `100`
-   - Damage: `10`
+   - MaxHealth: `100`
+   - AttackDamage: `10`
+   - Defense: `5`
 
 That's it! Your player now has modifiable attributes.
 
@@ -282,8 +293,8 @@ One effect can modify multiple attributes:
 **Create "Berserker Rage" effect:**
 
 - Modification 1: Speed × 1.3
-- Modification 2: Damage × 2.0
-- Modification 3: Health × 0.8 (trade-off!)
+- Modification 2: AttackDamage × 2.0
+- Modification 3: Defense × 0.5 (trade-off - more damage but less defense!)
 - Duration: 10 seconds
 - Tags: `"Berserker"`, `"Buff"`
 
@@ -312,17 +323,32 @@ if (handle.HasValue)
 
 ```csharp
 // Create "Poison" effect:
-// - Modification: Health + (-2) per second
+// - Modification: CurrentHealth + (-5) (instant damage)
 // - Duration: 10 seconds
-// - Tags: "Poison", "DoT", "Debuff"
+// - Tags: "Poisoned", "DoT", "Debuff"
 
-// Apply to enemy
-enemy.ApplyEffect(poisonEffect);
+// Apply damage periodically while poisoned
+IEnumerator ApplyPoison(GameObject target)
+{
+    EffectHandle? poisonHandle = target.ApplyEffect(poisonEffect);
 
-// In PlayerStats, handle negative health:
+    while (poisonHandle.HasValue && target.HasTag("Poisoned"))
+    {
+        yield return new WaitForSeconds(1f);
+
+        // Subtract health while poisoned
+        PlayerStats stats = target.GetComponent<PlayerStats>();
+        if (stats != null)
+        {
+            stats.CurrentHealth.BaseValue -= 2f; // 2 damage per second
+        }
+    }
+}
+
+// In PlayerStats, handle death:
 void Update()
 {
-    if (Health.Value <= 0)
+    if (CurrentHealth.Value <= 0)
     {
         Die();
     }
@@ -376,6 +402,13 @@ void TryApplyBuff(AttributeEffect effect)
 
 ## Troubleshooting
 
+### "Should I use CurrentHealth as an Attribute?"
+
+- **No!** Use `MaxHealth` as an Attribute (modified by buffs), but keep `CurrentHealth` as a regular field (modified by damage/healing)
+- **Why:** CurrentHealth is modified by many systems (combat, regeneration, etc.). Using it as an Attribute causes state conflicts when effects and other systems both try to modify it
+- **Pattern:** Attribute for max/cap, regular field for current/depleting value
+- **See:** "Understanding Attributes: What to Model and What to Avoid" in main documentation
+
 ### "Attribute 'Speed' not found"
 
 - **Cause:** Attribute name in effect doesn't match field name in AttributesComponent
@@ -409,11 +442,12 @@ You now have a complete buff/debuff system! Here are some ideas to expand:
 
 ### Create More Effects
 
-- **Shield:** Health × 2.0, visual shield sprite
+- **Shield:** MaxHealth × 1.5, visual shield sprite
 - **Slow:** Speed × 0.5, "Slowed" tag
-- **Critical:** Damage × 1.5, "Critical" tag
-- **Invisibility:** Just tags ("Invisible"), no stat changes
-- **Burn:** Health + (-5) per second, fire particles
+- **Critical Strike:** AttackDamage × 2.0, "CriticalHit" tag, brief flash effect
+- **Invisibility:** Just tags ("Invisible"), no stat changes, transparency effect
+- **Armor Buff:** Defense + 10, metallic sheen cosmetic
+- **Strength Potion:** AttackDamage × 1.5, red particle aura
 
 ### Build Systems Around Tags
 
