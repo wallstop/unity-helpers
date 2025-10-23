@@ -1,5 +1,6 @@
 namespace WallstopStudios.UnityHelpers.Tests.Tags
 {
+    using System;
     using System.Text.Json;
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Serialization;
@@ -59,9 +60,18 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
 
             using JsonDocument document = JsonDocument.Parse(modification.ToString());
             JsonElement root = document.RootElement;
-            Assert.AreEqual("health", root.GetProperty("attribute").GetString());
-            Assert.AreEqual("Override", root.GetProperty("action").GetString());
-            Assert.AreEqual(42.5f, root.GetProperty("value").GetSingle());
+            Assert.AreEqual(
+                "health",
+                root.GetProperty(nameof(AttributeModification.attribute)).GetString()
+            );
+            Assert.AreEqual(
+                "Override",
+                root.GetProperty(nameof(AttributeModification.action)).GetString()
+            );
+            Assert.AreEqual(
+                42.5f,
+                root.GetProperty(nameof(AttributeModification.value)).GetSingle()
+            );
         }
 
         [Test]
@@ -87,6 +97,41 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
                 payload
             );
             Assert.AreEqual(modification, clone);
+        }
+
+        [Test]
+        public void CompareToOrdersBasedOnAction()
+        {
+            AttributeModification addition = new("health", ModificationAction.Addition, 10f);
+            AttributeModification multiplication = new(
+                "health",
+                ModificationAction.Multiplication,
+                2f
+            );
+            AttributeModification overrideValue = new("health", ModificationAction.Override, 0f);
+
+            AttributeModification[] unsorted = { overrideValue, multiplication, addition };
+
+            Array.Sort(unsorted);
+
+            Assert.AreEqual(addition, unsorted[0], "Addition should be applied first when sorted.");
+            Assert.AreEqual(
+                multiplication,
+                unsorted[1],
+                "Multiplication should appear after additions when sorted."
+            );
+            Assert.AreEqual(
+                overrideValue,
+                unsorted[2],
+                "Override should be processed last when sorted."
+            );
+        }
+
+        [Test]
+        public void CompareToObjectReturnsMinusOneForNonAttributeModification()
+        {
+            AttributeModification addition = new("health", ModificationAction.Addition, 5f);
+            Assert.AreEqual(-1, addition.CompareTo("not a modification"));
         }
     }
 }
