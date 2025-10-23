@@ -1,4 +1,4 @@
-﻿namespace WallstopStudios.UnityHelpers.Tests.Tags
+namespace WallstopStudios.UnityHelpers.Tests.Tags
 {
     using System.Text.Json;
     using NUnit.Framework;
