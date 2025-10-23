@@ -94,10 +94,24 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                     }
 
                     string resolvedResourcesRoot = EnsureAndResolveFolderPath(ResourcesRoot);
+                    if (string.IsNullOrWhiteSpace(resolvedResourcesRoot))
+                    {
+                        Debug.LogError(
+                            "ScriptableObjectSingletonCreator: Unable to resolve required Resources root folder. Aborting singleton auto-creation."
+                        );
+                        break;
+                    }
 
                     string resourcesSubFolder = GetResourcesSubFolder(derivedType);
                     string targetFolderRequested = CombinePaths(ResourcesRoot, resourcesSubFolder);
                     string targetFolder = EnsureAndResolveFolderPath(targetFolderRequested);
+                    if (string.IsNullOrWhiteSpace(targetFolder))
+                    {
+                        Debug.LogError(
+                            $"ScriptableObjectSingletonCreator: Unable to ensure folder '{targetFolderRequested}' for singleton {derivedType.FullName}. Skipping asset creation."
+                        );
+                        continue;
+                    }
 
                     string targetAssetPath = CombinePaths(
                         targetFolder,
@@ -470,9 +484,81 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 
                 if (string.IsNullOrEmpty(matchedExisting))
                 {
-                    AssetDatabase.CreateFolder(current, desiredName);
-                    current = current + "/" + desiredName;
-                    LogVerbose($"ScriptableObjectSingletonCreator: Created folder '{current}'.");
+                    string intendedPath = current + "/" + desiredName;
+                    string createdGuid = AssetDatabase.CreateFolder(current, desiredName);
+                    string createdPath = string.Empty;
+                    if (!string.IsNullOrEmpty(createdGuid))
+                    {
+                        createdPath = NormalizePath(AssetDatabase.GUIDToAssetPath(createdGuid));
+                    }
+
+                    if (
+                        string.IsNullOrEmpty(createdPath)
+                        || !AssetDatabase.IsValidFolder(createdPath)
+                    )
+                    {
+                        if (AssetDatabase.IsValidFolder(intendedPath))
+                        {
+                            createdPath = ResolveExistingFolderPath(intendedPath);
+                        }
+                    }
+
+                    if (
+                        string.IsNullOrEmpty(createdPath)
+                        || !AssetDatabase.IsValidFolder(createdPath)
+                    )
+                    {
+                        Debug.LogError(
+                            $"ScriptableObjectSingletonCreator: Failed to create folder '{intendedPath}'."
+                        );
+                        return string.Empty;
+                    }
+
+                    if (string.Equals(createdPath, intendedPath, StringComparison.Ordinal))
+                    {
+                        current = ResolveExistingFolderPath(intendedPath);
+                        LogVerbose(
+                            $"ScriptableObjectSingletonCreator: Created folder '{current}'."
+                        );
+                        continue;
+                    }
+
+                    if (
+                        string.Equals(createdPath, intendedPath, StringComparison.OrdinalIgnoreCase)
+                    )
+                    {
+                        string renameError = AssetDatabase.MoveAsset(createdPath, intendedPath);
+                        if (string.IsNullOrEmpty(renameError))
+                        {
+                            LogVerbose(
+                                $"ScriptableObjectSingletonCreator: Renamed folder '{createdPath}' to '{intendedPath}' to correct casing."
+                            );
+                            current = ResolveExistingFolderPath(intendedPath);
+                            continue;
+                        }
+
+                        LogVerbose(
+                            $"ScriptableObjectSingletonCreator: Reusing newly created folder '{createdPath}' when casing correction to '{intendedPath}' failed: {renameError}."
+                        );
+                        current = ResolveExistingFolderPath(createdPath);
+                        continue;
+                    }
+
+                    if (AssetDatabase.IsValidFolder(createdPath))
+                    {
+                        bool deleted = AssetDatabase.DeleteAsset(createdPath);
+                        if (!deleted)
+                        {
+                            Debug.LogWarning(
+                                $"ScriptableObjectSingletonCreator: Unexpected folder '{createdPath}' was created while attempting to create '{intendedPath}', but it could not be removed."
+                            );
+                        }
+                    }
+
+                    Debug.LogError(
+                        $"ScriptableObjectSingletonCreator: Expected to create folder '{intendedPath}', but Unity created '{createdPath}'. Aborting to avoid duplicate folders."
+                    );
+                    return string.Empty;
                 }
                 else
                 {

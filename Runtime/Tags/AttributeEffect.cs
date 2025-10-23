@@ -9,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Tags
     using Core.Extension;
     using Core.Helper;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Utils;
 #if ODIN_INSPECTOR
     using Sirenix.OdinInspector;
@@ -81,17 +82,19 @@ namespace WallstopStudios.UnityHelpers.Tags
         /// </summary>
         public ModifierDurationType durationType = ModifierDurationType.Duration;
 
-#if ODIN_INSPECTOR
-        [ShowIf("@durationType == ModifierDurationType.Duration")]
-#endif
         /// <summary>
         /// The duration in seconds for this effect. Only used when <see cref="durationType"/> is <see cref="ModifierDurationType.Duration"/>.
         /// </summary>
-        public float duration;
-
 #if ODIN_INSPECTOR
         [ShowIf("@durationType == ModifierDurationType.Duration")]
+#else
+        [WShowIf(
+            nameof(durationType),
+            expectedValues: new object[] { ModifierDurationType.Duration }
+        )]
 #endif
+        public float duration;
+
         /// <summary>
         /// If true, reapplying this effect while it's already active will reset the duration timer.
         /// Only used when <see cref="durationType"/> is <see cref="ModifierDurationType.Duration"/>.
@@ -100,6 +103,14 @@ namespace WallstopStudios.UnityHelpers.Tags
         /// A poison effect with resetDurationOnReapplication=true will restart its 5-second timer
         /// each time the poison is reapplied, preventing stacking but extending the effect.
         /// </example>
+#if ODIN_INSPECTOR
+        [ShowIf("@durationType == ModifierDurationType.Duration")]
+#else
+        [WShowIf(
+            nameof(durationType),
+            expectedValues: new object[] { ModifierDurationType.Duration }
+        )]
+#endif
         public bool resetDurationOnReapplication;
 
         /// <summary>
@@ -111,6 +122,13 @@ namespace WallstopStudios.UnityHelpers.Tags
         /// to determine if certain actions should be allowed or prevented.
         /// </example>
         public List<string> effectTags = new();
+
+        /// <summary>
+        /// A list of cosmetic effect data that defines visual and audio feedback for this effect.
+        /// These are applied when the effect becomes active and removed when it expires.
+        /// </summary>
+        [JsonIgnore]
+        public List<CosmeticEffectData> cosmeticEffects = new();
 
         /// <summary>
         /// Determines whether this effect applies the specified tag.
@@ -273,17 +291,6 @@ namespace WallstopStudios.UnityHelpers.Tags
         }
 
         /// <summary>
-        /// A list of cosmetic effect data that defines visual and audio feedback for this effect.
-        /// These are applied when the effect becomes active and removed when it expires.
-        /// </summary>
-        [JsonIgnore]
-        public List<CosmeticEffectData> cosmeticEffects = new();
-
-        private List<string> CosmeticEffectsForJson =>
-            cosmeticEffects?.Select(cosmeticEffectData => cosmeticEffectData.name).ToList()
-            ?? new List<string>(0);
-
-        /// <summary>
         /// Converts this effect to a JSON string representation including all modifications, tags, and cosmetic effects.
         /// </summary>
         /// <returns>A JSON string representing this effect.</returns>
@@ -299,6 +306,10 @@ namespace WallstopStudios.UnityHelpers.Tags
                 tags = effectTags,
             }.ToJson();
         }
+
+        private List<string> CosmeticEffectsForJson =>
+            cosmeticEffects?.Select(cosmeticEffectData => cosmeticEffectData.name).ToList()
+            ?? new List<string>(0);
 
         private string BuildDescription()
         {

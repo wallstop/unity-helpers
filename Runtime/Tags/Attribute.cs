@@ -4,6 +4,7 @@ namespace WallstopStudios.UnityHelpers.Tags
     using System.Collections.Generic;
     using System.ComponentModel;
     using System.Globalization;
+    using System.Runtime.CompilerServices;
     using System.Runtime.Serialization;
     using System.Text.Json.Serialization;
     using Core.Extension;
@@ -166,11 +167,131 @@ namespace WallstopStudios.UnityHelpers.Tags
         }
 
         /// <summary>
+        /// Applies a temporary additive modification to the attribute.
+        /// </summary>
+        /// <param name="value">The amount to add to the attribute's calculated value.</param>
+        /// <returns>
+        /// An effect handle that can later be supplied to <see cref="RemoveAttributeModification(EffectHandle)"/>
+        /// to revoke this addition.
+        /// </returns>
+        /// <exception cref="ArgumentException">
+        /// Thrown when <paramref name="value"/> is not a finite number.
+        /// </exception>
+        public EffectHandle Add(float value)
+        {
+            ValidateInput(value);
+
+            EffectHandle handle = EffectHandle.CreateInstanceInternal();
+            AttributeModification modification = new()
+            {
+                action = ModificationAction.Addition,
+                value = value,
+            };
+            ApplyAttributeModification(modification, handle);
+            return handle;
+        }
+
+        /// <summary>
+        /// Applies a temporary subtractive modification to the attribute.
+        /// </summary>
+        /// <param name="value">The amount to subtract from the attribute's calculated value.</param>
+        /// <returns>
+        /// An effect handle that can later be supplied to <see cref="RemoveAttributeModification(EffectHandle)"/>
+        /// to revoke this subtraction.
+        /// </returns>
+        /// <exception cref="ArgumentException">
+        /// Thrown when <paramref name="value"/> is not a finite number.
+        /// </exception>
+        public EffectHandle Subtract(float value)
+        {
+            ValidateInput(value);
+
+            EffectHandle handle = EffectHandle.CreateInstanceInternal();
+            AttributeModification modification = new()
+            {
+                action = ModificationAction.Addition,
+                // Subtraction is represented as a negative additive modifier to preserve modifier ordering.
+                value = -value,
+            };
+            ApplyAttributeModification(modification, handle);
+            return handle;
+        }
+
+        /// <summary>
+        /// Applies a temporary division-based modification to the attribute.
+        /// </summary>
+        /// <param name="value">
+        /// The divisor that will be applied to the attribute's calculated value.
+        /// </param>
+        /// <returns>
+        /// An effect handle that can later be supplied to <see cref="RemoveAttributeModification(EffectHandle)"/>
+        /// to revoke this division.
+        /// </returns>
+        /// <exception cref="ArgumentException">
+        /// Thrown when <paramref name="value"/> is zero or not a finite number.
+        /// </exception>
+        public EffectHandle Divide(float value)
+        {
+            ValidateInput(value);
+
+            if (value == 0f)
+            {
+                throw new ArgumentException("Cannot divide by zero.", nameof(value));
+            }
+
+            EffectHandle handle = EffectHandle.CreateInstanceInternal();
+            AttributeModification modification = new()
+            {
+                action = ModificationAction.Multiplication,
+                // Apply division by multiplying by the reciprocal to maintain multiplication ordering guarantees.
+                value = 1f / value,
+            };
+            ApplyAttributeModification(modification, handle);
+            return handle;
+        }
+
+        /// <summary>
+        /// Applies a temporary multiplicative modification to the attribute.
+        /// </summary>
+        /// <param name="value">The multiplier to apply to the attribute's calculated value.</param>
+        /// <returns>
+        /// An effect handle that can later be supplied to <see cref="RemoveAttributeModification(EffectHandle)"/>
+        /// to revoke this multiplication.
+        /// </returns>
+        /// <exception cref="ArgumentException">
+        /// Thrown when <paramref name="value"/> is not a finite number.
+        /// </exception>
+        public EffectHandle Multiply(float value)
+        {
+            ValidateInput(value);
+
+            EffectHandle handle = EffectHandle.CreateInstanceInternal();
+            AttributeModification modification = new()
+            {
+                action = ModificationAction.Multiplication,
+                value = value,
+            };
+            ApplyAttributeModification(modification, handle);
+            return handle;
+        }
+
+        /// <summary>
         /// Clears the cached current value, forcing it to be recalculated on next access.
         /// </summary>
         public void ClearCache()
         {
             _currentValueCalculated = false;
+        }
+
+        private static void ValidateInput(float value, [CallerMemberName] string caller = null)
+        {
+            if (!float.IsFinite(value))
+            {
+                throw new ArgumentException(
+                    $"Cannot {caller?.ToLowerInvariant()} by infinity or NaN.",
+                    nameof(value)
+                );
+            }
         }
 
         /// <summary>

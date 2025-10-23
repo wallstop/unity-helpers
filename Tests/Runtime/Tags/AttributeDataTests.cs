@@ -1,5 +1,6 @@
 namespace WallstopStudios.UnityHelpers.Tests.Tags
 {
+    using System;
     using System.Text.Json;
     using NUnit.Framework;
     using UnityEngine;
@@ -179,6 +180,74 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
 
             attribute.ClearCache();
             Assert.AreEqual(15f, attribute.CurrentValue);
+        }
+
+        [Test]
+        public void AddProducesHandleAndAppliesAddition()
+        {
+            Attribute attribute = new(10f);
+
+            EffectHandle handle = attribute.Add(5f);
+            Assert.AreEqual(15f, attribute.CurrentValue);
+            Assert.AreEqual(1L, handle.id);
+
+            bool removed = attribute.RemoveAttributeModification(handle);
+            Assert.IsTrue(removed);
+            Assert.AreEqual(10f, attribute.CurrentValue);
+        }
+
+        [Test]
+        public void SubtractStacksAsNegativeAddition()
+        {
+            Attribute attribute = new(20f);
+
+            EffectHandle addition = attribute.Add(5f);
+            EffectHandle subtraction = attribute.Subtract(8f);
+            EffectHandle multiplier = attribute.Multiply(2f);
+
+            Assert.AreEqual(34f, attribute.CurrentValue);
+
+            bool subtractionRemoved = attribute.RemoveAttributeModification(subtraction);
+            Assert.IsTrue(subtractionRemoved);
+            Assert.AreEqual(50f, attribute.CurrentValue);
+
+            attribute.RemoveAttributeModification(addition);
+            attribute.RemoveAttributeModification(multiplier);
+        }
+
+        [Test]
+        public void DivideAppliesReciprocalMultiplication()
+        {
+            Attribute attribute = new(12f);
+
+            EffectHandle addition = attribute.Add(6f);
+            EffectHandle division = attribute.Divide(3f);
+
+            Assert.AreEqual(6f, attribute.CurrentValue);
+
+            bool divisionRemoved = attribute.RemoveAttributeModification(division);
+            Assert.IsTrue(divisionRemoved);
+            Assert.AreEqual(18f, attribute.CurrentValue);
+
+            attribute.RemoveAttributeModification(addition);
+        }
+
+        [Test]
+        public void DivideThrowsWhenValueIsZero()
+        {
+            Attribute attribute = new(10f);
+            Assert.Throws<ArgumentException>(() => attribute.Divide(0f));
+        }
+
+        [Test]
+        public void ArithmeticHelpersThrowWhenValueIsNotFinite()
+        {
+            Attribute attribute = new(5f);
+
+            Assert.Throws<ArgumentException>(() => attribute.Add(float.NaN));
+            Assert.Throws<ArgumentException>(() => attribute.Subtract(float.PositiveInfinity));
+            Assert.Throws<ArgumentException>(() => attribute.Multiply(float.NegativeInfinity));
+            Assert.Throws<ArgumentException>(() => attribute.Divide(float.PositiveInfinity));
         }
     }
 
