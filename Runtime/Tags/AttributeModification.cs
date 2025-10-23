@@ -7,49 +7,50 @@ namespace WallstopStudios.UnityHelpers.Tags
     using ProtoBuf;
 
     /// <summary>
-    /// Declarative change to an <see cref="Attribute"/> value (add, multiply, or override).
-    /// Forms the stat‑modification payload inside an <see cref="AttributeEffect"/>.
+    /// Declarative change applied to an <see cref="Attribute"/>.
+    /// Each instance represents a single operation (add, multiply, or override) referenced by an <see cref="AttributeEffect"/>.
     /// </summary>
     /// <remarks>
+    /// <para>Key properties:</para>
+    /// <list type="bullet">
+    /// <item><description>Non-destructive: temporary handles can add/remove modifications without mutating base values.</description></item>
+    /// <item><description>Deterministic ordering: <see cref="Attribute"/> always processes Addition, then Multiplication, then Override.</description></item>
+    /// <item><description>Flexible authoring: supports both instant (permanent) and duration-based effects.</description></item>
+    /// </list>
+    /// <para>Stack processing order:</para>
+    /// <list type="number">
+    /// <item><description>Addition (value += x)</description></item>
+    /// <item><description>Multiplication (value *= x)</description></item>
+    /// <item><description>Override (value = x)</description></item>
+    /// </list>
     /// <para>
-    /// Problems solved:
-    /// - Non‑destructive stat changes that can be added/removed per effect instance
-    /// - Clear stacking rules via action ordering
-    /// - Works with both permanent (Instant) and temporary (Duration/Infinite) effects
+    /// The <see cref="attribute"/> field must match an <see cref="Attribute"/> field on the target <see cref="AttributesComponent"/>.
+    /// The Attribute Metadata Cache generator can provide editor dropdowns to avoid typos. Unknown names are ignored at runtime.
     /// </para>
-    /// <para>
-    /// Stacking and order: Modifications are applied in this order across a target attribute:
-    /// 1) Addition (value += x) → 2) Multiplication (value *= x) → 3) Override (value = x).
-    /// This means Overrides always win last; use with care.
-    /// </para>
-    /// <para>
-    /// Addressing: The <see cref="attribute"/> field names an <see cref="AttributesComponent"/> field of type
-    /// <see cref="Attribute"/>. Misspelled or missing names are ignored at runtime to keep effects robust.
-    /// Use the Attribute Metadata Cache generator to populate editor dropdowns and avoid typos.
-    /// </para>
-    /// <para>
-    /// Examples:
+    /// <para>Sample definitions:</para>
     /// <code>
-    /// // +50 flat Health
+    /// // +50 flat health
     /// new AttributeModification { attribute = "Health", action = ModificationAction.Addition, value = 50f };
     ///
-    /// // +50% Speed (i.e., multiply by 1.5)
+    /// // +50% speed
     /// new AttributeModification { attribute = "Speed", action = ModificationAction.Multiplication, value = 1.5f };
     ///
-    /// // Set Defense to 0 (hard override)
+    /// // Hard-set defense to 0
     /// new AttributeModification { attribute = "Defense", action = ModificationAction.Override, value = 0f };
     /// </code>
-    /// </para>
-    /// <para>
-    /// Tips:
-    /// - Prefer Addition for small buffs/debuffs; prefer Multiplication for % changes.
-    /// - Avoid frequent Overrides unless you intend to fully clamp a value.
-    /// - Use negative Addition values to subtract; use Multiplication < 1.0 for % reductions.
-    /// </para>
+    /// <para>Authoring tips:</para>
+    /// <list type="bullet">
+    /// <item><description>Use Addition for flat buffs/debuffs; Multiplication for percentage-style adjustments.</description></item>
+    /// <item><description>Reserve Override for hard clamps (it always executes last).</description></item>
+    /// <item><description>Negative Addition subtracts; Multiplication values below 1.0 reduce the attribute.</description></item>
+    /// </list>
     /// </remarks>
     [Serializable]
     [ProtoContract]
-    public struct AttributeModification : IEquatable<AttributeModification>
+    public struct AttributeModification
+        : IEquatable<AttributeModification>,
+            IComparable<AttributeModification>,
+            IComparable
     {
         /// <summary>
         /// The name of the attribute to modify. This should match a field name in an <see cref="AttributesComponent"/> subclass.
@@ -88,6 +89,21 @@ namespace WallstopStudios.UnityHelpers.Tags
         public override string ToString()
         {
             return this.ToJson();
+        }
+
+        public int CompareTo(object obj)
+        {
+            if (obj is AttributeModification other)
+            {
+                return CompareTo(other);
+            }
+
+            return -1;
+        }
+
+        public int CompareTo(AttributeModification other)
+        {
+            return ((int)action).CompareTo((int)other.action);
         }
 
         /// <summary>

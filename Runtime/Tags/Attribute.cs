@@ -141,8 +141,7 @@ namespace WallstopStudios.UnityHelpers.Tags
                 modifications.AddRange(entry.Value);
             }
 
-            modifications.Sort((a, b) => ((int)a.action).CompareTo((int)b.action));
-
+            modifications.Sort();
             foreach (AttributeModification attributeModification in modifications)
             {
                 ApplyAttributeModification(attributeModification, ref calculatedValue);
