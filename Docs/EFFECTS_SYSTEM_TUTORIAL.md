@@ -323,37 +323,62 @@ if (handle.HasValue)
 
 ```csharp
 // Create "Poison" effect:
-// - Modification: CurrentHealth + (-5) (instant damage)
+// - periodicEffects: interval = 1s, maxTicks = 10, modifications = []
+// - behaviors: PoisonDamageBehavior (below)
 // - Duration: 10 seconds
 // - Tags: "Poisoned", "DoT", "Debuff"
 
-// Apply damage periodically while poisoned
-IEnumerator ApplyPoison(GameObject target)
+void ApplyPoison(GameObject target)
 {
-    EffectHandle? poisonHandle = target.ApplyEffect(poisonEffect);
+    target.ApplyEffect(poisonEffect);
+}
 
-    while (poisonHandle.HasValue && target.HasTag("Poisoned"))
+[CreateAssetMenu(menuName = "Combat/Effects/Poison Damage")]
+public sealed class PoisonDamageBehavior : EffectBehavior
+{
+    [SerializeField]
+    private float damagePerTick = 2f;
+
+    public override void OnPeriodicTick(
+        EffectBehaviorContext context,
+        PeriodicEffectTickContext tickContext
+    )
     {
-        yield return new WaitForSeconds(1f);
-
-        // Subtract health while poisoned
-        PlayerStats stats = target.GetComponent<PlayerStats>();
-        if (stats != null)
+        if (!context.Target.TryGetComponent(out PlayerHealth health))
         {
-            stats.CurrentHealth.BaseValue -= 2f; // 2 damage per second
+            return;
         }
+
+        health.ApplyDamage(damagePerTick);
     }
 }
 
-// In PlayerStats, handle death:
-void Update()
+public sealed class PlayerHealth : MonoBehaviour
 {
-    if (CurrentHealth.Value <= 0)
+    [SerializeField]
+    private float currentHealth = 100f;
+
+    public float CurrentHealth => currentHealth;
+
+    public void ApplyDamage(float amount)
     {
-        Die();
+        currentHealth -= amount;
+
+        if (currentHealth <= 0f)
+        {
+            currentHealth = 0f;
+            Die();
+        }
+    }
+
+    private void Die()
+    {
+        // Handle player death
     }
 }
 ```
+
+This keeps `CurrentHealth` as a regular gameplay field while the effect system triggers damage through behaviours.
 
 ### Cooldown Reduction
 

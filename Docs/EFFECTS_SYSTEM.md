@@ -791,11 +791,36 @@ A single effect can have multiple cosmetic components with different behaviors:
 
 ### 2) Poison: "Poisoned" tag for 10s with periodic damage
 
-- periodicEffects: add a definition with `interval = 1s`, `maxTicks = 10`, and modifications `[ { attribute: "CurrentHealth", action: Addition, value: -5f } ]`
+- periodicEffects: add a definition with `interval = 1s`, `maxTicks = 10`, and an empty `modifications` array (ticks drive behaviours)
+- behaviors: attach a `PoisonDamageBehavior` that applies damage during `OnPeriodicTick` (sample below)
 - durationType: Duration `10s` (or Infinite if the periodic schedule should drive expiry)
 - effectTags: `[ "Poisoned" ]`
 - cosmetics: particles + UI icon
 - Optional: add an immediate modification for on-apply burst damage
+
+```csharp
+[CreateAssetMenu(menuName = "Combat/Effects/Poison Damage")]
+public sealed class PoisonDamageBehavior : EffectBehavior
+{
+    [SerializeField]
+    private float damagePerTick = 5f;
+
+    public override void OnPeriodicTick(
+        EffectBehaviorContext context,
+        PeriodicEffectTickContext tickContext
+    )
+    {
+        if (!context.Target.TryGetComponent(out PlayerHealth health))
+        {
+            return;
+        }
+
+        health.ApplyDamage(damagePerTick);
+    }
+}
+```
+
+Pair this with a health component that owns mutable current-health state instead of modelling `CurrentHealth` as an Attribute.
 
 ### 3) Equipment Aura: +10 Defense while equipped
 
