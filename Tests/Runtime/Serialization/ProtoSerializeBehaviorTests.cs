@@ -51,7 +51,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         public void ObjectDeclaredUsesRuntimeTypeByDefault()
         {
             object original = new DerivedMsg { A = 42, B = "obj" };
-            byte[] data = Serializer.ProtoSerialize<object>(original);
+            byte[] data = Serializer.ProtoSerialize(original);
             DerivedMsg round = Serializer.ProtoDeserialize<DerivedMsg>(data);
 
             Assert.IsNotNull(round, "Deserialized instance should not be null");

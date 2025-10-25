@@ -484,9 +484,15 @@ namespace WallstopStudios.UnityHelpers.Tags
             RelationalTypeMetadata[] relationalTypeMetadata
         )
         {
-            _allAttributeNames = allAttributeNames;
-            _typeMetadata = typeMetadata;
-            _relationalTypeMetadata = relationalTypeMetadata;
+            string[] normalizedAttributeNames = SortAttributeNames(allAttributeNames);
+            TypeFieldMetadata[] normalizedTypeMetadata = SortTypeMetadata(typeMetadata);
+            RelationalTypeMetadata[] normalizedRelationalMetadata = SortRelationalTypeMetadata(
+                relationalTypeMetadata
+            );
+
+            _allAttributeNames = normalizedAttributeNames;
+            _typeMetadata = normalizedTypeMetadata;
+            _relationalTypeMetadata = normalizedRelationalMetadata;
             _computedAllAttributeNames = null;
             _computedAllAttributeNamesIncludesTests = false;
             _typeFieldsLookup = null;
@@ -494,6 +500,309 @@ namespace WallstopStudios.UnityHelpers.Tags
             _resolvedRelationalFieldsLookup = null;
             _elementTypeLookup = null;
             UnityEditor.EditorUtility.SetDirty(this);
+        }
+
+        private static string[] SortAttributeNames(string[] attributeNames)
+        {
+            if (attributeNames == null || attributeNames.Length == 0)
+            {
+                return Array.Empty<string>();
+            }
+
+            string[] result = new string[attributeNames.Length];
+            Array.Copy(attributeNames, result, attributeNames.Length);
+            Array.Sort(result, StringComparer.Ordinal);
+            return result;
+        }
+
+        private static TypeFieldMetadata[] SortTypeMetadata(TypeFieldMetadata[] typeMetadata)
+        {
+            if (typeMetadata == null || typeMetadata.Length == 0)
+            {
+                return Array.Empty<TypeFieldMetadata>();
+            }
+
+            int nonNullCount = 0;
+            for (int i = 0; i < typeMetadata.Length; i++)
+            {
+                if (typeMetadata[i] != null)
+                {
+                    nonNullCount++;
+                }
+            }
+
+            if (nonNullCount == 0)
+            {
+                return Array.Empty<TypeFieldMetadata>();
+            }
+
+            TypeFieldMetadata[] result = new TypeFieldMetadata[nonNullCount];
+            int resultIndex = 0;
+            for (int i = 0; i < typeMetadata.Length; i++)
+            {
+                TypeFieldMetadata metadata = typeMetadata[i];
+                if (metadata == null)
+                {
+                    continue;
+                }
+
+                string typeName = metadata.typeName ?? string.Empty;
+                string[] fieldNames = metadata.fieldNames ?? Array.Empty<string>();
+                string[] sortedFieldNames =
+                    fieldNames.Length == 0 ? Array.Empty<string>() : CopyAndSort(fieldNames);
+
+                result[resultIndex] = new TypeFieldMetadata(typeName, sortedFieldNames);
+                resultIndex++;
+            }
+
+            Array.Sort(result, CompareTypeFieldMetadata);
+            return result;
+        }
+
+        private static RelationalTypeMetadata[] SortRelationalTypeMetadata(
+            RelationalTypeMetadata[] relationalTypeMetadata
+        )
+        {
+            if (relationalTypeMetadata == null || relationalTypeMetadata.Length == 0)
+            {
+                return Array.Empty<RelationalTypeMetadata>();
+            }
+
+            int nonNullCount = 0;
+            for (int i = 0; i < relationalTypeMetadata.Length; i++)
+            {
+                if (relationalTypeMetadata[i] != null)
+                {
+                    nonNullCount++;
+                }
+            }
+
+            if (nonNullCount == 0)
+            {
+                return Array.Empty<RelationalTypeMetadata>();
+            }
+
+            RelationalTypeMetadata[] result = new RelationalTypeMetadata[nonNullCount];
+            int resultIndex = 0;
+            for (int i = 0; i < relationalTypeMetadata.Length; i++)
+            {
+                RelationalTypeMetadata metadata = relationalTypeMetadata[i];
+                if (metadata == null)
+                {
+                    continue;
+                }
+
+                string typeName = metadata.typeName ?? string.Empty;
+                RelationalFieldMetadata[] sortedFields = SortRelationalFields(metadata.fields);
+                result[resultIndex] = new RelationalTypeMetadata(typeName, sortedFields);
+                resultIndex++;
+            }
+
+            Array.Sort(result, CompareRelationalTypeMetadata);
+            return result;
+        }
+
+        private static RelationalFieldMetadata[] SortRelationalFields(
+            RelationalFieldMetadata[] relationalFields
+        )
+        {
+            if (relationalFields == null || relationalFields.Length == 0)
+            {
+                return Array.Empty<RelationalFieldMetadata>();
+            }
+
+            int nonNullCount = 0;
+            for (int i = 0; i < relationalFields.Length; i++)
+            {
+                if (relationalFields[i] != null)
+                {
+                    nonNullCount++;
+                }
+            }
+
+            if (nonNullCount == 0)
+            {
+                return Array.Empty<RelationalFieldMetadata>();
+            }
+
+            RelationalFieldMetadata[] result = new RelationalFieldMetadata[nonNullCount];
+            int resultIndex = 0;
+            for (int i = 0; i < relationalFields.Length; i++)
+            {
+                RelationalFieldMetadata field = relationalFields[i];
+                if (field == null)
+                {
+                    continue;
+                }
+
+                result[resultIndex] = new RelationalFieldMetadata(
+                    field.fieldName,
+                    field.attributeKind,
+                    field.fieldKind,
+                    field.elementTypeName,
+                    field.isInterface
+                );
+                resultIndex++;
+            }
+
+            Array.Sort(result, CompareRelationalFieldMetadata);
+            return result;
+        }
+
+        private static string[] CopyAndSort(string[] values)
+        {
+            string[] result = new string[values.Length];
+            Array.Copy(values, result, values.Length);
+            Array.Sort(result, StringComparer.Ordinal);
+            return result;
+        }
+
+        private static int CompareTypeFieldMetadata(TypeFieldMetadata left, TypeFieldMetadata right)
+        {
+            if (ReferenceEquals(left, right))
+            {
+                return 0;
+            }
+
+            if (left == null)
+            {
+                return -1;
+            }
+
+            if (right == null)
+            {
+                return 1;
+            }
+
+            int typeNameComparison = string.CompareOrdinal(left.typeName, right.typeName);
+            if (typeNameComparison != 0)
+            {
+                return typeNameComparison;
+            }
+
+            string[] leftFields = left.fieldNames ?? Array.Empty<string>();
+            string[] rightFields = right.fieldNames ?? Array.Empty<string>();
+
+            int lengthComparison = leftFields.Length.CompareTo(rightFields.Length);
+            if (lengthComparison != 0)
+            {
+                return lengthComparison;
+            }
+
+            for (int i = 0; i < leftFields.Length; i++)
+            {
+                int fieldComparison = string.CompareOrdinal(leftFields[i], rightFields[i]);
+                if (fieldComparison != 0)
+                {
+                    return fieldComparison;
+                }
+            }
+
+            return 0;
+        }
+
+        private static int CompareRelationalTypeMetadata(
+            RelationalTypeMetadata left,
+            RelationalTypeMetadata right
+        )
+        {
+            if (ReferenceEquals(left, right))
+            {
+                return 0;
+            }
+
+            if (left == null)
+            {
+                return -1;
+            }
+
+            if (right == null)
+            {
+                return 1;
+            }
+
+            int typeNameComparison = string.CompareOrdinal(left.typeName, right.typeName);
+            if (typeNameComparison != 0)
+            {
+                return typeNameComparison;
+            }
+
+            RelationalFieldMetadata[] leftFields =
+                left.fields ?? Array.Empty<RelationalFieldMetadata>();
+            RelationalFieldMetadata[] rightFields =
+                right.fields ?? Array.Empty<RelationalFieldMetadata>();
+
+            int lengthComparison = leftFields.Length.CompareTo(rightFields.Length);
+            if (lengthComparison != 0)
+            {
+                return lengthComparison;
+            }
+
+            for (int i = 0; i < leftFields.Length; i++)
+            {
+                int fieldComparison = CompareRelationalFieldMetadata(leftFields[i], rightFields[i]);
+                if (fieldComparison != 0)
+                {
+                    return fieldComparison;
+                }
+            }
+
+            return 0;
+        }
+
+        private static int CompareRelationalFieldMetadata(
+            RelationalFieldMetadata left,
+            RelationalFieldMetadata right
+        )
+        {
+            if (ReferenceEquals(left, right))
+            {
+                return 0;
+            }
+
+            if (left == null)
+            {
+                return -1;
+            }
+
+            if (right == null)
+            {
+                return 1;
+            }
+
+            int fieldNameComparison = string.CompareOrdinal(left.fieldName, right.fieldName);
+            if (fieldNameComparison != 0)
+            {
+                return fieldNameComparison;
+            }
+
+            int attributeComparison = left.attributeKind.CompareTo(right.attributeKind);
+            if (attributeComparison != 0)
+            {
+                return attributeComparison;
+            }
+
+            int fieldKindComparison = left.fieldKind.CompareTo(right.fieldKind);
+            if (fieldKindComparison != 0)
+            {
+                return fieldKindComparison;
+            }
+
+            int elementTypeComparison = string.CompareOrdinal(
+                left.elementTypeName,
+                right.elementTypeName
+            );
+            if (elementTypeComparison != 0)
+            {
+                return elementTypeComparison;
+            }
+
+            if (left.isInterface == right.isInterface)
+            {
+                return 0;
+            }
+
+            return left.isInterface ? -1 : 1;
         }
 #endif
     }

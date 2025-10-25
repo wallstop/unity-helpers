@@ -37,7 +37,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         {
             IAnimal original = new Dog { Age = 5, Name = "Rex" };
 
-            byte[] data = Serializer.ProtoSerialize<IAnimal>(original);
+            byte[] data = Serializer.ProtoSerialize(original);
             Serializer.RegisterProtobufRoot<IAnimal, Dog>();
 
             IAnimal round = Serializer.ProtoDeserialize<IAnimal>(data);
