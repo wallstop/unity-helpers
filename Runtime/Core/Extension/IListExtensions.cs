@@ -508,8 +508,9 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         }
 
         /*
-            Implementation copyright Will Stafford Parsons,
-            https://github.com/wstaffordp/ghostsort/blob/master/src/ghostsort.c
+            Implementation copyright Will Stafford Parsons.
+            Original reference: ghostsort by Will Stafford Parsons (formerly hosted on GitHub).
+            Repository is currently unavailable; preserved locally until an official mirror returns.
 
             Note: Ghost Sort is currently not stable.
 
