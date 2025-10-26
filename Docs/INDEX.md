@@ -312,7 +312,7 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 **Random Extensions** - Random vectors, colors, weighted selection, subset sampling
 → [Math & Extensions](MATH_AND_EXTENSIONS.md#random-generators)
 
-**Random Generators** - 14 high-performance PRNG implementations
+**Random Generators** - 15 high-performance PRNG implementations
 → [README - Random Generators](../README.md#random-number-generators) | [Random Performance](RANDOM_PERFORMANCE.md)
 
 **Range<T>** - Inclusive/exclusive range helper
@@ -357,6 +357,9 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 
 **Singletons** - Runtime and ScriptableObject singleton patterns
 → [Singletons Guide](SINGLETONS.md) | [README](../README.md#singleton-utilities-odin-compatible)
+
+**StormDropRandom** - Large-buffer ARX generator
+→ [README - Random Generators](../README.md#random-number-generators) | [Random Performance](RANDOM_PERFORMANCE.md)
 
 **Sparse Set** - O(1) membership with dense iteration
 → [Data Structures](DATA_STRUCTURES.md#sparse-set) | [README](../README.md#data-structures)

@@ -454,7 +454,7 @@ Already read the [Top 5 Time-Savers](#-top-5-time-savers)? Jump directly to the 
 
 ### Random Number Generators
 
-Unity Helpers includes **14 high-quality random number generators**, all implementing a rich `IRandom` interface:
+Unity Helpers includes **15 high-quality random number generators**, all implementing a rich `IRandom` interface:
 
 #### Available Generators
 
@@ -469,6 +469,7 @@ Unity Helpers includes **14 high-quality random number generators**, all impleme
 | **XoroShiroRandom**             | Very Fast | Good      | General purpose                            |
 | **SplitMix64**                  | Very Fast | Good      | Initialization, hashing                    |
 | **PhotonSpinRandom**            | Fast      | Excellent | Bulk generation; long non-overlapping runs |
+| **StormDropRandom**             | Fast      | Excellent | Large-buffer streams for heavy simulations |
 | **SquirrelRandom**              | Moderate  | Good      | Hash-based generation                      |
 | **WyRandom**                    | Moderate  | Good      | Hashing applications                       |
 | **DotNetRandom**                | Moderate  | Good      | .NET compatibility                         |

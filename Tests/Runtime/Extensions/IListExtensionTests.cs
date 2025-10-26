@@ -135,7 +135,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         }
 
         [Test]
-        public void ShellSortEnhanced()
+        public void GhostSort()
         {
             for (int i = 0; i < NumTries; ++i)
             {

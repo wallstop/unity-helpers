@@ -186,6 +186,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Random
         }
 
         [Test]
+        public void StormDropRandomSerializesAndDeserializes()
+        {
+            StormDropRandom random = new(987654321u);
+            VerifySerializationAndGeneration(random);
+        }
+
+        [Test]
         public void UnityRandomSerializesAndDeserializes()
         {
             UnityRandom random = new(42);

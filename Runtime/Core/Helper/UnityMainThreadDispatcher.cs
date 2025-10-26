@@ -105,8 +105,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// </summary>
         public System.Threading.Tasks.Task RunAsync(Action action)
         {
-            TaskCompletionSource<bool> tcs =
-                new System.Threading.Tasks.TaskCompletionSource<bool>();
+            TaskCompletionSource<bool> tcs = new();
             RunOnMainThread(() =>
             {
                 try
@@ -127,7 +126,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// </summary>
         public System.Threading.Tasks.Task<T> Post<T>(Func<T> func)
         {
-            TaskCompletionSource<T> tcs = new System.Threading.Tasks.TaskCompletionSource<T>();
+            TaskCompletionSource<T> tcs = new();
             RunOnMainThread(() =>
             {
                 try

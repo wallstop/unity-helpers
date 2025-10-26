@@ -39,6 +39,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             LogRow(RunTest(new XorShiftRandom(), timeout));
             LogRow(RunTest(new XoroShiroRandom(), timeout));
             LogRow(RunTest(new PhotonSpinRandom(), timeout));
+            LogRow(RunTest(new StormDropRandom(), timeout));
 
             BenchmarkReadmeUpdater.UpdateSection(
                 "RANDOM_BENCHMARKS",

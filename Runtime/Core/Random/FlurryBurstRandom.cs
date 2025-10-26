@@ -59,7 +59,6 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     {
         private const uint Increment = 1_111_111_111U;
         private const int PayloadByteCount = sizeof(uint) * 2;
-        private const int WarmupRounds = 12;
 
         public static FlurryBurstRandom Instance => ThreadLocalRandom<FlurryBurstRandom>.Instance;
 
@@ -112,7 +111,6 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         public FlurryBurstRandom(Guid guid)
         {
             InitializeFromGuid(guid);
-            Warmup();
         }
 
         public FlurryBurstRandom(uint seed)
@@ -123,7 +121,6 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             _d = seed == 0 ? 1U : seed;
             _e = 0;
             _f = 0;
-            Warmup();
         }
 
         public FlurryBurstRandom(uint seedD, uint seedF, uint extraSeed = 0)
@@ -134,7 +131,6 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             _d = seedD == 0 ? 1U : seedD;
             _e = 0;
             _f = seedF;
-            Warmup();
         }
 
         [JsonConstructor]
@@ -289,14 +285,6 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             }
             _e = Mix(ref mixer);
             _f = Mix(ref mixer);
-        }
-
-        private void Warmup()
-        {
-            for (int i = 0; i < WarmupRounds; ++i)
-            {
-                _ = NextUint();
-            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

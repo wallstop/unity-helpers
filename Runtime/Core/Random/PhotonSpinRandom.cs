@@ -1,12 +1,10 @@
 namespace WallstopStudios.UnityHelpers.Core.Random
 {
     using System;
-    using System.Buffers.Binary;
     using System.Runtime.CompilerServices;
     using System.Runtime.Serialization;
     using System.Text.Json.Serialization;
     using Extension;
-    using Helper;
     using ProtoBuf;
     using WallstopStudios.UnityHelpers.Utils;
 
@@ -91,7 +89,19 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         }
 
         [ProtoMember(6)]
-        private byte[] _serializedElements;
+        private byte[] SerializedElements
+        {
+            get
+            {
+                EnsureSerializedElementsSynced();
+                return _serializedElements;
+            }
+            set
+            {
+                LoadSerializedElements(value);
+                NormalizeIndex();
+            }
+        }
 
         [ProtoMember(7)]
         private uint _a;
@@ -107,6 +117,9 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         [ProtoMember(11)]
         private bool _hasPrimed;
+
+        [ProtoIgnore]
+        private byte[] _serializedElements;
 
         [ProtoIgnore]
         private uint[] _elements = new uint[BlockSize];
@@ -290,19 +303,6 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             }
 
             return 0;
-        }
-
-        [ProtoBeforeSerialization]
-        private void OnBeforeProtoSerialize()
-        {
-            EnsureSerializedElementsSynced();
-        }
-
-        [ProtoAfterDeserialization]
-        private void OnAfterProtoDeserialize()
-        {
-            LoadSerializedElements(_serializedElements);
-            NormalizeIndex();
         }
 
         private void MarkElementsDirty()

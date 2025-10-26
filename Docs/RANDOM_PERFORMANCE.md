@@ -95,10 +95,11 @@ This document contains performance benchmarks for the various random number gene
 | XorShiftRandom              | 792,900,000 | 536,400,000 | 606,000,000   | 184,100,000 | 287,300,000 | 442,800,000      | 391,200,000     |
 | XoroShiroRandom             | 789,200,000 | 359,300,000 | 715,100,000   | 167,300,000 | 192,500,000 | 428,900,000      | 383,500,000     |
 | PhotonSpinRandom            | Pending     | Pending     | Pending       | Pending     | Pending     | Pending          | Pending         |
+| StormDropRandom             | Pending     | Pending     | Pending       | Pending     | Pending     | Pending          | Pending         |
 
 <!-- RANDOM_BENCHMARKS_END -->
 
-Benchmarks for `FlurryBurstRandom` and `PhotonSpinRandom` will populate after running the
+Benchmarks for `FlurryBurstRandom`, `PhotonSpinRandom`, and `StormDropRandom` will populate after running the
 `RandomPerformanceTests.Benchmark` test inside Unity (it updates this table automatically).
 
 ## Interpreting the Results

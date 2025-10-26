@@ -24,17 +24,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Tags
                 string bravoAttributesTypeName =
                     typeof(BravoAttributesComponent).AssemblyQualifiedName ?? string.Empty;
 
-                AttributeMetadataCache.TypeFieldMetadata alphaTypeMetadata =
-                    new AttributeMetadataCache.TypeFieldMetadata(
-                        alphaAttributesTypeName,
-                        new string[] { "gammaField", "betaField" }
-                    );
+                AttributeMetadataCache.TypeFieldMetadata alphaTypeMetadata = new(
+                    alphaAttributesTypeName,
+                    new string[] { "gammaField", "betaField" }
+                );
 
-                AttributeMetadataCache.TypeFieldMetadata bravoTypeMetadata =
-                    new AttributeMetadataCache.TypeFieldMetadata(
-                        bravoAttributesTypeName,
-                        new string[] { "zetaField", "alphaField" }
-                    );
+                AttributeMetadataCache.TypeFieldMetadata bravoTypeMetadata = new(
+                    bravoAttributesTypeName,
+                    new string[] { "zetaField", "alphaField" }
+                );
 
                 string alphaRelationalTypeName =
                     typeof(AlphaRelationalComponent).AssemblyQualifiedName ?? string.Empty;
@@ -44,14 +42,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Tags
                 AttributeMetadataCache.RelationalFieldMetadata[] alphaRelationalFields =
                     new AttributeMetadataCache.RelationalFieldMetadata[]
                     {
-                        new AttributeMetadataCache.RelationalFieldMetadata(
+                        new(
                             "betaRelation",
                             AttributeMetadataCache.RelationalAttributeKind.Parent,
                             AttributeMetadataCache.FieldKind.HashSet,
                             typeof(Light).AssemblyQualifiedName ?? string.Empty,
                             true
                         ),
-                        new AttributeMetadataCache.RelationalFieldMetadata(
+                        new(
                             "alphaRelation",
                             AttributeMetadataCache.RelationalAttributeKind.Child,
                             AttributeMetadataCache.FieldKind.Single,
@@ -63,14 +61,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Tags
                 AttributeMetadataCache.RelationalFieldMetadata[] bravoRelationalFields =
                     new AttributeMetadataCache.RelationalFieldMetadata[]
                     {
-                        new AttributeMetadataCache.RelationalFieldMetadata(
+                        new(
                             "zetaRelation",
                             AttributeMetadataCache.RelationalAttributeKind.Sibling,
                             AttributeMetadataCache.FieldKind.List,
                             typeof(Camera).AssemblyQualifiedName ?? string.Empty,
                             true
                         ),
-                        new AttributeMetadataCache.RelationalFieldMetadata(
+                        new(
                             "alphaRelation",
                             AttributeMetadataCache.RelationalAttributeKind.Child,
                             AttributeMetadataCache.FieldKind.Single,
@@ -82,7 +80,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Tags
                 AttributeMetadataCache.RelationalTypeMetadata[] relationalMetadata =
                     new AttributeMetadataCache.RelationalTypeMetadata[]
                     {
-                        new AttributeMetadataCache.RelationalTypeMetadata(
+                        new(
                             bravoRelationalTypeName,
                             new AttributeMetadataCache.RelationalFieldMetadata[]
                             {
@@ -92,10 +90,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Tags
                             }
                         ),
                         null,
-                        new AttributeMetadataCache.RelationalTypeMetadata(
-                            alphaRelationalTypeName,
-                            alphaRelationalFields
-                        ),
+                        new(alphaRelationalTypeName, alphaRelationalFields),
                     };
 
                 AttributeMetadataCache.TypeFieldMetadata[] typeMetadata =
