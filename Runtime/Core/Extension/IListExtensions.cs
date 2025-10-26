@@ -22,6 +22,18 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
         /// <summary>Insertion sort algorithm - efficient for small or nearly-sorted lists.</summary>
         Insertion = 2,
+
+        /// <summary>Meteor sort algorithm - adaptive gap-based sorting variant.</summary>
+        Meteor = 3,
+
+        /// <summary>Pattern-defeating quicksort - adaptive quicksort with pattern detection.</summary>
+        PatternDefeatingQuickSort = 4,
+
+        /// <summary>Grail sort algorithm - stable mergesort leveraging pooled buffers.</summary>
+        Grail = 5,
+
+        /// <summary>Power sort algorithm - adaptive mergesort that exploits natural runs.</summary>
+        Power = 6,
     }
 
     /// <summary>
@@ -175,13 +187,22 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// <typeparam name="TComparer">The type of comparer.</typeparam>
         /// <param name="array">The list to sort.</param>
         /// <param name="comparer">The comparer to use for element comparisons.</param>
-        /// <param name="sortAlgorithm">The sorting algorithm to use (Ghost or Insertion). Defaults to Ghost.</param>
+        /// <param name="sortAlgorithm">
+        /// The sorting algorithm to use (Ghost, Meteor, PatternDefeatingQuickSort, Grail, Power, or Insertion).
+        /// Defaults to Ghost.
+        /// </param>
         /// <remarks>
         /// <para>Null handling: Throws NullReferenceException if array is null. Comparer behavior depends on implementation.</para>
         /// <para>Thread safety: Not thread-safe. Modifies the list in place. No Unity main thread requirement.</para>
-        /// <para>Performance: Ghost sort is O(n log n) average case. Insertion sort is O(n^2).</para>
+        /// <para>
+        /// Performance: Ghost, Meteor, PatternDefeatingQuickSort, Grail, and Power sorts are O(n log n) on average.
+        /// Insertion sort is O(n^2) worst/average case.
+        /// </para>
         /// <para>Allocations: No allocations.</para>
-        /// <para>Edge cases: Empty or single element lists require no sorting. Ghost sort is currently not stable.</para>
+        /// <para>
+        /// Edge cases: Empty or single element lists require no sorting. Ghost, Meteor, and PatternDefeatingQuickSort
+        /// are currently not stable. Grail and Power sorts are stable.
+        /// </para>
         /// </remarks>
         /// <exception cref="InvalidEnumArgumentException">Thrown when sortAlgorithm is not a valid SortAlgorithm value.</exception>
         public static void Sort<T, TComparer>(
@@ -201,6 +222,26 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 case SortAlgorithm.Insertion:
                 {
                     InsertionSort(array, comparer);
+                    return;
+                }
+                case SortAlgorithm.Meteor:
+                {
+                    MeteorSort(array, comparer);
+                    return;
+                }
+                case SortAlgorithm.PatternDefeatingQuickSort:
+                {
+                    PatternDefeatingQuickSort(array, comparer);
+                    return;
+                }
+                case SortAlgorithm.Grail:
+                {
+                    GrailSort(array, comparer);
+                    return;
+                }
+                case SortAlgorithm.Power:
+                {
+                    PowerSort(array, comparer);
                     return;
                 }
                 default:
@@ -232,16 +273,237 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             where TComparer : IComparer<T>
         {
             int arrayCount = array.Count;
-            for (int i = 1; i < arrayCount; ++i)
+            if (arrayCount < 2)
             {
-                T key = array[i];
-                int j = i - 1;
-                while (0 <= j && 0 < comparer.Compare(array[j], key))
+                return;
+            }
+
+            InsertionSortRange(array, 0, arrayCount - 1, comparer);
+        }
+
+        /*
+            Implementation reference: Meteor Sort by Wiley Looper,
+            https://github.com/wileylooper/meteorsort/blob/master/meteorsort.cs
+
+            Note: Meteor Sort is currently not stable.
+         */
+        /// <summary>
+        /// Sorts the elements in the list using the Meteor Sort algorithm, a gap-sequence-based hybrid sort.
+        /// </summary>
+        /// <typeparam name="T">The type of elements in the list.</typeparam>
+        /// <typeparam name="TComparer">The type of comparer.</typeparam>
+        /// <param name="array">The list to sort.</param>
+        /// <param name="comparer">The comparer to use for element comparisons.</param>
+        /// <remarks>
+        /// <para>Null handling: Throws NullReferenceException if array is null. Comparer behavior depends on implementation.</para>
+        /// <para>Thread safety: Not thread-safe. Modifies the list in place. No Unity main thread requirement.</para>
+        /// <para>Performance: O(n log n) average case using adaptive gap reductions.</para>
+        /// <para>Allocations: No allocations.</para>
+        /// <para>Edge cases: Not a stable sort - equal elements may be reordered.</para>
+        /// </remarks>
+        public static void MeteorSort<T, TComparer>(this IList<T> array, TComparer comparer)
+            where TComparer : IComparer<T>
+        {
+            int length = array.Count;
+            int gap = length;
+
+            int i;
+            int j;
+            while (gap > 15)
+            {
+                gap = ((gap >> 2) - (gap >> 4)) + (gap >> 3);
+                i = gap;
+
+                while (i < length)
                 {
-                    array[j + 1] = array[j];
-                    j--;
+                    T element = array[i];
+                    j = i;
+
+                    while (j >= gap && 0 < comparer.Compare(array[j - gap], element))
+                    {
+                        array[j] = array[j - gap];
+                        j -= gap;
+                    }
+
+                    array[j] = element;
+                    i++;
                 }
-                array[j + 1] = key;
+            }
+
+            i = 1;
+            gap = 0;
+
+            while (i < length)
+            {
+                T element = array[i];
+                j = i;
+
+                while (j > 0 && 0 < comparer.Compare(array[gap], element))
+                {
+                    array[j] = array[gap];
+                    j = gap;
+                    gap--;
+                }
+
+                array[j] = element;
+                gap = i;
+                i++;
+            }
+        }
+
+        /*
+            Implementation reference: Pattern-Defeating Quicksort by Orson Peters,
+            https://github.com/orlp/pdqsort (zlib License)
+
+            This is a C# adaptation that retains the pattern-detection heuristics while operating on IList<T>.
+            Note: PatternDefeatingQuickSort is not stable.
+         */
+        /// <summary>
+        /// Sorts the elements in the list using pattern-defeating quicksort, an adaptive quicksort variant with
+        /// introspective fallbacks and pattern detection.
+        /// </summary>
+        /// <typeparam name="T">The type of elements in the list.</typeparam>
+        /// <typeparam name="TComparer">The type of comparer.</typeparam>
+        /// <param name="array">The list to sort.</param>
+        /// <param name="comparer">The comparer to use for element comparisons.</param>
+        /// <remarks>
+        /// <para>Null handling: Throws NullReferenceException if array is null. Comparer behavior depends on implementation.</para>
+        /// <para>Thread safety: Not thread-safe. Modifies the list in place. No Unity main thread requirement.</para>
+        /// <para>Performance: O(n log n) on average with protection against quadratic worst cases via heapsort fallback.</para>
+        /// <para>Allocations: No allocations.</para>
+        /// <para>Edge cases: Not a stable sort - equal elements may be reordered.</para>
+        /// </remarks>
+        public static void PatternDefeatingQuickSort<T, TComparer>(
+            this IList<T> array,
+            TComparer comparer
+        )
+            where TComparer : IComparer<T>
+        {
+            int count = array.Count;
+            if (count < 2)
+            {
+                return;
+            }
+
+            int depthLimit = 2 * FloorLog2(count);
+            PatternDefeatingQuickSortRange(array, 0, count - 1, comparer, depthLimit);
+        }
+
+        /*
+            Implementation reference: Grail Sort by Mrrl (MIT License),
+            https://github.com/Mrrl/GrailSort
+
+            This adaptation uses pooled buffers instead of manual block buffers while keeping stability.
+         */
+        /// <summary>
+        /// Sorts the elements in the list using the Grail Sort algorithm, a stable mergesort that adapts buffer usage.
+        /// </summary>
+        /// <typeparam name="T">The type of elements in the list.</typeparam>
+        /// <typeparam name="TComparer">The type of comparer.</typeparam>
+        /// <param name="array">The list to sort.</param>
+        /// <param name="comparer">The comparer to use for element comparisons.</param>
+        /// <remarks>
+        /// <para>Null handling: Throws NullReferenceException if array is null. Comparer behavior depends on implementation.</para>
+        /// <para>Thread safety: Not thread-safe. Modifies the list in place. No Unity main thread requirement.</para>
+        /// <para>Performance: O(n log n) worst/average case. Stable sort.</para>
+        /// <para>Allocations: Uses pooled temporary buffers sized to half of the list.</para>
+        /// <para>Edge cases: Empty or single element lists require no sorting.</para>
+        /// </remarks>
+        public static void GrailSort<T, TComparer>(this IList<T> array, TComparer comparer)
+            where TComparer : IComparer<T>
+        {
+            int count = array.Count;
+            if (count < 2)
+            {
+                return;
+            }
+
+            int bufferLength = count / 2 + 1;
+            using PooledResource<T[]> bufferLease = WallstopFastArrayPool<T>.Get(
+                bufferLength,
+                out T[] buffer
+            );
+            GrailSortRange(array, buffer, 0, count - 1, comparer);
+        }
+
+        /*
+            Implementation reference: Powersort (Munro, Wild) - adaptive mergesort leveraging natural runs.
+            https://arxiv.org/abs/1805.04154 (Creative Commons Attribution 4.0)
+
+            This adaptation detects natural runs and merges them using pooled buffers, providing a stable adaptive sort.
+         */
+        /// <summary>
+        /// Sorts the elements in the list using the Power Sort algorithm, which exploits existing runs and merges them
+        /// in near-optimal order.
+        /// </summary>
+        /// <typeparam name="T">The type of elements in the list.</typeparam>
+        /// <typeparam name="TComparer">The type of comparer.</typeparam>
+        /// <param name="array">The list to sort.</param>
+        /// <param name="comparer">The comparer to use for element comparisons.</param>
+        /// <remarks>
+        /// <para>Null handling: Throws NullReferenceException if array is null. Comparer behavior depends on implementation.</para>
+        /// <para>Thread safety: Not thread-safe. Modifies the list in place. No Unity main thread requirement.</para>
+        /// <para>Performance: O(n log n) worst/average case, approaching O(n) on partially sorted data. Stable sort.</para>
+        /// <para>Allocations: Uses pooled lists and buffers for run management and merging.</para>
+        /// <para>Edge cases: Empty or single element lists require no sorting.</para>
+        /// </remarks>
+        public static void PowerSort<T, TComparer>(this IList<T> array, TComparer comparer)
+            where TComparer : IComparer<T>
+        {
+            int count = array.Count;
+            if (count < 2)
+            {
+                return;
+            }
+
+            using PooledResource<List<(int start, int length)>> runBuffer = Buffers<(
+                int start,
+                int length
+            )>.List.Get(out List<(int start, int length)> runs);
+            using PooledResource<List<(int start, int length)>> mergeBuffer = Buffers<(
+                int start,
+                int length
+            )>.List.Get(out List<(int start, int length)> mergedRuns);
+
+            CollectNaturalRuns(array, comparer, runs);
+            if (runs.Count <= 1)
+            {
+                return;
+            }
+
+            int bufferLength = count / 2 + 1;
+            using PooledResource<T[]> tempLease = WallstopFastArrayPool<T>.Get(
+                bufferLength,
+                out T[] buffer
+            );
+
+            while (runs.Count > 1)
+            {
+                mergedRuns.Clear();
+                int runCount = runs.Count;
+                for (int i = 0; i < runCount; i += 2)
+                {
+                    if (i + 1 >= runCount)
+                    {
+                        mergedRuns.Add(runs[i]);
+                        continue;
+                    }
+
+                    (int start, int length) leftRun = runs[i];
+                    (int start, int length) rightRun = runs[i + 1];
+                    MergeRuns(
+                        array,
+                        buffer,
+                        leftRun.start,
+                        leftRun.length,
+                        rightRun.start,
+                        rightRun.length,
+                        comparer
+                    );
+                    mergedRuns.Add((leftRun.start, leftRun.length + rightRun.length));
+                }
+
+                (runs, mergedRuns) = (mergedRuns, runs);
             }
         }
 
@@ -314,6 +576,451 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 gap = i;
                 i++;
             }
+        }
+
+        private static void PatternDefeatingQuickSortRange<T, TComparer>(
+            IList<T> array,
+            int left,
+            int right,
+            TComparer comparer,
+            int depthLimit
+        )
+            where TComparer : IComparer<T>
+        {
+            const int insertionThreshold = 16;
+            while (right - left > insertionThreshold)
+            {
+                if (depthLimit == 0)
+                {
+                    HeapSortRange(array, left, right, comparer);
+                    return;
+                }
+
+                int pivotIndex = SelectPivotIndex(array, left, right, comparer);
+                (int pivotStart, int pivotEnd, bool swapped) = PartitionRange(
+                    array,
+                    left,
+                    right,
+                    pivotIndex,
+                    comparer
+                );
+
+                if (!swapped && IsRangeSorted(array, left, right, comparer))
+                {
+                    return;
+                }
+
+                depthLimit--;
+
+                int leftSize = pivotStart - left;
+                int rightSize = right - pivotEnd;
+
+                if (leftSize < rightSize)
+                {
+                    if (leftSize > 0)
+                    {
+                        PatternDefeatingQuickSortRange(
+                            array,
+                            left,
+                            pivotStart - 1,
+                            comparer,
+                            depthLimit
+                        );
+                    }
+                    left = pivotEnd + 1;
+                }
+                else
+                {
+                    if (rightSize > 0)
+                    {
+                        PatternDefeatingQuickSortRange(
+                            array,
+                            pivotEnd + 1,
+                            right,
+                            comparer,
+                            depthLimit
+                        );
+                    }
+                    right = pivotStart - 1;
+                }
+            }
+
+            InsertionSortRange(array, left, right, comparer);
+        }
+
+        private static int SelectPivotIndex<T, TComparer>(
+            IList<T> array,
+            int left,
+            int right,
+            TComparer comparer
+        )
+            where TComparer : IComparer<T>
+        {
+            int mid = left + ((right - left) >> 1);
+            if (0 < comparer.Compare(array[left], array[mid]))
+            {
+                array.Swap(left, mid);
+            }
+            if (0 < comparer.Compare(array[left], array[right]))
+            {
+                array.Swap(left, right);
+            }
+            if (0 < comparer.Compare(array[mid], array[right]))
+            {
+                array.Swap(mid, right);
+            }
+            return mid;
+        }
+
+        private static (int pivotStart, int pivotEnd, bool swapped) PartitionRange<T, TComparer>(
+            IList<T> array,
+            int left,
+            int right,
+            int pivotIndex,
+            TComparer comparer
+        )
+            where TComparer : IComparer<T>
+        {
+            array.Swap(left, pivotIndex);
+            T pivot = array[left];
+            int i = left + 1;
+            int j = right;
+            bool swapped = false;
+
+            while (i <= j)
+            {
+                while (i <= j && comparer.Compare(array[i], pivot) < 0)
+                {
+                    i++;
+                }
+
+                while (i <= j && comparer.Compare(array[j], pivot) > 0)
+                {
+                    j--;
+                }
+
+                if (i > j)
+                {
+                    break;
+                }
+
+                if (i < j)
+                {
+                    array.Swap(i, j);
+                    swapped = true;
+                }
+
+                i++;
+                j--;
+            }
+
+            int pivotPosition = j;
+            array.Swap(left, pivotPosition);
+
+            int pivotStart = pivotPosition;
+            int pivotEnd = pivotPosition;
+
+            while (pivotStart > left && comparer.Compare(array[pivotStart - 1], pivot) == 0)
+            {
+                pivotStart--;
+            }
+
+            while (pivotEnd < right && comparer.Compare(array[pivotEnd + 1], pivot) == 0)
+            {
+                pivotEnd++;
+            }
+
+            return (pivotStart, pivotEnd, swapped || pivotIndex != pivotPosition);
+        }
+
+        private static void GrailSortRange<T, TComparer>(
+            IList<T> array,
+            T[] buffer,
+            int left,
+            int right,
+            TComparer comparer
+        )
+            where TComparer : IComparer<T>
+        {
+            if (left >= right)
+            {
+                return;
+            }
+
+            int mid = left + ((right - left) >> 1);
+            GrailSortRange(array, buffer, left, mid, comparer);
+            GrailSortRange(array, buffer, mid + 1, right, comparer);
+
+            if (comparer.Compare(array[mid], array[mid + 1]) <= 0)
+            {
+                return;
+            }
+
+            MergeRuns(array, buffer, left, mid - left + 1, mid + 1, right - mid, comparer);
+        }
+
+        private static void MergeRuns<T, TComparer>(
+            IList<T> array,
+            T[] buffer,
+            int leftStart,
+            int leftLength,
+            int rightStart,
+            int rightLength,
+            TComparer comparer
+        )
+            where TComparer : IComparer<T>
+        {
+            if (leftLength == 0 || rightLength == 0)
+            {
+                return;
+            }
+
+            int leftEnd = leftStart + leftLength - 1;
+            int rightEnd = rightStart + rightLength - 1;
+            if (comparer.Compare(array[leftEnd], array[rightStart]) <= 0)
+            {
+                return;
+            }
+
+            if (leftLength <= rightLength)
+            {
+                for (int i = 0; i < leftLength; ++i)
+                {
+                    buffer[i] = array[leftStart + i];
+                }
+
+                int leftIndex = 0;
+                int rightIndex = rightStart;
+                int dest = leftStart;
+                int leftLimit = leftLength;
+
+                while (leftIndex < leftLimit && rightIndex <= rightEnd)
+                {
+                    if (0 < comparer.Compare(buffer[leftIndex], array[rightIndex]))
+                    {
+                        array[dest] = array[rightIndex];
+                        rightIndex++;
+                    }
+                    else
+                    {
+                        array[dest] = buffer[leftIndex];
+                        leftIndex++;
+                    }
+                    dest++;
+                }
+
+                while (leftIndex < leftLimit)
+                {
+                    array[dest] = buffer[leftIndex];
+                    leftIndex++;
+                    dest++;
+                }
+            }
+            else
+            {
+                for (int i = 0; i < rightLength; ++i)
+                {
+                    buffer[i] = array[rightStart + i];
+                }
+
+                int leftIndex = leftEnd;
+                int rightIndex = rightLength - 1;
+                int dest = rightEnd;
+
+                while (leftIndex >= leftStart && rightIndex >= 0)
+                {
+                    if (0 < comparer.Compare(array[leftIndex], buffer[rightIndex]))
+                    {
+                        array[dest] = array[leftIndex];
+                        leftIndex--;
+                    }
+                    else
+                    {
+                        array[dest] = buffer[rightIndex];
+                        rightIndex--;
+                    }
+                    dest--;
+                }
+
+                while (rightIndex >= 0)
+                {
+                    array[dest] = buffer[rightIndex];
+                    rightIndex--;
+                    dest--;
+                }
+            }
+        }
+
+        private static void CollectNaturalRuns<T, TComparer>(
+            IList<T> array,
+            TComparer comparer,
+            List<(int start, int length)> runs
+        )
+            where TComparer : IComparer<T>
+        {
+            runs.Clear();
+            int count = array.Count;
+            int index = 0;
+            while (index < count)
+            {
+                int start = index;
+                index++;
+                if (index == count)
+                {
+                    runs.Add((start, 1));
+                    break;
+                }
+
+                int compare = comparer.Compare(array[index - 1], array[index]);
+                bool ascending = compare <= 0;
+
+                while (index < count)
+                {
+                    int nextCompare = comparer.Compare(array[index - 1], array[index]);
+                    if (ascending)
+                    {
+                        if (nextCompare <= 0)
+                        {
+                            index++;
+                            continue;
+                        }
+                    }
+                    else
+                    {
+                        if (nextCompare >= 0)
+                        {
+                            index++;
+                            continue;
+                        }
+                    }
+                    break;
+                }
+
+                int end = index - 1;
+                if (!ascending && start < end)
+                {
+                    Reverse(array, start, end);
+                }
+
+                runs.Add((start, end - start + 1));
+            }
+        }
+
+        private static void InsertionSortRange<T, TComparer>(
+            IList<T> array,
+            int left,
+            int right,
+            TComparer comparer
+        )
+            where TComparer : IComparer<T>
+        {
+            if (left >= right)
+            {
+                return;
+            }
+
+            for (int i = left + 1; i <= right; ++i)
+            {
+                T key = array[i];
+                int j = i - 1;
+                while (j >= left && 0 < comparer.Compare(array[j], key))
+                {
+                    array[j + 1] = array[j];
+                    j--;
+                }
+                array[j + 1] = key;
+            }
+        }
+
+        private static void HeapSortRange<T, TComparer>(
+            IList<T> array,
+            int start,
+            int end,
+            TComparer comparer
+        )
+            where TComparer : IComparer<T>
+        {
+            int length = end - start + 1;
+            if (length <= 1)
+            {
+                return;
+            }
+
+            for (int i = (length >> 1) - 1; i >= 0; --i)
+            {
+                SiftDown(array, start, length, i, comparer);
+            }
+
+            for (int i = length - 1; i > 0; --i)
+            {
+                array.Swap(start, start + i);
+                SiftDown(array, start, i, 0, comparer);
+            }
+        }
+
+        private static void SiftDown<T, TComparer>(
+            IList<T> array,
+            int start,
+            int length,
+            int root,
+            TComparer comparer
+        )
+            where TComparer : IComparer<T>
+        {
+            while (true)
+            {
+                int child = (root << 1) + 1;
+                if (child >= length)
+                {
+                    return;
+                }
+
+                int rightChild = child + 1;
+                if (
+                    rightChild < length
+                    && comparer.Compare(array[start + child], array[start + rightChild]) < 0
+                )
+                {
+                    child = rightChild;
+                }
+
+                if (comparer.Compare(array[start + root], array[start + child]) >= 0)
+                {
+                    return;
+                }
+
+                array.Swap(start + root, start + child);
+                root = child;
+            }
+        }
+
+        private static bool IsRangeSorted<T, TComparer>(
+            IList<T> array,
+            int left,
+            int right,
+            TComparer comparer
+        )
+            where TComparer : IComparer<T>
+        {
+            for (int i = left + 1; i <= right; ++i)
+            {
+                if (0 < comparer.Compare(array[i - 1], array[i]))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private static int FloorLog2(int value)
+        {
+            int result = 0;
+            while (value > 1)
+            {
+                value >>= 1;
+                result++;
+            }
+            return result;
         }
 
         /// <summary>
