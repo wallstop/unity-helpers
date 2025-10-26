@@ -478,9 +478,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 },
                 () =>
                 {
-                    Func<object[], object> helper = ReflectionHelpers.GetConstructorInvoker(
-                        constructor
-                    );
+                    Func<object[], object> helper = ReflectionHelpers.GetConstructor(constructor);
                     int count = 0;
                     object[] arguments = { 9 };
                     for (int i = 0; i < BatchSize; i++)
@@ -569,16 +567,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 },
                 () =>
                 {
-                    Action<ReflectionPerfTarget, int> helper = ReflectionHelpers.GetFieldSetter<
-                        ReflectionPerfTarget,
-                        int
-                    >(instanceField);
+                    FieldSetter<ReflectionPerfTarget, int> helper =
+                        ReflectionHelpers.GetFieldSetter<ReflectionPerfTarget, int>(instanceField);
                     int count = 0;
                     int value = 0;
+                    ReflectionPerfTarget target = instance;
                     for (int i = 0; i < BatchSize; i++)
                     {
-                        helper(instance, value);
-                        sink ^= instance.InstanceField;
+                        helper(ref target, value);
+                        sink ^= target.InstanceField;
                         value++;
                         count++;
                     }

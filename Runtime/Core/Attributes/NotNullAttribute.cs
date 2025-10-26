@@ -19,9 +19,12 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             {
                 object fieldValue = field.GetValue(o);
 
-                if (fieldValue == null)
+                switch (fieldValue)
                 {
-                    throw new ArgumentNullException(field.Name);
+                    case UnityEngine.Object unityObject when unityObject == null:
+                        throw new ArgumentNullException(field.Name);
+                    case null:
+                        throw new ArgumentNullException(field.Name);
                 }
             }
 #endif
