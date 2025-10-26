@@ -99,9 +99,6 @@ This document contains performance benchmarks for the various random number gene
 
 <!-- RANDOM_BENCHMARKS_END -->
 
-Benchmarks for `FlurryBurstRandom`, `PhotonSpinRandom`, and `StormDropRandom` will populate after running the
-`RandomPerformanceTests.Benchmark` test inside Unity (it updates this table automatically).
-
 ## Interpreting the Results
 
 - **NextBool**: Operations per second for generating random boolean values

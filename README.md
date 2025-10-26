@@ -460,16 +460,16 @@ Unity Helpers includes **15 high-quality random number generators**, all impleme
 
 | Generator                       | Speed     | Quality   | Use Case                                   |
 | ------------------------------- | --------- | --------- | ------------------------------------------ |
-| **IllusionFlow** ⭐             | Fast      | Good      | Default choice (via PRNG.Instance)         |
-| **PcgRandom**                   | Very Fast | Excellent | Deterministic gameplay; explicit seeding   |
+| **IllusionFlow** ⭐             | Very Fast | Excellent | Default choice (via PRNG.Instance)         |
+| **PcgRandom** ⭐                | Very Fast | Excellent | Deterministic gameplay; explicit seeding   |
 | **FlurryBurstRandom**           | Very Fast | Excellent | High-quality PCG/Xoshiro alternative       |
-| **RomuDuo**                     | Fastest   | Good      | Maximum performance needed                 |
+| **RomuDuo**                     | Very Fast | Good      | Maximum performance needed                 |
 | **LinearCongruentialGenerator** | Fastest   | Fair      | Simple, fast generation                    |
 | **XorShiftRandom**              | Very Fast | Good      | General purpose                            |
 | **XoroShiroRandom**             | Very Fast | Good      | General purpose                            |
 | **SplitMix64**                  | Very Fast | Good      | Initialization, hashing                    |
-| **PhotonSpinRandom**            | Fast      | Excellent | Bulk generation; long non-overlapping runs |
 | **StormDropRandom**             | Fast      | Excellent | Large-buffer streams for heavy simulations |
+| **PhotonSpinRandom**            | Moderate  | Excellent | Bulk generation; long non-overlapping runs |
 | **SquirrelRandom**              | Moderate  | Good      | Hash-based generation                      |
 | **WyRandom**                    | Moderate  | Good      | Hashing applications                       |
 | **DotNetRandom**                | Moderate  | Good      | .NET compatibility                         |
