@@ -55,7 +55,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Core.Helper
                             continue;
                         }
                         if (
-                            !candidate.IsAttributeDefined<AnimationEventAttribute>(
+                            !candidate.IsAttributeDefined(
                                 out AnimationEventAttribute attribute,
                                 inherit: false
                             )

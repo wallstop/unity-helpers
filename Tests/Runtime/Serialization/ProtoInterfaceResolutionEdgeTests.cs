@@ -23,7 +23,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         public void SingleImplementationRequiresRegistration()
         {
             IWidget original = new Widget { Id = 3, Label = "ok" };
-            byte[] data = Serializer.ProtoSerialize<IWidget>(original);
+            byte[] data = Serializer.ProtoSerialize(original);
 
             Assert.Throws<ProtoException>(
                 () => Serializer.ProtoDeserialize<IWidget>(data),
@@ -65,7 +65,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         public void AbstractBaseWithoutRegistrationThrows()
         {
             AbstractBase original = new DerivedA { Common = 9, ExtraA = "x" };
-            byte[] data = Serializer.ProtoSerialize<AbstractBase>(original, forceRuntimeType: true);
+            byte[] data = Serializer.ProtoSerialize(original, forceRuntimeType: true);
 
             Assert.Throws<ProtoException>(
                 () => Serializer.ProtoDeserialize<AbstractBase>(data),

@@ -454,24 +454,27 @@ Already read the [Top 5 Time-Savers](#-top-5-time-savers)? Jump directly to the 
 
 ### Random Number Generators
 
-Unity Helpers includes **12 high-quality random number generators**, all implementing a rich `IRandom` interface:
+Unity Helpers includes **15 high-quality random number generators**, all implementing a rich `IRandom` interface:
 
 #### Available Generators
 
-| Generator                       | Speed     | Quality   | Use Case                                 |
-| ------------------------------- | --------- | --------- | ---------------------------------------- |
-| **IllusionFlow** ⭐             | Fast      | Good      | Default choice (via PRNG.Instance)       |
-| **PcgRandom**                   | Very Fast | Excellent | Deterministic gameplay; explicit seeding |
-| **RomuDuo**                     | Fastest   | Good      | Maximum performance needed               |
-| **LinearCongruentialGenerator** | Fastest   | Fair      | Simple, fast generation                  |
-| **XorShiftRandom**              | Very Fast | Good      | General purpose                          |
-| **XoroShiroRandom**             | Very Fast | Good      | General purpose                          |
-| **SplitMix64**                  | Very Fast | Good      | Initialization, hashing                  |
-| **SquirrelRandom**              | Moderate  | Good      | Hash-based generation                    |
-| **WyRandom**                    | Moderate  | Good      | Hashing applications                     |
-| **DotNetRandom**                | Moderate  | Good      | .NET compatibility                       |
-| **SystemRandom**                | Slow      | Good      | Backward compatibility                   |
-| **UnityRandom**                 | Very Slow | Good      | Unity compatibility                      |
+| Generator                       | Speed     | Quality   | Use Case                                   |
+| ------------------------------- | --------- | --------- | ------------------------------------------ |
+| **IllusionFlow** ⭐             | Very Fast | Excellent | Default choice (via PRNG.Instance)         |
+| **PcgRandom** ⭐                | Very Fast | Excellent | Deterministic gameplay; explicit seeding   |
+| **FlurryBurstRandom**           | Very Fast | Excellent | High-quality PCG/Xoshiro alternative       |
+| **RomuDuo**                     | Very Fast | Good      | Maximum performance needed                 |
+| **LinearCongruentialGenerator** | Fastest   | Fair      | Simple, fast generation                    |
+| **XorShiftRandom**              | Very Fast | Good      | General purpose                            |
+| **XoroShiroRandom**             | Very Fast | Good      | General purpose                            |
+| **SplitMix64**                  | Very Fast | Good      | Initialization, hashing                    |
+| **StormDropRandom**             | Fast      | Excellent | Large-buffer streams for heavy simulations |
+| **PhotonSpinRandom**            | Moderate  | Excellent | Bulk generation; long non-overlapping runs |
+| **SquirrelRandom**              | Moderate  | Good      | Hash-based generation                      |
+| **WyRandom**                    | Moderate  | Good      | Hashing applications                       |
+| **DotNetRandom**                | Moderate  | Good      | .NET compatibility                         |
+| **SystemRandom**                | Slow      | Good      | Backward compatibility                     |
+| **UnityRandom**                 | Very Slow | Good      | Unity compatibility                        |
 
 ⭐ **Recommended**: Use `PRNG.Instance` (currently IllusionFlow)
 
@@ -1124,6 +1127,12 @@ Unity Helpers is built with performance as a top priority:
 - Safe for IL2CPP and AOT platforms
 - [📊 Reflection Performance](Docs/REFLECTION_HELPERS.md)
 
+**List Sorting:**
+
+- Multiple adaptive algorithms (`Ghost`, `Meteor`, `Power`, `Grail`, `Pattern-Defeating QuickSort`, `Insertion`) tuned for `IList<T>`
+- Deterministic datasets (sorted, nearly sorted, shuffled) across sizes from 100 to 1,000,000
+- [📊 IList Sorting Performance Benchmarks](Docs/ILIST_SORTING_PERFORMANCE.md)
+
 ---
 
 ## Documentation Index
@@ -1157,6 +1166,7 @@ Unity Helpers is built with performance as a top priority:
 
 - Random Performance — [Random Performance](Docs/RANDOM_PERFORMANCE.md)
 - Reflection Helpers — [Reflection Helpers](Docs/REFLECTION_HELPERS.md)
+- IList Sorting Performance — [IList Sorting Performance](Docs/ILIST_SORTING_PERFORMANCE.md)
 
 **Project Info:**
 

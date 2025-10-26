@@ -6,15 +6,12 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     using ProtoBuf;
 
     /// <summary>
-    ///     Implementation based off of the reference PCG Random, found here: https://www.pcg-random.org/index.html
-    /// </summary>
-    [Serializable]
-    [DataContract]
-    [ProtoContract]
-    /// <summary>
     /// A high-quality, small-state pseudo-random number generator based on the PCG family.
     /// </summary>
     /// <remarks>
+    /// <para>
+    /// Implementation based off of the reference PCG Random, found here: https://www.pcg-random.org/index.html
+    /// </para>
     /// <para>
     /// PCG (Permuted Congruential Generator) offers excellent statistical quality with very small state
     /// and extremely fast generation. This implementation uses a 64-bit state with 32-bit outputs and
@@ -96,6 +93,9 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     /// // var index = rng.NextWeightedIndex(new float[] { 0.1f, 0.3f, 0.6f });
     /// </code>
     /// </example>
+    [Serializable]
+    [DataContract]
+    [ProtoContract]
     public sealed class PcgRandom
         : AbstractRandom,
             IEquatable<PcgRandom>,

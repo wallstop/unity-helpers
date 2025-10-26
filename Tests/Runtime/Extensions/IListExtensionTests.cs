@@ -17,6 +17,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             public int Compare(int x, int y) => x.CompareTo(y);
         }
 
+        private sealed class StableTupleComparer : IComparer<ValueTuple<int, int>>
+        {
+            public int Compare(ValueTuple<int, int> x, ValueTuple<int, int> y)
+            {
+                return x.Item1.CompareTo(y.Item1);
+            }
+        }
+
         private readonly struct IntEqualityComparer : IEqualityComparer<int>
         {
             public bool Equals(int x, int y) => x == y;
@@ -135,7 +143,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         }
 
         [Test]
-        public void ShellSortEnhanced()
+        public void GhostSort()
         {
             for (int i = 0; i < NumTries; ++i)
             {
@@ -150,6 +158,120 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 insertionSorted.GhostSort(new IntComparer());
                 Assert.That(conventionalSorted, Is.EqualTo(insertionSorted));
                 Assert.That(input.OrderBy(x => x), Is.EqualTo(insertionSorted));
+            }
+        }
+
+        [Test]
+        public void MeteorSort()
+        {
+            for (int i = 0; i < NumTries; ++i)
+            {
+                int[] input = Enumerable
+                    .Range(0, 100)
+                    .Select(_ => PRNG.Instance.Next(int.MinValue, int.MaxValue))
+                    .ToArray();
+                int[] conventionalSorted = input.ToArray();
+                Array.Sort(conventionalSorted);
+
+                int[] meteorSorted = input.ToArray();
+                meteorSorted.MeteorSort(new IntComparer());
+                Assert.That(conventionalSorted, Is.EqualTo(meteorSorted));
+                Assert.That(input.OrderBy(x => x), Is.EqualTo(meteorSorted));
+            }
+        }
+
+        [Test]
+        public void PatternDefeatingQuickSort()
+        {
+            for (int i = 0; i < NumTries; ++i)
+            {
+                int[] input = Enumerable
+                    .Range(0, 100)
+                    .Select(_ => PRNG.Instance.Next(int.MinValue, int.MaxValue))
+                    .ToArray();
+                int[] conventionalSorted = input.ToArray();
+                Array.Sort(conventionalSorted);
+
+                int[] pdqSorted = input.ToArray();
+                pdqSorted.PatternDefeatingQuickSort(new IntComparer());
+                Assert.That(conventionalSorted, Is.EqualTo(pdqSorted));
+                Assert.That(input.OrderBy(x => x), Is.EqualTo(pdqSorted));
+            }
+        }
+
+        [Test]
+        public void GrailSort()
+        {
+            for (int i = 0; i < NumTries; ++i)
+            {
+                int[] input = Enumerable
+                    .Range(0, 100)
+                    .Select(_ => PRNG.Instance.Next(int.MinValue, int.MaxValue))
+                    .ToArray();
+                int[] conventionalSorted = input.ToArray();
+                Array.Sort(conventionalSorted);
+
+                int[] grailSorted = input.ToArray();
+                grailSorted.GrailSort(new IntComparer());
+                Assert.That(conventionalSorted, Is.EqualTo(grailSorted));
+                Assert.That(input.OrderBy(x => x), Is.EqualTo(grailSorted));
+            }
+        }
+
+        [Test]
+        public void PowerSort()
+        {
+            for (int i = 0; i < NumTries; ++i)
+            {
+                int[] input = Enumerable
+                    .Range(0, 100)
+                    .Select(_ => PRNG.Instance.Next(int.MinValue, int.MaxValue))
+                    .ToArray();
+                int[] conventionalSorted = input.ToArray();
+                Array.Sort(conventionalSorted);
+
+                int[] powerSorted = input.ToArray();
+                powerSorted.PowerSort(new IntComparer());
+                Assert.That(conventionalSorted, Is.EqualTo(powerSorted));
+                Assert.That(input.OrderBy(x => x), Is.EqualTo(powerSorted));
+            }
+        }
+
+        [Test]
+        public void GrailSortIsStable()
+        {
+            ValueTuple<int, int>[] input = Enumerable
+                .Range(0, 100)
+                .Select(i => ValueTuple.Create(i / 5, i))
+                .ToArray();
+            ValueTuple<int, int>[] grailSorted = input.ToArray();
+            grailSorted.GrailSort(new StableTupleComparer());
+
+            for (int i = 1; i < grailSorted.Length; ++i)
+            {
+                if (grailSorted[i - 1].Item1 == grailSorted[i].Item1)
+                {
+                    Assert.That(grailSorted[i - 1].Item2, Is.LessThan(grailSorted[i].Item2));
+                }
+            }
+        }
+
+        [Test]
+        public void PowerSortIsStable()
+        {
+            ValueTuple<int, int>[] input = Enumerable
+                .Range(0, 100)
+                .Select(i => ValueTuple.Create(i / 4, i))
+                .ToArray();
+            ValueTuple<int, int>[] powerSorted = input.ToArray();
+            powerSorted.PowerSort(new StableTupleComparer());
+
+            for (int i = 1; i < powerSorted.Length; ++i)
+            {
+                if (powerSorted[i - 1].Item1 == powerSorted[i].Item1)
+                {
+                    Assert.That(powerSorted[i - 1].Item2, Is.LessThan(powerSorted[i].Item2));
+                }
             }
         }
 
@@ -728,6 +850,70 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         {
             int[] single = { 42 };
             single.GhostSort(new IntComparer());
+            Assert.That(single, Is.EqualTo(new[] { 42 }));
+        }
+
+        [Test]
+        public void PatternDefeatingQuickSortEmptyList()
+        {
+            int[] empty = Array.Empty<int>();
+            empty.PatternDefeatingQuickSort(new IntComparer());
+            Assert.That(empty, Is.Empty);
+        }
+
+        [Test]
+        public void PatternDefeatingQuickSortSingleElement()
+        {
+            int[] single = { 42 };
+            single.PatternDefeatingQuickSort(new IntComparer());
+            Assert.That(single, Is.EqualTo(new[] { 42 }));
+        }
+
+        [Test]
+        public void GrailSortEmptyList()
+        {
+            int[] empty = Array.Empty<int>();
+            empty.GrailSort(new IntComparer());
+            Assert.That(empty, Is.Empty);
+        }
+
+        [Test]
+        public void GrailSortSingleElement()
+        {
+            int[] single = { 42 };
+            single.GrailSort(new IntComparer());
+            Assert.That(single, Is.EqualTo(new[] { 42 }));
+        }
+
+        [Test]
+        public void PowerSortEmptyList()
+        {
+            int[] empty = Array.Empty<int>();
+            empty.PowerSort(new IntComparer());
+            Assert.That(empty, Is.Empty);
+        }
+
+        [Test]
+        public void PowerSortSingleElement()
+        {
+            int[] single = { 42 };
+            single.PowerSort(new IntComparer());
+            Assert.That(single, Is.EqualTo(new[] { 42 }));
+        }
+
+        [Test]
+        public void MeteorSortEmptyList()
+        {
+            int[] empty = Array.Empty<int>();
+            empty.MeteorSort(new IntComparer());
+            Assert.That(empty, Is.Empty);
+        }
+
+        [Test]
+        public void MeteorSortSingleElement()
+        {
+            int[] single = { 42 };
+            single.MeteorSort(new IntComparer());
             Assert.That(single, Is.EqualTo(new[] { 42 }));
         }
 

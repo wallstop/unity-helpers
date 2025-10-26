@@ -321,7 +321,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Reflex
             GameObject root = Track(new GameObject("ReflexComponentPrefab"));
             ReflexRelationalTester tester = root.AddComponent<ReflexRelationalTester>();
 
-            GameObject child = new GameObject("ReflexComponentPrefabChild");
+            GameObject child = new("ReflexComponentPrefabChild");
             child.AddComponent<CapsuleCollider>();
             child.transform.SetParent(root.transform, false);
 
@@ -334,7 +334,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Reflex
             GameObject root = Track(new GameObject("ReflexGameObjectPrefab"));
             root.AddComponent<ReflexRelationalTester>();
 
-            GameObject child = new GameObject("ReflexGameObjectPrefabChild");
+            GameObject child = new("ReflexGameObjectPrefabChild");
             child.AddComponent<CapsuleCollider>();
             child.transform.SetParent(root.transform, false);
 

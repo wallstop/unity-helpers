@@ -514,19 +514,54 @@ namespace WallstopStudios.UnityHelpers.Tests.Random
 
         [Test]
         [Parallelizable]
-        public void Json()
+        public void JsonSerialization()
         {
             IRandom random = NewRandom();
             string json = random.ToJson();
             IRandom deserialized = Serializer.JsonDeserialize<IRandom>(json, random.GetType());
             Assert.AreEqual(random.InternalState, deserialized.InternalState);
 
-            if (NewRandom() is not UnityRandom)
+            if (random is not UnityRandom)
             {
                 for (int i = 0; i < NumGeneratorChecks; ++i)
                 {
-                    Assert.AreEqual(random.Next(), deserialized.Next());
-                    Assert.AreEqual(random.InternalState, deserialized.InternalState);
+                    Assert.AreEqual(random.Next(), deserialized.Next(), "Iteration: " + i);
+                    Assert.AreEqual(
+                        random.InternalState,
+                        deserialized.InternalState,
+                        "Iteration: " + i
+                    );
+                }
+            }
+        }
+
+        [Test]
+        [Parallelizable]
+        public void JsonSerializationWithMix()
+        {
+            for (int preMix = 1; preMix < 10; ++preMix)
+            {
+                IRandom random = NewRandom();
+                for (int j = 0; j < preMix; ++j)
+                {
+                    _ = random.Next();
+                }
+
+                string json = random.ToJson();
+                IRandom deserialized = Serializer.JsonDeserialize<IRandom>(json, random.GetType());
+                Assert.AreEqual(random.InternalState, deserialized.InternalState);
+
+                if (random is not UnityRandom)
+                {
+                    for (int i = 0; i < NumGeneratorChecks; ++i)
+                    {
+                        Assert.AreEqual(random.Next(), deserialized.Next(), "Iteration: " + i);
+                        Assert.AreEqual(
+                            random.InternalState,
+                            deserialized.InternalState,
+                            "Iteration: " + i
+                        );
+                    }
                 }
             }
         }

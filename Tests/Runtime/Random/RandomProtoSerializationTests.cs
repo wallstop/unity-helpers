@@ -172,6 +172,20 @@ namespace WallstopStudios.UnityHelpers.Tests.Random
         }
 
         [Test]
+        public void PhotonSpinRandomSerializesAndDeserializes()
+        {
+            PhotonSpinRandom random = new(Guid.Parse("0AF7CF4F-44F6-421E-B7DC-1ADEF9F27E19"));
+            VerifySerializationAndGeneration(random);
+        }
+
+        [Test]
+        public void StormDropRandomSerializesAndDeserializes()
+        {
+            StormDropRandom random = new(987654321u);
+            VerifySerializationAndGeneration(random);
+        }
+
+        [Test]
         public void UnityRandomSerializesAndDeserializes()
         {
             UnityRandom random = new(42);

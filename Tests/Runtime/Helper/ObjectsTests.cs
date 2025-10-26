@@ -343,8 +343,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             CustomEnumerable ascending = new(1, 2, 3);
             CustomEnumerable descending = new(3, 2, 1);
 
-            int ascHash = Objects.EnumerableHashCode<int>(ascending);
-            int descHash = Objects.EnumerableHashCode<int>(descending);
+            int ascHash = Objects.EnumerableHashCode(ascending);
+            int descHash = Objects.EnumerableHashCode(descending);
 
             Assert.AreNotEqual(ascHash, descHash);
         }
@@ -354,7 +354,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             DisposableEnumerable enumerable = new(1, 2, 3);
 
-            int result = Objects.EnumerableHashCode<int>(enumerable);
+            int result = Objects.EnumerableHashCode(enumerable);
 
             Assert.AreNotEqual(0, result);
             Assert.IsTrue(enumerable.LastEnumerator.WasDisposed);

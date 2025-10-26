@@ -8,9 +8,6 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     using Helper;
     using ProtoBuf;
 
-    [Serializable]
-    [DataContract]
-    [ProtoContract]
     /// <summary>
     /// A member of the ROMU family (RomuDuo) emphasizing high speed and good statistical quality on modern CPUs.
     /// </summary>
@@ -48,6 +45,9 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     /// double normal = rng.NextGaussian(0.0, 1.0);
     /// </code>
     /// </example>
+    [Serializable]
+    [DataContract]
+    [ProtoContract]
     public sealed class RomuDuo
         : AbstractRandom,
             IEquatable<RomuDuo>,

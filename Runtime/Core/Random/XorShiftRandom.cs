@@ -5,9 +5,6 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     using System.Text.Json.Serialization;
     using ProtoBuf;
 
-    [Serializable]
-    [DataContract]
-    [ProtoContract]
     /// <summary>
     /// A classic, extremely fast XorShift PRNG with small state and modest quality.
     /// </summary>
@@ -53,6 +50,9 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     /// var fast = XorShiftRandom.Instance; // per-thread instance
     /// </code>
     /// </example>
+    [Serializable]
+    [DataContract]
+    [ProtoContract]
     public sealed class XorShiftRandom : AbstractRandom
     {
         public static XorShiftRandom Instance => ThreadLocalRandom<XorShiftRandom>.Instance;

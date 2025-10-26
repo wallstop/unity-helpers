@@ -45,13 +45,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
                 maxTicks = 6,
                 modifications = new List<AttributeModification>
                 {
-                    new AttributeModification
+                    new()
                     {
                         attribute = "health",
                         action = ModificationAction.Addition,
                         value = -7.5f,
                     },
-                    new AttributeModification
+                    new()
                     {
                         attribute = "armor",
                         action = ModificationAction.Multiplication,

@@ -139,6 +139,9 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 **Fit Texture Size** - Auto-adjust texture max size to source dimensions
 → [Editor Tools Guide](EDITOR_TOOLS_GUIDE.md#fit-texture-size)
 
+**FlurryBurstRandom** - Six-word ARX generator (FlurryBurst32 port)
+→ [README - Random Generators](../README.md#random-number-generators) | [Random Performance](RANDOM_PERFORMANCE.md)
+
 ---
 
 ## G
@@ -262,6 +265,9 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 **PcgRandom** - High-quality PCG random generator
 → [README - Random Generators](../README.md#random-number-generators) | [Random Performance](RANDOM_PERFORMANCE.md)
 
+**PhotonSpinRandom** - SHISHUA-inspired bulk generator
+→ [README - Random Generators](../README.md#random-number-generators) | [Random Performance](RANDOM_PERFORMANCE.md)
+
 **Point-in-Polygon** - 2D/3D containment tests
 → [Math & Extensions](MATH_AND_EXTENSIONS.md#geometry)
 
@@ -306,7 +312,7 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 **Random Extensions** - Random vectors, colors, weighted selection, subset sampling
 → [Math & Extensions](MATH_AND_EXTENSIONS.md#random-generators)
 
-**Random Generators** - 12 high-performance PRNG implementations
+**Random Generators** - 15 high-performance PRNG implementations
 → [README - Random Generators](../README.md#random-number-generators) | [Random Performance](RANDOM_PERFORMANCE.md)
 
 **Range<T>** - Inclusive/exclusive range helper
@@ -351,6 +357,9 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 
 **Singletons** - Runtime and ScriptableObject singleton patterns
 → [Singletons Guide](SINGLETONS.md) | [README](../README.md#singleton-utilities-odin-compatible)
+
+**StormDropRandom** - Large-buffer ARX generator
+→ [README - Random Generators](../README.md#random-number-generators) | [Random Performance](RANDOM_PERFORMANCE.md)
 
 **Sparse Set** - O(1) membership with dense iteration
 → [Data Structures](DATA_STRUCTURES.md#sparse-set) | [README](../README.md#data-structures)
