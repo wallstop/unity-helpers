@@ -1125,6 +1125,7 @@ Unity Helpers is built with performance as a top priority:
 
 - IL-emitted delegates 10-100x faster than System.Reflection
 - Safe for IL2CPP and AOT platforms
+- Capability overrides (`ReflectionHelpers.OverrideReflectionCapabilities`) let you force expression/IL fallbacks in tests
 - [📊 Reflection Performance](Docs/REFLECTION_HELPERS.md)
 
 **List Sorting:**

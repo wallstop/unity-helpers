@@ -217,6 +217,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public int InstanceReadOnlyProperty => 888;
     }
 
+    public sealed class VariantPropertyClass
+    {
+        public object ObjectProperty { get; set; } = "instance";
+        public static object StaticObjectProperty { get; set; } = "static";
+        public object ObjectField = "instance-field";
+        public static object StaticObjectField = "static-field";
+    }
+
     public sealed class SelfReferentialType
     {
         public static SelfReferentialType InstanceField = new();
@@ -1793,6 +1801,310 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             >(spi);
             TestPropertyClass dummy = new();
             Assert.AreEqual(777, getter(dummy));
+        }
+
+        [Test]
+        public void TypedPropertyGetterBoxesValueTypeWhenRequested()
+        {
+            PropertyInfo property = typeof(TestPropertyClass).GetProperty(
+                nameof(TestPropertyClass.InstanceProperty)
+            );
+            Func<TestPropertyClass, object> getter = ReflectionHelpers.GetPropertyGetter<
+                TestPropertyClass,
+                object
+            >(property);
+            TestPropertyClass instance = new() { InstanceProperty = 512 };
+            Assert.AreEqual(512, getter(instance));
+        }
+
+        [Test]
+        public void TypedPropertySetterUnboxesValueTypes()
+        {
+            PropertyInfo property = typeof(TestPropertyClass).GetProperty(
+                nameof(TestPropertyClass.InstanceProperty)
+            );
+            Action<TestPropertyClass, object> setter = ReflectionHelpers.GetPropertySetter<
+                TestPropertyClass,
+                object
+            >(property);
+            TestPropertyClass instance = new();
+            setter(instance, 2048);
+            Assert.AreEqual(2048, instance.InstanceProperty);
+        }
+
+        [Test]
+        public void TypedStaticPropertySetterUnboxesValueTypes()
+        {
+            PropertyInfo property = typeof(TestPropertyClass).GetProperty(
+                nameof(TestPropertyClass.StaticProperty)
+            );
+            object original = TestPropertyClass.StaticProperty;
+            try
+            {
+                Action<object> setter = ReflectionHelpers.GetStaticPropertySetter<object>(property);
+                setter(1024);
+                Assert.AreEqual(1024, TestPropertyClass.StaticProperty);
+            }
+            finally
+            {
+                TestPropertyClass.StaticProperty = (int)original;
+            }
+        }
+
+        [Test]
+        public void TypedPropertyGetterCastsReferenceTypes()
+        {
+            VariantPropertyClass instance = new() { ObjectProperty = "hello" };
+            PropertyInfo property = typeof(VariantPropertyClass).GetProperty(
+                nameof(VariantPropertyClass.ObjectProperty)
+            );
+            Func<VariantPropertyClass, string> getter = ReflectionHelpers.GetPropertyGetter<
+                VariantPropertyClass,
+                string
+            >(property);
+            Assert.AreEqual("hello", getter(instance));
+        }
+
+        [Test]
+        public void TypedPropertySetterCastsReferenceTypes()
+        {
+            VariantPropertyClass instance = new();
+            PropertyInfo property = typeof(VariantPropertyClass).GetProperty(
+                nameof(VariantPropertyClass.ObjectProperty)
+            );
+            Action<VariantPropertyClass, string> setter = ReflectionHelpers.GetPropertySetter<
+                VariantPropertyClass,
+                string
+            >(property);
+            setter(instance, "updated");
+            Assert.AreEqual("updated", instance.ObjectProperty);
+        }
+
+        [Test]
+        public void TypedStaticPropertySetterCastsReferenceTypes()
+        {
+            PropertyInfo property = typeof(VariantPropertyClass).GetProperty(
+                nameof(VariantPropertyClass.StaticObjectProperty)
+            );
+            object original = VariantPropertyClass.StaticObjectProperty;
+            try
+            {
+                Action<string> setter = ReflectionHelpers.GetStaticPropertySetter<string>(property);
+                setter("world");
+                Func<string> getter = ReflectionHelpers.GetStaticPropertyGetter<string>(property);
+                Assert.AreEqual("world", getter());
+            }
+            finally
+            {
+                VariantPropertyClass.StaticObjectProperty = original;
+            }
+        }
+
+        [Test]
+        public void ParameterlessConstructorDelegateCreatesInstances()
+        {
+            Func<object> creator = ReflectionHelpers.GetParameterlessConstructor(
+                typeof(TestConstructorClass)
+            );
+            object first = creator();
+            object second = creator();
+            Assert.IsInstanceOf<TestConstructorClass>(first);
+            Assert.IsInstanceOf<TestConstructorClass>(second);
+            Assert.AreNotSame(first, second);
+        }
+
+        [Test]
+        public void ParameterlessConstructorFallbackUsesReflectionWhenExpressionsDisabled()
+        {
+            using (
+                ReflectionHelpers.OverrideReflectionCapabilities(
+                    expressions: false,
+                    dynamicIl: false
+                )
+            )
+            {
+                Func<TestConstructorClass> creator =
+                    ReflectionHelpers.GetParameterlessConstructor<TestConstructorClass>();
+                TestConstructorClass instance = creator();
+                Assert.IsNotNull(instance);
+                Assert.AreEqual(0, instance.Value1);
+            }
+        }
+
+        [Test]
+        public void ConstructorInvokerCreatesTypedInstance()
+        {
+            ConstructorInfo ctor = typeof(GenericTestClass<int>).GetConstructor(
+                new[] { typeof(int) }
+            );
+            Func<object[], object> invoker = ReflectionHelpers.GetConstructor(ctor);
+            object result = invoker(new object[] { 256 });
+            Assert.IsInstanceOf<GenericTestClass<int>>(result);
+            Assert.AreEqual(256, ((GenericTestClass<int>)result).Value);
+        }
+
+        [Test]
+        public void ConstructorInvokerFallsBackWhenExpressionsDisabled()
+        {
+            ConstructorInfo ctor = typeof(GenericTestClass<int>).GetConstructor(
+                new[] { typeof(int) }
+            );
+            using (
+                ReflectionHelpers.OverrideReflectionCapabilities(
+                    expressions: false,
+                    dynamicIl: false
+                )
+            )
+            {
+                Func<object[], object> invoker = ReflectionHelpers.GetConstructor(ctor);
+                object result = invoker(new object[] { 64 });
+                Assert.IsInstanceOf<GenericTestClass<int>>(result);
+                Assert.AreEqual(64, ((GenericTestClass<int>)result).Value);
+            }
+        }
+
+        [Test]
+        public void IndexerGetterThrowsOnInvalidIndexCount()
+        {
+            PropertyInfo idxProp = typeof(IndexerClass).GetProperty("Item");
+            Func<object, object[], object> getter = ReflectionHelpers.GetIndexerGetter(idxProp);
+            IndexerClass obj = new();
+            Assert.Throws<IndexOutOfRangeException>(() => getter(obj, Array.Empty<object>()));
+        }
+
+        [Test]
+        public void IndexerHelpersFallbackWhenExpressionsDisabled()
+        {
+            PropertyInfo idxProp = typeof(IndexerClass).GetProperty("Item");
+            using (
+                ReflectionHelpers.OverrideReflectionCapabilities(
+                    expressions: false,
+                    dynamicIl: false
+                )
+            )
+            {
+                Func<object, object[], object> getter = ReflectionHelpers.GetIndexerGetter(idxProp);
+                Action<object, object, object[]> setter = ReflectionHelpers.GetIndexerSetter(
+                    idxProp
+                );
+                IndexerClass obj = new();
+                setter(obj, 99, new object[] { 3 });
+                Assert.AreEqual(99, getter(obj, new object[] { 3 }));
+            }
+        }
+
+        [Test]
+        public void TypedFieldGetterBoxesValueTypeWhenRequested()
+        {
+            FieldInfo field = typeof(TestClass).GetField(nameof(TestClass.intValue));
+            Func<TestClass, object> getter = ReflectionHelpers.GetFieldGetter<TestClass, object>(
+                field
+            );
+            TestClass instance = new() { intValue = 512 };
+            Assert.AreEqual(512, getter(instance));
+        }
+
+        [Test]
+        public void TypedFieldSetterUnboxesValueTypes()
+        {
+            FieldInfo field = typeof(TestClass).GetField(nameof(TestClass.intValue));
+            FieldSetter<TestClass, object> setter = ReflectionHelpers.GetFieldSetter<
+                TestClass,
+                object
+            >(field);
+            TestClass instance = new();
+            setter(ref instance, 2048);
+            Assert.AreEqual(2048, instance.intValue);
+        }
+
+        [Test]
+        public void TypedStaticFieldSetterUnboxesValueTypes()
+        {
+            FieldInfo field = typeof(TestClass).GetField(
+                nameof(TestClass.StaticIntValue),
+                BindingFlags.Static | BindingFlags.Public
+            );
+            int original = TestClass.StaticIntValue;
+            try
+            {
+                Action<object> setter = ReflectionHelpers.GetStaticFieldSetter<object>(field);
+                setter(1024);
+                Assert.AreEqual(1024, TestClass.StaticIntValue);
+            }
+            finally
+            {
+                TestClass.StaticIntValue = original;
+            }
+        }
+
+        [Test]
+        public void TypedFieldGetterCastsReferenceTypes()
+        {
+            VariantPropertyClass instance = new() { ObjectField = "hello" };
+            FieldInfo field = typeof(VariantPropertyClass).GetField(
+                nameof(VariantPropertyClass.ObjectField)
+            );
+            Func<VariantPropertyClass, string> getter = ReflectionHelpers.GetFieldGetter<
+                VariantPropertyClass,
+                string
+            >(field);
+            Assert.AreEqual("hello", getter(instance));
+        }
+
+        [Test]
+        public void TypedFieldSetterCastsReferenceTypes()
+        {
+            VariantPropertyClass instance = new();
+            FieldInfo field = typeof(VariantPropertyClass).GetField(
+                nameof(VariantPropertyClass.ObjectField)
+            );
+            FieldSetter<VariantPropertyClass, string> setter = ReflectionHelpers.GetFieldSetter<
+                VariantPropertyClass,
+                string
+            >(field);
+            setter(ref instance, "updated");
+            Assert.AreEqual("updated", instance.ObjectField);
+        }
+
+        [Test]
+        public void TypedStaticFieldSetterCastsReferenceTypes()
+        {
+            FieldInfo field = typeof(VariantPropertyClass).GetField(
+                nameof(VariantPropertyClass.StaticObjectField),
+                BindingFlags.Static | BindingFlags.Public
+            );
+            object original = VariantPropertyClass.StaticObjectField;
+            try
+            {
+                Action<string> setter = ReflectionHelpers.GetStaticFieldSetter<string>(field);
+                setter("world");
+                Func<string> getter = ReflectionHelpers.GetStaticFieldGetter<string>(field);
+                Assert.AreEqual("world", getter());
+            }
+            finally
+            {
+                VariantPropertyClass.StaticObjectField = original;
+            }
+        }
+
+        [Test]
+        public void TypedFieldGetterSupportsFallbackWhenInstanceTypeDiffers()
+        {
+            FieldInfo field = typeof(TestClass).GetField(nameof(TestClass.intValue));
+            Func<object, int> getter = ReflectionHelpers.GetFieldGetter<object, int>(field);
+            TestClass instance = new() { intValue = 77 };
+            object boxed = instance;
+            Assert.AreEqual(77, getter(boxed));
+        }
+
+        [Test]
+        public void TypedFieldSetterSupportsFallbackWhenInstanceTypeDiffers()
+        {
+            FieldInfo field = typeof(TestClass).GetField(nameof(TestClass.intValue));
+            FieldSetter<object, int> setter = ReflectionHelpers.GetFieldSetter<object, int>(field);
+            object boxed = new TestClass();
+            setter(ref boxed, 88);
+            Assert.AreEqual(88, ((TestClass)boxed).intValue);
         }
 
         [Test]
