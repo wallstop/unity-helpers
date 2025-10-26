@@ -5,14 +5,13 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     using System.Text.Json.Serialization;
     using ProtoBuf;
 
-    // https://youtu.be/LWFzPP8ZbdU?t=2673
-    [DataContract]
-    [Serializable]
-    [ProtoContract]
     /// <summary>
     /// A hash-based PRNG inspired by Squirrel Eiserloh's "Squirrel Noise" approach for deterministic noise.
     /// </summary>
     /// <remarks>
+    /// <para>
+    /// Reference implementation: https://youtu.be/LWFzPP8ZbdU?t=2673
+    /// </para>
     /// <para>
     /// Squirrel-style generators are simple, stateless transformations that can produce deterministic pseudo-noise
     /// values from integer coordinates or an advancing internal position. This implementation exposes both a sequential
@@ -49,6 +48,9 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     /// int val = rng.Next(0, 100);
     /// </code>
     /// </example>
+    [Serializable]
+    [DataContract]
+    [ProtoContract]
     public sealed class SquirrelRandom : AbstractRandom
     {
         private const uint BitNoise1 = 0xB5297A4D;

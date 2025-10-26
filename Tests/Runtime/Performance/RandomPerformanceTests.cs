@@ -31,12 +31,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             LogRow(RunTest(new PcgRandom(), timeout));
             LogRow(RunTest(new RomuDuo(), timeout));
             LogRow(RunTest(new SplitMix64(), timeout));
+            LogRow(RunTest(new FlurryBurstRandom(), timeout));
             LogRow(RunTest(new SquirrelRandom(), timeout));
             LogRow(RunTest(new SystemRandom(), timeout));
             LogRow(RunTest(new UnityRandom(), timeout));
             LogRow(RunTest(new WyRandom(), timeout));
             LogRow(RunTest(new XorShiftRandom(), timeout));
             LogRow(RunTest(new XoroShiroRandom(), timeout));
+            LogRow(RunTest(new PhotonSpinRandom(), timeout));
 
             BenchmarkReadmeUpdater.UpdateSection(
                 "RANDOM_BENCHMARKS",

@@ -5,9 +5,6 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     using System.Text.Json.Serialization;
     using ProtoBuf;
 
-    [Serializable]
-    [DataContract]
-    [ProtoContract(SkipConstructor = true)]
     /// <summary>
     /// A thin wrapper around <c>System.Random</c> that exposes the <see cref="IRandom"/> API and supports state capture.
     /// </summary>
@@ -46,6 +43,9 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     /// float f = compat.NextFloat();
     /// </code>
     /// </example>
+    [Serializable]
+    [DataContract]
+    [ProtoContract(SkipConstructor = true)]
     public sealed class DotNetRandom : AbstractRandom
     {
         public static DotNetRandom Instance => ThreadLocalRandom<DotNetRandom>.Instance;

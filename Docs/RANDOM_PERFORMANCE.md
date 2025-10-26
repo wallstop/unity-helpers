@@ -87,14 +87,19 @@ This document contains performance benchmarks for the various random number gene
 | PcgRandom                   | 796,400,000 | 537,900,000 | 889,500,000   | 184,300,000 | 291,400,000 | 456,500,000      | 412,000,000     |
 | RomuDuo                     | 794,300,000 | 359,300,000 | 766,200,000   | 167,200,000 | 191,600,000 | 446,000,000      | 397,600,000     |
 | SplitMix64                  | 801,100,000 | 537,400,000 | 972,300,000   | 183,800,000 | 296,600,000 | 487,500,000      | 446,600,000     |
+| FlurryBurstRandom           | Pending     | Pending     | Pending       | Pending     | Pending     | Pending          | Pending         |
 | SquirrelRandom              | 747,700,000 | 383,300,000 | 413,800,000   | 172,300,000 | 204,800,000 | 330,200,000      | 314,200,000     |
 | SystemRandom                | 146,800,000 | 148,300,000 | 65,700,000    | 132,500,000 | 139,500,000 | 59,800,000       | 61,300,000      |
 | UnityRandom                 | 647,700,000 | 77,800,000  | 87,800,000    | 62,100,000  | 39,500,000  | 81,500,000       | 82,400,000      |
 | WyRandom                    | 750,700,000 | 382,900,000 | 447,500,000   | 166,800,000 | 191,700,000 | 296,800,000      | 281,100,000     |
 | XorShiftRandom              | 792,900,000 | 536,400,000 | 606,000,000   | 184,100,000 | 287,300,000 | 442,800,000      | 391,200,000     |
 | XoroShiroRandom             | 789,200,000 | 359,300,000 | 715,100,000   | 167,300,000 | 192,500,000 | 428,900,000      | 383,500,000     |
+| PhotonSpinRandom            | Pending     | Pending     | Pending       | Pending     | Pending     | Pending          | Pending         |
 
 <!-- RANDOM_BENCHMARKS_END -->
+
+Benchmarks for `FlurryBurstRandom` and `PhotonSpinRandom` will populate after running the
+`RandomPerformanceTests.Benchmark` test inside Unity (it updates this table automatically).
 
 ## Interpreting the Results
 

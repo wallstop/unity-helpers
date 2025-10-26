@@ -7,14 +7,13 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     using System.Text.Json.Serialization;
     using ProtoBuf;
 
-    // https://github.com/cocowalla/wyhash-dotnet/blob/master/src/WyHash/WyRng.cs
-    [Serializable]
-    [DataContract]
-    [ProtoContract(SkipConstructor = true)]
     /// <summary>
     /// A wyhash-inspired PRNG variant (WyRandom) leveraging multiply-mix operations for speed and good distribution.
     /// </summary>
     /// <remarks>
+    /// <para>
+    /// Reference implementation: https://github.com/cocowalla/wyhash-dotnet/blob/master/src/WyHash/WyRng.cs
+    /// </para>
     /// <para>
     /// Designed around 64-bit multiply-and-mix steps, this generator is fast and suitable for general-purpose
     /// randomness and hashing-like use cases. It is not a cryptographic hash nor a CSPRNG.
@@ -45,6 +44,9 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     /// var color = rng.NextColor(); // via RandomExtensions
     /// </code>
     /// </example>
+    [Serializable]
+    [DataContract]
+    [ProtoContract(SkipConstructor = true)]
     public sealed class WyRandom : AbstractRandom
     {
         private const ulong Prime0 = 0xa0761d6478bd642f;

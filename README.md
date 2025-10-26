@@ -454,24 +454,26 @@ Already read the [Top 5 Time-Savers](#-top-5-time-savers)? Jump directly to the 
 
 ### Random Number Generators
 
-Unity Helpers includes **12 high-quality random number generators**, all implementing a rich `IRandom` interface:
+Unity Helpers includes **14 high-quality random number generators**, all implementing a rich `IRandom` interface:
 
 #### Available Generators
 
-| Generator                       | Speed     | Quality   | Use Case                                 |
-| ------------------------------- | --------- | --------- | ---------------------------------------- |
-| **IllusionFlow** ⭐             | Fast      | Good      | Default choice (via PRNG.Instance)       |
-| **PcgRandom**                   | Very Fast | Excellent | Deterministic gameplay; explicit seeding |
-| **RomuDuo**                     | Fastest   | Good      | Maximum performance needed               |
-| **LinearCongruentialGenerator** | Fastest   | Fair      | Simple, fast generation                  |
-| **XorShiftRandom**              | Very Fast | Good      | General purpose                          |
-| **XoroShiroRandom**             | Very Fast | Good      | General purpose                          |
-| **SplitMix64**                  | Very Fast | Good      | Initialization, hashing                  |
-| **SquirrelRandom**              | Moderate  | Good      | Hash-based generation                    |
-| **WyRandom**                    | Moderate  | Good      | Hashing applications                     |
-| **DotNetRandom**                | Moderate  | Good      | .NET compatibility                       |
-| **SystemRandom**                | Slow      | Good      | Backward compatibility                   |
-| **UnityRandom**                 | Very Slow | Good      | Unity compatibility                      |
+| Generator                       | Speed     | Quality   | Use Case                                   |
+| ------------------------------- | --------- | --------- | ------------------------------------------ |
+| **IllusionFlow** ⭐             | Fast      | Good      | Default choice (via PRNG.Instance)         |
+| **PcgRandom**                   | Very Fast | Excellent | Deterministic gameplay; explicit seeding   |
+| **FlurryBurstRandom**           | Very Fast | Excellent | High-quality PCG/Xoshiro alternative       |
+| **RomuDuo**                     | Fastest   | Good      | Maximum performance needed                 |
+| **LinearCongruentialGenerator** | Fastest   | Fair      | Simple, fast generation                    |
+| **XorShiftRandom**              | Very Fast | Good      | General purpose                            |
+| **XoroShiroRandom**             | Very Fast | Good      | General purpose                            |
+| **SplitMix64**                  | Very Fast | Good      | Initialization, hashing                    |
+| **PhotonSpinRandom**            | Fast      | Excellent | Bulk generation; long non-overlapping runs |
+| **SquirrelRandom**              | Moderate  | Good      | Hash-based generation                      |
+| **WyRandom**                    | Moderate  | Good      | Hashing applications                       |
+| **DotNetRandom**                | Moderate  | Good      | .NET compatibility                         |
+| **SystemRandom**                | Slow      | Good      | Backward compatibility                     |
+| **UnityRandom**                 | Very Slow | Good      | Unity compatibility                        |
 
 ⭐ **Recommended**: Use `PRNG.Instance` (currently IllusionFlow)
 

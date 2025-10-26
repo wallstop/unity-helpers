@@ -15,9 +15,6 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     using Extension;
 #endif
 
-    [Serializable]
-    [DataContract]
-    [ProtoContract]
     /// <summary>
     /// Common abstract base for all <see cref="IRandom"/> implementations with protobuf support.
     /// </summary>
@@ -58,6 +55,9 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     /// then use Serializer.ProtoDeserialize&lt;IRandom&gt;.</description></item>
     /// </list>
     /// </remarks>
+    [Serializable]
+    [DataContract]
+    [ProtoContract]
     [ProtoInclude(100, typeof(DotNetRandom))]
     [ProtoInclude(101, typeof(PcgRandom))]
     [ProtoInclude(102, typeof(XorShiftRandom))]
@@ -70,6 +70,8 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     [ProtoInclude(109, typeof(RomuDuo))]
     [ProtoInclude(110, typeof(SplitMix64))]
     [ProtoInclude(111, typeof(IllusionFlow))]
+    [ProtoInclude(112, typeof(FlurryBurstRandom))]
+    [ProtoInclude(113, typeof(PhotonSpinRandom))]
     public abstract class AbstractRandom : IRandom
     {
 #if SINGLE_THREADED
@@ -107,13 +109,37 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         protected int _byteCount;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected RandomState BuildState(ulong state1, ulong state2 = 0, byte[] payload = null)
+        protected RandomState BuildState(
+            ulong state1,
+            ulong state2 = 0,
+            IReadOnlyList<byte> payload = null
+        )
         {
+            byte[] payloadCopy = null;
+            if (payload != null)
+            {
+                if (payload is byte[] payloadArray)
+                {
+                    int length = payloadArray.Length;
+                    payloadCopy = new byte[length];
+                    Buffer.BlockCopy(payloadArray, 0, payloadCopy, 0, length);
+                }
+                else
+                {
+                    int count = payload.Count;
+                    payloadCopy = new byte[count];
+                    for (int i = 0; i < count; ++i)
+                    {
+                        payloadCopy[i] = payload[i];
+                    }
+                }
+            }
+
             return new RandomState(
                 state1,
                 state2,
                 _cachedGaussian,
-                payload: payload,
+                payload: payloadCopy,
                 bitBuffer: _bitBuffer,
                 bitCount: _bitCount,
                 byteBuffer: _byteBuffer,

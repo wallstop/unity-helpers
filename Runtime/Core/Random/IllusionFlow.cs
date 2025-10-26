@@ -13,9 +13,6 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     using System.Text.Json.Serialization;
     using ProtoBuf;
 
-    [Serializable]
-    [DataContract]
-    [ProtoContract]
     /// <summary>
     /// IllusionFlow: a modern, high-performance PRNG building on Xoroshiro concepts with additional state and mixing.
     /// </summary>
@@ -60,6 +57,9 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     /// var replay = new IllusionFlow(state);
     /// </code>
     /// </example>
+    [Serializable]
+    [DataContract]
+    [ProtoContract]
     public sealed class IllusionFlow : AbstractRandom
     {
         private const int UintByteCount = sizeof(uint) * 8;

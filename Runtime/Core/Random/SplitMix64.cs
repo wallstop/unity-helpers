@@ -5,9 +5,6 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     using System.Text.Json.Serialization;
     using ProtoBuf;
 
-    [Serializable]
-    [DataContract]
-    [ProtoContract]
     /// <summary>
     /// A fast 64-bit SplitMix generator often used as a high-quality seeding/mixing PRNG.
     /// </summary>
@@ -45,6 +42,9 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     /// int v = seeded.Next(0, 10);
     /// </code>
     /// </example>
+    [Serializable]
+    [DataContract]
+    [ProtoContract]
     public sealed class SplitMix64
         : AbstractRandom,
             IEquatable<SplitMix64>,
