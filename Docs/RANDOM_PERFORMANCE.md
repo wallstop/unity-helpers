@@ -81,21 +81,21 @@ This document contains performance benchmarks for the various random number gene
 
 | Random                      | NextBool    | Next        | NextUInt      | NextFloat   | NextDouble  | NextUint - Range | NextInt - Range |
 | --------------------------- | ----------- | ----------- | ------------- | ----------- | ----------- | ---------------- | --------------- |
-| DotNetRandom                | 550,600,000 | 53,100,000  | 57,400,000    | 45,600,000  | 26,900,000  | 53,700,000       | 53,900,000      |
-| LinearCongruentialGenerator | 814,800,000 | 538,900,000 | 1,335,100,000 | 184,700,000 | 296,500,000 | 591,500,000      | 508,400,000     |
-| IllusionFlow                | 800,200,000 | 489,500,000 | 892,600,000   | 167,600,000 | 268,200,000 | 444,600,000      | 396,100,000     |
-| PcgRandom                   | 796,400,000 | 537,900,000 | 889,500,000   | 184,300,000 | 291,400,000 | 456,500,000      | 412,000,000     |
-| RomuDuo                     | 794,300,000 | 359,300,000 | 766,200,000   | 167,200,000 | 191,600,000 | 446,000,000      | 397,600,000     |
-| SplitMix64                  | 801,100,000 | 537,400,000 | 972,300,000   | 183,800,000 | 296,600,000 | 487,500,000      | 446,600,000     |
-| FlurryBurstRandom           | Pending     | Pending     | Pending       | Pending     | Pending     | Pending          | Pending         |
-| SquirrelRandom              | 747,700,000 | 383,300,000 | 413,800,000   | 172,300,000 | 204,800,000 | 330,200,000      | 314,200,000     |
-| SystemRandom                | 146,800,000 | 148,300,000 | 65,700,000    | 132,500,000 | 139,500,000 | 59,800,000       | 61,300,000      |
-| UnityRandom                 | 647,700,000 | 77,800,000  | 87,800,000    | 62,100,000  | 39,500,000  | 81,500,000       | 82,400,000      |
-| WyRandom                    | 750,700,000 | 382,900,000 | 447,500,000   | 166,800,000 | 191,700,000 | 296,800,000      | 281,100,000     |
-| XorShiftRandom              | 792,900,000 | 536,400,000 | 606,000,000   | 184,100,000 | 287,300,000 | 442,800,000      | 391,200,000     |
-| XoroShiroRandom             | 789,200,000 | 359,300,000 | 715,100,000   | 167,300,000 | 192,500,000 | 428,900,000      | 383,500,000     |
-| PhotonSpinRandom            | Pending     | Pending     | Pending       | Pending     | Pending     | Pending          | Pending         |
-| StormDropRandom             | Pending     | Pending     | Pending       | Pending     | Pending     | Pending          | Pending         |
+| DotNetRandom                | 535,000,000 | 54,400,000  | 56,700,000    | 45,200,000  | 28,200,000  | 52,200,000       | 51,800,000      |
+| LinearCongruentialGenerator | 798,300,000 | 823,200,000 | 1,329,100,000 | 179,900,000 | 402,000,000 | 577,800,000      | 493,300,000     |
+| IllusionFlow                | 778,000,000 | 662,100,000 | 895,100,000   | 178,000,000 | 331,100,000 | 444,000,000      | 384,900,000     |
+| PcgRandom                   | 762,500,000 | 668,400,000 | 892,700,000   | 179,700,000 | 345,200,000 | 450,000,000      | 400,200,000     |
+| RomuDuo                     | 758,600,000 | 579,300,000 | 767,300,000   | 167,200,000 | 255,900,000 | 446,500,000      | 397,400,000     |
+| SplitMix64                  | 800,900,000 | 670,400,000 | 943,700,000   | 179,000,000 | 346,600,000 | 473,300,000      | 432,800,000     |
+| FlurryBurstRandom           | 762,800,000 | 603,800,000 | 863,700,000   | 183,000,000 | 305,200,000 | 456,400,000      | 412,400,000     |
+| SquirrelRandom              | 759,700,000 | 393,600,000 | 413,500,000   | 172,300,000 | 187,800,000 | 329,600,000      | 307,100,000     |
+| SystemRandom                | 138,400,000 | 144,300,000 | 63,200,000    | 127,600,000 | 135,800,000 | 59,600,000       | 60,400,000      |
+| UnityRandom                 | 655,300,000 | 85,000,000  | 87,800,000    | 62,200,000  | 41,500,000  | 81,500,000       | 82,400,000      |
+| WyRandom                    | 758,600,000 | 390,600,000 | 457,100,000   | 166,800,000 | 191,100,000 | 293,600,000      | 274,700,000     |
+| XorShiftRandom              | 766,300,000 | 554,600,000 | 586,100,000   | 181,100,000 | 259,100,000 | 443,300,000      | 393,600,000     |
+| XoroShiroRandom             | 766,200,000 | 522,900,000 | 714,100,000   | 167,200,000 | 243,300,000 | 428,400,000      | 381,000,000     |
+| PhotonSpinRandom            | 677,900,000 | 232,100,000 | 258,000,000   | 116,900,000 | 114,800,000 | 209,700,000      | 201,100,000     |
+| StormDropRandom             | 758,100,000 | 538,100,000 | 698,600,000   | 184,100,000 | 271,800,000 | 406,300,000      | 365,900,000     |
 
 <!-- RANDOM_BENCHMARKS_END -->
 
@@ -116,8 +116,8 @@ Benchmarks for `FlurryBurstRandom`, `PhotonSpinRandom`, and `StormDropRandom` wi
 
 Based on the benchmarks:
 
-- **For general use**: `IllusionFlow` (via `PRNG.Instance`) - Great balance of speed and quality
-- **For maximum speed**: `RomuDuo` or `LinearCongruentialGenerator` - Fastest overall
+- **For general use**: `IllusionFlow` (via `PRNG.Instance`) or `PCG` - Great balance of speed and quality
+- **For maximum speed**: `LinearCongruentialGenerator` - Fastest overall (but not recommended for statistical quality)
 - **For compatibility**: `DotNetRandom` - Uses .NET's built-in Random
 - **Avoid for performance**: `UnityRandom` - Significantly slower than alternatives
 

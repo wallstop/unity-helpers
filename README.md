@@ -1127,6 +1127,12 @@ Unity Helpers is built with performance as a top priority:
 - Safe for IL2CPP and AOT platforms
 - [📊 Reflection Performance](Docs/REFLECTION_HELPERS.md)
 
+**List Sorting:**
+
+- Multiple adaptive algorithms (`Ghost`, `Meteor`, `Power`, `Grail`, `Pattern-Defeating QuickSort`, `Insertion`) tuned for `IList<T>`
+- Deterministic datasets (sorted, nearly sorted, shuffled) across sizes from 100 to 1,000,000
+- [📊 IList Sorting Performance Benchmarks](Docs/ILIST_SORTING_PERFORMANCE.md)
+
 ---
 
 ## Documentation Index
@@ -1160,6 +1166,7 @@ Unity Helpers is built with performance as a top priority:
 
 - Random Performance — [Random Performance](Docs/RANDOM_PERFORMANCE.md)
 - Reflection Helpers — [Reflection Helpers](Docs/REFLECTION_HELPERS.md)
+- IList Sorting Performance — [IList Sorting Performance](Docs/ILIST_SORTING_PERFORMANCE.md)
 
 **Project Info:**
 

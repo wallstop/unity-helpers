@@ -1,11 +1,11 @@
 namespace WallstopStudios.UnityHelpers.Core.Random
 {
     using System;
-    using System.Runtime.CompilerServices;
     using System.Runtime.Serialization;
     using System.Text.Json.Serialization;
     using Extension;
     using ProtoBuf;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Utils;
 
     /// <summary>
@@ -13,6 +13,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     /// </summary>
     /// <remarks>
     /// <para>
+    /// https://github.com/wileylooper/photonspin
     /// Ported from <c>wileylooper/photonspin</c>, this generator produces batches of 20 new 32-bit values per round,
     /// offering a huge period (~2<sup>512</sup>) and robust statistical performance. It shines when large streams are
     /// required, while still supporting deterministic state capture and serialization.
@@ -65,12 +66,11 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         {
             get
             {
-                EnsureSerializedElementsSynced();
                 using PooledResource<byte[]> payloadLease = WallstopArrayPool<byte>.Get(
                     ElementByteSize,
                     out byte[] buffer
                 );
-                Buffer.BlockCopy(_serializedElements, 0, buffer, 0, ElementByteSize);
+                Buffer.BlockCopy(_elements, 0, buffer, 0, ElementByteSize);
 
                 uint packedIndex = (uint)(_index & 0x7FFFFFFF);
                 if (_hasPrimed)
@@ -89,19 +89,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         }
 
         [ProtoMember(6)]
-        private byte[] SerializedElements
-        {
-            get
-            {
-                EnsureSerializedElementsSynced();
-                return _serializedElements;
-            }
-            set
-            {
-                LoadSerializedElements(value);
-                NormalizeIndex();
-            }
-        }
+        private uint[] _elements = new uint[BlockSize];
 
         [ProtoMember(7)]
         private uint _a;
@@ -117,15 +105,6 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         [ProtoMember(11)]
         private bool _hasPrimed;
-
-        [ProtoIgnore]
-        private byte[] _serializedElements;
-
-        [ProtoIgnore]
-        private uint[] _elements = new uint[BlockSize];
-
-        [ProtoIgnore]
-        private bool _serializedElementsDirty = true;
 
         public PhotonSpinRandom()
             : this(Guid.NewGuid()) { }
@@ -233,17 +212,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         public override int GetHashCode()
         {
-            HashCode hash = default;
-            hash.Add(_a);
-            hash.Add(_b);
-            hash.Add(_c);
-            hash.Add(_index);
-            hash.Add(_hasPrimed);
-            for (int i = 0; i < BlockSize; ++i)
-            {
-                hash.Add(_elements[i]);
-            }
-            return hash.ToHashCode();
+            return Objects.HashCode(_a, _b, _c, _index, _hasPrimed);
         }
 
         public override string ToString()
@@ -305,31 +274,6 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             return 0;
         }
 
-        private void MarkElementsDirty()
-        {
-            _serializedElementsDirty = true;
-        }
-
-        private void EnsureSerializedElementsSynced()
-        {
-            if (_elements == null || _elements.Length != BlockSize)
-            {
-                _elements = new uint[BlockSize];
-            }
-
-            if (_serializedElements == null || _serializedElements.Length != ElementByteSize)
-            {
-                _serializedElements = new byte[ElementByteSize];
-                _serializedElementsDirty = true;
-            }
-
-            if (_serializedElementsDirty)
-            {
-                Buffer.BlockCopy(_elements, 0, _serializedElements, 0, ElementByteSize);
-                _serializedElementsDirty = false;
-            }
-        }
-
         private void LoadSerializedElements(byte[] payload)
         {
             if (_elements == null || _elements.Length != BlockSize)
@@ -340,24 +284,10 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             if (payload != null && payload.Length >= ElementByteSize)
             {
                 Buffer.BlockCopy(payload, 0, _elements, 0, ElementByteSize);
-                if (_serializedElements == null || _serializedElements.Length != ElementByteSize)
-                {
-                    _serializedElements = new byte[ElementByteSize];
-                }
-
-                Buffer.BlockCopy(payload, 0, _serializedElements, 0, ElementByteSize);
-                _serializedElementsDirty = false;
                 return;
             }
 
             Array.Clear(_elements, 0, _elements.Length);
-            if (_serializedElements == null || _serializedElements.Length != ElementByteSize)
-            {
-                _serializedElements = new byte[ElementByteSize];
-            }
-
-            Array.Clear(_serializedElements, 0, _serializedElements.Length);
-            _serializedElementsDirty = false;
         }
 
         private void NormalizeIndex()
@@ -401,7 +331,6 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
             _index = BlockSize;
             _hasPrimed = false;
-            MarkElementsDirty();
             NormalizeIndex();
         }
 
@@ -453,27 +382,6 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             }
 
             _index = 0;
-            MarkElementsDirty();
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static uint RotateLeft(uint value, int count)
-        {
-            return (value << count) | (value >> (32 - count));
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static uint Mix32(ref ulong state)
-        {
-            unchecked
-            {
-                state += 0x9E3779B97F4A7C15UL;
-                ulong z = state;
-                z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9UL;
-                z = (z ^ (z >> 27)) * 0x94D049BB133111EBUL;
-                z ^= z >> 31;
-                return (uint)z;
-            }
         }
     }
 }

@@ -15,6 +15,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     /// </summary>
     /// <remarks>
     /// <para>
+    /// https://github.com/wileylooper/flurryburst
     /// Based on <c>wileylooper/flurryburst</c>, this implementation captures the 32-bit variant that balances
     /// speed, period (~2<sup>128</sup>) and state size for gameplay workloads. It is suitable as a drop-in
     /// alternative to Xoshiro128** and similar families, while retaining deterministic serialization support.
@@ -111,26 +112,6 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         public FlurryBurstRandom(Guid guid)
         {
             InitializeFromGuid(guid);
-        }
-
-        public FlurryBurstRandom(uint seed)
-        {
-            _a = 0;
-            _b = 0;
-            _c = 0;
-            _d = seed == 0 ? 1U : seed;
-            _e = 0;
-            _f = 0;
-        }
-
-        public FlurryBurstRandom(uint seedD, uint seedF, uint extraSeed = 0)
-        {
-            _a = 0;
-            _b = 0;
-            _c = extraSeed;
-            _d = seedD == 0 ? 1U : seedD;
-            _e = 0;
-            _f = seedF;
         }
 
         [JsonConstructor]

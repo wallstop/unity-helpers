@@ -1,7 +1,6 @@
 namespace WallstopStudios.UnityHelpers.Core.Random
 {
     using System;
-    using System.Runtime.CompilerServices;
     using System.Runtime.Serialization;
     using System.Text.Json.Serialization;
     using ProtoBuf;
@@ -14,6 +13,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     /// </summary>
     /// <remarks>
     /// <para>
+    /// https://github.com/wileylooper/stormdrop
     /// Ported from <c>wileylooper/stormdrop</c>. The 32-bit variant maintains a 1024-element ring buffer and two 32-bit
     /// accumulators. Each step mixes the current index with the accumulators, rotates, and feeds the buffer to provide
     /// high-quality sequences suitable for heavy simulation workloads.
@@ -69,12 +69,11 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         {
             get
             {
-                EnsureSerializedElementsSynced();
                 using PooledResource<byte[]> payloadLease = WallstopArrayPool<byte>.Get(
                     ElementByteSize,
                     out byte[] buffer
                 );
-                Buffer.BlockCopy(_serializedElements, 0, buffer, 0, ElementByteSize);
+                Buffer.BlockCopy(_elements, 0, buffer, 0, ElementByteSize);
 
                 ulong state1 = ((ulong)_a << 32) | _b;
                 return BuildState(
@@ -85,30 +84,13 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         }
 
         [ProtoMember(6)]
-        private byte[] SerializedElements
-        {
-            get
-            {
-                EnsureSerializedElementsSynced();
-                return _serializedElements;
-            }
-            set { LoadSerializedElements(value); }
-        }
+        private uint[] _elements = new uint[ElementCount];
 
         [ProtoMember(7)]
         private uint _a;
 
         [ProtoMember(8)]
         private uint _b;
-
-        [ProtoIgnore]
-        private byte[] _serializedElements;
-
-        [ProtoIgnore]
-        private uint[] _elements = new uint[ElementCount];
-
-        [ProtoIgnore]
-        private bool _serializedElementsDirty = true;
 
         public StormDropRandom()
             : this(Guid.NewGuid()) { }
@@ -154,7 +136,6 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                 _b += Increment;
 
                 _elements[_b & ElementMask] += RotateLeft(mix, 13);
-                MarkElementsDirty();
 
                 return mix;
             }
@@ -264,31 +245,10 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
             _a = Mix32(ref mixer);
             _b = Mix32(ref mixer) | 1U;
-            MarkElementsDirty();
 
             for (int i = 0; i < WarmupRounds; ++i)
             {
                 _ = NextUint();
-            }
-        }
-
-        private void EnsureSerializedElementsSynced()
-        {
-            if (_elements == null || _elements.Length != ElementCount)
-            {
-                _elements = new uint[ElementCount];
-            }
-
-            if (_serializedElements == null || _serializedElements.Length != ElementByteSize)
-            {
-                _serializedElements = new byte[ElementByteSize];
-                _serializedElementsDirty = true;
-            }
-
-            if (_serializedElementsDirty)
-            {
-                Buffer.BlockCopy(_elements, 0, _serializedElements, 0, ElementByteSize);
-                _serializedElementsDirty = false;
             }
         }
 
@@ -302,49 +262,10 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             if (payload != null && payload.Length >= ElementByteSize)
             {
                 Buffer.BlockCopy(payload, 0, _elements, 0, ElementByteSize);
-                if (_serializedElements == null || _serializedElements.Length != ElementByteSize)
-                {
-                    _serializedElements = new byte[ElementByteSize];
-                }
-
-                Buffer.BlockCopy(payload, 0, _serializedElements, 0, ElementByteSize);
-                _serializedElementsDirty = false;
                 return;
             }
 
             Array.Clear(_elements, 0, _elements.Length);
-            if (_serializedElements == null || _serializedElements.Length != ElementByteSize)
-            {
-                _serializedElements = new byte[ElementByteSize];
-            }
-
-            Array.Clear(_serializedElements, 0, _serializedElements.Length);
-            _serializedElementsDirty = false;
-        }
-
-        private void MarkElementsDirty()
-        {
-            _serializedElementsDirty = true;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static uint RotateLeft(uint value, int count)
-        {
-            return (value << count) | (value >> (32 - count));
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static uint Mix32(ref ulong state)
-        {
-            unchecked
-            {
-                state += 0x9E3779B97F4A7C15UL;
-                ulong z = state;
-                z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9UL;
-                z = (z ^ (z >> 27)) * 0x94D049BB133111EBUL;
-                z ^= z >> 31;
-                return (uint)z;
-            }
         }
     }
 }

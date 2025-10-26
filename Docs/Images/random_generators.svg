@@ -82,14 +82,14 @@
     <!-- pip patterns 1,2,5,6 -->
     <circle cx="392" cy="267" r="2"/>
     <circle cx="420" cy="262" r="2"/>
-    <circle cx="424" cy="276" r="2"/>
+    <circle cx="424" cy="272" r="2"/>
     <circle cx="450" cy="260" r="2"/>
-    <circle cx="452" cy="268" r="2"/>
-    <circle cx="458" cy="276" r="2"/>
-    <circle cx="480" cy="260" r="2"/>
-    <circle cx="490" cy="260" r="2"/>
-    <circle cx="480" cy="276" r="2"/>
-    <circle cx="490" cy="276" r="2"/>
+    <circle cx="453" cy="266" r="2"/>
+    <circle cx="456" cy="272" r="2"/>
+    <circle cx="478" cy="262" r="2"/>
+    <circle cx="488" cy="262" r="2"/>
+    <circle cx="478" cy="272" r="2"/>
+    <circle cx="488" cy="272" r="2"/>
   </g>
   <g font-family="Verdana,Arial,sans-serif" font-size="10" fill="#9fb3c8">
     <text x="390" y="315">discrete outcomes</text>

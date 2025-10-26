@@ -1341,5 +1341,25 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         }
 
         public abstract IRandom Copy();
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected internal static uint RotateLeft(uint value, int count)
+        {
+            return (value << count) | (value >> (32 - count));
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected internal static uint Mix32(ref ulong state)
+        {
+            unchecked
+            {
+                state += 0x9E3779B97F4A7C15UL;
+                ulong z = state;
+                z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9UL;
+                z = (z ^ (z >> 27)) * 0x94D049BB133111EBUL;
+                z ^= z >> 31;
+                return (uint)z;
+            }
+        }
     }
 }
