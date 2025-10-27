@@ -4175,11 +4175,6 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
         private static Func<object, object>? CreateCompiledFieldGetter(FieldInfo field)
         {
-            if (!ExpressionsEnabled)
-            {
-                return null;
-            }
-
             try
             {
                 ParameterExpression instanceParam = Expression.Parameter(
@@ -4262,11 +4257,6 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
         private static Func<object, object> CreateCompiledPropertyGetter(PropertyInfo property)
         {
-            if (!ExpressionsEnabled)
-            {
-                return CreateDelegatePropertyGetter(property) ?? property.GetValue;
-            }
-
             try
             {
                 MethodInfo getMethod = property.GetGetMethod(true);
@@ -5423,113 +5413,6 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             catch
             {
                 return null;
-            }
-        }
-
-        private static Func<object, object> CreateDelegateFieldGetter(FieldInfo field)
-        {
-            try
-            {
-                if (field.IsStatic)
-                {
-                    // For static fields, create a simple wrapper
-                    return instance => field.GetValue(null);
-                }
-
-                // For instance fields, we can't easily create delegates, so use optimized wrapper
-                return instance => field.GetValue(instance);
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
-        private static Func<object, object> CreateDelegatePropertyGetter(PropertyInfo property)
-        {
-            try
-            {
-                MethodInfo getMethod = property.GetGetMethod(true);
-                if (getMethod == null)
-                {
-                    return null;
-                }
-
-                if (getMethod.IsStatic)
-                {
-                    Type funcType = typeof(Func<>).MakeGenericType(property.PropertyType);
-                    Delegate getter = Delegate.CreateDelegate(funcType, getMethod);
-                    return instance => getter.DynamicInvoke();
-                }
-                else
-                {
-                    Type funcType = typeof(Func<,>).MakeGenericType(
-                        property.DeclaringType,
-                        property.PropertyType
-                    );
-                    Delegate getter = Delegate.CreateDelegate(funcType, getMethod);
-                    return instance => getter.DynamicInvoke(instance);
-                }
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
-        private static Func<object, object> CreateGenericFieldGetter(FieldInfo field)
-        {
-            try
-            {
-                // For now, just use direct field access - it's already reasonably fast
-                if (field.IsStatic)
-                {
-                    return instance => field.GetValue(null);
-                }
-
-                return instance => field.GetValue(instance);
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
-        private static Type GetActionType(Type[] parameterTypes)
-        {
-            switch (parameterTypes.Length)
-            {
-                case 0:
-                    return typeof(Action);
-                case 1:
-                    return typeof(Action<>).MakeGenericType(parameterTypes);
-                case 2:
-                    return typeof(Action<,>).MakeGenericType(parameterTypes);
-                case 3:
-                    return typeof(Action<,,>).MakeGenericType(parameterTypes);
-                case 4:
-                    return typeof(Action<,,,>).MakeGenericType(parameterTypes);
-                default:
-                    return null;
-            }
-        }
-
-        private static Type GetFuncType(Type[] typeArgs)
-        {
-            switch (typeArgs.Length)
-            {
-                case 1:
-                    return typeof(Func<>).MakeGenericType(typeArgs);
-                case 2:
-                    return typeof(Func<,>).MakeGenericType(typeArgs);
-                case 3:
-                    return typeof(Func<,,>).MakeGenericType(typeArgs);
-                case 4:
-                    return typeof(Func<,,,>).MakeGenericType(typeArgs);
-                case 5:
-                    return typeof(Func<,,,,>).MakeGenericType(typeArgs);
-                default:
-                    return null;
             }
         }
     }

@@ -2052,6 +2052,72 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         }
 
         [Test]
+        public void TypedFieldSetterFallbacksWhenCapabilitiesDisabled()
+        {
+            FieldInfo field = typeof(TestClass).GetField(nameof(TestClass.intValue));
+            using (
+                ReflectionHelpers.OverrideReflectionCapabilities(
+                    expressions: false,
+                    dynamicIl: false
+                )
+            )
+            {
+                FieldSetter<TestClass, int> setter = ReflectionHelpers.GetFieldSetter<
+                    TestClass,
+                    int
+                >(field);
+                TestClass instance = new();
+                setter(ref instance, 321);
+                Assert.AreEqual(321, instance.intValue);
+            }
+        }
+
+        [Test]
+        public void TypedPropertySetterFallbacksWhenCapabilitiesDisabled()
+        {
+            PropertyInfo property = typeof(GenericTestClass<int>).GetProperty(
+                nameof(GenericTestClass<int>.Value)
+            );
+            using (
+                ReflectionHelpers.OverrideReflectionCapabilities(
+                    expressions: false,
+                    dynamicIl: false
+                )
+            )
+            {
+                Action<GenericTestClass<int>, int> setter = ReflectionHelpers.GetPropertySetter<
+                    GenericTestClass<int>,
+                    int
+                >(property);
+                GenericTestClass<int> instance = new();
+                setter(instance, 87);
+                Assert.AreEqual(87, instance.Value);
+            }
+        }
+
+        [Test]
+        public void TypedPropertyGetterFallbacksWhenCapabilitiesDisabled()
+        {
+            PropertyInfo property = typeof(GenericTestClass<int>).GetProperty(
+                nameof(GenericTestClass<int>.Value)
+            );
+            GenericTestClass<int> instance = new(45);
+            using (
+                ReflectionHelpers.OverrideReflectionCapabilities(
+                    expressions: false,
+                    dynamicIl: false
+                )
+            )
+            {
+                Func<GenericTestClass<int>, int> getter = ReflectionHelpers.GetPropertyGetter<
+                    GenericTestClass<int>,
+                    int
+                >(property);
+                Assert.AreEqual(45, getter(instance));
+            }
+        }
+
+        [Test]
         public void TypedFieldSetterCastsReferenceTypes()
         {
             VariantPropertyClass instance = new();
