@@ -93,10 +93,22 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             return param * 2;
         }
 
+        public static int StaticMethodTwoParams(int a, int b)
+        {
+            StaticMethodCallCount++;
+            return a + b;
+        }
+
         public int InstanceMethodWithParam(string param)
         {
             instanceMethodCallCount++;
             return param?.Length ?? 0;
+        }
+
+        public int InstanceMethodThreeParams(int a, string b, bool c)
+        {
+            instanceMethodCallCount++;
+            return a + (b?.Length ?? 0) + (c ? 1 : 0);
         }
 
         public static void StaticVoidMethodWithParam(int param)
@@ -122,6 +134,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             StaticMethodCallCount = a + b + c;
         }
 
+        public static void StaticActionTwo(int a, int b)
+        {
+            StaticMethodCallCount = a + b;
+        }
+
+        public static void StaticActionFour(int a, int b, int c, int d)
+        {
+            StaticMethodCallCount = a + b + c + d;
+        }
+
         public int InstanceSum(int a, int b)
         {
             instanceMethodCallCount++;
@@ -131,6 +153,21 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public void InstanceSetThree(int a, int b, int c)
         {
             instanceMethodCallCount = a + b + c;
+        }
+
+        public void InstanceSetOne(int value)
+        {
+            instanceMethodCallCount = value;
+        }
+
+        public void InstanceSetTwo(int a, int b)
+        {
+            instanceMethodCallCount = a + b;
+        }
+
+        public void InstanceSetFour(int a, int b, int c, int d)
+        {
+            instanceMethodCallCount = a + b + c + d;
         }
 
         public int InstanceSumFour(int a, int b, int c, int d)
@@ -143,6 +180,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             StaticMethodCallCount = 0;
             instanceMethodCallCount = 0;
+        }
+
+        public static void ResetStatic()
+        {
+            StaticMethodCallCount = 0;
         }
     }
 
@@ -1863,6 +1905,246 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 string
             >(property);
             Assert.AreEqual("hello", getter(instance));
+        }
+
+        [Test]
+        public void DynamicIlBoxedFieldGetterReturnsValue()
+        {
+            RunWithDynamicIlOnly(() =>
+            {
+                TestClass instance = new() { intValue = 321 };
+                FieldInfo field = typeof(TestClass).GetField(nameof(TestClass.intValue));
+                Func<object, object> getter = ReflectionHelpers.GetFieldGetter(field);
+                Assert.AreEqual(321, getter(instance));
+            });
+        }
+
+        [Test]
+        public void DynamicIlBoxedFieldSetterMutatesInstance()
+        {
+            RunWithDynamicIlOnly(() =>
+            {
+                TestClass instance = new();
+                FieldInfo field = typeof(TestClass).GetField(nameof(TestClass.intValue));
+                Action<object, object> setter = ReflectionHelpers.GetFieldSetter(field);
+                setter(instance, 654);
+                Assert.AreEqual(654, instance.intValue);
+            });
+        }
+
+        [Test]
+        public void DynamicIlTypedFieldSetterMutatesInstance()
+        {
+            RunWithDynamicIlOnly(() =>
+            {
+                FieldInfo field = typeof(TestClass).GetField(nameof(TestClass.intValue));
+                FieldSetter<TestClass, int> setter = ReflectionHelpers.GetFieldSetter<
+                    TestClass,
+                    int
+                >(field);
+                TestClass instance = new();
+                setter(ref instance, 987);
+                Assert.AreEqual(987, instance.intValue);
+            });
+        }
+
+        [Test]
+        public void DynamicIlTypedFieldGetterReturnsValue()
+        {
+            RunWithDynamicIlOnly(() =>
+            {
+                TestClass instance = new() { intValue = 741 };
+                FieldInfo field = typeof(TestClass).GetField(nameof(TestClass.intValue));
+                Func<TestClass, int> getter = ReflectionHelpers.GetFieldGetter<TestClass, int>(
+                    field
+                );
+                Assert.AreEqual(741, getter(instance));
+            });
+        }
+
+        [Test]
+        public void DynamicIlTypedStaticFieldSetterMutatesValue()
+        {
+            RunWithDynamicIlOnly(() =>
+            {
+                FieldInfo field = typeof(TestClass).GetField(nameof(TestClass.StaticIntValue));
+                int original = TestClass.StaticIntValue;
+                try
+                {
+                    Action<int> setter = ReflectionHelpers.GetStaticFieldSetter<int>(field);
+                    setter(512);
+                    Assert.AreEqual(512, TestClass.StaticIntValue);
+                }
+                finally
+                {
+                    TestClass.StaticIntValue = original;
+                }
+            });
+        }
+
+        [Test]
+        public void DynamicIlTypedPropertySetterMutatesInstance()
+        {
+            RunWithDynamicIlOnly(() =>
+            {
+                PropertyInfo property = typeof(TestPropertyClass).GetProperty(
+                    nameof(TestPropertyClass.InstanceProperty)
+                );
+                Action<TestPropertyClass, int> setter = ReflectionHelpers.GetPropertySetter<
+                    TestPropertyClass,
+                    int
+                >(property);
+                TestPropertyClass instance = new();
+                setter(instance, 222);
+                Assert.AreEqual(222, instance.InstanceProperty);
+            });
+        }
+
+        [Test]
+        public void DynamicIlTypedPropertyGetterReturnsValue()
+        {
+            RunWithDynamicIlOnly(() =>
+            {
+                PropertyInfo property = typeof(TestPropertyClass).GetProperty(
+                    nameof(TestPropertyClass.InstanceProperty)
+                );
+                TestPropertyClass instance = new();
+                Func<TestPropertyClass, int> getter = ReflectionHelpers.GetPropertyGetter<
+                    TestPropertyClass,
+                    int
+                >(property);
+                Assert.AreEqual(instance.InstanceProperty, getter(instance));
+            });
+        }
+
+        [Test]
+        public void DynamicIlTypedStaticPropertySetterMutatesValue()
+        {
+            RunWithDynamicIlOnly(() =>
+            {
+                PropertyInfo property = typeof(TestPropertyClass).GetProperty(
+                    nameof(TestPropertyClass.StaticProperty)
+                );
+                int original = TestPropertyClass.StaticProperty;
+                try
+                {
+                    Action<int> setter = ReflectionHelpers.GetStaticPropertySetter<int>(property);
+                    setter(314);
+                    Assert.AreEqual(314, TestPropertyClass.StaticProperty);
+                }
+                finally
+                {
+                    TestPropertyClass.StaticProperty = original;
+                }
+            });
+        }
+
+        [Test]
+        public void DynamicIlInstanceMethodInvokerReturnsValue()
+        {
+            RunWithDynamicIlOnly(() =>
+            {
+                MethodInfo method = typeof(TestMethodClass).GetMethod(
+                    nameof(TestMethodClass.InstanceMethodWithParam)
+                );
+                Func<object, object[], object> invoker = ReflectionHelpers.GetMethodInvoker(method);
+                TestMethodClass instance = new();
+                object result = invoker(instance, new object[] { "abcd" });
+                Assert.AreEqual(4, result);
+            });
+        }
+
+        [Test]
+        public void DynamicIlTypedInstanceMethodInvokerReturnsValue()
+        {
+            RunWithDynamicIlOnly(() =>
+            {
+                MethodInfo method = typeof(TestMethodClass).GetMethod(
+                    nameof(TestMethodClass.InstanceIntMethod)
+                );
+                Func<TestMethodClass, int> invoker = ReflectionHelpers.GetInstanceMethodInvoker<
+                    TestMethodClass,
+                    int
+                >(method);
+                TestMethodClass instance = new();
+                Assert.AreEqual(100, invoker(instance));
+            });
+        }
+
+        [Test]
+        public void DynamicIlTypedStaticMethodInvokerReturnsValue()
+        {
+            RunWithDynamicIlOnly(() =>
+            {
+                MethodInfo method = typeof(TestMethodClass).GetMethod(
+                    nameof(TestMethodClass.StaticIntMethod)
+                );
+                Func<int> invoker = ReflectionHelpers.GetStaticMethodInvoker<int>(method);
+                Assert.AreEqual(42, invoker());
+            });
+        }
+
+        [Test]
+        public void DynamicIlConstructorInvokerCreatesInstance()
+        {
+            RunWithDynamicIlOnly(() =>
+            {
+                ConstructorInfo ctor = typeof(TestConstructorClass).GetConstructor(
+                    new[] { typeof(int), typeof(string) }
+                );
+                Func<object[], object> invoker = ReflectionHelpers.GetConstructor(ctor);
+                object created = invoker(new object[] { 5, "five" });
+                Assert.IsInstanceOf<TestConstructorClass>(created);
+                TestConstructorClass instance = (TestConstructorClass)created;
+                Assert.AreEqual(5, instance.Value1);
+                Assert.AreEqual("five", instance.Value2);
+            });
+        }
+
+        [Test]
+        public void DynamicIlParameterlessConstructorCreatesInstance()
+        {
+            RunWithDynamicIlOnly(() =>
+            {
+                Func<TestConstructorClass> ctor =
+                    ReflectionHelpers.GetParameterlessConstructor<TestConstructorClass>();
+                TestConstructorClass instance = ctor();
+                Assert.IsNotNull(instance);
+            });
+        }
+
+        [Test]
+        public void DynamicIlIndexerSetterAndGetterRoundTrip()
+        {
+            RunWithDynamicIlOnly(() =>
+            {
+                PropertyInfo indexer = typeof(IndexerClass).GetProperty("Item");
+                Func<object, object[], object> getter = ReflectionHelpers.GetIndexerGetter(indexer);
+                Action<object, object, object[]> setter = ReflectionHelpers.GetIndexerSetter(
+                    indexer
+                );
+                IndexerClass instance = new();
+                setter(instance, 13, new object[] { 2 });
+                Assert.AreEqual(13, getter(instance, new object[] { 2 }));
+            });
+        }
+
+        private static void RunWithDynamicIlOnly(Action assertion)
+        {
+            if (!ReflectionHelpers.DynamicIlEnabled)
+            {
+                Assert.Ignore("Dynamic IL is not available on this platform.");
+            }
+
+            using (
+                ReflectionHelpers.OverrideReflectionCapabilities(
+                    expressions: false,
+                    dynamicIl: true
+                )
+            )
+            {
+                assertion();
+            }
         }
 
         [Test]

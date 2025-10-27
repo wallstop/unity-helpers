@@ -1166,6 +1166,8 @@ Unity Helpers is built with performance as a top priority:
 **Performance & Reference:**
 
 - Reflection Performance Guide — [Reflection Performance](Docs/ReflectionPerformance.md)
+- Reflection AOT/Burst Validation — [IL2CPP & Burst Validation](Docs/ReflectionAotBurstValidation.md)
+- Reflection Benchmark CI Proposal — [Benchmark CI Proposal](Docs/ReflectionBenchmarkCIProposal.md)
 - Random Performance — [Random Performance](Docs/RANDOM_PERFORMANCE.md)
 - Reflection Helpers — [Reflection Helpers](Docs/REFLECTION_HELPERS.md)
 - IList Sorting Performance — [IList Sorting Performance](Docs/ILIST_SORTING_PERFORMANCE.md)
