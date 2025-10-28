@@ -243,6 +243,10 @@ Performance tips
 - **Micro-benchmarks**: `Tests/Runtime/Performance/ReflectionPerformanceTests` and the `Spikes/ReflectionMicroBenchmark` console harness can be reused to capture before/after numbers for getters, setters, method invokers, and constructors. Record results with each `ReflectionDelegateStrategy` forced via `OverrideReflectionCapabilities` so regressions are easy to spot.
 - **Cache hygiene**: when adding new delegate families, update the appropriate `Clear*Cache` helper and call it from tests to keep scenarios isolated.
 - **Documentation updates**: note the Unity version, scripting backend, and OS whenever you refresh timing data, and sync any tables in `Docs/ReflectionPerformance*.md` so contributors can compare against baseline numbers.
+- **Execution recipe**:
+  1. Run `Tests/Runtime/Helper/ReflectionHelperCapabilityMatrixTests` twice—once normally and once with `REFLECTION_HELPERS_FORCE_REFLECTION=1` (or by wrapping the suite in `OverrideReflectionCapabilities(false, false)`) to cover accelerated and fallback paths.
+  2. Export raw benchmark data by running the `ReflectionPerformanceTests` category inside the Unity Test Runner with `LogFullResults` enabled; copy the markdown summary into `Docs/ReflectionPerformance.md#Latest Results`.
+  3. Validate editor/runtime builds (Mono + IL2CPP) to ensure blocklists behave consistently across backends.
 
 ### Testing fallback behaviour
 
