@@ -145,13 +145,21 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 byte
             > PropertySetterStrategyBlocklist = new();
             private static readonly ConcurrentDictionary<
-                PropertyInfo,
+                CapabilityKey<PropertyInfo>,
                 Func<object, object[], object>
             > IndexerGetters = new();
             private static readonly ConcurrentDictionary<
-                PropertyInfo,
+                CapabilityKey<PropertyInfo>,
+                byte
+            > IndexerGetterStrategyBlocklist = new();
+            private static readonly ConcurrentDictionary<
+                CapabilityKey<PropertyInfo>,
                 Action<object, object, object[]>
             > IndexerSetters = new();
+            private static readonly ConcurrentDictionary<
+                CapabilityKey<PropertyInfo>,
+                byte
+            > IndexerSetterStrategyBlocklist = new();
             private static readonly ConcurrentDictionary<
                 CapabilityKey<(FieldInfo field, Type instance, Type value)>,
                 Delegate
@@ -330,13 +338,21 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 CapabilityKey<PropertyInfo>
             > PropertySetterStrategyBlocklist = new();
             private static readonly Dictionary<
-                PropertyInfo,
+                CapabilityKey<PropertyInfo>,
                 Func<object, object[], object>
             > IndexerGetters = new();
             private static readonly Dictionary<
-                PropertyInfo,
+                CapabilityKey<PropertyInfo>,
+                byte
+            > IndexerGetterStrategyBlocklist = new();
+            private static readonly Dictionary<
+                CapabilityKey<PropertyInfo>,
                 Action<object, object, object[]>
             > IndexerSetters = new();
+            private static readonly Dictionary<
+                CapabilityKey<PropertyInfo>,
+                byte
+            > IndexerSetterStrategyBlocklist = new();
             private static readonly Dictionary<
                 CapabilityKey<(FieldInfo field, Type instance, Type value)>,
                 Delegate
@@ -886,18 +902,31 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 {
                     throw new ArgumentNullException(nameof(property));
                 }
-#if !SINGLE_THREADED
-                return IndexerGetters.GetOrAdd(property, BuildIndexerGetter);
-#else
+
+                Func<object, object[], object>? getter;
                 if (
-                    !IndexerGetters.TryGetValue(property, out Func<object, object[], object> getter)
+                    TryGetOrCreateIndexerGetter(
+                        property,
+                        ReflectionDelegateStrategy.Expressions,
+                        out getter
+                    )
                 )
                 {
-                    getter = BuildIndexerGetter(property);
-                    IndexerGetters[property] = getter;
+                    return getter;
                 }
-                return getter;
-#endif
+
+                if (
+                    TryGetOrCreateIndexerGetter(
+                        property,
+                        ReflectionDelegateStrategy.DynamicIl,
+                        out getter
+                    )
+                )
+                {
+                    return getter;
+                }
+
+                return GetOrCreateReflectionIndexerGetter(property);
             }
 
             public static Action<object, object, object[]> GetIndexerSetter(PropertyInfo property)
@@ -906,21 +935,31 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 {
                     throw new ArgumentNullException(nameof(property));
                 }
-#if !SINGLE_THREADED
-                return IndexerSetters.GetOrAdd(property, BuildIndexerSetter);
-#else
+
+                Action<object, object, object[]>? setter;
                 if (
-                    !IndexerSetters.TryGetValue(
+                    TryGetOrCreateIndexerSetter(
                         property,
-                        out Action<object, object, object[]> setter
+                        ReflectionDelegateStrategy.Expressions,
+                        out setter
                     )
                 )
                 {
-                    setter = BuildIndexerSetter(property);
-                    IndexerSetters[property] = setter;
+                    return setter;
                 }
-                return setter;
-#endif
+
+                if (
+                    TryGetOrCreateIndexerSetter(
+                        property,
+                        ReflectionDelegateStrategy.DynamicIl,
+                        out setter
+                    )
+                )
+                {
+                    return setter;
+                }
+
+                return GetOrCreateReflectionIndexerSetter(property);
             }
 
             public static Func<TInstance, TValue> GetFieldGetterTyped<TInstance, TValue>(
@@ -1163,93 +1202,114 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #endif
             }
 
-            private static Func<object, object[], object> BuildIndexerGetter(PropertyInfo property)
+            private static Func<object, object[], object>? CreateIndexerGetter(
+                PropertyInfo property,
+                ReflectionDelegateStrategy strategy
+            )
             {
-                Func<object, object[], object>? getter = null;
-                if (SupportsExpressions)
+                if (strategy == ReflectionDelegateStrategy.Expressions)
                 {
-                    getter = CreateCompiledIndexerGetter(property);
+                    return CreateCompiledIndexerGetter(property);
                 }
 #if EMIT_DYNAMIC_IL
-                if (getter == null && SupportsDynamicIl)
+                if (strategy == ReflectionDelegateStrategy.DynamicIl)
                 {
-                    getter = BuildIndexerGetterIL(property);
+                    return BuildIndexerGetterIL(property);
                 }
 #endif
-                if (getter != null)
+                if (strategy == ReflectionDelegateStrategy.Reflection)
                 {
-                    return getter;
+                    return CreateReflectionIndexerGetter(property);
                 }
 
+                return null;
+            }
+
+            private static Action<object, object, object[]>? CreateIndexerSetter(
+                PropertyInfo property,
+                ReflectionDelegateStrategy strategy
+            )
+            {
+                if (strategy == ReflectionDelegateStrategy.Expressions)
+                {
+                    return CreateCompiledIndexerSetter(property);
+                }
+#if EMIT_DYNAMIC_IL
+                if (strategy == ReflectionDelegateStrategy.DynamicIl)
+                {
+                    return BuildIndexerSetterIL(property);
+                }
+#endif
+                if (strategy == ReflectionDelegateStrategy.Reflection)
+                {
+                    return CreateReflectionIndexerSetter(property);
+                }
+
+                return null;
+            }
+
+            private static Func<object, object[], object> CreateReflectionIndexerGetter(
+                PropertyInfo property
+            )
+            {
                 ParameterInfo[] indices = property.GetIndexParameters();
                 int indexCount = indices.Length;
                 return (instance, indexArgs) =>
                 {
-                    if (indexArgs == null || indexArgs.Length != indexCount)
-                    {
-                        throw new IndexOutOfRangeException(
-                            $"Indexer expects {indexCount} index argument(s); received {(indexArgs == null ? 0 : indexArgs.Length)}."
-                        );
-                    }
+                    ValidateIndexArguments(indexArgs, indices, indexCount);
                     return property.GetValue(instance, indexArgs);
                 };
             }
 
-            private static Action<object, object, object[]> BuildIndexerSetter(
+            private static Action<object, object, object[]> CreateReflectionIndexerSetter(
                 PropertyInfo property
             )
             {
-                Action<object, object, object[]>? setter = null;
-                if (SupportsExpressions)
-                {
-                    setter = CreateCompiledIndexerSetter(property);
-                }
-#if EMIT_DYNAMIC_IL
-                if (setter == null && SupportsDynamicIl)
-                {
-                    setter = BuildIndexerSetterIL(property);
-                }
-#endif
-                if (setter != null)
-                {
-                    return setter;
-                }
-
                 ParameterInfo[] indices = property.GetIndexParameters();
                 int indexCount = indices.Length;
                 return (instance, value, indexArgs) =>
                 {
-                    if (indexArgs == null || indexArgs.Length != indexCount)
+                    ValidateIndexArguments(indexArgs, indices, indexCount);
+                    property.SetValue(instance, value, indexArgs);
+                };
+            }
+
+            private static void ValidateIndexArguments(
+                object[] indexArgs,
+                ParameterInfo[] indices,
+                int indexCount
+            )
+            {
+                if (indexArgs == null || indexArgs.Length != indexCount)
+                {
+                    throw new IndexOutOfRangeException(
+                        $"Indexer expects {indexCount} index argument(s); received {(indexArgs == null ? 0 : indexArgs.Length)}."
+                    );
+                }
+
+                for (int i = 0; i < indexCount; i++)
+                {
+                    object arg = indexArgs[i];
+                    Type parameterType = indices[i].ParameterType;
+                    if (arg == null)
                     {
-                        throw new IndexOutOfRangeException(
-                            $"Indexer expects {indexCount} index argument(s); received {(indexArgs == null ? 0 : indexArgs.Length)}."
-                        );
-                    }
-                    for (int i = 0; i < indexCount; i++)
-                    {
-                        object arg = indexArgs[i];
-                        Type parameterType = indices[i].ParameterType;
-                        if (arg == null)
-                        {
-                            if (
-                                parameterType.IsValueType
-                                && Nullable.GetUnderlyingType(parameterType) == null
-                            )
-                            {
-                                throw new InvalidCastException(
-                                    $"Object of type 'null' cannot be converted to type '{parameterType}'."
-                                );
-                            }
-                        }
-                        else if (!parameterType.IsInstanceOfType(arg))
+                        if (
+                            parameterType.IsValueType
+                            && Nullable.GetUnderlyingType(parameterType) == null
+                        )
                         {
                             throw new InvalidCastException(
-                                $"Object of type '{arg.GetType()}' cannot be converted to type '{parameterType}'."
+                                $"Object of type 'null' cannot be converted to type '{parameterType}'."
                             );
                         }
                     }
-                    property.SetValue(instance, value, indexArgs);
-                };
+                    else if (!parameterType.IsInstanceOfType(arg))
+                    {
+                        throw new InvalidCastException(
+                            $"Object of type '{arg.GetType()}' cannot be converted to type '{parameterType}'."
+                        );
+                    }
+                }
             }
 
             private static Func<TInstance, TValue> BuildTypedFieldGetter<TInstance, TValue>(
@@ -2377,6 +2437,161 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return true;
             }
 
+            private static bool TryGetOrCreateIndexerGetter(
+                PropertyInfo property,
+                ReflectionDelegateStrategy strategy,
+                out Func<object, object[], object> getter
+            )
+            {
+                getter = null;
+
+                if (strategy == ReflectionDelegateStrategy.Expressions && !SupportsExpressions)
+                {
+                    return false;
+                }
+#if EMIT_DYNAMIC_IL
+                if (strategy == ReflectionDelegateStrategy.DynamicIl && !SupportsDynamicIl)
+                {
+                    return false;
+                }
+#else
+                if (strategy == ReflectionDelegateStrategy.DynamicIl)
+                {
+                    return false;
+                }
+#endif
+
+                CapabilityKey<PropertyInfo> key = new CapabilityKey<PropertyInfo>(
+                    property,
+                    strategy
+                );
+                if (TryGetIndexerGetterFromCache(key, out Func<object, object[], object> cached))
+                {
+                    getter = cached;
+                    return true;
+                }
+
+                if (IsIndexerGetterStrategyUnavailable(key))
+                {
+                    return false;
+                }
+
+                Func<object, object[], object>? candidate = CreateIndexerGetter(property, strategy);
+                if (candidate == null)
+                {
+                    MarkIndexerGetterStrategyUnavailable(key);
+                    return false;
+                }
+
+                Func<object, object[], object> resolved = AddOrGetIndexerGetter(key, candidate);
+                TrackDelegateStrategy(resolved, key);
+                getter = resolved;
+                return true;
+            }
+
+            private static Func<object, object[], object> GetOrCreateReflectionIndexerGetter(
+                PropertyInfo property
+            )
+            {
+                CapabilityKey<PropertyInfo> key = new CapabilityKey<PropertyInfo>(
+                    property,
+                    ReflectionDelegateStrategy.Reflection
+                );
+                if (TryGetIndexerGetterFromCache(key, out Func<object, object[], object> cached))
+                {
+                    return cached;
+                }
+
+                Func<object, object[], object> reflectionGetter = CreateReflectionIndexerGetter(
+                    property
+                );
+                Func<object, object[], object> resolved = AddOrGetIndexerGetter(
+                    key,
+                    reflectionGetter
+                );
+                TrackDelegateStrategy(resolved, key);
+                return resolved;
+            }
+
+            private static bool TryGetOrCreateIndexerSetter(
+                PropertyInfo property,
+                ReflectionDelegateStrategy strategy,
+                out Action<object, object, object[]> setter
+            )
+            {
+                setter = null;
+
+                if (strategy == ReflectionDelegateStrategy.Expressions && !SupportsExpressions)
+                {
+                    return false;
+                }
+#if EMIT_DYNAMIC_IL
+                if (strategy == ReflectionDelegateStrategy.DynamicIl && !SupportsDynamicIl)
+                {
+                    return false;
+                }
+#else
+                if (strategy == ReflectionDelegateStrategy.DynamicIl)
+                {
+                    return false;
+                }
+#endif
+
+                CapabilityKey<PropertyInfo> key = new CapabilityKey<PropertyInfo>(
+                    property,
+                    strategy
+                );
+                if (TryGetIndexerSetterFromCache(key, out Action<object, object, object[]> cached))
+                {
+                    setter = cached;
+                    return true;
+                }
+
+                if (IsIndexerSetterStrategyUnavailable(key))
+                {
+                    return false;
+                }
+
+                Action<object, object, object[]>? candidate = CreateIndexerSetter(
+                    property,
+                    strategy
+                );
+                if (candidate == null)
+                {
+                    MarkIndexerSetterStrategyUnavailable(key);
+                    return false;
+                }
+
+                Action<object, object, object[]> resolved = AddOrGetIndexerSetter(key, candidate);
+                TrackDelegateStrategy(resolved, key);
+                setter = resolved;
+                return true;
+            }
+
+            private static Action<object, object, object[]> GetOrCreateReflectionIndexerSetter(
+                PropertyInfo property
+            )
+            {
+                CapabilityKey<PropertyInfo> key = new CapabilityKey<PropertyInfo>(
+                    property,
+                    ReflectionDelegateStrategy.Reflection
+                );
+                if (TryGetIndexerSetterFromCache(key, out Action<object, object, object[]> cached))
+                {
+                    return cached;
+                }
+
+                Action<object, object, object[]> reflectionSetter = CreateReflectionIndexerSetter(
+                    property
+                );
+                Action<object, object, object[]> resolved = AddOrGetIndexerSetter(
+                    key,
+                    reflectionSetter
+                );
+                TrackDelegateStrategy(resolved, key);
+                return resolved;
+            }
+
             private static Action<object, object> GetOrCreateReflectionPropertySetter(
                 PropertyInfo property
             )
@@ -2559,6 +2774,62 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             )
             {
                 PropertySetterStrategyBlocklist.TryAdd(key, StrategyUnavailableSentinel);
+            }
+
+            private static bool TryGetIndexerGetterFromCache(
+                CapabilityKey<PropertyInfo> key,
+                out Func<object, object[], object> getter
+            )
+            {
+                return IndexerGetters.TryGetValue(key, out getter);
+            }
+
+            private static Func<object, object[], object> AddOrGetIndexerGetter(
+                CapabilityKey<PropertyInfo> key,
+                Func<object, object[], object> getter
+            )
+            {
+                return IndexerGetters.GetOrAdd(key, getter);
+            }
+
+            private static bool IsIndexerGetterStrategyUnavailable(CapabilityKey<PropertyInfo> key)
+            {
+                return IndexerGetterStrategyBlocklist.ContainsKey(key);
+            }
+
+            private static void MarkIndexerGetterStrategyUnavailable(
+                CapabilityKey<PropertyInfo> key
+            )
+            {
+                IndexerGetterStrategyBlocklist.TryAdd(key, StrategyUnavailableSentinel);
+            }
+
+            private static bool TryGetIndexerSetterFromCache(
+                CapabilityKey<PropertyInfo> key,
+                out Action<object, object, object[]> setter
+            )
+            {
+                return IndexerSetters.TryGetValue(key, out setter);
+            }
+
+            private static Action<object, object, object[]> AddOrGetIndexerSetter(
+                CapabilityKey<PropertyInfo> key,
+                Action<object, object, object[]> setter
+            )
+            {
+                return IndexerSetters.GetOrAdd(key, setter);
+            }
+
+            private static bool IsIndexerSetterStrategyUnavailable(CapabilityKey<PropertyInfo> key)
+            {
+                return IndexerSetterStrategyBlocklist.ContainsKey(key);
+            }
+
+            private static void MarkIndexerSetterStrategyUnavailable(
+                CapabilityKey<PropertyInfo> key
+            )
+            {
+                IndexerSetterStrategyBlocklist.TryAdd(key, StrategyUnavailableSentinel);
             }
 
             private static bool TryGetMethodInvokerFromCache(
@@ -2937,6 +3208,74 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 PropertySetterStrategyBlocklist.Add(key);
             }
 
+            private static bool TryGetIndexerGetterFromCache(
+                CapabilityKey<PropertyInfo> key,
+                out Func<object, object[], object> getter
+            )
+            {
+                return IndexerGetters.TryGetValue(key, out getter);
+            }
+
+            private static Func<object, object[], object> AddOrGetIndexerGetter(
+                CapabilityKey<PropertyInfo> key,
+                Func<object, object[], object> getter
+            )
+            {
+                if (IndexerGetters.TryGetValue(key, out Func<object, object[], object> existing))
+                {
+                    return existing;
+                }
+
+                IndexerGetters[key] = getter;
+                return getter;
+            }
+
+            private static bool IsIndexerGetterStrategyUnavailable(CapabilityKey<PropertyInfo> key)
+            {
+                return IndexerGetterStrategyBlocklist.Contains(key);
+            }
+
+            private static void MarkIndexerGetterStrategyUnavailable(
+                CapabilityKey<PropertyInfo> key
+            )
+            {
+                IndexerGetterStrategyBlocklist.Add(key);
+            }
+
+            private static bool TryGetIndexerSetterFromCache(
+                CapabilityKey<PropertyInfo> key,
+                out Action<object, object, object[]> setter
+            )
+            {
+                return IndexerSetters.TryGetValue(key, out setter);
+            }
+
+            private static Action<object, object, object[]> AddOrGetIndexerSetter(
+                CapabilityKey<PropertyInfo> key,
+                Action<object, object, object[]> setter
+            )
+            {
+                if (IndexerSetters.TryGetValue(key, out Action<object, object, object[]> existing))
+                {
+                    return existing;
+                }
+
+                IndexerSetters[key] = setter;
+                return setter;
+            }
+
+            private static bool IsIndexerSetterStrategyUnavailable(CapabilityKey<PropertyInfo> key)
+            {
+                return IndexerSetterStrategyBlocklist.Contains(key);
+            }
+
+            private static void MarkIndexerSetterStrategyUnavailable(
+                CapabilityKey<PropertyInfo> key
+            )
+            {
+                IndexerSetterStrategyBlocklist.Add(key);
+            }
+
             private static bool TryGetMethodInvokerFromCache(
                 CapabilityKey<MethodInfo> key,
                 out Func<object, object[], object> invoker
@@ -3222,6 +3561,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 TypedPropertySetters.Clear();
                 TypedStaticPropertyGetters.Clear();
                 TypedStaticPropertySetters.Clear();
+                IndexerGetters.Clear();
+                IndexerGetterStrategyBlocklist.Clear();
+                IndexerSetters.Clear();
+                IndexerSetterStrategyBlocklist.Clear();
 #else
                 PropertyGetters.Clear();
                 PropertyGetterStrategyBlocklist.Clear();
@@ -3231,6 +3574,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 TypedPropertySetters.Clear();
                 TypedStaticPropertyGetters.Clear();
                 TypedStaticPropertySetters.Clear();
+                IndexerGetters.Clear();
+                IndexerGetterStrategyBlocklist.Clear();
+                IndexerSetters.Clear();
+                IndexerSetterStrategyBlocklist.Clear();
 #endif
             }
 

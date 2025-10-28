@@ -1165,6 +1165,178 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         }
 
         [Test]
+        public void IndexerGetterCachesRemainStrategyScoped()
+        {
+            IndexerClass instance = new();
+            instance[3] = 42;
+            PropertyInfo indexer = typeof(IndexerClass).GetProperty("Item");
+            Func<object, object[], object> expressionGetter;
+            using (ReflectionHelpers.OverrideReflectionCapabilities(true, false))
+            {
+                expressionGetter = ReflectionHelpers.GetIndexerGetter(indexer);
+            }
+
+            Func<object, object[], object> dynamicGetter;
+            using (ReflectionHelpers.OverrideReflectionCapabilities(false, true))
+            {
+                dynamicGetter = ReflectionHelpers.GetIndexerGetter(indexer);
+            }
+
+            Func<object, object[], object> reflectionGetter;
+            using (ReflectionHelpers.OverrideReflectionCapabilities(false, false))
+            {
+                reflectionGetter = ReflectionHelpers.GetIndexerGetter(indexer);
+            }
+
+            ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy;
+            Assert.That(
+                ReflectionHelpers.TryGetDelegateStrategy(expressionGetter, out expressionStrategy),
+                Is.True
+            );
+            ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy;
+            Assert.That(
+                ReflectionHelpers.TryGetDelegateStrategy(dynamicGetter, out dynamicStrategy),
+                Is.True
+            );
+            ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy;
+            Assert.That(
+                ReflectionHelpers.TryGetDelegateStrategy(reflectionGetter, out reflectionStrategy),
+                Is.True
+            );
+
+            Assume.That(
+                expressionStrategy,
+                Is.EqualTo(ReflectionHelpers.ReflectionDelegateStrategy.Expressions),
+                "Expression delegates are unavailable on this platform."
+            );
+            Assume.That(
+                dynamicStrategy,
+                Is.EqualTo(ReflectionHelpers.ReflectionDelegateStrategy.DynamicIl),
+                "Dynamic IL delegates are unavailable on this platform."
+            );
+            Assert.That(
+                reflectionStrategy,
+                Is.EqualTo(ReflectionHelpers.ReflectionDelegateStrategy.Reflection)
+            );
+
+            Assert.That(expressionGetter, Is.Not.SameAs(dynamicGetter));
+            Assert.That(expressionGetter, Is.Not.SameAs(reflectionGetter));
+            Assert.That(dynamicGetter, Is.Not.SameAs(reflectionGetter));
+
+            using (ReflectionHelpers.OverrideReflectionCapabilities(true, false))
+            {
+                Func<object, object[], object> expressionGetterSecond =
+                    ReflectionHelpers.GetIndexerGetter(indexer);
+                Assert.That(expressionGetterSecond, Is.SameAs(expressionGetter));
+            }
+
+            using (ReflectionHelpers.OverrideReflectionCapabilities(false, true))
+            {
+                Func<object, object[], object> dynamicGetterSecond =
+                    ReflectionHelpers.GetIndexerGetter(indexer);
+                Assert.That(dynamicGetterSecond, Is.SameAs(dynamicGetter));
+            }
+
+            using (ReflectionHelpers.OverrideReflectionCapabilities(false, false))
+            {
+                Func<object, object[], object> reflectionGetterSecond =
+                    ReflectionHelpers.GetIndexerGetter(indexer);
+                Assert.That(reflectionGetterSecond, Is.SameAs(reflectionGetter));
+            }
+
+            Assert.That(expressionGetter(instance, new object[] { 3 }), Is.EqualTo(42));
+            Assert.That(dynamicGetter(instance, new object[] { 3 }), Is.EqualTo(42));
+            Assert.That(reflectionGetter(instance, new object[] { 3 }), Is.EqualTo(42));
+        }
+
+        [Test]
+        public void IndexerSetterCachesRemainStrategyScoped()
+        {
+            IndexerClass instance = new();
+            PropertyInfo indexer = typeof(IndexerClass).GetProperty("Item");
+            Action<object, object, object[]> expressionSetter;
+            using (ReflectionHelpers.OverrideReflectionCapabilities(true, false))
+            {
+                expressionSetter = ReflectionHelpers.GetIndexerSetter(indexer);
+            }
+
+            Action<object, object, object[]> dynamicSetter;
+            using (ReflectionHelpers.OverrideReflectionCapabilities(false, true))
+            {
+                dynamicSetter = ReflectionHelpers.GetIndexerSetter(indexer);
+            }
+
+            Action<object, object, object[]> reflectionSetter;
+            using (ReflectionHelpers.OverrideReflectionCapabilities(false, false))
+            {
+                reflectionSetter = ReflectionHelpers.GetIndexerSetter(indexer);
+            }
+
+            ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy;
+            Assert.That(
+                ReflectionHelpers.TryGetDelegateStrategy(expressionSetter, out expressionStrategy),
+                Is.True
+            );
+            ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy;
+            Assert.That(
+                ReflectionHelpers.TryGetDelegateStrategy(dynamicSetter, out dynamicStrategy),
+                Is.True
+            );
+            ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy;
+            Assert.That(
+                ReflectionHelpers.TryGetDelegateStrategy(reflectionSetter, out reflectionStrategy),
+                Is.True
+            );
+
+            Assume.That(
+                expressionStrategy,
+                Is.EqualTo(ReflectionHelpers.ReflectionDelegateStrategy.Expressions),
+                "Expression delegates are unavailable on this platform."
+            );
+            Assume.That(
+                dynamicStrategy,
+                Is.EqualTo(ReflectionHelpers.ReflectionDelegateStrategy.DynamicIl),
+                "Dynamic IL delegates are unavailable on this platform."
+            );
+            Assert.That(
+                reflectionStrategy,
+                Is.EqualTo(ReflectionHelpers.ReflectionDelegateStrategy.Reflection)
+            );
+
+            Assert.That(expressionSetter, Is.Not.SameAs(dynamicSetter));
+            Assert.That(expressionSetter, Is.Not.SameAs(reflectionSetter));
+            Assert.That(dynamicSetter, Is.Not.SameAs(reflectionSetter));
+
+            using (ReflectionHelpers.OverrideReflectionCapabilities(true, false))
+            {
+                Action<object, object, object[]> expressionSetterSecond =
+                    ReflectionHelpers.GetIndexerSetter(indexer);
+                Assert.That(expressionSetterSecond, Is.SameAs(expressionSetter));
+            }
+
+            using (ReflectionHelpers.OverrideReflectionCapabilities(false, true))
+            {
+                Action<object, object, object[]> dynamicSetterSecond =
+                    ReflectionHelpers.GetIndexerSetter(indexer);
+                Assert.That(dynamicSetterSecond, Is.SameAs(dynamicSetter));
+            }
+
+            using (ReflectionHelpers.OverrideReflectionCapabilities(false, false))
+            {
+                Action<object, object, object[]> reflectionSetterSecond =
+                    ReflectionHelpers.GetIndexerSetter(indexer);
+                Assert.That(reflectionSetterSecond, Is.SameAs(reflectionSetter));
+            }
+
+            expressionSetter(instance, 100, new object[] { 1 });
+            dynamicSetter(instance, 200, new object[] { 2 });
+            reflectionSetter(instance, 300, new object[] { 3 });
+            Assert.That(instance[1], Is.EqualTo(100));
+            Assert.That(instance[2], Is.EqualTo(200));
+            Assert.That(instance[3], Is.EqualTo(300));
+        }
+
+        [Test]
         public void MethodInvokerCachesRemainStrategyScoped()
         {
             MethodInfo method = typeof(TestMethodClass).GetMethod(
