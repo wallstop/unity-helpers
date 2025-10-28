@@ -129,13 +129,21 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 byte
             > StaticFieldSetterStrategyBlocklist = new();
             private static readonly ConcurrentDictionary<
-                PropertyInfo,
+                CapabilityKey<PropertyInfo>,
                 Func<object, object>
             > PropertyGetters = new();
             private static readonly ConcurrentDictionary<
-                PropertyInfo,
+                CapabilityKey<PropertyInfo>,
+                byte
+            > PropertyGetterStrategyBlocklist = new();
+            private static readonly ConcurrentDictionary<
+                CapabilityKey<PropertyInfo>,
                 Action<object, object>
             > PropertySetters = new();
+            private static readonly ConcurrentDictionary<
+                CapabilityKey<PropertyInfo>,
+                byte
+            > PropertySetterStrategyBlocklist = new();
             private static readonly ConcurrentDictionary<
                 PropertyInfo,
                 Func<object, object[], object>
@@ -299,12 +307,20 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             private static readonly HashSet<
                 CapabilityKey<FieldInfo>
             > StaticFieldSetterStrategyBlocklist = new();
-            private static readonly Dictionary<PropertyInfo, Func<object, object>> PropertyGetters =
-                new();
             private static readonly Dictionary<
-                PropertyInfo,
+                CapabilityKey<PropertyInfo>,
+                Func<object, object>
+            > PropertyGetters = new();
+            private static readonly HashSet<
+                CapabilityKey<PropertyInfo>
+            > PropertyGetterStrategyBlocklist = new();
+            private static readonly Dictionary<
+                CapabilityKey<PropertyInfo>,
                 Action<object, object>
             > PropertySetters = new();
+            private static readonly HashSet<
+                CapabilityKey<PropertyInfo>
+            > PropertySetterStrategyBlocklist = new();
             private static readonly Dictionary<
                 PropertyInfo,
                 Func<object, object[], object>
@@ -648,16 +664,31 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 {
                     throw new ArgumentNullException(nameof(property));
                 }
-#if !SINGLE_THREADED
-                return PropertyGetters.GetOrAdd(property, BuildPropertyGetter);
-#else
-                if (!PropertyGetters.TryGetValue(property, out Func<object, object> getter))
+
+                Func<object, object>? getter;
+                if (
+                    TryGetOrCreatePropertyGetter(
+                        property,
+                        ReflectionDelegateStrategy.Expressions,
+                        out getter
+                    )
+                )
                 {
-                    getter = BuildPropertyGetter(property);
-                    PropertyGetters[property] = getter;
+                    return getter;
                 }
-                return getter;
-#endif
+
+                if (
+                    TryGetOrCreatePropertyGetter(
+                        property,
+                        ReflectionDelegateStrategy.DynamicIl,
+                        out getter
+                    )
+                )
+                {
+                    return getter;
+                }
+
+                return GetOrCreateReflectionPropertyGetter(property);
             }
 
             public static Func<object, object> GetStaticPropertyGetter(PropertyInfo property)
@@ -671,16 +702,31 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 {
                     throw new ArgumentNullException(nameof(property));
                 }
-#if !SINGLE_THREADED
-                return PropertySetters.GetOrAdd(property, BuildPropertySetter);
-#else
-                if (!PropertySetters.TryGetValue(property, out Action<object, object> setter))
+
+                Action<object, object>? setter;
+                if (
+                    TryGetOrCreatePropertySetter(
+                        property,
+                        ReflectionDelegateStrategy.Expressions,
+                        out setter
+                    )
+                )
                 {
-                    setter = BuildPropertySetter(property);
-                    PropertySetters[property] = setter;
+                    return setter;
                 }
-                return setter;
-#endif
+
+                if (
+                    TryGetOrCreatePropertySetter(
+                        property,
+                        ReflectionDelegateStrategy.DynamicIl,
+                        out setter
+                    )
+                )
+                {
+                    return setter;
+                }
+
+                return GetOrCreateReflectionPropertySetter(property);
             }
 
             public static Func<object, object[], object> GetMethodInvoker(MethodInfo method)
@@ -2162,6 +2208,148 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return value => field.SetValue(null, value);
             }
 
+            private static bool TryGetOrCreatePropertyGetter(
+                PropertyInfo property,
+                ReflectionDelegateStrategy strategy,
+                out Func<object, object> getter
+            )
+            {
+                getter = null;
+
+                if (strategy == ReflectionDelegateStrategy.Expressions && !SupportsExpressions)
+                {
+                    return false;
+                }
+#if EMIT_DYNAMIC_IL
+                if (strategy == ReflectionDelegateStrategy.DynamicIl && !SupportsDynamicIl)
+                {
+                    return false;
+                }
+#else
+                if (strategy == ReflectionDelegateStrategy.DynamicIl)
+                {
+                    return false;
+                }
+#endif
+
+                CapabilityKey<PropertyInfo> key = new CapabilityKey<PropertyInfo>(
+                    property,
+                    strategy
+                );
+                if (TryGetPropertyGetterFromCache(key, out Func<object, object> cached))
+                {
+                    getter = cached;
+                    return true;
+                }
+
+                if (IsPropertyGetterStrategyUnavailable(key))
+                {
+                    return false;
+                }
+
+                Func<object, object>? candidate = CreatePropertyGetter(property, strategy);
+                if (candidate == null)
+                {
+                    MarkPropertyGetterStrategyUnavailable(key);
+                    return false;
+                }
+
+                Func<object, object> resolved = AddOrGetPropertyGetter(key, candidate);
+                TrackDelegateStrategy(resolved, key);
+                getter = resolved;
+                return true;
+            }
+
+            private static Func<object, object> GetOrCreateReflectionPropertyGetter(
+                PropertyInfo property
+            )
+            {
+                CapabilityKey<PropertyInfo> key = new CapabilityKey<PropertyInfo>(
+                    property,
+                    ReflectionDelegateStrategy.Reflection
+                );
+                if (TryGetPropertyGetterFromCache(key, out Func<object, object> cached))
+                {
+                    return cached;
+                }
+
+                Func<object, object> reflectionGetter = CreateReflectionPropertyGetter(property);
+                Func<object, object> resolved = AddOrGetPropertyGetter(key, reflectionGetter);
+                TrackDelegateStrategy(resolved, key);
+                return resolved;
+            }
+
+            private static bool TryGetOrCreatePropertySetter(
+                PropertyInfo property,
+                ReflectionDelegateStrategy strategy,
+                out Action<object, object> setter
+            )
+            {
+                setter = null;
+
+                if (strategy == ReflectionDelegateStrategy.Expressions && !SupportsExpressions)
+                {
+                    return false;
+                }
+#if EMIT_DYNAMIC_IL
+                if (strategy == ReflectionDelegateStrategy.DynamicIl && !SupportsDynamicIl)
+                {
+                    return false;
+                }
+#else
+                if (strategy == ReflectionDelegateStrategy.DynamicIl)
+                {
+                    return false;
+                }
+#endif
+
+                CapabilityKey<PropertyInfo> key = new CapabilityKey<PropertyInfo>(
+                    property,
+                    strategy
+                );
+                if (TryGetPropertySetterFromCache(key, out Action<object, object> cached))
+                {
+                    setter = cached;
+                    return true;
+                }
+
+                if (IsPropertySetterStrategyUnavailable(key))
+                {
+                    return false;
+                }
+
+                Action<object, object>? candidate = CreatePropertySetter(property, strategy);
+                if (candidate == null)
+                {
+                    MarkPropertySetterStrategyUnavailable(key);
+                    return false;
+                }
+
+                Action<object, object> resolved = AddOrGetPropertySetter(key, candidate);
+                TrackDelegateStrategy(resolved, key);
+                setter = resolved;
+                return true;
+            }
+
+            private static Action<object, object> GetOrCreateReflectionPropertySetter(
+                PropertyInfo property
+            )
+            {
+                CapabilityKey<PropertyInfo> key = new CapabilityKey<PropertyInfo>(
+                    property,
+                    ReflectionDelegateStrategy.Reflection
+                );
+                if (TryGetPropertySetterFromCache(key, out Action<object, object> cached))
+                {
+                    return cached;
+                }
+
+                Action<object, object> reflectionSetter = CreateReflectionPropertySetter(property);
+                Action<object, object> resolved = AddOrGetPropertySetter(key, reflectionSetter);
+                TrackDelegateStrategy(resolved, key);
+                return resolved;
+            }
+
 #if !SINGLE_THREADED
             private static bool TryGetFieldGetterFromCache(
                 CapabilityKey<FieldInfo> key,
@@ -2269,6 +2457,62 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             )
             {
                 StaticFieldSetterStrategyBlocklist.TryAdd(key, StrategyUnavailableSentinel);
+            }
+
+            private static bool TryGetPropertyGetterFromCache(
+                CapabilityKey<PropertyInfo> key,
+                out Func<object, object> getter
+            )
+            {
+                return PropertyGetters.TryGetValue(key, out getter);
+            }
+
+            private static Func<object, object> AddOrGetPropertyGetter(
+                CapabilityKey<PropertyInfo> key,
+                Func<object, object> getter
+            )
+            {
+                return PropertyGetters.GetOrAdd(key, getter);
+            }
+
+            private static bool IsPropertyGetterStrategyUnavailable(CapabilityKey<PropertyInfo> key)
+            {
+                return PropertyGetterStrategyBlocklist.ContainsKey(key);
+            }
+
+            private static void MarkPropertyGetterStrategyUnavailable(
+                CapabilityKey<PropertyInfo> key
+            )
+            {
+                PropertyGetterStrategyBlocklist.TryAdd(key, StrategyUnavailableSentinel);
+            }
+
+            private static bool TryGetPropertySetterFromCache(
+                CapabilityKey<PropertyInfo> key,
+                out Action<object, object> setter
+            )
+            {
+                return PropertySetters.TryGetValue(key, out setter);
+            }
+
+            private static Action<object, object> AddOrGetPropertySetter(
+                CapabilityKey<PropertyInfo> key,
+                Action<object, object> setter
+            )
+            {
+                return PropertySetters.GetOrAdd(key, setter);
+            }
+
+            private static bool IsPropertySetterStrategyUnavailable(CapabilityKey<PropertyInfo> key)
+            {
+                return PropertySetterStrategyBlocklist.ContainsKey(key);
+            }
+
+            private static void MarkPropertySetterStrategyUnavailable(
+                CapabilityKey<PropertyInfo> key
+            )
+            {
+                PropertySetterStrategyBlocklist.TryAdd(key, StrategyUnavailableSentinel);
             }
 
             private static bool TryGetTypedFieldGetterFromCache(
@@ -2523,6 +2767,74 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 StaticFieldSetterStrategyBlocklist.Add(key);
             }
 
+            private static bool TryGetPropertyGetterFromCache(
+                CapabilityKey<PropertyInfo> key,
+                out Func<object, object> getter
+            )
+            {
+                return PropertyGetters.TryGetValue(key, out getter);
+            }
+
+            private static Func<object, object> AddOrGetPropertyGetter(
+                CapabilityKey<PropertyInfo> key,
+                Func<object, object> getter
+            )
+            {
+                if (PropertyGetters.TryGetValue(key, out Func<object, object> existing))
+                {
+                    return existing;
+                }
+
+                PropertyGetters[key] = getter;
+                return getter;
+            }
+
+            private static bool IsPropertyGetterStrategyUnavailable(CapabilityKey<PropertyInfo> key)
+            {
+                return PropertyGetterStrategyBlocklist.Contains(key);
+            }
+
+            private static void MarkPropertyGetterStrategyUnavailable(
+                CapabilityKey<PropertyInfo> key
+            )
+            {
+                PropertyGetterStrategyBlocklist.Add(key);
+            }
+
+            private static bool TryGetPropertySetterFromCache(
+                CapabilityKey<PropertyInfo> key,
+                out Action<object, object> setter
+            )
+            {
+                return PropertySetters.TryGetValue(key, out setter);
+            }
+
+            private static Action<object, object> AddOrGetPropertySetter(
+                CapabilityKey<PropertyInfo> key,
+                Action<object, object> setter
+            )
+            {
+                if (PropertySetters.TryGetValue(key, out Action<object, object> existing))
+                {
+                    return existing;
+                }
+
+                PropertySetters[key] = setter;
+                return setter;
+            }
+
+            private static bool IsPropertySetterStrategyUnavailable(CapabilityKey<PropertyInfo> key)
+            {
+                return PropertySetterStrategyBlocklist.Contains(key);
+            }
+
+            private static void MarkPropertySetterStrategyUnavailable(
+                CapabilityKey<PropertyInfo> key
+            )
+            {
+                PropertySetterStrategyBlocklist.Add(key);
+            }
+
             private static bool TryGetTypedFieldGetterFromCache(
                 CapabilityKey<(FieldInfo field, Type instance, Type value)> key,
                 out Delegate getter
@@ -2729,6 +3041,29 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #endif
             }
 
+            public static void ClearPropertyCache()
+            {
+#if !SINGLE_THREADED
+                PropertyGetters.Clear();
+                PropertyGetterStrategyBlocklist.Clear();
+                PropertySetters.Clear();
+                PropertySetterStrategyBlocklist.Clear();
+                TypedPropertyGetters.Clear();
+                TypedPropertySetters.Clear();
+                TypedStaticPropertyGetters.Clear();
+                TypedStaticPropertySetters.Clear();
+#else
+                PropertyGetters.Clear();
+                PropertyGetterStrategyBlocklist.Clear();
+                PropertySetters.Clear();
+                PropertySetterStrategyBlocklist.Clear();
+                TypedPropertyGetters.Clear();
+                TypedPropertySetters.Clear();
+                TypedStaticPropertyGetters.Clear();
+                TypedStaticPropertySetters.Clear();
+#endif
+            }
+
             public static bool TryGetStrategy(
                 Delegate delegateInstance,
                 out ReflectionDelegateStrategy strategy
@@ -2750,36 +3085,74 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return false;
             }
 
-            private static Func<object, object> BuildPropertyGetter(PropertyInfo property)
+            private static Func<object, object>? CreatePropertyGetter(
+                PropertyInfo property,
+                ReflectionDelegateStrategy strategy
+            )
             {
-                Func<object, object>? getter = null;
-                if (SupportsExpressions)
+                if (strategy == ReflectionDelegateStrategy.Expressions)
                 {
-                    getter = CreateCompiledPropertyGetter(property);
+                    return CreateCompiledPropertyGetter(property);
                 }
 #if EMIT_DYNAMIC_IL
-                if (getter == null && SupportsDynamicIl)
+                if (strategy == ReflectionDelegateStrategy.DynamicIl)
                 {
-                    getter = BuildPropertyGetterIL(property);
+                    return BuildPropertyGetterIL(property);
                 }
 #endif
-                return getter ?? (instance => property.GetValue(instance));
+                if (strategy == ReflectionDelegateStrategy.Reflection)
+                {
+                    return CreateReflectionPropertyGetter(property);
+                }
+
+                return null;
             }
 
-            private static Action<object, object> BuildPropertySetter(PropertyInfo property)
+            private static Action<object, object>? CreatePropertySetter(
+                PropertyInfo property,
+                ReflectionDelegateStrategy strategy
+            )
             {
-                Action<object, object>? setter = null;
-                if (SupportsExpressions)
+                if (strategy == ReflectionDelegateStrategy.Expressions)
                 {
-                    setter = CreateCompiledPropertySetter(property);
+                    return CreateCompiledPropertySetter(property);
                 }
 #if EMIT_DYNAMIC_IL
-                if (setter == null && SupportsDynamicIl)
+                if (strategy == ReflectionDelegateStrategy.DynamicIl)
                 {
-                    setter = BuildPropertySetterIL(property);
+                    return BuildPropertySetterIL(property);
                 }
 #endif
-                return setter ?? ((instance, value) => property.SetValue(instance, value));
+                if (strategy == ReflectionDelegateStrategy.Reflection)
+                {
+                    return CreateReflectionPropertySetter(property);
+                }
+
+                return null;
+            }
+
+            private static Func<object, object> CreateReflectionPropertyGetter(
+                PropertyInfo property
+            )
+            {
+                if (property.GetMethod != null && property.GetMethod.IsStatic)
+                {
+                    return _ => property.GetValue(null);
+                }
+
+                return instance => property.GetValue(instance);
+            }
+
+            private static Action<object, object> CreateReflectionPropertySetter(
+                PropertyInfo property
+            )
+            {
+                if (property.SetMethod != null && property.SetMethod.IsStatic)
+                {
+                    return (_, value) => property.SetValue(null, value);
+                }
+
+                return (instance, value) => property.SetValue(instance, value);
             }
 
             private static Func<object, object[], object> BuildMethodInvoker(MethodInfo method)

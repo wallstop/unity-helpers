@@ -31,6 +31,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             ReflectionHelpers.ClearFieldGetterCache();
             ReflectionHelpers.ClearFieldSetterCache();
+            ReflectionHelpers.ClearPropertyCache();
         }
 
         [TestCaseSource(nameof(CapabilityModes))]
@@ -985,6 +986,181 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                     Assert.AreEqual(18, getter(instance));
                 }
             );
+        }
+
+        [Test]
+        public void PropertyGetterCachesRemainStrategyScoped()
+        {
+            VariantPropertyClass instance = new() { ObjectProperty = "first" };
+            PropertyInfo property = typeof(VariantPropertyClass).GetProperty(
+                nameof(VariantPropertyClass.ObjectProperty)
+            );
+            Func<object, object> expressionGetter;
+            using (ReflectionHelpers.OverrideReflectionCapabilities(true, false))
+            {
+                expressionGetter = ReflectionHelpers.GetPropertyGetter(property);
+            }
+
+            Func<object, object> dynamicGetter;
+            using (ReflectionHelpers.OverrideReflectionCapabilities(false, true))
+            {
+                dynamicGetter = ReflectionHelpers.GetPropertyGetter(property);
+            }
+
+            Func<object, object> reflectionGetter;
+            using (ReflectionHelpers.OverrideReflectionCapabilities(false, false))
+            {
+                reflectionGetter = ReflectionHelpers.GetPropertyGetter(property);
+            }
+
+            ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy;
+            Assert.That(
+                ReflectionHelpers.TryGetDelegateStrategy(expressionGetter, out expressionStrategy),
+                Is.True
+            );
+            ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy;
+            Assert.That(
+                ReflectionHelpers.TryGetDelegateStrategy(dynamicGetter, out dynamicStrategy),
+                Is.True
+            );
+            ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy;
+            Assert.That(
+                ReflectionHelpers.TryGetDelegateStrategy(reflectionGetter, out reflectionStrategy),
+                Is.True
+            );
+
+            Assume.That(
+                expressionStrategy,
+                Is.EqualTo(ReflectionHelpers.ReflectionDelegateStrategy.Expressions),
+                "Expression delegates are unavailable on this platform."
+            );
+            Assume.That(
+                dynamicStrategy,
+                Is.EqualTo(ReflectionHelpers.ReflectionDelegateStrategy.DynamicIl),
+                "Dynamic IL delegates are unavailable on this platform."
+            );
+            Assert.That(
+                reflectionStrategy,
+                Is.EqualTo(ReflectionHelpers.ReflectionDelegateStrategy.Reflection)
+            );
+
+            Assert.That(expressionGetter, Is.Not.SameAs(dynamicGetter));
+            Assert.That(expressionGetter, Is.Not.SameAs(reflectionGetter));
+            Assert.That(dynamicGetter, Is.Not.SameAs(reflectionGetter));
+
+            using (ReflectionHelpers.OverrideReflectionCapabilities(true, false))
+            {
+                Func<object, object> expressionGetterSecond = ReflectionHelpers.GetPropertyGetter(
+                    property
+                );
+                Assert.That(expressionGetterSecond, Is.SameAs(expressionGetter));
+            }
+
+            using (ReflectionHelpers.OverrideReflectionCapabilities(false, true))
+            {
+                Func<object, object> dynamicGetterSecond = ReflectionHelpers.GetPropertyGetter(
+                    property
+                );
+                Assert.That(dynamicGetterSecond, Is.SameAs(dynamicGetter));
+            }
+
+            using (ReflectionHelpers.OverrideReflectionCapabilities(false, false))
+            {
+                Func<object, object> reflectionGetterSecond = ReflectionHelpers.GetPropertyGetter(
+                    property
+                );
+                Assert.That(reflectionGetterSecond, Is.SameAs(reflectionGetter));
+            }
+        }
+
+        [Test]
+        public void PropertySetterCachesRemainStrategyScoped()
+        {
+            VariantPropertyClass instance = new();
+            PropertyInfo property = typeof(VariantPropertyClass).GetProperty(
+                nameof(VariantPropertyClass.ObjectProperty)
+            );
+            Action<object, object> expressionSetter;
+            using (ReflectionHelpers.OverrideReflectionCapabilities(true, false))
+            {
+                expressionSetter = ReflectionHelpers.GetPropertySetter(property);
+            }
+
+            Action<object, object> dynamicSetter;
+            using (ReflectionHelpers.OverrideReflectionCapabilities(false, true))
+            {
+                dynamicSetter = ReflectionHelpers.GetPropertySetter(property);
+            }
+
+            Action<object, object> reflectionSetter;
+            using (ReflectionHelpers.OverrideReflectionCapabilities(false, false))
+            {
+                reflectionSetter = ReflectionHelpers.GetPropertySetter(property);
+            }
+
+            ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy;
+            Assert.That(
+                ReflectionHelpers.TryGetDelegateStrategy(expressionSetter, out expressionStrategy),
+                Is.True
+            );
+            ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy;
+            Assert.That(
+                ReflectionHelpers.TryGetDelegateStrategy(dynamicSetter, out dynamicStrategy),
+                Is.True
+            );
+            ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy;
+            Assert.That(
+                ReflectionHelpers.TryGetDelegateStrategy(reflectionSetter, out reflectionStrategy),
+                Is.True
+            );
+
+            Assume.That(
+                expressionStrategy,
+                Is.EqualTo(ReflectionHelpers.ReflectionDelegateStrategy.Expressions),
+                "Expression delegates are unavailable on this platform."
+            );
+            Assume.That(
+                dynamicStrategy,
+                Is.EqualTo(ReflectionHelpers.ReflectionDelegateStrategy.DynamicIl),
+                "Dynamic IL delegates are unavailable on this platform."
+            );
+            Assert.That(
+                reflectionStrategy,
+                Is.EqualTo(ReflectionHelpers.ReflectionDelegateStrategy.Reflection)
+            );
+
+            Assert.That(expressionSetter, Is.Not.SameAs(dynamicSetter));
+            Assert.That(expressionSetter, Is.Not.SameAs(reflectionSetter));
+            Assert.That(dynamicSetter, Is.Not.SameAs(reflectionSetter));
+
+            using (ReflectionHelpers.OverrideReflectionCapabilities(true, false))
+            {
+                Action<object, object> expressionSetterSecond = ReflectionHelpers.GetPropertySetter(
+                    property
+                );
+                Assert.That(expressionSetterSecond, Is.SameAs(expressionSetter));
+            }
+
+            using (ReflectionHelpers.OverrideReflectionCapabilities(false, true))
+            {
+                Action<object, object> dynamicSetterSecond = ReflectionHelpers.GetPropertySetter(
+                    property
+                );
+                Assert.That(dynamicSetterSecond, Is.SameAs(dynamicSetter));
+            }
+
+            using (ReflectionHelpers.OverrideReflectionCapabilities(false, false))
+            {
+                Action<object, object> reflectionSetterSecond = ReflectionHelpers.GetPropertySetter(
+                    property
+                );
+                Assert.That(reflectionSetterSecond, Is.SameAs(reflectionSetter));
+            }
+
+            expressionSetter(instance, "expr");
+            dynamicSetter(instance, "dyn");
+            reflectionSetter(instance, "ref");
+            Assert.That(instance.ObjectProperty, Is.EqualTo("ref"));
         }
 
         [TestCaseSource(nameof(CapabilityModes))]
