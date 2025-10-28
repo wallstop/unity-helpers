@@ -32,6 +32,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             ReflectionHelpers.ClearFieldGetterCache();
             ReflectionHelpers.ClearFieldSetterCache();
             ReflectionHelpers.ClearPropertyCache();
+            ReflectionHelpers.ClearMethodCache();
         }
 
         [TestCaseSource(nameof(CapabilityModes))]
@@ -1161,6 +1162,178 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             dynamicSetter(instance, "dyn");
             reflectionSetter(instance, "ref");
             Assert.That(instance.ObjectProperty, Is.EqualTo("ref"));
+        }
+
+        [Test]
+        public void MethodInvokerCachesRemainStrategyScoped()
+        {
+            MethodInfo method = typeof(TestMethodClass).GetMethod(
+                nameof(TestMethodClass.InstanceMethodWithParam)
+            );
+            Func<object, object[], object> expressionInvoker;
+            using (ReflectionHelpers.OverrideReflectionCapabilities(true, false))
+            {
+                expressionInvoker = ReflectionHelpers.GetMethodInvoker(method);
+            }
+
+            Func<object, object[], object> dynamicInvoker;
+            using (ReflectionHelpers.OverrideReflectionCapabilities(false, true))
+            {
+                dynamicInvoker = ReflectionHelpers.GetMethodInvoker(method);
+            }
+
+            Func<object, object[], object> reflectionInvoker;
+            using (ReflectionHelpers.OverrideReflectionCapabilities(false, false))
+            {
+                reflectionInvoker = ReflectionHelpers.GetMethodInvoker(method);
+            }
+
+            ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy;
+            Assert.That(
+                ReflectionHelpers.TryGetDelegateStrategy(expressionInvoker, out expressionStrategy),
+                Is.True
+            );
+            ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy;
+            Assert.That(
+                ReflectionHelpers.TryGetDelegateStrategy(dynamicInvoker, out dynamicStrategy),
+                Is.True
+            );
+            ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy;
+            Assert.That(
+                ReflectionHelpers.TryGetDelegateStrategy(reflectionInvoker, out reflectionStrategy),
+                Is.True
+            );
+
+            Assume.That(
+                expressionStrategy,
+                Is.EqualTo(ReflectionHelpers.ReflectionDelegateStrategy.Expressions),
+                "Expression delegates are unavailable on this platform."
+            );
+            Assume.That(
+                dynamicStrategy,
+                Is.EqualTo(ReflectionHelpers.ReflectionDelegateStrategy.DynamicIl),
+                "Dynamic IL delegates are unavailable on this platform."
+            );
+            Assert.That(
+                reflectionStrategy,
+                Is.EqualTo(ReflectionHelpers.ReflectionDelegateStrategy.Reflection)
+            );
+
+            Assert.That(expressionInvoker, Is.Not.SameAs(dynamicInvoker));
+            Assert.That(expressionInvoker, Is.Not.SameAs(reflectionInvoker));
+            Assert.That(dynamicInvoker, Is.Not.SameAs(reflectionInvoker));
+
+            using (ReflectionHelpers.OverrideReflectionCapabilities(true, false))
+            {
+                Func<object, object[], object> expressionInvokerSecond =
+                    ReflectionHelpers.GetMethodInvoker(method);
+                Assert.That(expressionInvokerSecond, Is.SameAs(expressionInvoker));
+            }
+
+            using (ReflectionHelpers.OverrideReflectionCapabilities(false, true))
+            {
+                Func<object, object[], object> dynamicInvokerSecond =
+                    ReflectionHelpers.GetMethodInvoker(method);
+                Assert.That(dynamicInvokerSecond, Is.SameAs(dynamicInvoker));
+            }
+
+            using (ReflectionHelpers.OverrideReflectionCapabilities(false, false))
+            {
+                Func<object, object[], object> reflectionInvokerSecond =
+                    ReflectionHelpers.GetMethodInvoker(method);
+                Assert.That(reflectionInvokerSecond, Is.SameAs(reflectionInvoker));
+            }
+
+            TestMethodClass instance = new();
+            Assert.That(expressionInvoker(instance, new object[] { "abcd" }), Is.EqualTo(4));
+            Assert.That(dynamicInvoker(instance, new object[] { "abcd" }), Is.EqualTo(4));
+            Assert.That(reflectionInvoker(instance, new object[] { "abcd" }), Is.EqualTo(4));
+        }
+
+        [Test]
+        public void StaticMethodInvokerCachesRemainStrategyScoped()
+        {
+            MethodInfo method = typeof(TestMethodClass).GetMethod(
+                nameof(TestMethodClass.StaticMethodWithParam)
+            );
+            TestMethodClass.ResetStatic();
+            Func<object[], object> expressionInvoker;
+            using (ReflectionHelpers.OverrideReflectionCapabilities(true, false))
+            {
+                expressionInvoker = ReflectionHelpers.GetStaticMethodInvoker(method);
+            }
+
+            Func<object[], object> dynamicInvoker;
+            using (ReflectionHelpers.OverrideReflectionCapabilities(false, true))
+            {
+                dynamicInvoker = ReflectionHelpers.GetStaticMethodInvoker(method);
+            }
+
+            Func<object[], object> reflectionInvoker;
+            using (ReflectionHelpers.OverrideReflectionCapabilities(false, false))
+            {
+                reflectionInvoker = ReflectionHelpers.GetStaticMethodInvoker(method);
+            }
+
+            ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy;
+            Assert.That(
+                ReflectionHelpers.TryGetDelegateStrategy(expressionInvoker, out expressionStrategy),
+                Is.True
+            );
+            ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy;
+            Assert.That(
+                ReflectionHelpers.TryGetDelegateStrategy(dynamicInvoker, out dynamicStrategy),
+                Is.True
+            );
+            ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy;
+            Assert.That(
+                ReflectionHelpers.TryGetDelegateStrategy(reflectionInvoker, out reflectionStrategy),
+                Is.True
+            );
+
+            Assume.That(
+                expressionStrategy,
+                Is.EqualTo(ReflectionHelpers.ReflectionDelegateStrategy.Expressions),
+                "Expression delegates are unavailable on this platform."
+            );
+            Assume.That(
+                dynamicStrategy,
+                Is.EqualTo(ReflectionHelpers.ReflectionDelegateStrategy.DynamicIl),
+                "Dynamic IL delegates are unavailable on this platform."
+            );
+            Assert.That(
+                reflectionStrategy,
+                Is.EqualTo(ReflectionHelpers.ReflectionDelegateStrategy.Reflection)
+            );
+
+            Assert.That(expressionInvoker, Is.Not.SameAs(dynamicInvoker));
+            Assert.That(expressionInvoker, Is.Not.SameAs(reflectionInvoker));
+            Assert.That(dynamicInvoker, Is.Not.SameAs(reflectionInvoker));
+
+            using (ReflectionHelpers.OverrideReflectionCapabilities(true, false))
+            {
+                Func<object[], object> expressionInvokerSecond =
+                    ReflectionHelpers.GetStaticMethodInvoker(method);
+                Assert.That(expressionInvokerSecond, Is.SameAs(expressionInvoker));
+            }
+
+            using (ReflectionHelpers.OverrideReflectionCapabilities(false, true))
+            {
+                Func<object[], object> dynamicInvokerSecond =
+                    ReflectionHelpers.GetStaticMethodInvoker(method);
+                Assert.That(dynamicInvokerSecond, Is.SameAs(dynamicInvoker));
+            }
+
+            using (ReflectionHelpers.OverrideReflectionCapabilities(false, false))
+            {
+                Func<object[], object> reflectionInvokerSecond =
+                    ReflectionHelpers.GetStaticMethodInvoker(method);
+                Assert.That(reflectionInvokerSecond, Is.SameAs(reflectionInvoker));
+            }
+
+            Assert.That(expressionInvoker(new object[] { 5 }), Is.EqualTo(10));
+            Assert.That(dynamicInvoker(new object[] { 6 }), Is.EqualTo(12));
+            Assert.That(reflectionInvoker(new object[] { 7 }), Is.EqualTo(14));
         }
 
         [TestCaseSource(nameof(CapabilityModes))]

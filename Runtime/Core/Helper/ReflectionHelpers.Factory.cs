@@ -185,13 +185,21 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 byte
             > TypedStaticFieldSetterStrategyBlocklist = new();
             private static readonly ConcurrentDictionary<
-                MethodInfo,
+                CapabilityKey<MethodInfo>,
                 Func<object, object[], object>
             > MethodInvokers = new();
             private static readonly ConcurrentDictionary<
-                MethodInfo,
+                CapabilityKey<MethodInfo>,
+                byte
+            > MethodInvokerStrategyBlocklist = new();
+            private static readonly ConcurrentDictionary<
+                CapabilityKey<MethodInfo>,
                 Func<object[], object>
             > StaticMethodInvokers = new();
+            private static readonly ConcurrentDictionary<
+                CapabilityKey<MethodInfo>,
+                byte
+            > StaticMethodInvokerStrategyBlocklist = new();
             private static readonly ConcurrentDictionary<
                 ConstructorInfo,
                 Func<object[], object>
@@ -358,13 +366,21 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 CapabilityKey<(FieldInfo field, Type value)>
             > TypedStaticFieldSetterStrategyBlocklist = new();
             private static readonly Dictionary<
-                MethodInfo,
+                CapabilityKey<MethodInfo>,
                 Func<object, object[], object>
             > MethodInvokers = new();
             private static readonly Dictionary<
-                MethodInfo,
+                CapabilityKey<MethodInfo>,
+                byte
+            > MethodInvokerStrategyBlocklist = new();
+            private static readonly Dictionary<
+                CapabilityKey<MethodInfo>,
                 Func<object[], object>
             > StaticMethodInvokers = new();
+            private static readonly Dictionary<
+                CapabilityKey<MethodInfo>,
+                byte
+            > StaticMethodInvokerStrategyBlocklist = new();
             private static readonly Dictionary<
                 ConstructorInfo,
                 Func<object[], object>
@@ -742,16 +758,31 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                         nameof(method)
                     );
                 }
-#if !SINGLE_THREADED
-                return MethodInvokers.GetOrAdd(method, BuildMethodInvoker);
-#else
-                if (!MethodInvokers.TryGetValue(method, out Func<object, object[], object> invoker))
+
+                Func<object, object[], object>? invoker;
+                if (
+                    TryGetOrCreateMethodInvoker(
+                        method,
+                        ReflectionDelegateStrategy.Expressions,
+                        out invoker
+                    )
+                )
                 {
-                    invoker = BuildMethodInvoker(method);
-                    MethodInvokers[method] = invoker;
+                    return invoker;
                 }
-                return invoker;
-#endif
+
+                if (
+                    TryGetOrCreateMethodInvoker(
+                        method,
+                        ReflectionDelegateStrategy.DynamicIl,
+                        out invoker
+                    )
+                )
+                {
+                    return invoker;
+                }
+
+                return GetOrCreateReflectionMethodInvoker(method);
             }
 
             public static Func<object[], object> GetStaticMethodInvoker(MethodInfo method)
@@ -764,16 +795,31 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 {
                     throw new ArgumentException("Method must be static", nameof(method));
                 }
-#if !SINGLE_THREADED
-                return StaticMethodInvokers.GetOrAdd(method, BuildStaticMethodInvoker);
-#else
-                if (!StaticMethodInvokers.TryGetValue(method, out Func<object[], object> invoker))
+
+                Func<object[], object>? invoker;
+                if (
+                    TryGetOrCreateStaticMethodInvoker(
+                        method,
+                        ReflectionDelegateStrategy.Expressions,
+                        out invoker
+                    )
+                )
                 {
-                    invoker = BuildStaticMethodInvoker(method);
-                    StaticMethodInvokers[method] = invoker;
+                    return invoker;
                 }
-                return invoker;
-#endif
+
+                if (
+                    TryGetOrCreateStaticMethodInvoker(
+                        method,
+                        ReflectionDelegateStrategy.DynamicIl,
+                        out invoker
+                    )
+                )
+                {
+                    return invoker;
+                }
+
+                return GetOrCreateReflectionStaticMethodInvoker(method);
             }
 
             public static Func<object[], object> GetConstructorInvoker(ConstructorInfo ctor)
@@ -2515,6 +2561,62 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 PropertySetterStrategyBlocklist.TryAdd(key, StrategyUnavailableSentinel);
             }
 
+            private static bool TryGetMethodInvokerFromCache(
+                CapabilityKey<MethodInfo> key,
+                out Func<object, object[], object> invoker
+            )
+            {
+                return MethodInvokers.TryGetValue(key, out invoker);
+            }
+
+            private static Func<object, object[], object> AddOrGetMethodInvoker(
+                CapabilityKey<MethodInfo> key,
+                Func<object, object[], object> invoker
+            )
+            {
+                return MethodInvokers.GetOrAdd(key, invoker);
+            }
+
+            private static bool IsMethodInvokerStrategyUnavailable(CapabilityKey<MethodInfo> key)
+            {
+                return MethodInvokerStrategyBlocklist.ContainsKey(key);
+            }
+
+            private static void MarkMethodInvokerStrategyUnavailable(CapabilityKey<MethodInfo> key)
+            {
+                MethodInvokerStrategyBlocklist.TryAdd(key, StrategyUnavailableSentinel);
+            }
+
+            private static bool TryGetStaticMethodInvokerFromCache(
+                CapabilityKey<MethodInfo> key,
+                out Func<object[], object> invoker
+            )
+            {
+                return StaticMethodInvokers.TryGetValue(key, out invoker);
+            }
+
+            private static Func<object[], object> AddOrGetStaticMethodInvoker(
+                CapabilityKey<MethodInfo> key,
+                Func<object[], object> invoker
+            )
+            {
+                return StaticMethodInvokers.GetOrAdd(key, invoker);
+            }
+
+            private static bool IsStaticMethodInvokerStrategyUnavailable(
+                CapabilityKey<MethodInfo> key
+            )
+            {
+                return StaticMethodInvokerStrategyBlocklist.ContainsKey(key);
+            }
+
+            private static void MarkStaticMethodInvokerStrategyUnavailable(
+                CapabilityKey<MethodInfo> key
+            )
+            {
+                StaticMethodInvokerStrategyBlocklist.TryAdd(key, StrategyUnavailableSentinel);
+            }
+
             private static bool TryGetTypedFieldGetterFromCache(
                 CapabilityKey<(FieldInfo field, Type instance, Type value)> key,
                 out Delegate getter
@@ -2835,6 +2937,74 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 PropertySetterStrategyBlocklist.Add(key);
             }
 
+            private static bool TryGetMethodInvokerFromCache(
+                CapabilityKey<MethodInfo> key,
+                out Func<object, object[], object> invoker
+            )
+            {
+                return MethodInvokers.TryGetValue(key, out invoker);
+            }
+
+            private static Func<object, object[], object> AddOrGetMethodInvoker(
+                CapabilityKey<MethodInfo> key,
+                Func<object, object[], object> invoker
+            )
+            {
+                if (MethodInvokers.TryGetValue(key, out Func<object, object[], object> existing))
+                {
+                    return existing;
+                }
+
+                MethodInvokers[key] = invoker;
+                return invoker;
+            }
+
+            private static bool IsMethodInvokerStrategyUnavailable(CapabilityKey<MethodInfo> key)
+            {
+                return MethodInvokerStrategyBlocklist.Contains(key);
+            }
+
+            private static void MarkMethodInvokerStrategyUnavailable(CapabilityKey<MethodInfo> key)
+            {
+                MethodInvokerStrategyBlocklist.Add(key);
+            }
+
+            private static bool TryGetStaticMethodInvokerFromCache(
+                CapabilityKey<MethodInfo> key,
+                out Func<object[], object> invoker
+            )
+            {
+                return StaticMethodInvokers.TryGetValue(key, out invoker);
+            }
+
+            private static Func<object[], object> AddOrGetStaticMethodInvoker(
+                CapabilityKey<MethodInfo> key,
+                Func<object[], object> invoker
+            )
+            {
+                if (StaticMethodInvokers.TryGetValue(key, out Func<object[], object> existing))
+                {
+                    return existing;
+                }
+
+                StaticMethodInvokers[key] = invoker;
+                return invoker;
+            }
+
+            private static bool IsStaticMethodInvokerStrategyUnavailable(
+                CapabilityKey<MethodInfo> key
+            )
+            {
+                return StaticMethodInvokerStrategyBlocklist.Contains(key);
+            }
+
+            private static void MarkStaticMethodInvokerStrategyUnavailable(
+                CapabilityKey<MethodInfo> key
+            )
+            {
+                StaticMethodInvokerStrategyBlocklist.Add(key);
+            }
+
             private static bool TryGetTypedFieldGetterFromCache(
                 CapabilityKey<(FieldInfo field, Type instance, Type value)> key,
                 out Delegate getter
@@ -3064,6 +3234,21 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #endif
             }
 
+            public static void ClearMethodCache()
+            {
+#if !SINGLE_THREADED
+                MethodInvokers.Clear();
+                MethodInvokerStrategyBlocklist.Clear();
+                StaticMethodInvokers.Clear();
+                StaticMethodInvokerStrategyBlocklist.Clear();
+#else
+                MethodInvokers.Clear();
+                MethodInvokerStrategyBlocklist.Clear();
+                StaticMethodInvokers.Clear();
+                StaticMethodInvokerStrategyBlocklist.Clear();
+#endif
+            }
+
             public static bool TryGetStrategy(
                 Delegate delegateInstance,
                 out ReflectionDelegateStrategy strategy
@@ -3155,36 +3340,200 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return (instance, value) => property.SetValue(instance, value);
             }
 
-            private static Func<object, object[], object> BuildMethodInvoker(MethodInfo method)
+            private static bool TryGetOrCreateMethodInvoker(
+                MethodInfo method,
+                ReflectionDelegateStrategy strategy,
+                out Func<object, object[], object> invoker
+            )
             {
-                Func<object, object[], object>? invoker = null;
-                if (SupportsExpressions)
+                invoker = null;
+
+                if (strategy == ReflectionDelegateStrategy.Expressions && !SupportsExpressions)
                 {
-                    invoker = CreateCompiledMethodInvoker(method);
+                    return false;
                 }
 #if EMIT_DYNAMIC_IL
-                if (invoker == null && SupportsDynamicIl)
+                if (strategy == ReflectionDelegateStrategy.DynamicIl && !SupportsDynamicIl)
                 {
-                    invoker = BuildMethodInvokerIL(method);
+                    return false;
+                }
+#else
+                if (strategy == ReflectionDelegateStrategy.DynamicIl)
+                {
+                    return false;
                 }
 #endif
-                return invoker ?? ((instance, args) => method.Invoke(instance, args));
+
+                CapabilityKey<MethodInfo> key = new CapabilityKey<MethodInfo>(method, strategy);
+                if (TryGetMethodInvokerFromCache(key, out Func<object, object[], object> cached))
+                {
+                    invoker = cached;
+                    return true;
+                }
+
+                if (IsMethodInvokerStrategyUnavailable(key))
+                {
+                    return false;
+                }
+
+                Func<object, object[], object>? candidate = CreateMethodInvoker(method, strategy);
+                if (candidate == null)
+                {
+                    MarkMethodInvokerStrategyUnavailable(key);
+                    return false;
+                }
+
+                Func<object, object[], object> resolved = AddOrGetMethodInvoker(key, candidate);
+                TrackDelegateStrategy(resolved, key);
+                invoker = resolved;
+                return true;
             }
 
-            private static Func<object[], object> BuildStaticMethodInvoker(MethodInfo method)
+            private static Func<object, object[], object> GetOrCreateReflectionMethodInvoker(
+                MethodInfo method
+            )
             {
-                Func<object[], object>? invoker = null;
-                if (SupportsExpressions)
+                CapabilityKey<MethodInfo> key = new CapabilityKey<MethodInfo>(
+                    method,
+                    ReflectionDelegateStrategy.Reflection
+                );
+                if (TryGetMethodInvokerFromCache(key, out Func<object, object[], object> cached))
                 {
-                    invoker = CreateCompiledStaticMethodInvoker(method);
+                    return cached;
+                }
+
+                Func<object, object[], object> reflectionInvoker = CreateReflectionMethodInvoker(
+                    method
+                );
+                Func<object, object[], object> resolved = AddOrGetMethodInvoker(
+                    key,
+                    reflectionInvoker
+                );
+                TrackDelegateStrategy(resolved, key);
+                return resolved;
+            }
+
+            private static bool TryGetOrCreateStaticMethodInvoker(
+                MethodInfo method,
+                ReflectionDelegateStrategy strategy,
+                out Func<object[], object> invoker
+            )
+            {
+                invoker = null;
+
+                if (strategy == ReflectionDelegateStrategy.Expressions && !SupportsExpressions)
+                {
+                    return false;
                 }
 #if EMIT_DYNAMIC_IL
-                if (invoker == null && SupportsDynamicIl)
+                if (strategy == ReflectionDelegateStrategy.DynamicIl && !SupportsDynamicIl)
                 {
-                    invoker = BuildStaticMethodInvokerIL(method);
+                    return false;
+                }
+#else
+                if (strategy == ReflectionDelegateStrategy.DynamicIl)
+                {
+                    return false;
                 }
 #endif
-                return invoker ?? (args => method.Invoke(null, args));
+
+                CapabilityKey<MethodInfo> key = new CapabilityKey<MethodInfo>(method, strategy);
+                if (TryGetStaticMethodInvokerFromCache(key, out Func<object[], object> cached))
+                {
+                    invoker = cached;
+                    return true;
+                }
+
+                if (IsStaticMethodInvokerStrategyUnavailable(key))
+                {
+                    return false;
+                }
+
+                Func<object[], object>? candidate = CreateStaticMethodInvoker(method, strategy);
+                if (candidate == null)
+                {
+                    MarkStaticMethodInvokerStrategyUnavailable(key);
+                    return false;
+                }
+
+                Func<object[], object> resolved = AddOrGetStaticMethodInvoker(key, candidate);
+                TrackDelegateStrategy(resolved, key);
+                invoker = resolved;
+                return true;
+            }
+
+            private static Func<object[], object> GetOrCreateReflectionStaticMethodInvoker(
+                MethodInfo method
+            )
+            {
+                CapabilityKey<MethodInfo> key = new CapabilityKey<MethodInfo>(
+                    method,
+                    ReflectionDelegateStrategy.Reflection
+                );
+                if (TryGetStaticMethodInvokerFromCache(key, out Func<object[], object> cached))
+                {
+                    return cached;
+                }
+
+                Func<object[], object> reflectionInvoker = CreateReflectionStaticMethodInvoker(
+                    method
+                );
+                Func<object[], object> resolved = AddOrGetStaticMethodInvoker(
+                    key,
+                    reflectionInvoker
+                );
+                TrackDelegateStrategy(resolved, key);
+                return resolved;
+            }
+
+            private static Func<object, object[], object>? CreateMethodInvoker(
+                MethodInfo method,
+                ReflectionDelegateStrategy strategy
+            )
+            {
+                if (strategy == ReflectionDelegateStrategy.Expressions)
+                {
+                    return CreateCompiledMethodInvoker(method);
+                }
+#if EMIT_DYNAMIC_IL
+                if (strategy == ReflectionDelegateStrategy.DynamicIl)
+                {
+                    return BuildMethodInvokerIL(method);
+                }
+#endif
+                return null;
+            }
+
+            private static Func<object, object[], object> CreateReflectionMethodInvoker(
+                MethodInfo method
+            )
+            {
+                return (instance, args) => method.Invoke(instance, args);
+            }
+
+            private static Func<object[], object>? CreateStaticMethodInvoker(
+                MethodInfo method,
+                ReflectionDelegateStrategy strategy
+            )
+            {
+                if (strategy == ReflectionDelegateStrategy.Expressions)
+                {
+                    return CreateCompiledStaticMethodInvoker(method);
+                }
+#if EMIT_DYNAMIC_IL
+                if (strategy == ReflectionDelegateStrategy.DynamicIl)
+                {
+                    return BuildStaticMethodInvokerIL(method);
+                }
+#endif
+                return null;
+            }
+
+            private static Func<object[], object> CreateReflectionStaticMethodInvoker(
+                MethodInfo method
+            )
+            {
+                return args => method.Invoke(null, args);
             }
 
             private static Func<object[], object> BuildConstructorInvoker(ConstructorInfo ctor)

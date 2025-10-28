@@ -326,6 +326,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             DelegateFactory.ClearPropertyCache();
         }
 
+        internal static void ClearMethodCache()
+        {
+            DelegateFactory.ClearMethodCache();
+        }
+
         internal static bool TryGetDelegateStrategy(
             Delegate delegateInstance,
             out ReflectionDelegateStrategy strategy
