@@ -1,32 +1,133 @@
 namespace WallstopStudios.UnityHelpers.Core.Helper
 {
     using System;
+    using System.Collections.Generic;
     using System.Reflection;
+    using System.Runtime.CompilerServices;
 #if !SINGLE_THREADED
     using System.Collections.Concurrent;
 #endif
 
     public static partial class ReflectionHelpers
     {
+        internal enum ReflectionDelegateStrategy
+        {
+            [Obsolete("Use a concrete strategy value.", false)]
+            Unknown = 0,
+            Expressions = 1,
+            DynamicIl = 2,
+            Reflection = 3,
+        }
+
         private static class DelegateFactory
         {
+            private const byte StrategyUnavailableSentinel = 0;
+
+            private readonly struct CapabilityKey<T> : IEquatable<CapabilityKey<T>>
+            {
+                internal CapabilityKey(T member, ReflectionDelegateStrategy strategy)
+                {
+                    Member = member;
+                    Strategy = strategy;
+                }
+
+                internal T Member { get; }
+
+                internal ReflectionDelegateStrategy Strategy { get; }
+
+                public bool Equals(CapabilityKey<T> other)
+                {
+                    return Strategy == other.Strategy
+                        && EqualityComparer<T>.Default.Equals(Member, other.Member);
+                }
+
+                public override bool Equals(object obj)
+                {
+                    if (obj is CapabilityKey<T> other)
+                    {
+                        return Equals(other);
+                    }
+
+                    return false;
+                }
+
+                public override int GetHashCode()
+                {
+                    int memberHash = Member is null
+                        ? 0
+                        : EqualityComparer<T>.Default.GetHashCode(Member);
+                    return unchecked((memberHash * 397) ^ (int)Strategy);
+                }
+            }
+
+            private sealed class StrategyHolder
+            {
+                internal StrategyHolder(
+                    ReflectionDelegateStrategy strategy,
+                    object memberKey,
+                    Type delegateType
+                )
+                {
+                    Strategy = strategy;
+                    MemberKey = memberKey;
+                    DelegateType = delegateType;
+                }
+
+                internal ReflectionDelegateStrategy Strategy { get; }
+
+                internal object MemberKey { get; }
+
+                internal Type DelegateType { get; }
+
+                internal static StrategyHolder Create<TMember>(
+                    CapabilityKey<TMember> key,
+                    Type delegateType
+                )
+                {
+                    object memberKey = key.Member is null ? NullMemberKey : (object)key.Member;
+                    return new StrategyHolder(key.Strategy, memberKey, delegateType);
+                }
+
+                private static readonly object NullMemberKey = new();
+            }
+
+            private static readonly ConditionalWeakTable<
+                Delegate,
+                StrategyHolder
+            > DelegateStrategyTable = new();
 #if !SINGLE_THREADED
             private static readonly ConcurrentDictionary<
-                FieldInfo,
+                CapabilityKey<FieldInfo>,
                 Func<object, object>
             > FieldGetters = new();
             private static readonly ConcurrentDictionary<
-                FieldInfo,
+                CapabilityKey<FieldInfo>,
+                byte
+            > FieldGetterStrategyBlocklist = new();
+            private static readonly ConcurrentDictionary<
+                CapabilityKey<FieldInfo>,
                 Action<object, object>
             > FieldSetters = new();
             private static readonly ConcurrentDictionary<
-                FieldInfo,
+                CapabilityKey<FieldInfo>,
+                byte
+            > FieldSetterStrategyBlocklist = new();
+            private static readonly ConcurrentDictionary<
+                CapabilityKey<FieldInfo>,
                 Func<object>
             > StaticFieldGetters = new();
             private static readonly ConcurrentDictionary<
-                FieldInfo,
+                CapabilityKey<FieldInfo>,
+                byte
+            > StaticFieldGetterStrategyBlocklist = new();
+            private static readonly ConcurrentDictionary<
+                CapabilityKey<FieldInfo>,
                 Action<object>
             > StaticFieldSetters = new();
+            private static readonly ConcurrentDictionary<
+                CapabilityKey<FieldInfo>,
+                byte
+            > StaticFieldSetterStrategyBlocklist = new();
             private static readonly ConcurrentDictionary<
                 PropertyInfo,
                 Func<object, object>
@@ -156,13 +257,32 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 Delegate
             > TypedInstanceAction4 = new();
 #else
-            private static readonly Dictionary<FieldInfo, Func<object, object>> FieldGetters =
+            private static readonly Dictionary<
+                CapabilityKey<FieldInfo>,
+                Func<object, object>
+            > FieldGetters = new();
+            private static readonly HashSet<CapabilityKey<FieldInfo>> FieldGetterStrategyBlocklist =
                 new();
-            private static readonly Dictionary<FieldInfo, Action<object, object>> FieldSetters =
+            private static readonly Dictionary<
+                CapabilityKey<FieldInfo>,
+                Action<object, object>
+            > FieldSetters = new();
+            private static readonly HashSet<CapabilityKey<FieldInfo>> FieldSetterStrategyBlocklist =
                 new();
-            private static readonly Dictionary<FieldInfo, Func<object>> StaticFieldGetters = new();
-            private static readonly Dictionary<FieldInfo, Action<object>> StaticFieldSetters =
-                new();
+            private static readonly Dictionary<
+                CapabilityKey<FieldInfo>,
+                Func<object>
+            > StaticFieldGetters = new();
+            private static readonly HashSet<
+                CapabilityKey<FieldInfo>
+            > StaticFieldGetterStrategyBlocklist = new();
+            private static readonly Dictionary<
+                CapabilityKey<FieldInfo>,
+                Action<object>
+            > StaticFieldSetters = new();
+            private static readonly HashSet<
+                CapabilityKey<FieldInfo>
+            > StaticFieldSetterStrategyBlocklist = new();
             private static readonly Dictionary<PropertyInfo, Func<object, object>> PropertyGetters =
                 new();
             private static readonly Dictionary<
@@ -260,16 +380,31 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 {
                     throw new ArgumentNullException(nameof(field));
                 }
-#if !SINGLE_THREADED
-                return FieldGetters.GetOrAdd(field, BuildFieldGetter);
-#else
-                if (!FieldGetters.TryGetValue(field, out Func<object, object> getter))
+
+                Func<object, object>? getter;
+                if (
+                    TryGetOrCreateFieldGetter(
+                        field,
+                        ReflectionDelegateStrategy.Expressions,
+                        out getter
+                    )
+                )
                 {
-                    getter = BuildFieldGetter(field);
-                    FieldGetters[field] = getter;
+                    return getter;
                 }
-                return getter;
-#endif
+
+                if (
+                    TryGetOrCreateFieldGetter(
+                        field,
+                        ReflectionDelegateStrategy.DynamicIl,
+                        out getter
+                    )
+                )
+                {
+                    return getter;
+                }
+
+                return GetOrCreateReflectionFieldGetter(field);
             }
 
             public static bool IsFieldGetterCached(FieldInfo field)
@@ -278,11 +413,23 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 {
                     return false;
                 }
-#if !SINGLE_THREADED
-                return FieldGetters.ContainsKey(field);
-#else
-                return FieldGetters.ContainsKey(field);
-#endif
+
+                CapabilityKey<FieldInfo> expressionsKey = new CapabilityKey<FieldInfo>(
+                    field,
+                    ReflectionDelegateStrategy.Expressions
+                );
+                CapabilityKey<FieldInfo> dynamicIlKey = new CapabilityKey<FieldInfo>(
+                    field,
+                    ReflectionDelegateStrategy.DynamicIl
+                );
+                CapabilityKey<FieldInfo> reflectionKey = new CapabilityKey<FieldInfo>(
+                    field,
+                    ReflectionDelegateStrategy.Reflection
+                );
+
+                return FieldGetters.ContainsKey(expressionsKey)
+                    || FieldGetters.ContainsKey(dynamicIlKey)
+                    || FieldGetters.ContainsKey(reflectionKey);
             }
 
             public static Func<object> GetStaticFieldGetter(FieldInfo field)
@@ -295,16 +442,31 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 {
                     throw new ArgumentException("Field must be static", nameof(field));
                 }
-#if !SINGLE_THREADED
-                return StaticFieldGetters.GetOrAdd(field, BuildStaticFieldGetter);
-#else
-                if (!StaticFieldGetters.TryGetValue(field, out Func<object> getter))
+
+                Func<object>? getter;
+                if (
+                    TryGetOrCreateStaticFieldGetter(
+                        field,
+                        ReflectionDelegateStrategy.Expressions,
+                        out getter
+                    )
+                )
                 {
-                    getter = BuildStaticFieldGetter(field);
-                    StaticFieldGetters[field] = getter;
+                    return getter;
                 }
-                return getter;
-#endif
+
+                if (
+                    TryGetOrCreateStaticFieldGetter(
+                        field,
+                        ReflectionDelegateStrategy.DynamicIl,
+                        out getter
+                    )
+                )
+                {
+                    return getter;
+                }
+
+                return GetOrCreateReflectionStaticFieldGetter(field);
             }
 
             public static bool IsStaticFieldGetterCached(FieldInfo field)
@@ -313,11 +475,23 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 {
                     return false;
                 }
-#if !SINGLE_THREADED
-                return StaticFieldGetters.ContainsKey(field);
-#else
-                return StaticFieldGetters.ContainsKey(field);
-#endif
+
+                CapabilityKey<FieldInfo> expressionsKey = new CapabilityKey<FieldInfo>(
+                    field,
+                    ReflectionDelegateStrategy.Expressions
+                );
+                CapabilityKey<FieldInfo> dynamicIlKey = new CapabilityKey<FieldInfo>(
+                    field,
+                    ReflectionDelegateStrategy.DynamicIl
+                );
+                CapabilityKey<FieldInfo> reflectionKey = new CapabilityKey<FieldInfo>(
+                    field,
+                    ReflectionDelegateStrategy.Reflection
+                );
+
+                return StaticFieldGetters.ContainsKey(expressionsKey)
+                    || StaticFieldGetters.ContainsKey(dynamicIlKey)
+                    || StaticFieldGetters.ContainsKey(reflectionKey);
             }
 
             public static Action<object, object> GetFieldSetter(FieldInfo field)
@@ -326,16 +500,31 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 {
                     throw new ArgumentNullException(nameof(field));
                 }
-#if !SINGLE_THREADED
-                return FieldSetters.GetOrAdd(field, BuildFieldSetter);
-#else
-                if (!FieldSetters.TryGetValue(field, out Action<object, object> setter))
+
+                Action<object, object>? setter;
+                if (
+                    TryGetOrCreateFieldSetter(
+                        field,
+                        ReflectionDelegateStrategy.Expressions,
+                        out setter
+                    )
+                )
                 {
-                    setter = BuildFieldSetter(field);
-                    FieldSetters[field] = setter;
+                    return setter;
                 }
-                return setter;
-#endif
+
+                if (
+                    TryGetOrCreateFieldSetter(
+                        field,
+                        ReflectionDelegateStrategy.DynamicIl,
+                        out setter
+                    )
+                )
+                {
+                    return setter;
+                }
+
+                return GetOrCreateReflectionFieldSetter(field);
             }
 
             public static bool IsFieldSetterCached(FieldInfo field)
@@ -344,11 +533,23 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 {
                     return false;
                 }
-#if !SINGLE_THREADED
-                return FieldSetters.ContainsKey(field);
-#else
-                return FieldSetters.ContainsKey(field);
-#endif
+
+                CapabilityKey<FieldInfo> expressionsKey = new CapabilityKey<FieldInfo>(
+                    field,
+                    ReflectionDelegateStrategy.Expressions
+                );
+                CapabilityKey<FieldInfo> dynamicIlKey = new CapabilityKey<FieldInfo>(
+                    field,
+                    ReflectionDelegateStrategy.DynamicIl
+                );
+                CapabilityKey<FieldInfo> reflectionKey = new CapabilityKey<FieldInfo>(
+                    field,
+                    ReflectionDelegateStrategy.Reflection
+                );
+
+                return FieldSetters.ContainsKey(expressionsKey)
+                    || FieldSetters.ContainsKey(dynamicIlKey)
+                    || FieldSetters.ContainsKey(reflectionKey);
             }
 
             public static Action<object> GetStaticFieldSetter(FieldInfo field)
@@ -361,16 +562,31 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 {
                     throw new ArgumentException("Field must be static", nameof(field));
                 }
-#if !SINGLE_THREADED
-                return StaticFieldSetters.GetOrAdd(field, BuildStaticFieldSetter);
-#else
-                if (!StaticFieldSetters.TryGetValue(field, out Action<object> setter))
+
+                Action<object>? setter;
+                if (
+                    TryGetOrCreateStaticFieldSetter(
+                        field,
+                        ReflectionDelegateStrategy.Expressions,
+                        out setter
+                    )
+                )
                 {
-                    setter = BuildStaticFieldSetter(field);
-                    StaticFieldSetters[field] = setter;
+                    return setter;
                 }
-                return setter;
-#endif
+
+                if (
+                    TryGetOrCreateStaticFieldSetter(
+                        field,
+                        ReflectionDelegateStrategy.DynamicIl,
+                        out setter
+                    )
+                )
+                {
+                    return setter;
+                }
+
+                return GetOrCreateReflectionStaticFieldSetter(field);
             }
 
             public static bool IsStaticFieldSetterCached(FieldInfo field)
@@ -379,11 +595,23 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 {
                     return false;
                 }
-#if !SINGLE_THREADED
-                return StaticFieldSetters.ContainsKey(field);
-#else
-                return StaticFieldSetters.ContainsKey(field);
-#endif
+
+                CapabilityKey<FieldInfo> expressionsKey = new CapabilityKey<FieldInfo>(
+                    field,
+                    ReflectionDelegateStrategy.Expressions
+                );
+                CapabilityKey<FieldInfo> dynamicIlKey = new CapabilityKey<FieldInfo>(
+                    field,
+                    ReflectionDelegateStrategy.DynamicIl
+                );
+                CapabilityKey<FieldInfo> reflectionKey = new CapabilityKey<FieldInfo>(
+                    field,
+                    ReflectionDelegateStrategy.Reflection
+                );
+
+                return StaticFieldSetters.ContainsKey(expressionsKey)
+                    || StaticFieldSetters.ContainsKey(dynamicIlKey)
+                    || StaticFieldSetters.ContainsKey(reflectionKey);
             }
 
             public static Func<object, object> GetPropertyGetter(PropertyInfo property)
@@ -994,68 +1222,698 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return setter ?? (value => field.SetValue(null, value));
             }
 
-            private static Func<object, object> BuildFieldGetter(FieldInfo field)
+            private static bool TryGetOrCreateFieldGetter(
+                FieldInfo field,
+                ReflectionDelegateStrategy strategy,
+                out Func<object, object> getter
+            )
             {
-                Func<object, object>? getter = null;
-                if (SupportsExpressions)
+                getter = null;
+
+                if (strategy == ReflectionDelegateStrategy.Expressions && !SupportsExpressions)
                 {
-                    getter = CreateCompiledFieldGetter(field);
+                    return false;
                 }
 #if EMIT_DYNAMIC_IL
-                if (getter == null && SupportsDynamicIl)
+                if (strategy == ReflectionDelegateStrategy.DynamicIl && !SupportsDynamicIl)
                 {
-                    getter = BuildFieldGetterIL(field);
+                    return false;
+                }
+#else
+                if (strategy == ReflectionDelegateStrategy.DynamicIl)
+                {
+                    return false;
                 }
 #endif
-                return getter ?? (instance => field.GetValue(field.IsStatic ? null : instance));
+
+                CapabilityKey<FieldInfo> key = new CapabilityKey<FieldInfo>(field, strategy);
+                if (TryGetFieldGetterFromCache(key, out Func<object, object> cached))
+                {
+                    getter = cached;
+                    return true;
+                }
+
+                if (IsFieldGetterStrategyUnavailable(key))
+                {
+                    return false;
+                }
+
+                Func<object, object>? candidate = CreateFieldGetter(field, strategy);
+                if (candidate == null)
+                {
+                    MarkFieldGetterStrategyUnavailable(key);
+                    return false;
+                }
+
+                Func<object, object> resolved = AddOrGetFieldGetter(key, candidate);
+                TrackDelegateStrategy(resolved, key);
+                getter = resolved;
+                return true;
             }
 
-            private static Func<object> BuildStaticFieldGetter(FieldInfo field)
+            private static Func<object, object> GetOrCreateReflectionFieldGetter(FieldInfo field)
             {
-                Func<object>? getter = null;
-                if (SupportsExpressions)
+                CapabilityKey<FieldInfo> key = new CapabilityKey<FieldInfo>(
+                    field,
+                    ReflectionDelegateStrategy.Reflection
+                );
+                if (TryGetFieldGetterFromCache(key, out Func<object, object> cached))
                 {
-                    getter = CreateCompiledStaticFieldGetter(field);
+                    return cached;
                 }
-#if EMIT_DYNAMIC_IL
-                if (getter == null && SupportsDynamicIl)
-                {
-                    getter = BuildStaticFieldGetterIL(field);
-                }
-#endif
-                return getter ?? (() => field.GetValue(null));
+
+                Func<object, object> reflectionGetter = CreateReflectionFieldGetter(field);
+                Func<object, object> resolved = AddOrGetFieldGetter(key, reflectionGetter);
+                TrackDelegateStrategy(resolved, key);
+                return resolved;
             }
 
-            private static Action<object, object> BuildFieldSetter(FieldInfo field)
+            private static Func<object, object>? CreateFieldGetter(
+                FieldInfo field,
+                ReflectionDelegateStrategy strategy
+            )
             {
-                Action<object, object>? setter = null;
-                if (SupportsExpressions)
+                if (strategy == ReflectionDelegateStrategy.Expressions)
                 {
-                    setter = CreateCompiledFieldSetter(field);
+                    return CreateCompiledFieldGetter(field);
                 }
 #if EMIT_DYNAMIC_IL
-                if (setter == null && SupportsDynamicIl)
+                if (strategy == ReflectionDelegateStrategy.DynamicIl)
                 {
-                    setter = BuildFieldSetterIL(field);
+                    return BuildFieldGetterIL(field);
                 }
 #endif
-                return setter ?? ((instance, value) => field.SetValue(instance, value));
+                if (strategy == ReflectionDelegateStrategy.Reflection)
+                {
+                    return CreateReflectionFieldGetter(field);
+                }
+
+                return null;
             }
 
-            private static Action<object> BuildStaticFieldSetter(FieldInfo field)
+            private static Func<object, object> CreateReflectionFieldGetter(FieldInfo field)
             {
-                Action<object>? setter = null;
-                if (SupportsExpressions)
+                if (field.IsStatic)
                 {
-                    setter = CreateCompiledStaticFieldSetter(field);
+                    return ignoredInstance => field.GetValue(null);
+                }
+
+                return instance => field.GetValue(instance);
+            }
+
+            private static bool TryGetOrCreateFieldSetter(
+                FieldInfo field,
+                ReflectionDelegateStrategy strategy,
+                out Action<object, object> setter
+            )
+            {
+                setter = null;
+
+                if (strategy == ReflectionDelegateStrategy.Expressions && !SupportsExpressions)
+                {
+                    return false;
                 }
 #if EMIT_DYNAMIC_IL
-                if (setter == null && SupportsDynamicIl)
+                if (strategy == ReflectionDelegateStrategy.DynamicIl && !SupportsDynamicIl)
                 {
-                    setter = BuildStaticFieldSetterIL(field);
+                    return false;
+                }
+#else
+                if (strategy == ReflectionDelegateStrategy.DynamicIl)
+                {
+                    return false;
                 }
 #endif
-                return setter ?? (value => field.SetValue(null, value));
+
+                CapabilityKey<FieldInfo> key = new CapabilityKey<FieldInfo>(field, strategy);
+                if (TryGetFieldSetterFromCache(key, out Action<object, object> cached))
+                {
+                    setter = cached;
+                    return true;
+                }
+
+                if (IsFieldSetterStrategyUnavailable(key))
+                {
+                    return false;
+                }
+
+                Action<object, object>? candidate = CreateFieldSetter(field, strategy);
+                if (candidate == null)
+                {
+                    MarkFieldSetterStrategyUnavailable(key);
+                    return false;
+                }
+
+                Action<object, object> resolved = AddOrGetFieldSetter(key, candidate);
+                TrackDelegateStrategy(resolved, key);
+                setter = resolved;
+                return true;
+            }
+
+            private static Action<object, object> GetOrCreateReflectionFieldSetter(FieldInfo field)
+            {
+                CapabilityKey<FieldInfo> key = new CapabilityKey<FieldInfo>(
+                    field,
+                    ReflectionDelegateStrategy.Reflection
+                );
+                if (TryGetFieldSetterFromCache(key, out Action<object, object> cached))
+                {
+                    return cached;
+                }
+
+                Action<object, object> reflectionSetter = CreateReflectionFieldSetter(field);
+                Action<object, object> resolved = AddOrGetFieldSetter(key, reflectionSetter);
+                TrackDelegateStrategy(resolved, key);
+                return resolved;
+            }
+
+            private static Action<object, object>? CreateFieldSetter(
+                FieldInfo field,
+                ReflectionDelegateStrategy strategy
+            )
+            {
+                if (strategy == ReflectionDelegateStrategy.Expressions)
+                {
+                    return CreateCompiledFieldSetter(field);
+                }
+#if EMIT_DYNAMIC_IL
+                if (strategy == ReflectionDelegateStrategy.DynamicIl)
+                {
+                    return BuildFieldSetterIL(field);
+                }
+#endif
+                if (strategy == ReflectionDelegateStrategy.Reflection)
+                {
+                    return CreateReflectionFieldSetter(field);
+                }
+
+                return null;
+            }
+
+            private static Action<object, object> CreateReflectionFieldSetter(FieldInfo field)
+            {
+                if (field.IsStatic)
+                {
+                    return (_, value) => field.SetValue(null, value);
+                }
+
+                return (instance, value) => field.SetValue(instance, value);
+            }
+
+            private static bool TryGetOrCreateStaticFieldGetter(
+                FieldInfo field,
+                ReflectionDelegateStrategy strategy,
+                out Func<object> getter
+            )
+            {
+                getter = null;
+
+                if (strategy == ReflectionDelegateStrategy.Expressions && !SupportsExpressions)
+                {
+                    return false;
+                }
+#if EMIT_DYNAMIC_IL
+                if (strategy == ReflectionDelegateStrategy.DynamicIl && !SupportsDynamicIl)
+                {
+                    return false;
+                }
+#else
+                if (strategy == ReflectionDelegateStrategy.DynamicIl)
+                {
+                    return false;
+                }
+#endif
+
+                CapabilityKey<FieldInfo> key = new CapabilityKey<FieldInfo>(field, strategy);
+                if (TryGetStaticFieldGetterFromCache(key, out Func<object> cached))
+                {
+                    getter = cached;
+                    return true;
+                }
+
+                if (IsStaticFieldGetterStrategyUnavailable(key))
+                {
+                    return false;
+                }
+
+                Func<object>? candidate = CreateStaticFieldGetter(field, strategy);
+                if (candidate == null)
+                {
+                    MarkStaticFieldGetterStrategyUnavailable(key);
+                    return false;
+                }
+
+                Func<object> resolved = AddOrGetStaticFieldGetter(key, candidate);
+                TrackDelegateStrategy(resolved, key);
+                getter = resolved;
+                return true;
+            }
+
+            private static Func<object> GetOrCreateReflectionStaticFieldGetter(FieldInfo field)
+            {
+                CapabilityKey<FieldInfo> key = new CapabilityKey<FieldInfo>(
+                    field,
+                    ReflectionDelegateStrategy.Reflection
+                );
+                if (TryGetStaticFieldGetterFromCache(key, out Func<object> cached))
+                {
+                    return cached;
+                }
+
+                Func<object> reflectionGetter = CreateReflectionStaticFieldGetter(field);
+                Func<object> resolved = AddOrGetStaticFieldGetter(key, reflectionGetter);
+                TrackDelegateStrategy(resolved, key);
+                return resolved;
+            }
+
+            private static Func<object>? CreateStaticFieldGetter(
+                FieldInfo field,
+                ReflectionDelegateStrategy strategy
+            )
+            {
+                if (strategy == ReflectionDelegateStrategy.Expressions)
+                {
+                    return CreateCompiledStaticFieldGetter(field);
+                }
+#if EMIT_DYNAMIC_IL
+                if (strategy == ReflectionDelegateStrategy.DynamicIl)
+                {
+                    return BuildStaticFieldGetterIL(field);
+                }
+#endif
+                if (strategy == ReflectionDelegateStrategy.Reflection)
+                {
+                    return CreateReflectionStaticFieldGetter(field);
+                }
+
+                return null;
+            }
+
+            private static Func<object> CreateReflectionStaticFieldGetter(FieldInfo field)
+            {
+                return () => field.GetValue(null);
+            }
+
+            private static bool TryGetOrCreateStaticFieldSetter(
+                FieldInfo field,
+                ReflectionDelegateStrategy strategy,
+                out Action<object> setter
+            )
+            {
+                setter = null;
+
+                if (strategy == ReflectionDelegateStrategy.Expressions && !SupportsExpressions)
+                {
+                    return false;
+                }
+#if EMIT_DYNAMIC_IL
+                if (strategy == ReflectionDelegateStrategy.DynamicIl && !SupportsDynamicIl)
+                {
+                    return false;
+                }
+#else
+                if (strategy == ReflectionDelegateStrategy.DynamicIl)
+                {
+                    return false;
+                }
+#endif
+
+                CapabilityKey<FieldInfo> key = new CapabilityKey<FieldInfo>(field, strategy);
+                if (TryGetStaticFieldSetterFromCache(key, out Action<object> cached))
+                {
+                    setter = cached;
+                    return true;
+                }
+
+                if (IsStaticFieldSetterStrategyUnavailable(key))
+                {
+                    return false;
+                }
+
+                Action<object>? candidate = CreateStaticFieldSetter(field, strategy);
+                if (candidate == null)
+                {
+                    MarkStaticFieldSetterStrategyUnavailable(key);
+                    return false;
+                }
+
+                Action<object> resolved = AddOrGetStaticFieldSetter(key, candidate);
+                TrackDelegateStrategy(resolved, key);
+                setter = resolved;
+                return true;
+            }
+
+            private static Action<object> GetOrCreateReflectionStaticFieldSetter(FieldInfo field)
+            {
+                CapabilityKey<FieldInfo> key = new CapabilityKey<FieldInfo>(
+                    field,
+                    ReflectionDelegateStrategy.Reflection
+                );
+                if (TryGetStaticFieldSetterFromCache(key, out Action<object> cached))
+                {
+                    return cached;
+                }
+
+                Action<object> reflectionSetter = CreateReflectionStaticFieldSetter(field);
+                Action<object> resolved = AddOrGetStaticFieldSetter(key, reflectionSetter);
+                TrackDelegateStrategy(resolved, key);
+                return resolved;
+            }
+
+            private static Action<object>? CreateStaticFieldSetter(
+                FieldInfo field,
+                ReflectionDelegateStrategy strategy
+            )
+            {
+                if (strategy == ReflectionDelegateStrategy.Expressions)
+                {
+                    return CreateCompiledStaticFieldSetter(field);
+                }
+#if EMIT_DYNAMIC_IL
+                if (strategy == ReflectionDelegateStrategy.DynamicIl)
+                {
+                    return BuildStaticFieldSetterIL(field);
+                }
+#endif
+                if (strategy == ReflectionDelegateStrategy.Reflection)
+                {
+                    return CreateReflectionStaticFieldSetter(field);
+                }
+
+                return null;
+            }
+
+            private static Action<object> CreateReflectionStaticFieldSetter(FieldInfo field)
+            {
+                return value => field.SetValue(null, value);
+            }
+
+#if !SINGLE_THREADED
+            private static bool TryGetFieldGetterFromCache(
+                CapabilityKey<FieldInfo> key,
+                out Func<object, object> getter
+            )
+            {
+                return FieldGetters.TryGetValue(key, out getter);
+            }
+
+            private static Func<object, object> AddOrGetFieldGetter(
+                CapabilityKey<FieldInfo> key,
+                Func<object, object> getter
+            )
+            {
+                return FieldGetters.GetOrAdd(key, getter);
+            }
+
+            private static bool IsFieldGetterStrategyUnavailable(CapabilityKey<FieldInfo> key)
+            {
+                return FieldGetterStrategyBlocklist.ContainsKey(key);
+            }
+
+            private static void MarkFieldGetterStrategyUnavailable(CapabilityKey<FieldInfo> key)
+            {
+                FieldGetterStrategyBlocklist.TryAdd(key, StrategyUnavailableSentinel);
+            }
+
+            private static bool TryGetFieldSetterFromCache(
+                CapabilityKey<FieldInfo> key,
+                out Action<object, object> setter
+            )
+            {
+                return FieldSetters.TryGetValue(key, out setter);
+            }
+
+            private static Action<object, object> AddOrGetFieldSetter(
+                CapabilityKey<FieldInfo> key,
+                Action<object, object> setter
+            )
+            {
+                return FieldSetters.GetOrAdd(key, setter);
+            }
+
+            private static bool IsFieldSetterStrategyUnavailable(CapabilityKey<FieldInfo> key)
+            {
+                return FieldSetterStrategyBlocklist.ContainsKey(key);
+            }
+
+            private static void MarkFieldSetterStrategyUnavailable(CapabilityKey<FieldInfo> key)
+            {
+                FieldSetterStrategyBlocklist.TryAdd(key, StrategyUnavailableSentinel);
+            }
+
+            private static bool TryGetStaticFieldGetterFromCache(
+                CapabilityKey<FieldInfo> key,
+                out Func<object> getter
+            )
+            {
+                return StaticFieldGetters.TryGetValue(key, out getter);
+            }
+
+            private static Func<object> AddOrGetStaticFieldGetter(
+                CapabilityKey<FieldInfo> key,
+                Func<object> getter
+            )
+            {
+                return StaticFieldGetters.GetOrAdd(key, getter);
+            }
+
+            private static bool IsStaticFieldGetterStrategyUnavailable(CapabilityKey<FieldInfo> key)
+            {
+                return StaticFieldGetterStrategyBlocklist.ContainsKey(key);
+            }
+
+            private static void MarkStaticFieldGetterStrategyUnavailable(
+                CapabilityKey<FieldInfo> key
+            )
+            {
+                StaticFieldGetterStrategyBlocklist.TryAdd(key, StrategyUnavailableSentinel);
+            }
+
+            private static bool TryGetStaticFieldSetterFromCache(
+                CapabilityKey<FieldInfo> key,
+                out Action<object> setter
+            )
+            {
+                return StaticFieldSetters.TryGetValue(key, out setter);
+            }
+
+            private static Action<object> AddOrGetStaticFieldSetter(
+                CapabilityKey<FieldInfo> key,
+                Action<object> setter
+            )
+            {
+                return StaticFieldSetters.GetOrAdd(key, setter);
+            }
+
+            private static bool IsStaticFieldSetterStrategyUnavailable(CapabilityKey<FieldInfo> key)
+            {
+                return StaticFieldSetterStrategyBlocklist.ContainsKey(key);
+            }
+
+            private static void MarkStaticFieldSetterStrategyUnavailable(
+                CapabilityKey<FieldInfo> key
+            )
+            {
+                StaticFieldSetterStrategyBlocklist.TryAdd(key, StrategyUnavailableSentinel);
+            }
+#else
+            private static bool TryGetFieldGetterFromCache(
+                CapabilityKey<FieldInfo> key,
+                out Func<object, object> getter
+            )
+            {
+                return FieldGetters.TryGetValue(key, out getter);
+            }
+
+            private static Func<object, object> AddOrGetFieldGetter(
+                CapabilityKey<FieldInfo> key,
+                Func<object, object> getter
+            )
+            {
+                if (FieldGetters.TryGetValue(key, out Func<object, object> existing))
+                {
+                    return existing;
+                }
+
+                FieldGetters[key] = getter;
+                return getter;
+            }
+
+            private static bool IsFieldGetterStrategyUnavailable(CapabilityKey<FieldInfo> key)
+            {
+                return FieldGetterStrategyBlocklist.Contains(key);
+            }
+
+            private static void MarkFieldGetterStrategyUnavailable(CapabilityKey<FieldInfo> key)
+            {
+                FieldGetterStrategyBlocklist.Add(key);
+            }
+
+            private static bool TryGetFieldSetterFromCache(
+                CapabilityKey<FieldInfo> key,
+                out Action<object, object> setter
+            )
+            {
+                return FieldSetters.TryGetValue(key, out setter);
+            }
+
+            private static Action<object, object> AddOrGetFieldSetter(
+                CapabilityKey<FieldInfo> key,
+                Action<object, object> setter
+            )
+            {
+                if (FieldSetters.TryGetValue(key, out Action<object, object> existing))
+                {
+                    return existing;
+                }
+
+                FieldSetters[key] = setter;
+                return setter;
+            }
+
+            private static bool IsFieldSetterStrategyUnavailable(CapabilityKey<FieldInfo> key)
+            {
+                return FieldSetterStrategyBlocklist.Contains(key);
+            }
+
+            private static void MarkFieldSetterStrategyUnavailable(CapabilityKey<FieldInfo> key)
+            {
+                FieldSetterStrategyBlocklist.Add(key);
+            }
+
+            private static bool TryGetStaticFieldGetterFromCache(
+                CapabilityKey<FieldInfo> key,
+                out Func<object> getter
+            )
+            {
+                return StaticFieldGetters.TryGetValue(key, out getter);
+            }
+
+            private static Func<object> AddOrGetStaticFieldGetter(
+                CapabilityKey<FieldInfo> key,
+                Func<object> getter
+            )
+            {
+                if (StaticFieldGetters.TryGetValue(key, out Func<object> existing))
+                {
+                    return existing;
+                }
+
+                StaticFieldGetters[key] = getter;
+                return getter;
+            }
+
+            private static bool IsStaticFieldGetterStrategyUnavailable(CapabilityKey<FieldInfo> key)
+            {
+                return StaticFieldGetterStrategyBlocklist.Contains(key);
+            }
+
+            private static void MarkStaticFieldGetterStrategyUnavailable(
+                CapabilityKey<FieldInfo> key
+            )
+            {
+                StaticFieldGetterStrategyBlocklist.Add(key);
+            }
+
+            private static bool TryGetStaticFieldSetterFromCache(
+                CapabilityKey<FieldInfo> key,
+                out Action<object> setter
+            )
+            {
+                return StaticFieldSetters.TryGetValue(key, out setter);
+            }
+
+            private static Action<object> AddOrGetStaticFieldSetter(
+                CapabilityKey<FieldInfo> key,
+                Action<object> setter
+            )
+            {
+                if (StaticFieldSetters.TryGetValue(key, out Action<object> existing))
+                {
+                    return existing;
+                }
+
+                StaticFieldSetters[key] = setter;
+                return setter;
+            }
+
+            private static bool IsStaticFieldSetterStrategyUnavailable(CapabilityKey<FieldInfo> key)
+            {
+                return StaticFieldSetterStrategyBlocklist.Contains(key);
+            }
+
+            private static void MarkStaticFieldSetterStrategyUnavailable(
+                CapabilityKey<FieldInfo> key
+            )
+            {
+                StaticFieldSetterStrategyBlocklist.Add(key);
+            }
+#endif
+
+            private static void TrackDelegateStrategy<TMember>(
+                Delegate delegateInstance,
+                CapabilityKey<TMember> key
+            )
+            {
+                if (delegateInstance == null)
+                {
+                    return;
+                }
+
+                StrategyHolder holder = StrategyHolder.Create(key, delegateInstance.GetType());
+                DelegateStrategyTable.Remove(delegateInstance);
+                DelegateStrategyTable.Add(delegateInstance, holder);
+            }
+
+            public static void ClearFieldGetterCache()
+            {
+#if !SINGLE_THREADED
+                FieldGetters.Clear();
+                FieldGetterStrategyBlocklist.Clear();
+                StaticFieldGetters.Clear();
+                StaticFieldGetterStrategyBlocklist.Clear();
+#else
+                FieldGetters.Clear();
+                FieldGetterStrategyBlocklist.Clear();
+                StaticFieldGetters.Clear();
+                StaticFieldGetterStrategyBlocklist.Clear();
+#endif
+            }
+
+            public static void ClearFieldSetterCache()
+            {
+#if !SINGLE_THREADED
+                FieldSetters.Clear();
+                FieldSetterStrategyBlocklist.Clear();
+                StaticFieldSetters.Clear();
+                StaticFieldSetterStrategyBlocklist.Clear();
+#else
+                FieldSetters.Clear();
+                FieldSetterStrategyBlocklist.Clear();
+                StaticFieldSetters.Clear();
+                StaticFieldSetterStrategyBlocklist.Clear();
+#endif
+            }
+
+            public static bool TryGetStrategy(
+                Delegate delegateInstance,
+                out ReflectionDelegateStrategy strategy
+            )
+            {
+                if (delegateInstance == null)
+                {
+                    strategy = ReflectionDelegateStrategy.Reflection;
+                    return false;
+                }
+
+                if (DelegateStrategyTable.TryGetValue(delegateInstance, out StrategyHolder holder))
+                {
+                    strategy = holder.Strategy;
+                    return true;
+                }
+
+                strategy = ReflectionDelegateStrategy.Reflection;
+                return false;
             }
 
             private static Func<object, object> BuildPropertyGetter(PropertyInfo property)

@@ -311,6 +311,24 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             return DelegateFactory.IsFieldSetterCached(field);
         }
 
+        internal static void ClearFieldGetterCache()
+        {
+            DelegateFactory.ClearFieldGetterCache();
+        }
+
+        internal static void ClearFieldSetterCache()
+        {
+            DelegateFactory.ClearFieldSetterCache();
+        }
+
+        internal static bool TryGetDelegateStrategy(
+            Delegate delegateInstance,
+            out ReflectionDelegateStrategy strategy
+        )
+        {
+            return DelegateFactory.TryGetStrategy(delegateInstance, out strategy);
+        }
+
         /// <summary>
         /// Builds a cached delegate that returns the value of a field as <see cref="object"/>.
         /// Supports instance and static fields.

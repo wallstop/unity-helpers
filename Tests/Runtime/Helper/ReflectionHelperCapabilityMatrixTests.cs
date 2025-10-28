@@ -12,9 +12,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     {
         public enum CapabilityMode
         {
-            Expressions,
-            DynamicIl,
-            Reflection,
+            [Obsolete("Use a concrete capability mode.", false)]
+            Unknown = 0,
+            Expressions = 1,
+            DynamicIl = 2,
+            Reflection = 3,
         }
 
         private static readonly CapabilityMode[] CapabilityModes =
@@ -23,6 +25,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             CapabilityMode.DynamicIl,
             CapabilityMode.Reflection,
         };
+
+        [SetUp]
+        public void ResetCaches()
+        {
+            ReflectionHelpers.ClearFieldGetterCache();
+            ReflectionHelpers.ClearFieldSetterCache();
+        }
 
         [TestCaseSource(nameof(CapabilityModes))]
         public void FieldGetterBoxedSupportsCapabilities(CapabilityMode mode)
@@ -188,6 +197,371 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                         Assert.AreEqual(1024, TestClass.StaticIntValue);
                     }
                 );
+            }
+            finally
+            {
+                TestClass.StaticIntValue = original;
+            }
+        }
+
+        [Test]
+        public void FieldGetterCachesRemainStrategyScoped()
+        {
+            FieldInfo field = typeof(TestClass).GetField(nameof(TestClass.intValue));
+            Func<object, object> expressionGetter;
+            using (ReflectionHelpers.OverrideReflectionCapabilities(true, false))
+            {
+                expressionGetter = ReflectionHelpers.GetFieldGetter(field);
+            }
+
+            Func<object, object> dynamicGetter;
+            using (ReflectionHelpers.OverrideReflectionCapabilities(false, true))
+            {
+                dynamicGetter = ReflectionHelpers.GetFieldGetter(field);
+            }
+
+            Func<object, object> reflectionGetter;
+            using (ReflectionHelpers.OverrideReflectionCapabilities(false, false))
+            {
+                reflectionGetter = ReflectionHelpers.GetFieldGetter(field);
+            }
+
+            ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy;
+            Assert.That(
+                ReflectionHelpers.TryGetDelegateStrategy(expressionGetter, out expressionStrategy),
+                Is.True
+            );
+            ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy;
+            Assert.That(
+                ReflectionHelpers.TryGetDelegateStrategy(dynamicGetter, out dynamicStrategy),
+                Is.True
+            );
+            ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy;
+            Assert.That(
+                ReflectionHelpers.TryGetDelegateStrategy(reflectionGetter, out reflectionStrategy),
+                Is.True
+            );
+
+            Assume.That(
+                expressionStrategy,
+                Is.EqualTo(ReflectionHelpers.ReflectionDelegateStrategy.Expressions),
+                "Expression delegates are unavailable on this platform."
+            );
+            Assume.That(
+                dynamicStrategy,
+                Is.EqualTo(ReflectionHelpers.ReflectionDelegateStrategy.DynamicIl),
+                "Dynamic IL delegates are unavailable on this platform."
+            );
+            Assert.That(
+                reflectionStrategy,
+                Is.EqualTo(ReflectionHelpers.ReflectionDelegateStrategy.Reflection)
+            );
+
+            Assert.That(expressionGetter, Is.Not.SameAs(dynamicGetter));
+            Assert.That(expressionGetter, Is.Not.SameAs(reflectionGetter));
+            Assert.That(dynamicGetter, Is.Not.SameAs(reflectionGetter));
+
+            using (ReflectionHelpers.OverrideReflectionCapabilities(true, false))
+            {
+                Func<object, object> expressionGetterSecond = ReflectionHelpers.GetFieldGetter(
+                    field
+                );
+                Assert.That(expressionGetterSecond, Is.SameAs(expressionGetter));
+            }
+
+            using (ReflectionHelpers.OverrideReflectionCapabilities(false, true))
+            {
+                Func<object, object> dynamicGetterSecond = ReflectionHelpers.GetFieldGetter(field);
+                Assert.That(dynamicGetterSecond, Is.SameAs(dynamicGetter));
+            }
+
+            using (ReflectionHelpers.OverrideReflectionCapabilities(false, false))
+            {
+                Func<object, object> reflectionGetterSecond = ReflectionHelpers.GetFieldGetter(
+                    field
+                );
+                Assert.That(reflectionGetterSecond, Is.SameAs(reflectionGetter));
+            }
+
+            Assert.That(ReflectionHelpers.IsFieldGetterCached(field), Is.True);
+        }
+
+        [Test]
+        public void FieldSetterCachesRemainStrategyScoped()
+        {
+            FieldInfo field = typeof(TestClass).GetField(nameof(TestClass.intValue));
+            Action<object, object> expressionSetter;
+            using (ReflectionHelpers.OverrideReflectionCapabilities(true, false))
+            {
+                expressionSetter = ReflectionHelpers.GetFieldSetter(field);
+            }
+
+            Action<object, object> dynamicSetter;
+            using (ReflectionHelpers.OverrideReflectionCapabilities(false, true))
+            {
+                dynamicSetter = ReflectionHelpers.GetFieldSetter(field);
+            }
+
+            Action<object, object> reflectionSetter;
+            using (ReflectionHelpers.OverrideReflectionCapabilities(false, false))
+            {
+                reflectionSetter = ReflectionHelpers.GetFieldSetter(field);
+            }
+
+            ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy;
+            Assert.That(
+                ReflectionHelpers.TryGetDelegateStrategy(expressionSetter, out expressionStrategy),
+                Is.True
+            );
+            ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy;
+            Assert.That(
+                ReflectionHelpers.TryGetDelegateStrategy(dynamicSetter, out dynamicStrategy),
+                Is.True
+            );
+            ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy;
+            Assert.That(
+                ReflectionHelpers.TryGetDelegateStrategy(reflectionSetter, out reflectionStrategy),
+                Is.True
+            );
+
+            Assume.That(
+                expressionStrategy,
+                Is.EqualTo(ReflectionHelpers.ReflectionDelegateStrategy.Expressions),
+                "Expression delegates are unavailable on this platform."
+            );
+            Assume.That(
+                dynamicStrategy,
+                Is.EqualTo(ReflectionHelpers.ReflectionDelegateStrategy.DynamicIl),
+                "Dynamic IL delegates are unavailable on this platform."
+            );
+            Assert.That(
+                reflectionStrategy,
+                Is.EqualTo(ReflectionHelpers.ReflectionDelegateStrategy.Reflection)
+            );
+
+            Assert.That(expressionSetter, Is.Not.SameAs(dynamicSetter));
+            Assert.That(expressionSetter, Is.Not.SameAs(reflectionSetter));
+            Assert.That(dynamicSetter, Is.Not.SameAs(reflectionSetter));
+
+            using (ReflectionHelpers.OverrideReflectionCapabilities(true, false))
+            {
+                Action<object, object> expressionSetterSecond = ReflectionHelpers.GetFieldSetter(
+                    field
+                );
+                Assert.That(expressionSetterSecond, Is.SameAs(expressionSetter));
+            }
+
+            using (ReflectionHelpers.OverrideReflectionCapabilities(false, true))
+            {
+                Action<object, object> dynamicSetterSecond = ReflectionHelpers.GetFieldSetter(
+                    field
+                );
+                Assert.That(dynamicSetterSecond, Is.SameAs(dynamicSetter));
+            }
+
+            using (ReflectionHelpers.OverrideReflectionCapabilities(false, false))
+            {
+                Action<object, object> reflectionSetterSecond = ReflectionHelpers.GetFieldSetter(
+                    field
+                );
+                Assert.That(reflectionSetterSecond, Is.SameAs(reflectionSetter));
+            }
+
+            Assert.That(ReflectionHelpers.IsFieldSetterCached(field), Is.True);
+        }
+
+        [Test]
+        public void StaticFieldGetterCachesRemainStrategyScoped()
+        {
+            FieldInfo field = typeof(TestClass).GetField(
+                nameof(TestClass.StaticIntValue),
+                BindingFlags.Static | BindingFlags.Public
+            );
+            int original = TestClass.StaticIntValue;
+            try
+            {
+                TestClass.StaticIntValue = 111;
+                Func<object> expressionGetter;
+                using (ReflectionHelpers.OverrideReflectionCapabilities(true, false))
+                {
+                    expressionGetter = ReflectionHelpers.GetStaticFieldGetter(field);
+                }
+
+                Func<object> dynamicGetter;
+                using (ReflectionHelpers.OverrideReflectionCapabilities(false, true))
+                {
+                    dynamicGetter = ReflectionHelpers.GetStaticFieldGetter(field);
+                }
+
+                Func<object> reflectionGetter;
+                using (ReflectionHelpers.OverrideReflectionCapabilities(false, false))
+                {
+                    reflectionGetter = ReflectionHelpers.GetStaticFieldGetter(field);
+                }
+
+                ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy;
+                Assert.That(
+                    ReflectionHelpers.TryGetDelegateStrategy(
+                        expressionGetter,
+                        out expressionStrategy
+                    ),
+                    Is.True
+                );
+                ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy;
+                Assert.That(
+                    ReflectionHelpers.TryGetDelegateStrategy(dynamicGetter, out dynamicStrategy),
+                    Is.True
+                );
+                ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy;
+                Assert.That(
+                    ReflectionHelpers.TryGetDelegateStrategy(
+                        reflectionGetter,
+                        out reflectionStrategy
+                    ),
+                    Is.True
+                );
+
+                Assume.That(
+                    expressionStrategy,
+                    Is.EqualTo(ReflectionHelpers.ReflectionDelegateStrategy.Expressions),
+                    "Expression delegates are unavailable on this platform."
+                );
+                Assume.That(
+                    dynamicStrategy,
+                    Is.EqualTo(ReflectionHelpers.ReflectionDelegateStrategy.DynamicIl),
+                    "Dynamic IL delegates are unavailable on this platform."
+                );
+                Assert.That(
+                    reflectionStrategy,
+                    Is.EqualTo(ReflectionHelpers.ReflectionDelegateStrategy.Reflection)
+                );
+
+                Assert.That(expressionGetter, Is.Not.SameAs(dynamicGetter));
+                Assert.That(expressionGetter, Is.Not.SameAs(reflectionGetter));
+                Assert.That(dynamicGetter, Is.Not.SameAs(reflectionGetter));
+
+                using (ReflectionHelpers.OverrideReflectionCapabilities(true, false))
+                {
+                    Func<object> expressionGetterSecond = ReflectionHelpers.GetStaticFieldGetter(
+                        field
+                    );
+                    Assert.That(expressionGetterSecond, Is.SameAs(expressionGetter));
+                }
+
+                using (ReflectionHelpers.OverrideReflectionCapabilities(false, true))
+                {
+                    Func<object> dynamicGetterSecond = ReflectionHelpers.GetStaticFieldGetter(
+                        field
+                    );
+                    Assert.That(dynamicGetterSecond, Is.SameAs(dynamicGetter));
+                }
+
+                using (ReflectionHelpers.OverrideReflectionCapabilities(false, false))
+                {
+                    Func<object> reflectionGetterSecond = ReflectionHelpers.GetStaticFieldGetter(
+                        field
+                    );
+                    Assert.That(reflectionGetterSecond, Is.SameAs(reflectionGetter));
+                }
+            }
+            finally
+            {
+                TestClass.StaticIntValue = original;
+            }
+        }
+
+        [Test]
+        public void StaticFieldSetterCachesRemainStrategyScoped()
+        {
+            FieldInfo field = typeof(TestClass).GetField(
+                nameof(TestClass.StaticIntValue),
+                BindingFlags.Static | BindingFlags.Public
+            );
+            int original = TestClass.StaticIntValue;
+            try
+            {
+                Action<object> expressionSetter;
+                using (ReflectionHelpers.OverrideReflectionCapabilities(true, false))
+                {
+                    expressionSetter = ReflectionHelpers.GetStaticFieldSetter(field);
+                }
+
+                Action<object> dynamicSetter;
+                using (ReflectionHelpers.OverrideReflectionCapabilities(false, true))
+                {
+                    dynamicSetter = ReflectionHelpers.GetStaticFieldSetter(field);
+                }
+
+                Action<object> reflectionSetter;
+                using (ReflectionHelpers.OverrideReflectionCapabilities(false, false))
+                {
+                    reflectionSetter = ReflectionHelpers.GetStaticFieldSetter(field);
+                }
+
+                ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy;
+                Assert.That(
+                    ReflectionHelpers.TryGetDelegateStrategy(
+                        expressionSetter,
+                        out expressionStrategy
+                    ),
+                    Is.True
+                );
+                ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy;
+                Assert.That(
+                    ReflectionHelpers.TryGetDelegateStrategy(dynamicSetter, out dynamicStrategy),
+                    Is.True
+                );
+                ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy;
+                Assert.That(
+                    ReflectionHelpers.TryGetDelegateStrategy(
+                        reflectionSetter,
+                        out reflectionStrategy
+                    ),
+                    Is.True
+                );
+
+                Assume.That(
+                    expressionStrategy,
+                    Is.EqualTo(ReflectionHelpers.ReflectionDelegateStrategy.Expressions),
+                    "Expression delegates are unavailable on this platform."
+                );
+                Assume.That(
+                    dynamicStrategy,
+                    Is.EqualTo(ReflectionHelpers.ReflectionDelegateStrategy.DynamicIl),
+                    "Dynamic IL delegates are unavailable on this platform."
+                );
+                Assert.That(
+                    reflectionStrategy,
+                    Is.EqualTo(ReflectionHelpers.ReflectionDelegateStrategy.Reflection)
+                );
+
+                Assert.That(expressionSetter, Is.Not.SameAs(dynamicSetter));
+                Assert.That(expressionSetter, Is.Not.SameAs(reflectionSetter));
+                Assert.That(dynamicSetter, Is.Not.SameAs(reflectionSetter));
+
+                using (ReflectionHelpers.OverrideReflectionCapabilities(true, false))
+                {
+                    Action<object> expressionSetterSecond = ReflectionHelpers.GetStaticFieldSetter(
+                        field
+                    );
+                    Assert.That(expressionSetterSecond, Is.SameAs(expressionSetter));
+                }
+
+                using (ReflectionHelpers.OverrideReflectionCapabilities(false, true))
+                {
+                    Action<object> dynamicSetterSecond = ReflectionHelpers.GetStaticFieldSetter(
+                        field
+                    );
+                    Assert.That(dynamicSetterSecond, Is.SameAs(dynamicSetter));
+                }
+
+                using (ReflectionHelpers.OverrideReflectionCapabilities(false, false))
+                {
+                    Action<object> reflectionSetterSecond = ReflectionHelpers.GetStaticFieldSetter(
+                        field
+                    );
+                    Assert.That(reflectionSetterSecond, Is.SameAs(reflectionSetter));
+                }
             }
             finally
             {
