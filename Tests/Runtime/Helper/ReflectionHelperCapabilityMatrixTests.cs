@@ -33,6 +33,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             ReflectionHelpers.ClearFieldSetterCache();
             ReflectionHelpers.ClearPropertyCache();
             ReflectionHelpers.ClearMethodCache();
+            ReflectionHelpers.ClearConstructorCache();
         }
 
         [TestCaseSource(nameof(CapabilityModes))]
@@ -1334,6 +1335,271 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             Assert.That(instance[1], Is.EqualTo(100));
             Assert.That(instance[2], Is.EqualTo(200));
             Assert.That(instance[3], Is.EqualTo(300));
+        }
+
+        [Test]
+        public void ConstructorInvokerCachesRemainStrategyScoped()
+        {
+            ConstructorInfo ctor = typeof(TestConstructorClass).GetConstructor(
+                new[] { typeof(int), typeof(string), typeof(bool) }
+            );
+            Func<object[], object> expressionInvoker;
+            using (ReflectionHelpers.OverrideReflectionCapabilities(true, false))
+            {
+                expressionInvoker = ReflectionHelpers.GetConstructor(ctor);
+            }
+
+            Func<object[], object> dynamicInvoker;
+            using (ReflectionHelpers.OverrideReflectionCapabilities(false, true))
+            {
+                dynamicInvoker = ReflectionHelpers.GetConstructor(ctor);
+            }
+
+            Func<object[], object> reflectionInvoker;
+            using (ReflectionHelpers.OverrideReflectionCapabilities(false, false))
+            {
+                reflectionInvoker = ReflectionHelpers.GetConstructor(ctor);
+            }
+
+            ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy;
+            Assert.That(
+                ReflectionHelpers.TryGetDelegateStrategy(expressionInvoker, out expressionStrategy),
+                Is.True
+            );
+            ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy;
+            Assert.That(
+                ReflectionHelpers.TryGetDelegateStrategy(dynamicInvoker, out dynamicStrategy),
+                Is.True
+            );
+            ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy;
+            Assert.That(
+                ReflectionHelpers.TryGetDelegateStrategy(reflectionInvoker, out reflectionStrategy),
+                Is.True
+            );
+
+            Assume.That(
+                expressionStrategy,
+                Is.EqualTo(ReflectionHelpers.ReflectionDelegateStrategy.Expressions),
+                "Expression delegates are unavailable on this platform."
+            );
+            Assume.That(
+                dynamicStrategy,
+                Is.EqualTo(ReflectionHelpers.ReflectionDelegateStrategy.DynamicIl),
+                "Dynamic IL delegates are unavailable on this platform."
+            );
+            Assert.That(
+                reflectionStrategy,
+                Is.EqualTo(ReflectionHelpers.ReflectionDelegateStrategy.Reflection)
+            );
+
+            Assert.That(expressionInvoker, Is.Not.SameAs(dynamicInvoker));
+            Assert.That(expressionInvoker, Is.Not.SameAs(reflectionInvoker));
+            Assert.That(dynamicInvoker, Is.Not.SameAs(reflectionInvoker));
+
+            using (ReflectionHelpers.OverrideReflectionCapabilities(true, false))
+            {
+                Func<object[], object> expressionInvokerSecond = ReflectionHelpers.GetConstructor(
+                    ctor
+                );
+                Assert.That(expressionInvokerSecond, Is.SameAs(expressionInvoker));
+            }
+
+            using (ReflectionHelpers.OverrideReflectionCapabilities(false, true))
+            {
+                Func<object[], object> dynamicInvokerSecond = ReflectionHelpers.GetConstructor(
+                    ctor
+                );
+                Assert.That(dynamicInvokerSecond, Is.SameAs(dynamicInvoker));
+            }
+
+            using (ReflectionHelpers.OverrideReflectionCapabilities(false, false))
+            {
+                Func<object[], object> reflectionInvokerSecond = ReflectionHelpers.GetConstructor(
+                    ctor
+                );
+                Assert.That(reflectionInvokerSecond, Is.SameAs(reflectionInvoker));
+            }
+
+            object expressionInstance = expressionInvoker(new object[] { 1, "expr", true });
+            object dynamicInstance = dynamicInvoker(new object[] { 2, "dyn", false });
+            object reflectionInstance = reflectionInvoker(new object[] { 3, "ref", true });
+            Assert.AreEqual("expr", ((TestConstructorClass)expressionInstance).Value2);
+            Assert.AreEqual("dyn", ((TestConstructorClass)dynamicInstance).Value2);
+            Assert.AreEqual("ref", ((TestConstructorClass)reflectionInstance).Value2);
+        }
+
+        [Test]
+        public void ParameterlessConstructorCachesRemainStrategyScoped()
+        {
+            Func<object> expressionCreator;
+            using (ReflectionHelpers.OverrideReflectionCapabilities(true, false))
+            {
+                expressionCreator = ReflectionHelpers.GetParameterlessConstructor(
+                    typeof(TestConstructorClass)
+                );
+            }
+
+            Func<object> dynamicCreator;
+            using (ReflectionHelpers.OverrideReflectionCapabilities(false, true))
+            {
+                dynamicCreator = ReflectionHelpers.GetParameterlessConstructor(
+                    typeof(TestConstructorClass)
+                );
+            }
+
+            Func<object> reflectionCreator;
+            using (ReflectionHelpers.OverrideReflectionCapabilities(false, false))
+            {
+                reflectionCreator = ReflectionHelpers.GetParameterlessConstructor(
+                    typeof(TestConstructorClass)
+                );
+            }
+
+            ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy;
+            Assert.That(
+                ReflectionHelpers.TryGetDelegateStrategy(expressionCreator, out expressionStrategy),
+                Is.True
+            );
+            ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy;
+            Assert.That(
+                ReflectionHelpers.TryGetDelegateStrategy(dynamicCreator, out dynamicStrategy),
+                Is.True
+            );
+            ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy;
+            Assert.That(
+                ReflectionHelpers.TryGetDelegateStrategy(reflectionCreator, out reflectionStrategy),
+                Is.True
+            );
+
+            Assume.That(
+                expressionStrategy,
+                Is.EqualTo(ReflectionHelpers.ReflectionDelegateStrategy.Expressions),
+                "Expression delegates are unavailable on this platform."
+            );
+            Assume.That(
+                dynamicStrategy,
+                Is.EqualTo(ReflectionHelpers.ReflectionDelegateStrategy.DynamicIl),
+                "Dynamic IL delegates are unavailable on this platform."
+            );
+            Assert.That(
+                reflectionStrategy,
+                Is.EqualTo(ReflectionHelpers.ReflectionDelegateStrategy.Reflection)
+            );
+
+            Assert.That(expressionCreator, Is.Not.SameAs(dynamicCreator));
+            Assert.That(expressionCreator, Is.Not.SameAs(reflectionCreator));
+            Assert.That(dynamicCreator, Is.Not.SameAs(reflectionCreator));
+
+            using (ReflectionHelpers.OverrideReflectionCapabilities(true, false))
+            {
+                Func<object> expressionCreatorSecond =
+                    ReflectionHelpers.GetParameterlessConstructor(typeof(TestConstructorClass));
+                Assert.That(expressionCreatorSecond, Is.SameAs(expressionCreator));
+            }
+
+            using (ReflectionHelpers.OverrideReflectionCapabilities(false, true))
+            {
+                Func<object> dynamicCreatorSecond = ReflectionHelpers.GetParameterlessConstructor(
+                    typeof(TestConstructorClass)
+                );
+                Assert.That(dynamicCreatorSecond, Is.SameAs(dynamicCreator));
+            }
+
+            using (ReflectionHelpers.OverrideReflectionCapabilities(false, false))
+            {
+                Func<object> reflectionCreatorSecond =
+                    ReflectionHelpers.GetParameterlessConstructor(typeof(TestConstructorClass));
+                Assert.That(reflectionCreatorSecond, Is.SameAs(reflectionCreator));
+            }
+
+            Assert.IsInstanceOf<TestConstructorClass>(expressionCreator());
+            Assert.IsInstanceOf<TestConstructorClass>(dynamicCreator());
+            Assert.IsInstanceOf<TestConstructorClass>(reflectionCreator());
+        }
+
+        [Test]
+        public void ParameterlessConstructorTypedCachesRemainStrategyScoped()
+        {
+            Func<TestConstructorClass> expressionCreator;
+            using (ReflectionHelpers.OverrideReflectionCapabilities(true, false))
+            {
+                expressionCreator =
+                    ReflectionHelpers.GetParameterlessConstructor<TestConstructorClass>();
+            }
+
+            Func<TestConstructorClass> dynamicCreator;
+            using (ReflectionHelpers.OverrideReflectionCapabilities(false, true))
+            {
+                dynamicCreator =
+                    ReflectionHelpers.GetParameterlessConstructor<TestConstructorClass>();
+            }
+
+            Func<TestConstructorClass> reflectionCreator;
+            using (ReflectionHelpers.OverrideReflectionCapabilities(false, false))
+            {
+                reflectionCreator =
+                    ReflectionHelpers.GetParameterlessConstructor<TestConstructorClass>();
+            }
+
+            ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy;
+            Assert.That(
+                ReflectionHelpers.TryGetDelegateStrategy(expressionCreator, out expressionStrategy),
+                Is.True
+            );
+            ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy;
+            Assert.That(
+                ReflectionHelpers.TryGetDelegateStrategy(dynamicCreator, out dynamicStrategy),
+                Is.True
+            );
+            ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy;
+            Assert.That(
+                ReflectionHelpers.TryGetDelegateStrategy(reflectionCreator, out reflectionStrategy),
+                Is.True
+            );
+
+            Assume.That(
+                expressionStrategy,
+                Is.EqualTo(ReflectionHelpers.ReflectionDelegateStrategy.Expressions),
+                "Expression delegates are unavailable on this platform."
+            );
+            Assume.That(
+                dynamicStrategy,
+                Is.EqualTo(ReflectionHelpers.ReflectionDelegateStrategy.DynamicIl),
+                "Dynamic IL delegates are unavailable on this platform."
+            );
+            Assert.That(
+                reflectionStrategy,
+                Is.EqualTo(ReflectionHelpers.ReflectionDelegateStrategy.Reflection)
+            );
+
+            Assert.That(expressionCreator, Is.Not.SameAs(dynamicCreator));
+            Assert.That(expressionCreator, Is.Not.SameAs(reflectionCreator));
+            Assert.That(dynamicCreator, Is.Not.SameAs(reflectionCreator));
+
+            using (ReflectionHelpers.OverrideReflectionCapabilities(true, false))
+            {
+                Func<TestConstructorClass> expressionCreatorSecond =
+                    ReflectionHelpers.GetParameterlessConstructor<TestConstructorClass>();
+                Assert.That(expressionCreatorSecond, Is.SameAs(expressionCreator));
+            }
+
+            using (ReflectionHelpers.OverrideReflectionCapabilities(false, true))
+            {
+                Func<TestConstructorClass> dynamicCreatorSecond =
+                    ReflectionHelpers.GetParameterlessConstructor<TestConstructorClass>();
+                Assert.That(dynamicCreatorSecond, Is.SameAs(dynamicCreator));
+            }
+
+            using (ReflectionHelpers.OverrideReflectionCapabilities(false, false))
+            {
+                Func<TestConstructorClass> reflectionCreatorSecond =
+                    ReflectionHelpers.GetParameterlessConstructor<TestConstructorClass>();
+                Assert.That(reflectionCreatorSecond, Is.SameAs(reflectionCreator));
+            }
+
+            Assert.AreEqual("default", expressionCreator().Value2);
+            Assert.AreEqual("default", dynamicCreator().Value2);
+            Assert.AreEqual("default", reflectionCreator().Value2);
         }
 
         [Test]

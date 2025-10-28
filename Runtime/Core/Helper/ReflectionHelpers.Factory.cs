@@ -209,17 +209,29 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 byte
             > StaticMethodInvokerStrategyBlocklist = new();
             private static readonly ConcurrentDictionary<
-                ConstructorInfo,
+                CapabilityKey<ConstructorInfo>,
                 Func<object[], object>
             > Constructors = new();
             private static readonly ConcurrentDictionary<
-                ConstructorInfo,
+                CapabilityKey<ConstructorInfo>,
+                byte
+            > ConstructorInvokerStrategyBlocklist = new();
+            private static readonly ConcurrentDictionary<
+                CapabilityKey<ConstructorInfo>,
                 Func<object>
             > ParameterlessConstructors = new();
             private static readonly ConcurrentDictionary<
-                ConstructorInfo,
+                CapabilityKey<ConstructorInfo>,
+                byte
+            > ParameterlessConstructorStrategyBlocklist = new();
+            private static readonly ConcurrentDictionary<
+                CapabilityKey<(ConstructorInfo ctor, Type instance)>,
                 Delegate
             > TypedParameterlessConstructors = new();
+            private static readonly ConcurrentDictionary<
+                CapabilityKey<(ConstructorInfo ctor, Type instance)>,
+                byte
+            > TypedParameterlessConstructorStrategyBlocklist = new();
             private static readonly ConcurrentDictionary<
                 (PropertyInfo property, Type instance, Type value),
                 Delegate
@@ -393,22 +405,30 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 CapabilityKey<MethodInfo>,
                 Func<object[], object>
             > StaticMethodInvokers = new();
-            private static readonly Dictionary<
-                CapabilityKey<MethodInfo>,
-                byte
+            private static readonly HashSet<
+                CapabilityKey<MethodInfo>
             > StaticMethodInvokerStrategyBlocklist = new();
             private static readonly Dictionary<
-                ConstructorInfo,
+                CapabilityKey<ConstructorInfo>,
                 Func<object[], object>
             > Constructors = new();
+            private static readonly HashSet<
+                CapabilityKey<ConstructorInfo>
+            > ConstructorInvokerStrategyBlocklist = new();
             private static readonly Dictionary<
-                ConstructorInfo,
+                CapabilityKey<ConstructorInfo>,
                 Func<object>
             > ParameterlessConstructors = new();
             private static readonly Dictionary<
-                ConstructorInfo,
+                CapabilityKey<(ConstructorInfo ctor, Type instance)>,
                 Delegate
             > TypedParameterlessConstructors = new();
+            private static readonly HashSet<
+                CapabilityKey<(ConstructorInfo ctor, Type instance)>
+            > TypedParameterlessConstructorStrategyBlocklist = new();
+            private static readonly HashSet<
+                CapabilityKey<ConstructorInfo>
+            > ParameterlessConstructorStrategyBlocklist = new();
             private static readonly Dictionary<
                 (PropertyInfo property, Type instance, Type value),
                 Delegate
@@ -844,16 +864,31 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 {
                     throw new ArgumentNullException(nameof(ctor));
                 }
-#if !SINGLE_THREADED
-                return Constructors.GetOrAdd(ctor, BuildConstructorInvoker);
-#else
-                if (!Constructors.TryGetValue(ctor, out Func<object[], object> invoker))
+
+                Func<object[], object>? invoker;
+                if (
+                    TryGetOrCreateConstructorInvoker(
+                        ctor,
+                        ReflectionDelegateStrategy.Expressions,
+                        out invoker
+                    )
+                )
                 {
-                    invoker = BuildConstructorInvoker(ctor);
-                    Constructors[ctor] = invoker;
+                    return invoker;
                 }
-                return invoker;
-#endif
+
+                if (
+                    TryGetOrCreateConstructorInvoker(
+                        ctor,
+                        ReflectionDelegateStrategy.DynamicIl,
+                        out invoker
+                    )
+                )
+                {
+                    return invoker;
+                }
+
+                return GetOrCreateReflectionConstructorInvoker(ctor);
             }
 
             public static Func<object> GetParameterlessConstructor(ConstructorInfo ctor)
@@ -862,16 +897,31 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 {
                     throw new ArgumentNullException(nameof(ctor));
                 }
-#if !SINGLE_THREADED
-                return ParameterlessConstructors.GetOrAdd(ctor, BuildParameterlessConstructor);
-#else
-                if (!ParameterlessConstructors.TryGetValue(ctor, out Func<object> creator))
+
+                Func<object>? creator;
+                if (
+                    TryGetOrCreateParameterlessConstructor(
+                        ctor,
+                        ReflectionDelegateStrategy.Expressions,
+                        out creator
+                    )
+                )
                 {
-                    creator = BuildParameterlessConstructor(ctor);
-                    ParameterlessConstructors[ctor] = creator;
+                    return creator;
                 }
-                return creator;
-#endif
+
+                if (
+                    TryGetOrCreateParameterlessConstructor(
+                        ctor,
+                        ReflectionDelegateStrategy.DynamicIl,
+                        out creator
+                    )
+                )
+                {
+                    return creator;
+                }
+
+                return GetOrCreateReflectionParameterlessConstructor(ctor);
             }
 
             public static Func<T> GetParameterlessConstructorTyped<T>(ConstructorInfo ctor)
@@ -880,20 +930,33 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 {
                     throw new ArgumentNullException(nameof(ctor));
                 }
-#if !SINGLE_THREADED
-                return (Func<T>)
-                    TypedParameterlessConstructors.GetOrAdd(
+
+                Func<T>? creator;
+                if (
+                    TryGetOrCreateTypedParameterlessConstructor(
                         ctor,
-                        _ => BuildTypedParameterlessConstructor<T>(ctor)
-                    );
-#else
-                if (!TypedParameterlessConstructors.TryGetValue(ctor, out Delegate del))
+                        typeof(T),
+                        ReflectionDelegateStrategy.Expressions,
+                        out creator
+                    )
+                )
                 {
-                    del = BuildTypedParameterlessConstructor<T>(ctor);
-                    TypedParameterlessConstructors[ctor] = del;
+                    return creator;
                 }
-                return (Func<T>)del;
-#endif
+
+                if (
+                    TryGetOrCreateTypedParameterlessConstructor(
+                        ctor,
+                        typeof(T),
+                        ReflectionDelegateStrategy.DynamicIl,
+                        out creator
+                    )
+                )
+                {
+                    return creator;
+                }
+
+                return GetOrCreateReflectionTypedParameterlessConstructor<T>(ctor);
             }
 
             public static Func<object, object[], object> GetIndexerGetter(PropertyInfo property)
@@ -2611,6 +2674,223 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return resolved;
             }
 
+            private static bool TryGetOrCreateConstructorInvoker(
+                ConstructorInfo ctor,
+                ReflectionDelegateStrategy strategy,
+                out Func<object[], object> invoker
+            )
+            {
+                invoker = null;
+
+                if (strategy == ReflectionDelegateStrategy.Expressions && !SupportsExpressions)
+                {
+                    return false;
+                }
+#if EMIT_DYNAMIC_IL
+                if (strategy == ReflectionDelegateStrategy.DynamicIl && !SupportsDynamicIl)
+                {
+                    return false;
+                }
+#else
+                if (strategy == ReflectionDelegateStrategy.DynamicIl)
+                {
+                    return false;
+                }
+#endif
+
+                CapabilityKey<ConstructorInfo> key = new CapabilityKey<ConstructorInfo>(
+                    ctor,
+                    strategy
+                );
+                if (TryGetConstructorInvokerFromCache(key, out Func<object[], object> cached))
+                {
+                    invoker = cached;
+                    return true;
+                }
+
+                if (IsConstructorInvokerStrategyUnavailable(key))
+                {
+                    return false;
+                }
+
+                Func<object[], object>? candidate = CreateConstructorInvoker(ctor, strategy);
+                if (candidate == null)
+                {
+                    MarkConstructorInvokerStrategyUnavailable(key);
+                    return false;
+                }
+
+                Func<object[], object> resolved = AddOrGetConstructorInvoker(key, candidate);
+                TrackDelegateStrategy(resolved, key);
+                invoker = resolved;
+                return true;
+            }
+
+            private static Func<object[], object> GetOrCreateReflectionConstructorInvoker(
+                ConstructorInfo ctor
+            )
+            {
+                CapabilityKey<ConstructorInfo> key = new CapabilityKey<ConstructorInfo>(
+                    ctor,
+                    ReflectionDelegateStrategy.Reflection
+                );
+                if (TryGetConstructorInvokerFromCache(key, out Func<object[], object> cached))
+                {
+                    return cached;
+                }
+
+                Func<object[], object> reflectionInvoker = CreateReflectionConstructorInvoker(ctor);
+                Func<object[], object> resolved = AddOrGetConstructorInvoker(
+                    key,
+                    reflectionInvoker
+                );
+                TrackDelegateStrategy(resolved, key);
+                return resolved;
+            }
+
+            private static bool TryGetOrCreateParameterlessConstructor(
+                ConstructorInfo ctor,
+                ReflectionDelegateStrategy strategy,
+                out Func<object> creator
+            )
+            {
+                creator = null;
+
+                if (strategy == ReflectionDelegateStrategy.Expressions && !SupportsExpressions)
+                {
+                    return false;
+                }
+#if EMIT_DYNAMIC_IL
+                if (strategy == ReflectionDelegateStrategy.DynamicIl && !SupportsDynamicIl)
+                {
+                    return false;
+                }
+#else
+                if (strategy == ReflectionDelegateStrategy.DynamicIl)
+                {
+                    return false;
+                }
+#endif
+
+                CapabilityKey<ConstructorInfo> key = new CapabilityKey<ConstructorInfo>(
+                    ctor,
+                    strategy
+                );
+                if (TryGetParameterlessConstructorFromCache(key, out Func<object> cached))
+                {
+                    creator = cached;
+                    return true;
+                }
+
+                if (IsParameterlessConstructorStrategyUnavailable(key))
+                {
+                    return false;
+                }
+
+                Func<object>? candidate = CreateParameterlessConstructor(ctor, strategy);
+                if (candidate == null)
+                {
+                    MarkParameterlessConstructorStrategyUnavailable(key);
+                    return false;
+                }
+
+                Func<object> resolved = AddOrGetParameterlessConstructor(key, candidate);
+                TrackDelegateStrategy(resolved, key);
+                creator = resolved;
+                return true;
+            }
+
+            private static Func<object> GetOrCreateReflectionParameterlessConstructor(
+                ConstructorInfo ctor
+            )
+            {
+                CapabilityKey<ConstructorInfo> key = new CapabilityKey<ConstructorInfo>(
+                    ctor,
+                    ReflectionDelegateStrategy.Reflection
+                );
+                if (TryGetParameterlessConstructorFromCache(key, out Func<object> cached))
+                {
+                    return cached;
+                }
+
+                Func<object> reflectionCreator = () => ctor.Invoke(null);
+                Func<object> resolved = AddOrGetParameterlessConstructor(key, reflectionCreator);
+                TrackDelegateStrategy(resolved, key);
+                return resolved;
+            }
+
+            private static bool TryGetOrCreateTypedParameterlessConstructor<T>(
+                ConstructorInfo ctor,
+                Type instanceType,
+                ReflectionDelegateStrategy strategy,
+                out Func<T> creator
+            )
+            {
+                creator = null;
+
+                if (strategy == ReflectionDelegateStrategy.Expressions && !SupportsExpressions)
+                {
+                    return false;
+                }
+#if EMIT_DYNAMIC_IL
+                if (strategy == ReflectionDelegateStrategy.DynamicIl && !SupportsDynamicIl)
+                {
+                    return false;
+                }
+#else
+                if (strategy == ReflectionDelegateStrategy.DynamicIl)
+                {
+                    return false;
+                }
+#endif
+
+                CapabilityKey<(ConstructorInfo ctor, Type instance)> key = new CapabilityKey<(
+                    ConstructorInfo ctor,
+                    Type instance
+                )>((ctor, instanceType), strategy);
+                if (TryGetTypedParameterlessConstructorFromCache(key, out Delegate cached))
+                {
+                    creator = (Func<T>)cached;
+                    return true;
+                }
+
+                if (IsTypedParameterlessConstructorStrategyUnavailable(key))
+                {
+                    return false;
+                }
+
+                Func<T>? candidate = CreateTypedParameterlessConstructor<T>(ctor, strategy);
+                if (candidate == null)
+                {
+                    MarkTypedParameterlessConstructorStrategyUnavailable(key);
+                    return false;
+                }
+
+                Delegate resolved = AddOrGetTypedParameterlessConstructor(key, candidate);
+                TrackDelegateStrategy(resolved, key);
+                creator = (Func<T>)resolved;
+                return true;
+            }
+
+            private static Func<T> GetOrCreateReflectionTypedParameterlessConstructor<T>(
+                ConstructorInfo ctor
+            )
+            {
+                CapabilityKey<(ConstructorInfo ctor, Type instance)> key = new CapabilityKey<(
+                    ConstructorInfo ctor,
+                    Type instance
+                )>((ctor, typeof(T)), ReflectionDelegateStrategy.Reflection);
+                if (TryGetTypedParameterlessConstructorFromCache(key, out Delegate cached))
+                {
+                    return (Func<T>)cached;
+                }
+
+                Func<T> reflectionCreator = () => (T)ctor.Invoke(null);
+                Delegate resolved = AddOrGetTypedParameterlessConstructor(key, reflectionCreator);
+                TrackDelegateStrategy(resolved, key);
+                return (Func<T>)resolved;
+            }
+
 #if !SINGLE_THREADED
             private static bool TryGetFieldGetterFromCache(
                 CapabilityKey<FieldInfo> key,
@@ -2886,6 +3166,99 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             )
             {
                 StaticMethodInvokerStrategyBlocklist.TryAdd(key, StrategyUnavailableSentinel);
+            }
+
+            private static bool TryGetConstructorInvokerFromCache(
+                CapabilityKey<ConstructorInfo> key,
+                out Func<object[], object> invoker
+            )
+            {
+                return Constructors.TryGetValue(key, out invoker);
+            }
+
+            private static Func<object[], object> AddOrGetConstructorInvoker(
+                CapabilityKey<ConstructorInfo> key,
+                Func<object[], object> invoker
+            )
+            {
+                return Constructors.GetOrAdd(key, invoker);
+            }
+
+            private static bool IsConstructorInvokerStrategyUnavailable(
+                CapabilityKey<ConstructorInfo> key
+            )
+            {
+                return ConstructorInvokerStrategyBlocklist.ContainsKey(key);
+            }
+
+            private static void MarkConstructorInvokerStrategyUnavailable(
+                CapabilityKey<ConstructorInfo> key
+            )
+            {
+                ConstructorInvokerStrategyBlocklist.TryAdd(key, StrategyUnavailableSentinel);
+            }
+
+            private static bool TryGetParameterlessConstructorFromCache(
+                CapabilityKey<ConstructorInfo> key,
+                out Func<object> creator
+            )
+            {
+                return ParameterlessConstructors.TryGetValue(key, out creator);
+            }
+
+            private static Func<object> AddOrGetParameterlessConstructor(
+                CapabilityKey<ConstructorInfo> key,
+                Func<object> creator
+            )
+            {
+                return ParameterlessConstructors.GetOrAdd(key, creator);
+            }
+
+            private static bool IsParameterlessConstructorStrategyUnavailable(
+                CapabilityKey<ConstructorInfo> key
+            )
+            {
+                return ParameterlessConstructorStrategyBlocklist.ContainsKey(key);
+            }
+
+            private static void MarkParameterlessConstructorStrategyUnavailable(
+                CapabilityKey<ConstructorInfo> key
+            )
+            {
+                ParameterlessConstructorStrategyBlocklist.TryAdd(key, StrategyUnavailableSentinel);
+            }
+
+            private static bool TryGetTypedParameterlessConstructorFromCache(
+                CapabilityKey<(ConstructorInfo ctor, Type instance)> key,
+                out Delegate creator
+            )
+            {
+                return TypedParameterlessConstructors.TryGetValue(key, out creator);
+            }
+
+            private static Delegate AddOrGetTypedParameterlessConstructor(
+                CapabilityKey<(ConstructorInfo ctor, Type instance)> key,
+                Delegate creator
+            )
+            {
+                return TypedParameterlessConstructors.GetOrAdd(key, creator);
+            }
+
+            private static bool IsTypedParameterlessConstructorStrategyUnavailable(
+                CapabilityKey<(ConstructorInfo ctor, Type instance)> key
+            )
+            {
+                return TypedParameterlessConstructorStrategyBlocklist.ContainsKey(key);
+            }
+
+            private static void MarkTypedParameterlessConstructorStrategyUnavailable(
+                CapabilityKey<(ConstructorInfo ctor, Type instance)> key
+            )
+            {
+                TypedParameterlessConstructorStrategyBlocklist.TryAdd(
+                    key,
+                    StrategyUnavailableSentinel
+                );
             }
 
             private static bool TryGetTypedFieldGetterFromCache(
@@ -3344,6 +3717,114 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 StaticMethodInvokerStrategyBlocklist.Add(key);
             }
 
+            private static bool TryGetConstructorInvokerFromCache(
+                CapabilityKey<ConstructorInfo> key,
+                out Func<object[], object> invoker
+            )
+            {
+                return Constructors.TryGetValue(key, out invoker);
+            }
+
+            private static Func<object[], object> AddOrGetConstructorInvoker(
+                CapabilityKey<ConstructorInfo> key,
+                Func<object[], object> invoker
+            )
+            {
+                if (Constructors.TryGetValue(key, out Func<object[], object> existing))
+                {
+                    return existing;
+                }
+
+                Constructors[key] = invoker;
+                return invoker;
+            }
+
+            private static bool IsConstructorInvokerStrategyUnavailable(
+                CapabilityKey<ConstructorInfo> key
+            )
+            {
+                return ConstructorInvokerStrategyBlocklist.Contains(key);
+            }
+
+            private static void MarkConstructorInvokerStrategyUnavailable(
+                CapabilityKey<ConstructorInfo> key
+            )
+            {
+                ConstructorInvokerStrategyBlocklist.Add(key);
+            }
+
+            private static bool TryGetParameterlessConstructorFromCache(
+                CapabilityKey<ConstructorInfo> key,
+                out Func<object> creator
+            )
+            {
+                return ParameterlessConstructors.TryGetValue(key, out creator);
+            }
+
+            private static Func<object> AddOrGetParameterlessConstructor(
+                CapabilityKey<ConstructorInfo> key,
+                Func<object> creator
+            )
+            {
+                if (ParameterlessConstructors.TryGetValue(key, out Func<object> existing))
+                {
+                    return existing;
+                }
+
+                ParameterlessConstructors[key] = creator;
+                return creator;
+            }
+
+            private static bool IsParameterlessConstructorStrategyUnavailable(
+                CapabilityKey<ConstructorInfo> key
+            )
+            {
+                return ParameterlessConstructorStrategyBlocklist.Contains(key);
+            }
+
+            private static void MarkParameterlessConstructorStrategyUnavailable(
+                CapabilityKey<ConstructorInfo> key
+            )
+            {
+                ParameterlessConstructorStrategyBlocklist.Add(key);
+            }
+
+            private static bool TryGetTypedParameterlessConstructorFromCache(
+                CapabilityKey<(ConstructorInfo ctor, Type instance)> key,
+                out Delegate creator
+            )
+            {
+                return TypedParameterlessConstructors.TryGetValue(key, out creator);
+            }
+
+            private static Delegate AddOrGetTypedParameterlessConstructor(
+                CapabilityKey<(ConstructorInfo ctor, Type instance)> key,
+                Delegate creator
+            )
+            {
+                if (TypedParameterlessConstructors.TryGetValue(key, out Delegate existing))
+                {
+                    return existing;
+                }
+
+                TypedParameterlessConstructors[key] = creator;
+                return creator;
+            }
+
+            private static bool IsTypedParameterlessConstructorStrategyUnavailable(
+                CapabilityKey<(ConstructorInfo ctor, Type instance)> key
+            )
+            {
+                return TypedParameterlessConstructorStrategyBlocklist.Contains(key);
+            }
+
+            private static void MarkTypedParameterlessConstructorStrategyUnavailable(
+                CapabilityKey<(ConstructorInfo ctor, Type instance)> key
+            )
+            {
+                TypedParameterlessConstructorStrategyBlocklist.Add(key);
+            }
+
             private static bool TryGetTypedFieldGetterFromCache(
                 CapabilityKey<(FieldInfo field, Type instance, Type value)> key,
                 out Delegate getter
@@ -3593,6 +4074,25 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 MethodInvokerStrategyBlocklist.Clear();
                 StaticMethodInvokers.Clear();
                 StaticMethodInvokerStrategyBlocklist.Clear();
+#endif
+            }
+
+            public static void ClearConstructorCache()
+            {
+#if !SINGLE_THREADED
+                Constructors.Clear();
+                ConstructorInvokerStrategyBlocklist.Clear();
+                ParameterlessConstructors.Clear();
+                ParameterlessConstructorStrategyBlocklist.Clear();
+                TypedParameterlessConstructors.Clear();
+                TypedParameterlessConstructorStrategyBlocklist.Clear();
+#else
+                Constructors.Clear();
+                ConstructorInvokerStrategyBlocklist.Clear();
+                ParameterlessConstructors.Clear();
+                ParameterlessConstructorStrategyBlocklist.Clear();
+                TypedParameterlessConstructors.Clear();
+                TypedParameterlessConstructorStrategyBlocklist.Clear();
 #endif
             }
 
@@ -3883,52 +4383,101 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return args => method.Invoke(null, args);
             }
 
-            private static Func<object[], object> BuildConstructorInvoker(ConstructorInfo ctor)
+            private static Func<object[], object>? CreateConstructorInvoker(
+                ConstructorInfo ctor,
+                ReflectionDelegateStrategy strategy
+            )
             {
-                Func<object[], object>? invoker = null;
-                if (SupportsExpressions)
+                if (strategy == ReflectionDelegateStrategy.Expressions)
                 {
-                    invoker = CreateCompiledConstructor(ctor);
+                    if (SupportsExpressions)
+                    {
+                        Func<object[], object>? invoker = CreateCompiledConstructor(ctor);
+                        if (invoker != null)
+                        {
+                            return invoker;
+                        }
+                    }
                 }
 #if EMIT_DYNAMIC_IL
-                if (invoker == null && SupportsDynamicIl)
+                if (strategy == ReflectionDelegateStrategy.DynamicIl && SupportsDynamicIl)
                 {
-                    invoker = BuildConstructorIL(ctor);
+                    return BuildConstructorIL(ctor);
                 }
 #endif
-                return invoker ?? (args => ctor.Invoke(args));
+                if (strategy == ReflectionDelegateStrategy.Reflection)
+                {
+                    return args => ctor.Invoke(args);
+                }
+
+                return null;
             }
 
-            private static Func<object> BuildParameterlessConstructor(ConstructorInfo ctor)
+            private static Func<object[], object> CreateReflectionConstructorInvoker(
+                ConstructorInfo ctor
+            )
             {
-                Func<object>? creator = null;
-                if (SupportsExpressions)
-                {
-                    creator = CreateCompiledParameterlessConstructor(ctor);
-                }
-#if EMIT_DYNAMIC_IL
-                if (creator == null && SupportsDynamicIl)
-                {
-                    creator = BuildParameterlessConstructorIL(ctor);
-                }
-#endif
-                return creator ?? (() => ctor.Invoke(null));
+                return args => ctor.Invoke(args);
             }
 
-            private static Func<T> BuildTypedParameterlessConstructor<T>(ConstructorInfo ctor)
+            private static Func<object>? CreateParameterlessConstructor(
+                ConstructorInfo ctor,
+                ReflectionDelegateStrategy strategy
+            )
             {
-                Func<T>? creator = null;
-                if (SupportsExpressions)
+                if (strategy == ReflectionDelegateStrategy.Expressions)
                 {
-                    creator = CreateCompiledParameterlessConstructor<T>(ctor);
+                    if (SupportsExpressions)
+                    {
+                        Func<object>? creator = CreateCompiledParameterlessConstructor(ctor);
+                        if (creator != null)
+                        {
+                            return creator;
+                        }
+                    }
                 }
 #if EMIT_DYNAMIC_IL
-                if (creator == null && SupportsDynamicIl)
+                if (strategy == ReflectionDelegateStrategy.DynamicIl && SupportsDynamicIl)
                 {
-                    creator = BuildTypedParameterlessConstructorIL<T>(ctor);
+                    return BuildParameterlessConstructorIL(ctor);
                 }
 #endif
-                return creator ?? (() => (T)ctor.Invoke(null));
+                if (strategy == ReflectionDelegateStrategy.Reflection)
+                {
+                    return () => ctor.Invoke(null);
+                }
+
+                return null;
+            }
+
+            private static Func<T>? CreateTypedParameterlessConstructor<T>(
+                ConstructorInfo ctor,
+                ReflectionDelegateStrategy strategy
+            )
+            {
+                if (strategy == ReflectionDelegateStrategy.Expressions)
+                {
+                    if (SupportsExpressions)
+                    {
+                        Func<T>? creator = CreateCompiledParameterlessConstructor<T>(ctor);
+                        if (creator != null)
+                        {
+                            return creator;
+                        }
+                    }
+                }
+#if EMIT_DYNAMIC_IL
+                if (strategy == ReflectionDelegateStrategy.DynamicIl && SupportsDynamicIl)
+                {
+                    return BuildTypedParameterlessConstructorIL<T>(ctor);
+                }
+#endif
+                if (strategy == ReflectionDelegateStrategy.Reflection)
+                {
+                    return () => (T)ctor.Invoke(null);
+                }
+
+                return null;
             }
 
             private static Func<TInstance, TValue> BuildTypedPropertyGetter<TInstance, TValue>(

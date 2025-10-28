@@ -33,9 +33,20 @@ When to use it
 
 When not to use it
 
-- One‑off reflection (e.g., editor button pressed infrequently). Simpler `GetValue/SetValue` is fine.
+- One-off reflection (e.g., editor button pressed infrequently). Simpler `GetValue/SetValue` is fine.
 - If you need full runtime codegen in IL2CPP/WebGL: IL emit isn’t available there. ReflectionHelpers still works, but uses expression compilation or reflection fallback — benefits remain for caching and reduced allocations.
 - Setting struct instance fields using boxed setters: prefer the generic ref setter to mutate the original struct (see “Struct note” below).
+
+### Caching Strategy Overview
+
+ReflectionHelpers now partitions cached delegates by **capability strategy** so that expression, dynamic-IL, and reflection fallbacks never overwrite each other. Key points:
+
+- **Strategy fingerprinting**: every delegate cache entry is keyed by `CapabilityKey<TMember>` (member metadata + `ReflectionDelegateStrategy`). This applies to fields, properties, indexers, methods, and constructors (boxed + typed variants).
+- **Per-strategy blocklists**: when a strategy cannot produce a delegate (e.g., IL emit disabled on IL2CPP), we record the failure in a per-cache blocklist so later calls skip unnecessary work.
+- **Delegate provenance**: created delegates are tracked in a `ConditionalWeakTable<Delegate, StrategyHolder>` so diagnostics and tests can assert the producing strategy via `ReflectionHelpers.TryGetDelegateStrategy`.
+- **Capability overrides**: `ReflectionHelpers.OverrideReflectionCapabilities(expressions, dynamicIl)` temporarily toggles expression/IL support, letting tests (or runtime feature detection) confirm that caches store independent delegates per strategy.
+- **Test hooks**: `ClearFieldGetterCache`, `ClearPropertyCache`, `ClearMethodCache`, and `ClearConstructorCache` flush the relevant cache groups to keep unit tests deterministic.
+- **Fallback behaviour**: if neither expressions nor dynamic IL are available, the reflection-path delegates still benefit from caching and avoid repeated argument validation/boxing.
 
 ### Current Implementation Summary
 
@@ -225,6 +236,13 @@ Performance tips
 - Cache delegates (getters/setters/invokers) once and reuse them.
 - Prefer typed APIs (`GetFieldGetter<TInstance, TValue>`, typed static invokers) to avoid boxing and object[] allocations.
 - Use creators (`GetListCreator`, `GetArrayCreator`) in loops to avoid reflection/Activator costs.
+
+### Benchmarking & Verification
+
+- **Unit coverage**: `ReflectionHelperCapabilityMatrixTests` resets caches and toggles capabilities around each helper. Run these suites in both expression-enabled and expression-disabled modes when changing caching internals.
+- **Micro-benchmarks**: `Tests/Runtime/Performance/ReflectionPerformanceTests` and the `Spikes/ReflectionMicroBenchmark` console harness can be reused to capture before/after numbers for getters, setters, method invokers, and constructors. Record results with each `ReflectionDelegateStrategy` forced via `OverrideReflectionCapabilities` so regressions are easy to spot.
+- **Cache hygiene**: when adding new delegate families, update the appropriate `Clear*Cache` helper and call it from tests to keep scenarios isolated.
+- **Documentation updates**: note the Unity version, scripting backend, and OS whenever you refresh timing data, and sync any tables in `Docs/ReflectionPerformance*.md` so contributors can compare against baseline numbers.
 
 ### Testing fallback behaviour
 
