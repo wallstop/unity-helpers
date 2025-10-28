@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Tags
     using Core.Attributes;
     using UnityEngine;
     using Utils;
+    using WallstopStudios.UnityHelpers.Core.Helper;
 
     /// <summary>
     /// Serialized cache of attribute metadata to avoid runtime reflection.
@@ -150,7 +151,8 @@ namespace WallstopStudios.UnityHelpers.Tags
 
             public bool Equals(ElementTypeKey other)
             {
-                return componentType == other.componentType && fieldName == other.fieldName;
+                return componentType == other.componentType
+                    && string.Equals(fieldName, other.fieldName, StringComparison.Ordinal);
             }
 
             public override bool Equals(object obj)
@@ -160,11 +162,7 @@ namespace WallstopStudios.UnityHelpers.Tags
 
             public override int GetHashCode()
             {
-                unchecked
-                {
-                    return ((componentType?.GetHashCode() ?? 0) * 397)
-                        ^ (fieldName?.GetHashCode() ?? 0);
-                }
+                return Objects.HashCode(componentType, fieldName);
             }
         }
 

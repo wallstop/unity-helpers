@@ -58,7 +58,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// <summary>
         /// Combines hash codes for a span of values into a deterministic composite hash.
         /// </summary>
-        public static int HashCode<T>(ReadOnlySpan<T> values)
+        public static int SpanHashCode<T>(ReadOnlySpan<T> values)
         {
             if (values.IsEmpty)
             {

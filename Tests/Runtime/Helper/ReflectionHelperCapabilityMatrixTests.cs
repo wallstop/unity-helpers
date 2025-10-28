@@ -2629,7 +2629,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 () =>
                 {
                     IList list = ReflectionHelpers.CreateList(typeof(int), 3);
-                    Assert.AreEqual(3, list.Count);
+                    Assert.That(list, Is.InstanceOf<List<int>>());
+                    Assert.That(((List<int>)list).Capacity, Is.EqualTo(3));
+                    Assert.That(list.Count, Is.EqualTo(0));
                 }
             );
         }

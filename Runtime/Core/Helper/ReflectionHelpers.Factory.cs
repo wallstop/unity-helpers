@@ -58,10 +58,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
                 public override int GetHashCode()
                 {
-                    int memberHash = Member is null
-                        ? 0
-                        : EqualityComparer<T>.Default.GetHashCode(Member);
-                    return unchecked((memberHash * 397) ^ (int)Strategy);
+                    return Objects.HashCode(Member, Strategy);
                 }
             }
 
@@ -1182,7 +1179,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 {
                     throw new ArgumentNullException(nameof(property));
                 }
-                var key = (property, typeof(TInstance), typeof(TValue));
+                (PropertyInfo property, Type, Type) key = (
+                    property,
+                    typeof(TInstance),
+                    typeof(TValue)
+                );
 #if !SINGLE_THREADED
                 return (Func<TInstance, TValue>)
                     TypedPropertyGetters.GetOrAdd(
@@ -1207,7 +1208,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 {
                     throw new ArgumentNullException(nameof(property));
                 }
-                var key = (property, typeof(TInstance), typeof(TValue));
+                (PropertyInfo property, Type, Type) key = (
+                    property,
+                    typeof(TInstance),
+                    typeof(TValue)
+                );
 #if !SINGLE_THREADED
                 return (Action<TInstance, TValue>)
                     TypedPropertySetters.GetOrAdd(
@@ -1230,7 +1235,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 {
                     throw new ArgumentNullException(nameof(property));
                 }
-                var key = (property, typeof(TValue));
+                (PropertyInfo property, Type) key = (property, typeof(TValue));
 #if !SINGLE_THREADED
                 return (Func<TValue>)
                     TypedStaticPropertyGetters.GetOrAdd(
@@ -1253,7 +1258,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 {
                     throw new ArgumentNullException(nameof(property));
                 }
-                var key = (property, typeof(TValue));
+                (PropertyInfo property, Type) key = (property, typeof(TValue));
 #if !SINGLE_THREADED
                 return (Action<TValue>)
                     TypedStaticPropertySetters.GetOrAdd(

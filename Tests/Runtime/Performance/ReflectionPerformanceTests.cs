@@ -3,6 +3,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
     using System;
     using System.Collections.Generic;
     using System.Diagnostics;
+    using System.Reflection;
     using System.Runtime.InteropServices;
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Helper;
@@ -125,17 +126,21 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
         private static IEnumerable<Scenario> CreateBoxedScenarios(ReflectionPerfTarget instance)
         {
             Type targetType = typeof(ReflectionPerfTarget);
-            var instanceField = targetType.GetField(nameof(ReflectionPerfTarget.InstanceField));
-            var staticField = targetType.GetField(nameof(ReflectionPerfTarget.StaticField));
-            var instanceProperty = targetType.GetProperty(
+            FieldInfo instanceField = targetType.GetField(
+                nameof(ReflectionPerfTarget.InstanceField)
+            );
+            FieldInfo staticField = targetType.GetField(nameof(ReflectionPerfTarget.StaticField));
+            PropertyInfo instanceProperty = targetType.GetProperty(
                 nameof(ReflectionPerfTarget.InstanceProperty)
             );
-            var staticProperty = targetType.GetProperty(
+            PropertyInfo staticProperty = targetType.GetProperty(
                 nameof(ReflectionPerfTarget.StaticProperty)
             );
-            var instanceMethod = targetType.GetMethod(nameof(ReflectionPerfTarget.Combine));
-            var staticMethod = targetType.GetMethod(nameof(ReflectionPerfTarget.StaticCombine));
-            var constructor = targetType.GetConstructor(new[] { typeof(int) });
+            MethodInfo instanceMethod = targetType.GetMethod(nameof(ReflectionPerfTarget.Combine));
+            MethodInfo staticMethod = targetType.GetMethod(
+                nameof(ReflectionPerfTarget.StaticCombine)
+            );
+            ConstructorInfo constructor = targetType.GetConstructor(new[] { typeof(int) });
 
             if (
                 instanceField == null
@@ -496,16 +501,20 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
         private static IEnumerable<Scenario> CreateTypedScenarios(ReflectionPerfTarget instance)
         {
             Type targetType = typeof(ReflectionPerfTarget);
-            var instanceField = targetType.GetField(nameof(ReflectionPerfTarget.InstanceField));
-            var staticField = targetType.GetField(nameof(ReflectionPerfTarget.StaticField));
-            var instanceProperty = targetType.GetProperty(
+            FieldInfo instanceField = targetType.GetField(
+                nameof(ReflectionPerfTarget.InstanceField)
+            );
+            FieldInfo staticField = targetType.GetField(nameof(ReflectionPerfTarget.StaticField));
+            PropertyInfo instanceProperty = targetType.GetProperty(
                 nameof(ReflectionPerfTarget.InstanceProperty)
             );
-            var staticProperty = targetType.GetProperty(
+            PropertyInfo staticProperty = targetType.GetProperty(
                 nameof(ReflectionPerfTarget.StaticProperty)
             );
-            var instanceMethod = targetType.GetMethod(nameof(ReflectionPerfTarget.Combine));
-            var staticMethod = targetType.GetMethod(nameof(ReflectionPerfTarget.StaticCombine));
+            MethodInfo instanceMethod = targetType.GetMethod(nameof(ReflectionPerfTarget.Combine));
+            MethodInfo staticMethod = targetType.GetMethod(
+                nameof(ReflectionPerfTarget.StaticCombine)
+            );
 
             if (
                 instanceField == null

@@ -1530,7 +1530,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     bool useSource
                 )
                 {
-                    var arr = ApplyFilterAndSort(list.ToList()).AsList();
+                    IList<AnimationFileInfo> arr = ApplyFilterAndSort(list.ToList()).AsList();
                     sb.AppendLine($"== {inputTitle} ({arr.Count}) ==");
                     for (int i = 0; i < arr.Count; i++)
                     {
