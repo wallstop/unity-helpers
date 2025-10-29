@@ -259,6 +259,8 @@ paket-files/
 
 # JetBrains Rider
 .idea/
+*.sln
+*.sln.meta
 *.sln.iml
 
 # CodeRush
