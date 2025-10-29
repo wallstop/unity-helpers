@@ -38,6 +38,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 typedResults.Add(RunScenario(scenario));
             }
 
+            Dictionary<string, double> reflectionBaselineLookup = new Dictionary<string, double>(
+                boxedResults.Count,
+                StringComparer.Ordinal
+            );
+            foreach (ScenarioResult result in boxedResults)
+            {
+                string key = GetScenarioKey(result.Name);
+                reflectionBaselineLookup[key] = result.BaselineOpsPerSecond;
+            }
+
             List<string> outputLines = new List<string>
             {
                 string.Format(
@@ -48,8 +58,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 string.Empty,
                 "### Boxed Access (object)",
                 string.Empty,
-                "| Scenario | ReflectionHelpers (ops/sec) | System.Reflection (ops/sec) | Speedup |",
-                "| -------- | --------------------------- | --------------------------- | ------- |",
+                "| Scenario | ReflectionHelpers (ops/sec) | System.Reflection (ops/sec) | Speedup vs Reflection |",
+                "| -------- | --------------------------- | --------------------------- | --------------------- |",
             };
 
             foreach (ScenarioResult result in boxedResults)
@@ -60,7 +70,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                         "| {0} | {1} | {2} | {3:F2}x |",
                         result.Name,
                         FormatOps(result.HelperOpsPerSecond),
-                        FormatOps(result.ReflectionOpsPerSecond),
+                        FormatOps(result.BaselineOpsPerSecond),
                         result.Speedup
                     )
                 );
@@ -71,7 +81,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                         "[ReflectionPerf][Boxed] {0}: helpers={1:N0} ops/s, reflection={2:N0} ops/s",
                         result.Name,
                         result.HelperOpsPerSecond,
-                        result.ReflectionOpsPerSecond
+                        result.BaselineOpsPerSecond
                     )
                 );
             }
@@ -80,32 +90,45 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             outputLines.Add("### Typed Access (no boxing)");
             outputLines.Add(string.Empty);
             outputLines.Add(
-                "| Scenario | ReflectionHelpers (ops/sec) | Baseline Delegate (ops/sec) | Speedup |"
+                "| Scenario | ReflectionHelpers (ops/sec) | Baseline Delegate (ops/sec) | System.Reflection (ops/sec) | Speedup vs Delegate | Speedup vs Reflection |"
             );
             outputLines.Add(
-                "| -------- | --------------------------- | --------------------------- | ------- |"
+                "| -------- | --------------------------- | --------------------------- | --------------------------- | ------------------- | -------------------- |"
             );
 
             foreach (ScenarioResult result in typedResults)
             {
+                string key = GetScenarioKey(result.Name);
+                double reflectionOps = reflectionBaselineLookup.TryGetValue(key, out double value)
+                    ? value
+                    : double.NaN;
+                double speedupVsDelegate = result.Speedup;
+                double speedupVsReflection =
+                    reflectionOps <= 0.0
+                        ? double.PositiveInfinity
+                        : result.HelperOpsPerSecond / reflectionOps;
+
                 outputLines.Add(
                     string.Format(
                         System.Globalization.CultureInfo.InvariantCulture,
-                        "| {0} | {1} | {2} | {3:F2}x |",
+                        "| {0} | {1} | {2} | {3} | {4:F2}x | {5:F2}x |",
                         result.Name,
                         FormatOps(result.HelperOpsPerSecond),
-                        FormatOps(result.ReflectionOpsPerSecond),
-                        result.Speedup
+                        FormatOps(result.BaselineOpsPerSecond),
+                        FormatOps(reflectionOps),
+                        speedupVsDelegate,
+                        speedupVsReflection
                     )
                 );
 
                 UnityEngine.Debug.Log(
                     string.Format(
                         System.Globalization.CultureInfo.InvariantCulture,
-                        "[ReflectionPerf][Typed] {0}: helpers={1:N0} ops/s, baseline={2:N0} ops/s",
+                        "[ReflectionPerf][Typed] {0}: helpers={1:N0} ops/s, delegate={2:N0} ops/s, reflection={3:N0} ops/s",
                         result.Name,
                         result.HelperOpsPerSecond,
-                        result.ReflectionOpsPerSecond
+                        result.BaselineOpsPerSecond,
+                        reflectionOps
                     )
                 );
             }
@@ -155,6 +178,35 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 throw new InvalidOperationException("ReflectionPerfTarget members not found.");
             }
 
+            Func<object, object> instanceFieldGetter = ReflectionHelpers.GetFieldGetter(
+                instanceField
+            );
+            Action<object, object> instanceFieldSetter = ReflectionHelpers.GetFieldSetter(
+                instanceField
+            );
+            Func<object> staticFieldGetter = ReflectionHelpers.GetStaticFieldGetter(staticField);
+            Action<object> staticFieldSetter = ReflectionHelpers.GetStaticFieldSetter(staticField);
+            Func<object, object> instancePropertyGetter = ReflectionHelpers.GetPropertyGetter(
+                instanceProperty
+            );
+            Action<object, object> instancePropertySetter = ReflectionHelpers.GetPropertySetter(
+                instanceProperty
+            );
+            Func<object, object> staticPropertyGetter = ReflectionHelpers.GetPropertyGetter(
+                staticProperty
+            );
+            Action<object, object> staticPropertySetter = ReflectionHelpers.GetPropertySetter(
+                staticProperty
+            );
+            Func<object, object[], object> instanceMethodInvoker =
+                ReflectionHelpers.GetMethodInvoker(instanceMethod);
+            Func<object[], object> staticMethodInvoker = ReflectionHelpers.GetStaticMethodInvoker(
+                staticMethod
+            );
+            Func<object[], object> constructorInvoker = ReflectionHelpers.GetConstructor(
+                constructor
+            );
+
             yield return Scenario.Create(
                 "Instance Field Get (boxed)",
                 () =>
@@ -170,11 +222,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 },
                 () =>
                 {
-                    Func<object, object> helper = ReflectionHelpers.GetFieldGetter(instanceField);
                     int count = 0;
                     for (int i = 0; i < BatchSize; i++)
                     {
-                        sink ^= (int)helper(instance);
+                        sink ^= (int)instanceFieldGetter(instance);
                         count++;
                     }
 
@@ -200,12 +251,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 },
                 () =>
                 {
-                    Action<object, object> helper = ReflectionHelpers.GetFieldSetter(instanceField);
                     int count = 0;
                     int value = 0;
                     for (int i = 0; i < BatchSize; i++)
                     {
-                        helper(instance, value);
+                        instanceFieldSetter(instance, value);
                         sink ^= instance.InstanceField;
                         value++;
                         count++;
@@ -230,11 +280,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 },
                 () =>
                 {
-                    Func<object> helper = ReflectionHelpers.GetStaticFieldGetter(staticField);
                     int count = 0;
                     for (int i = 0; i < BatchSize; i++)
                     {
-                        sink ^= (int)helper();
+                        sink ^= (int)staticFieldGetter();
                         count++;
                     }
 
@@ -260,12 +309,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 },
                 () =>
                 {
-                    Action<object> helper = ReflectionHelpers.GetStaticFieldSetter(staticField);
                     int count = 0;
                     int value = 0;
                     for (int i = 0; i < BatchSize; i++)
                     {
-                        helper(value);
+                        staticFieldSetter(value);
                         sink ^= ReflectionPerfTarget.StaticField;
                         value++;
                         count++;
@@ -290,13 +338,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 },
                 () =>
                 {
-                    Func<object, object> helper = ReflectionHelpers.GetPropertyGetter(
-                        instanceProperty
-                    );
                     int count = 0;
                     for (int i = 0; i < BatchSize; i++)
                     {
-                        sink ^= (int)helper(instance);
+                        sink ^= (int)instancePropertyGetter(instance);
                         count++;
                     }
 
@@ -322,14 +367,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 },
                 () =>
                 {
-                    Action<object, object> helper = ReflectionHelpers.GetPropertySetter(
-                        instanceProperty
-                    );
                     int count = 0;
                     int value = 0;
                     for (int i = 0; i < BatchSize; i++)
                     {
-                        helper(instance, value);
+                        instancePropertySetter(instance, value);
                         sink ^= instance.InstanceProperty;
                         value++;
                         count++;
@@ -354,13 +396,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 },
                 () =>
                 {
-                    Func<object, object> helper = ReflectionHelpers.GetPropertyGetter(
-                        staticProperty
-                    );
                     int count = 0;
                     for (int i = 0; i < BatchSize; i++)
                     {
-                        sink ^= (int)helper(null);
+                        sink ^= (int)staticPropertyGetter(null);
                         count++;
                     }
 
@@ -386,14 +425,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 },
                 () =>
                 {
-                    Action<object, object> helper = ReflectionHelpers.GetPropertySetter(
-                        staticProperty
-                    );
                     int count = 0;
                     int value = 0;
                     for (int i = 0; i < BatchSize; i++)
                     {
-                        helper(null, value);
+                        staticPropertySetter(null, value);
                         sink ^= ReflectionPerfTarget.StaticProperty;
                         value++;
                         count++;
@@ -419,14 +455,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 },
                 () =>
                 {
-                    Func<object, object[], object> helper = ReflectionHelpers.GetMethodInvoker(
-                        instanceMethod
-                    );
                     int count = 0;
                     object[] arguments = { 3, 5 };
                     for (int i = 0; i < BatchSize; i++)
                     {
-                        sink ^= (int)helper(instance, arguments);
+                        sink ^= (int)instanceMethodInvoker(instance, arguments);
                         count++;
                     }
 
@@ -450,14 +483,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 },
                 () =>
                 {
-                    Func<object, object[], object> helper = ReflectionHelpers.GetMethodInvoker(
-                        staticMethod
-                    );
                     int count = 0;
                     object[] arguments = { 3, 5 };
                     for (int i = 0; i < BatchSize; i++)
                     {
-                        sink ^= (int)helper(null, arguments);
+                        sink ^= (int)staticMethodInvoker(arguments);
                         count++;
                     }
 
@@ -483,12 +513,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 },
                 () =>
                 {
-                    Func<object[], object> helper = ReflectionHelpers.GetConstructor(constructor);
                     int count = 0;
                     object[] arguments = { 9 };
                     for (int i = 0; i < BatchSize; i++)
                     {
-                        ReflectionPerfTarget created = (ReflectionPerfTarget)helper(arguments);
+                        ReflectionPerfTarget created = (ReflectionPerfTarget)constructorInvoker(
+                            arguments
+                        );
                         sink ^= created.InstanceField;
                         count++;
                     }
@@ -528,6 +559,36 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 throw new InvalidOperationException("ReflectionPerfTarget members not found.");
             }
 
+            Func<ReflectionPerfTarget, int> instanceFieldGetter = ReflectionHelpers.GetFieldGetter<
+                ReflectionPerfTarget,
+                int
+            >(instanceField);
+            FieldSetter<ReflectionPerfTarget, int> instanceFieldSetter =
+                ReflectionHelpers.GetFieldSetter<ReflectionPerfTarget, int>(instanceField);
+            Func<int> staticFieldGetter = ReflectionHelpers.GetStaticFieldGetter<int>(staticField);
+            Action<int> staticFieldSetter = ReflectionHelpers.GetStaticFieldSetter<int>(
+                staticField
+            );
+            Func<ReflectionPerfTarget, int> instancePropertyGetter =
+                ReflectionHelpers.GetPropertyGetter<ReflectionPerfTarget, int>(instanceProperty);
+            Action<ReflectionPerfTarget, int> instancePropertySetter =
+                ReflectionHelpers.GetPropertySetter<ReflectionPerfTarget, int>(instanceProperty);
+            Func<int> staticPropertyGetter = ReflectionHelpers.GetStaticPropertyGetter<int>(
+                staticProperty
+            );
+            Action<int> staticPropertySetter = ReflectionHelpers.GetStaticPropertySetter<int>(
+                staticProperty
+            );
+            Func<ReflectionPerfTarget, int, int, int> instanceMethodInvoker =
+                ReflectionHelpers.GetInstanceMethodInvoker<ReflectionPerfTarget, int, int, int>(
+                    instanceMethod
+                );
+            Func<int, int, int> staticMethodInvoker = ReflectionHelpers.GetStaticMethodInvoker<
+                int,
+                int,
+                int
+            >(staticMethod);
+
             yield return Scenario.Create(
                 "Instance Field Get (typed)",
                 () =>
@@ -543,14 +604,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 },
                 () =>
                 {
-                    Func<ReflectionPerfTarget, int> helper = ReflectionHelpers.GetFieldGetter<
-                        ReflectionPerfTarget,
-                        int
-                    >(instanceField);
                     int count = 0;
                     for (int i = 0; i < BatchSize; i++)
                     {
-                        sink ^= helper(instance);
+                        sink ^= instanceFieldGetter(instance);
                         count++;
                     }
 
@@ -576,14 +633,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 },
                 () =>
                 {
-                    FieldSetter<ReflectionPerfTarget, int> helper =
-                        ReflectionHelpers.GetFieldSetter<ReflectionPerfTarget, int>(instanceField);
                     int count = 0;
                     int value = 0;
                     ReflectionPerfTarget target = instance;
                     for (int i = 0; i < BatchSize; i++)
                     {
-                        helper(ref target, value);
+                        instanceFieldSetter(ref target, value);
                         sink ^= target.InstanceField;
                         value++;
                         count++;
@@ -608,11 +663,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 },
                 () =>
                 {
-                    Func<int> helper = ReflectionHelpers.GetStaticFieldGetter<int>(staticField);
                     int count = 0;
                     for (int i = 0; i < BatchSize; i++)
                     {
-                        sink ^= helper();
+                        sink ^= staticFieldGetter();
                         count++;
                     }
 
@@ -638,12 +692,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 },
                 () =>
                 {
-                    Action<int> helper = ReflectionHelpers.GetStaticFieldSetter<int>(staticField);
                     int count = 0;
                     int value = 0;
                     for (int i = 0; i < BatchSize; i++)
                     {
-                        helper(value);
+                        staticFieldSetter(value);
                         sink ^= ReflectionPerfTarget.StaticField;
                         value++;
                         count++;
@@ -668,14 +721,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 },
                 () =>
                 {
-                    Func<ReflectionPerfTarget, int> helper = ReflectionHelpers.GetPropertyGetter<
-                        ReflectionPerfTarget,
-                        int
-                    >(instanceProperty);
                     int count = 0;
                     for (int i = 0; i < BatchSize; i++)
                     {
-                        sink ^= helper(instance);
+                        sink ^= instancePropertyGetter(instance);
                         count++;
                     }
 
@@ -701,15 +750,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 },
                 () =>
                 {
-                    Action<ReflectionPerfTarget, int> helper = ReflectionHelpers.GetPropertySetter<
-                        ReflectionPerfTarget,
-                        int
-                    >(instanceProperty);
                     int count = 0;
                     int value = 0;
                     for (int i = 0; i < BatchSize; i++)
                     {
-                        helper(instance, value);
+                        instancePropertySetter(instance, value);
                         sink ^= instance.InstanceProperty;
                         value++;
                         count++;
@@ -734,13 +779,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 },
                 () =>
                 {
-                    Func<int> helper = ReflectionHelpers.GetStaticPropertyGetter<int>(
-                        staticProperty
-                    );
                     int count = 0;
                     for (int i = 0; i < BatchSize; i++)
                     {
-                        sink ^= helper();
+                        sink ^= staticPropertyGetter();
                         count++;
                     }
 
@@ -766,14 +808,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 },
                 () =>
                 {
-                    Action<int> helper = ReflectionHelpers.GetStaticPropertySetter<int>(
-                        staticProperty
-                    );
                     int count = 0;
                     int value = 0;
                     for (int i = 0; i < BatchSize; i++)
                     {
-                        helper(value);
+                        staticPropertySetter(value);
                         sink ^= ReflectionPerfTarget.StaticProperty;
                         value++;
                         count++;
@@ -798,17 +837,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 },
                 () =>
                 {
-                    Func<ReflectionPerfTarget, int, int, int> helper =
-                        ReflectionHelpers.GetInstanceMethodInvoker<
-                            ReflectionPerfTarget,
-                            int,
-                            int,
-                            int
-                        >(instanceMethod);
                     int count = 0;
                     for (int i = 0; i < BatchSize; i++)
                     {
-                        sink ^= helper(instance, 3, 5);
+                        sink ^= instanceMethodInvoker(instance, 3, 5);
                         count++;
                     }
 
@@ -831,15 +863,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 },
                 () =>
                 {
-                    Func<int, int, int> helper = ReflectionHelpers.GetStaticMethodInvoker<
-                        int,
-                        int,
-                        int
-                    >(staticMethod);
                     int count = 0;
                     for (int i = 0; i < BatchSize; i++)
                     {
-                        sink ^= helper(3, 5);
+                        sink ^= staticMethodInvoker(3, 5);
                         count++;
                     }
 
@@ -853,17 +880,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             scenario.Warmup();
 
             double helperOpsPerSecond = MeasureOpsPerSecond(scenario.Helper);
-            double reflectionOpsPerSecond = MeasureOpsPerSecond(scenario.Reflection);
+            double baselineOpsPerSecond = MeasureOpsPerSecond(scenario.Baseline);
 
             double speedup =
-                reflectionOpsPerSecond <= 0.0
+                baselineOpsPerSecond <= 0.0
                     ? double.PositiveInfinity
-                    : helperOpsPerSecond / reflectionOpsPerSecond;
+                    : helperOpsPerSecond / baselineOpsPerSecond;
 
             return new ScenarioResult(
                 scenario.Name,
                 helperOpsPerSecond,
-                reflectionOpsPerSecond,
+                baselineOpsPerSecond,
                 speedup
             );
         }
@@ -942,31 +969,54 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             return "UNKNOWN";
         }
 
+        private static string GetScenarioKey(string scenarioName)
+        {
+            if (string.IsNullOrEmpty(scenarioName))
+            {
+                return string.Empty;
+            }
+
+            const string BoxedSuffix = " (boxed)";
+            const string TypedSuffix = " (typed)";
+
+            if (scenarioName.EndsWith(BoxedSuffix, StringComparison.Ordinal))
+            {
+                return scenarioName.Substring(0, scenarioName.Length - BoxedSuffix.Length);
+            }
+
+            if (scenarioName.EndsWith(TypedSuffix, StringComparison.Ordinal))
+            {
+                return scenarioName.Substring(0, scenarioName.Length - TypedSuffix.Length);
+            }
+
+            return scenarioName;
+        }
+
         private sealed class Scenario
         {
-            private Scenario(string name, Func<int> reflection, Func<int> helper)
+            private Scenario(string name, Func<int> baseline, Func<int> helper)
             {
                 Name = name;
-                Reflection = reflection;
+                Baseline = baseline;
                 Helper = helper;
             }
 
             public string Name { get; }
 
-            public Func<int> Reflection { get; }
+            public Func<int> Baseline { get; }
 
             public Func<int> Helper { get; }
 
-            public static Scenario Create(string name, Func<int> reflection, Func<int> helper)
+            public static Scenario Create(string name, Func<int> baseline, Func<int> helper)
             {
                 if (string.IsNullOrEmpty(name))
                 {
                     throw new ArgumentException("Scenario name must be provided.", nameof(name));
                 }
 
-                if (reflection == null)
+                if (baseline == null)
                 {
-                    throw new ArgumentNullException(nameof(reflection));
+                    throw new ArgumentNullException(nameof(baseline));
                 }
 
                 if (helper == null)
@@ -974,12 +1024,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                     throw new ArgumentNullException(nameof(helper));
                 }
 
-                return new Scenario(name, reflection, helper);
+                return new Scenario(name, baseline, helper);
             }
 
             public void Warmup()
             {
-                _ = Reflection();
+                _ = Baseline();
                 _ = Helper();
             }
         }
@@ -989,13 +1039,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             public ScenarioResult(
                 string name,
                 double helperOpsPerSecond,
-                double reflectionOpsPerSecond,
+                double baselineOpsPerSecond,
                 double speedup
             )
             {
                 Name = name;
                 HelperOpsPerSecond = helperOpsPerSecond;
-                ReflectionOpsPerSecond = reflectionOpsPerSecond;
+                BaselineOpsPerSecond = baselineOpsPerSecond;
                 Speedup = speedup;
             }
 
@@ -1003,7 +1053,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
 
             public double HelperOpsPerSecond { get; }
 
-            public double ReflectionOpsPerSecond { get; }
+            public double BaselineOpsPerSecond { get; }
 
             public double Speedup { get; }
         }
