@@ -23,6 +23,8 @@ Having issues? Jump to Troubleshooting: see [Troubleshooting](#troubleshooting).
 
 Related systems: For data‑driven gameplay effects (attributes, tags, cosmetics), see [Effects System](EFFECTS_SYSTEM.md) and the README section Effects, Attributes, and Tags (#effects-attributes-and-tags).
 
+Curious how these attributes stack up against manual `GetComponent*` loops? Check the [Relational Component Performance Benchmarks](RELATIONAL_COMPONENT_PERFORMANCE.md) for operations-per-second and allocation snapshots.
+
 ## TL;DR — What Problem This Solves
 
 - **⭐ Replace 20+ lines of repetitive GetComponent boilerplate with 3 attributes + 1 method call.**

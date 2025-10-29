@@ -176,6 +176,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             public readonly Func<int, IList> listCreator;
             public readonly Func<int, object> hashSetCreator;
             public readonly Action<object, object> hashSetAdder;
+            public readonly Action<object> hashSetClearer;
             public readonly bool isInterface;
 
             public FieldMetadata(
@@ -189,6 +190,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 Func<int, IList> listCreator,
                 Func<int, object> hashSetCreator,
                 Action<object, object> hashSetAdder,
+                Action<object> hashSetClearer,
                 bool isInterface
             )
             {
@@ -202,6 +204,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 this.listCreator = listCreator;
                 this.hashSetCreator = hashSetCreator;
                 this.hashSetAdder = hashSetAdder;
+                this.hashSetClearer = hashSetClearer;
                 this.isInterface = isInterface;
             }
         }
@@ -275,6 +278,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     Func<int, IList> listCreator = null;
                     Func<int, object> hashSetCreator = null;
                     Action<object, object> hashSetAdder = null;
+                    Action<object> hashSetClearer = null;
 
                     switch (kind)
                     {
@@ -291,6 +295,9 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                                 resolvedElementType
                             );
                             hashSetAdder = ReflectionHelpers.GetHashSetAdder(resolvedElementType);
+                            hashSetClearer = ReflectionHelpers.GetHashSetClearer(
+                                resolvedElementType
+                            );
                             break;
                     }
 
@@ -316,6 +323,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                             listCreator,
                             hashSetCreator,
                             hashSetAdder,
+                            hashSetClearer,
                             isInterface
                         )
                     );
@@ -343,6 +351,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     Func<int, IList> listCreator = null;
                     Func<int, object> hashSetCreator = null;
                     Action<object, object> hashSetAdder = null;
+                    Action<object> hashSetClearer = null;
 
                     switch (kind)
                     {
@@ -357,6 +366,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                                 elementType
                             );
                             hashSetAdder = ReflectionHelpers.GetHashSetAdder(elementType);
+                            hashSetClearer = ReflectionHelpers.GetHashSetClearer(elementType);
                             break;
                     }
 
@@ -379,6 +389,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                             listCreator,
                             hashSetCreator,
                             hashSetAdder,
+                            hashSetClearer,
                             isInterface
                         );
                 })
@@ -458,15 +469,31 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     break;
 
                 case FieldKind.List:
-
-                    metadata.setter(component, metadata.listCreator(0));
-
+                    {
+                        object existing = metadata.getter(component);
+                        if (existing is IList list)
+                        {
+                            list.Clear();
+                        }
+                        else
+                        {
+                            metadata.setter(component, metadata.listCreator(0));
+                        }
+                    }
                     break;
 
                 case FieldKind.HashSet:
-
-                    metadata.setter(component, metadata.hashSetCreator(0));
-
+                    {
+                        object existing = metadata.getter(component);
+                        if (existing != null && metadata.hashSetClearer != null)
+                        {
+                            metadata.hashSetClearer(existing);
+                        }
+                        else
+                        {
+                            metadata.setter(component, metadata.hashSetCreator(0));
+                        }
+                    }
                     break;
             }
         }

@@ -240,7 +240,7 @@ Performance tips
 ### Benchmarking & Verification
 
 - **Unit coverage**: `ReflectionHelperCapabilityMatrixTests` resets caches and toggles capabilities around each helper. Run these suites in both expression-enabled and expression-disabled modes when changing caching internals.
-- **Micro-benchmarks**: `Tests/Runtime/Performance/ReflectionPerformanceTests` and the `Spikes/ReflectionMicroBenchmark` console harness can be reused to capture before/after numbers for getters, setters, method invokers, and constructors. Record results with each `ReflectionDelegateStrategy` forced via `OverrideReflectionCapabilities` so regressions are easy to spot.
+- **Micro-benchmarks**: Use `Tests/Runtime/Performance/ReflectionPerformanceTests` to capture before/after numbers for getters, setters, method invokers, and constructors (now including expression vs. dynamic IL comparisons). Record results with each `ReflectionDelegateStrategy` forced via `OverrideReflectionCapabilities` so regressions are easy to spot.
 - **Cache hygiene**: when adding new delegate families, update the appropriate `Clear*Cache` helper and call it from tests to keep scenarios isolated.
 - **Documentation updates**: note the Unity version, scripting backend, and OS whenever you refresh timing data, and sync any tables in `Docs/ReflectionPerformance*.md` so contributors can compare against baseline numbers.
 - **Execution recipe**:

@@ -132,124 +132,168 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 }
                 else
                 {
-                    switch (field.kind)
+                    if (field.kind == FieldKind.Single)
                     {
-                        case FieldKind.Array:
-                        {
-                            using PooledResource<List<Component>> parentComponentBuffer =
-                                Buffers<Component>.List.Get(out List<Component> parentComponents);
-                            GetParentComponents(
+                        Component parentComponent;
+                        if (
+                            TryAssignParentSingleFast(root, field, filters, out parentComponent)
+                            || TryGetFirstParentComponent(
                                 root,
-                                field.elementType,
-                                field.attribute,
-                                field.isInterface,
-                                parentComponents
-                            );
-
-                            int filteredCount = FilterComponentsInPlace(
-                                parentComponents,
                                 filters,
-                                field.attribute,
                                 field.elementType,
+                                field.attribute,
                                 field.isInterface,
-                                filterDisabledComponents: false
-                            );
-
-                            Array correctTypedArray = field.arrayCreator(filteredCount);
-                            for (int i = 0; i < filteredCount; ++i)
-                            {
-                                correctTypedArray.SetValue(parentComponents[i], i);
-                            }
-
-                            field.setter(component, correctTypedArray);
-                            foundParent = filteredCount > 0;
-                            break;
-                        }
-                        case FieldKind.List:
+                                out parentComponent
+                            )
+                        )
                         {
-                            using PooledResource<List<Component>> parentComponentBuffer =
-                                Buffers<Component>.List.Get(out List<Component> parentComponents);
-                            GetParentComponents(
-                                root,
-                                field.elementType,
-                                field.attribute,
-                                field.isInterface,
-                                parentComponents
-                            );
-
-                            int filteredCount = FilterComponentsInPlace(
-                                parentComponents,
-                                filters,
-                                field.attribute,
-                                field.elementType,
-                                field.isInterface,
-                                filterDisabledComponents: false
-                            );
-
-                            IList instance = field.listCreator(filteredCount);
-                            for (int i = 0; i < filteredCount; ++i)
-                            {
-                                instance.Add(parentComponents[i]);
-                            }
-
-                            field.setter(component, instance);
-                            foundParent = filteredCount > 0;
-                            break;
+                            field.setter(component, parentComponent);
+                            foundParent = true;
                         }
-                        case FieldKind.HashSet:
+                        else
                         {
-                            using PooledResource<List<Component>> parentComponentBuffer =
-                                Buffers<Component>.List.Get(out List<Component> parentComponents);
-                            GetParentComponents(
-                                root,
-                                field.elementType,
-                                field.attribute,
-                                field.isInterface,
-                                parentComponents
-                            );
-
-                            int filteredCount = FilterComponentsInPlace(
-                                parentComponents,
-                                filters,
-                                field.attribute,
-                                field.elementType,
-                                field.isInterface,
-                                filterDisabledComponents: false
-                            );
-
-                            object instance = field.hashSetCreator(filteredCount);
-                            for (int i = 0; i < filteredCount; ++i)
-                            {
-                                field.hashSetAdder(instance, parentComponents[i]);
-                            }
-
-                            field.setter(component, instance);
-                            foundParent = filteredCount > 0;
-                            break;
-                        }
-                        default:
-                        {
-                            foundParent = TryGetFirstParentComponent(
-                                root,
-                                field.elementType,
-                                field.attribute,
-                                field.isInterface,
-                                out Component parentComponent
-                            );
-
-                            if (foundParent)
-                            {
-                                field.setter(component, parentComponent);
-                            }
-
-                            break;
+                            foundParent = false;
                         }
                     }
-                }
+                    else
+                    {
+                        switch (field.kind)
+                        {
+                            case FieldKind.Array:
+                            {
+                                using PooledResource<List<Component>> parentComponentBuffer =
+                                    Buffers<Component>.List.Get(
+                                        out List<Component> parentComponents
+                                    );
+                                GetParentComponents(
+                                    root,
+                                    field.elementType,
+                                    field.attribute,
+                                    field.isInterface,
+                                    parentComponents
+                                );
 
-                if (!foundParent)
-                {
-                    LogMissingComponentError(component, field, "parent");
+                                int filteredCount =
+                                    !filters.RequiresPostProcessing && field.attribute.MaxCount <= 0
+                                        ? parentComponents.Count
+                                        : FilterComponentsInPlace(
+                                            parentComponents,
+                                            filters,
+                                            field.attribute,
+                                            field.elementType,
+                                            field.isInterface,
+                                            filterDisabledComponents: false
+                                        );
+
+                                Array correctTypedArray = field.arrayCreator(filteredCount);
+                                for (int i = 0; i < filteredCount; ++i)
+                                {
+                                    correctTypedArray.SetValue(parentComponents[i], i);
+                                }
+
+                                field.setter(component, correctTypedArray);
+                                foundParent = filteredCount > 0;
+                                break;
+                            }
+                            case FieldKind.List:
+                            {
+                                using PooledResource<List<Component>> parentComponentBuffer =
+                                    Buffers<Component>.List.Get(
+                                        out List<Component> parentComponents
+                                    );
+                                GetParentComponents(
+                                    root,
+                                    field.elementType,
+                                    field.attribute,
+                                    field.isInterface,
+                                    parentComponents
+                                );
+
+                                int filteredCount =
+                                    !filters.RequiresPostProcessing && field.attribute.MaxCount <= 0
+                                        ? parentComponents.Count
+                                        : FilterComponentsInPlace(
+                                            parentComponents,
+                                            filters,
+                                            field.attribute,
+                                            field.elementType,
+                                            field.isInterface,
+                                            filterDisabledComponents: false
+                                        );
+
+                                IList instance = field.getter(component) as IList;
+                                if (instance != null)
+                                {
+                                    instance.Clear();
+                                }
+                                else
+                                {
+                                    instance = field.listCreator(filteredCount);
+                                    field.setter(component, instance);
+                                }
+
+                                for (int i = 0; i < filteredCount; ++i)
+                                {
+                                    instance.Add(parentComponents[i]);
+                                }
+
+                                foundParent = filteredCount > 0;
+                                break;
+                            }
+                            case FieldKind.HashSet:
+                            {
+                                using PooledResource<List<Component>> parentComponentBuffer =
+                                    Buffers<Component>.List.Get(
+                                        out List<Component> parentComponents
+                                    );
+                                GetParentComponents(
+                                    root,
+                                    field.elementType,
+                                    field.attribute,
+                                    field.isInterface,
+                                    parentComponents
+                                );
+
+                                int filteredCount = FilterComponentsInPlace(
+                                    parentComponents,
+                                    filters,
+                                    field.attribute,
+                                    field.elementType,
+                                    field.isInterface,
+                                    filterDisabledComponents: false
+                                );
+
+                                object instance = field.getter(component);
+                                if (instance != null && field.hashSetClearer != null)
+                                {
+                                    field.hashSetClearer(instance);
+                                }
+                                else
+                                {
+                                    instance = field.hashSetCreator(filteredCount);
+                                    field.setter(component, instance);
+                                }
+
+                                for (int i = 0; i < filteredCount; ++i)
+                                {
+                                    field.hashSetAdder(instance, parentComponents[i]);
+                                }
+
+                                foundParent = filteredCount > 0;
+                                break;
+                            }
+                            default:
+                            {
+                                foundParent = false;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!foundParent)
+                    {
+                        LogMissingComponentError(component, field, "parent");
+                    }
                 }
             }
         }
@@ -318,22 +362,56 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             return buffer;
         }
 
+        private static bool TryAssignParentSingleFast(
+            Transform root,
+            FieldMetadata<ParentComponentAttribute> metadata,
+            FilterParameters filters,
+            out Component parentComponent
+        )
+        {
+            parentComponent = null;
+
+            if (
+                root == null
+                || metadata.isInterface
+                || filters.RequiresPostProcessing
+                || metadata.attribute.MaxDepth > 0
+            )
+            {
+                return false;
+            }
+
+            Component candidate = root.GetComponentInParent(metadata.elementType);
+            if (candidate == null)
+            {
+                return false;
+            }
+
+            parentComponent = candidate;
+            return true;
+        }
+
         private static bool TryGetFirstParentComponent(
             Transform root,
+            FilterParameters filters,
             Type elementType,
             ParentComponentAttribute attribute,
             bool isInterface,
             out Component result
         )
         {
-            FilterParameters filters = new(attribute);
             Transform current = root;
             int depth = 0;
             int maxDepth = attribute.MaxDepth > 0 ? attribute.MaxDepth : int.MaxValue;
 
-            using PooledResource<List<Component>> scratch = Buffers<Component>.List.Get(
-                out List<Component> components
-            );
+            bool needsScratch = isInterface || filters.RequiresPostProcessing;
+            List<Component> components = null;
+            PooledResource<List<Component>> scratch = default;
+            if (needsScratch)
+            {
+                scratch = Buffers<Component>.List.Get(out components);
+            }
+
             while (current != null && depth < maxDepth)
             {
                 if (
@@ -349,12 +427,21 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     )
                 )
                 {
+                    if (needsScratch)
+                    {
+                        scratch.Dispose();
+                    }
                     result = resolved;
                     return true;
                 }
 
                 current = current.parent;
                 depth++;
+            }
+
+            if (needsScratch)
+            {
+                scratch.Dispose();
             }
 
             result = null;

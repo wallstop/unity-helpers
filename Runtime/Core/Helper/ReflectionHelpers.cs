@@ -66,6 +66,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         private static readonly Dictionary<Type, Func<int, IList>> ListWithCapacityCreators = new();
         private static readonly Dictionary<Type, Func<int, object>> HashSetWithCapacityCreators =
             new();
+        private static readonly Dictionary<Type, Action<object>> HashSetClearers = new();
 #else
         private static readonly ConcurrentDictionary<Type, Func<int, Array>> ArrayCreators = new();
         private static readonly ConcurrentDictionary<Type, Func<IList>> ListCreators = new();
@@ -77,6 +78,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             Type,
             Func<int, object>
         > HashSetWithCapacityCreators = new();
+        private static readonly ConcurrentDictionary<Type, Action<object>> HashSetClearers = new();
 #endif
 
         private static readonly bool CanCompileExpressions = CheckExpressionCompilationSupport();
@@ -1096,6 +1098,47 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     ?? ((set, value) => addMethod.Invoke(set, new[] { value }));
             }
 #endif
+        }
+
+        public static Action<object> GetHashSetClearer(Type elementType)
+        {
+            if (elementType == null)
+            {
+                throw new ArgumentNullException(nameof(elementType));
+            }
+
+            return HashSetClearers.GetOrAdd(
+                elementType,
+                static type =>
+                {
+                    Type hashSetType = typeof(HashSet<>).MakeGenericType(type);
+                    MethodInfo clearMethod = hashSetType.GetMethod("Clear", Type.EmptyTypes);
+                    if (clearMethod == null)
+                    {
+                        return _ => { };
+                    }
+#if SUPPORT_EXPRESSION_COMPILE
+                    if (ExpressionsEnabled)
+                    {
+                        try
+                        {
+                            ParameterExpression target = Expression.Parameter(
+                                typeof(object),
+                                "set"
+                            );
+                            UnaryExpression cast = Expression.Convert(target, hashSetType);
+                            MethodCallExpression call = Expression.Call(cast, clearMethod);
+                            return Expression.Lambda<Action<object>>(call, target).Compile();
+                        }
+                        catch
+                        {
+                            // Fall through to reflection fallback
+                        }
+                    }
+#endif
+                    return set => clearMethod.Invoke(set, Array.Empty<object>());
+                }
+            );
         }
 
         /// <summary>
@@ -3645,7 +3688,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         }
 
 #if EMIT_DYNAMIC_IL
-        private static Func<object, object[], object>? BuildMethodInvokerIL(MethodInfo method)
+        private static Func<object, object[], object> BuildMethodInvokerIL(MethodInfo method)
         {
             try
             {
@@ -3705,7 +3748,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
         }
 
-        private static Func<object[], object>? BuildStaticMethodInvokerIL(MethodInfo method)
+        private static Func<object[], object> BuildStaticMethodInvokerIL(MethodInfo method)
         {
             try
             {
@@ -3759,7 +3802,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
         }
 
-        private static Func<object[], object>? BuildConstructorIL(ConstructorInfo constructor)
+        private static Func<object[], object> BuildConstructorIL(ConstructorInfo constructor)
         {
             try
             {
@@ -4075,7 +4118,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
         }
 
-        private static Func<object, object[], object>? CreateCompiledIndexerGetter(
+        private static Func<object, object[], object> CreateCompiledIndexerGetter(
             PropertyInfo property
         )
         {
@@ -4131,7 +4174,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
         }
 
-        private static Action<object, object, object[]>? CreateCompiledIndexerSetter(
+        private static Action<object, object, object[]> CreateCompiledIndexerSetter(
             PropertyInfo property
         )
         {
@@ -4206,7 +4249,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             );
         }
 
-        private static Func<object, object>? CreateCompiledFieldGetter(FieldInfo field)
+        private static Func<object, object> CreateCompiledFieldGetter(FieldInfo field)
         {
             try
             {
@@ -4375,7 +4418,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
         }
 
-        private static Func<TInstance, TValue>? CreateCompiledTypedFieldGetter<TInstance, TValue>(
+        private static Func<TInstance, TValue> CreateCompiledTypedFieldGetter<TInstance, TValue>(
             FieldInfo field
         )
         {
@@ -4417,7 +4460,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
         }
 
-        private static FieldSetter<TInstance, TValue>? CreateCompiledTypedFieldSetter<
+        private static FieldSetter<TInstance, TValue> CreateCompiledTypedFieldSetter<
             TInstance,
             TValue
         >(FieldInfo field)
@@ -4473,7 +4516,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
         }
 
-        private static Func<TValue>? CreateCompiledTypedStaticFieldGetter<TValue>(FieldInfo field)
+        private static Func<TValue> CreateCompiledTypedStaticFieldGetter<TValue>(FieldInfo field)
         {
             if (!ExpressionsEnabled)
             {
@@ -4496,7 +4539,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
         }
 
-        private static Action<TValue>? CreateCompiledTypedStaticFieldSetter<TValue>(FieldInfo field)
+        private static Action<TValue> CreateCompiledTypedStaticFieldSetter<TValue>(FieldInfo field)
         {
             if (!ExpressionsEnabled)
             {
@@ -4522,10 +4565,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
         }
 
-        private static Func<TInstance, TValue>? CreateCompiledTypedPropertyGetter<
-            TInstance,
-            TValue
-        >(PropertyInfo property, MethodInfo getMethod)
+        private static Func<TInstance, TValue> CreateCompiledTypedPropertyGetter<TInstance, TValue>(
+            PropertyInfo property,
+            MethodInfo getMethod
+        )
         {
             if (!ExpressionsEnabled)
             {
@@ -4566,7 +4609,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
         }
 
-        private static Action<TInstance, TValue>? CreateCompiledTypedPropertySetter<
+        private static Action<TInstance, TValue> CreateCompiledTypedPropertySetter<
             TInstance,
             TValue
         >(PropertyInfo property, MethodInfo setMethod)
@@ -4622,7 +4665,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
         }
 
-        private static Func<TValue>? CreateCompiledTypedStaticPropertyGetter<TValue>(
+        private static Func<TValue> CreateCompiledTypedStaticPropertyGetter<TValue>(
             PropertyInfo property,
             MethodInfo getMethod
         )
@@ -4648,7 +4691,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
         }
 
-        private static Action<TValue>? CreateCompiledTypedStaticPropertySetter<TValue>(
+        private static Action<TValue> CreateCompiledTypedStaticPropertySetter<TValue>(
             PropertyInfo property,
             MethodInfo setMethod
         )

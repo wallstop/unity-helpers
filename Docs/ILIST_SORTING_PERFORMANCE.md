@@ -31,7 +31,7 @@ Run the `IListSortingPerformanceTests.Benchmark` test inside Unity’s Test Runn
 
 <!-- ILIST_SORT_WINDOWS_START -->
 
-_Last updated 2025-10-28 22:30 UTC on Windows 11 (10.0.26200) 64bit_
+_Last updated 2025-10-29 01:48 UTC on Windows 11 (10.0.26200) 64bit_
 
 Times are single-pass measurements in milliseconds (lower is better). `n/a` indicates the algorithm was skipped for the dataset size.
 
@@ -39,31 +39,31 @@ Times are single-pass measurements in milliseconds (lower is better). `n/a` indi
 
 | List Size | Ghost    | Meteor   | Pattern-Defeating QuickSort | Grail    | Power    | Insertion |
 | --------- | -------- | -------- | --------------------------- | -------- | -------- | --------- |
-| 100       | 0.399 ms | 0.074 ms | 0.392 ms                    | 0.792 ms | 1.13 ms  | 0.066 ms  |
-| 1,000     | 0.025 ms | 0.027 ms | 0.008 ms                    | 0.025 ms | 0.008 ms | 0.006 ms  |
-| 10,000    | 0.259 ms | 0.365 ms | 0.067 ms                    | 0.117 ms | 0.042 ms | 0.054 ms  |
-| 100,000   | 3.16 ms  | 4.70 ms  | 0.674 ms                    | 1.21 ms  | 0.441 ms | n/a       |
-| 1,000,000 | 37.9 ms  | 58.2 ms  | 6.84 ms                     | 11.6 ms  | 4.12 ms  | n/a       |
+| 100       | 0.414 ms | 0.075 ms | 0.376 ms                    | 0.720 ms | 1.21 ms  | 0.063 ms  |
+| 1,000     | 0.021 ms | 0.025 ms | 0.007 ms                    | 0.017 ms | 0.005 ms | 0.006 ms  |
+| 10,000    | 0.264 ms | 0.352 ms | 0.067 ms                    | 0.118 ms | 0.041 ms | 0.054 ms  |
+| 100,000   | 3.15 ms  | 4.62 ms  | 0.668 ms                    | 1.16 ms  | 0.432 ms | n/a       |
+| 1,000,000 | 36.9 ms  | 57.4 ms  | 6.73 ms                     | 11.3 ms  | 4.12 ms  | n/a       |
 
 ### Nearly Sorted (2% swaps)
 
 | List Size | Ghost    | Meteor   | Pattern-Defeating QuickSort | Grail    | Power    | Insertion |
 | --------- | -------- | -------- | --------------------------- | -------- | -------- | --------- |
-| 100       | 0.002 ms | 0.002 ms | 0.006 ms                    | 0.165 ms | 0.056 ms | 0.001 ms  |
-| 1,000     | 0.021 ms | 0.025 ms | 0.032 ms                    | 0.009 ms | 0.021 ms | 0.006 ms  |
-| 10,000    | 0.274 ms | 0.356 ms | 0.384 ms                    | 0.073 ms | 0.233 ms | 0.058 ms  |
-| 100,000   | 3.24 ms  | 4.75 ms  | 4.74 ms                     | 0.717 ms | 3.85 ms  | n/a       |
-| 1,000,000 | 38.1 ms  | 58.7 ms  | 55.0 ms                     | 7.61 ms  | 49.5 ms  | n/a       |
+| 100       | 0.003 ms | 0.002 ms | 0.007 ms                    | 0.166 ms | 0.057 ms | 0.001 ms  |
+| 1,000     | 0.021 ms | 0.025 ms | 0.033 ms                    | 0.009 ms | 0.022 ms | 0.006 ms  |
+| 10,000    | 0.262 ms | 0.355 ms | 0.383 ms                    | 0.078 ms | 0.248 ms | 0.057 ms  |
+| 100,000   | 3.16 ms  | 4.66 ms  | 4.62 ms                     | 0.701 ms | 3.47 ms  | n/a       |
+| 1,000,000 | 37.3 ms  | 57.8 ms  | 54.0 ms                     | 7.41 ms  | 46.0 ms  | n/a       |
 
 ### Shuffled (deterministic)
 
 | List Size | Ghost    | Meteor   | Pattern-Defeating QuickSort | Grail    | Power    | Insertion |
 | --------- | -------- | -------- | --------------------------- | -------- | -------- | --------- |
-| 100       | 0.009 ms | 0.014 ms | 0.007 ms                    | 0.012 ms | 0.011 ms | 0.015 ms  |
-| 1,000     | 0.144 ms | 0.124 ms | 0.089 ms                    | 0.113 ms | 0.112 ms | 1.34 ms   |
-| 10,000    | 2.01 ms  | 1.81 ms  | 1.18 ms                     | 1.42 ms  | 1.51 ms  | 133 ms    |
-| 100,000   | 29.0 ms  | 24.1 ms  | 14.5 ms                     | 17.9 ms  | 18.3 ms  | n/a       |
-| 1,000,000 | 405 ms   | 302 ms   | 173 ms                      | 215 ms   | 221 ms   | n/a       |
+| 100       | 0.010 ms | 0.007 ms | 0.007 ms                    | 0.014 ms | 0.010 ms | 0.015 ms  |
+| 1,000     | 0.143 ms | 0.124 ms | 0.089 ms                    | 0.107 ms | 0.112 ms | 1.33 ms   |
+| 10,000    | 1.97 ms  | 1.79 ms  | 1.16 ms                     | 1.40 ms  | 1.45 ms  | 134 ms    |
+| 100,000   | 28.4 ms  | 24.0 ms  | 14.5 ms                     | 17.2 ms  | 17.4 ms  | n/a       |
+| 1,000,000 | 398 ms   | 304 ms   | 173 ms                      | 207 ms   | 212 ms   | n/a       |
 
 <!-- ILIST_SORT_WINDOWS_END -->
 

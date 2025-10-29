@@ -329,6 +329,7 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 
 **Relational Components** - Auto-wire hierarchy components
 → [Relational Components Guide](RELATIONAL_COMPONENTS.md) | [README](../README.md#component-attributes)
+→ [Relational Component Performance Benchmarks](RELATIONAL_COMPONENT_PERFORMANCE.md)
 
 **RTree2D** - 2D R-tree for bounding boxes
 → [2D Spatial Trees](SPATIAL_TREES_2D_GUIDE.md) | [2D Performance](SPATIAL_TREE_2D_PERFORMANCE.md)

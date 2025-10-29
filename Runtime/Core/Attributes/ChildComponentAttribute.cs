@@ -120,126 +120,132 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     Buffers<Transform>.List.Get();
                 List<Transform> childBuffer = childBufferResource.resource;
 
-                switch (metadata.kind)
+                if (metadata.kind == FieldKind.Single)
                 {
-                    case FieldKind.Array:
-                    {
-                        using PooledResource<List<Component>> cacheResource =
-                            Buffers<Component>.List.Get();
-                        List<Component> cache = cacheResource.resource;
-
-                        CollectChildComponents(component, metadata, childBuffer, cache);
-
-                        int filteredCount = FilterComponentsInPlace(
-                            cache,
+                    Component childComponent;
+                    if (
+                        TryAssignChildSingleFast(component, metadata, out childComponent)
+                        || TryAssignChildSingleFallback(
+                            component,
+                            metadata,
                             filters,
-                            metadata.attribute,
-                            metadata.elementType,
-                            metadata.isInterface
-                        );
-
-                        Array correctTypedArray = metadata.arrayCreator(filteredCount);
-                        for (int i = 0; i < filteredCount; ++i)
-                        {
-                            correctTypedArray.SetValue(cache[i], i);
-                        }
-
-                        metadata.setter(component, correctTypedArray);
-                        foundChild = filteredCount > 0;
-                        break;
-                    }
-                    case FieldKind.List:
+                            childBuffer,
+                            out childComponent
+                        )
+                    )
                     {
-                        using PooledResource<List<Component>> cacheResource =
-                            Buffers<Component>.List.Get();
-                        List<Component> cache = cacheResource.resource;
-
-                        CollectChildComponents(component, metadata, childBuffer, cache);
-
-                        int filteredCount = FilterComponentsInPlace(
-                            cache,
-                            filters,
-                            metadata.attribute,
-                            metadata.elementType,
-                            metadata.isInterface
-                        );
-
-                        IList instance = metadata.listCreator(filteredCount);
-                        for (int i = 0; i < filteredCount; ++i)
-                        {
-                            instance.Add(cache[i]);
-                        }
-
-                        metadata.setter(component, instance);
-                        foundChild = filteredCount > 0;
-                        break;
+                        metadata.setter(component, childComponent);
+                        foundChild = true;
                     }
-                    case FieldKind.HashSet:
-                    {
-                        using PooledResource<List<Component>> cacheResource =
-                            Buffers<Component>.List.Get();
-                        List<Component> cache = cacheResource.resource;
-
-                        CollectChildComponents(component, metadata, childBuffer, cache);
-
-                        int filteredCount = FilterComponentsInPlace(
-                            cache,
-                            filters,
-                            metadata.attribute,
-                            metadata.elementType,
-                            metadata.isInterface
-                        );
-
-                        object instance = metadata.hashSetCreator(filteredCount);
-                        for (int i = 0; i < filteredCount; ++i)
-                        {
-                            metadata.hashSetAdder(instance, cache[i]);
-                        }
-
-                        metadata.setter(component, instance);
-                        foundChild = filteredCount > 0;
-                        break;
-                    }
-                    default:
+                    else
                     {
                         foundChild = false;
-                        Component childComponent = null;
-
-                        using PooledResource<List<Component>> scratch = Buffers<Component>.List.Get(
-                            out List<Component> components
-                        );
-
-                        foreach (
-                            Transform child in component.IterateOverAllChildrenRecursivelyBreadthFirst(
-                                childBuffer,
-                                includeSelf: !metadata.attribute.OnlyDescendants,
-                                maxDepth: metadata.attribute.MaxDepth
-                            )
-                        )
+                    }
+                }
+                else
+                {
+                    switch (metadata.kind)
+                    {
+                        case FieldKind.Array:
                         {
-                            if (
-                                TryResolveSingleComponent(
-                                    child,
-                                    filters,
-                                    metadata.elementType,
-                                    metadata.isInterface,
-                                    metadata.attribute.AllowInterfaces,
-                                    components,
-                                    out Component resolved
-                                )
-                            )
+                            using PooledResource<List<Component>> cacheResource =
+                                Buffers<Component>.List.Get();
+                            List<Component> cache = cacheResource.resource;
+
+                            CollectChildComponents(component, metadata, childBuffer, cache);
+
+                            int filteredCount = FilterComponentsInPlace(
+                                cache,
+                                filters,
+                                metadata.attribute,
+                                metadata.elementType,
+                                metadata.isInterface
+                            );
+
+                            Array correctTypedArray = metadata.arrayCreator(filteredCount);
+                            for (int i = 0; i < filteredCount; ++i)
                             {
-                                childComponent = resolved;
-                                foundChild = true;
-                                break;
+                                correctTypedArray.SetValue(cache[i], i);
                             }
-                        }
 
-                        if (foundChild)
-                        {
-                            metadata.setter(component, childComponent);
+                            metadata.setter(component, correctTypedArray);
+                            foundChild = filteredCount > 0;
+                            break;
                         }
-                        break;
+                        case FieldKind.List:
+                        {
+                            using PooledResource<List<Component>> cacheResource =
+                                Buffers<Component>.List.Get();
+                            List<Component> cache = cacheResource.resource;
+
+                            CollectChildComponents(component, metadata, childBuffer, cache);
+
+                            int filteredCount = FilterComponentsInPlace(
+                                cache,
+                                filters,
+                                metadata.attribute,
+                                metadata.elementType,
+                                metadata.isInterface
+                            );
+
+                            object existing = metadata.getter(component);
+                            IList instance = existing as IList;
+                            if (instance != null)
+                            {
+                                instance.Clear();
+                            }
+                            else
+                            {
+                                instance = metadata.listCreator(filteredCount);
+                                metadata.setter(component, instance);
+                            }
+                            for (int i = 0; i < filteredCount; ++i)
+                            {
+                                instance.Add(cache[i]);
+                            }
+
+                            foundChild = filteredCount > 0;
+                            break;
+                        }
+                        case FieldKind.HashSet:
+                        {
+                            using PooledResource<List<Component>> cacheResource =
+                                Buffers<Component>.List.Get();
+                            List<Component> cache = cacheResource.resource;
+
+                            CollectChildComponents(component, metadata, childBuffer, cache);
+
+                            int filteredCount = FilterComponentsInPlace(
+                                cache,
+                                filters,
+                                metadata.attribute,
+                                metadata.elementType,
+                                metadata.isInterface
+                            );
+
+                            object instance = metadata.getter(component);
+                            if (instance != null && metadata.hashSetClearer != null)
+                            {
+                                metadata.hashSetClearer(instance);
+                            }
+                            else
+                            {
+                                instance = metadata.hashSetCreator(filteredCount);
+                                metadata.setter(component, instance);
+                            }
+                            for (int i = 0; i < filteredCount; ++i)
+                            {
+                                metadata.hashSetAdder(instance, cache[i]);
+                            }
+
+                            foundChild = filteredCount > 0;
+                            break;
+                        }
+                        default:
+                        {
+                            foundChild = false;
+                            break;
+                        }
                     }
                 }
 
@@ -248,6 +254,107 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     LogMissingComponentError(component, metadata, "child");
                 }
             }
+        }
+
+        private static bool TryAssignChildSingleFast(
+            Component component,
+            FieldMetadata<ChildComponentAttribute> metadata,
+            out Component childComponent
+        )
+        {
+            childComponent = null;
+            ChildComponentAttribute attribute = metadata.attribute;
+
+            if (
+                metadata.isInterface
+                || attribute.MaxDepth != 0
+                || attribute.TagFilter != null
+                || attribute.NameFilter != null
+            )
+            {
+                return false;
+            }
+
+            Component[] results = component.GetComponentsInChildren(
+                metadata.elementType,
+                attribute.IncludeInactive
+            );
+
+            if (results == null || results.Length == 0)
+            {
+                return false;
+            }
+
+            Transform componentTransform = component.transform;
+            for (int i = 0; i < results.Length; ++i)
+            {
+                Component candidate = results[i];
+                if (candidate == null)
+                {
+                    continue;
+                }
+
+                if (attribute.OnlyDescendants && candidate.transform == componentTransform)
+                {
+                    continue;
+                }
+
+                childComponent = candidate;
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool TryAssignChildSingleFallback(
+            Component component,
+            FieldMetadata<ChildComponentAttribute> metadata,
+            FilterParameters filters,
+            List<Transform> childBuffer,
+            out Component childComponent
+        )
+        {
+            bool needsScratch = metadata.isInterface || filters.RequiresPostProcessing;
+            List<Component> scratchList = null;
+            PooledResource<List<Component>> scratch = default;
+            if (needsScratch)
+            {
+                scratch = Buffers<Component>.List.Get(out scratchList);
+            }
+
+            childComponent = null;
+
+            foreach (
+                Transform child in component.IterateOverAllChildrenRecursivelyBreadthFirst(
+                    childBuffer,
+                    includeSelf: !metadata.attribute.OnlyDescendants,
+                    maxDepth: metadata.attribute.MaxDepth
+                )
+            )
+            {
+                if (
+                    TryResolveSingleComponent(
+                        child,
+                        filters,
+                        metadata.elementType,
+                        metadata.isInterface,
+                        metadata.attribute.AllowInterfaces,
+                        scratchList,
+                        out Component resolved
+                    )
+                )
+                {
+                    childComponent = resolved;
+                    break;
+                }
+            }
+
+            if (needsScratch)
+            {
+                scratch.Dispose();
+            }
+
+            return childComponent != null;
         }
 
         private static List<Component> CollectChildComponents(

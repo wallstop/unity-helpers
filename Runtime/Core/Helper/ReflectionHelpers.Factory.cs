@@ -479,7 +479,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     throw new ArgumentNullException(nameof(field));
                 }
 
-                Func<object, object>? getter;
+                Func<object, object> getter;
                 if (
                     TryGetOrCreateFieldGetter(
                         field,
@@ -541,7 +541,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     throw new ArgumentException("Field must be static", nameof(field));
                 }
 
-                Func<object>? getter;
+                Func<object> getter;
                 if (
                     TryGetOrCreateStaticFieldGetter(
                         field,
@@ -599,7 +599,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     throw new ArgumentNullException(nameof(field));
                 }
 
-                Action<object, object>? setter;
+                Action<object, object> setter;
                 if (
                     TryGetOrCreateFieldSetter(
                         field,
@@ -661,7 +661,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     throw new ArgumentException("Field must be static", nameof(field));
                 }
 
-                Action<object>? setter;
+                Action<object> setter;
                 if (
                     TryGetOrCreateStaticFieldSetter(
                         field,
@@ -719,7 +719,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     throw new ArgumentNullException(nameof(property));
                 }
 
-                Func<object, object>? getter;
+                Func<object, object> getter;
                 if (
                     TryGetOrCreatePropertyGetter(
                         property,
@@ -757,7 +757,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     throw new ArgumentNullException(nameof(property));
                 }
 
-                Action<object, object>? setter;
+                Action<object, object> setter;
                 if (
                     TryGetOrCreatePropertySetter(
                         property,
@@ -797,7 +797,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     );
                 }
 
-                Func<object, object[], object>? invoker;
+                Func<object, object[], object> invoker;
                 if (
                     TryGetOrCreateMethodInvoker(
                         method,
@@ -834,7 +834,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     throw new ArgumentException("Method must be static", nameof(method));
                 }
 
-                Func<object[], object>? invoker;
+                Func<object[], object> invoker;
                 if (
                     TryGetOrCreateStaticMethodInvoker(
                         method,
@@ -867,7 +867,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     throw new ArgumentNullException(nameof(ctor));
                 }
 
-                Func<object[], object>? invoker;
+                Func<object[], object> invoker;
                 if (
                     TryGetOrCreateConstructorInvoker(
                         ctor,
@@ -900,7 +900,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     throw new ArgumentNullException(nameof(ctor));
                 }
 
-                Func<object>? creator;
+                Func<object> creator;
                 if (
                     TryGetOrCreateParameterlessConstructor(
                         ctor,
@@ -933,7 +933,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     throw new ArgumentNullException(nameof(ctor));
                 }
 
-                Func<T>? creator;
+                Func<T> creator;
                 if (
                     TryGetOrCreateTypedParameterlessConstructor(
                         ctor,
@@ -968,7 +968,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     throw new ArgumentNullException(nameof(property));
                 }
 
-                Func<object, object[], object>? getter;
+                Func<object, object[], object> getter;
                 if (
                     TryGetOrCreateIndexerGetter(
                         property,
@@ -1001,7 +1001,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     throw new ArgumentNullException(nameof(property));
                 }
 
-                Action<object, object, object[]>? setter;
+                Action<object, object, object[]> setter;
                 if (
                     TryGetOrCreateIndexerSetter(
                         property,
@@ -1036,7 +1036,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     throw new ArgumentNullException(nameof(field));
                 }
 
-                Func<TInstance, TValue>? getter;
+                Func<TInstance, TValue> getter;
                 if (
                     TryGetOrCreateTypedFieldGetter<TInstance, TValue>(
                         field,
@@ -1071,7 +1071,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     throw new ArgumentNullException(nameof(field));
                 }
 
-                FieldSetter<TInstance, TValue>? setter;
+                FieldSetter<TInstance, TValue> setter;
                 if (
                     TryGetOrCreateTypedFieldSetter<TInstance, TValue>(
                         field,
@@ -1108,7 +1108,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     throw new ArgumentException("Field must be static", nameof(field));
                 }
 
-                Func<TValue>? getter;
+                Func<TValue> getter;
                 if (
                     TryGetOrCreateTypedStaticFieldGetter<TValue>(
                         field,
@@ -1145,7 +1145,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     throw new ArgumentException("Field must be static", nameof(field));
                 }
 
-                Action<TValue>? setter;
+                Action<TValue> setter;
                 if (
                     TryGetOrCreateTypedStaticFieldSetter<TValue>(
                         field,
@@ -1275,7 +1275,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #endif
             }
 
-            private static Func<object, object[], object>? CreateIndexerGetter(
+            private static Func<object, object[], object> CreateIndexerGetter(
                 PropertyInfo property,
                 ReflectionDelegateStrategy strategy
             )
@@ -1298,7 +1298,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return null;
             }
 
-            private static Action<object, object, object[]>? CreateIndexerSetter(
+            private static Action<object, object, object[]> CreateIndexerSetter(
                 PropertyInfo property,
                 ReflectionDelegateStrategy strategy
             )
@@ -1389,7 +1389,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 FieldInfo field
             )
             {
-                Func<TInstance, TValue>? getter = null;
+                Func<TInstance, TValue> getter = null;
                 if (SupportsExpressions)
                 {
                     getter = CreateCompiledTypedFieldGetter<TInstance, TValue>(field);
@@ -1430,7 +1430,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 FieldInfo field
             )
             {
-                FieldSetter<TInstance, TValue>? setter = null;
+                FieldSetter<TInstance, TValue> setter = null;
                 if (SupportsExpressions)
                 {
                     setter = CreateCompiledTypedFieldSetter<TInstance, TValue>(field);
@@ -1477,7 +1477,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
             private static Func<TValue> BuildTypedStaticFieldGetter<TValue>(FieldInfo field)
             {
-                Func<TValue>? getter = null;
+                Func<TValue> getter = null;
                 if (SupportsExpressions)
                 {
                     getter = CreateCompiledTypedStaticFieldGetter<TValue>(field);
@@ -1497,7 +1497,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
             private static Action<TValue> BuildTypedStaticFieldSetter<TValue>(FieldInfo field)
             {
-                Action<TValue>? setter = null;
+                Action<TValue> setter = null;
                 if (SupportsExpressions)
                 {
                     setter = CreateCompiledTypedStaticFieldSetter<TValue>(field);
@@ -1551,7 +1551,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     return false;
                 }
 
-                Func<object, object>? candidate = CreateFieldGetter(field, strategy);
+                Func<object, object> candidate = CreateFieldGetter(field, strategy);
                 if (candidate == null)
                 {
                     MarkFieldGetterStrategyUnavailable(key);
@@ -1581,7 +1581,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return resolved;
             }
 
-            private static Func<object, object>? CreateFieldGetter(
+            private static Func<object, object> CreateFieldGetter(
                 FieldInfo field,
                 ReflectionDelegateStrategy strategy
             )
@@ -1650,7 +1650,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     return false;
                 }
 
-                Action<object, object>? candidate = CreateFieldSetter(field, strategy);
+                Action<object, object> candidate = CreateFieldSetter(field, strategy);
                 if (candidate == null)
                 {
                     MarkFieldSetterStrategyUnavailable(key);
@@ -1680,7 +1680,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return resolved;
             }
 
-            private static Action<object, object>? CreateFieldSetter(
+            private static Action<object, object> CreateFieldSetter(
                 FieldInfo field,
                 ReflectionDelegateStrategy strategy
             )
@@ -1749,7 +1749,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     return false;
                 }
 
-                Func<object>? candidate = CreateStaticFieldGetter(field, strategy);
+                Func<object> candidate = CreateStaticFieldGetter(field, strategy);
                 if (candidate == null)
                 {
                     MarkStaticFieldGetterStrategyUnavailable(key);
@@ -1779,7 +1779,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return resolved;
             }
 
-            private static Func<object>? CreateStaticFieldGetter(
+            private static Func<object> CreateStaticFieldGetter(
                 FieldInfo field,
                 ReflectionDelegateStrategy strategy
             )
@@ -1843,7 +1843,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     return false;
                 }
 
-                Action<object>? candidate = CreateStaticFieldSetter(field, strategy);
+                Action<object> candidate = CreateStaticFieldSetter(field, strategy);
                 if (candidate == null)
                 {
                     MarkStaticFieldSetterStrategyUnavailable(key);
@@ -1873,7 +1873,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return resolved;
             }
 
-            private static Action<object>? CreateStaticFieldSetter(
+            private static Action<object> CreateStaticFieldSetter(
                 FieldInfo field,
                 ReflectionDelegateStrategy strategy
             )
@@ -1941,7 +1941,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     return false;
                 }
 
-                Func<TInstance, TValue>? candidate = CreateTypedFieldGetter<TInstance, TValue>(
+                Func<TInstance, TValue> candidate = CreateTypedFieldGetter<TInstance, TValue>(
                     field,
                     strategy
                 );
@@ -1981,7 +1981,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return (Func<TInstance, TValue>)resolved;
             }
 
-            private static Func<TInstance, TValue>? CreateTypedFieldGetter<TInstance, TValue>(
+            private static Func<TInstance, TValue> CreateTypedFieldGetter<TInstance, TValue>(
                 FieldInfo field,
                 ReflectionDelegateStrategy strategy
             )
@@ -2071,7 +2071,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     return false;
                 }
 
-                FieldSetter<TInstance, TValue>? candidate = CreateTypedFieldSetter<
+                FieldSetter<TInstance, TValue> candidate = CreateTypedFieldSetter<
                     TInstance,
                     TValue
                 >(field, strategy);
@@ -2111,10 +2111,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return (FieldSetter<TInstance, TValue>)resolved;
             }
 
-            private static FieldSetter<TInstance, TValue>? CreateTypedFieldSetter<
-                TInstance,
-                TValue
-            >(FieldInfo field, ReflectionDelegateStrategy strategy)
+            private static FieldSetter<TInstance, TValue> CreateTypedFieldSetter<TInstance, TValue>(
+                FieldInfo field,
+                ReflectionDelegateStrategy strategy
+            )
             {
                 if (strategy == ReflectionDelegateStrategy.Expressions)
                 {
@@ -2210,7 +2210,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     return false;
                 }
 
-                Func<TValue>? candidate = CreateTypedStaticFieldGetter<TValue>(field, strategy);
+                Func<TValue> candidate = CreateTypedStaticFieldGetter<TValue>(field, strategy);
                 if (candidate == null)
                 {
                     MarkTypedStaticFieldGetterStrategyUnavailable(key);
@@ -2244,7 +2244,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return (Func<TValue>)resolved;
             }
 
-            private static Func<TValue>? CreateTypedStaticFieldGetter<TValue>(
+            private static Func<TValue> CreateTypedStaticFieldGetter<TValue>(
                 FieldInfo field,
                 ReflectionDelegateStrategy strategy
             )
@@ -2318,7 +2318,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     return false;
                 }
 
-                Action<TValue>? candidate = CreateTypedStaticFieldSetter<TValue>(field, strategy);
+                Action<TValue> candidate = CreateTypedStaticFieldSetter<TValue>(field, strategy);
                 if (candidate == null)
                 {
                     MarkTypedStaticFieldSetterStrategyUnavailable(key);
@@ -2352,7 +2352,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return (Action<TValue>)resolved;
             }
 
-            private static Action<TValue>? CreateTypedStaticFieldSetter<TValue>(
+            private static Action<TValue> CreateTypedStaticFieldSetter<TValue>(
                 FieldInfo field,
                 ReflectionDelegateStrategy strategy
             )
@@ -2426,7 +2426,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     return false;
                 }
 
-                Func<object, object>? candidate = CreatePropertyGetter(property, strategy);
+                Func<object, object> candidate = CreatePropertyGetter(property, strategy);
                 if (candidate == null)
                 {
                     MarkPropertyGetterStrategyUnavailable(key);
@@ -2497,7 +2497,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     return false;
                 }
 
-                Action<object, object>? candidate = CreatePropertySetter(property, strategy);
+                Action<object, object> candidate = CreatePropertySetter(property, strategy);
                 if (candidate == null)
                 {
                     MarkPropertySetterStrategyUnavailable(key);
@@ -2549,7 +2549,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     return false;
                 }
 
-                Func<object, object[], object>? candidate = CreateIndexerGetter(property, strategy);
+                Func<object, object[], object> candidate = CreateIndexerGetter(property, strategy);
                 if (candidate == null)
                 {
                     MarkIndexerGetterStrategyUnavailable(key);
@@ -2625,7 +2625,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     return false;
                 }
 
-                Action<object, object, object[]>? candidate = CreateIndexerSetter(
+                Action<object, object, object[]> candidate = CreateIndexerSetter(
                     property,
                     strategy
                 );
@@ -2723,7 +2723,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     return false;
                 }
 
-                Func<object[], object>? candidate = CreateConstructorInvoker(ctor, strategy);
+                Func<object[], object> candidate = CreateConstructorInvoker(ctor, strategy);
                 if (candidate == null)
                 {
                     MarkConstructorInvokerStrategyUnavailable(key);
@@ -2797,7 +2797,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     return false;
                 }
 
-                Func<object>? candidate = CreateParameterlessConstructor(ctor, strategy);
+                Func<object> candidate = CreateParameterlessConstructor(ctor, strategy);
                 if (candidate == null)
                 {
                     MarkParameterlessConstructorStrategyUnavailable(key);
@@ -2869,7 +2869,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     return false;
                 }
 
-                Func<T>? candidate = CreateTypedParameterlessConstructor<T>(ctor, strategy);
+                Func<T> candidate = CreateTypedParameterlessConstructor<T>(ctor, strategy);
                 if (candidate == null)
                 {
                     MarkTypedParameterlessConstructorStrategyUnavailable(key);
@@ -4127,7 +4127,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return false;
             }
 
-            private static Func<object, object>? CreatePropertyGetter(
+            private static Func<object, object> CreatePropertyGetter(
                 PropertyInfo property,
                 ReflectionDelegateStrategy strategy
             )
@@ -4150,7 +4150,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return null;
             }
 
-            private static Action<object, object>? CreatePropertySetter(
+            private static Action<object, object> CreatePropertySetter(
                 PropertyInfo property,
                 ReflectionDelegateStrategy strategy
             )
@@ -4233,7 +4233,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     return false;
                 }
 
-                Func<object, object[], object>? candidate = CreateMethodInvoker(method, strategy);
+                Func<object, object[], object> candidate = CreateMethodInvoker(method, strategy);
                 if (candidate == null)
                 {
                     MarkMethodInvokerStrategyUnavailable(key);
@@ -4306,7 +4306,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     return false;
                 }
 
-                Func<object[], object>? candidate = CreateStaticMethodInvoker(method, strategy);
+                Func<object[], object> candidate = CreateStaticMethodInvoker(method, strategy);
                 if (candidate == null)
                 {
                     MarkStaticMethodInvokerStrategyUnavailable(key);
@@ -4343,7 +4343,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return resolved;
             }
 
-            private static Func<object, object[], object>? CreateMethodInvoker(
+            private static Func<object, object[], object> CreateMethodInvoker(
                 MethodInfo method,
                 ReflectionDelegateStrategy strategy
             )
@@ -4368,7 +4368,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return (instance, args) => method.Invoke(instance, args);
             }
 
-            private static Func<object[], object>? CreateStaticMethodInvoker(
+            private static Func<object[], object> CreateStaticMethodInvoker(
                 MethodInfo method,
                 ReflectionDelegateStrategy strategy
             )
@@ -4393,7 +4393,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return args => method.Invoke(null, args);
             }
 
-            private static Func<object[], object>? CreateConstructorInvoker(
+            private static Func<object[], object> CreateConstructorInvoker(
                 ConstructorInfo ctor,
                 ReflectionDelegateStrategy strategy
             )
@@ -4402,7 +4402,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 {
                     if (SupportsExpressions)
                     {
-                        Func<object[], object>? invoker = CreateCompiledConstructor(ctor);
+                        Func<object[], object> invoker = CreateCompiledConstructor(ctor);
                         if (invoker != null)
                         {
                             return invoker;
@@ -4430,7 +4430,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return args => ctor.Invoke(args);
             }
 
-            private static Func<object>? CreateParameterlessConstructor(
+            private static Func<object> CreateParameterlessConstructor(
                 ConstructorInfo ctor,
                 ReflectionDelegateStrategy strategy
             )
@@ -4439,7 +4439,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 {
                     if (SupportsExpressions)
                     {
-                        Func<object>? creator = CreateCompiledParameterlessConstructor(ctor);
+                        Func<object> creator = CreateCompiledParameterlessConstructor(ctor);
                         if (creator != null)
                         {
                             return creator;
@@ -4460,7 +4460,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return null;
             }
 
-            private static Func<T>? CreateTypedParameterlessConstructor<T>(
+            private static Func<T> CreateTypedParameterlessConstructor<T>(
                 ConstructorInfo ctor,
                 ReflectionDelegateStrategy strategy
             )
@@ -4469,7 +4469,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 {
                     if (SupportsExpressions)
                     {
-                        Func<T>? creator = CreateCompiledParameterlessConstructor<T>(ctor);
+                        Func<T> creator = CreateCompiledParameterlessConstructor<T>(ctor);
                         if (creator != null)
                         {
                             return creator;
@@ -4506,7 +4506,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                         nameof(property)
                     );
 
-                Func<TInstance, TValue>? getter = null;
+                Func<TInstance, TValue> getter = null;
                 if (SupportsExpressions)
                 {
                     getter = CreateCompiledTypedPropertyGetter<TInstance, TValue>(
@@ -4553,7 +4553,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                         nameof(property)
                     );
 
-                Action<TInstance, TValue>? setter = null;
+                Action<TInstance, TValue> setter = null;
                 if (SupportsExpressions)
                 {
                     setter = CreateCompiledTypedPropertySetter<TInstance, TValue>(
@@ -4600,7 +4600,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                         nameof(property)
                     );
 
-                Func<TValue>? getter = null;
+                Func<TValue> getter = null;
                 if (SupportsExpressions)
                 {
                     getter = CreateCompiledTypedStaticPropertyGetter<TValue>(property, getMethod);
@@ -4634,7 +4634,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                         nameof(property)
                     );
 
-                Action<TValue>? setter = null;
+                Action<TValue> setter = null;
                 if (SupportsExpressions)
                 {
                     setter = CreateCompiledTypedStaticPropertySetter<TValue>(property, setMethod);

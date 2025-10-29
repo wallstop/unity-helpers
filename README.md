@@ -660,6 +660,7 @@ public class Enemy : MonoBehaviour
 ```
 
 See the in-depth guide: [Relational Components](Docs/RELATIONAL_COMPONENTS.md).
+Performance snapshots: [Relational Component Performance Benchmarks](Docs/RELATIONAL_COMPONENT_PERFORMANCE.md).
 
 ---
 
