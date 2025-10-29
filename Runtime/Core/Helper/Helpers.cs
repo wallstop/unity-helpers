@@ -48,8 +48,8 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             StringComparer.OrdinalIgnoreCase
         );
 
-        private static string[] CachedLayerNames = Array.Empty<string>();
-        private static bool LayerCacheInitialized;
+        private static string[] _CachedLayerNames = Array.Empty<string>();
+        private static bool _LayerCacheInitialized;
 
 #if UNITY_EDITOR
         private static readonly string[] DefaultPrefabSearchFolders =
@@ -69,8 +69,8 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void CLearLayerNames()
         {
-            CachedLayerNames = Array.Empty<string>();
-            LayerCacheInitialized = false;
+            _CachedLayerNames = Array.Empty<string>();
+            _LayerCacheInitialized = false;
         }
 
         /// <summary>
@@ -118,7 +118,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         }
 
         internal static string[] AllSpriteLabels { get; private set; } = Array.Empty<string>();
-        private static bool SpriteLabelCacheInitialized;
+        private static bool _SpriteLabelCacheInitialized;
 
         /// <summary>
         /// Gets all unique sprite labels in the project (Editor only).
@@ -134,7 +134,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
 
 #if UNITY_EDITOR
-            if (SpriteLabelCacheInitialized)
+            if (_SpriteLabelCacheInitialized)
             {
                 return AllSpriteLabels;
             }
@@ -169,7 +169,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
 
 #if UNITY_EDITOR
-            string[] cached = SpriteLabelCacheInitialized
+            string[] cached = _SpriteLabelCacheInitialized
                 ? AllSpriteLabels
                 : GetAllSpriteLabelNames();
 
@@ -199,8 +199,8 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 string[] editorLayers = InternalEditorUtility.layers;
                 if (editorLayers is { Length: > 0 })
                 {
-                    LayerCacheInitialized = true;
-                    CachedLayerNames = editorLayers;
+                    _LayerCacheInitialized = true;
+                    _CachedLayerNames = editorLayers;
                     return editorLayers;
                 }
             }
@@ -209,9 +209,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 // Fall through to runtime-safe fallback below
             }
 #endif
-            if (!Application.isEditor && Application.isPlaying && LayerCacheInitialized)
+            if (!Application.isEditor && Application.isPlaying && _LayerCacheInitialized)
             {
-                return CachedLayerNames;
+                return _CachedLayerNames;
             }
 
             using PooledResource<List<string>> layerBuffer = Buffers<string>.List.Get();
@@ -225,25 +225,25 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 }
             }
 
-            LayerCacheInitialized = true;
+            _LayerCacheInitialized = true;
             int layerCount = layers.Count;
             if (layerCount == 0)
             {
-                CachedLayerNames = Array.Empty<string>();
-                return CachedLayerNames;
+                _CachedLayerNames = Array.Empty<string>();
+                return _CachedLayerNames;
             }
 
-            if (CachedLayerNames == null || CachedLayerNames.Length != layerCount)
+            if (_CachedLayerNames == null || _CachedLayerNames.Length != layerCount)
             {
-                CachedLayerNames = new string[layerCount];
+                _CachedLayerNames = new string[layerCount];
             }
 
             for (int i = 0; i < layerCount; ++i)
             {
-                CachedLayerNames[i] = layers[i];
+                _CachedLayerNames[i] = layers[i];
             }
 
-            return CachedLayerNames;
+            return _CachedLayerNames;
         }
 
         /// <summary>
@@ -321,7 +321,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             if (labels == null || labels.Count == 0)
             {
                 AllSpriteLabels = Array.Empty<string>();
-                SpriteLabelCacheInitialized = true;
+                _SpriteLabelCacheInitialized = true;
                 return;
             }
 
@@ -350,12 +350,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
 
             AllSpriteLabels = cache;
-            SpriteLabelCacheInitialized = true;
+            _SpriteLabelCacheInitialized = true;
         }
 
         internal static void ResetSpriteLabelCache()
         {
-            SpriteLabelCacheInitialized = false;
+            _SpriteLabelCacheInitialized = false;
             AllSpriteLabels = Array.Empty<string>();
         }
 

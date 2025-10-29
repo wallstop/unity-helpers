@@ -67,6 +67,68 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         private static readonly Dictionary<Type, Func<int, object>> HashSetWithCapacityCreators =
             new();
         private static readonly Dictionary<Type, Action<object>> HashSetClearers = new();
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static Func<int, Array> GetArrayCreatorCached(Type type)
+        {
+            if (!ArrayCreators.TryGetValue(type, out Func<int, Array> factory))
+            {
+                factory = GetArrayCreator(type);
+                ArrayCreators[type] = factory;
+            }
+
+            return factory;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static Func<int, IList> GetListWithCapacityCreatorCached(Type elementType)
+        {
+            if (!ListWithCapacityCreators.TryGetValue(elementType, out Func<int, IList> factory))
+            {
+                factory = GetListWithCapacityCreator(elementType);
+                ListWithCapacityCreators[elementType] = factory;
+            }
+
+            return factory;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static Func<IList> GetListCreatorCached(Type elementType)
+        {
+            if (!ListCreators.TryGetValue(elementType, out Func<IList> factory))
+            {
+                factory = GetListCreator(elementType);
+                ListCreators[elementType] = factory;
+            }
+
+            return factory;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static Func<int, object> GetHashSetWithCapacityCreatorCached(Type elementType)
+        {
+            if (
+                !HashSetWithCapacityCreators.TryGetValue(elementType, out Func<int, object> factory)
+            )
+            {
+                factory = GetHashSetWithCapacityCreator(elementType);
+                HashSetWithCapacityCreators[elementType] = factory;
+            }
+
+            return factory;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static Action<object> GetHashSetClearerCached(Type elementType)
+        {
+            if (!HashSetClearers.TryGetValue(elementType, out Action<object> clearer))
+            {
+                clearer = GetHashSetClearer(elementType);
+                HashSetClearers[elementType] = clearer;
+            }
+
+            return clearer;
+        }
 #else
         private static readonly ConcurrentDictionary<Type, Func<int, Array>> ArrayCreators = new();
         private static readonly ConcurrentDictionary<Type, Func<IList>> ListCreators = new();
@@ -79,52 +141,88 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             Func<int, object>
         > HashSetWithCapacityCreators = new();
         private static readonly ConcurrentDictionary<Type, Action<object>> HashSetClearers = new();
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static Func<int, Array> GetArrayCreatorCached(Type type)
+        {
+            return ArrayCreators.GetOrAdd(type, static elementType => GetArrayCreator(elementType));
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static Func<int, IList> GetListWithCapacityCreatorCached(Type elementType)
+        {
+            return ListWithCapacityCreators.GetOrAdd(
+                elementType,
+                static type => GetListWithCapacityCreator(type)
+            );
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static Func<IList> GetListCreatorCached(Type elementType)
+        {
+            return ListCreators.GetOrAdd(elementType, static type => GetListCreator(type));
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static Func<int, object> GetHashSetWithCapacityCreatorCached(Type elementType)
+        {
+            return HashSetWithCapacityCreators.GetOrAdd(
+                elementType,
+                static type => GetHashSetWithCapacityCreator(type)
+            );
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static Action<object> GetHashSetClearerCached(Type elementType)
+        {
+            return HashSetClearers.GetOrAdd(elementType, static type => GetHashSetClearer(type));
+        }
 #endif
 
         private static readonly bool CanCompileExpressions = CheckExpressionCompilationSupport();
         private static readonly bool DynamicIlSupported = CheckDynamicIlSupport();
-        private static bool? expressionCapabilityOverride;
-        private static bool? dynamicIlCapabilityOverride;
+        private static bool? _ExpressionCapabilityOverride;
+        private static bool? _DynamicIlCapabilityOverride;
 
         internal static bool ExpressionsEnabled =>
-            expressionCapabilityOverride ?? CanCompileExpressions;
+            _ExpressionCapabilityOverride ?? CanCompileExpressions;
 
-        internal static bool DynamicIlEnabled => dynamicIlCapabilityOverride ?? DynamicIlSupported;
+        internal static bool DynamicIlEnabled => _DynamicIlCapabilityOverride ?? DynamicIlSupported;
 
         internal static IDisposable OverrideReflectionCapabilities(
             bool? expressions,
             bool? dynamicIl
         )
         {
-            bool? previousExpressions = expressionCapabilityOverride;
-            bool? previousDynamicIl = dynamicIlCapabilityOverride;
-            expressionCapabilityOverride = expressions;
-            dynamicIlCapabilityOverride = dynamicIl;
+            bool? previousExpressions = _ExpressionCapabilityOverride;
+            bool? previousDynamicIl = _DynamicIlCapabilityOverride;
+            _ExpressionCapabilityOverride = expressions;
+            _DynamicIlCapabilityOverride = dynamicIl;
             return new CapabilityOverrideScope(previousExpressions, previousDynamicIl);
         }
 
         private sealed class CapabilityOverrideScope : IDisposable
         {
-            private readonly bool? previousExpressions;
-            private readonly bool? previousDynamicIl;
-            private bool disposed;
+            private readonly bool? _previousExpressions;
+            private readonly bool? _previousDynamicIl;
+            private bool _disposed;
 
             internal CapabilityOverrideScope(bool? expressions, bool? dynamicIl)
             {
-                previousExpressions = expressions;
-                previousDynamicIl = dynamicIl;
+                _previousExpressions = expressions;
+                _previousDynamicIl = dynamicIl;
             }
 
             public void Dispose()
             {
-                if (disposed)
+                if (_disposed)
                 {
                     return;
                 }
 
-                expressionCapabilityOverride = previousExpressions;
-                dynamicIlCapabilityOverride = previousDynamicIl;
-                disposed = true;
+                _ExpressionCapabilityOverride = _previousExpressions;
+                _DynamicIlCapabilityOverride = _previousDynamicIl;
+                _disposed = true;
             }
         }
 
@@ -253,7 +351,6 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 );
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         /// <summary>
         /// Creates a new array instance of element <paramref name="type"/> with the specified length.
         /// </summary>
@@ -262,15 +359,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// Array ints = ReflectionHelpers.CreateArray(typeof(int), 16); // int[16]
         /// ]]></code>
         /// </example>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Array CreateArray(Type type, int length)
         {
-            return ArrayCreators
-                // ReSharper disable once ConvertClosureToMethodGroup
-                .GetOrAdd(type, elementType => GetArrayCreator(elementType))
-                .Invoke(length);
+            return GetArrayCreatorCached(type).Invoke(length);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         /// <summary>
         /// Creates a new <see cref="List{T}"/> instance for <paramref name="elementType"/> with the specified capacity.
         /// </summary>
@@ -279,15 +373,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// IList list = ReflectionHelpers.CreateList(typeof(string), 128); // List<string> with Capacity=128
         /// ]]></code>
         /// </example>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static IList CreateList(Type elementType, int length)
         {
-            return ListWithCapacityCreators
-                // ReSharper disable once ConvertClosureToMethodGroup
-                .GetOrAdd(elementType, type => GetListWithCapacityCreator(type))
-                .Invoke(length);
+            return GetListWithCapacityCreatorCached(elementType).Invoke(length);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         /// <summary>
         /// Creates a new <see cref="List{T}"/> instance for <paramref name="elementType"/>.
         /// </summary>
@@ -296,10 +387,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// IList list = ReflectionHelpers.CreateList(typeof(UnityEngine.Vector3));
         /// ]]></code>
         /// </example>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static IList CreateList(Type elementType)
         {
-            // ReSharper disable once ConvertClosureToMethodGroup
-            return ListCreators.GetOrAdd(elementType, type => GetListCreator(type)).Invoke();
+            return GetListCreatorCached(elementType).Invoke();
         }
 
         // Test helpers to avoid reflection in tests when asserting cache state
@@ -955,7 +1046,6 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #endif
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         /// <summary>
         /// Creates a <see cref="HashSet{T}"/> instance for the given element type with capacity.
         /// </summary>
@@ -967,12 +1057,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// object set = ReflectionHelpers.CreateHashSet(typeof(string), 64); // HashSet<string>
         /// ]]></code>
         /// </example>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static object CreateHashSet(Type elementType, int capacity)
         {
-            return HashSetWithCapacityCreators
-                // ReSharper disable once ConvertClosureToMethodGroup
-                .GetOrAdd(elementType, type => GetHashSetWithCapacityCreator(type))
-                .Invoke(capacity);
+            return GetHashSetWithCapacityCreatorCached(elementType).Invoke(capacity);
         }
 
         /// <summary>
@@ -1136,7 +1224,8 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                         }
                     }
 #endif
-                    return set => clearMethod.Invoke(set, Array.Empty<object>());
+                    MethodInfo closedMethod = clearMethod;
+                    return set => closedMethod.Invoke(set, Array.Empty<object>());
                 }
             );
         }
@@ -1149,13 +1238,6 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// <param name="parameters">Optional parameters.</param>
         /// <returns>The return value from the method, or null for void.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        /// <summary>
-        /// Invokes an instance method using a cached delegate when possible.
-        /// </summary>
-        /// <param name="method">Instance method to invoke.</param>
-        /// <param name="instance">Target instance.</param>
-        /// <param name="parameters">Method parameters (optional).</param>
-        /// <returns>Boxed return value or null for void methods.</returns>
         public static object InvokeMethod(
             MethodInfo method,
             object instance,
@@ -1172,36 +1254,23 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// <param name="parameters">Optional parameters.</param>
         /// <returns>The return value from the method, or null for void.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        /// <summary>
-        /// Invokes a static method using a cached delegate when possible.
-        /// </summary>
-        /// <param name="method">Static method.</param>
-        /// <param name="parameters">Method parameters.</param>
-        /// <returns>Boxed return value or null for void methods.</returns>
         public static object InvokeStaticMethod(MethodInfo method, params object[] parameters)
         {
             return DelegateFactory.GetStaticMethodInvoker(method).Invoke(parameters);
         }
 
         /// <summary>
-        /// Constructs an instance using a cached constructor invoker.
-        /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        /// <summary>
         /// Creates an instance using a constructor via a cached delegate.
         /// </summary>
         /// <param name="constructor">Constructor to invoke.</param>
         /// <param name="parameters">Constructor parameters.</param>
         /// <returns>Created instance.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static object CreateInstance(ConstructorInfo constructor, params object[] parameters)
         {
             return DelegateFactory.GetConstructorInvoker(constructor).Invoke(parameters);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        /// <summary>
-        /// Constructs an instance using a cached constructor invoker and returns it as T.
-        /// </summary>
         /// <summary>
         /// Constructs an instance using a cached constructor invoker and returns it as T.
         /// </summary>
@@ -1216,6 +1285,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// var p = ReflectionHelpers.CreateInstance<Player>(name, level);
         /// ]]></code>
         /// </example>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T CreateInstance<T>(params object[] parameters)
         {
             Type type = typeof(T);
@@ -3064,7 +3134,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 FieldLookup[key] = field;
             }
 #else
-            field = FieldLookup.GetOrAdd(key, k => k.type.GetField(k.name, k.flags));
+            field = FieldLookup.GetOrAdd(key, static k => k.type.GetField(k.name, k.flags));
 #endif
             return field != null;
         }
@@ -3094,7 +3164,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 PropertyLookup[key] = property;
             }
 #else
-            property = PropertyLookup.GetOrAdd(key, k => k.type.GetProperty(k.name, k.flags));
+            property = PropertyLookup.GetOrAdd(
+                key,
+                static k => k.type.GetProperty(k.name, k.flags)
+            );
 #endif
             return property != null;
         }
@@ -3137,20 +3210,21 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #else
             method = MethodLookup.GetOrAdd(
                 key,
-                k =>
+                static (tuple, state) =>
                 {
-                    if (paramTypes == null)
+                    if (state.parameterTypes == null)
                     {
-                        return k.type.GetMethod(name, k.flags);
+                        return tuple.type.GetMethod(state.methodName, tuple.flags);
                     }
-                    return k.type.GetMethod(
-                        name,
-                        k.flags,
+                    return tuple.type.GetMethod(
+                        state.methodName,
+                        tuple.flags,
                         binder: null,
-                        types: paramTypes,
+                        types: state.parameterTypes,
                         modifiers: null
                     );
-                }
+                },
+                (methodName: name, parameterTypes: paramTypes)
             );
 #endif
             return method != null;
@@ -3219,11 +3293,32 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
 #if SINGLE_THREADED
         private static readonly Dictionary<Type, Func<object, bool>> EnabledPropertyGetters = new();
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static Func<object, bool> GetEnabledPropertyGetterCached(Type componentType)
+        {
+            if (!EnabledPropertyGetters.TryGetValue(componentType, out Func<object, bool> getter))
+            {
+                getter = BuildEnabledPropertyGetter(componentType);
+                EnabledPropertyGetters[componentType] = getter;
+            }
+
+            return getter;
+        }
 #else
         private static readonly ConcurrentDictionary<
             Type,
             Func<object, bool>
         > EnabledPropertyGetters = new();
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static Func<object, bool> GetEnabledPropertyGetterCached(Type componentType)
+        {
+            return EnabledPropertyGetters.GetOrAdd(
+                componentType,
+                static type => BuildEnabledPropertyGetter(type)
+            );
+        }
 #endif
 
         private static Func<object, bool> BuildEnabledPropertyGetter(Type type)
@@ -3356,10 +3451,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
 
             Type componentType = component.GetType();
-            Func<object, bool> enabledGetter = EnabledPropertyGetters.GetOrAdd(
-                componentType,
-                inputType => BuildEnabledPropertyGetter(inputType)
-            );
+            Func<object, bool> enabledGetter = GetEnabledPropertyGetterCached(componentType);
 
             if (enabledGetter == null)
             {
@@ -3889,9 +3981,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 ParameterExpression valueParam = Expression.Parameter(typeof(object), "value");
 
                 Expression castSet = Expression.Convert(setParam, hashSetType);
-                Expression castValue = elementType.IsValueType
-                    ? Expression.Convert(valueParam, elementType)
-                    : Expression.Convert(valueParam, elementType);
+                Expression castValue = Expression.Convert(valueParam, elementType);
 
                 MethodCallExpression call = Expression.Call(castSet, addMethod, castValue);
                 Expression body =
