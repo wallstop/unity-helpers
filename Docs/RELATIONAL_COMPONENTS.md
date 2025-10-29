@@ -210,6 +210,10 @@ Examples:
 [SiblingComponent] private HashSet<Renderer> allRenderers;     // HashSet<T> supported
 ```
 
+> **Performance note:** Sibling lookups do not cache results between calls. In profiling we found these assignments typically run once per GameObject (e.g., during `Awake`), so the extra bookkeeping and invalidation cost of a cache outweighed the benefits. If you need updated references later, call `AssignSiblingComponents` again after the hierarchy changes.
+>
+> **Codegen tip:** You can opt into Roslyn-generated fast paths by setting `CodeGenPreference = RelationalCodeGenPreference.Enabled` on the attribute (or by enabling the default in _Project Settings ▸ Wallstop Studios ▸ Relational CodeGen_). The first release targets single-component fields; unsupported configurations automatically fall back to reflection.
+
 ### ParentComponent
 
 - Scope: Up the transform chain (optionally excluding self)
@@ -227,6 +231,8 @@ Examples:
 // Interface/base-type resolution is supported by default
 [ParentComponent] private IHealth healthProvider;
 ```
+
+> **Performance note:** With the default settings (no `MaxDepth`, no interface filtering), parent assignments now use a cached `GetComponentsInParent<T>()` delegate, bypassing the pooled list path. Enabling `MaxDepth` or interface searches automatically falls back to the exhaustive traversal.
 
 ### ChildComponent
 
@@ -248,6 +254,8 @@ Examples:
 // Gather into a HashSet (unique results, no duplicates) and limit count
 [ChildComponent(OnlyDescendants = true, MaxCount = 10)] private HashSet<Rigidbody2D> firstTenRigidbodies;
 ```
+
+> **Performance note:** When you avoid depth limits and interface filtering, child assignments run through a cached `GetComponentsInChildren<T>()` delegate to stay allocation-free. Turning on `MaxDepth` or interface searches still works, but the assigner reverts to the breadth-first traversal to honour those constraints.
 
 ## Common Options (All Attributes)
 

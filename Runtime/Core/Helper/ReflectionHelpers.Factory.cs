@@ -4668,7 +4668,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #else
                 Delegate del = TypedStaticInvoker0.GetOrAdd(
                     method,
-                    m => BuildTypedStaticInvoker0<TReturn>(m)
+                    static m => BuildTypedStaticInvoker0<TReturn>(m)
                 );
                 return (Func<TReturn>)del;
 #endif
@@ -4692,7 +4692,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #else
                 Delegate del = TypedStaticInvoker1.GetOrAdd(
                     method,
-                    m => BuildTypedStaticInvoker1<T1, TReturn>(m)
+                    static m => BuildTypedStaticInvoker1<T1, TReturn>(m)
                 );
                 return (Func<T1, TReturn>)del;
 #endif
@@ -4716,7 +4716,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #else
                 Delegate del = TypedStaticInvoker2.GetOrAdd(
                     method,
-                    m => BuildTypedStaticInvoker2<T1, T2, TReturn>(m)
+                    static m => BuildTypedStaticInvoker2<T1, T2, TReturn>(m)
                 );
                 return (Func<T1, T2, TReturn>)del;
 #endif
@@ -4743,7 +4743,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #else
                 Delegate del = TypedStaticInvoker3.GetOrAdd(
                     method,
-                    m => BuildTypedStaticInvoker3<T1, T2, T3, TReturn>(m)
+                    static m => BuildTypedStaticInvoker3<T1, T2, T3, TReturn>(m)
                 );
                 return (Func<T1, T2, T3, TReturn>)del;
 #endif
@@ -4771,7 +4771,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #else
                 Delegate del = TypedStaticInvoker4.GetOrAdd(
                     method,
-                    m => BuildTypedStaticInvoker4<T1, T2, T3, T4, TReturn>(m)
+                    static m => BuildTypedStaticInvoker4<T1, T2, T3, T4, TReturn>(m)
                 );
                 return (Func<T1, T2, T3, T4, TReturn>)del;
 #endif
@@ -4793,7 +4793,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #else
                 Delegate del = TypedStaticAction0.GetOrAdd(
                     method,
-                    m => BuildStaticActionInvoker0(m)
+                    static m => BuildStaticActionInvoker0(m)
                 );
                 return (Action)del;
 #endif
@@ -4815,7 +4815,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #else
                 Delegate del = TypedStaticAction1.GetOrAdd(
                     method,
-                    m => BuildStaticActionInvoker1<T1>(m)
+                    static m => BuildStaticActionInvoker1<T1>(m)
                 );
                 return (Action<T1>)del;
 #endif
@@ -4837,7 +4837,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #else
                 Delegate del = TypedStaticAction2.GetOrAdd(
                     method,
-                    m => BuildStaticActionInvoker2<T1, T2>(m)
+                    static m => BuildStaticActionInvoker2<T1, T2>(m)
                 );
                 return (Action<T1, T2>)del;
 #endif
@@ -4861,7 +4861,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #else
                 Delegate del = TypedStaticAction3.GetOrAdd(
                     method,
-                    m => BuildStaticActionInvoker3<T1, T2, T3>(m)
+                    static m => BuildStaticActionInvoker3<T1, T2, T3>(m)
                 );
                 return (Action<T1, T2, T3>)del;
 #endif
@@ -4885,7 +4885,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #else
                 Delegate del = TypedStaticAction4.GetOrAdd(
                     method,
-                    m => BuildStaticActionInvoker4<T1, T2, T3, T4>(m)
+                    static m => BuildStaticActionInvoker4<T1, T2, T3, T4>(m)
                 );
                 return (Action<T1, T2, T3, T4>)del;
 #endif
@@ -4910,7 +4910,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #else
                 Delegate del = TypedInstanceInvoker0.GetOrAdd(
                     method,
-                    m => BuildInstanceInvoker0<TInstance, TReturn>(m)
+                    static m => BuildInstanceInvoker0<TInstance, TReturn>(m)
                 );
                 return (Func<TInstance, TReturn>)del;
 #endif
@@ -4936,7 +4936,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #else
                 Delegate del = TypedInstanceInvoker1.GetOrAdd(
                     method,
-                    m => BuildInstanceInvoker1<TInstance, T1, TReturn>(m)
+                    static m => BuildInstanceInvoker1<TInstance, T1, TReturn>(m)
                 );
                 return (Func<TInstance, T1, TReturn>)del;
 #endif
@@ -4963,7 +4963,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #else
                 Delegate del = TypedInstanceInvoker2.GetOrAdd(
                     method,
-                    m => BuildInstanceInvoker2<TInstance, T1, T2, TReturn>(m)
+                    static m => BuildInstanceInvoker2<TInstance, T1, T2, TReturn>(m)
                 );
                 return (Func<TInstance, T1, T2, TReturn>)del;
 #endif
@@ -4991,7 +4991,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #else
                 Delegate del = TypedInstanceInvoker3.GetOrAdd(
                     method,
-                    m => BuildInstanceInvoker3<TInstance, T1, T2, T3, TReturn>(m)
+                    static m => BuildInstanceInvoker3<TInstance, T1, T2, T3, TReturn>(m)
                 );
                 return (Func<TInstance, T1, T2, T3, TReturn>)del;
 #endif
@@ -5020,7 +5020,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #else
                 Delegate del = TypedInstanceInvoker4.GetOrAdd(
                     method,
-                    m => BuildInstanceInvoker4<TInstance, T1, T2, T3, T4, TReturn>(m)
+                    static m => BuildInstanceInvoker4<TInstance, T1, T2, T3, T4, TReturn>(m)
                 );
                 return (Func<TInstance, T1, T2, T3, T4, TReturn>)del;
 #endif
@@ -5044,7 +5044,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #else
                 Delegate del = TypedInstanceAction0.GetOrAdd(
                     method,
-                    m => BuildInstanceActionInvoker0<TInstance>(m)
+                    static m => BuildInstanceActionInvoker0<TInstance>(m)
                 );
                 return (Action<TInstance>)del;
 #endif
@@ -5068,7 +5068,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #else
                 Delegate del = TypedInstanceAction1.GetOrAdd(
                     method,
-                    m => BuildInstanceActionInvoker1<TInstance, T1>(m)
+                    static m => BuildInstanceActionInvoker1<TInstance, T1>(m)
                 );
                 return (Action<TInstance, T1>)del;
 #endif
@@ -5094,7 +5094,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #else
                 Delegate del = TypedInstanceAction2.GetOrAdd(
                     method,
-                    m => BuildInstanceActionInvoker2<TInstance, T1, T2>(m)
+                    static m => BuildInstanceActionInvoker2<TInstance, T1, T2>(m)
                 );
                 return (Action<TInstance, T1, T2>)del;
 #endif
@@ -5121,7 +5121,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #else
                 Delegate del = TypedInstanceAction3.GetOrAdd(
                     method,
-                    m => BuildInstanceActionInvoker3<TInstance, T1, T2, T3>(m)
+                    static m => BuildInstanceActionInvoker3<TInstance, T1, T2, T3>(m)
                 );
                 return (Action<TInstance, T1, T2, T3>)del;
 #endif
@@ -5149,7 +5149,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #else
                 Delegate del = TypedInstanceAction4.GetOrAdd(
                     method,
-                    m => BuildInstanceActionInvoker4<TInstance, T1, T2, T3, T4>(m)
+                    static m => BuildInstanceActionInvoker4<TInstance, T1, T2, T3, T4>(m)
                 );
                 return (Action<TInstance, T1, T2, T3, T4>)del;
 #endif

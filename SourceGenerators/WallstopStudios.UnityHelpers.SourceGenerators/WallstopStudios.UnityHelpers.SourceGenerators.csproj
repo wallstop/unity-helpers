@@ -1,0 +1,63 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+    <MicrosoftCodeAnalysisVersion>4.14.0</MicrosoftCodeAnalysisVersion>
+    <SystemCollectionsImmutableVersion>9.0.10</SystemCollectionsImmutableVersion>
+    <SystemReflectionMetadataVersion>9.0.0</SystemReflectionMetadataVersion>
+    <SystemRuntimeCompilerServicesUnsafeVersion>6.0.0</SystemRuntimeCompilerServicesUnsafeVersion>
+    <SystemTextJsonVersion>9.0.10</SystemTextJsonVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.11.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="System.Collections.Immutable" Version="9.0.10">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="System.Text.Json" Version="9.0.10">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+  <ItemGroup>
+    <AdditionalFiles Include="$(MSBuildProjectDirectory)\..\..\Editor\Settings\relational_codegen_defaults.json" Condition="Exists('$(MSBuildProjectDirectory)\..\..\Editor\Settings\relational_codegen_defaults.json')" />
+    <AdditionalFiles Include="AnalyzerReleases.Shipped.md" />
+  </ItemGroup>
+  <Target Name="PostBuildCopyAnalyzers" AfterTargets="Build">
+    <PropertyGroup>
+      <PackageRootDir>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/../../'))</PackageRootDir>
+      <EditorAnalyzersDir>$([System.IO.Path]::Combine('$(PackageRootDir)', 'Editor', 'Analyzers'))</EditorAnalyzersDir>
+      <UnityRootCandidate1>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/../../../../'))</UnityRootCandidate1>
+      <UnityAssetsDir>$([System.IO.Path]::Combine('$(UnityRootCandidate1)', 'Assets'))</UnityAssetsDir>
+      <UnityAssetsEditorDir>$([System.IO.Path]::Combine('$(UnityAssetsDir)', 'Editor'))</UnityAssetsEditorDir>
+      <UnityAssetsEditorWallstopStudiosDir>$([System.IO.Path]::Combine('$(UnityAssetsEditorDir)', 'Wallstop Studios'))</UnityAssetsEditorWallstopStudiosDir>
+      <UnityAssetsPluginsEditorDir>$([System.IO.Path]::Combine('$(UnityAssetsDir)', 'Plugins', 'Editor', 'WallstopStudios.UnityHelpers'))</UnityAssetsPluginsEditorDir>
+      <AnalyzerDll>$(TargetPath)</AnalyzerDll>
+      <AnalyzerPdb>$(TargetDir)$(TargetName).pdb</AnalyzerPdb>
+    </PropertyGroup>
+    <ItemGroup>
+      <AnalyzerOutput Include="$(AnalyzerDll)" />
+      <AnalyzerDependency Include="$(NuGetPackageRoot)microsoft.codeanalysis.common\$(MicrosoftCodeAnalysisVersion)\lib\netstandard2.0\Microsoft.CodeAnalysis.dll" />
+      <AnalyzerDependency Include="$(NuGetPackageRoot)microsoft.codeanalysis.csharp\$(MicrosoftCodeAnalysisVersion)\lib\netstandard2.0\Microsoft.CodeAnalysis.CSharp.dll" />
+      <AnalyzerDependency Include="$(NuGetPackageRoot)system.collections.immutable\$(SystemCollectionsImmutableVersion)\lib\netstandard2.0\System.Collections.Immutable.dll" />
+      <AnalyzerDependency Include="$(NuGetPackageRoot)system.reflection.metadata\$(SystemReflectionMetadataVersion)\lib\netstandard2.0\System.Reflection.Metadata.dll" />
+      <AnalyzerDependency Include="$(NuGetPackageRoot)system.runtime.compilerservices.unsafe\$(SystemRuntimeCompilerServicesUnsafeVersion)\lib\netstandard2.0\System.Runtime.CompilerServices.Unsafe.dll" />
+      <AnalyzerDependency Include="$(NuGetPackageRoot)system.text.json\$(SystemTextJsonVersion)\lib\netstandard2.0\System.Text.Json.dll" />
+      <AllAnalyzerFiles Include="@(AnalyzerOutput)" />
+      <AllAnalyzerFiles Include="@(AnalyzerDependency)" Condition="Exists('%(AnalyzerDependency.Identity)')" />
+    </ItemGroup>
+    <MakeDir Directories="$(EditorAnalyzersDir)" Condition="!Exists('$(EditorAnalyzersDir)')" />
+    <Copy SourceFiles="@(AllAnalyzerFiles)" DestinationFolder="$(EditorAnalyzersDir)" SkipUnchangedFiles="true" />
+    <MakeDir Directories="$(UnityAssetsPluginsEditorDir)" Condition="Exists('$(UnityAssetsDir)') AND !Exists('$(UnityAssetsPluginsEditorDir)')" />
+    <Copy SourceFiles="@(AllAnalyzerFiles)" DestinationFolder="$(UnityAssetsPluginsEditorDir)" SkipUnchangedFiles="true" Condition="Exists('$(UnityAssetsPluginsEditorDir)')" />
+    <MakeDir Directories="$(UnityAssetsEditorWallstopStudiosDir)" Condition="Exists('$(UnityAssetsDir)') AND !Exists('$(UnityAssetsEditorWallstopStudiosDir)')" />
+    <Copy SourceFiles="@(AllAnalyzerFiles)" DestinationFolder="$(UnityAssetsEditorWallstopStudiosDir)" SkipUnchangedFiles="true" Condition="Exists('$(UnityAssetsEditorWallstopStudiosDir)')" />
+  </Target>
+</Project>

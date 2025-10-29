@@ -10,6 +10,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     using UnityEngine;
     using UnityEngine.Serialization;
     using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
@@ -299,7 +300,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                             {
                                 string fileName = Path.GetFileName(assetPath);
                                 finalAssetPath = Path.Combine(outputDirAssetPath, fileName)
-                                    .Replace('\\', '/');
+                                    .SanitizePath();
                                 EnsureDirectory(finalAssetPath);
                             }
 
@@ -420,12 +421,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 0,
                 Application.dataPath.Length - "Assets".Length
             );
-            return Path.Combine(projectRoot, assetPath).Replace('\\', '/');
+            return Path.Combine(projectRoot, assetPath).SanitizePath();
         }
 
         private static void EnsureDirectory(string assetPath)
         {
-            string dirAsset = Path.GetDirectoryName(assetPath)?.Replace('\\', '/');
+            string dirAsset = Path.GetDirectoryName(assetPath)?.SanitizePath();
             if (string.IsNullOrEmpty(dirAsset))
             {
                 return;

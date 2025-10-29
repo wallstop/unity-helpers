@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
     using WallstopStudios.UnityHelpers.Tests.Editor.Utils;
 
@@ -35,7 +36,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void AnalyzeDetectsNewChangedUnchangedAndOrphans()
         {
-            string srcA = Path.Combine(SrcRoot, "A.anim").Replace('\\', '/');
+            string srcA = Path.Combine(SrcRoot, "A.anim").SanitizePath();
             CreateEmptyClip(srcA);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -55,7 +56,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             Assert.AreEqual(0, orphansCount);
 
             // Create destination copy to become unchanged
-            string dstA = Path.Combine(DstRoot, "A.anim").Replace('\\', '/');
+            string dstA = Path.Combine(DstRoot, "A.anim").SanitizePath();
             Assert.IsTrue(AssetDatabase.CopyAsset(srcA, dstA));
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -66,7 +67,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             AssetDatabase.Refresh();
 
             // Add orphan in destination
-            string dstB = Path.Combine(DstRoot, "B.anim").Replace('\\', '/');
+            string dstB = Path.Combine(DstRoot, "B.anim").SanitizePath();
             CreateEmptyClip(dstB);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -87,8 +88,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void CopyChangedPreservesGuidAndOverwrites()
         {
-            string srcA = Path.Combine(SrcRoot, "A.anim").Replace('\\', '/');
-            string dstA = Path.Combine(DstRoot, "A.anim").Replace('\\', '/');
+            string srcA = Path.Combine(SrcRoot, "A.anim").SanitizePath();
+            string dstA = Path.Combine(DstRoot, "A.anim").SanitizePath();
             CreateEmptyClip(srcA);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -121,8 +122,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void MirrorDeleteRemovesOrphansWhenNotDryRun()
         {
-            string srcA = Path.Combine(SrcRoot, "A.anim").Replace('\\', '/');
-            string dstB = Path.Combine(DstRoot, "B.anim").Replace('\\', '/');
+            string srcA = Path.Combine(SrcRoot, "A.anim").SanitizePath();
+            string dstB = Path.Combine(DstRoot, "B.anim").SanitizePath();
             CreateEmptyClip(srcA);
             CreateEmptyClip(dstB);
             AssetDatabase.SaveAssets();

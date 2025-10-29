@@ -598,8 +598,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 // Prefer Assets-relative paths for UI components that expect them
                 if (!candidate.StartsWith("Assets", StringComparison.OrdinalIgnoreCase))
                 {
-                    string assetsRoot = Application.dataPath.Replace('\\', '/');
-                    string full = candidate.Replace('\\', '/');
+                    string assetsRoot = Application.dataPath.SanitizePath();
+                    string full = candidate.SanitizePath();
                     if (full.StartsWith(assetsRoot, StringComparison.OrdinalIgnoreCase))
                     {
                         candidate = "Assets" + full.Substring(assetsRoot.Length);
@@ -622,10 +622,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
 
             // Ensure Assets-relative if possible
-            string path = assetsRelativeDir.Replace('\\', '/');
+            string path = assetsRelativeDir.SanitizePath();
             if (!path.StartsWith("Assets", StringComparison.OrdinalIgnoreCase))
             {
-                string assetsRoot = Application.dataPath.Replace('\\', '/');
+                string assetsRoot = Application.dataPath.SanitizePath();
                 string full = path;
                 if (full.StartsWith(assetsRoot, StringComparison.OrdinalIgnoreCase))
                 {

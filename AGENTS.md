@@ -26,6 +26,7 @@
 - Do not use underscores in function names, especially test function names.
 - Do not use regions, anywhere, ever.
 - Avoid `var` wherever possible, use expressive types.
+- Do not use nullable reference types.
 
 ## Testing Guidelines
 

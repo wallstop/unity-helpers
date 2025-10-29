@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
     using WallstopStudios.UnityHelpers.Tests.Editor.Utils;
 
@@ -29,7 +30,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void AdjustsPivotToAlphaWeightedCenter()
         {
-            string path = Path.Combine(Root, "pivot.png").Replace('\\', '/');
+            string path = Path.Combine(Root, "pivot.png").SanitizePath();
             // 10x10 image, opaque L-shape to bias center toward bottom-left
             CreateAsymmetricAlpha(path, 10, 10);
             AssetDatabase.Refresh();
@@ -66,7 +67,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
 
         private static void CreateAsymmetricAlpha(string relPath, int w, int h)
         {
-            string dir = Path.GetDirectoryName(relPath).Replace('\\', '/');
+            string dir = Path.GetDirectoryName(relPath).SanitizePath();
             EnsureFolder(dir);
             Texture2D t = new(w, h, TextureFormat.RGBA32, false) { alphaIsTransparency = true };
             Color[] pix = new Color[w * h];
@@ -106,7 +107,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
                     ),
                     rel
                 )
-                .Replace('\\', '/');
+                .SanitizePath();
         }
     }
 #endif

@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
     using WallstopStudios.UnityHelpers.Tests.Editor.Utils;
     using Object = UnityEngine.Object;
@@ -32,7 +33,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void RespectsAlphaCutoffWhenComputingPivot()
         {
-            string src = (Root + "/alpha_bias.png").Replace('\\', '/');
+            string src = (Root + "/alpha_bias.png").SanitizePath();
             // 20x20 with a faint (alpha=0.2) 4x4 block at bottom-left and a solid 4x4 at top-right
             CreateDualAlphaPattern(src, 20, 20);
             AssetDatabase.Refresh();

@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
     using WallstopStudios.UnityHelpers.Tests.Editor.Utils;
 
@@ -29,7 +30,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void CropsTransparentMarginsAndPreservesPivot()
         {
-            string src = Path.Combine(Root, "src.png").Replace('\\', '/');
+            string src = Path.Combine(Root, "src.png").SanitizePath();
             // 16x16 with an opaque 10x10 square starting at (3,3)
             CreatePngWithOpaqueRect(src, 16, 16, 3, 3, 10, 10, Color.white);
             AssetDatabase.Refresh();
@@ -72,8 +73,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void WritesToOutputDirectoryWhenNotOverwriting()
         {
-            string src = Path.Combine(Root, "src2.png").Replace('\\', '/');
-            string outDir = Path.Combine(Root, "Out").Replace('\\', '/');
+            string src = Path.Combine(Root, "src2.png").SanitizePath();
+            string outDir = Path.Combine(Root, "Out").SanitizePath();
             EnsureFolder(outDir);
             CreatePngWithOpaqueRect(src, 8, 8, 2, 2, 4, 4, Color.green);
             AssetDatabase.Refresh();
@@ -96,7 +97,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
 
             AssetDatabase.Refresh();
 
-            string dst = Path.Combine(outDir, "Cropped_src2.png").Replace('\\', '/');
+            string dst = Path.Combine(outDir, "Cropped_src2.png").SanitizePath();
             Assert.That(File.Exists(RelToFull(dst)), Is.True, "Cropped output should exist");
 
             Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(dst);
@@ -116,7 +117,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             Color color
         )
         {
-            string dir = Path.GetDirectoryName(relPath).Replace('\\', '/');
+            string dir = Path.GetDirectoryName(relPath)?.SanitizePath();
             EnsureFolder(dir);
             Texture2D t = new(w, h, TextureFormat.RGBA32, false) { alphaIsTransparency = true };
             Color[] pix = new Color[w * h];
@@ -155,7 +156,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
                     ),
                     rel
                 )
-                .Replace('\\', '/');
+                .SanitizePath();
         }
     }
 #endif

@@ -8,7 +8,9 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     using System.Linq.Expressions;
     using System.Reflection;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.CodeGen;
     using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Utils;
     using static RelationalComponentProcessor;
 
@@ -96,10 +98,49 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 type => GetFieldMetadata<SiblingComponentAttribute>(type)
             );
 
+            bool hasGeneratedHandlers = RelationalCodeGenRegistry.TryGetHandlers(
+                componentType,
+                out RelationalGeneratedHandlers generatedHandlers
+            );
+            Func<Component, bool>? siblingHandler = hasGeneratedHandlers
+                ? generatedHandlers.Sibling
+                : null;
+            string[]? generatedFieldNames = hasGeneratedHandlers
+                ? generatedHandlers.SiblingFields
+                : null;
+            bool generatorInvoked = false;
+
             foreach (FieldMetadata<SiblingComponentAttribute> metadata in fields)
             {
+                bool preferGenerated = RelationalCodeGenUtility.ShouldUseCodeGen(
+                    metadata.attribute,
+                    RelationalAttributeKind.Sibling
+                );
+
+                bool handledByGenerator =
+                    preferGenerated
+                    && siblingHandler != null
+                    && generatedFieldNames != null
+                    && Array.IndexOf(generatedFieldNames, metadata.field.Name) >= 0;
+
                 if (ShouldSkipAssignment(metadata, component))
                 {
+                    continue;
+                }
+
+                if (handledByGenerator)
+                {
+                    if (!generatorInvoked)
+                    {
+                        RelationalCodeGenRegistry.TryAssignSibling(component);
+                        generatorInvoked = true;
+                    }
+
+                    if (!ValueHelpers.IsAssigned(metadata.getter(component)))
+                    {
+                        LogMissingComponentError(component, metadata, "sibling");
+                    }
+
                     continue;
                 }
 
@@ -314,6 +355,21 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 component,
                 metadata.elementType
             );
+
+            return AssignComponentsFromArray(component, metadata, componentsArray);
+        }
+
+        private static bool AssignComponentsFromArray(
+            Component component,
+            FieldMetadata<SiblingComponentAttribute> metadata,
+            Array componentsArray
+        )
+        {
+            if (componentsArray == null)
+            {
+                componentsArray = Array.CreateInstance(metadata.elementType, 0);
+            }
+
             int count = componentsArray.Length;
 
             switch (metadata.kind)
@@ -325,8 +381,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 }
                 case FieldKind.List:
                 {
-                    object existing = metadata.getter(component);
-                    IList instance = existing as IList;
+                    IList instance = metadata.getter(component) as IList;
                     if (instance != null)
                     {
                         instance.Clear();
@@ -346,20 +401,20 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 }
                 case FieldKind.HashSet:
                 {
-                    object instance = metadata.getter(component);
-                    if (instance != null && metadata.hashSetClearer != null)
+                    object hashSet = metadata.getter(component);
+                    if (hashSet != null && metadata.hashSetClearer != null)
                     {
-                        metadata.hashSetClearer(instance);
+                        metadata.hashSetClearer(hashSet);
                     }
                     else
                     {
-                        instance = metadata.hashSetCreator(count);
-                        metadata.setter(component, instance);
+                        hashSet = metadata.hashSetCreator(count);
+                        metadata.setter(component, hashSet);
                     }
 
                     for (int i = 0; i < count; ++i)
                     {
-                        metadata.hashSetAdder(instance, componentsArray.GetValue(i));
+                        metadata.hashSetAdder(hashSet, componentsArray.GetValue(i));
                     }
 
                     return count > 0;

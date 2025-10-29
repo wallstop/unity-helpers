@@ -663,7 +663,7 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
             if (!string.IsNullOrEmpty(rel))
             {
                 // If rel starts with Assets, strip it for subsequent segments
-                display = rel.Replace('\\', '/');
+                display = rel.SanitizePath();
                 if (display.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))
                 {
                     display = display.Substring("Assets/".Length);

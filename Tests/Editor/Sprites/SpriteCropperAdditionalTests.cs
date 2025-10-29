@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
     using WallstopStudios.UnityHelpers.Tests.Editor.Utils;
     using Object = UnityEngine.Object;
@@ -30,7 +31,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void AppliesPaddingAndAdjustsPivotCorrectly()
         {
-            string src = (Root + "/pad_src.png").Replace('\\', '/');
+            string src = (Root + "/pad_src.png").SanitizePath();
             // 20x20, opaque 10x10 at (5,5)
             CreatePngWithOpaqueRect(src, 20, 20, 5, 5, 10, 10, Color.white);
             AssetDatabase.Refresh();

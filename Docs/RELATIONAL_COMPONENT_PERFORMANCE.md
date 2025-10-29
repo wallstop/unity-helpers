@@ -12,7 +12,7 @@ Relational component attributes (`[SiblingComponent]`, `[ParentComponent]`, `[Ch
 
 <!-- RELATIONAL_COMPONENTS_WINDOWS_START -->
 
-_Last updated 2025-10-29 02:16 UTC on Windows 11 (10.0.26200) 64bit_
+_Last updated 2025-10-29 17:54 UTC on Windows 11 (10.0.26200) 64bit_
 
 Numbers capture repeated `Assign*Components` calls for one second per scenario.
 Higher operations per second and lower bytes per operation are better.
@@ -21,18 +21,18 @@ Higher operations per second and lower bytes per operation are better.
 
 | Scenario          | Relational Ops/s | Manual Ops/s | Rel/Manual | Iterations |
 | ----------------- | ---------------: | -----------: | ---------: | ---------: |
-| Parent - Single   |          969,868 |    5,043,927 |      0.19x |    970,034 |
-| Parent - Array    |          677,132 |    3,051,072 |      0.22x |    677,132 |
-| Parent - List     |          757,995 |    2,805,808 |      0.27x |    757,996 |
-| Parent - HashSet  |          748,237 |    2,689,130 |      0.28x |    748,238 |
-| Child - Single    |          998,004 |    3,219,095 |      0.31x |    998,005 |
-| Child - Array     |          266,959 |    2,189,596 |      0.12x |    266,959 |
-| Child - List      |          237,332 |    1,851,231 |      0.13x |    237,333 |
-| Child - HashSet   |          235,315 |    1,637,097 |      0.14x |    235,315 |
-| Sibling - Single  |        3,656,776 |   10,794,297 |      0.34x |  3,656,777 |
-| Sibling - Array   |          891,994 |    2,364,355 |      0.38x |    891,994 |
-| Sibling - List    |        1,133,150 |    1,999,333 |      0.57x |  1,133,151 |
-| Sibling - HashSet |        1,105,136 |    1,632,675 |      0.68x |  1,105,137 |
+| Parent - Single   |          933,414 |    4,946,787 |      0.19x |    933,567 |
+| Parent - Array    |          653,811 |    3,015,493 |      0.22x |    653,811 |
+| Parent - List     |          711,840 |    2,752,766 |      0.26x |    711,841 |
+| Parent - HashSet  |          712,752 |    2,696,221 |      0.26x |    712,752 |
+| Child - Single    |          986,752 |    3,202,365 |      0.31x |    986,752 |
+| Child - Array     |          259,534 |    2,147,453 |      0.12x |    259,534 |
+| Child - List      |          231,263 |    1,813,055 |      0.13x |    231,263 |
+| Child - HashSet   |          228,941 |    1,559,521 |      0.15x |    228,941 |
+| Sibling - Single  |        1,895,421 |   10,646,058 |      0.18x |  1,895,421 |
+| Sibling - Array   |          707,255 |    2,343,246 |      0.30x |    707,256 |
+| Sibling - List    |          865,033 |    2,009,015 |      0.43x |    865,034 |
+| Sibling - HashSet |          842,848 |    1,671,913 |      0.50x |    842,848 |
 
 ### Allocations per operation (bytes, lower is better)
 

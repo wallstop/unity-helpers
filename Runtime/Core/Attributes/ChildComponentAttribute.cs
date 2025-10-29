@@ -2,12 +2,22 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 {
     using System;
     using System.Collections;
+    using System.Collections.Concurrent;
     using System.Collections.Generic;
+    using System.Linq;
+    using System.Linq.Expressions;
+    using System.Reflection;
     using Extension;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Utils;
     using static RelationalComponentProcessor;
+#if UNITY_EDITOR
+    using WallstopStudios.UnityHelpers.Core.Diagnostics;
+#endif
+#if UNITY_2020_2_OR_NEWER
+    using Unity.Profiling;
+#endif
 
     /// <summary>
     /// Automatically assigns child components (components down the transform hierarchy) to the decorated field.
@@ -82,6 +92,15 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             FieldMetadata<ChildComponentAttribute>[]
         > FieldsByType = new();
 
+#if UNITY_2020_2_OR_NEWER
+        private static readonly ProfilerMarker ChildFastPathMarker = new ProfilerMarker(
+            "RelationalComponents.Child.FastPath"
+        );
+        private static readonly ProfilerMarker ChildFallbackMarker = new ProfilerMarker(
+            "RelationalComponents.Child.Fallback"
+        );
+#endif
+
         /// <summary>
         /// Assigns fields on <paramref name="component"/> marked with <see cref="ChildComponentAttribute"/>.
         /// </summary>
@@ -148,6 +167,19 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     {
                         case FieldKind.Array:
                         {
+                            if (
+                                TryAssignChildCollectionFast(
+                                    component,
+                                    metadata,
+                                    filters,
+                                    out bool assignedAny
+                                )
+                            )
+                            {
+                                foundChild = assignedAny;
+                                break;
+                            }
+
                             using PooledResource<List<Component>> cacheResource =
                                 Buffers<Component>.List.Get();
                             List<Component> cache = cacheResource.resource;
@@ -174,6 +206,19 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                         }
                         case FieldKind.List:
                         {
+                            if (
+                                TryAssignChildCollectionFast(
+                                    component,
+                                    metadata,
+                                    filters,
+                                    out bool assignedAny
+                                )
+                            )
+                            {
+                                foundChild = assignedAny;
+                                break;
+                            }
+
                             using PooledResource<List<Component>> cacheResource =
                                 Buffers<Component>.List.Get();
                             List<Component> cache = cacheResource.resource;
@@ -209,6 +254,19 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                         }
                         case FieldKind.HashSet:
                         {
+                            if (
+                                TryAssignChildCollectionFast(
+                                    component,
+                                    metadata,
+                                    filters,
+                                    out bool assignedAny
+                                )
+                            )
+                            {
+                                foundChild = assignedAny;
+                                break;
+                            }
+
                             using PooledResource<List<Component>> cacheResource =
                                 Buffers<Component>.List.Get();
                             List<Component> cache = cacheResource.resource;
@@ -306,6 +364,175 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             return false;
         }
 
+        private static bool TryAssignChildCollectionFast(
+            Component component,
+            FieldMetadata<ChildComponentAttribute> metadata,
+            FilterParameters filters,
+            out bool assignedAny
+        )
+        {
+            assignedAny = false;
+            ChildComponentAttribute attribute = metadata.attribute;
+            if (metadata.isInterface || filters.RequiresPostProcessing || attribute.MaxDepth > 0)
+            {
+#if UNITY_EDITOR
+                RelationalComponentInstrumentation.RecordChildFastPath(false);
+#endif
+#if UNITY_2020_2_OR_NEWER
+                ChildFallbackMarker.Begin();
+                ChildFallbackMarker.End();
+#endif
+                return false;
+            }
+
+#if UNITY_2020_2_OR_NEWER
+            using (ChildFastPathMarker.Auto())
+#endif
+            {
+                Array children = ChildComponentFastInvoker.GetArray(
+                    component,
+                    metadata.elementType,
+                    attribute.IncludeInactive
+                );
+
+                Array filtered = FilterChildArray(component, metadata, children);
+                assignedAny = AssignChildComponentsFromArray(component, metadata, filtered);
+#if UNITY_EDITOR
+                RelationalComponentInstrumentation.RecordChildFastPath(true);
+#endif
+                return true;
+            }
+        }
+
+        private static Array FilterChildArray(
+            Component component,
+            FieldMetadata<ChildComponentAttribute> metadata,
+            Array source
+        )
+        {
+            Type elementType = metadata.elementType;
+            if (source == null || source.Length == 0)
+            {
+                return Array.CreateInstance(elementType, 0);
+            }
+
+            ChildComponentAttribute attribute = metadata.attribute;
+            bool onlyDescendants = attribute.OnlyDescendants;
+            Transform self = component.transform;
+
+            int maxCount = attribute.MaxCount;
+            if (!onlyDescendants && maxCount <= 0)
+            {
+                return source;
+            }
+
+            int limit = maxCount > 0 ? Math.Min(maxCount, source.Length) : source.Length;
+            Array staged = Array.CreateInstance(elementType, limit);
+            int writeIndex = 0;
+
+            for (int i = 0; i < source.Length && writeIndex < limit; ++i)
+            {
+                Component candidate = source.GetValue(i) as Component;
+                if (candidate == null)
+                {
+                    continue;
+                }
+
+                if (onlyDescendants && candidate.transform == self)
+                {
+                    continue;
+                }
+
+                staged.SetValue(candidate, writeIndex++);
+            }
+
+            if (writeIndex == staged.Length)
+            {
+                return staged;
+            }
+
+            Array result = Array.CreateInstance(elementType, writeIndex);
+            if (writeIndex > 0)
+            {
+                Array.Copy(staged, 0, result, 0, writeIndex);
+            }
+
+            return result;
+        }
+
+        private static bool AssignChildComponentsFromArray(
+            Component component,
+            FieldMetadata<ChildComponentAttribute> metadata,
+            Array componentsArray
+        )
+        {
+            if (componentsArray == null)
+            {
+                componentsArray = Array.CreateInstance(metadata.elementType, 0);
+            }
+
+            int count = componentsArray.Length;
+
+            switch (metadata.kind)
+            {
+                case FieldKind.Array:
+                {
+                    Array instance = metadata.arrayCreator(count);
+                    for (int i = 0; i < count; ++i)
+                    {
+                        instance.SetValue(componentsArray.GetValue(i), i);
+                    }
+
+                    metadata.setter(component, instance);
+                    return count > 0;
+                }
+                case FieldKind.List:
+                {
+                    IList list = metadata.getter(component) as IList;
+                    if (list != null)
+                    {
+                        list.Clear();
+                    }
+                    else
+                    {
+                        list = metadata.listCreator(count);
+                        metadata.setter(component, list);
+                    }
+
+                    for (int i = 0; i < count; ++i)
+                    {
+                        list.Add(componentsArray.GetValue(i));
+                    }
+
+                    return count > 0;
+                }
+                case FieldKind.HashSet:
+                {
+                    object hashSet = metadata.getter(component);
+                    if (hashSet != null && metadata.hashSetClearer != null)
+                    {
+                        metadata.hashSetClearer(hashSet);
+                    }
+                    else
+                    {
+                        hashSet = metadata.hashSetCreator(count);
+                        metadata.setter(component, hashSet);
+                    }
+
+                    for (int i = 0; i < count; ++i)
+                    {
+                        metadata.hashSetAdder(hashSet, componentsArray.GetValue(i));
+                    }
+
+                    return count > 0;
+                }
+                default:
+                {
+                    return false;
+                }
+            }
+        }
+
         private static bool TryAssignChildSingleFallback(
             Component component,
             FieldMetadata<ChildComponentAttribute> metadata,
@@ -386,6 +613,57 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 cache.AddRange(components);
             }
             return cache;
+        }
+    }
+
+    internal static class ChildComponentFastInvoker
+    {
+        private static readonly ConcurrentDictionary<
+            Type,
+            Func<Component, bool, Array>
+        > ArrayGetters = new();
+
+        private static readonly MethodInfo GetComponentsInChildrenGeneric = typeof(Component)
+            .GetMethods(BindingFlags.Instance | BindingFlags.Public)
+            .First(method =>
+                method.Name == nameof(Component.GetComponentsInChildren)
+                && method.IsGenericMethodDefinition
+                && method.GetParameters().Length == 1
+                && method.GetParameters()[0].ParameterType == typeof(bool)
+            );
+
+        internal static Array GetArray(Component component, Type elementType, bool includeInactive)
+        {
+            return ArrayGetters.GetOrAdd(elementType, CreateArrayGetter)(
+                component,
+                includeInactive
+            );
+        }
+
+        private static Func<Component, bool, Array> CreateArrayGetter(Type elementType)
+        {
+            MethodInfo closedMethod = GetComponentsInChildrenGeneric.MakeGenericMethod(elementType);
+            ParameterExpression componentParameter = Expression.Parameter(
+                typeof(Component),
+                "component"
+            );
+            ParameterExpression includeInactiveParameter = Expression.Parameter(
+                typeof(bool),
+                "includeInactive"
+            );
+            MethodCallExpression invoke = Expression.Call(
+                componentParameter,
+                closedMethod,
+                includeInactiveParameter
+            );
+            UnaryExpression convert = Expression.Convert(invoke, typeof(Array));
+            return Expression
+                .Lambda<Func<Component, bool, Array>>(
+                    convert,
+                    componentParameter,
+                    includeInactiveParameter
+                )
+                .Compile();
         }
     }
 }
