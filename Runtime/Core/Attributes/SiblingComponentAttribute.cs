@@ -8,7 +8,6 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     using System.Linq.Expressions;
     using System.Reflection;
     using UnityEngine;
-    using WallstopStudios.UnityHelpers.Core.CodeGen;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Utils;
@@ -92,55 +91,15 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         /// </example>
         public static void AssignSiblingComponents(this Component component)
         {
-            Type componentType = component.GetType();
             FieldMetadata<SiblingComponentAttribute>[] fields = FieldsByType.GetOrAdd(
-                componentType,
+                component.GetType(),
                 type => GetFieldMetadata<SiblingComponentAttribute>(type)
             );
 
-            bool hasGeneratedHandlers = RelationalCodeGenRegistry.TryGetHandlers(
-                componentType,
-                out RelationalGeneratedHandlers generatedHandlers
-            );
-            Func<Component, bool>? siblingHandler = hasGeneratedHandlers
-                ? generatedHandlers.Sibling
-                : null;
-            string[]? generatedFieldNames = hasGeneratedHandlers
-                ? generatedHandlers.SiblingFields
-                : null;
-            bool generatorInvoked = false;
-
             foreach (FieldMetadata<SiblingComponentAttribute> metadata in fields)
             {
-                bool preferGenerated = RelationalCodeGenUtility.ShouldUseCodeGen(
-                    metadata.attribute,
-                    RelationalAttributeKind.Sibling
-                );
-
-                bool handledByGenerator =
-                    preferGenerated
-                    && siblingHandler != null
-                    && generatedFieldNames != null
-                    && Array.IndexOf(generatedFieldNames, metadata.field.Name) >= 0;
-
                 if (ShouldSkipAssignment(metadata, component))
                 {
-                    continue;
-                }
-
-                if (handledByGenerator)
-                {
-                    if (!generatorInvoked)
-                    {
-                        RelationalCodeGenRegistry.TryAssignSibling(component);
-                        generatorInvoked = true;
-                    }
-
-                    if (!ValueHelpers.IsAssigned(metadata.getter(component)))
-                    {
-                        LogMissingComponentError(component, metadata, "sibling");
-                    }
-
                     continue;
                 }
 

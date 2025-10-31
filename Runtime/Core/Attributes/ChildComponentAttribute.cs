@@ -119,9 +119,8 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         /// </example>
         public static void AssignChildComponents(this Component component)
         {
-            Type componentType = component.GetType();
             FieldMetadata<ChildComponentAttribute>[] fields = FieldsByType.GetOrAdd(
-                componentType,
+                component.GetType(),
                 type => GetFieldMetadata<ChildComponentAttribute>(type)
             );
 

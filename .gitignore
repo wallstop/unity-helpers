@@ -263,8 +263,6 @@ paket-files/
 *.sln.meta
 *.sln.iml
 
-SourceGenerators/WallstopStudios.UnityHelpers.SourceGenerators/bin*
-SourceGenerators/WallstopStudios.UnityHelpers.SourceGenerators/obj*
 Editor/Analyzers/*.dll
 Editor/Analyzers/*.pdb
 

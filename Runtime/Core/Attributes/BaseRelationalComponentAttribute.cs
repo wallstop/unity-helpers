@@ -10,7 +10,6 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     using Helper;
     using Tags;
     using UnityEngine;
-    using WallstopStudios.UnityHelpers.Core.CodeGen;
     using WallstopStudios.UnityHelpers.Utils;
 
     /// <summary>
@@ -78,12 +77,6 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         /// Set to false to restrict assignment to exact concrete component types only.
         /// </summary>
         public bool AllowInterfaces { get; set; } = true;
-
-        /// <summary>
-        /// Opt-in flag for relational code generation. Defaults to <see cref="RelationalCodeGenPreference.Inherit"/>.
-        /// </summary>
-        public RelationalCodeGenPreference CodeGenPreference { get; set; } =
-            RelationalCodeGenPreference.Inherit;
     }
 
     /// <summary>

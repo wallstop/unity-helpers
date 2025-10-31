@@ -211,8 +211,6 @@ Examples:
 ```
 
 > **Performance note:** Sibling lookups do not cache results between calls. In profiling we found these assignments typically run once per GameObject (e.g., during `Awake`), so the extra bookkeeping and invalidation cost of a cache outweighed the benefits. If you need updated references later, call `AssignSiblingComponents` again after the hierarchy changes.
->
-> **Codegen tip:** You can opt into Roslyn-generated fast paths by setting `CodeGenPreference = RelationalCodeGenPreference.Enabled` on the attribute (or by enabling the default in _Project Settings ▸ Wallstop Studios ▸ Relational CodeGen_). The first release targets single-component fields; unsupported configurations automatically fall back to reflection.
 
 ### ParentComponent
 
