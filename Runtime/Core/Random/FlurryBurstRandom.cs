@@ -240,12 +240,6 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             return _f.CompareTo(other._f);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static uint RotateLeft(uint value, int count)
-        {
-            return (value << count) | (value >> (32 - count));
-        }
-
         private void InitializeFromGuid(Guid guid)
         {
             (ulong seed0, ulong seed1) = RandomUtilities.GuidToUInt64Pair(guid);
