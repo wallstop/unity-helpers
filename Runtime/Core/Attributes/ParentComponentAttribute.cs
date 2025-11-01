@@ -2,7 +2,6 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 {
     using System;
     using System.Collections;
-    using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Linq;
     using System.Linq.Expressions;
@@ -709,10 +708,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
     internal static class ParentComponentFastInvoker
     {
-        private static readonly ConcurrentDictionary<
-            Type,
-            Func<Component, bool, Array>
-        > ArrayGetters = new();
+        private static readonly Dictionary<Type, Func<Component, bool, Array>> ArrayGetters = new();
 
         private static readonly MethodInfo GetComponentsInParentGeneric = typeof(Component)
             .GetMethods(BindingFlags.Instance | BindingFlags.Public)
@@ -725,10 +721,13 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
         internal static Array GetArray(Component component, Type elementType, bool includeInactive)
         {
-            return ArrayGetters.GetOrAdd(elementType, t => CreateArrayGetter(t))(
-                component,
-                includeInactive
-            );
+            if (!ArrayGetters.TryGetValue(elementType, out Func<Component, bool, Array> getter))
+            {
+                getter = CreateArrayGetter(elementType);
+                ArrayGetters[elementType] = getter;
+            }
+
+            return getter(component, includeInactive);
         }
 
         private static Func<Component, bool, Array> CreateArrayGetter(Type elementType)

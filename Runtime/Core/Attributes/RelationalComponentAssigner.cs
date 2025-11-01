@@ -2,6 +2,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 {
     using System;
     using System.Collections.Generic;
+    using System.Collections.ObjectModel;
     using System.Linq;
     using Tags;
     using UnityEngine;
@@ -14,6 +15,8 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     public sealed class RelationalComponentAssigner : IRelationalComponentAssigner
     {
         private readonly AttributeMetadataCache _metadataCache;
+        private readonly Dictionary<Type, bool> _hasAssignmentsCache;
+        private readonly object _cacheLock = new();
 
         /// <summary>
         /// Creates a new assigner using the active <see cref="AttributeMetadataCache.Instance"/>.
@@ -27,6 +30,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         public RelationalComponentAssigner(AttributeMetadataCache metadataCache)
         {
             _metadataCache = metadataCache;
+            _hasAssignmentsCache = new Dictionary<Type, bool>();
         }
 
         /// <inheritdoc />
@@ -37,11 +41,20 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 return false;
             }
 
+            lock (_cacheLock)
+            {
+                if (_hasAssignmentsCache.TryGetValue(componentType, out bool cachedResult))
+                {
+                    return cachedResult;
+                }
+            }
+
             AttributeMetadataCache cache = _metadataCache ?? AttributeMetadataCache.Instance;
             if (cache == null)
             {
-                // Fallback to reflection-based discovery when no cache is available
-                return HasRelationalAttributesViaReflection(componentType);
+                bool reflectionResult = HasRelationalAttributesViaReflection(componentType);
+                StoreCacheResult(componentType, reflectionResult);
+                return reflectionResult;
             }
 
             Type current = componentType;
@@ -55,13 +68,24 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     && fields.Length > 0
                 )
                 {
+                    StoreCacheResult(componentType, true);
                     return true;
                 }
                 current = current.BaseType;
             }
 
             // Fallback: inspect fields via reflection to detect relational attributes
-            return HasRelationalAttributesViaReflection(componentType);
+            bool result = HasRelationalAttributesViaReflection(componentType);
+            StoreCacheResult(componentType, result);
+            return result;
+        }
+
+        private void StoreCacheResult(Type componentType, bool result)
+        {
+            lock (_cacheLock)
+            {
+                _hasAssignmentsCache[componentType] = result;
+            }
         }
 
         private static bool HasRelationalAttributesViaReflection(Type componentType)

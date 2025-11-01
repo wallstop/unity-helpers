@@ -8,11 +8,21 @@ Relational component attributes (`[SiblingComponent]`, `[ParentComponent]`, `[Ch
 2. Run `RelationalComponentBenchmarkTests.Benchmark` inside `Tests/Runtime/Performance`.
 3. The test logs the tables to the console and rewrites the section that matches the current operating system.
 
+Alternatively, run the `scripts/run-relational-benchmarks.ps1` helper from the repository root:
+
+```powershell
+pwsh ./scripts/run-relational-benchmarks.ps1 `
+    -UnityPath "C:\Program Files\Unity\Hub\Editor\2021.3.39f1\Editor\Unity.exe" `
+    -ProjectPath "D:\Projects\BenchmarkHarness"
+```
+
+The script executes the benchmark test in batch mode, captures the markdown tables to `BenchmarkLogs/RelationalBenchmark.log`, and preserves the raw `TestResults.xml` when `-KeepResults` is specified.
+
 ## Windows (Editor/Player)
 
 <!-- RELATIONAL_COMPONENTS_WINDOWS_START -->
 
-_Last updated 2025-11-01 00:03 UTC on Windows 11 (10.0.26200) 64bit_
+_Last updated 2025-11-01 00:53 UTC on Windows 11 (10.0.26200) 64bit_
 
 Numbers capture repeated `Assign*Components` calls for one second per scenario.
 Higher operations per second are better.
@@ -21,18 +31,18 @@ Higher operations per second are better.
 
 | Scenario          | Relational Ops/s | Manual Ops/s | Rel/Manual | Iterations |
 | ----------------- | ---------------: | -----------: | ---------: | ---------: |
-| Parent - Single   |          977,291 |    4,962,140 |      0.20x |    977,448 |
-| Parent - Array    |          659,941 |    3,100,723 |      0.21x |    659,941 |
-| Parent - List     |          745,395 |    2,858,832 |      0.26x |    745,395 |
-| Parent - HashSet  |          732,929 |    2,726,856 |      0.27x |    732,929 |
-| Child - Single    |        1,020,144 |    3,251,056 |      0.31x |  1,020,145 |
-| Child - Array     |          258,944 |    2,173,773 |      0.12x |    258,944 |
-| Child - List      |          229,753 |    1,830,074 |      0.13x |    229,753 |
-| Child - HashSet   |          228,732 |    1,615,915 |      0.14x |    228,733 |
-| Sibling - Single  |        3,523,017 |   10,585,518 |      0.33x |  3,523,018 |
-| Sibling - Array   |          868,563 |    2,353,304 |      0.37x |    868,564 |
-| Sibling - List    |        1,120,143 |    1,991,601 |      0.56x |  1,120,144 |
-| Sibling - HashSet |        1,093,720 |    1,693,664 |      0.65x |  1,093,720 |
+| Parent - Single   |        1,011,738 |    5,725,043 |      0.18x |  1,020,000 |
+| Parent - Array    |          672,506 |    3,288,757 |      0.20x |    680,000 |
+| Parent - List     |          756,936 |    4,263,894 |      0.18x |    760,000 |
+| Parent - HashSet  |          751,567 |    2,924,044 |      0.26x |    760,000 |
+| Child - Single    |        1,047,220 |    3,374,546 |      0.31x |  1,050,000 |
+| Child - Array     |          265,924 |    2,389,668 |      0.11x |    270,000 |
+| Child - List      |          237,883 |    2,569,979 |      0.09x |    240,000 |
+| Child - HashSet   |          233,743 |    1,674,818 |      0.14x |    240,000 |
+| Sibling - Single  |        3,866,877 |   14,384,412 |      0.27x |  3,870,000 |
+| Sibling - Array   |          929,104 |    2,578,155 |      0.36x |    930,000 |
+| Sibling - List    |        1,188,211 |    3,412,093 |      0.35x |  1,190,000 |
+| Sibling - HashSet |        1,146,367 |    1,798,878 |      0.64x |  1,150,000 |
 
 <!-- RELATIONAL_COMPONENTS_WINDOWS_END -->
 

@@ -10,6 +10,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
 
     public sealed class RelationalComponentBenchmarkTests
     {
+        private const int NumIterations = 10_000;
+
         private const string DocumentPath = "Docs/RELATIONAL_COMPONENT_PERFORMANCE.md";
         private const string SectionPrefix = "RELATIONAL_COMPONENTS_";
 
@@ -349,7 +351,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             );
 
             DestroyImmediate(host);
-
             return result;
         }
 
@@ -380,7 +381,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
 
         private static void Prewarm(Action action)
         {
-            for (int i = 0; i < 8; ++i)
+            for (int i = 0; i < 10; ++i)
             {
                 action();
             }
@@ -395,16 +396,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             Stopwatch stopwatch = Stopwatch.StartNew();
 
             int iterations = 0;
-            while (stopwatch.Elapsed < BenchmarkDuration)
+            do
             {
-                action();
-                ++iterations;
-            }
+                for (int i = 0; i < NumIterations; ++i)
+                {
+                    action();
+                    ++iterations;
+                }
+            } while (stopwatch.Elapsed < BenchmarkDuration);
 
             stopwatch.Stop();
-
-            double opsPerSecond = iterations > 0 ? iterations / stopwatch.Elapsed.TotalSeconds : 0d;
-
+            double opsPerSecond = iterations / stopwatch.Elapsed.TotalSeconds;
             return new BenchmarkMetrics(opsPerSecond, iterations, stopwatch.Elapsed);
         }
 
@@ -610,9 +612,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
 
             public void Assign()
             {
-                BoxCollider[] buffer = GetComponentsInParent<BoxCollider>();
-                parentColliders.Clear();
-                parentColliders.AddRange(buffer);
+                GetComponentsInParent(false, parentColliders);
             }
         }
 
@@ -710,9 +710,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
 
             public void Assign()
             {
-                BoxCollider[] buffer = GetComponentsInChildren<BoxCollider>();
-                childColliders.Clear();
-                childColliders.AddRange(buffer);
+                GetComponentsInChildren(childColliders);
             }
         }
 
@@ -801,9 +799,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
 
             public void Assign()
             {
-                BoxCollider[] buffer = GetComponents<BoxCollider>();
-                siblingColliders.Clear();
-                siblingColliders.AddRange(buffer);
+                GetComponents(siblingColliders);
             }
         }
 
