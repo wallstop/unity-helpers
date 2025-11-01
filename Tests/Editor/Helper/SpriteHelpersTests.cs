@@ -296,7 +296,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Helper
         private void CreateTestTexture(bool readable, int width = 4, int height = 4)
         {
             _testTexturePath = Path.Combine(TestFolder, $"TestTexture_{System.Guid.NewGuid()}.png")
-                .Replace('\\', '/');
+                .SanitizePath();
 
             Texture2D tempTexture = Track(
                 new Texture2D(width, height, TextureFormat.RGBA32, false)

@@ -663,7 +663,7 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
             if (!string.IsNullOrEmpty(rel))
             {
                 // If rel starts with Assets, strip it for subsequent segments
-                display = rel.Replace('\\', '/');
+                display = rel.SanitizePath();
                 if (display.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))
                 {
                     display = display.Substring("Assets/".Length);
@@ -712,8 +712,8 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
             {
                 return;
             }
-            Toggle toggle = (evt.currentTarget as VisualElement)?.userData as Toggle;
-            if (toggle != null)
+
+            if ((evt.currentTarget as VisualElement)?.userData is Toggle toggle)
             {
                 toggle.value = !toggle.value;
             }

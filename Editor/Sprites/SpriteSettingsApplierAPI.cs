@@ -7,6 +7,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     using System.Text.RegularExpressions;
     using UnityEditor;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Helper;
 
     /// <summary>
     /// Public API to apply SpriteSettings profiles to assets. Mirrors the window logic
@@ -83,7 +84,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
         private static string SanitizePath(string p)
         {
-            return string.IsNullOrEmpty(p) ? p : p.Replace('\\', '/');
+            return string.IsNullOrEmpty(p) ? p : p.SanitizePath();
         }
 
         public static SpriteSettings FindMatchingSettings(

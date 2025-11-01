@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     using System.Collections.Generic;
     using System.Runtime.CompilerServices;
     using ProtoBuf;
+    using WallstopStudios.UnityHelpers.Core.Helper;
 
     /// <summary>
     /// An immutable value-type variant of BitSet that provides read-only access to bit data.
@@ -318,14 +319,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             {
                 return false;
             }
-            for (int i = 0; i < _bits.Length; i++)
-            {
-                if (_bits[i] != other._bits[i])
-                {
-                    return false;
-                }
-            }
-            return true;
+
+            return _bits.AsSpan().SequenceEqual(other._bits);
         }
 
         public override bool Equals(object obj)
@@ -335,18 +330,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
         public override int GetHashCode()
         {
-            unchecked
-            {
-                int hash = _capacity.GetHashCode();
-                if (_bits != null)
-                {
-                    foreach (ulong bit in _bits)
-                    {
-                        hash = (hash * 397) ^ bit.GetHashCode();
-                    }
-                }
-                return hash;
-            }
+            int hash = Objects.SpanHashCode<ulong>(_bits.AsSpan());
+            return Objects.HashCode(_capacity, hash);
         }
 
         public static bool operator ==(ImmutableBitSet left, ImmutableBitSet right)

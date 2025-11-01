@@ -48,7 +48,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
     /// UnityEngine.Debug.Log(getter(p)); // 42
     /// ]]></code>
     /// </example>
-    public static class ReflectionHelpers
+    public static partial class ReflectionHelpers
     {
         // Cache for type resolution by name
 #if !SINGLE_THREADED
@@ -66,54 +66,69 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         private static readonly Dictionary<Type, Func<int, IList>> ListWithCapacityCreators = new();
         private static readonly Dictionary<Type, Func<int, object>> HashSetWithCapacityCreators =
             new();
-        private static readonly Dictionary<FieldInfo, Func<object, object>> FieldGetterCache =
-            new();
-        private static readonly Dictionary<FieldInfo, Action<object, object>> FieldSetterCache =
-            new();
-        private static readonly Dictionary<FieldInfo, Func<object>> StaticFieldGetterCache = new();
-        private static readonly Dictionary<FieldInfo, Action<object>> StaticFieldSetterCache =
-            new();
-        private static readonly Dictionary<PropertyInfo, Func<object, object>> PropertyGetterCache =
-            new();
-        private static readonly Dictionary<
-            PropertyInfo,
-            Action<object, object>
-        > PropertySetterCache = new();
-        private static readonly Dictionary<
-            MethodInfo,
-            Func<object, object[], object>
-        > MethodInvokers = new();
-        private static readonly Dictionary<
-            MethodInfo,
-            Func<object[], object>
-        > StaticMethodInvokers = new();
-        private static readonly Dictionary<ConstructorInfo, Func<object[], object>> Constructors =
-            new();
+        private static readonly Dictionary<Type, Action<object>> HashSetClearers = new();
 
-        // Cache for typed static and instance invokers/actions in single-threaded mode
-        private static readonly Dictionary<MethodInfo, Delegate> TypedStaticInvoker2 = new();
-        private static readonly Dictionary<MethodInfo, Delegate> TypedStaticInvoker0 = new();
-        private static readonly Dictionary<MethodInfo, Delegate> TypedStaticInvoker1 = new();
-        private static readonly Dictionary<MethodInfo, Delegate> TypedStaticInvoker3 = new();
-        private static readonly Dictionary<MethodInfo, Delegate> TypedStaticInvoker4 = new();
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static Func<int, Array> GetArrayCreatorCached(Type type)
+        {
+            if (!ArrayCreators.TryGetValue(type, out Func<int, Array> factory))
+            {
+                factory = GetArrayCreator(type);
+                ArrayCreators[type] = factory;
+            }
 
-        private static readonly Dictionary<MethodInfo, Delegate> TypedStaticAction0 = new();
-        private static readonly Dictionary<MethodInfo, Delegate> TypedStaticAction1 = new();
-        private static readonly Dictionary<MethodInfo, Delegate> TypedStaticAction2 = new();
-        private static readonly Dictionary<MethodInfo, Delegate> TypedStaticAction3 = new();
-        private static readonly Dictionary<MethodInfo, Delegate> TypedStaticAction4 = new();
+            return factory;
+        }
 
-        private static readonly Dictionary<MethodInfo, Delegate> TypedInstanceInvoker0 = new();
-        private static readonly Dictionary<MethodInfo, Delegate> TypedInstanceInvoker1 = new();
-        private static readonly Dictionary<MethodInfo, Delegate> TypedInstanceInvoker2 = new();
-        private static readonly Dictionary<MethodInfo, Delegate> TypedInstanceInvoker3 = new();
-        private static readonly Dictionary<MethodInfo, Delegate> TypedInstanceInvoker4 = new();
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static Func<int, IList> GetListWithCapacityCreatorCached(Type elementType)
+        {
+            if (!ListWithCapacityCreators.TryGetValue(elementType, out Func<int, IList> factory))
+            {
+                factory = GetListWithCapacityCreator(elementType);
+                ListWithCapacityCreators[elementType] = factory;
+            }
 
-        private static readonly Dictionary<MethodInfo, Delegate> TypedInstanceAction0 = new();
-        private static readonly Dictionary<MethodInfo, Delegate> TypedInstanceAction1 = new();
-        private static readonly Dictionary<MethodInfo, Delegate> TypedInstanceAction2 = new();
-        private static readonly Dictionary<MethodInfo, Delegate> TypedInstanceAction3 = new();
-        private static readonly Dictionary<MethodInfo, Delegate> TypedInstanceAction4 = new();
+            return factory;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static Func<IList> GetListCreatorCached(Type elementType)
+        {
+            if (!ListCreators.TryGetValue(elementType, out Func<IList> factory))
+            {
+                factory = GetListCreator(elementType);
+                ListCreators[elementType] = factory;
+            }
+
+            return factory;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static Func<int, object> GetHashSetWithCapacityCreatorCached(Type elementType)
+        {
+            if (
+                !HashSetWithCapacityCreators.TryGetValue(elementType, out Func<int, object> factory)
+            )
+            {
+                factory = GetHashSetWithCapacityCreator(elementType);
+                HashSetWithCapacityCreators[elementType] = factory;
+            }
+
+            return factory;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static Action<object> GetHashSetClearerCached(Type elementType)
+        {
+            if (!HashSetClearers.TryGetValue(elementType, out Action<object> clearer))
+            {
+                clearer = GetHashSetClearer(elementType);
+                HashSetClearers[elementType] = clearer;
+            }
+
+            return clearer;
+        }
 #else
         private static readonly ConcurrentDictionary<Type, Func<int, Array>> ArrayCreators = new();
         private static readonly ConcurrentDictionary<Type, Func<IList>> ListCreators = new();
@@ -125,90 +140,91 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             Type,
             Func<int, object>
         > HashSetWithCapacityCreators = new();
-        private static readonly ConcurrentDictionary<
-            FieldInfo,
-            Func<object, object>
-        > FieldGetterCache = new();
-        private static readonly ConcurrentDictionary<
-            FieldInfo,
-            Action<object, object>
-        > FieldSetterCache = new();
-        private static readonly ConcurrentDictionary<
-            FieldInfo,
-            Func<object>
-        > StaticFieldGetterCache = new();
-        private static readonly ConcurrentDictionary<
-            FieldInfo,
-            Action<object>
-        > StaticFieldSetterCache = new();
-        private static readonly ConcurrentDictionary<
-            PropertyInfo,
-            Func<object, object>
-        > PropertyGetterCache = new();
-        private static readonly ConcurrentDictionary<
-            PropertyInfo,
-            Action<object, object>
-        > PropertySetterCache = new();
-        private static readonly ConcurrentDictionary<
-            MethodInfo,
-            Func<object, object[], object>
-        > MethodInvokers = new();
-        private static readonly ConcurrentDictionary<
-            MethodInfo,
-            Func<object[], object>
-        > StaticMethodInvokers = new();
-        private static readonly ConcurrentDictionary<
-            ConstructorInfo,
-            Func<object[], object>
-        > Constructors = new();
+        private static readonly ConcurrentDictionary<Type, Action<object>> HashSetClearers = new();
 
-        // Cache for typed static method invokers with 0-4 parameters to avoid object[] allocations
-        private static readonly ConcurrentDictionary<MethodInfo, Delegate> TypedStaticInvoker2 =
-            new();
-        private static readonly ConcurrentDictionary<MethodInfo, Delegate> TypedStaticInvoker0 =
-            new();
-        private static readonly ConcurrentDictionary<MethodInfo, Delegate> TypedStaticInvoker1 =
-            new();
-        private static readonly ConcurrentDictionary<MethodInfo, Delegate> TypedStaticInvoker3 =
-            new();
-        private static readonly ConcurrentDictionary<MethodInfo, Delegate> TypedStaticInvoker4 =
-            new();
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static Func<int, Array> GetArrayCreatorCached(Type type)
+        {
+            return ArrayCreators.GetOrAdd(type, static elementType => GetArrayCreator(elementType));
+        }
 
-        private static readonly ConcurrentDictionary<MethodInfo, Delegate> TypedStaticAction0 =
-            new();
-        private static readonly ConcurrentDictionary<MethodInfo, Delegate> TypedStaticAction1 =
-            new();
-        private static readonly ConcurrentDictionary<MethodInfo, Delegate> TypedStaticAction2 =
-            new();
-        private static readonly ConcurrentDictionary<MethodInfo, Delegate> TypedStaticAction3 =
-            new();
-        private static readonly ConcurrentDictionary<MethodInfo, Delegate> TypedStaticAction4 =
-            new();
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static Func<int, IList> GetListWithCapacityCreatorCached(Type elementType)
+        {
+            return ListWithCapacityCreators.GetOrAdd(
+                elementType,
+                static type => GetListWithCapacityCreator(type)
+            );
+        }
 
-        private static readonly ConcurrentDictionary<MethodInfo, Delegate> TypedInstanceInvoker0 =
-            new();
-        private static readonly ConcurrentDictionary<MethodInfo, Delegate> TypedInstanceInvoker1 =
-            new();
-        private static readonly ConcurrentDictionary<MethodInfo, Delegate> TypedInstanceInvoker2 =
-            new();
-        private static readonly ConcurrentDictionary<MethodInfo, Delegate> TypedInstanceInvoker3 =
-            new();
-        private static readonly ConcurrentDictionary<MethodInfo, Delegate> TypedInstanceInvoker4 =
-            new();
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static Func<IList> GetListCreatorCached(Type elementType)
+        {
+            return ListCreators.GetOrAdd(elementType, static type => GetListCreator(type));
+        }
 
-        private static readonly ConcurrentDictionary<MethodInfo, Delegate> TypedInstanceAction0 =
-            new();
-        private static readonly ConcurrentDictionary<MethodInfo, Delegate> TypedInstanceAction1 =
-            new();
-        private static readonly ConcurrentDictionary<MethodInfo, Delegate> TypedInstanceAction2 =
-            new();
-        private static readonly ConcurrentDictionary<MethodInfo, Delegate> TypedInstanceAction3 =
-            new();
-        private static readonly ConcurrentDictionary<MethodInfo, Delegate> TypedInstanceAction4 =
-            new();
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static Func<int, object> GetHashSetWithCapacityCreatorCached(Type elementType)
+        {
+            return HashSetWithCapacityCreators.GetOrAdd(
+                elementType,
+                static type => GetHashSetWithCapacityCreator(type)
+            );
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static Action<object> GetHashSetClearerCached(Type elementType)
+        {
+            return HashSetClearers.GetOrAdd(elementType, static type => GetHashSetClearer(type));
+        }
 #endif
 
         private static readonly bool CanCompileExpressions = CheckExpressionCompilationSupport();
+        private static readonly bool DynamicIlSupported = CheckDynamicIlSupport();
+        private static bool? _ExpressionCapabilityOverride;
+        private static bool? _DynamicIlCapabilityOverride;
+
+        internal static bool ExpressionsEnabled =>
+            _ExpressionCapabilityOverride ?? CanCompileExpressions;
+
+        internal static bool DynamicIlEnabled => _DynamicIlCapabilityOverride ?? DynamicIlSupported;
+
+        internal static IDisposable OverrideReflectionCapabilities(
+            bool? expressions,
+            bool? dynamicIl
+        )
+        {
+            bool? previousExpressions = _ExpressionCapabilityOverride;
+            bool? previousDynamicIl = _DynamicIlCapabilityOverride;
+            _ExpressionCapabilityOverride = expressions;
+            _DynamicIlCapabilityOverride = dynamicIl;
+            return new CapabilityOverrideScope(previousExpressions, previousDynamicIl);
+        }
+
+        private sealed class CapabilityOverrideScope : IDisposable
+        {
+            private readonly bool? _previousExpressions;
+            private readonly bool? _previousDynamicIl;
+            private bool _disposed;
+
+            internal CapabilityOverrideScope(bool? expressions, bool? dynamicIl)
+            {
+                _previousExpressions = expressions;
+                _previousDynamicIl = dynamicIl;
+            }
+
+            public void Dispose()
+            {
+                if (_disposed)
+                {
+                    return;
+                }
+
+                _ExpressionCapabilityOverride = _previousExpressions;
+                _DynamicIlCapabilityOverride = _previousDynamicIl;
+                _disposed = true;
+            }
+        }
 
 #if SINGLE_THREADED
         private static readonly Dictionary<
@@ -335,7 +351,6 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 );
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         /// <summary>
         /// Creates a new array instance of element <paramref name="type"/> with the specified length.
         /// </summary>
@@ -344,15 +359,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// Array ints = ReflectionHelpers.CreateArray(typeof(int), 16); // int[16]
         /// ]]></code>
         /// </example>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Array CreateArray(Type type, int length)
         {
-            return ArrayCreators
-                // ReSharper disable once ConvertClosureToMethodGroup
-                .GetOrAdd(type, elementType => GetArrayCreator(elementType))
-                .Invoke(length);
+            return GetArrayCreatorCached(type).Invoke(length);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         /// <summary>
         /// Creates a new <see cref="List{T}"/> instance for <paramref name="elementType"/> with the specified capacity.
         /// </summary>
@@ -361,15 +373,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// IList list = ReflectionHelpers.CreateList(typeof(string), 128); // List<string> with Capacity=128
         /// ]]></code>
         /// </example>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static IList CreateList(Type elementType, int length)
         {
-            return ListWithCapacityCreators
-                // ReSharper disable once ConvertClosureToMethodGroup
-                .GetOrAdd(elementType, type => GetListWithCapacityCreator(type))
-                .Invoke(length);
+            return GetListWithCapacityCreatorCached(elementType).Invoke(length);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         /// <summary>
         /// Creates a new <see cref="List{T}"/> instance for <paramref name="elementType"/>.
         /// </summary>
@@ -378,21 +387,54 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// IList list = ReflectionHelpers.CreateList(typeof(UnityEngine.Vector3));
         /// ]]></code>
         /// </example>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static IList CreateList(Type elementType)
         {
-            // ReSharper disable once ConvertClosureToMethodGroup
-            return ListCreators.GetOrAdd(elementType, type => GetListCreator(type)).Invoke();
+            return GetListCreatorCached(elementType).Invoke();
         }
 
         // Test helpers to avoid reflection in tests when asserting cache state
         internal static bool IsFieldGetterCached(FieldInfo field)
         {
-            return field != null && FieldGetterCache.ContainsKey(field);
+            return DelegateFactory.IsFieldGetterCached(field);
         }
 
         internal static bool IsFieldSetterCached(FieldInfo field)
         {
-            return field != null && FieldSetterCache.ContainsKey(field);
+            return DelegateFactory.IsFieldSetterCached(field);
+        }
+
+        internal static void ClearFieldGetterCache()
+        {
+            DelegateFactory.ClearFieldGetterCache();
+        }
+
+        internal static void ClearFieldSetterCache()
+        {
+            DelegateFactory.ClearFieldSetterCache();
+        }
+
+        internal static void ClearPropertyCache()
+        {
+            DelegateFactory.ClearPropertyCache();
+        }
+
+        internal static void ClearMethodCache()
+        {
+            DelegateFactory.ClearMethodCache();
+        }
+
+        internal static void ClearConstructorCache()
+        {
+            DelegateFactory.ClearConstructorCache();
+        }
+
+        internal static bool TryGetDelegateStrategy(
+            Delegate delegateInstance,
+            out ReflectionDelegateStrategy strategy
+        )
+        {
+            return DelegateFactory.TryGetStrategy(delegateInstance, out strategy);
         }
 
         /// <summary>
@@ -410,13 +452,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// </example>
         public static Func<object, object> GetFieldGetter(FieldInfo field)
         {
-            return FieldGetterCache.GetOrAdd(field, f =>
-#if !EMIT_DYNAMIC_IL
-                    CreateCompiledFieldGetter(f)
-#else
-                    BuildFieldGetterIL(f)
-#endif
-            );
+            return DelegateFactory.GetFieldGetter(field);
         }
 
 #if EMIT_DYNAMIC_IL
@@ -465,13 +501,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// </example>
         public static Func<object, object> GetPropertyGetter(PropertyInfo property)
         {
-            return PropertyGetterCache.GetOrAdd(property, p =>
-#if !EMIT_DYNAMIC_IL
-                    CreateCompiledPropertyGetter(p)
-#else
-                    BuildPropertyGetterIL(p)
-#endif
-            );
+            return DelegateFactory.GetPropertyGetter(property);
         }
 
 #if EMIT_DYNAMIC_IL
@@ -537,84 +567,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             PropertyInfo property
         )
         {
-#if !EMIT_DYNAMIC_IL
-            return Getter;
-            TValue Getter(TInstance instance)
-            {
-                return (TValue)property.GetValue(instance);
-            }
-#else
-            MethodInfo getMethod = property.GetGetMethod(true);
-            if (getMethod == null)
-            {
-                throw new ArgumentException(
-                    $"Property {property.Name} has no getter",
-                    nameof(property)
-                );
-            }
-
-            DynamicMethod dynamicMethod = new(
-                $"GetGeneric{property.DeclaringType.Name}_{property.Name}",
-                typeof(TValue),
-                new[] { typeof(TInstance) },
-                property.DeclaringType,
-                true
-            );
-
-            ILGenerator il = dynamicMethod.GetILGenerator();
-
-            if (getMethod.IsStatic)
-            {
-                il.Emit(OpCodes.Call, getMethod);
-            }
-            else
-            {
-                if (typeof(TInstance).IsValueType)
-                {
-                    il.Emit(OpCodes.Ldarga_S, 0);
-                }
-                else
-                {
-                    il.Emit(OpCodes.Ldarg_0);
-                }
-
-                if (property.DeclaringType != typeof(TInstance))
-                {
-                    il.Emit(
-                        property.DeclaringType.IsValueType ? OpCodes.Unbox : OpCodes.Castclass,
-                        property.DeclaringType
-                    );
-                }
-
-                il.Emit(
-                    property.DeclaringType.IsValueType ? OpCodes.Call : OpCodes.Callvirt,
-                    getMethod
-                );
-            }
-
-            if (property.PropertyType.IsValueType)
-            {
-                if (!typeof(TValue).IsValueType)
-                {
-                    il.Emit(OpCodes.Box, property.PropertyType);
-                }
-            }
-            else
-            {
-                if (typeof(TValue).IsValueType)
-                {
-                    il.Emit(OpCodes.Unbox_Any, typeof(TValue));
-                }
-                else if (typeof(TValue) != property.PropertyType)
-                {
-                    il.Emit(OpCodes.Castclass, typeof(TValue));
-                }
-            }
-
-            il.Emit(OpCodes.Ret);
-            return (Func<TInstance, TValue>)
-                dynamicMethod.CreateDelegate(typeof(Func<TInstance, TValue>));
-#endif
+            return DelegateFactory.GetPropertyGetterTyped<TInstance, TValue>(property);
         }
 
         /// <summary>
@@ -641,13 +594,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     nameof(property)
                 );
             }
-            return PropertySetterCache.GetOrAdd(property, p =>
-#if !EMIT_DYNAMIC_IL
-                    ((obj, value) => p.SetValue(obj, value))
-#else
-                    BuildPropertySetterIL(p)
-#endif
-            );
+            return DelegateFactory.GetPropertySetter(property);
         }
 
         public static Action<TInstance, TValue> GetPropertySetter<TInstance, TValue>(
@@ -662,66 +609,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     nameof(property)
                 );
             }
-#if !EMIT_DYNAMIC_IL
-            return (instance, value) => property.SetValue(instance, value);
-#else
-            DynamicMethod dynamicMethod = new(
-                $"SetPropertyGeneric{property.DeclaringType.Name}_{property.Name}",
-                typeof(void),
-                new[] { typeof(TInstance), typeof(TValue) },
-                property.DeclaringType,
-                true
-            );
-            ILGenerator il = dynamicMethod.GetILGenerator();
-
-            if (setMethod.IsStatic)
-            {
-                il.Emit(OpCodes.Ldarg_1);
-                if (property.PropertyType != typeof(TValue))
-                {
-                    il.Emit(
-                        property.PropertyType.IsValueType ? OpCodes.Unbox_Any : OpCodes.Castclass,
-                        property.PropertyType
-                    );
-                }
-                il.Emit(OpCodes.Call, setMethod);
-            }
-            else
-            {
-                if (typeof(TInstance).IsValueType)
-                {
-                    il.Emit(OpCodes.Ldarga_S, 0);
-                }
-                else
-                {
-                    il.Emit(OpCodes.Ldarg_0);
-                }
-                if (property.DeclaringType != typeof(TInstance))
-                {
-                    il.Emit(
-                        property.DeclaringType.IsValueType ? OpCodes.Unbox : OpCodes.Castclass,
-                        property.DeclaringType
-                    );
-                }
-
-                il.Emit(OpCodes.Ldarg_1);
-                if (property.PropertyType != typeof(TValue))
-                {
-                    il.Emit(
-                        property.PropertyType.IsValueType ? OpCodes.Unbox_Any : OpCodes.Castclass,
-                        property.PropertyType
-                    );
-                }
-
-                il.Emit(
-                    property.DeclaringType.IsValueType ? OpCodes.Call : OpCodes.Callvirt,
-                    setMethod
-                );
-            }
-            il.Emit(OpCodes.Ret);
-            return (Action<TInstance, TValue>)
-                dynamicMethod.CreateDelegate(typeof(Action<TInstance, TValue>));
-#endif
+            return DelegateFactory.GetPropertySetterTyped<TInstance, TValue>(property);
         }
 
         public static Action<TValue> GetStaticPropertySetter<TValue>(PropertyInfo property)
@@ -734,29 +622,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     nameof(property)
                 );
             }
-#if !EMIT_DYNAMIC_IL
-            return value => property.SetValue(null, value);
-#else
-            DynamicMethod dynamicMethod = new(
-                $"SetStaticProperty_{property.DeclaringType.Name}_{property.Name}",
-                typeof(void),
-                new[] { typeof(TValue) },
-                property.DeclaringType,
-                true
-            );
-            ILGenerator il = dynamicMethod.GetILGenerator();
-            il.Emit(OpCodes.Ldarg_0);
-            if (property.PropertyType != typeof(TValue))
-            {
-                il.Emit(
-                    property.PropertyType.IsValueType ? OpCodes.Unbox_Any : OpCodes.Castclass,
-                    property.PropertyType
-                );
-            }
-            il.Emit(OpCodes.Call, setMethod);
-            il.Emit(OpCodes.Ret);
-            return (Action<TValue>)dynamicMethod.CreateDelegate(typeof(Action<TValue>));
-#endif
+            return DelegateFactory.GetStaticPropertySetterTyped<TValue>(property);
         }
 
         public static Func<object, object[], object> GetIndexerGetter(PropertyInfo property)
@@ -770,80 +636,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             {
                 throw new ArgumentException("Property is not an indexer", nameof(property));
             }
-#if !EMIT_DYNAMIC_IL
-            if (!CanCompileExpressions)
-            {
-                return (instance, indexArgs) =>
-                {
-                    if (indexArgs == null || indexArgs.Length != indices.Length)
-                    {
-                        throw new IndexOutOfRangeException(
-                            $"Indexer expects {indices.Length} index argument(s); received {(indexArgs == null ? 0 : indexArgs.Length)}."
-                        );
-                    }
-                    return property.GetValue(instance, indexArgs);
-                };
-            }
-            ParameterExpression inst = Expression.Parameter(typeof(object), "instance");
-            ParameterExpression args = Expression.Parameter(typeof(object[]), "args");
-            Expression target = property.DeclaringType.IsValueType
-                ? Expression.Unbox(inst, property.DeclaringType)
-                : Expression.Convert(inst, property.DeclaringType);
-            UnaryExpression[] indexExprs = indices
-                .Select(
-                    (p, i) =>
-                        p.ParameterType.IsValueType
-                            ? Expression.Unbox(
-                                Expression.ArrayIndex(args, Expression.Constant(i)),
-                                p.ParameterType
-                            )
-                            : Expression.Convert(
-                                Expression.ArrayIndex(args, Expression.Constant(i)),
-                                p.ParameterType
-                            )
-                )
-                .ToArray();
-            Expression call = Expression.Property(target, property, indexExprs);
-            Expression ret = property.PropertyType.IsValueType
-                ? Expression.Convert(call, typeof(object))
-                : call;
-            return Expression.Lambda<Func<object, object[], object>>(ret, inst, args).Compile();
-#else
             MethodInfo getter = property.GetGetMethod(true);
             if (getter == null)
             {
                 throw new ArgumentException("Indexer has no getter", nameof(property));
             }
-            DynamicMethod dm = new(
-                $"GetIndexer_{property.DeclaringType.Name}_{property.Name}",
-                typeof(object),
-                new[] { typeof(object), typeof(object[]) },
-                property.DeclaringType,
-                true
-            );
-            ILGenerator il = dm.GetILGenerator();
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit(
-                property.DeclaringType.IsValueType ? OpCodes.Unbox : OpCodes.Castclass,
-                property.DeclaringType
-            );
-            for (int i = 0; i < indices.Length; i++)
-            {
-                il.Emit(OpCodes.Ldarg_1);
-                il.Emit(OpCodes.Ldc_I4, i);
-                il.Emit(OpCodes.Ldelem_Ref);
-                Type pt = indices[i].ParameterType;
-                il.Emit(pt.IsValueType ? OpCodes.Unbox_Any : OpCodes.Castclass, pt);
-            }
-            il.Emit(property.DeclaringType.IsValueType ? OpCodes.Call : OpCodes.Callvirt, getter);
-            if (property.PropertyType.IsValueType)
-            {
-                il.Emit(OpCodes.Box, property.PropertyType);
-            }
-            il.Emit(OpCodes.Ret);
-            return (Func<object, object[], object>)
-                dm.CreateDelegate(typeof(Func<object, object[], object>));
-#endif
+            return DelegateFactory.GetIndexerGetter(property);
         }
 
         public static Action<object, object, object[]> GetIndexerSetter(PropertyInfo property)
@@ -862,100 +660,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             {
                 throw new ArgumentException("Indexer has no setter", nameof(property));
             }
-#if !EMIT_DYNAMIC_IL
-            if (!CanCompileExpressions)
-            {
-                return (instance, value, indexArgs) =>
-                {
-                    if (indexArgs == null || indexArgs.Length != indices.Length)
-                    {
-                        throw new IndexOutOfRangeException(
-                            $"Indexer expects {indices.Length} index argument(s); received {(indexArgs == null ? 0 : indexArgs.Length)}."
-                        );
-                    }
-                    // Validate index argument types to mirror IL/unbox behavior
-                    for (int i = 0; i < indices.Length; i++)
-                    {
-                        object idxVal = indexArgs[i];
-                        Type pt = indices[i].ParameterType;
-                        if (idxVal == null)
-                        {
-                            if (pt.IsValueType && Nullable.GetUnderlyingType(pt) == null)
-                            {
-                                throw new InvalidCastException(
-                                    $"Object of type 'null' cannot be converted to type '{pt}'."
-                                );
-                            }
-                        }
-                        else if (!pt.IsInstanceOfType(idxVal))
-                        {
-                            throw new InvalidCastException(
-                                $"Object of type '{idxVal.GetType()}' cannot be converted to type '{pt}'."
-                            );
-                        }
-                    }
-                    property.SetValue(instance, value, indexArgs);
-                };
-            }
-            ParameterExpression inst = Expression.Parameter(typeof(object), "instance");
-            ParameterExpression value = Expression.Parameter(typeof(object), "value");
-            ParameterExpression args = Expression.Parameter(typeof(object[]), "args");
-            Expression target = property.DeclaringType.IsValueType
-                ? Expression.Unbox(inst, property.DeclaringType)
-                : Expression.Convert(inst, property.DeclaringType);
-            UnaryExpression[] indexExprs = indices
-                .Select(
-                    (p, i) =>
-                        p.ParameterType.IsValueType
-                            ? Expression.Unbox(
-                                Expression.ArrayIndex(args, Expression.Constant(i)),
-                                p.ParameterType
-                            )
-                            : Expression.Convert(
-                                Expression.ArrayIndex(args, Expression.Constant(i)),
-                                p.ParameterType
-                            )
-                )
-                .ToArray();
-            Expression valExpr = property.PropertyType.IsValueType
-                ? Expression.Unbox(value, property.PropertyType)
-                : Expression.Convert(value, property.PropertyType);
-            Expression call = Expression.Call(target, setter, indexExprs.Append(valExpr));
-            return Expression
-                .Lambda<Action<object, object, object[]>>(call, inst, value, args)
-                .Compile();
-#else
-            DynamicMethod dm = new(
-                $"SetIndexer_{property.DeclaringType.Name}_{property.Name}",
-                typeof(void),
-                new[] { typeof(object), typeof(object), typeof(object[]) },
-                property.DeclaringType,
-                true
-            );
-            ILGenerator il = dm.GetILGenerator();
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit(
-                property.DeclaringType.IsValueType ? OpCodes.Unbox : OpCodes.Castclass,
-                property.DeclaringType
-            );
-            for (int i = 0; i < indices.Length; i++)
-            {
-                il.Emit(OpCodes.Ldarg_2);
-                il.Emit(OpCodes.Ldc_I4, i);
-                il.Emit(OpCodes.Ldelem_Ref);
-                Type pt = indices[i].ParameterType;
-                il.Emit(pt.IsValueType ? OpCodes.Unbox_Any : OpCodes.Castclass, pt);
-            }
-            il.Emit(OpCodes.Ldarg_1);
-            il.Emit(
-                property.PropertyType.IsValueType ? OpCodes.Unbox_Any : OpCodes.Castclass,
-                property.PropertyType
-            );
-            il.Emit(property.DeclaringType.IsValueType ? OpCodes.Call : OpCodes.Callvirt, setter);
-            il.Emit(OpCodes.Ret);
-            return (Action<object, object, object[]>)
-                dm.CreateDelegate(typeof(Action<object, object, object[]>));
-#endif
+            return DelegateFactory.GetIndexerSetter(property);
         }
 
 #if EMIT_DYNAMIC_IL
@@ -1033,25 +738,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     $"Type {type.FullName} does not have a parameterless constructor"
                 );
             }
-#if !EMIT_DYNAMIC_IL
-            return () => Activator.CreateInstance(type);
-#else
-            DynamicMethod dynamicMethod = new(
-                $"New_{type.Name}",
-                typeof(object),
-                Type.EmptyTypes,
-                type,
-                true
-            );
-            ILGenerator il = dynamicMethod.GetILGenerator();
-            il.Emit(OpCodes.Newobj, ctor);
-            if (type.IsValueType)
-            {
-                il.Emit(OpCodes.Box, type);
-            }
-            il.Emit(OpCodes.Ret);
-            return (Func<object>)dynamicMethod.CreateDelegate(typeof(Func<object>));
-#endif
+            return DelegateFactory.GetParameterlessConstructor(ctor);
         }
 
         /// <summary>
@@ -1066,13 +753,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             {
                 throw new ArgumentException(nameof(field));
             }
-            return StaticFieldGetterCache.GetOrAdd(field, f =>
-#if !EMIT_DYNAMIC_IL
-                    CreateCompiledStaticFieldGetter(f)
-#else
-                    BuildStaticFieldGetterIL(f)
-#endif
-            );
+            return DelegateFactory.GetStaticFieldGetter(field);
         }
 
 #if EMIT_DYNAMIC_IL
@@ -1101,72 +782,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// </summary>
         public static Func<TInstance, TValue> GetFieldGetter<TInstance, TValue>(FieldInfo field)
         {
-#if !EMIT_DYNAMIC_IL
-            return Getter;
-            TValue Getter(TInstance instance)
+            if (field == null)
             {
-                return (TValue)field.GetValue(instance);
+                throw new ArgumentNullException(nameof(field));
             }
-#else
-            DynamicMethod dynamicMethod = new(
-                $"GetGeneric{field.DeclaringType.Name}_{field.Name}",
-                typeof(TValue),
-                new[] { typeof(TInstance) },
-                field.DeclaringType,
-                true
-            );
-
-            ILGenerator il = dynamicMethod.GetILGenerator();
-
-            if (!field.IsStatic)
-            {
-                if (typeof(TInstance).IsValueType)
-                {
-                    il.Emit(OpCodes.Ldarga_S, 0);
-                }
-                else
-                {
-                    il.Emit(OpCodes.Ldarg_0);
-                }
-
-                if (field.DeclaringType != typeof(TInstance))
-                {
-                    il.Emit(
-                        field.DeclaringType.IsValueType ? OpCodes.Unbox : OpCodes.Castclass,
-                        field.DeclaringType
-                    );
-                }
-
-                il.Emit(OpCodes.Ldfld, field);
-            }
-            else
-            {
-                il.Emit(OpCodes.Ldsfld, field);
-            }
-
-            if (field.FieldType.IsValueType)
-            {
-                if (!typeof(TValue).IsValueType)
-                {
-                    il.Emit(OpCodes.Box, field.FieldType);
-                }
-            }
-            else
-            {
-                if (typeof(TValue).IsValueType)
-                {
-                    il.Emit(OpCodes.Unbox_Any, typeof(TValue));
-                }
-                else if (typeof(TValue) != field.FieldType)
-                {
-                    il.Emit(OpCodes.Castclass, typeof(TValue));
-                }
-            }
-
-            il.Emit(OpCodes.Ret);
-            return (Func<TInstance, TValue>)
-                dynamicMethod.CreateDelegate(typeof(Func<TInstance, TValue>));
-#endif
+            return DelegateFactory.GetFieldGetterTyped<TInstance, TValue>(field);
         }
 
         /// <summary>
@@ -1180,52 +800,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// <returns>Delegate: <c>() =&gt; TValue</c></returns>
         public static Func<TValue> GetStaticPropertyGetter<TValue>(PropertyInfo property)
         {
-            MethodInfo getMethod = property.GetGetMethod(true);
-#if !EMIT_DYNAMIC_IL
-            return Getter;
-            TValue Getter()
-            {
-                // Use null for instance, null for indexer args for static properties
-                return (TValue)property.GetValue(null, null);
-            }
-#else
-            DynamicMethod dynamicMethod = new(
-                $"GetStatic_{property.DeclaringType.Name}_{property.Name}",
-                typeof(TValue),
-                Type.EmptyTypes,
-                property.DeclaringType,
-                true
-            );
-
-            ILGenerator il = dynamicMethod.GetILGenerator();
-
-            il.Emit(OpCodes.Call, getMethod);
-
-            Type actualType = property.PropertyType;
-            Type targetType = typeof(TValue);
-
-            if (actualType != targetType)
-            {
-                if (actualType.IsValueType)
-                {
-                    il.Emit(OpCodes.Box, actualType);
-                    if (targetType != typeof(object))
-                    {
-                        il.Emit(OpCodes.Castclass, targetType);
-                    }
-                }
-                else
-                {
-                    il.Emit(
-                        targetType.IsValueType ? OpCodes.Unbox_Any : OpCodes.Castclass,
-                        targetType
-                    );
-                }
-            }
-
-            il.Emit(OpCodes.Ret);
-            return (Func<TValue>)dynamicMethod.CreateDelegate(typeof(Func<TValue>));
-#endif
+            return DelegateFactory.GetStaticPropertyGetterTyped<TValue>(property);
         }
 
         /// <summary>
@@ -1244,51 +819,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             {
                 throw new ArgumentException(nameof(field));
             }
-
-#if !EMIT_DYNAMIC_IL
-            return Getter;
-            TValue Getter()
-            {
-                return (TValue)field.GetValue(null);
-            }
-#else
-            DynamicMethod dynamicMethod = new(
-                $"GetStatic_{field.DeclaringType.Name}_{field.Name}",
-                typeof(TValue),
-                Type.EmptyTypes,
-                field.DeclaringType,
-                true
-            );
-
-            ILGenerator il = dynamicMethod.GetILGenerator();
-
-            il.Emit(OpCodes.Ldsfld, field);
-
-            Type actualType = field.FieldType;
-            Type targetType = typeof(TValue);
-
-            if (actualType != targetType)
-            {
-                if (actualType.IsValueType)
-                {
-                    il.Emit(OpCodes.Box, actualType);
-                    if (targetType != typeof(object))
-                    {
-                        il.Emit(OpCodes.Castclass, targetType);
-                    }
-                }
-                else
-                {
-                    il.Emit(
-                        targetType.IsValueType ? OpCodes.Unbox_Any : OpCodes.Castclass,
-                        targetType
-                    );
-                }
-            }
-
-            il.Emit(OpCodes.Ret);
-            return (Func<TValue>)dynamicMethod.CreateDelegate(typeof(Func<TValue>));
-#endif
+            return DelegateFactory.GetStaticFieldGetterTyped<TValue>(field);
         }
 
         /// <summary>
@@ -1298,42 +829,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             FieldInfo field
         )
         {
-#if !EMIT_DYNAMIC_IL
-            return Setter;
-            void Setter(ref TInstance instance, TValue newValue)
+            if (field == null)
             {
-                object value = instance;
-                field.SetValue(value, newValue);
-                instance = (TInstance)value;
+                throw new ArgumentNullException(nameof(field));
             }
-#else
-            Type instanceType = field.DeclaringType;
-            Type valueType = field.FieldType;
-
-            DynamicMethod dynamicMethod = new(
-                $"SetFieldGeneric{field.DeclaringType.Name}_{field.Name}",
-                MethodAttributes.Public | MethodAttributes.Static,
-                CallingConventions.Standard,
-                typeof(void),
-                new[] { instanceType.MakeByRefType(), valueType },
-                field.Module,
-                true
-            );
-
-            ILGenerator il = dynamicMethod.GetILGenerator();
-            il.Emit(OpCodes.Ldarg_0);
-            if (!instanceType.IsValueType)
-            {
-                il.Emit(OpCodes.Ldind_Ref);
-            }
-
-            il.Emit(OpCodes.Ldarg_1);
-            il.Emit(OpCodes.Stfld, field);
-            il.Emit(OpCodes.Ret);
-
-            Type delegateType = typeof(FieldSetter<,>).MakeGenericType(instanceType, valueType);
-            return (FieldSetter<TInstance, TValue>)dynamicMethod.CreateDelegate(delegateType);
-#endif
+            return DelegateFactory.GetFieldSetterTyped<TInstance, TValue>(field);
         }
 
         /// <summary>
@@ -1352,28 +852,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             {
                 throw new ArgumentException(nameof(field));
             }
-#if !EMIT_DYNAMIC_IL
-            return Setter;
-            void Setter(TValue newValue)
-            {
-                field.SetValue(null, newValue);
-            }
-#else
-            DynamicMethod dynamicMethod = new(
-                $"SetFieldGenericStatic{field.DeclaringType.Name}_{field.Name}",
-                typeof(void),
-                new[] { typeof(TValue) },
-                field.Module,
-                true
-            );
-
-            ILGenerator il = dynamicMethod.GetILGenerator();
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Stsfld, field);
-            il.Emit(OpCodes.Ret);
-
-            return (Action<TValue>)dynamicMethod.CreateDelegate(typeof(Action<TValue>));
-#endif
+            return DelegateFactory.GetStaticFieldSetterTyped<TValue>(field);
         }
 
         /// <summary>
@@ -1387,13 +866,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// <returns>Delegate: <c>(object instance, object value) =&gt; void</c></returns>
         public static Action<object, object> GetFieldSetter(FieldInfo field)
         {
-            return FieldSetterCache.GetOrAdd(field, f =>
-#if !EMIT_DYNAMIC_IL
-                    CreateCompiledFieldSetter(f)
-#else
-                    BuildFieldSetterIL(f)
-#endif
-            );
+            return DelegateFactory.GetFieldSetter(field);
         }
 
 #if EMIT_DYNAMIC_IL
@@ -1439,13 +912,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             {
                 throw new ArgumentException(nameof(field));
             }
-            return StaticFieldSetterCache.GetOrAdd(field, f =>
-#if !EMIT_DYNAMIC_IL
-                    CreateCompiledStaticFieldSetter(f)
-#else
-                    BuildStaticFieldSetterIL(f)
-#endif
-            );
+            return DelegateFactory.GetStaticFieldSetter(field);
         }
 
 #if EMIT_DYNAMIC_IL
@@ -1579,7 +1046,6 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #endif
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         /// <summary>
         /// Creates a <see cref="HashSet{T}"/> instance for the given element type with capacity.
         /// </summary>
@@ -1591,12 +1057,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// object set = ReflectionHelpers.CreateHashSet(typeof(string), 64); // HashSet<string>
         /// ]]></code>
         /// </example>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static object CreateHashSet(Type elementType, int capacity)
         {
-            return HashSetWithCapacityCreators
-                // ReSharper disable once ConvertClosureToMethodGroup
-                .GetOrAdd(elementType, type => GetHashSetWithCapacityCreator(type))
-                .Invoke(capacity);
+            return GetHashSetWithCapacityCreatorCached(elementType).Invoke(capacity);
         }
 
         /// <summary>
@@ -1724,6 +1188,48 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #endif
         }
 
+        public static Action<object> GetHashSetClearer(Type elementType)
+        {
+            if (elementType == null)
+            {
+                throw new ArgumentNullException(nameof(elementType));
+            }
+
+            return HashSetClearers.GetOrAdd(
+                elementType,
+                static type =>
+                {
+                    Type hashSetType = typeof(HashSet<>).MakeGenericType(type);
+                    MethodInfo clearMethod = hashSetType.GetMethod("Clear", Type.EmptyTypes);
+                    if (clearMethod == null)
+                    {
+                        return _ => { };
+                    }
+#if SUPPORT_EXPRESSION_COMPILE
+                    if (ExpressionsEnabled)
+                    {
+                        try
+                        {
+                            ParameterExpression target = Expression.Parameter(
+                                typeof(object),
+                                "set"
+                            );
+                            UnaryExpression cast = Expression.Convert(target, hashSetType);
+                            MethodCallExpression call = Expression.Call(cast, clearMethod);
+                            return Expression.Lambda<Action<object>>(call, target).Compile();
+                        }
+                        catch
+                        {
+                            // Fall through to reflection fallback
+                        }
+                    }
+#endif
+                    MethodInfo closedMethod = clearMethod;
+                    return set => closedMethod.Invoke(set, Array.Empty<object>());
+                }
+            );
+        }
+
         /// <summary>
         /// Invokes an instance method using a cached invoker; avoids per-call reflection overhead.
         /// </summary>
@@ -1732,22 +1238,13 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// <param name="parameters">Optional parameters.</param>
         /// <returns>The return value from the method, or null for void.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        /// <summary>
-        /// Invokes an instance method using a cached delegate when possible.
-        /// </summary>
-        /// <param name="method">Instance method to invoke.</param>
-        /// <param name="instance">Target instance.</param>
-        /// <param name="parameters">Method parameters (optional).</param>
-        /// <returns>Boxed return value or null for void methods.</returns>
         public static object InvokeMethod(
             MethodInfo method,
             object instance,
             params object[] parameters
         )
         {
-            return MethodInvokers
-                .GetOrAdd(method, methodInfo => GetMethodInvoker(methodInfo))
-                .Invoke(instance, parameters);
+            return DelegateFactory.GetMethodInvoker(method).Invoke(instance, parameters);
         }
 
         /// <summary>
@@ -1757,40 +1254,23 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// <param name="parameters">Optional parameters.</param>
         /// <returns>The return value from the method, or null for void.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        /// <summary>
-        /// Invokes a static method using a cached delegate when possible.
-        /// </summary>
-        /// <param name="method">Static method.</param>
-        /// <param name="parameters">Method parameters.</param>
-        /// <returns>Boxed return value or null for void methods.</returns>
         public static object InvokeStaticMethod(MethodInfo method, params object[] parameters)
         {
-            return StaticMethodInvokers
-                .GetOrAdd(method, methodInfo => GetStaticMethodInvoker(methodInfo))
-                .Invoke(parameters);
+            return DelegateFactory.GetStaticMethodInvoker(method).Invoke(parameters);
         }
 
-        /// <summary>
-        /// Constructs an instance using a cached constructor invoker.
-        /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         /// <summary>
         /// Creates an instance using a constructor via a cached delegate.
         /// </summary>
         /// <param name="constructor">Constructor to invoke.</param>
         /// <param name="parameters">Constructor parameters.</param>
         /// <returns>Created instance.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static object CreateInstance(ConstructorInfo constructor, params object[] parameters)
         {
-            return Constructors
-                .GetOrAdd(constructor, ctor => GetConstructor(ctor))
-                .Invoke(parameters);
+            return DelegateFactory.GetConstructorInvoker(constructor).Invoke(parameters);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        /// <summary>
-        /// Constructs an instance using a cached constructor invoker and returns it as T.
-        /// </summary>
         /// <summary>
         /// Constructs an instance using a cached constructor invoker and returns it as T.
         /// </summary>
@@ -1805,6 +1285,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// var p = ReflectionHelpers.CreateInstance<Player>(name, level);
         /// ]]></code>
         /// </example>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T CreateInstance<T>(params object[] parameters)
         {
             Type type = typeof(T);
@@ -1853,60 +1334,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     nameof(method)
                 );
             }
-
-#if !EMIT_DYNAMIC_IL
-            return CreateCompiledMethodInvoker(method);
-#else
-            DynamicMethod dynamicMethod = new(
-                $"Invoke{method.DeclaringType.Name}_{method.Name}",
-                typeof(object),
-                new[] { typeof(object), typeof(object[]) },
-                method.DeclaringType,
-                true
-            );
-
-            ILGenerator il = dynamicMethod.GetILGenerator();
-            ParameterInfo[] parameters = method.GetParameters();
-
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit(
-                method.DeclaringType.IsValueType ? OpCodes.Unbox : OpCodes.Castclass,
-                method.DeclaringType
-            );
-
-            for (int i = 0; i < parameters.Length; i++)
-            {
-                il.Emit(OpCodes.Ldarg_1);
-                il.Emit(OpCodes.Ldc_I4, i);
-                il.Emit(OpCodes.Ldelem_Ref);
-
-                Type paramType = parameters[i].ParameterType;
-                if (paramType.IsValueType)
-                {
-                    il.Emit(OpCodes.Unbox_Any, paramType);
-                }
-                else
-                {
-                    il.Emit(OpCodes.Castclass, paramType);
-                }
-            }
-
-            il.Emit(method.DeclaringType.IsValueType ? OpCodes.Call : OpCodes.Callvirt, method);
-
-            if (method.ReturnType == typeof(void))
-            {
-                il.Emit(OpCodes.Ldnull);
-            }
-            else if (method.ReturnType.IsValueType)
-            {
-                il.Emit(OpCodes.Box, method.ReturnType);
-            }
-
-            il.Emit(OpCodes.Ret);
-
-            return (Func<object, object[], object>)
-                dynamicMethod.CreateDelegate(typeof(Func<object, object[], object>));
-#endif
+            return DelegateFactory.GetMethodInvoker(method);
         }
 
         /// <summary>
@@ -1918,54 +1346,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             {
                 throw new ArgumentException("Method must be static", nameof(method));
             }
-
-#if !EMIT_DYNAMIC_IL
-            return CreateCompiledStaticMethodInvoker(method);
-#else
-            DynamicMethod dynamicMethod = new(
-                $"InvokeStatic{method.DeclaringType.Name}_{method.Name}",
-                typeof(object),
-                new[] { typeof(object[]) },
-                method.DeclaringType,
-                true
-            );
-
-            ILGenerator il = dynamicMethod.GetILGenerator();
-            ParameterInfo[] parameters = method.GetParameters();
-
-            for (int i = 0; i < parameters.Length; i++)
-            {
-                il.Emit(OpCodes.Ldarg_0);
-                il.Emit(OpCodes.Ldc_I4, i);
-                il.Emit(OpCodes.Ldelem_Ref);
-
-                Type paramType = parameters[i].ParameterType;
-                if (paramType.IsValueType)
-                {
-                    il.Emit(OpCodes.Unbox_Any, paramType);
-                }
-                else
-                {
-                    il.Emit(OpCodes.Castclass, paramType);
-                }
-            }
-
-            il.Emit(OpCodes.Call, method);
-
-            if (method.ReturnType == typeof(void))
-            {
-                il.Emit(OpCodes.Ldnull);
-            }
-            else if (method.ReturnType.IsValueType)
-            {
-                il.Emit(OpCodes.Box, method.ReturnType);
-            }
-
-            il.Emit(OpCodes.Ret);
-
-            return (Func<object[], object>)
-                dynamicMethod.CreateDelegate(typeof(Func<object[], object>));
-#endif
+            return DelegateFactory.GetStaticMethodInvoker(method);
         }
 
         /// <summary>
@@ -1973,49 +1354,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// </summary>
         public static Func<object[], object> GetConstructor(ConstructorInfo constructor)
         {
-#if !EMIT_DYNAMIC_IL
-            return CreateCompiledConstructor(constructor);
-#else
-            DynamicMethod dynamicMethod = new(
-                $"Create{constructor.DeclaringType.Name}",
-                typeof(object),
-                new[] { typeof(object[]) },
-                constructor.DeclaringType,
-                true
-            );
-
-            ILGenerator il = dynamicMethod.GetILGenerator();
-            ParameterInfo[] parameters = constructor.GetParameters();
-
-            for (int i = 0; i < parameters.Length; i++)
-            {
-                il.Emit(OpCodes.Ldarg_0);
-                il.Emit(OpCodes.Ldc_I4, i);
-                il.Emit(OpCodes.Ldelem_Ref);
-
-                Type paramType = parameters[i].ParameterType;
-                if (paramType.IsValueType)
-                {
-                    il.Emit(OpCodes.Unbox_Any, paramType);
-                }
-                else
-                {
-                    il.Emit(OpCodes.Castclass, paramType);
-                }
-            }
-
-            il.Emit(OpCodes.Newobj, constructor);
-
-            if (constructor.DeclaringType.IsValueType)
-            {
-                il.Emit(OpCodes.Box, constructor.DeclaringType);
-            }
-
-            il.Emit(OpCodes.Ret);
-
-            return (Func<object[], object>)
-                dynamicMethod.CreateDelegate(typeof(Func<object[], object>));
-#endif
+            return DelegateFactory.GetConstructorInvoker(constructor);
         }
 
         /// <summary>
@@ -2050,20 +1389,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 throw new ArgumentException("Method signature does not match <T1,T2,TReturn>.");
             }
 
-#if SINGLE_THREADED
-            if (!TypedStaticInvoker2.TryGetValue(method, out Delegate del))
-            {
-                del = BuildTypedStaticInvoker2<T1, T2, TReturn>(method);
-                TypedStaticInvoker2[method] = del;
-            }
-            return (Func<T1, T2, TReturn>)del;
-#else
-            Delegate del = TypedStaticInvoker2.GetOrAdd(
-                method,
-                m => BuildTypedStaticInvoker2<T1, T2, TReturn>(m)
-            );
-            return (Func<T1, T2, TReturn>)del;
-#endif
+            return DelegateFactory.GetStaticMethodInvokerTyped<T1, T2, TReturn>(method);
         }
 
         public static Func<int, T[]> GetArrayCreator<T>()
@@ -2178,20 +1504,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             {
                 throw new ArgumentException("Method signature does not match <TReturn>.");
             }
-#if SINGLE_THREADED
-            if (!TypedStaticInvoker0.TryGetValue(method, out Delegate del))
-            {
-                del = BuildTypedStaticInvoker0<TReturn>(method);
-                TypedStaticInvoker0[method] = del;
-            }
-            return (Func<TReturn>)del;
-#else
-            Delegate del = TypedStaticInvoker0.GetOrAdd(
-                method,
-                m => BuildTypedStaticInvoker0<TReturn>(m)
-            );
-            return (Func<TReturn>)del;
-#endif
+            return DelegateFactory.GetStaticMethodInvokerTyped<TReturn>(method);
         }
 
         public static Func<T1, TReturn> GetStaticMethodInvoker<T1, TReturn>(MethodInfo method)
@@ -2215,20 +1528,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     "ref/out parameters are not supported in typed invokers"
                 );
             }
-#if SINGLE_THREADED
-            if (!TypedStaticInvoker1.TryGetValue(method, out Delegate del))
-            {
-                del = BuildTypedStaticInvoker1<T1, TReturn>(method);
-                TypedStaticInvoker1[method] = del;
-            }
-            return (Func<T1, TReturn>)del;
-#else
-            Delegate del = TypedStaticInvoker1.GetOrAdd(
-                method,
-                m => BuildTypedStaticInvoker1<T1, TReturn>(m)
-            );
-            return (Func<T1, TReturn>)del;
-#endif
+            return DelegateFactory.GetStaticMethodInvokerTyped<T1, TReturn>(method);
         }
 
         public static Func<T1, T2, T3, TReturn> GetStaticMethodInvoker<T1, T2, T3, TReturn>(
@@ -2259,20 +1559,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     "ref/out parameters are not supported in typed invokers"
                 );
             }
-#if SINGLE_THREADED
-            if (!TypedStaticInvoker3.TryGetValue(method, out Delegate del))
-            {
-                del = BuildTypedStaticInvoker3<T1, T2, T3, TReturn>(method);
-                TypedStaticInvoker3[method] = del;
-            }
-            return (Func<T1, T2, T3, TReturn>)del;
-#else
-            Delegate del = TypedStaticInvoker3.GetOrAdd(
-                method,
-                m => BuildTypedStaticInvoker3<T1, T2, T3, TReturn>(m)
-            );
-            return (Func<T1, T2, T3, TReturn>)del;
-#endif
+            return DelegateFactory.GetStaticMethodInvokerTyped<T1, T2, T3, TReturn>(method);
         }
 
         public static Func<T1, T2, T3, T4, TReturn> GetStaticMethodInvoker<T1, T2, T3, T4, TReturn>(
@@ -2306,93 +1593,31 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     "ref/out parameters are not supported in typed invokers"
                 );
             }
-#if SINGLE_THREADED
-            if (!TypedStaticInvoker4.TryGetValue(method, out Delegate del))
-            {
-                del = BuildTypedStaticInvoker4<T1, T2, T3, T4, TReturn>(method);
-                TypedStaticInvoker4[method] = del;
-            }
-            return (Func<T1, T2, T3, T4, TReturn>)del;
-#else
-            Delegate del = TypedStaticInvoker4.GetOrAdd(
-                method,
-                m => BuildTypedStaticInvoker4<T1, T2, T3, T4, TReturn>(m)
-            );
-            return (Func<T1, T2, T3, T4, TReturn>)del;
-#endif
+            return DelegateFactory.GetStaticMethodInvokerTyped<T1, T2, T3, T4, TReturn>(method);
         }
 
         public static Action GetStaticActionInvoker(MethodInfo method)
         {
             ValidateStaticActionSignature(method);
-#if SINGLE_THREADED
-            if (!TypedStaticAction0.TryGetValue(method, out Delegate del))
-            {
-                del = BuildStaticActionInvoker0(method);
-                TypedStaticAction0[method] = del;
-            }
-            return (Action)del;
-#else
-            Delegate del = TypedStaticAction0.GetOrAdd(method, m => BuildStaticActionInvoker0(m));
-            return (Action)del;
-#endif
+            return DelegateFactory.GetStaticActionInvokerTyped(method);
         }
 
         public static Action<T1> GetStaticActionInvoker<T1>(MethodInfo method)
         {
             ValidateStaticActionSignature(method, typeof(T1));
-#if SINGLE_THREADED
-            if (!TypedStaticAction1.TryGetValue(method, out Delegate del))
-            {
-                del = BuildStaticActionInvoker1<T1>(method);
-                TypedStaticAction1[method] = del;
-            }
-            return (Action<T1>)del;
-#else
-            Delegate del = TypedStaticAction1.GetOrAdd(
-                method,
-                m => BuildStaticActionInvoker1<T1>(m)
-            );
-            return (Action<T1>)del;
-#endif
+            return DelegateFactory.GetStaticActionInvokerTyped<T1>(method);
         }
 
         public static Action<T1, T2> GetStaticActionInvoker<T1, T2>(MethodInfo method)
         {
             ValidateStaticActionSignature(method, typeof(T1), typeof(T2));
-#if SINGLE_THREADED
-            if (!TypedStaticAction2.TryGetValue(method, out Delegate del))
-            {
-                del = BuildStaticActionInvoker2<T1, T2>(method);
-                TypedStaticAction2[method] = del;
-            }
-            return (Action<T1, T2>)del;
-#else
-            Delegate del = TypedStaticAction2.GetOrAdd(
-                method,
-                m => BuildStaticActionInvoker2<T1, T2>(m)
-            );
-            return (Action<T1, T2>)del;
-#endif
+            return DelegateFactory.GetStaticActionInvokerTyped<T1, T2>(method);
         }
 
         public static Action<T1, T2, T3> GetStaticActionInvoker<T1, T2, T3>(MethodInfo method)
         {
             ValidateStaticActionSignature(method, typeof(T1), typeof(T2), typeof(T3));
-#if SINGLE_THREADED
-            if (!TypedStaticAction3.TryGetValue(method, out Delegate del))
-            {
-                del = BuildStaticActionInvoker3<T1, T2, T3>(method);
-                TypedStaticAction3[method] = del;
-            }
-            return (Action<T1, T2, T3>)del;
-#else
-            Delegate del = TypedStaticAction3.GetOrAdd(
-                method,
-                m => BuildStaticActionInvoker3<T1, T2, T3>(m)
-            );
-            return (Action<T1, T2, T3>)del;
-#endif
+            return DelegateFactory.GetStaticActionInvokerTyped<T1, T2, T3>(method);
         }
 
         public static Action<T1, T2, T3, T4> GetStaticActionInvoker<T1, T2, T3, T4>(
@@ -2400,20 +1625,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         )
         {
             ValidateStaticActionSignature(method, typeof(T1), typeof(T2), typeof(T3), typeof(T4));
-#if SINGLE_THREADED
-            if (!TypedStaticAction4.TryGetValue(method, out Delegate del))
-            {
-                del = BuildStaticActionInvoker4<T1, T2, T3, T4>(method);
-                TypedStaticAction4[method] = del;
-            }
-            return (Action<T1, T2, T3, T4>)del;
-#else
-            Delegate del = TypedStaticAction4.GetOrAdd(
-                method,
-                m => BuildStaticActionInvoker4<T1, T2, T3, T4>(m)
-            );
-            return (Action<T1, T2, T3, T4>)del;
-#endif
+            return DelegateFactory.GetStaticActionInvokerTyped<T1, T2, T3, T4>(method);
         }
 
         public static Func<TInstance, TReturn> GetInstanceMethodInvoker<TInstance, TReturn>(
@@ -2421,20 +1633,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         )
         {
             ValidateInstanceFuncSignature<TInstance, TReturn>(method, Type.EmptyTypes);
-#if SINGLE_THREADED
-            if (!TypedInstanceInvoker0.TryGetValue(method, out Delegate del))
-            {
-                del = BuildInstanceInvoker0<TInstance, TReturn>(method);
-                TypedInstanceInvoker0[method] = del;
-            }
-            return (Func<TInstance, TReturn>)del;
-#else
-            Delegate del = TypedInstanceInvoker0.GetOrAdd(
-                method,
-                m => BuildInstanceInvoker0<TInstance, TReturn>(m)
-            );
-            return (Func<TInstance, TReturn>)del;
-#endif
+            return DelegateFactory.GetInstanceMethodInvokerTyped<TInstance, TReturn>(method);
         }
 
         public static Func<TInstance, T1, TReturn> GetInstanceMethodInvoker<TInstance, T1, TReturn>(
@@ -2442,20 +1641,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         )
         {
             ValidateInstanceFuncSignature<TInstance, TReturn>(method, new[] { typeof(T1) });
-#if SINGLE_THREADED
-            if (!TypedInstanceInvoker1.TryGetValue(method, out Delegate del))
-            {
-                del = BuildInstanceInvoker1<TInstance, T1, TReturn>(method);
-                TypedInstanceInvoker1[method] = del;
-            }
-            return (Func<TInstance, T1, TReturn>)del;
-#else
-            Delegate del = TypedInstanceInvoker1.GetOrAdd(
-                method,
-                m => BuildInstanceInvoker1<TInstance, T1, TReturn>(m)
-            );
-            return (Func<TInstance, T1, TReturn>)del;
-#endif
+            return DelegateFactory.GetInstanceMethodInvokerTyped<TInstance, T1, TReturn>(method);
         }
 
         public static Func<TInstance, T1, T2, TReturn> GetInstanceMethodInvoker<
@@ -2469,20 +1655,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 method,
                 new[] { typeof(T1), typeof(T2) }
             );
-#if SINGLE_THREADED
-            if (!TypedInstanceInvoker2.TryGetValue(method, out Delegate del))
-            {
-                del = BuildInstanceInvoker2<TInstance, T1, T2, TReturn>(method);
-                TypedInstanceInvoker2[method] = del;
-            }
-            return (Func<TInstance, T1, T2, TReturn>)del;
-#else
-            Delegate del = TypedInstanceInvoker2.GetOrAdd(
-                method,
-                m => BuildInstanceInvoker2<TInstance, T1, T2, TReturn>(m)
+            return DelegateFactory.GetInstanceMethodInvokerTyped<TInstance, T1, T2, TReturn>(
+                method
             );
-            return (Func<TInstance, T1, T2, TReturn>)del;
-#endif
         }
 
         public static Func<TInstance, T1, T2, T3, TReturn> GetInstanceMethodInvoker<
@@ -2497,20 +1672,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 method,
                 new[] { typeof(T1), typeof(T2), typeof(T3) }
             );
-#if SINGLE_THREADED
-            if (!TypedInstanceInvoker3.TryGetValue(method, out Delegate del))
-            {
-                del = BuildInstanceInvoker3<TInstance, T1, T2, T3, TReturn>(method);
-                TypedInstanceInvoker3[method] = del;
-            }
-            return (Func<TInstance, T1, T2, T3, TReturn>)del;
-#else
-            Delegate del = TypedInstanceInvoker3.GetOrAdd(
-                method,
-                m => BuildInstanceInvoker3<TInstance, T1, T2, T3, TReturn>(m)
+            return DelegateFactory.GetInstanceMethodInvokerTyped<TInstance, T1, T2, T3, TReturn>(
+                method
             );
-            return (Func<TInstance, T1, T2, T3, TReturn>)del;
-#endif
         }
 
         public static Func<TInstance, T1, T2, T3, T4, TReturn> GetInstanceMethodInvoker<
@@ -2526,39 +1690,20 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 method,
                 new[] { typeof(T1), typeof(T2), typeof(T3), typeof(T4) }
             );
-#if SINGLE_THREADED
-            if (!TypedInstanceInvoker4.TryGetValue(method, out Delegate del))
-            {
-                del = BuildInstanceInvoker4<TInstance, T1, T2, T3, T4, TReturn>(method);
-                TypedInstanceInvoker4[method] = del;
-            }
-            return (Func<TInstance, T1, T2, T3, T4, TReturn>)del;
-#else
-            Delegate del = TypedInstanceInvoker4.GetOrAdd(
-                method,
-                m => BuildInstanceInvoker4<TInstance, T1, T2, T3, T4, TReturn>(m)
-            );
-            return (Func<TInstance, T1, T2, T3, T4, TReturn>)del;
-#endif
+            return DelegateFactory.GetInstanceMethodInvokerTyped<
+                TInstance,
+                T1,
+                T2,
+                T3,
+                T4,
+                TReturn
+            >(method);
         }
 
         public static Action<TInstance> GetInstanceActionInvoker<TInstance>(MethodInfo method)
         {
             ValidateInstanceActionSignature<TInstance>(method, Type.EmptyTypes);
-#if SINGLE_THREADED
-            if (!TypedInstanceAction0.TryGetValue(method, out Delegate del))
-            {
-                del = BuildInstanceActionInvoker0<TInstance>(method);
-                TypedInstanceAction0[method] = del;
-            }
-            return (Action<TInstance>)del;
-#else
-            Delegate del = TypedInstanceAction0.GetOrAdd(
-                method,
-                m => BuildInstanceActionInvoker0<TInstance>(m)
-            );
-            return (Action<TInstance>)del;
-#endif
+            return DelegateFactory.GetInstanceActionInvokerTyped<TInstance>(method);
         }
 
         public static Action<TInstance, T1> GetInstanceActionInvoker<TInstance, T1>(
@@ -2566,20 +1711,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         )
         {
             ValidateInstanceActionSignature<TInstance>(method, new[] { typeof(T1) });
-#if SINGLE_THREADED
-            if (!TypedInstanceAction1.TryGetValue(method, out Delegate del))
-            {
-                del = BuildInstanceActionInvoker1<TInstance, T1>(method);
-                TypedInstanceAction1[method] = del;
-            }
-            return (Action<TInstance, T1>)del;
-#else
-            Delegate del = TypedInstanceAction1.GetOrAdd(
-                method,
-                m => BuildInstanceActionInvoker1<TInstance, T1>(m)
-            );
-            return (Action<TInstance, T1>)del;
-#endif
+            return DelegateFactory.GetInstanceActionInvokerTyped<TInstance, T1>(method);
         }
 
         public static Action<TInstance, T1, T2> GetInstanceActionInvoker<TInstance, T1, T2>(
@@ -2587,20 +1719,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         )
         {
             ValidateInstanceActionSignature<TInstance>(method, new[] { typeof(T1), typeof(T2) });
-#if SINGLE_THREADED
-            if (!TypedInstanceAction2.TryGetValue(method, out Delegate del))
-            {
-                del = BuildInstanceActionInvoker2<TInstance, T1, T2>(method);
-                TypedInstanceAction2[method] = del;
-            }
-            return (Action<TInstance, T1, T2>)del;
-#else
-            Delegate del = TypedInstanceAction2.GetOrAdd(
-                method,
-                m => BuildInstanceActionInvoker2<TInstance, T1, T2>(m)
-            );
-            return (Action<TInstance, T1, T2>)del;
-#endif
+            return DelegateFactory.GetInstanceActionInvokerTyped<TInstance, T1, T2>(method);
         }
 
         public static Action<TInstance, T1, T2, T3> GetInstanceActionInvoker<TInstance, T1, T2, T3>(
@@ -2611,20 +1730,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 method,
                 new[] { typeof(T1), typeof(T2), typeof(T3) }
             );
-#if SINGLE_THREADED
-            if (!TypedInstanceAction3.TryGetValue(method, out Delegate del))
-            {
-                del = BuildInstanceActionInvoker3<TInstance, T1, T2, T3>(method);
-                TypedInstanceAction3[method] = del;
-            }
-            return (Action<TInstance, T1, T2, T3>)del;
-#else
-            Delegate del = TypedInstanceAction3.GetOrAdd(
-                method,
-                m => BuildInstanceActionInvoker3<TInstance, T1, T2, T3>(m)
-            );
-            return (Action<TInstance, T1, T2, T3>)del;
-#endif
+            return DelegateFactory.GetInstanceActionInvokerTyped<TInstance, T1, T2, T3>(method);
         }
 
         public static Action<TInstance, T1, T2, T3, T4> GetInstanceActionInvoker<
@@ -2639,108 +1745,164 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 method,
                 new[] { typeof(T1), typeof(T2), typeof(T3), typeof(T4) }
             );
-#if SINGLE_THREADED
-            if (!TypedInstanceAction4.TryGetValue(method, out Delegate del))
-            {
-                del = BuildInstanceActionInvoker4<TInstance, T1, T2, T3, T4>(method);
-                TypedInstanceAction4[method] = del;
-            }
-            return (Action<TInstance, T1, T2, T3, T4>)del;
-#else
-            Delegate del = TypedInstanceAction4.GetOrAdd(
-                method,
-                m => BuildInstanceActionInvoker4<TInstance, T1, T2, T3, T4>(m)
-            );
-            return (Action<TInstance, T1, T2, T3, T4>)del;
-#endif
+            return DelegateFactory.GetInstanceActionInvokerTyped<TInstance, T1, T2, T3, T4>(method);
         }
 
         private static Delegate BuildTypedStaticInvoker2<T1, T2, TReturn>(MethodInfo method)
         {
-#if !EMIT_DYNAMIC_IL
+            if (ExpressionsEnabled)
+            {
+                try
+                {
+                    ParameterExpression p1 = Expression.Parameter(typeof(T1), "a");
+                    ParameterExpression p2 = Expression.Parameter(typeof(T2), "b");
+                    MethodCallExpression call = Expression.Call(method, p1, p2);
+                    return Expression.Lambda<Func<T1, T2, TReturn>>(call, p1, p2).Compile();
+                }
+                catch
+                {
+                    // continue to alternative strategies
+                }
+            }
+
+#if EMIT_DYNAMIC_IL
+            if (DynamicIlEnabled)
+            {
+                try
+                {
+                    DynamicMethod dm = new(
+                        $"InvokeStatic2_{method.DeclaringType?.Name}_{method.Name}",
+                        typeof(TReturn),
+                        new[] { typeof(T1), typeof(T2) },
+                        method.Module,
+                        true
+                    );
+                    ILGenerator il = dm.GetILGenerator();
+                    il.Emit(OpCodes.Ldarg_0);
+                    il.Emit(OpCodes.Ldarg_1);
+                    il.Emit(OpCodes.Call, method);
+                    il.Emit(OpCodes.Ret);
+                    return dm.CreateDelegate(typeof(Func<T1, T2, TReturn>));
+                }
+                catch
+                {
+                    // ignore and fall back to reflection
+                }
+            }
+#endif
+
             try
             {
                 return method.CreateDelegate(typeof(Func<T1, T2, TReturn>));
             }
             catch
             {
-                // Fallback to expression compilation
-                ParameterExpression p1 = Expression.Parameter(typeof(T1), "a");
-                ParameterExpression p2 = Expression.Parameter(typeof(T2), "b");
-                MethodCallExpression call = Expression.Call(method, p1, p2);
-                return Expression.Lambda<Func<T1, T2, TReturn>>(call, p1, p2).Compile();
+                return new Func<T1, T2, TReturn>(
+                    (a, b) => (TReturn)method.Invoke(null, new object[] { a, b })
+                );
             }
-#else
-            DynamicMethod dm = new(
-                $"InvokeStatic2_{method.DeclaringType?.Name}_{method.Name}",
-                typeof(TReturn),
-                new[] { typeof(T1), typeof(T2) },
-                method.Module,
-                true
-            );
-            ILGenerator il = dm.GetILGenerator();
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Ldarg_1);
-            il.Emit(OpCodes.Call, method);
-            il.Emit(OpCodes.Ret);
-            return dm.CreateDelegate(typeof(Func<T1, T2, TReturn>));
-#endif
         }
 
         private static Delegate BuildTypedStaticInvoker0<TReturn>(MethodInfo method)
         {
-#if !EMIT_DYNAMIC_IL
+            if (ExpressionsEnabled)
+            {
+                try
+                {
+                    MethodCallExpression call = Expression.Call(method);
+                    return Expression.Lambda<Func<TReturn>>(call).Compile();
+                }
+                catch
+                {
+                    // Fall through to alternative strategies
+                }
+            }
+
+#if EMIT_DYNAMIC_IL
+            if (DynamicIlEnabled)
+            {
+                try
+                {
+                    DynamicMethod dm = new(
+                        $"InvokeStatic0_{method.DeclaringType?.Name}_{method.Name}",
+                        typeof(TReturn),
+                        Type.EmptyTypes,
+                        method.Module,
+                        true
+                    );
+                    ILGenerator il = dm.GetILGenerator();
+                    il.Emit(OpCodes.Call, method);
+                    il.Emit(OpCodes.Ret);
+                    return dm.CreateDelegate(typeof(Func<TReturn>));
+                }
+                catch
+                {
+                    // Ignore and fall back to reflection
+                }
+            }
+#endif
+
             try
             {
                 return method.CreateDelegate(typeof(Func<TReturn>));
             }
             catch
             {
-                MethodCallExpression call = Expression.Call(method);
-                return Expression.Lambda<Func<TReturn>>(call).Compile();
+                return new Func<TReturn>(() => (TReturn)method.Invoke(null, Array.Empty<object>()));
             }
-#else
-            DynamicMethod dm = new(
-                $"InvokeStatic0_{method.DeclaringType?.Name}_{method.Name}",
-                typeof(TReturn),
-                Type.EmptyTypes,
-                method.Module,
-                true
-            );
-            ILGenerator il = dm.GetILGenerator();
-            il.Emit(OpCodes.Call, method);
-            il.Emit(OpCodes.Ret);
-            return dm.CreateDelegate(typeof(Func<TReturn>));
-#endif
         }
 
         private static Delegate BuildTypedStaticInvoker1<T1, TReturn>(MethodInfo method)
         {
-#if !EMIT_DYNAMIC_IL
+            if (ExpressionsEnabled)
+            {
+                try
+                {
+                    ParameterExpression a = Expression.Parameter(typeof(T1), "a");
+                    MethodCallExpression call = Expression.Call(method, a);
+                    return Expression.Lambda<Func<T1, TReturn>>(call, a).Compile();
+                }
+                catch
+                {
+                    // Continue to alternative strategies
+                }
+            }
+
+#if EMIT_DYNAMIC_IL
+            if (DynamicIlEnabled)
+            {
+                try
+                {
+                    DynamicMethod dm = new(
+                        $"InvokeStatic1_{method.DeclaringType?.Name}_{method.Name}",
+                        typeof(TReturn),
+                        new[] { typeof(T1) },
+                        method.Module,
+                        true
+                    );
+                    ILGenerator il = dm.GetILGenerator();
+                    il.Emit(OpCodes.Ldarg_0);
+                    il.Emit(OpCodes.Call, method);
+                    il.Emit(OpCodes.Ret);
+                    return dm.CreateDelegate(typeof(Func<T1, TReturn>));
+                }
+                catch
+                {
+                    // fall through
+                }
+            }
+#endif
+
             try
             {
                 return method.CreateDelegate(typeof(Func<T1, TReturn>));
             }
             catch
             {
-                ParameterExpression a = Expression.Parameter(typeof(T1), "a");
-                MethodCallExpression call = Expression.Call(method, a);
-                return Expression.Lambda<Func<T1, TReturn>>(call, a).Compile();
+                return new Func<T1, TReturn>(arg =>
+                    (TReturn)method.Invoke(null, new object[] { arg })
+                );
             }
-#else
-            DynamicMethod dm = new(
-                $"InvokeStatic1_{method.DeclaringType?.Name}_{method.Name}",
-                typeof(TReturn),
-                new[] { typeof(T1) },
-                method.Module,
-                true
-            );
-            ILGenerator il = dm.GetILGenerator();
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Call, method);
-            il.Emit(OpCodes.Ret);
-            return dm.CreateDelegate(typeof(Func<T1, TReturn>));
-#endif
         }
 
         private static Delegate BuildTypedStaticInvoker3<T1, T2, T3, TReturn>(MethodInfo method)
@@ -3557,24 +2719,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     $"Type {type.Name} does not have a parameterless constructor"
                 );
             }
-
-#if !EMIT_DYNAMIC_IL
-            return CreateCompiledParameterlessConstructor<T>(constructor);
-#else
-            DynamicMethod dynamicMethod = new(
-                $"CreateParameterless{type.Name}",
-                typeof(T),
-                Type.EmptyTypes,
-                type,
-                true
-            );
-
-            ILGenerator il = dynamicMethod.GetILGenerator();
-            il.Emit(OpCodes.Newobj, constructor);
-            il.Emit(OpCodes.Ret);
-
-            return (Func<T>)dynamicMethod.CreateDelegate(typeof(Func<T>));
-#endif
+            return DelegateFactory.GetParameterlessConstructorTyped<T>(constructor);
         }
 
         /// <summary>
@@ -3593,28 +2738,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     $"Type {constructedType.Name} does not have a parameterless constructor"
                 );
             }
-
-#if !EMIT_DYNAMIC_IL
-            return CreateCompiledGenericParameterlessConstructor<T>(constructedType, constructor);
-#else
-            DynamicMethod dynamicMethod = new(
-                $"CreateGenericParameterless{constructedType.Name}",
-                typeof(T),
-                Type.EmptyTypes,
-                constructedType,
-                true
-            );
-
-            ILGenerator il = dynamicMethod.GetILGenerator();
-            il.Emit(OpCodes.Newobj, constructor);
-            if (constructedType.IsValueType && typeof(T) == typeof(object))
-            {
-                il.Emit(OpCodes.Box, constructedType);
-            }
-            il.Emit(OpCodes.Ret);
-
-            return (Func<T>)dynamicMethod.CreateDelegate(typeof(Func<T>));
-#endif
+            return DelegateFactory.GetParameterlessConstructorTyped<T>(constructor);
         }
 
         /// <summary>
@@ -4010,7 +3134,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 FieldLookup[key] = field;
             }
 #else
-            field = FieldLookup.GetOrAdd(key, k => k.type.GetField(k.name, k.flags));
+            field = FieldLookup.GetOrAdd(key, static k => k.type.GetField(k.name, k.flags));
 #endif
             return field != null;
         }
@@ -4040,7 +3164,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 PropertyLookup[key] = property;
             }
 #else
-            property = PropertyLookup.GetOrAdd(key, k => k.type.GetProperty(k.name, k.flags));
+            property = PropertyLookup.GetOrAdd(
+                key,
+                static k => k.type.GetProperty(k.name, k.flags)
+            );
 #endif
             return property != null;
         }
@@ -4083,20 +3210,21 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #else
             method = MethodLookup.GetOrAdd(
                 key,
-                k =>
+                static (tuple, state) =>
                 {
-                    if (paramTypes == null)
+                    if (state.parameterTypes == null)
                     {
-                        return k.type.GetMethod(name, k.flags);
+                        return tuple.type.GetMethod(state.methodName, tuple.flags);
                     }
-                    return k.type.GetMethod(
-                        name,
-                        k.flags,
+                    return tuple.type.GetMethod(
+                        state.methodName,
+                        tuple.flags,
                         binder: null,
-                        types: paramTypes,
+                        types: state.parameterTypes,
                         modifiers: null
                     );
-                }
+                },
+                (methodName: name, parameterTypes: paramTypes)
             );
 #endif
             return method != null;
@@ -4165,11 +3293,32 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
 #if SINGLE_THREADED
         private static readonly Dictionary<Type, Func<object, bool>> EnabledPropertyGetters = new();
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static Func<object, bool> GetEnabledPropertyGetterCached(Type componentType)
+        {
+            if (!EnabledPropertyGetters.TryGetValue(componentType, out Func<object, bool> getter))
+            {
+                getter = BuildEnabledPropertyGetter(componentType);
+                EnabledPropertyGetters[componentType] = getter;
+            }
+
+            return getter;
+        }
 #else
         private static readonly ConcurrentDictionary<
             Type,
             Func<object, bool>
         > EnabledPropertyGetters = new();
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static Func<object, bool> GetEnabledPropertyGetterCached(Type componentType)
+        {
+            return EnabledPropertyGetters.GetOrAdd(
+                componentType,
+                static type => BuildEnabledPropertyGetter(type)
+            );
+        }
 #endif
 
         private static Func<object, bool> BuildEnabledPropertyGetter(Type type)
@@ -4228,7 +3377,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             Type type
         )
         {
-            if (!CanCompileExpressions)
+            if (!ExpressionsEnabled)
             {
                 return CreateDelegateEnabledPropertyGetter(property, type)
                     ?? (instance => (bool)property.GetValue(instance));
@@ -4302,10 +3451,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
 
             Type componentType = component.GetType();
-            Func<object, bool> enabledGetter = EnabledPropertyGetters.GetOrAdd(
-                componentType,
-                inputType => BuildEnabledPropertyGetter(inputType)
-            );
+            Func<object, bool> enabledGetter = GetEnabledPropertyGetterCached(componentType);
 
             if (enabledGetter == null)
             {
@@ -4606,6 +3752,199 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
         }
 
+        private static bool CheckDynamicIlSupport()
+        {
+#if !EMIT_DYNAMIC_IL
+            return false;
+#else
+            try
+            {
+                DynamicMethod dynamicMethod = new(
+                    "UnityHelpersIlProbe",
+                    typeof(int),
+                    Type.EmptyTypes,
+                    typeof(ReflectionHelpers),
+                    true
+                );
+                ILGenerator il = dynamicMethod.GetILGenerator();
+                il.Emit(OpCodes.Ldc_I4_0);
+                il.Emit(OpCodes.Ret);
+                _ = ((Func<int>)dynamicMethod.CreateDelegate(typeof(Func<int>)))();
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+#endif
+        }
+
+#if EMIT_DYNAMIC_IL
+        private static Func<object, object[], object> BuildMethodInvokerIL(MethodInfo method)
+        {
+            try
+            {
+                DynamicMethod dynamicMethod = new(
+                    $"Invoke{method.DeclaringType.Name}_{method.Name}",
+                    typeof(object),
+                    new[] { typeof(object), typeof(object[]) },
+                    method.DeclaringType,
+                    true
+                );
+
+                ILGenerator il = dynamicMethod.GetILGenerator();
+                ParameterInfo[] parameters = method.GetParameters();
+
+                il.Emit(OpCodes.Ldarg_0);
+                il.Emit(
+                    method.DeclaringType.IsValueType ? OpCodes.Unbox : OpCodes.Castclass,
+                    method.DeclaringType
+                );
+
+                for (int i = 0; i < parameters.Length; i++)
+                {
+                    il.Emit(OpCodes.Ldarg_1);
+                    il.Emit(OpCodes.Ldc_I4, i);
+                    il.Emit(OpCodes.Ldelem_Ref);
+
+                    Type paramType = parameters[i].ParameterType;
+                    if (paramType.IsValueType)
+                    {
+                        il.Emit(OpCodes.Unbox_Any, paramType);
+                    }
+                    else
+                    {
+                        il.Emit(OpCodes.Castclass, paramType);
+                    }
+                }
+
+                il.Emit(method.DeclaringType.IsValueType ? OpCodes.Call : OpCodes.Callvirt, method);
+
+                if (method.ReturnType == typeof(void))
+                {
+                    il.Emit(OpCodes.Ldnull);
+                }
+                else if (method.ReturnType.IsValueType)
+                {
+                    il.Emit(OpCodes.Box, method.ReturnType);
+                }
+
+                il.Emit(OpCodes.Ret);
+
+                return (Func<object, object[], object>)
+                    dynamicMethod.CreateDelegate(typeof(Func<object, object[], object>));
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static Func<object[], object> BuildStaticMethodInvokerIL(MethodInfo method)
+        {
+            try
+            {
+                DynamicMethod dynamicMethod = new(
+                    $"InvokeStatic{method.DeclaringType.Name}_{method.Name}",
+                    typeof(object),
+                    new[] { typeof(object[]) },
+                    method.DeclaringType,
+                    true
+                );
+
+                ILGenerator il = dynamicMethod.GetILGenerator();
+                ParameterInfo[] parameters = method.GetParameters();
+
+                for (int i = 0; i < parameters.Length; i++)
+                {
+                    il.Emit(OpCodes.Ldarg_0);
+                    il.Emit(OpCodes.Ldc_I4, i);
+                    il.Emit(OpCodes.Ldelem_Ref);
+
+                    Type paramType = parameters[i].ParameterType;
+                    if (paramType.IsValueType)
+                    {
+                        il.Emit(OpCodes.Unbox_Any, paramType);
+                    }
+                    else
+                    {
+                        il.Emit(OpCodes.Castclass, paramType);
+                    }
+                }
+
+                il.Emit(OpCodes.Call, method);
+
+                if (method.ReturnType == typeof(void))
+                {
+                    il.Emit(OpCodes.Ldnull);
+                }
+                else if (method.ReturnType.IsValueType)
+                {
+                    il.Emit(OpCodes.Box, method.ReturnType);
+                }
+
+                il.Emit(OpCodes.Ret);
+
+                return (Func<object[], object>)
+                    dynamicMethod.CreateDelegate(typeof(Func<object[], object>));
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static Func<object[], object> BuildConstructorIL(ConstructorInfo constructor)
+        {
+            try
+            {
+                DynamicMethod dynamicMethod = new(
+                    $"Create{constructor.DeclaringType.Name}",
+                    typeof(object),
+                    new[] { typeof(object[]) },
+                    constructor.DeclaringType,
+                    true
+                );
+
+                ILGenerator il = dynamicMethod.GetILGenerator();
+                ParameterInfo[] parameters = constructor.GetParameters();
+
+                for (int i = 0; i < parameters.Length; i++)
+                {
+                    il.Emit(OpCodes.Ldarg_0);
+                    il.Emit(OpCodes.Ldc_I4, i);
+                    il.Emit(OpCodes.Ldelem_Ref);
+
+                    Type paramType = parameters[i].ParameterType;
+                    if (paramType.IsValueType)
+                    {
+                        il.Emit(OpCodes.Unbox_Any, paramType);
+                    }
+                    else
+                    {
+                        il.Emit(OpCodes.Castclass, paramType);
+                    }
+                }
+
+                il.Emit(OpCodes.Newobj, constructor);
+
+                if (constructor.DeclaringType.IsValueType)
+                {
+                    il.Emit(OpCodes.Box, constructor.DeclaringType);
+                }
+
+                il.Emit(OpCodes.Ret);
+
+                return (Func<object[], object>)
+                    dynamicMethod.CreateDelegate(typeof(Func<object[], object>));
+            }
+            catch
+            {
+                return null;
+            }
+        }
+#endif
+
         private static bool CheckExpressionCompilationSupport()
         {
 #if !SUPPORT_EXPRESSION_COMPILE
@@ -4631,7 +3970,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             MethodInfo addMethod
         )
         {
-            if (!CanCompileExpressions)
+            if (!ExpressionsEnabled)
             {
                 return null;
             }
@@ -4642,9 +3981,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 ParameterExpression valueParam = Expression.Parameter(typeof(object), "value");
 
                 Expression castSet = Expression.Convert(setParam, hashSetType);
-                Expression castValue = elementType.IsValueType
-                    ? Expression.Convert(valueParam, elementType)
-                    : Expression.Convert(valueParam, elementType);
+                Expression castValue = Expression.Convert(valueParam, elementType);
 
                 MethodCallExpression call = Expression.Call(castSet, addMethod, castValue);
                 Expression body =
@@ -4664,7 +4001,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
         private static Func<object, object[], object> CreateCompiledMethodInvoker(MethodInfo method)
         {
-            if (!CanCompileExpressions)
+            if (!ExpressionsEnabled)
             {
                 return CreateDelegateMethodInvoker(method)
                     ?? ((instance, args) => method.Invoke(instance, args));
@@ -4726,7 +4063,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
         private static Func<object[], object> CreateCompiledStaticMethodInvoker(MethodInfo method)
         {
-            if (!CanCompileExpressions)
+            if (!ExpressionsEnabled)
             {
                 return CreateDelegateStaticMethodInvoker(method)
                     ?? (args => method.Invoke(null, args));
@@ -4772,7 +4109,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
         private static Func<object[], object> CreateCompiledConstructor(ConstructorInfo constructor)
         {
-            if (!CanCompileExpressions)
+            if (!ExpressionsEnabled)
             {
                 return CreateDelegateConstructor(constructor) ?? (args => constructor.Invoke(args));
             }
@@ -4812,58 +4149,72 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
         }
 
+        private static Func<object> CreateCompiledParameterlessConstructor(
+            ConstructorInfo constructor
+        )
+        {
+            if (!ExpressionsEnabled)
+            {
+                return CreateDelegateParameterlessConstructor(constructor)
+                    ?? (() => constructor.Invoke(null));
+            }
+
+            try
+            {
+                Expression newExpression = Expression.New(constructor);
+                Expression body = constructor.DeclaringType.IsValueType
+                    ? Expression.Convert(newExpression, typeof(object))
+                    : newExpression;
+
+                return Expression.Lambda<Func<object>>(body).Compile();
+            }
+            catch
+            {
+                return CreateDelegateParameterlessConstructor(constructor)
+                    ?? (() => constructor.Invoke(null));
+            }
+        }
+
         private static Func<T> CreateCompiledParameterlessConstructor<T>(
-            ConstructorInfo constructor
+            ConstructorInfo constructor,
+            Type constructedType
         )
         {
-            if (!CanCompileExpressions)
+            if (!ExpressionsEnabled)
             {
-                return CreateDelegateParameterlessConstructor<T>(constructor)
-                    ?? (() => (T)Activator.CreateInstance(typeof(T)));
+                if (constructedType == typeof(T))
+                {
+                    return CreateDelegateParameterlessConstructor<T>(constructor)
+                        ?? (() => (T)constructor.Invoke(null));
+                }
+
+                return () => (T)constructor.Invoke(null);
             }
 
             try
             {
                 Expression newExpression = Expression.New(constructor);
-                return Expression.Lambda<Func<T>>(newExpression).Compile();
+                Expression body =
+                    constructedType.IsValueType && typeof(T) != constructedType
+                        ? Expression.Convert(newExpression, typeof(T))
+                    : constructedType == typeof(T) ? newExpression
+                    : Expression.Convert(newExpression, typeof(T));
+
+                return Expression.Lambda<Func<T>>(body).Compile();
             }
             catch
             {
-                return () => (T)Activator.CreateInstance(typeof(T));
+                return () => (T)constructor.Invoke(null);
             }
         }
 
-        private static Func<T> CreateCompiledGenericParameterlessConstructor<T>(
-            Type constructedType,
-            ConstructorInfo constructor
+        private static Func<object, object[], object> CreateCompiledIndexerGetter(
+            PropertyInfo property
         )
         {
-            if (!CanCompileExpressions)
+            if (!ExpressionsEnabled)
             {
-                return () => (T)Activator.CreateInstance(constructedType);
-            }
-
-            try
-            {
-                Expression newExpression = Expression.New(constructor);
-                Expression convertExpression =
-                    constructedType.IsValueType && typeof(T) == typeof(object)
-                        ? Expression.Convert(newExpression, typeof(object))
-                        : newExpression;
-
-                return Expression.Lambda<Func<T>>(convertExpression).Compile();
-            }
-            catch
-            {
-                return () => (T)Activator.CreateInstance(constructedType);
-            }
-        }
-
-        private static Func<object, object> CreateCompiledFieldGetter(FieldInfo field)
-        {
-            if (!CanCompileExpressions)
-            {
-                return CreateDelegateFieldGetter(field) ?? field.GetValue;
+                return null;
             }
 
             try
@@ -4872,13 +4223,140 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     typeof(object),
                     "instance"
                 );
+                ParameterExpression argsParam = Expression.Parameter(typeof(object[]), "args");
 
-                Expression instanceExpression = field.DeclaringType.IsValueType
-                    ? Expression.Unbox(instanceParam, field.DeclaringType)
+                MethodInfo getMethod = property.GetGetMethod(true);
+                if (getMethod == null)
+                {
+                    return null;
+                }
+
+                Expression targetExpression = property.DeclaringType.IsValueType
+                    ? Expression.Unbox(instanceParam, property.DeclaringType)
+                    : Expression.Convert(instanceParam, property.DeclaringType);
+
+                ParameterInfo[] indices = property.GetIndexParameters();
+                Expression[] indexExpressions = new Expression[indices.Length];
+                for (int i = 0; i < indices.Length; i++)
+                {
+                    Expression element = Expression.ArrayIndex(argsParam, Expression.Constant(i));
+                    Type indexType = indices[i].ParameterType;
+                    indexExpressions[i] = indexType.IsValueType
+                        ? Expression.Unbox(element, indexType)
+                        : Expression.Convert(element, indexType);
+                }
+
+                Expression propertyExpression = getMethod.IsStatic
+                    ? Expression.Property(null, property, indexExpressions)
+                    : Expression.Property(targetExpression, property, indexExpressions);
+
+                Expression body = property.PropertyType.IsValueType
+                    ? Expression.Convert(propertyExpression, typeof(object))
+                    : propertyExpression;
+
+                return Expression
+                    .Lambda<Func<object, object[], object>>(body, instanceParam, argsParam)
+                    .Compile();
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static Action<object, object, object[]> CreateCompiledIndexerSetter(
+            PropertyInfo property
+        )
+        {
+            if (!ExpressionsEnabled)
+            {
+                return null;
+            }
+
+            try
+            {
+                MethodInfo setMethod = property.GetSetMethod(true);
+                if (setMethod == null)
+                {
+                    return null;
+                }
+
+                ParameterExpression instanceParam = Expression.Parameter(
+                    typeof(object),
+                    "instance"
+                );
+                ParameterExpression valueParam = Expression.Parameter(typeof(object), "value");
+                ParameterExpression argsParam = Expression.Parameter(typeof(object[]), "args");
+
+                Expression targetExpression = property.DeclaringType.IsValueType
+                    ? Expression.Unbox(instanceParam, property.DeclaringType)
+                    : Expression.Convert(instanceParam, property.DeclaringType);
+
+                ParameterInfo[] indices = property.GetIndexParameters();
+                Expression[] indexExpressions = new Expression[indices.Length];
+                for (int i = 0; i < indices.Length; i++)
+                {
+                    Expression element = Expression.ArrayIndex(argsParam, Expression.Constant(i));
+                    Type indexType = indices[i].ParameterType;
+                    indexExpressions[i] = indexType.IsValueType
+                        ? Expression.Unbox(element, indexType)
+                        : Expression.Convert(element, indexType);
+                }
+
+                Expression valueExpression = property.PropertyType.IsValueType
+                    ? Expression.Unbox(valueParam, property.PropertyType)
+                    : Expression.Convert(valueParam, property.PropertyType);
+
+                IEnumerable<Expression> arguments = indexExpressions.Concat(
+                    new[] { valueExpression }
+                );
+                Expression callExpression = setMethod.IsStatic
+                    ? Expression.Call(setMethod, arguments)
+                    : Expression.Call(targetExpression, setMethod, arguments);
+
+                return Expression
+                    .Lambda<Action<object, object, object[]>>(
+                        callExpression,
+                        instanceParam,
+                        valueParam,
+                        argsParam
+                    )
+                    .Compile();
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static Func<T> CreateCompiledParameterlessConstructor<T>(
+            ConstructorInfo constructor
+        )
+        {
+            return CreateCompiledParameterlessConstructor<T>(
+                constructor,
+                constructor.DeclaringType
+            );
+        }
+
+        private static Func<object, object> CreateCompiledFieldGetter(FieldInfo field)
+        {
+            try
+            {
+                ParameterExpression instanceParam = Expression.Parameter(
+                    typeof(object),
+                    "instance"
+                );
+
+                Expression instanceExpression =
+                    field.IsStatic ? null
+                    : field.DeclaringType.IsValueType
+                        ? Expression.Unbox(instanceParam, field.DeclaringType)
                     : Expression.Convert(instanceParam, field.DeclaringType);
 
-                Expression fieldExpression = Expression.Field(instanceExpression, field);
-
+                Expression fieldExpression = field.IsStatic
+                    ? Expression.Field(null, field)
+                    : Expression.Field(instanceExpression, field);
                 Expression returnExpression = field.FieldType.IsValueType
                     ? Expression.Convert(fieldExpression, typeof(object))
                     : fieldExpression;
@@ -4889,17 +4367,62 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
             catch
             {
-                return field.GetValue;
+                return null;
             }
+        }
+
+        private static bool CanInlineAssignment(Type sourceType, Type targetType)
+        {
+            if (sourceType == targetType)
+            {
+                return true;
+            }
+
+            if (!targetType.IsValueType)
+            {
+                if (sourceType.IsValueType)
+                {
+                    return true;
+                }
+
+                return targetType.IsAssignableFrom(sourceType);
+            }
+
+            if (!sourceType.IsValueType)
+            {
+                return sourceType == typeof(object);
+            }
+
+            return false;
+        }
+
+        private static bool CanInlineReturnConversion(Type actualType, Type requestedType)
+        {
+            if (actualType == requestedType)
+            {
+                return true;
+            }
+
+            if (requestedType.IsValueType)
+            {
+                if (!actualType.IsValueType)
+                {
+                    return actualType == typeof(object);
+                }
+
+                return false;
+            }
+
+            if (actualType.IsValueType)
+            {
+                return true;
+            }
+
+            return requestedType.IsAssignableFrom(actualType);
         }
 
         private static Func<object, object> CreateCompiledPropertyGetter(PropertyInfo property)
         {
-            if (!CanCompileExpressions)
-            {
-                return CreateDelegatePropertyGetter(property) ?? property.GetValue;
-            }
-
             try
             {
                 MethodInfo getMethod = property.GetGetMethod(true);
@@ -4912,12 +4435,19 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     typeof(object),
                     "instance"
                 );
+                Expression propertyExpression;
 
-                Expression instanceExpression = property.DeclaringType.IsValueType
-                    ? Expression.Unbox(instanceParam, property.DeclaringType)
-                    : Expression.Convert(instanceParam, property.DeclaringType);
-
-                Expression propertyExpression = Expression.Property(instanceExpression, property);
+                if (getMethod.IsStatic)
+                {
+                    propertyExpression = Expression.Property(null, property);
+                }
+                else
+                {
+                    Expression instanceExpression = property.DeclaringType.IsValueType
+                        ? Expression.Unbox(instanceParam, property.DeclaringType)
+                        : Expression.Convert(instanceParam, property.DeclaringType);
+                    propertyExpression = Expression.Property(instanceExpression, property);
+                }
 
                 Expression returnExpression = property.PropertyType.IsValueType
                     ? Expression.Convert(propertyExpression, typeof(object))
@@ -4933,9 +4463,861 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
         }
 
+        private static Action<object, object> CreateCompiledPropertySetter(PropertyInfo property)
+        {
+            if (!ExpressionsEnabled)
+            {
+                return property.SetValue;
+            }
+
+            try
+            {
+                MethodInfo setMethod = property.GetSetMethod(true);
+                if (setMethod == null)
+                {
+                    return property.SetValue;
+                }
+
+                ParameterExpression instanceParam = Expression.Parameter(
+                    typeof(object),
+                    "instance"
+                );
+                ParameterExpression valueParam = Expression.Parameter(typeof(object), "value");
+
+                Expression valueExpression = property.PropertyType.IsValueType
+                    ? Expression.Unbox(valueParam, property.PropertyType)
+                    : Expression.Convert(valueParam, property.PropertyType);
+
+                Expression callExpression;
+                if (setMethod.IsStatic)
+                {
+                    callExpression = Expression.Call(setMethod, valueExpression);
+                }
+                else
+                {
+                    Expression instanceExpression = property.DeclaringType.IsValueType
+                        ? Expression.Unbox(instanceParam, property.DeclaringType)
+                        : Expression.Convert(instanceParam, property.DeclaringType);
+                    callExpression = Expression.Call(
+                        instanceExpression,
+                        setMethod,
+                        valueExpression
+                    );
+                }
+
+                return Expression
+                    .Lambda<Action<object, object>>(callExpression, instanceParam, valueParam)
+                    .Compile();
+            }
+            catch
+            {
+                return property.SetValue;
+            }
+        }
+
+        private static Func<TInstance, TValue> CreateCompiledTypedFieldGetter<TInstance, TValue>(
+            FieldInfo field
+        )
+        {
+            if (!ExpressionsEnabled)
+            {
+                return null;
+            }
+
+            try
+            {
+                ParameterExpression instanceParam = Expression.Parameter(
+                    typeof(TInstance),
+                    "instance"
+                );
+                Expression fieldExpression;
+                if (field.IsStatic)
+                {
+                    fieldExpression = Expression.Field(null, field);
+                }
+                else
+                {
+                    Expression instanceExpression = PrepareInstanceExpression(
+                        instanceParam,
+                        field.DeclaringType
+                    );
+                    fieldExpression = Expression.Field(instanceExpression, field);
+                }
+
+                Expression body =
+                    field.FieldType == typeof(TValue)
+                        ? fieldExpression
+                        : Expression.Convert(fieldExpression, typeof(TValue));
+
+                return Expression.Lambda<Func<TInstance, TValue>>(body, instanceParam).Compile();
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static FieldSetter<TInstance, TValue> CreateCompiledTypedFieldSetter<
+            TInstance,
+            TValue
+        >(FieldInfo field)
+        {
+            if (!ExpressionsEnabled)
+            {
+                return null;
+            }
+
+            if (!field.IsStatic && typeof(TInstance) != field.DeclaringType)
+            {
+                return null;
+            }
+
+            try
+            {
+                ParameterExpression instanceParam = Expression.Parameter(
+                    typeof(TInstance).MakeByRefType(),
+                    "instance"
+                );
+                ParameterExpression valueParam = Expression.Parameter(typeof(TValue), "value");
+
+                Expression valueExpression =
+                    field.FieldType == typeof(TValue)
+                        ? valueParam
+                        : Expression.Convert(valueParam, field.FieldType);
+
+                Expression assignExpression;
+                if (field.IsStatic)
+                {
+                    assignExpression = Expression.Assign(
+                        Expression.Field(null, field),
+                        valueExpression
+                    );
+                }
+                else
+                {
+                    Expression fieldAccess = Expression.Field(instanceParam, field);
+                    assignExpression = Expression.Assign(fieldAccess, valueExpression);
+                }
+
+                return Expression
+                    .Lambda<FieldSetter<TInstance, TValue>>(
+                        assignExpression,
+                        instanceParam,
+                        valueParam
+                    )
+                    .Compile();
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static Func<TValue> CreateCompiledTypedStaticFieldGetter<TValue>(FieldInfo field)
+        {
+            if (!ExpressionsEnabled)
+            {
+                return null;
+            }
+
+            try
+            {
+                Expression body = Expression.Field(null, field);
+                if (field.FieldType != typeof(TValue))
+                {
+                    body = Expression.Convert(body, typeof(TValue));
+                }
+
+                return Expression.Lambda<Func<TValue>>(body).Compile();
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static Action<TValue> CreateCompiledTypedStaticFieldSetter<TValue>(FieldInfo field)
+        {
+            if (!ExpressionsEnabled)
+            {
+                return null;
+            }
+
+            try
+            {
+                ParameterExpression valueParam = Expression.Parameter(typeof(TValue), "value");
+                Expression valueExpression =
+                    field.FieldType == typeof(TValue)
+                        ? valueParam
+                        : Expression.Convert(valueParam, field.FieldType);
+                Expression assignExpression = Expression.Assign(
+                    Expression.Field(null, field),
+                    valueExpression
+                );
+                return Expression.Lambda<Action<TValue>>(assignExpression, valueParam).Compile();
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static Func<TInstance, TValue> CreateCompiledTypedPropertyGetter<TInstance, TValue>(
+            PropertyInfo property,
+            MethodInfo getMethod
+        )
+        {
+            if (!ExpressionsEnabled)
+            {
+                return null;
+            }
+
+            try
+            {
+                ParameterExpression instanceParam = Expression.Parameter(
+                    typeof(TInstance),
+                    "instance"
+                );
+
+                Expression callExpression;
+                if (getMethod.IsStatic)
+                {
+                    callExpression = Expression.Call(getMethod);
+                }
+                else
+                {
+                    Expression instanceExpression = PrepareInstanceExpression(
+                        instanceParam,
+                        property.DeclaringType
+                    );
+                    callExpression = Expression.Call(instanceExpression, getMethod);
+                }
+
+                Expression body =
+                    property.PropertyType == typeof(TValue)
+                        ? callExpression
+                        : Expression.Convert(callExpression, typeof(TValue));
+
+                return Expression.Lambda<Func<TInstance, TValue>>(body, instanceParam).Compile();
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static Action<TInstance, TValue> CreateCompiledTypedPropertySetter<
+            TInstance,
+            TValue
+        >(PropertyInfo property, MethodInfo setMethod)
+        {
+            if (!ExpressionsEnabled)
+            {
+                return null;
+            }
+
+            if (!setMethod.IsStatic && property.DeclaringType.IsValueType)
+            {
+                return null;
+            }
+
+            try
+            {
+                ParameterExpression instanceParam = Expression.Parameter(
+                    typeof(TInstance),
+                    "instance"
+                );
+                ParameterExpression valueParam = Expression.Parameter(typeof(TValue), "value");
+
+                Expression valueExpression =
+                    property.PropertyType == typeof(TValue)
+                        ? valueParam
+                        : Expression.Convert(valueParam, property.PropertyType);
+
+                MethodCallExpression callExpression;
+                if (setMethod.IsStatic)
+                {
+                    callExpression = Expression.Call(setMethod, valueExpression);
+                }
+                else
+                {
+                    Expression instanceExpression = PrepareInstanceExpression(
+                        instanceParam,
+                        property.DeclaringType
+                    );
+                    callExpression = Expression.Call(
+                        instanceExpression,
+                        setMethod,
+                        valueExpression
+                    );
+                }
+
+                return Expression
+                    .Lambda<Action<TInstance, TValue>>(callExpression, instanceParam, valueParam)
+                    .Compile();
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static Func<TValue> CreateCompiledTypedStaticPropertyGetter<TValue>(
+            PropertyInfo property,
+            MethodInfo getMethod
+        )
+        {
+            if (!ExpressionsEnabled)
+            {
+                return null;
+            }
+
+            try
+            {
+                Expression body = Expression.Call(getMethod);
+                if (property.PropertyType != typeof(TValue))
+                {
+                    body = Expression.Convert(body, typeof(TValue));
+                }
+
+                return Expression.Lambda<Func<TValue>>(body).Compile();
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static Action<TValue> CreateCompiledTypedStaticPropertySetter<TValue>(
+            PropertyInfo property,
+            MethodInfo setMethod
+        )
+        {
+            if (!ExpressionsEnabled)
+            {
+                return null;
+            }
+
+            try
+            {
+                ParameterExpression valueParam = Expression.Parameter(typeof(TValue), "value");
+
+                Expression valueExpression =
+                    property.PropertyType == typeof(TValue)
+                        ? valueParam
+                        : Expression.Convert(valueParam, property.PropertyType);
+
+                MethodCallExpression callExpression = Expression.Call(setMethod, valueExpression);
+
+                return Expression.Lambda<Action<TValue>>(callExpression, valueParam).Compile();
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static Expression PrepareInstanceExpression(
+            ParameterExpression instanceParameter,
+            Type declaringType
+        )
+        {
+            if (instanceParameter.Type == declaringType)
+            {
+                return instanceParameter;
+            }
+
+            return Expression.Convert(instanceParameter, declaringType);
+        }
+
+#if EMIT_DYNAMIC_IL
+        private static void EmitAssignmentConversion(
+            ILGenerator il,
+            Type sourceType,
+            Type targetType
+        )
+        {
+            if (targetType == sourceType)
+            {
+                return;
+            }
+
+            if (targetType.IsValueType)
+            {
+                if (!sourceType.IsValueType)
+                {
+                    il.Emit(OpCodes.Unbox_Any, targetType);
+                }
+            }
+            else
+            {
+                if (sourceType.IsValueType)
+                {
+                    il.Emit(OpCodes.Box, sourceType);
+                    if (targetType != typeof(object))
+                    {
+                        il.Emit(OpCodes.Castclass, targetType);
+                    }
+                }
+                else if (!targetType.IsAssignableFrom(sourceType))
+                {
+                    il.Emit(OpCodes.Castclass, targetType);
+                }
+            }
+        }
+
+        private static void EmitReturnConversion(
+            ILGenerator il,
+            Type actualType,
+            Type requestedType
+        )
+        {
+            if (requestedType == actualType)
+            {
+                return;
+            }
+
+            if (requestedType.IsValueType)
+            {
+                if (!actualType.IsValueType)
+                {
+                    il.Emit(OpCodes.Unbox_Any, requestedType);
+                }
+            }
+            else
+            {
+                if (actualType.IsValueType)
+                {
+                    il.Emit(OpCodes.Box, actualType);
+                    if (requestedType != typeof(object))
+                    {
+                        il.Emit(OpCodes.Castclass, requestedType);
+                    }
+                }
+                else if (!requestedType.IsAssignableFrom(actualType))
+                {
+                    il.Emit(OpCodes.Castclass, requestedType);
+                }
+            }
+        }
+
+        private static Func<object> BuildParameterlessConstructorIL(ConstructorInfo constructor)
+        {
+            DynamicMethod dynamicMethod = new(
+                $"New_{constructor.DeclaringType.Name}_Obj",
+                typeof(object),
+                Type.EmptyTypes,
+                constructor.DeclaringType,
+                true
+            );
+            ILGenerator il = dynamicMethod.GetILGenerator();
+            il.Emit(OpCodes.Newobj, constructor);
+            if (constructor.DeclaringType.IsValueType)
+            {
+                il.Emit(OpCodes.Box, constructor.DeclaringType);
+            }
+            il.Emit(OpCodes.Ret);
+            return (Func<object>)dynamicMethod.CreateDelegate(typeof(Func<object>));
+        }
+
+        private static Func<T> BuildTypedParameterlessConstructorIL<T>(ConstructorInfo constructor)
+        {
+            DynamicMethod dynamicMethod = new(
+                $"New_{constructor.DeclaringType.Name}_{typeof(T).Name}",
+                typeof(T),
+                Type.EmptyTypes,
+                constructor.DeclaringType,
+                true
+            );
+            ILGenerator il = dynamicMethod.GetILGenerator();
+            il.Emit(OpCodes.Newobj, constructor);
+
+            Type declaringType = constructor.DeclaringType;
+            if (declaringType != typeof(T))
+            {
+                if (declaringType.IsValueType)
+                {
+                    il.Emit(OpCodes.Box, declaringType);
+                    if (typeof(T) != typeof(object))
+                    {
+                        il.Emit(OpCodes.Castclass, typeof(T));
+                    }
+                }
+                else if (!typeof(T).IsAssignableFrom(declaringType))
+                {
+                    il.Emit(OpCodes.Castclass, typeof(T));
+                }
+            }
+
+            il.Emit(OpCodes.Ret);
+            return (Func<T>)dynamicMethod.CreateDelegate(typeof(Func<T>));
+        }
+
+        private static Func<object, object[], object> BuildIndexerGetterIL(PropertyInfo property)
+        {
+            MethodInfo getter =
+                property.GetGetMethod(true)
+                ?? throw new ArgumentException("Indexer has no getter", nameof(property));
+
+            DynamicMethod dynamicMethod = new(
+                $"GetIndexer_{property.DeclaringType.Name}_{property.Name}",
+                typeof(object),
+                new[] { typeof(object), typeof(object[]) },
+                property.DeclaringType,
+                true
+            );
+            ILGenerator il = dynamicMethod.GetILGenerator();
+            bool isStatic = getter.IsStatic;
+            if (!isStatic)
+            {
+                il.Emit(OpCodes.Ldarg_0);
+                il.Emit(
+                    property.DeclaringType.IsValueType ? OpCodes.Unbox : OpCodes.Castclass,
+                    property.DeclaringType
+                );
+            }
+
+            ParameterInfo[] indices = property.GetIndexParameters();
+            for (int i = 0; i < indices.Length; i++)
+            {
+                il.Emit(OpCodes.Ldarg_1);
+                il.Emit(OpCodes.Ldc_I4, i);
+                il.Emit(OpCodes.Ldelem_Ref);
+                EmitAssignmentConversion(il, typeof(object), indices[i].ParameterType);
+            }
+
+            il.Emit(
+                getter.IsStatic ? OpCodes.Call
+                    : property.DeclaringType.IsValueType ? OpCodes.Call
+                    : OpCodes.Callvirt,
+                getter
+            );
+            EmitReturnConversion(il, property.PropertyType, typeof(object));
+            il.Emit(OpCodes.Ret);
+            return (Func<object, object[], object>)
+                dynamicMethod.CreateDelegate(typeof(Func<object, object[], object>));
+        }
+
+        private static Action<object, object, object[]> BuildIndexerSetterIL(PropertyInfo property)
+        {
+            MethodInfo setter =
+                property.GetSetMethod(true)
+                ?? throw new ArgumentException("Indexer has no setter", nameof(property));
+
+            DynamicMethod dynamicMethod = new(
+                $"SetIndexer_{property.DeclaringType.Name}_{property.Name}",
+                typeof(void),
+                new[] { typeof(object), typeof(object), typeof(object[]) },
+                property.DeclaringType,
+                true
+            );
+            ILGenerator il = dynamicMethod.GetILGenerator();
+            bool isStatic = setter.IsStatic;
+            if (!isStatic)
+            {
+                il.Emit(OpCodes.Ldarg_0);
+                il.Emit(
+                    property.DeclaringType.IsValueType ? OpCodes.Unbox : OpCodes.Castclass,
+                    property.DeclaringType
+                );
+            }
+
+            ParameterInfo[] indices = property.GetIndexParameters();
+            for (int i = 0; i < indices.Length; i++)
+            {
+                il.Emit(OpCodes.Ldarg_2);
+                il.Emit(OpCodes.Ldc_I4, i);
+                il.Emit(OpCodes.Ldelem_Ref);
+                EmitAssignmentConversion(il, typeof(object), indices[i].ParameterType);
+            }
+
+            il.Emit(OpCodes.Ldarg_1);
+            EmitAssignmentConversion(il, typeof(object), property.PropertyType);
+            il.Emit(
+                setter.IsStatic ? OpCodes.Call
+                    : property.DeclaringType.IsValueType ? OpCodes.Call
+                    : OpCodes.Callvirt,
+                setter
+            );
+            il.Emit(OpCodes.Ret);
+            return (Action<object, object, object[]>)
+                dynamicMethod.CreateDelegate(typeof(Action<object, object, object[]>));
+        }
+
+        private static Func<TInstance, TValue> BuildTypedFieldGetterIL<TInstance, TValue>(
+            FieldInfo field
+        )
+        {
+            DynamicMethod dynamicMethod = new(
+                $"GetGeneric{field.DeclaringType.Name}_{field.Name}",
+                typeof(TValue),
+                new[] { typeof(TInstance) },
+                field.DeclaringType,
+                true
+            );
+            ILGenerator il = dynamicMethod.GetILGenerator();
+
+            if (field.IsStatic)
+            {
+                il.Emit(OpCodes.Ldsfld, field);
+            }
+            else
+            {
+                if (typeof(TInstance).IsValueType)
+                {
+                    il.Emit(OpCodes.Ldarga_S, 0);
+                }
+                else
+                {
+                    il.Emit(OpCodes.Ldarg_0);
+                }
+
+                if (field.DeclaringType != typeof(TInstance))
+                {
+                    il.Emit(
+                        field.DeclaringType.IsValueType ? OpCodes.Unbox : OpCodes.Castclass,
+                        field.DeclaringType
+                    );
+                }
+
+                il.Emit(OpCodes.Ldfld, field);
+            }
+
+            EmitReturnConversion(il, field.FieldType, typeof(TValue));
+            il.Emit(OpCodes.Ret);
+            return (Func<TInstance, TValue>)
+                dynamicMethod.CreateDelegate(typeof(Func<TInstance, TValue>));
+        }
+
+        private static FieldSetter<TInstance, TValue> BuildTypedFieldSetterIL<TInstance, TValue>(
+            FieldInfo field
+        )
+        {
+            DynamicMethod dynamicMethod = new(
+                $"SetFieldGeneric{field.DeclaringType.Name}_{field.Name}",
+                typeof(void),
+                new[] { typeof(TInstance).MakeByRefType(), typeof(TValue) },
+                field.Module,
+                true
+            );
+            ILGenerator il = dynamicMethod.GetILGenerator();
+
+            if (field.IsStatic)
+            {
+                il.Emit(OpCodes.Ldarg_1);
+                EmitAssignmentConversion(il, typeof(TValue), field.FieldType);
+                il.Emit(OpCodes.Stsfld, field);
+            }
+            else
+            {
+                if (typeof(TInstance).IsValueType)
+                {
+                    il.Emit(OpCodes.Ldarg_0);
+                }
+                else
+                {
+                    il.Emit(OpCodes.Ldarg_0);
+                    il.Emit(OpCodes.Ldind_Ref);
+                }
+
+                if (field.DeclaringType != typeof(TInstance))
+                {
+                    il.Emit(
+                        field.DeclaringType.IsValueType ? OpCodes.Unbox : OpCodes.Castclass,
+                        field.DeclaringType
+                    );
+                }
+
+                il.Emit(OpCodes.Ldarg_1);
+                EmitAssignmentConversion(il, typeof(TValue), field.FieldType);
+                il.Emit(OpCodes.Stfld, field);
+            }
+
+            il.Emit(OpCodes.Ret);
+            return (FieldSetter<TInstance, TValue>)
+                dynamicMethod.CreateDelegate(typeof(FieldSetter<TInstance, TValue>));
+        }
+
+        private static Func<TValue> BuildTypedStaticFieldGetterIL<TValue>(FieldInfo field)
+        {
+            DynamicMethod dynamicMethod = new(
+                $"GetStaticTyped{field.DeclaringType.Name}_{field.Name}",
+                typeof(TValue),
+                Type.EmptyTypes,
+                field.DeclaringType,
+                true
+            );
+            ILGenerator il = dynamicMethod.GetILGenerator();
+            il.Emit(OpCodes.Ldsfld, field);
+            EmitReturnConversion(il, field.FieldType, typeof(TValue));
+            il.Emit(OpCodes.Ret);
+            return (Func<TValue>)dynamicMethod.CreateDelegate(typeof(Func<TValue>));
+        }
+
+        private static Action<TValue> BuildTypedStaticFieldSetterIL<TValue>(FieldInfo field)
+        {
+            DynamicMethod dynamicMethod = new(
+                $"SetStaticTyped{field.DeclaringType.Name}_{field.Name}",
+                typeof(void),
+                new[] { typeof(TValue) },
+                field.Module,
+                true
+            );
+            ILGenerator il = dynamicMethod.GetILGenerator();
+            il.Emit(OpCodes.Ldarg_0);
+            EmitAssignmentConversion(il, typeof(TValue), field.FieldType);
+            il.Emit(OpCodes.Stsfld, field);
+            il.Emit(OpCodes.Ret);
+            return (Action<TValue>)dynamicMethod.CreateDelegate(typeof(Action<TValue>));
+        }
+
+        private static Func<TInstance, TValue> BuildTypedPropertyGetterIL<TInstance, TValue>(
+            PropertyInfo property,
+            MethodInfo getMethod
+        )
+        {
+            DynamicMethod dynamicMethod = new(
+                $"GetGeneric{property.DeclaringType.Name}_{property.Name}",
+                typeof(TValue),
+                new[] { typeof(TInstance) },
+                property.DeclaringType,
+                true
+            );
+
+            ILGenerator il = dynamicMethod.GetILGenerator();
+
+            if (getMethod.IsStatic)
+            {
+                il.Emit(OpCodes.Call, getMethod);
+            }
+            else
+            {
+                if (typeof(TInstance).IsValueType)
+                {
+                    il.Emit(OpCodes.Ldarga_S, 0);
+                }
+                else
+                {
+                    il.Emit(OpCodes.Ldarg_0);
+                }
+
+                if (property.DeclaringType != typeof(TInstance))
+                {
+                    il.Emit(
+                        property.DeclaringType.IsValueType ? OpCodes.Unbox : OpCodes.Castclass,
+                        property.DeclaringType
+                    );
+                }
+
+                il.Emit(
+                    property.DeclaringType.IsValueType ? OpCodes.Call : OpCodes.Callvirt,
+                    getMethod
+                );
+            }
+
+            EmitReturnConversion(il, property.PropertyType, typeof(TValue));
+
+            il.Emit(OpCodes.Ret);
+            return (Func<TInstance, TValue>)
+                dynamicMethod.CreateDelegate(typeof(Func<TInstance, TValue>));
+        }
+
+        private static Action<TInstance, TValue> BuildTypedPropertySetterIL<TInstance, TValue>(
+            PropertyInfo property,
+            MethodInfo setMethod
+        )
+        {
+            DynamicMethod dynamicMethod = new(
+                $"SetPropertyGeneric{property.DeclaringType.Name}_{property.Name}",
+                typeof(void),
+                new[] { typeof(TInstance), typeof(TValue) },
+                property.DeclaringType,
+                true
+            );
+            ILGenerator il = dynamicMethod.GetILGenerator();
+
+            if (setMethod.IsStatic)
+            {
+                il.Emit(OpCodes.Ldarg_1);
+                EmitAssignmentConversion(il, typeof(TValue), property.PropertyType);
+                il.Emit(OpCodes.Call, setMethod);
+            }
+            else
+            {
+                if (typeof(TInstance).IsValueType)
+                {
+                    il.Emit(OpCodes.Ldarga_S, 0);
+                }
+                else
+                {
+                    il.Emit(OpCodes.Ldarg_0);
+                }
+                if (property.DeclaringType != typeof(TInstance))
+                {
+                    il.Emit(
+                        property.DeclaringType.IsValueType ? OpCodes.Unbox : OpCodes.Castclass,
+                        property.DeclaringType
+                    );
+                }
+
+                il.Emit(OpCodes.Ldarg_1);
+                EmitAssignmentConversion(il, typeof(TValue), property.PropertyType);
+
+                il.Emit(
+                    property.DeclaringType.IsValueType ? OpCodes.Call : OpCodes.Callvirt,
+                    setMethod
+                );
+            }
+
+            il.Emit(OpCodes.Ret);
+            return (Action<TInstance, TValue>)
+                dynamicMethod.CreateDelegate(typeof(Action<TInstance, TValue>));
+        }
+
+        private static Func<TValue> BuildTypedStaticPropertyGetterIL<TValue>(
+            PropertyInfo property,
+            MethodInfo getMethod
+        )
+        {
+            DynamicMethod dynamicMethod = new(
+                $"GetStaticTyped{property.DeclaringType.Name}_{property.Name}",
+                typeof(TValue),
+                Type.EmptyTypes,
+                property.DeclaringType,
+                true
+            );
+            ILGenerator il = dynamicMethod.GetILGenerator();
+            il.Emit(OpCodes.Call, getMethod);
+            EmitReturnConversion(il, property.PropertyType, typeof(TValue));
+
+            il.Emit(OpCodes.Ret);
+            return (Func<TValue>)dynamicMethod.CreateDelegate(typeof(Func<TValue>));
+        }
+
+        private static Action<TValue> BuildTypedStaticPropertySetterIL<TValue>(
+            PropertyInfo property,
+            MethodInfo setMethod
+        )
+        {
+            DynamicMethod dynamicMethod = new(
+                $"SetStaticTyped{property.DeclaringType.Name}_{property.Name}",
+                typeof(void),
+                new[] { typeof(TValue) },
+                property.DeclaringType,
+                true
+            );
+            ILGenerator il = dynamicMethod.GetILGenerator();
+            il.Emit(OpCodes.Ldarg_0);
+            EmitAssignmentConversion(il, typeof(TValue), property.PropertyType);
+            il.Emit(OpCodes.Call, setMethod);
+            il.Emit(OpCodes.Ret);
+            return (Action<TValue>)dynamicMethod.CreateDelegate(typeof(Action<TValue>));
+        }
+#endif
+
         private static Func<object> CreateCompiledStaticFieldGetter(FieldInfo field)
         {
-            if (!CanCompileExpressions)
+            if (!ExpressionsEnabled)
             {
                 return () => field.GetValue(null);
             }
@@ -4958,7 +5340,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
         private static Action<object, object> CreateCompiledFieldSetter(FieldInfo field)
         {
-            if (!CanCompileExpressions)
+            if (!ExpressionsEnabled)
             {
                 return field.SetValue;
             }
@@ -4996,7 +5378,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
         private static Action<object> CreateCompiledStaticFieldSetter(FieldInfo field)
         {
-            if (!CanCompileExpressions)
+            if (!ExpressionsEnabled)
             {
                 return value => field.SetValue(null, value);
             }
@@ -5188,110 +5570,22 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
         }
 
-        private static Func<object, object> CreateDelegateFieldGetter(FieldInfo field)
+        private static Func<object> CreateDelegateParameterlessConstructor(
+            ConstructorInfo constructor
+        )
         {
             try
             {
-                if (field.IsStatic)
+                if (constructor.GetParameters().Length == 0)
                 {
-                    // For static fields, create a simple wrapper
-                    return instance => field.GetValue(null);
+                    return () => constructor.Invoke(null);
                 }
 
-                // For instance fields, we can't easily create delegates, so use optimized wrapper
-                return instance => field.GetValue(instance);
+                return null;
             }
             catch
             {
                 return null;
-            }
-        }
-
-        private static Func<object, object> CreateDelegatePropertyGetter(PropertyInfo property)
-        {
-            try
-            {
-                MethodInfo getMethod = property.GetGetMethod(true);
-                if (getMethod == null)
-                {
-                    return null;
-                }
-
-                if (getMethod.IsStatic)
-                {
-                    Type funcType = typeof(Func<>).MakeGenericType(property.PropertyType);
-                    Delegate getter = Delegate.CreateDelegate(funcType, getMethod);
-                    return instance => getter.DynamicInvoke();
-                }
-                else
-                {
-                    Type funcType = typeof(Func<,>).MakeGenericType(
-                        property.DeclaringType,
-                        property.PropertyType
-                    );
-                    Delegate getter = Delegate.CreateDelegate(funcType, getMethod);
-                    return instance => getter.DynamicInvoke(instance);
-                }
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
-        private static Func<object, object> CreateGenericFieldGetter(FieldInfo field)
-        {
-            try
-            {
-                // For now, just use direct field access - it's already reasonably fast
-                if (field.IsStatic)
-                {
-                    return instance => field.GetValue(null);
-                }
-
-                return instance => field.GetValue(instance);
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
-        private static Type GetActionType(Type[] parameterTypes)
-        {
-            switch (parameterTypes.Length)
-            {
-                case 0:
-                    return typeof(Action);
-                case 1:
-                    return typeof(Action<>).MakeGenericType(parameterTypes);
-                case 2:
-                    return typeof(Action<,>).MakeGenericType(parameterTypes);
-                case 3:
-                    return typeof(Action<,,>).MakeGenericType(parameterTypes);
-                case 4:
-                    return typeof(Action<,,,>).MakeGenericType(parameterTypes);
-                default:
-                    return null;
-            }
-        }
-
-        private static Type GetFuncType(Type[] typeArgs)
-        {
-            switch (typeArgs.Length)
-            {
-                case 1:
-                    return typeof(Func<>).MakeGenericType(typeArgs);
-                case 2:
-                    return typeof(Func<,>).MakeGenericType(typeArgs);
-                case 3:
-                    return typeof(Func<,,>).MakeGenericType(typeArgs);
-                case 4:
-                    return typeof(Func<,,,>).MakeGenericType(typeArgs);
-                case 5:
-                    return typeof(Func<,,,,>).MakeGenericType(typeArgs);
-                default:
-                    return null;
             }
         }
     }

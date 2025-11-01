@@ -214,7 +214,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             string assetName = Path.GetFileName(targetAssetPath);
 
             // Ensure the target parent folder exists and use its exact-cased path
-            string targetParent = Path.GetDirectoryName(normalizedTarget)?.Replace('\\', '/');
+            string targetParent = Path.GetDirectoryName(normalizedTarget)?.SanitizePath();
             if (!string.IsNullOrWhiteSpace(targetParent))
             {
                 string resolvedParent = EnsureAndResolveFolderPath(targetParent);
@@ -303,7 +303,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 }
 
                 // Final guard: ensure parent exists just before moving
-                string parent = Path.GetDirectoryName(normalizedTarget)?.Replace('\\', '/');
+                string parent = Path.GetDirectoryName(normalizedTarget)?.SanitizePath();
                 if (!string.IsNullOrWhiteSpace(parent) && !AssetDatabase.IsValidFolder(parent))
                 {
                     string ensured = EnsureAndResolveFolderPath(parent);
@@ -324,7 +324,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 }
 
                 // Retry after ensuring parent and performing save/refresh if parent folder may not yet be registered
-                string parentDir = Path.GetDirectoryName(normalizedTarget)?.Replace('\\', '/');
+                string parentDir = Path.GetDirectoryName(normalizedTarget)?.SanitizePath();
                 bool retried = false;
                 if (!string.IsNullOrWhiteSpace(parentDir))
                 {

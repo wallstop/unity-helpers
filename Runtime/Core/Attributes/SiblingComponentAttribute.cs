@@ -3,6 +3,9 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     using System;
     using System.Collections;
     using System.Collections.Generic;
+    using System.Linq;
+    using System.Linq.Expressions;
+    using System.Reflection;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Utils;
@@ -86,11 +89,22 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         /// </example>
         public static void AssignSiblingComponents(this Component component)
         {
-            Type componentType = component.GetType();
             FieldMetadata<SiblingComponentAttribute>[] fields = FieldsByType.GetOrAdd(
-                componentType,
+                component.GetType(),
                 type => GetFieldMetadata<SiblingComponentAttribute>(type)
             );
+            AssignSiblingComponents(component, fields);
+        }
+
+        internal static void AssignSiblingComponents(
+            Component component,
+            FieldMetadata<SiblingComponentAttribute>[] fields
+        )
+        {
+            if (component == null || fields == null || fields.Length == 0)
+            {
+                return;
+            }
 
             foreach (FieldMetadata<SiblingComponentAttribute> metadata in fields)
             {
@@ -107,103 +121,142 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 }
                 else
                 {
-                    FilterParameters filters = new(metadata.attribute);
-                    switch (metadata.kind)
+                    FilterParameters filters = metadata.Filters;
+                    if (
+                        !metadata.isInterface
+                        && !filters.RequiresPostProcessing
+                        && metadata.attribute.MaxCount <= 0
+                    )
                     {
-                        case FieldKind.Array:
+                        foundSibling = TryAssignSiblingCollectionFast(component, metadata);
+                    }
+                    else
+                    {
+                        switch (metadata.kind)
                         {
-                            using PooledResource<List<Component>> componentBuffer =
-                                Buffers<Component>.List.Get(out List<Component> components);
-                            GetComponentsOfType(
-                                component,
-                                metadata.elementType,
-                                metadata.isInterface,
-                                metadata.attribute.AllowInterfaces,
-                                components
-                            );
-
-                            int filteredCount = FilterComponentsInPlace(
-                                components,
-                                filters,
-                                metadata.attribute,
-                                metadata.elementType,
-                                metadata.isInterface
-                            );
-
-                            Array correctTypedArray = metadata.arrayCreator(filteredCount);
-                            for (int i = 0; i < filteredCount; ++i)
+                            case FieldKind.Array:
                             {
-                                correctTypedArray.SetValue(components[i], i);
+                                using PooledResource<List<Component>> componentBuffer =
+                                    Buffers<Component>.List.Get(out List<Component> components);
+                                GetComponentsOfType(
+                                    component,
+                                    metadata.elementType,
+                                    metadata.isInterface,
+                                    metadata.attribute.AllowInterfaces,
+                                    components
+                                );
+
+                                int filteredCount =
+                                    !filters.RequiresPostProcessing
+                                    && metadata.attribute.MaxCount <= 0
+                                        ? components.Count
+                                        : FilterComponentsInPlace(
+                                            components,
+                                            filters,
+                                            metadata.attribute,
+                                            metadata.elementType,
+                                            metadata.isInterface
+                                        );
+
+                                Array correctTypedArray = metadata.arrayCreator(filteredCount);
+                                for (int i = 0; i < filteredCount; ++i)
+                                {
+                                    correctTypedArray.SetValue(components[i], i);
+                                }
+
+                                metadata.SetValue(component, correctTypedArray);
+                                foundSibling = filteredCount > 0;
+                                break;
                             }
-
-                            metadata.setter(component, correctTypedArray);
-                            foundSibling = filteredCount > 0;
-                            break;
-                        }
-                        case FieldKind.List:
-                        {
-                            using PooledResource<List<Component>> componentBuffer =
-                                Buffers<Component>.List.Get(out List<Component> components);
-                            GetComponentsOfType(
-                                component,
-                                metadata.elementType,
-                                metadata.isInterface,
-                                metadata.attribute.AllowInterfaces,
-                                components
-                            );
-
-                            int filteredCount = FilterComponentsInPlace(
-                                components,
-                                filters,
-                                metadata.attribute,
-                                metadata.elementType,
-                                metadata.isInterface
-                            );
-
-                            IList instance = metadata.listCreator(filteredCount);
-                            for (int i = 0; i < filteredCount; ++i)
+                            case FieldKind.List:
                             {
-                                instance.Add(components[i]);
+                                using PooledResource<List<Component>> componentBuffer =
+                                    Buffers<Component>.List.Get(out List<Component> components);
+                                GetComponentsOfType(
+                                    component,
+                                    metadata.elementType,
+                                    metadata.isInterface,
+                                    metadata.attribute.AllowInterfaces,
+                                    components
+                                );
+
+                                int filteredCount =
+                                    !filters.RequiresPostProcessing
+                                    && metadata.attribute.MaxCount <= 0
+                                        ? components.Count
+                                        : FilterComponentsInPlace(
+                                            components,
+                                            filters,
+                                            metadata.attribute,
+                                            metadata.elementType,
+                                            metadata.isInterface
+                                        );
+
+                                object existing = metadata.GetValue(component);
+                                if (existing is IList instance)
+                                {
+                                    instance.Clear();
+                                }
+                                else
+                                {
+                                    instance = metadata.listCreator(filteredCount);
+                                    metadata.SetValue(component, instance);
+                                }
+                                for (int i = 0; i < filteredCount; ++i)
+                                {
+                                    instance.Add(components[i]);
+                                }
+
+                                foundSibling = filteredCount > 0;
+                                break;
                             }
-
-                            metadata.setter(component, instance);
-                            foundSibling = filteredCount > 0;
-                            break;
-                        }
-                        case FieldKind.HashSet:
-                        {
-                            using PooledResource<List<Component>> componentBuffer =
-                                Buffers<Component>.List.Get(out List<Component> components);
-                            GetComponentsOfType(
-                                component,
-                                metadata.elementType,
-                                metadata.isInterface,
-                                metadata.attribute.AllowInterfaces,
-                                components
-                            );
-
-                            int filteredCount = FilterComponentsInPlace(
-                                components,
-                                filters,
-                                metadata.attribute,
-                                metadata.elementType,
-                                metadata.isInterface
-                            );
-
-                            object instance = metadata.hashSetCreator(filteredCount);
-                            for (int i = 0; i < filteredCount; ++i)
+                            case FieldKind.HashSet:
                             {
-                                metadata.hashSetAdder(instance, components[i]);
-                            }
+                                using PooledResource<List<Component>> componentBuffer =
+                                    Buffers<Component>.List.Get(out List<Component> components);
+                                GetComponentsOfType(
+                                    component,
+                                    metadata.elementType,
+                                    metadata.isInterface,
+                                    metadata.attribute.AllowInterfaces,
+                                    components
+                                );
 
-                            metadata.setter(component, instance);
-                            foundSibling = filteredCount > 0;
-                            break;
-                        }
-                        default:
-                        {
-                            foundSibling = TryAssignSingleSibling(component, metadata);
-                            break;
+                                int filteredCount =
+                                    !filters.RequiresPostProcessing
+                                    && metadata.attribute.MaxCount <= 0
+                                        ? components.Count
+                                        : FilterComponentsInPlace(
+                                            components,
+                                            filters,
+                                            metadata.attribute,
+                                            metadata.elementType,
+                                            metadata.isInterface
+                                        );
+
+                                object instance = metadata.GetValue(component);
+                                if (instance != null && metadata.hashSetClearer != null)
+                                {
+                                    metadata.hashSetClearer(instance);
+                                }
+                                else
+                                {
+                                    instance = metadata.hashSetCreator(filteredCount);
+                                    metadata.SetValue(component, instance);
+                                }
+                                for (int i = 0; i < filteredCount; ++i)
+                                {
+                                    metadata.hashSetAdder(instance, components[i]);
+                                }
+
+                                foundSibling = filteredCount > 0;
+                                break;
+                            }
+                            default:
+                            {
+                                foundSibling = TryAssignSingleSibling(component, metadata);
+                                break;
+                            }
                         }
                     }
                 }
@@ -213,6 +266,11 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     LogMissingComponentError(component, metadata, "sibling");
                 }
             }
+        }
+
+        internal static FieldMetadata<SiblingComponentAttribute>[] GetOrCreateFields(Type type)
+        {
+            return FieldsByType.GetOrAdd(type, t => GetFieldMetadata<SiblingComponentAttribute>(t));
         }
 
         private static bool TryAssignSingleSibling(
@@ -236,7 +294,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             {
                 if (component.TryGetComponent(metadata.elementType, out Component sibling))
                 {
-                    metadata.setter(component, sibling);
+                    metadata.SetValue(component, sibling);
                     return true;
                 }
                 return false;
@@ -255,10 +313,125 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 )
             )
             {
-                metadata.setter(component, resolved);
+                metadata.SetValue(component, resolved);
                 return true;
             }
             return false;
+        }
+
+        private static bool TryAssignSiblingCollectionFast(
+            Component component,
+            FieldMetadata<SiblingComponentAttribute> metadata
+        )
+        {
+            Array componentsArray = SiblingComponentFastInvoker.GetArray(
+                component,
+                metadata.elementType
+            );
+
+            return AssignComponentsFromArray(component, metadata, componentsArray);
+        }
+
+        private static bool AssignComponentsFromArray(
+            Component component,
+            FieldMetadata<SiblingComponentAttribute> metadata,
+            Array componentsArray
+        )
+        {
+            if (componentsArray == null)
+            {
+                componentsArray = Array.CreateInstance(metadata.elementType, 0);
+            }
+
+            int count = componentsArray.Length;
+
+            switch (metadata.kind)
+            {
+                case FieldKind.Array:
+                {
+                    metadata.SetValue(component, componentsArray);
+                    return count > 0;
+                }
+                case FieldKind.List:
+                {
+                    if (metadata.GetValue(component) is IList instance)
+                    {
+                        instance.Clear();
+                    }
+                    else
+                    {
+                        instance = metadata.listCreator(count);
+                        metadata.SetValue(component, instance);
+                    }
+
+                    for (int i = 0; i < count; ++i)
+                    {
+                        instance.Add(componentsArray.GetValue(i));
+                    }
+
+                    return count > 0;
+                }
+                case FieldKind.HashSet:
+                {
+                    object hashSet = metadata.GetValue(component);
+                    if (hashSet != null && metadata.hashSetClearer != null)
+                    {
+                        metadata.hashSetClearer(hashSet);
+                    }
+                    else
+                    {
+                        hashSet = metadata.hashSetCreator(count);
+                        metadata.SetValue(component, hashSet);
+                    }
+
+                    for (int i = 0; i < count; ++i)
+                    {
+                        metadata.hashSetAdder(hashSet, componentsArray.GetValue(i));
+                    }
+
+                    return count > 0;
+                }
+                default:
+                {
+                    return TryAssignSingleSibling(component, metadata);
+                }
+            }
+        }
+    }
+
+    internal static class SiblingComponentFastInvoker
+    {
+        private static readonly Dictionary<Type, Func<Component, Array>> ArrayGetters = new();
+
+        private static readonly MethodInfo GetComponentsGenericDefinition = typeof(Component)
+            .GetMethods(BindingFlags.Instance | BindingFlags.Public)
+            .First(method =>
+                method.Name == nameof(Component.GetComponents)
+                && method.IsGenericMethodDefinition
+                && method.GetParameters().Length == 0
+            );
+
+        internal static Array GetArray(Component component, Type elementType)
+        {
+            if (!ArrayGetters.TryGetValue(elementType, out Func<Component, Array> getter))
+            {
+                getter = CreateArrayGetter(elementType);
+                ArrayGetters[elementType] = getter;
+            }
+
+            return getter(component);
+        }
+
+        private static Func<Component, Array> CreateArrayGetter(Type elementType)
+        {
+            MethodInfo closedMethod = GetComponentsGenericDefinition.MakeGenericMethod(elementType);
+            ParameterExpression componentParameter = Expression.Parameter(
+                typeof(Component),
+                "component"
+            );
+            MethodCallExpression invoke = Expression.Call(componentParameter, closedMethod);
+            UnaryExpression convert = Expression.Convert(invoke, typeof(Array));
+            return Expression.Lambda<Func<Component, Array>>(convert, componentParameter).Compile();
         }
     }
 }

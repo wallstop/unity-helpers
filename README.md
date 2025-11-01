@@ -660,6 +660,7 @@ public class Enemy : MonoBehaviour
 ```
 
 See the in-depth guide: [Relational Components](Docs/RELATIONAL_COMPONENTS.md).
+Performance snapshots: [Relational Component Performance Benchmarks](Docs/RELATIONAL_COMPONENT_PERFORMANCE.md).
 
 ---
 
@@ -1123,9 +1124,10 @@ Unity Helpers is built with performance as a top priority:
 
 **Reflection:**
 
-- IL-emitted delegates 10-100x faster than System.Reflection
-- Safe for IL2CPP and AOT platforms
-- [📊 Reflection Performance](Docs/REFLECTION_HELPERS.md)
+- Cached delegates are 10-100x faster than raw `System.Reflection` (boxed scenarios improve the most)
+- Safe for IL2CPP and AOT platforms; capability overrides (`ReflectionHelpers.OverrideReflectionCapabilities`) let tests force expression/IL fallbacks
+- Run the benchmarks via **ReflectionPerformanceTests.Benchmark** (EditMode Test Runner) and commit the updated markdown section
+- [📘 Reflection Performance Guide](Docs/ReflectionPerformance.md) and [📊 Benchmarks](Docs/REFLECTION_PERFORMANCE.md)
 
 **List Sorting:**
 
@@ -1164,6 +1166,9 @@ Unity Helpers is built with performance as a top priority:
 
 **Performance & Reference:**
 
+- Reflection Performance Guide — [Reflection Performance](Docs/ReflectionPerformance.md)
+- Reflection AOT/Burst Validation — [IL2CPP & Burst Validation](Docs/ReflectionAotBurstValidation.md)
+- Reflection Benchmark CI Proposal — [Benchmark CI Proposal](Docs/ReflectionBenchmarkCIProposal.md)
 - Random Performance — [Random Performance](Docs/RANDOM_PERFORMANCE.md)
 - Reflection Helpers — [Reflection Helpers](Docs/REFLECTION_HELPERS.md)
 - IList Sorting Performance — [IList Sorting Performance](Docs/ILIST_SORTING_PERFORMANCE.md)

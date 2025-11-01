@@ -28,7 +28,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Helper
                 AssetDatabase.CreateFolder("Assets", "TempHelpersPrefabs");
             }
 
-            string assetPath = Path.Combine(folder, "TestPrefab.prefab").Replace('\\', '/');
+            string assetPath = Path.Combine(folder, "TestPrefab.prefab").SanitizePath();
             GameObject prefabSource = Track(new GameObject("Helpers_PrefabSource"));
             try
             {
@@ -63,7 +63,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Helper
                 AssetDatabase.CreateFolder("Assets", "TempHelpersScriptables");
             }
 
-            string assetPath = Path.Combine(folder, "Dummy.asset").Replace('\\', '/');
+            string assetPath = Path.Combine(folder, "Dummy.asset").SanitizePath();
             DummyScriptableObject asset = Track(
                 ScriptableObject.CreateInstance<DummyScriptableObject>()
             );

@@ -6,6 +6,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
     using UnityEditor;
     using UnityEngine;
     using UnityEngine.U2D;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
     using WallstopStudios.UnityHelpers.Tests.Editor.Utils;
 
@@ -31,7 +32,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         public void GeneratesSpriteAtlasAssetFromConfig()
         {
             // Create a source sprite
-            string spritePath = Path.Combine(Root, "icon.png").Replace('\\', '/');
+            string spritePath = Path.Combine(Root, "icon.png").SanitizePath();
             CreatePng(spritePath, 8, 8, Color.red);
             AssetDatabase.Refresh();
 
@@ -41,7 +42,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             config.spritesToPack.Add(AssetDatabase.LoadAssetAtPath<Sprite>(spritePath));
             config.outputSpriteAtlasDirectory = Root;
             config.outputSpriteAtlasName = "TestAtlas";
-            string configPath = Path.Combine(Root, "TestAtlasConfig.asset").Replace('\\', '/');
+            string configPath = Path.Combine(Root, "TestAtlasConfig.asset").SanitizePath();
             AssetDatabase.CreateAsset(config, configPath);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -55,7 +56,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
 
             AssetDatabase.Refresh();
 
-            string atlasPath = Path.Combine(Root, "TestAtlas.spriteatlas").Replace('\\', '/');
+            string atlasPath = Path.Combine(Root, "TestAtlas.spriteatlas").SanitizePath();
             SpriteAtlas atlas = AssetDatabase.LoadAssetAtPath<SpriteAtlas>(atlasPath);
             Assert.IsTrue(atlas != null, ".spriteatlas should be generated");
         }
@@ -77,7 +78,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
 
         private static void CreatePng(string relPath, int w, int h, Color c)
         {
-            string dir = Path.GetDirectoryName(relPath).Replace('\\', '/');
+            string dir = Path.GetDirectoryName(relPath)?.SanitizePath();
             EnsureFolder(dir);
             Texture2D t = new(w, h, TextureFormat.RGBA32, false);
             Color[] pix = new Color[w * h];
@@ -101,7 +102,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
                     ),
                     rel
                 )
-                .Replace('\\', '/');
+                .SanitizePath();
         }
     }
 #endif

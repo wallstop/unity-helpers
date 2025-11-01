@@ -259,7 +259,12 @@ paket-files/
 
 # JetBrains Rider
 .idea/
+*.sln
+*.sln.meta
 *.sln.iml
+
+Editor/Analyzers/*.dll
+Editor/Analyzers/*.pdb
 
 # CodeRush
 .cr/
@@ -302,6 +307,9 @@ __pycache__/
 # Builds
 /Unity/DxMessagingUnity*.apk
 /Unity/DxMessagingUnity*.unitypackage
+
+package-lock.json
+package-lock.json.meta
 
 # Plugins
 /Unity/DxMessagingUnity/Assets/Plugins/*

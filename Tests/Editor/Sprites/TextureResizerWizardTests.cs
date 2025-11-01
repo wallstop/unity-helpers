@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
     using WallstopStudios.UnityHelpers.Tests.Editor.Utils;
 
@@ -31,7 +32,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void ResizesTextureAccordingToMultipliers()
         {
-            string path = Path.Combine(Root, "tex.png").Replace('\\', '/');
+            string path = Path.Combine(Root, "tex.png").SanitizePath();
             CreatePng(path, 16, 10, Color.green);
             AssetDatabase.Refresh();
 
@@ -59,7 +60,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void DoesNothingWhenNumResizesIsZero()
         {
-            string path = Path.Combine(Root, "nochange.png").Replace('\\', '/');
+            string path = Path.Combine(Root, "nochange.png").SanitizePath();
             CreatePng(path, 12, 7, Color.blue);
             AssetDatabase.Refresh();
             int w0 = AssetDatabase.LoadAssetAtPath<Texture2D>(path).width;
@@ -80,7 +81,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void RespectsDryRunAndDoesNotModifyFile()
         {
-            string path = Path.Combine(Root, "dry.png").Replace('\\', '/');
+            string path = Path.Combine(Root, "dry.png").SanitizePath();
             CreatePng(path, 10, 6, Color.white);
             AssetDatabase.Refresh();
 
@@ -108,7 +109,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void WritesToOutputFolderLeavingOriginalUnchanged()
         {
-            string path = Path.Combine(Root, "out.png").Replace('\\', '/');
+            string path = Path.Combine(Root, "out.png").SanitizePath();
             CreatePng(path, 8, 4, Color.black);
             AssetDatabase.Refresh();
 
@@ -134,7 +135,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             Assert.That(orig.width, Is.EqualTo(8));
             Assert.That(orig.height, Is.EqualTo(4));
 
-            string outPath = Path.Combine(OutRoot, "out.png").Replace('\\', '/');
+            string outPath = Path.Combine(OutRoot, "out.png").SanitizePath();
             Texture2D outTex = AssetDatabase.LoadAssetAtPath<Texture2D>(outPath);
             Assert.IsTrue(outTex != null, "Expected resized texture in output folder");
             Assert.That(outTex.width, Is.EqualTo(16));
@@ -144,7 +145,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void MultiplePassesAccumulateSize()
         {
-            string path = Path.Combine(Root, "multi.png").Replace('\\', '/');
+            string path = Path.Combine(Root, "multi.png").SanitizePath();
             CreatePng(path, 16, 10, Color.gray);
             AssetDatabase.Refresh();
 
@@ -171,7 +172,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void RestoresImporterReadabilityAfterRun()
         {
-            string path = Path.Combine(Root, "restore.png").Replace('\\', '/');
+            string path = Path.Combine(Root, "restore.png").SanitizePath();
             CreatePng(path, 8, 8, Color.red);
             AssetDatabase.Refresh();
 
@@ -217,7 +218,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
 
         private static void CreatePng(string relPath, int w, int h, Color c)
         {
-            string dir = Path.GetDirectoryName(relPath).Replace('\\', '/');
+            string dir = Path.GetDirectoryName(relPath).SanitizePath();
             EnsureFolder(dir);
             Texture2D t = new(w, h, TextureFormat.RGBA32, false);
             Color[] pix = new Color[w * h];
@@ -241,7 +242,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
                     ),
                     rel
                 )
-                .Replace('\\', '/');
+                .SanitizePath();
         }
     }
 #endif

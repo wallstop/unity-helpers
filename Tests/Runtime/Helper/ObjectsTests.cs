@@ -293,7 +293,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             CustomClass[] array = { a, b, c };
             ReadOnlySpan<CustomClass> span = array;
 
-            int spanHash = Objects.HashCode(span);
+            int spanHash = Objects.SpanHashCode(span);
             int variadicHash = Objects.HashCode(a, b, c);
 
             Assert.AreEqual(variadicHash, spanHash);

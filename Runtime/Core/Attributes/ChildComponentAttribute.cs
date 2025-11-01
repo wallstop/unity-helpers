@@ -3,11 +3,17 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     using System;
     using System.Collections;
     using System.Collections.Generic;
+    using System.Linq;
+    using System.Linq.Expressions;
+    using System.Reflection;
     using Extension;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Utils;
     using static RelationalComponentProcessor;
+#if UNITY_EDITOR && UNITY_2020_2_OR_NEWER
+    using Unity.Profiling;
+#endif
 
     /// <summary>
     /// Automatically assigns child components (components down the transform hierarchy) to the decorated field.
@@ -82,6 +88,15 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             FieldMetadata<ChildComponentAttribute>[]
         > FieldsByType = new();
 
+#if UNITY_EDITOR && UNITY_2020_2_OR_NEWER
+        private static readonly ProfilerMarker ChildFastPathMarker = new ProfilerMarker(
+            "RelationalComponents.Child.FastPath"
+        );
+        private static readonly ProfilerMarker ChildFallbackMarker = new ProfilerMarker(
+            "RelationalComponents.Child.Fallback"
+        );
+#endif
+
         /// <summary>
         /// Assigns fields on <paramref name="component"/> marked with <see cref="ChildComponentAttribute"/>.
         /// </summary>
@@ -100,11 +115,22 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         /// </example>
         public static void AssignChildComponents(this Component component)
         {
-            Type componentType = component.GetType();
             FieldMetadata<ChildComponentAttribute>[] fields = FieldsByType.GetOrAdd(
-                componentType,
+                component.GetType(),
                 type => GetFieldMetadata<ChildComponentAttribute>(type)
             );
+            AssignChildComponents(component, fields);
+        }
+
+        internal static void AssignChildComponents(
+            Component component,
+            FieldMetadata<ChildComponentAttribute>[] fields
+        )
+        {
+            if (component == null || fields == null || fields.Length == 0)
+            {
+                return;
+            }
 
             foreach (FieldMetadata<ChildComponentAttribute> metadata in fields)
             {
@@ -113,133 +139,152 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     continue;
                 }
 
-                bool foundChild;
-                FilterParameters filters = new(metadata.attribute);
-
-                using PooledResource<List<Transform>> childBufferResource =
-                    Buffers<Transform>.List.Get();
-                List<Transform> childBuffer = childBufferResource.resource;
-
-                switch (metadata.kind)
+                bool foundChild = false;
+                if (metadata.kind == FieldKind.Single)
                 {
-                    case FieldKind.Array:
+                    if (TryAssignChildSingleFast(component, metadata, out Component childComponent))
                     {
-                        using PooledResource<List<Component>> cacheResource =
-                            Buffers<Component>.List.Get();
-                        List<Component> cache = cacheResource.resource;
-
-                        CollectChildComponents(component, metadata, childBuffer, cache);
-
-                        int filteredCount = FilterComponentsInPlace(
-                            cache,
-                            filters,
-                            metadata.attribute,
-                            metadata.elementType,
-                            metadata.isInterface
-                        );
-
-                        Array correctTypedArray = metadata.arrayCreator(filteredCount);
-                        for (int i = 0; i < filteredCount; ++i)
-                        {
-                            correctTypedArray.SetValue(cache[i], i);
-                        }
-
-                        metadata.setter(component, correctTypedArray);
-                        foundChild = filteredCount > 0;
-                        break;
+                        metadata.SetValue(component, childComponent);
+                        foundChild = true;
                     }
-                    case FieldKind.List:
+                    else
                     {
-                        using PooledResource<List<Component>> cacheResource =
-                            Buffers<Component>.List.Get();
-                        List<Component> cache = cacheResource.resource;
-
-                        CollectChildComponents(component, metadata, childBuffer, cache);
-
-                        int filteredCount = FilterComponentsInPlace(
-                            cache,
-                            filters,
-                            metadata.attribute,
-                            metadata.elementType,
-                            metadata.isInterface
-                        );
-
-                        IList instance = metadata.listCreator(filteredCount);
-                        for (int i = 0; i < filteredCount; ++i)
-                        {
-                            instance.Add(cache[i]);
-                        }
-
-                        metadata.setter(component, instance);
-                        foundChild = filteredCount > 0;
-                        break;
-                    }
-                    case FieldKind.HashSet:
-                    {
-                        using PooledResource<List<Component>> cacheResource =
-                            Buffers<Component>.List.Get();
-                        List<Component> cache = cacheResource.resource;
-
-                        CollectChildComponents(component, metadata, childBuffer, cache);
-
-                        int filteredCount = FilterComponentsInPlace(
-                            cache,
-                            filters,
-                            metadata.attribute,
-                            metadata.elementType,
-                            metadata.isInterface
-                        );
-
-                        object instance = metadata.hashSetCreator(filteredCount);
-                        for (int i = 0; i < filteredCount; ++i)
-                        {
-                            metadata.hashSetAdder(instance, cache[i]);
-                        }
-
-                        metadata.setter(component, instance);
-                        foundChild = filteredCount > 0;
-                        break;
-                    }
-                    default:
-                    {
-                        foundChild = false;
-                        Component childComponent = null;
-
-                        using PooledResource<List<Component>> scratch = Buffers<Component>.List.Get(
-                            out List<Component> components
-                        );
-
-                        foreach (
-                            Transform child in component.IterateOverAllChildrenRecursivelyBreadthFirst(
+                        FilterParameters filters = metadata.Filters;
+                        using PooledResource<List<Transform>> childBufferResource =
+                            Buffers<Transform>.List.Get(out List<Transform> childBuffer);
+                        if (
+                            TryAssignChildSingleFallback(
+                                component,
+                                metadata,
+                                filters,
                                 childBuffer,
-                                includeSelf: !metadata.attribute.OnlyDescendants,
-                                maxDepth: metadata.attribute.MaxDepth
+                                out childComponent
                             )
                         )
                         {
-                            if (
-                                TryResolveSingleComponent(
-                                    child,
-                                    filters,
-                                    metadata.elementType,
-                                    metadata.isInterface,
-                                    metadata.attribute.AllowInterfaces,
-                                    components,
-                                    out Component resolved
-                                )
-                            )
+                            metadata.SetValue(component, childComponent);
+                            foundChild = true;
+                        }
+                    }
+                }
+                else
+                {
+                    FilterParameters filters = metadata.Filters;
+                    if (
+                        TryAssignChildCollectionFast(
+                            component,
+                            metadata,
+                            filters,
+                            out bool assignedAny
+                        )
+                    )
+                    {
+                        foundChild = assignedAny;
+                    }
+                    else
+                    {
+                        using PooledResource<List<Transform>> childBufferResource =
+                            Buffers<Transform>.List.Get(out List<Transform> childBuffer);
+
+                        switch (metadata.kind)
+                        {
+                            case FieldKind.Array:
                             {
-                                childComponent = resolved;
-                                foundChild = true;
+                                using PooledResource<List<Component>> cacheResource =
+                                    Buffers<Component>.List.Get(out List<Component> cache);
+                                cache.Clear();
+                                int filteredCount = EnumerateFilteredChildComponents(
+                                    component,
+                                    metadata,
+                                    filters,
+                                    childBuffer,
+                                    candidate =>
+                                    {
+                                        cache.Add(candidate);
+                                        return true;
+                                    }
+                                );
+
+                                Array correctTypedArray = metadata.arrayCreator(filteredCount);
+                                for (int i = 0; i < filteredCount; ++i)
+                                {
+                                    correctTypedArray.SetValue(cache[i], i);
+                                }
+
+                                metadata.SetValue(component, correctTypedArray);
+                                foundChild = filteredCount > 0;
+                                break;
+                            }
+                            case FieldKind.List:
+                            {
+                                object existing = metadata.GetValue(component);
+                                IList list = existing as IList;
+                                if (list == null)
+                                {
+                                    int initialCapacity =
+                                        metadata.attribute.MaxCount > 0
+                                            ? metadata.attribute.MaxCount
+                                            : 0;
+                                    list = metadata.listCreator(initialCapacity);
+                                    metadata.SetValue(component, list);
+                                }
+                                else
+                                {
+                                    list.Clear();
+                                }
+
+                                int added = EnumerateFilteredChildComponents(
+                                    component,
+                                    metadata,
+                                    filters,
+                                    childBuffer,
+                                    candidate =>
+                                    {
+                                        list.Add(candidate);
+                                        return true;
+                                    }
+                                );
+
+                                foundChild = added > 0;
+                                break;
+                            }
+                            case FieldKind.HashSet:
+                            {
+                                object instance = metadata.GetValue(component);
+                                if (instance != null && metadata.hashSetClearer != null)
+                                {
+                                    metadata.hashSetClearer(instance);
+                                }
+                                else
+                                {
+                                    int initialCapacity =
+                                        metadata.attribute.MaxCount > 0
+                                            ? metadata.attribute.MaxCount
+                                            : 0;
+                                    instance = metadata.hashSetCreator(initialCapacity);
+                                    metadata.SetValue(component, instance);
+                                }
+
+                                int added = EnumerateFilteredChildComponents(
+                                    component,
+                                    metadata,
+                                    filters,
+                                    childBuffer,
+                                    candidate =>
+                                    {
+                                        metadata.hashSetAdder(instance, candidate);
+                                        return true;
+                                    }
+                                );
+
+                                foundChild = added > 0;
+                                break;
+                            }
+                            default:
+                            {
                                 break;
                             }
                         }
-
-                        if (foundChild)
-                        {
-                            metadata.setter(component, childComponent);
-                        }
-                        break;
                     }
                 }
 
@@ -250,17 +295,360 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             }
         }
 
-        private static List<Component> CollectChildComponents(
+        internal static FieldMetadata<ChildComponentAttribute>[] GetOrCreateFields(Type type)
+        {
+            return FieldsByType.GetOrAdd(type, t => GetFieldMetadata<ChildComponentAttribute>(t));
+        }
+
+        private static bool TryAssignChildSingleFast(
             Component component,
             FieldMetadata<ChildComponentAttribute> metadata,
-            List<Transform> childBuffer,
-            List<Component> cache
+            out Component childComponent
         )
         {
-            cache.Clear();
-            using PooledResource<List<Component>> componentBuffer = Buffers<Component>.List.Get(
-                out List<Component> components
+            childComponent = null;
+            ChildComponentAttribute attribute = metadata.attribute;
+
+            if (
+                metadata.isInterface
+                || attribute.MaxDepth != 0
+                || attribute.TagFilter != null
+                || attribute.NameFilter != null
+            )
+            {
+                return false;
+            }
+
+            Component[] results = component.GetComponentsInChildren(
+                metadata.elementType,
+                attribute.IncludeInactive
             );
+
+            if (results == null || results.Length == 0)
+            {
+                return false;
+            }
+
+            Transform componentTransform = component.transform;
+            for (int i = 0; i < results.Length; ++i)
+            {
+                Component candidate = results[i];
+                if (candidate == null)
+                {
+                    continue;
+                }
+
+                if (attribute.OnlyDescendants && candidate.transform == componentTransform)
+                {
+                    continue;
+                }
+
+                childComponent = candidate;
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool TryAssignChildCollectionFast(
+            Component component,
+            FieldMetadata<ChildComponentAttribute> metadata,
+            FilterParameters filters,
+            out bool assignedAny
+        )
+        {
+            assignedAny = false;
+            ChildComponentAttribute attribute = metadata.attribute;
+            if (metadata.isInterface || filters.RequiresPostProcessing || attribute.MaxDepth > 0)
+            {
+#if UNITY_EDITOR && UNITY_2020_2_OR_NEWER
+                ChildFallbackMarker.Begin();
+                ChildFallbackMarker.End();
+#endif
+                return false;
+            }
+
+#if UNITY_EDITOR && UNITY_2020_2_OR_NEWER
+            using (ChildFastPathMarker.Auto())
+#endif
+            {
+                Array children = ChildComponentFastInvoker.GetArray(
+                    component,
+                    metadata.elementType,
+                    attribute.IncludeInactive
+                );
+
+                Array filtered = FilterChildArray(component, metadata, children);
+                Array ordered = EnsureBreadthFirstOrder(component, metadata, filtered);
+                assignedAny = AssignChildComponentsFromArray(component, metadata, ordered);
+                return true;
+            }
+        }
+
+        private static Array FilterChildArray(
+            Component component,
+            FieldMetadata<ChildComponentAttribute> metadata,
+            Array source
+        )
+        {
+            Type elementType = metadata.elementType;
+            if (source == null || source.Length == 0)
+            {
+                return Array.CreateInstance(elementType, 0);
+            }
+
+            ChildComponentAttribute attribute = metadata.attribute;
+            bool onlyDescendants = attribute.OnlyDescendants;
+            Transform self = component.transform;
+
+            int maxCount = attribute.MaxCount;
+            if (!onlyDescendants && maxCount <= 0)
+            {
+                return source;
+            }
+
+            int limit = maxCount > 0 ? Math.Min(maxCount, source.Length) : source.Length;
+            Array staged = Array.CreateInstance(elementType, limit);
+            int writeIndex = 0;
+
+            for (int i = 0; i < source.Length && writeIndex < limit; ++i)
+            {
+                Component candidate = source.GetValue(i) as Component;
+                if (candidate == null)
+                {
+                    continue;
+                }
+
+                if (onlyDescendants && candidate.transform == self)
+                {
+                    continue;
+                }
+
+                staged.SetValue(candidate, writeIndex++);
+            }
+
+            if (writeIndex == staged.Length)
+            {
+                return staged;
+            }
+
+            Array result = Array.CreateInstance(elementType, writeIndex);
+            if (writeIndex > 0)
+            {
+                Array.Copy(staged, 0, result, 0, writeIndex);
+            }
+
+            return result;
+        }
+
+        private static Array EnsureBreadthFirstOrder(
+            Component component,
+            FieldMetadata<ChildComponentAttribute> metadata,
+            Array source
+        )
+        {
+            Type elementType = metadata.elementType;
+            if (source == null)
+            {
+                return Array.CreateInstance(elementType, 0);
+            }
+
+            int length = source.Length;
+            if (length <= 1)
+            {
+                return source;
+            }
+
+            ChildComponentAttribute attribute = metadata.attribute;
+            using PooledResource<List<Transform>> traversalResource = Buffers<Transform>.List.Get(
+                out List<Transform> traversal
+            );
+            component.IterateOverAllChildrenRecursivelyBreadthFirst(
+                traversal,
+                includeSelf: !attribute.OnlyDescendants,
+                attribute.MaxDepth
+            );
+
+            using PooledResource<Dictionary<Transform, List<Component>>> groupedResource =
+                DictionaryBuffer<Transform, List<Component>>.Dictionary.Get(
+                    out Dictionary<Transform, List<Component>> grouped
+                );
+            using PooledResource<Dictionary<Transform, int>> positionsResource = DictionaryBuffer<
+                Transform,
+                int
+            >.Dictionary.Get(out Dictionary<Transform, int> positions);
+
+            for (int i = 0; i < length; ++i)
+            {
+                Component candidate = source.GetValue(i) as Component;
+                if (candidate == null)
+                {
+                    continue;
+                }
+
+                Transform key = candidate.transform;
+                if (!grouped.TryGetValue(key, out List<Component> list))
+                {
+                    list = new List<Component>();
+                    grouped.Add(key, list);
+                    positions.Add(key, 0);
+                }
+
+                list.Add(candidate);
+            }
+
+            Array ordered = Array.CreateInstance(elementType, length);
+            int writeIndex = 0;
+
+            for (int i = 0; i < traversal.Count && writeIndex < length; ++i)
+            {
+                Transform transform = traversal[i];
+                if (!grouped.TryGetValue(transform, out List<Component> list))
+                {
+                    continue;
+                }
+
+                int position = positions[transform];
+                while (position < list.Count && writeIndex < length)
+                {
+                    ordered.SetValue(list[position], writeIndex++);
+                    position++;
+                }
+
+                if (position >= list.Count)
+                {
+                    grouped.Remove(transform);
+                    positions.Remove(transform);
+                }
+                else
+                {
+                    positions[transform] = position;
+                }
+            }
+
+            if (writeIndex < length && grouped.Count > 0)
+            {
+                foreach (KeyValuePair<Transform, List<Component>> pair in grouped)
+                {
+                    List<Component> list = pair.Value;
+                    int position = positions[pair.Key];
+                    while (position < list.Count && writeIndex < length)
+                    {
+                        ordered.SetValue(list[position], writeIndex++);
+                        position++;
+                    }
+                    if (writeIndex >= length)
+                    {
+                        break;
+                    }
+                }
+            }
+
+            if (writeIndex >= length)
+            {
+                return ordered;
+            }
+
+            if (writeIndex == 0)
+            {
+                return Array.CreateInstance(elementType, 0);
+            }
+
+            Array trimmed = Array.CreateInstance(elementType, writeIndex);
+            Array.Copy(ordered, 0, trimmed, 0, writeIndex);
+            return trimmed;
+        }
+
+        private static bool AssignChildComponentsFromArray(
+            Component component,
+            FieldMetadata<ChildComponentAttribute> metadata,
+            Array componentsArray
+        )
+        {
+            if (componentsArray == null)
+            {
+                componentsArray = Array.CreateInstance(metadata.elementType, 0);
+            }
+
+            int count = componentsArray.Length;
+
+            switch (metadata.kind)
+            {
+                case FieldKind.Array:
+                {
+                    Array instance = metadata.arrayCreator(count);
+                    for (int i = 0; i < count; ++i)
+                    {
+                        instance.SetValue(componentsArray.GetValue(i), i);
+                    }
+
+                    metadata.SetValue(component, instance);
+                    return count > 0;
+                }
+                case FieldKind.List:
+                {
+                    if (metadata.GetValue(component) is IList list)
+                    {
+                        list.Clear();
+                    }
+                    else
+                    {
+                        list = metadata.listCreator(count);
+                        metadata.SetValue(component, list);
+                    }
+
+                    for (int i = 0; i < count; ++i)
+                    {
+                        list.Add(componentsArray.GetValue(i));
+                    }
+
+                    return count > 0;
+                }
+                case FieldKind.HashSet:
+                {
+                    object hashSet = metadata.GetValue(component);
+                    if (hashSet != null && metadata.hashSetClearer != null)
+                    {
+                        metadata.hashSetClearer(hashSet);
+                    }
+                    else
+                    {
+                        hashSet = metadata.hashSetCreator(count);
+                        metadata.SetValue(component, hashSet);
+                    }
+
+                    for (int i = 0; i < count; ++i)
+                    {
+                        metadata.hashSetAdder(hashSet, componentsArray.GetValue(i));
+                    }
+
+                    return count > 0;
+                }
+                default:
+                {
+                    return false;
+                }
+            }
+        }
+
+        private static bool TryAssignChildSingleFallback(
+            Component component,
+            FieldMetadata<ChildComponentAttribute> metadata,
+            FilterParameters filters,
+            List<Transform> childBuffer,
+            out Component childComponent
+        )
+        {
+            bool needsScratch = metadata.isInterface || filters.RequiresPostProcessing;
+            List<Component> scratchList = null;
+            PooledResource<List<Component>> scratch = default;
+            if (needsScratch)
+            {
+                scratch = Buffers<Component>.List.Get(out scratchList);
+            }
+
+            childComponent = null;
+
             foreach (
                 Transform child in component.IterateOverAllChildrenRecursivelyBreadthFirst(
                     childBuffer,
@@ -269,16 +657,141 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 )
             )
             {
+                if (
+                    TryResolveSingleComponent(
+                        child,
+                        filters,
+                        metadata.elementType,
+                        metadata.isInterface,
+                        metadata.attribute.AllowInterfaces,
+                        scratchList,
+                        out Component resolved
+                    )
+                )
+                {
+                    childComponent = resolved;
+                    break;
+                }
+            }
+
+            if (needsScratch)
+            {
+                scratch.Dispose();
+            }
+
+            return childComponent != null;
+        }
+
+        private static int EnumerateFilteredChildComponents(
+            Component component,
+            FieldMetadata<ChildComponentAttribute> metadata,
+            FilterParameters filters,
+            List<Transform> childBuffer,
+            Func<Component, bool> onComponent
+        )
+        {
+            if (component == null)
+            {
+                return 0;
+            }
+
+            ChildComponentAttribute attribute = metadata.attribute;
+            int maxAssignments = attribute.MaxCount > 0 ? attribute.MaxCount : int.MaxValue;
+            int added = 0;
+
+            using PooledResource<List<Component>> componentBuffer = Buffers<Component>.List.Get(
+                out List<Component> components
+            );
+
+            foreach (
+                Transform child in component.IterateOverAllChildrenRecursivelyBreadthFirst(
+                    childBuffer,
+                    includeSelf: !attribute.OnlyDescendants,
+                    maxDepth: attribute.MaxDepth
+                )
+            )
+            {
                 GetComponentsOfType(
                     child,
                     metadata.elementType,
                     metadata.isInterface,
-                    metadata.attribute.AllowInterfaces,
+                    attribute.AllowInterfaces,
                     components
                 );
-                cache.AddRange(components);
+
+                for (int i = 0; i < components.Count; ++i)
+                {
+                    Component candidate = components[i];
+                    if (!PassesStateAndFilters(candidate, filters, filterDisabledComponents: true))
+                    {
+                        continue;
+                    }
+
+                    if (!onComponent(candidate))
+                    {
+                        return added;
+                    }
+
+                    added++;
+                    if (added >= maxAssignments)
+                    {
+                        return added;
+                    }
+                }
             }
-            return cache;
+
+            return added;
+        }
+    }
+
+    internal static class ChildComponentFastInvoker
+    {
+        private static readonly Dictionary<Type, Func<Component, bool, Array>> ArrayGetters = new();
+
+        private static readonly MethodInfo GetComponentsInChildrenGeneric = typeof(Component)
+            .GetMethods(BindingFlags.Instance | BindingFlags.Public)
+            .First(method =>
+                method.Name == nameof(Component.GetComponentsInChildren)
+                && method.IsGenericMethodDefinition
+                && method.GetParameters().Length == 1
+                && method.GetParameters()[0].ParameterType == typeof(bool)
+            );
+
+        internal static Array GetArray(Component component, Type elementType, bool includeInactive)
+        {
+            if (!ArrayGetters.TryGetValue(elementType, out Func<Component, bool, Array> getter))
+            {
+                getter = CreateArrayGetter(elementType);
+                ArrayGetters[elementType] = getter;
+            }
+
+            return getter(component, includeInactive);
+        }
+
+        private static Func<Component, bool, Array> CreateArrayGetter(Type elementType)
+        {
+            MethodInfo closedMethod = GetComponentsInChildrenGeneric.MakeGenericMethod(elementType);
+            ParameterExpression componentParameter = Expression.Parameter(
+                typeof(Component),
+                "component"
+            );
+            ParameterExpression includeInactiveParameter = Expression.Parameter(
+                typeof(bool),
+                "includeInactive"
+            );
+            MethodCallExpression invoke = Expression.Call(
+                componentParameter,
+                closedMethod,
+                includeInactiveParameter
+            );
+            UnaryExpression convert = Expression.Convert(invoke, typeof(Array));
+            return Expression
+                .Lambda<Func<Component, bool, Array>>(
+                    convert,
+                    componentParameter,
+                    includeInactiveParameter
+                )
+                .Compile();
         }
     }
 }

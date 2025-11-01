@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
     using WallstopStudios.UnityHelpers.Tests.Editor.Utils;
 
@@ -32,7 +33,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void AppliesDefaultPlatformSettingsViaAPI()
         {
-            string texPath = (Root + "/api_tex.png").Replace('\\', '/');
+            string texPath = (Root + "/api_tex.png").SanitizePath();
             CreatePng(texPath, 16, 16, Color.white);
             AssetDatabase.Refresh();
 

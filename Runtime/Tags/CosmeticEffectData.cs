@@ -103,7 +103,7 @@ namespace WallstopStudios.UnityHelpers.Tags
 
         public override int GetHashCode()
         {
-            return _cosmeticTypes.Value.Count.GetHashCode();
+            return Objects.HashCode(_cosmeticTypes.Value.Count);
         }
     }
 }

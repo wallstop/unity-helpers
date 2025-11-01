@@ -1,5 +1,6 @@
 namespace WallstopStudios.UnityHelpers.Core.Attributes
 {
+    using System;
     using UnityEngine;
 
     /// <summary>
@@ -53,9 +54,24 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         /// </example>
         public static void AssignRelationalComponents(this Component component)
         {
-            component.AssignParentComponents();
-            component.AssignSiblingComponents();
-            component.AssignChildComponents();
+            if (component == null)
+            {
+                return;
+            }
+
+            Type componentType = component.GetType();
+            ParentComponentExtensions.AssignParentComponents(
+                component,
+                ParentComponentExtensions.GetOrCreateFields(componentType)
+            );
+            SiblingComponentExtensions.AssignSiblingComponents(
+                component,
+                SiblingComponentExtensions.GetOrCreateFields(componentType)
+            );
+            ChildComponentExtensions.AssignChildComponents(
+                component,
+                ChildComponentExtensions.GetOrCreateFields(componentType)
+            );
         }
     }
 }

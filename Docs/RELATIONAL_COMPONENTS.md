@@ -23,6 +23,8 @@ Having issues? Jump to Troubleshooting: see [Troubleshooting](#troubleshooting).
 
 Related systems: For data‑driven gameplay effects (attributes, tags, cosmetics), see [Effects System](EFFECTS_SYSTEM.md) and the README section Effects, Attributes, and Tags (#effects-attributes-and-tags).
 
+Curious how these attributes stack up against manual `GetComponent*` loops? Check the [Relational Component Performance Benchmarks](RELATIONAL_COMPONENT_PERFORMANCE.md) for operations-per-second and allocation snapshots.
+
 ## TL;DR — What Problem This Solves
 
 - **⭐ Replace 20+ lines of repetitive GetComponent boilerplate with 3 attributes + 1 method call.**
@@ -208,6 +210,8 @@ Examples:
 [SiblingComponent] private HashSet<Renderer> allRenderers;     // HashSet<T> supported
 ```
 
+> **Performance note:** Sibling lookups do not cache results between calls. In profiling we found these assignments typically run once per GameObject (e.g., during `Awake`), so the extra bookkeeping and invalidation cost of a cache outweighed the benefits. If you need updated references later, call `AssignSiblingComponents` again after the hierarchy changes.
+
 ### ParentComponent
 
 - Scope: Up the transform chain (optionally excluding self)
@@ -246,6 +250,8 @@ Examples:
 // Gather into a HashSet (unique results, no duplicates) and limit count
 [ChildComponent(OnlyDescendants = true, MaxCount = 10)] private HashSet<Rigidbody2D> firstTenRigidbodies;
 ```
+
+> **Performance note:** When you avoid depth limits and interface filtering, child assignments run through a cached `GetComponentsInChildren<T>()` delegate to stay allocation-free. Turning on `MaxDepth` or interface searches still works, but the assigner reverts to the breadth-first traversal to honour those constraints.
 
 ## Common Options (All Attributes)
 

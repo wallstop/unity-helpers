@@ -7,6 +7,7 @@ namespace WallstopStudios.UnityHelpers.Core.Math
     using Extension;
     using ProtoBuf;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Helper;
 
     /// <summary>
     /// Represents a line segment defined by two endpoints in 2D space.
@@ -230,10 +231,7 @@ namespace WallstopStudios.UnityHelpers.Core.Math
         /// </summary>
         public override int GetHashCode()
         {
-            unchecked
-            {
-                return (from.GetHashCode() * 397) ^ to.GetHashCode();
-            }
+            return Objects.HashCode(from, to);
         }
 
         /// <summary>
