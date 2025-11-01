@@ -308,6 +308,9 @@ __pycache__/
 /Unity/DxMessagingUnity*.apk
 /Unity/DxMessagingUnity*.unitypackage
 
+package-lock.json
+package-lock.json.meta
+
 # Plugins
 /Unity/DxMessagingUnity/Assets/Plugins/*
 
