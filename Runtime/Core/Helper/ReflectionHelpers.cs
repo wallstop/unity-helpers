@@ -4435,12 +4435,19 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     typeof(object),
                     "instance"
                 );
+                Expression propertyExpression;
 
-                Expression instanceExpression = property.DeclaringType.IsValueType
-                    ? Expression.Unbox(instanceParam, property.DeclaringType)
-                    : Expression.Convert(instanceParam, property.DeclaringType);
-
-                Expression propertyExpression = Expression.Property(instanceExpression, property);
+                if (getMethod.IsStatic)
+                {
+                    propertyExpression = Expression.Property(null, property);
+                }
+                else
+                {
+                    Expression instanceExpression = property.DeclaringType.IsValueType
+                        ? Expression.Unbox(instanceParam, property.DeclaringType)
+                        : Expression.Convert(instanceParam, property.DeclaringType);
+                    propertyExpression = Expression.Property(instanceExpression, property);
+                }
 
                 Expression returnExpression = property.PropertyType.IsValueType
                     ? Expression.Convert(propertyExpression, typeof(object))

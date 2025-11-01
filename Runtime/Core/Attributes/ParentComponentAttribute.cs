@@ -10,10 +10,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Utils;
     using static RelationalComponentProcessor;
-#if UNITY_EDITOR
-    using WallstopStudios.UnityHelpers.Core.Diagnostics;
-#endif
-#if UNITY_2020_2_OR_NEWER
+#if UNITY_EDITOR && UNITY_2020_2_OR_NEWER
     using Unity.Profiling;
 #endif
 
@@ -95,7 +92,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             FieldMetadata<ParentComponentAttribute>[]
         > FieldsByType = new();
 
-#if UNITY_2020_2_OR_NEWER
+#if UNITY_EDITOR && UNITY_2020_2_OR_NEWER
         private static readonly ProfilerMarker ParentFastPathMarker = new ProfilerMarker(
             "RelationalComponents.Parent.FastPath"
         );
@@ -395,17 +392,14 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 || root == null
             )
             {
-#if UNITY_EDITOR
-                RelationalComponentInstrumentation.RecordParentFastPath(false);
-#endif
-#if UNITY_2020_2_OR_NEWER
+#if UNITY_EDITOR && UNITY_2020_2_OR_NEWER
                 ParentFallbackMarker.Begin();
                 ParentFallbackMarker.End();
 #endif
                 return false;
             }
 
-#if UNITY_2020_2_OR_NEWER
+#if UNITY_EDITOR && UNITY_2020_2_OR_NEWER
             using (ParentFastPathMarker.Auto())
 #endif
             {
@@ -417,9 +411,6 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
                 Array filtered = FilterParentArray(metadata, parents);
                 assignedAny = AssignParentComponentsFromArray(component, metadata, filtered);
-#if UNITY_EDITOR
-                RelationalComponentInstrumentation.RecordParentFastPath(true);
-#endif
                 return true;
             }
         }

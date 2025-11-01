@@ -11,10 +11,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Utils;
     using static RelationalComponentProcessor;
-#if UNITY_EDITOR
-    using WallstopStudios.UnityHelpers.Core.Diagnostics;
-#endif
-#if UNITY_2020_2_OR_NEWER
+#if UNITY_EDITOR && UNITY_2020_2_OR_NEWER
     using Unity.Profiling;
 #endif
 
@@ -91,7 +88,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             FieldMetadata<ChildComponentAttribute>[]
         > FieldsByType = new();
 
-#if UNITY_2020_2_OR_NEWER
+#if UNITY_EDITOR && UNITY_2020_2_OR_NEWER
         private static readonly ProfilerMarker ChildFastPathMarker = new ProfilerMarker(
             "RelationalComponents.Child.FastPath"
         );
@@ -364,17 +361,14 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             ChildComponentAttribute attribute = metadata.attribute;
             if (metadata.isInterface || filters.RequiresPostProcessing || attribute.MaxDepth > 0)
             {
-#if UNITY_EDITOR
-                RelationalComponentInstrumentation.RecordChildFastPath(false);
-#endif
-#if UNITY_2020_2_OR_NEWER
+#if UNITY_EDITOR && UNITY_2020_2_OR_NEWER
                 ChildFallbackMarker.Begin();
                 ChildFallbackMarker.End();
 #endif
                 return false;
             }
 
-#if UNITY_2020_2_OR_NEWER
+#if UNITY_EDITOR && UNITY_2020_2_OR_NEWER
             using (ChildFastPathMarker.Auto())
 #endif
             {
@@ -387,9 +381,6 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 Array filtered = FilterChildArray(component, metadata, children);
                 Array ordered = EnsureBreadthFirstOrder(component, metadata, filtered);
                 assignedAny = AssignChildComponentsFromArray(component, metadata, ordered);
-#if UNITY_EDITOR
-                RelationalComponentInstrumentation.RecordChildFastPath(true);
-#endif
                 return true;
             }
         }

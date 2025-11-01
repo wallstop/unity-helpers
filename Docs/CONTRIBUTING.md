@@ -50,7 +50,7 @@ If you touch `ReflectionHelpers` or the delegate factory:
 
 - Run the runtime EditMode tests: `ReflectionHelperTests` (Runtime) and the editor mirror in `Tests/Editor/Helper`.
 - Re-run the benchmark test **ReflectionPerformanceTests.Benchmark** from the EditMode suite (or the CLI equivalent shown in the [Reflection Performance Guide](ReflectionPerformance.md)) when you expect performance changes.
-- Commit the updated benchmark markdown section (`Docs/REFLECTION_PERFORMANCE.md`) for your OS and amend the [Reflection Performance Guide](ReflectionPerformance.md) if behaviour guidance changes.
+- Commit the updated benchmark markdown section in the [Reflection Performance benchmarks](Docs/REFLECTION_PERFORMANCE.md) for your OS and amend the [Reflection Performance Guide](ReflectionPerformance.md) if behaviour guidance changes.
 
 ## Style and Naming
 

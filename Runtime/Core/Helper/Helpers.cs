@@ -48,8 +48,8 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             StringComparer.OrdinalIgnoreCase
         );
 
-        private static string[] _CachedLayerNames = Array.Empty<string>();
-        private static bool _LayerCacheInitialized;
+        private static string[] CachedLayerNames = Array.Empty<string>();
+        private static bool LayerCacheInitialized;
 
 #if UNITY_EDITOR
         private static readonly string[] DefaultPrefabSearchFolders =
@@ -69,8 +69,8 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void CLearLayerNames()
         {
-            _CachedLayerNames = Array.Empty<string>();
-            _LayerCacheInitialized = false;
+            CachedLayerNames = Array.Empty<string>();
+            LayerCacheInitialized = false;
         }
 
         /// <summary>
@@ -199,8 +199,8 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 string[] editorLayers = InternalEditorUtility.layers;
                 if (editorLayers is { Length: > 0 })
                 {
-                    _LayerCacheInitialized = true;
-                    _CachedLayerNames = editorLayers;
+                    LayerCacheInitialized = true;
+                    CachedLayerNames = editorLayers;
                     return editorLayers;
                 }
             }
@@ -209,9 +209,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 // Fall through to runtime-safe fallback below
             }
 #endif
-            if (!Application.isEditor && Application.isPlaying && _LayerCacheInitialized)
+            if (!Application.isEditor && Application.isPlaying && LayerCacheInitialized)
             {
-                return _CachedLayerNames;
+                return CachedLayerNames;
             }
 
             using PooledResource<List<string>> layerBuffer = Buffers<string>.List.Get();
@@ -225,25 +225,25 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 }
             }
 
-            _LayerCacheInitialized = true;
+            LayerCacheInitialized = true;
             int layerCount = layers.Count;
             if (layerCount == 0)
             {
-                _CachedLayerNames = Array.Empty<string>();
-                return _CachedLayerNames;
+                CachedLayerNames = Array.Empty<string>();
+                return CachedLayerNames;
             }
 
-            if (_CachedLayerNames == null || _CachedLayerNames.Length != layerCount)
+            if (CachedLayerNames == null || CachedLayerNames.Length != layerCount)
             {
-                _CachedLayerNames = new string[layerCount];
+                CachedLayerNames = new string[layerCount];
             }
 
             for (int i = 0; i < layerCount; ++i)
             {
-                _CachedLayerNames[i] = layers[i];
+                CachedLayerNames[i] = layers[i];
             }
 
-            return _CachedLayerNames;
+            return CachedLayerNames;
         }
 
         /// <summary>

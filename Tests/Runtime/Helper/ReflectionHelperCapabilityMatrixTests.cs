@@ -1821,6 +1821,115 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             }
         }
 
+        [Test]
+        public void StaticPropertyGetterExpressionUsesCompiledDelegate()
+        {
+            int original = TestPropertyClass.StaticProperty;
+            try
+            {
+                TestPropertyClass.StaticProperty = 123;
+                PropertyInfo property = typeof(TestPropertyClass).GetProperty(
+                    nameof(TestPropertyClass.StaticProperty),
+                    BindingFlags.Static | BindingFlags.Public
+                );
+
+                using (ReflectionHelpers.OverrideReflectionCapabilities(true, false))
+                {
+                    Func<object, object> getter = ReflectionHelpers.GetPropertyGetter(property);
+                    ReflectionHelpers.ReflectionDelegateStrategy strategy;
+                    Assert.That(
+                        ReflectionHelpers.TryGetDelegateStrategy(getter, out strategy),
+                        Is.True
+                    );
+                    Assume.That(
+                        strategy,
+                        Is.EqualTo(ReflectionHelpers.ReflectionDelegateStrategy.Expressions),
+                        "Expression delegates are unavailable on this platform."
+                    );
+
+                    Assert.AreEqual(123, getter(null));
+                }
+            }
+            finally
+            {
+                TestPropertyClass.StaticProperty = original;
+            }
+        }
+
+        [Test]
+        public void StaticPropertyGetterDynamicIlUsesEmittedDelegate()
+        {
+            if (!ReflectionHelpers.DynamicIlEnabled)
+            {
+                Assert.Ignore("Dynamic IL is not available on this platform.");
+            }
+
+            int original = TestPropertyClass.StaticProperty;
+            try
+            {
+                TestPropertyClass.StaticProperty = 234;
+                PropertyInfo property = typeof(TestPropertyClass).GetProperty(
+                    nameof(TestPropertyClass.StaticProperty),
+                    BindingFlags.Static | BindingFlags.Public
+                );
+
+                using (ReflectionHelpers.OverrideReflectionCapabilities(false, true))
+                {
+                    Func<object, object> getter = ReflectionHelpers.GetPropertyGetter(property);
+                    ReflectionHelpers.ReflectionDelegateStrategy strategy;
+                    Assert.That(
+                        ReflectionHelpers.TryGetDelegateStrategy(getter, out strategy),
+                        Is.True
+                    );
+                    Assume.That(
+                        strategy,
+                        Is.EqualTo(ReflectionHelpers.ReflectionDelegateStrategy.DynamicIl),
+                        "Dynamic IL delegates are unavailable on this platform."
+                    );
+
+                    Assert.AreEqual(234, getter(null));
+                }
+            }
+            finally
+            {
+                TestPropertyClass.StaticProperty = original;
+            }
+        }
+
+        [Test]
+        public void StaticPropertyGetterReflectionUsesFallbackDelegate()
+        {
+            int original = TestPropertyClass.StaticProperty;
+            try
+            {
+                TestPropertyClass.StaticProperty = 345;
+                PropertyInfo property = typeof(TestPropertyClass).GetProperty(
+                    nameof(TestPropertyClass.StaticProperty),
+                    BindingFlags.Static | BindingFlags.Public
+                );
+
+                using (ReflectionHelpers.OverrideReflectionCapabilities(false, false))
+                {
+                    Func<object, object> getter = ReflectionHelpers.GetPropertyGetter(property);
+                    ReflectionHelpers.ReflectionDelegateStrategy strategy;
+                    Assert.That(
+                        ReflectionHelpers.TryGetDelegateStrategy(getter, out strategy),
+                        Is.True
+                    );
+                    Assert.That(
+                        strategy,
+                        Is.EqualTo(ReflectionHelpers.ReflectionDelegateStrategy.Reflection)
+                    );
+
+                    Assert.AreEqual(345, getter(null));
+                }
+            }
+            finally
+            {
+                TestPropertyClass.StaticProperty = original;
+            }
+        }
+
         [TestCaseSource(nameof(CapabilityModes))]
         public void StaticPropertySetterBoxedSupportsCapabilities(CapabilityMode mode)
         {
