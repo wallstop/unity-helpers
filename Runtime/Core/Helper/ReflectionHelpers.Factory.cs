@@ -3598,14 +3598,14 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
             private static bool IsIndexerGetterStrategyUnavailable(CapabilityKey<PropertyInfo> key)
             {
-                return IndexerGetterStrategyBlocklist.Contains(key);
+                return IndexerGetterStrategyBlocklist.ContainsKey(key);
             }
 
             private static void MarkIndexerGetterStrategyUnavailable(
                 CapabilityKey<PropertyInfo> key
             )
             {
-                IndexerGetterStrategyBlocklist.Add(key);
+                IndexerGetterStrategyBlocklist[key] = StrategyUnavailableSentinel;
             }
 
             private static bool TryGetIndexerSetterFromCache(
@@ -3632,14 +3632,14 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
             private static bool IsIndexerSetterStrategyUnavailable(CapabilityKey<PropertyInfo> key)
             {
-                return IndexerSetterStrategyBlocklist.Contains(key);
+                return IndexerSetterStrategyBlocklist.ContainsKey(key);
             }
 
             private static void MarkIndexerSetterStrategyUnavailable(
                 CapabilityKey<PropertyInfo> key
             )
             {
-                IndexerSetterStrategyBlocklist.Add(key);
+                IndexerSetterStrategyBlocklist[key] = StrategyUnavailableSentinel;
             }
 
             private static bool TryGetMethodInvokerFromCache(
@@ -3666,12 +3666,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
             private static bool IsMethodInvokerStrategyUnavailable(CapabilityKey<MethodInfo> key)
             {
-                return MethodInvokerStrategyBlocklist.Contains(key);
+                return MethodInvokerStrategyBlocklist.ContainsKey(key);
             }
 
             private static void MarkMethodInvokerStrategyUnavailable(CapabilityKey<MethodInfo> key)
             {
-                MethodInvokerStrategyBlocklist.Add(key);
+                MethodInvokerStrategyBlocklist[key] = StrategyUnavailableSentinel;
             }
 
             private static bool TryGetStaticMethodInvokerFromCache(
