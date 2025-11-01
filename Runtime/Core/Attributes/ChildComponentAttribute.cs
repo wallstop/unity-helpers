@@ -123,6 +123,18 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 component.GetType(),
                 type => GetFieldMetadata<ChildComponentAttribute>(type)
             );
+            AssignChildComponents(component, fields);
+        }
+
+        internal static void AssignChildComponents(
+            Component component,
+            FieldMetadata<ChildComponentAttribute>[] fields
+        )
+        {
+            if (component == null || fields == null || fields.Length == 0)
+            {
+                return;
+            }
 
             foreach (FieldMetadata<ChildComponentAttribute> metadata in fields)
             {
@@ -131,177 +143,149 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     continue;
                 }
 
-                bool foundChild;
-                FilterParameters filters = new(metadata.attribute);
-
-                using PooledResource<List<Transform>> childBufferResource =
-                    Buffers<Transform>.List.Get();
-                List<Transform> childBuffer = childBufferResource.resource;
-
+                bool foundChild = false;
                 if (metadata.kind == FieldKind.Single)
                 {
-                    Component childComponent;
-                    if (
-                        TryAssignChildSingleFast(component, metadata, out childComponent)
-                        || TryAssignChildSingleFallback(
-                            component,
-                            metadata,
-                            filters,
-                            childBuffer,
-                            out childComponent
-                        )
-                    )
+                    if (TryAssignChildSingleFast(component, metadata, out Component childComponent))
                     {
-                        metadata.setter(component, childComponent);
+                        metadata.SetValue(component, childComponent);
                         foundChild = true;
                     }
                     else
                     {
-                        foundChild = false;
+                        FilterParameters filters = metadata.Filters;
+                        using PooledResource<List<Transform>> childBufferResource =
+                            Buffers<Transform>.List.Get(out List<Transform> childBuffer);
+                        if (
+                            TryAssignChildSingleFallback(
+                                component,
+                                metadata,
+                                filters,
+                                childBuffer,
+                                out childComponent
+                            )
+                        )
+                        {
+                            metadata.SetValue(component, childComponent);
+                            foundChild = true;
+                        }
                     }
                 }
                 else
                 {
-                    switch (metadata.kind)
+                    FilterParameters filters = metadata.Filters;
+                    if (
+                        TryAssignChildCollectionFast(
+                            component,
+                            metadata,
+                            filters,
+                            out bool assignedAny
+                        )
+                    )
                     {
-                        case FieldKind.Array:
+                        foundChild = assignedAny;
+                    }
+                    else
+                    {
+                        using PooledResource<List<Transform>> childBufferResource =
+                            Buffers<Transform>.List.Get(out List<Transform> childBuffer);
+
+                        switch (metadata.kind)
                         {
-                            if (
-                                TryAssignChildCollectionFast(
-                                    component,
-                                    metadata,
-                                    filters,
-                                    out bool assignedAny
-                                )
-                            )
+                            case FieldKind.Array:
                             {
-                                foundChild = assignedAny;
+                                using PooledResource<List<Component>> cacheResource =
+                                    Buffers<Component>.List.Get(out List<Component> cache);
+                                CollectChildComponents(component, metadata, childBuffer, cache);
+
+                                int filteredCount = FilterComponentsInPlace(
+                                    cache,
+                                    filters,
+                                    metadata.attribute,
+                                    metadata.elementType,
+                                    metadata.isInterface
+                                );
+
+                                Array correctTypedArray = metadata.arrayCreator(filteredCount);
+                                for (int i = 0; i < filteredCount; ++i)
+                                {
+                                    correctTypedArray.SetValue(cache[i], i);
+                                }
+
+                                metadata.SetValue(component, correctTypedArray);
+                                foundChild = filteredCount > 0;
                                 break;
                             }
-
-                            using PooledResource<List<Component>> cacheResource =
-                                Buffers<Component>.List.Get();
-                            List<Component> cache = cacheResource.resource;
-
-                            CollectChildComponents(component, metadata, childBuffer, cache);
-
-                            int filteredCount = FilterComponentsInPlace(
-                                cache,
-                                filters,
-                                metadata.attribute,
-                                metadata.elementType,
-                                metadata.isInterface
-                            );
-
-                            Array correctTypedArray = metadata.arrayCreator(filteredCount);
-                            for (int i = 0; i < filteredCount; ++i)
+                            case FieldKind.List:
                             {
-                                correctTypedArray.SetValue(cache[i], i);
-                            }
+                                using PooledResource<List<Component>> cacheResource =
+                                    Buffers<Component>.List.Get(out List<Component> cache);
 
-                            metadata.setter(component, correctTypedArray);
-                            foundChild = filteredCount > 0;
-                            break;
-                        }
-                        case FieldKind.List:
-                        {
-                            if (
-                                TryAssignChildCollectionFast(
-                                    component,
-                                    metadata,
+                                CollectChildComponents(component, metadata, childBuffer, cache);
+
+                                int filteredCount = FilterComponentsInPlace(
+                                    cache,
                                     filters,
-                                    out bool assignedAny
-                                )
-                            )
-                            {
-                                foundChild = assignedAny;
+                                    metadata.attribute,
+                                    metadata.elementType,
+                                    metadata.isInterface
+                                );
+
+                                object existing = metadata.GetValue(component);
+                                if (existing is IList instance)
+                                {
+                                    instance.Clear();
+                                }
+                                else
+                                {
+                                    instance = metadata.listCreator(filteredCount);
+                                    metadata.SetValue(component, instance);
+                                }
+                                for (int i = 0; i < filteredCount; ++i)
+                                {
+                                    instance.Add(cache[i]);
+                                }
+
+                                foundChild = filteredCount > 0;
                                 break;
                             }
-
-                            using PooledResource<List<Component>> cacheResource =
-                                Buffers<Component>.List.Get();
-                            List<Component> cache = cacheResource.resource;
-
-                            CollectChildComponents(component, metadata, childBuffer, cache);
-
-                            int filteredCount = FilterComponentsInPlace(
-                                cache,
-                                filters,
-                                metadata.attribute,
-                                metadata.elementType,
-                                metadata.isInterface
-                            );
-
-                            object existing = metadata.getter(component);
-                            IList instance = existing as IList;
-                            if (instance != null)
+                            case FieldKind.HashSet:
                             {
-                                instance.Clear();
-                            }
-                            else
-                            {
-                                instance = metadata.listCreator(filteredCount);
-                                metadata.setter(component, instance);
-                            }
-                            for (int i = 0; i < filteredCount; ++i)
-                            {
-                                instance.Add(cache[i]);
-                            }
+                                using PooledResource<List<Component>> cacheResource =
+                                    Buffers<Component>.List.Get(out List<Component> cache);
 
-                            foundChild = filteredCount > 0;
-                            break;
-                        }
-                        case FieldKind.HashSet:
-                        {
-                            if (
-                                TryAssignChildCollectionFast(
-                                    component,
-                                    metadata,
+                                CollectChildComponents(component, metadata, childBuffer, cache);
+
+                                int filteredCount = FilterComponentsInPlace(
+                                    cache,
                                     filters,
-                                    out bool assignedAny
-                                )
-                            )
-                            {
-                                foundChild = assignedAny;
+                                    metadata.attribute,
+                                    metadata.elementType,
+                                    metadata.isInterface
+                                );
+
+                                object instance = metadata.GetValue(component);
+                                if (instance != null && metadata.hashSetClearer != null)
+                                {
+                                    metadata.hashSetClearer(instance);
+                                }
+                                else
+                                {
+                                    instance = metadata.hashSetCreator(filteredCount);
+                                    metadata.SetValue(component, instance);
+                                }
+                                for (int i = 0; i < filteredCount; ++i)
+                                {
+                                    metadata.hashSetAdder(instance, cache[i]);
+                                }
+
+                                foundChild = filteredCount > 0;
                                 break;
                             }
-
-                            using PooledResource<List<Component>> cacheResource =
-                                Buffers<Component>.List.Get();
-                            List<Component> cache = cacheResource.resource;
-
-                            CollectChildComponents(component, metadata, childBuffer, cache);
-
-                            int filteredCount = FilterComponentsInPlace(
-                                cache,
-                                filters,
-                                metadata.attribute,
-                                metadata.elementType,
-                                metadata.isInterface
-                            );
-
-                            object instance = metadata.getter(component);
-                            if (instance != null && metadata.hashSetClearer != null)
+                            default:
                             {
-                                metadata.hashSetClearer(instance);
+                                break;
                             }
-                            else
-                            {
-                                instance = metadata.hashSetCreator(filteredCount);
-                                metadata.setter(component, instance);
-                            }
-                            for (int i = 0; i < filteredCount; ++i)
-                            {
-                                metadata.hashSetAdder(instance, cache[i]);
-                            }
-
-                            foundChild = filteredCount > 0;
-                            break;
-                        }
-                        default:
-                        {
-                            foundChild = false;
-                            break;
                         }
                     }
                 }
@@ -311,6 +295,11 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     LogMissingComponentError(component, metadata, "child");
                 }
             }
+        }
+
+        internal static FieldMetadata<ChildComponentAttribute>[] GetOrCreateFields(Type type)
+        {
+            return FieldsByType.GetOrAdd(type, t => GetFieldMetadata<ChildComponentAttribute>(t));
         }
 
         private static bool TryAssignChildSingleFast(
@@ -395,7 +384,8 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 );
 
                 Array filtered = FilterChildArray(component, metadata, children);
-                assignedAny = AssignChildComponentsFromArray(component, metadata, filtered);
+                Array ordered = EnsureBreadthFirstOrder(component, metadata, filtered);
+                assignedAny = AssignChildComponentsFromArray(component, metadata, ordered);
 #if UNITY_EDITOR
                 RelationalComponentInstrumentation.RecordChildFastPath(true);
 #endif
@@ -459,6 +449,124 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             return result;
         }
 
+        private static Array EnsureBreadthFirstOrder(
+            Component component,
+            FieldMetadata<ChildComponentAttribute> metadata,
+            Array source
+        )
+        {
+            Type elementType = metadata.elementType;
+            if (source == null)
+            {
+                return Array.CreateInstance(elementType, 0);
+            }
+
+            int length = source.Length;
+            if (length <= 1)
+            {
+                return source;
+            }
+
+            ChildComponentAttribute attribute = metadata.attribute;
+            using PooledResource<List<Transform>> traversalResource = Buffers<Transform>.List.Get(
+                out List<Transform> traversal
+            );
+            component.IterateOverAllChildrenRecursivelyBreadthFirst(
+                traversal,
+                includeSelf: !attribute.OnlyDescendants,
+                attribute.MaxDepth
+            );
+
+            using PooledResource<Dictionary<Transform, List<Component>>> groupedResource =
+                DictionaryBuffer<Transform, List<Component>>.Dictionary.Get(
+                    out Dictionary<Transform, List<Component>> grouped
+                );
+            using PooledResource<Dictionary<Transform, int>> positionsResource = DictionaryBuffer<
+                Transform,
+                int
+            >.Dictionary.Get(out Dictionary<Transform, int> positions);
+
+            for (int i = 0; i < length; ++i)
+            {
+                Component candidate = source.GetValue(i) as Component;
+                if (candidate == null)
+                {
+                    continue;
+                }
+
+                Transform key = candidate.transform;
+                if (!grouped.TryGetValue(key, out List<Component> list))
+                {
+                    list = new List<Component>();
+                    grouped.Add(key, list);
+                    positions.Add(key, 0);
+                }
+
+                list.Add(candidate);
+            }
+
+            Array ordered = Array.CreateInstance(elementType, length);
+            int writeIndex = 0;
+
+            for (int i = 0; i < traversal.Count && writeIndex < length; ++i)
+            {
+                Transform transform = traversal[i];
+                if (!grouped.TryGetValue(transform, out List<Component> list))
+                {
+                    continue;
+                }
+
+                int position = positions[transform];
+                while (position < list.Count && writeIndex < length)
+                {
+                    ordered.SetValue(list[position], writeIndex++);
+                    position++;
+                }
+
+                if (position >= list.Count)
+                {
+                    grouped.Remove(transform);
+                    positions.Remove(transform);
+                }
+                else
+                {
+                    positions[transform] = position;
+                }
+            }
+
+            if (writeIndex < length && grouped.Count > 0)
+            {
+                foreach (KeyValuePair<Transform, List<Component>> pair in grouped)
+                {
+                    List<Component> list = pair.Value;
+                    int position = positions[pair.Key];
+                    while (position < list.Count && writeIndex < length)
+                    {
+                        ordered.SetValue(list[position], writeIndex++);
+                        position++;
+                    }
+                    if (writeIndex >= length)
+                    {
+                        break;
+                    }
+                }
+            }
+
+            if (writeIndex >= length)
+            {
+                return ordered;
+            }
+
+            if (writeIndex == 0)
+            {
+                return Array.CreateInstance(elementType, 0);
+            }
+
+            Array trimmed = Array.CreateInstance(elementType, writeIndex);
+            Array.Copy(ordered, 0, trimmed, 0, writeIndex);
+            return trimmed;
+        }
+
         private static bool AssignChildComponentsFromArray(
             Component component,
             FieldMetadata<ChildComponentAttribute> metadata,
@@ -482,20 +590,19 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                         instance.SetValue(componentsArray.GetValue(i), i);
                     }
 
-                    metadata.setter(component, instance);
+                    metadata.SetValue(component, instance);
                     return count > 0;
                 }
                 case FieldKind.List:
                 {
-                    IList list = metadata.getter(component) as IList;
-                    if (list != null)
+                    if (metadata.GetValue(component) is IList list)
                     {
                         list.Clear();
                     }
                     else
                     {
                         list = metadata.listCreator(count);
-                        metadata.setter(component, list);
+                        metadata.SetValue(component, list);
                     }
 
                     for (int i = 0; i < count; ++i)
@@ -507,7 +614,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 }
                 case FieldKind.HashSet:
                 {
-                    object hashSet = metadata.getter(component);
+                    object hashSet = metadata.GetValue(component);
                     if (hashSet != null && metadata.hashSetClearer != null)
                     {
                         metadata.hashSetClearer(hashSet);
@@ -515,7 +622,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     else
                     {
                         hashSet = metadata.hashSetCreator(count);
-                        metadata.setter(component, hashSet);
+                        metadata.SetValue(component, hashSet);
                     }
 
                     for (int i = 0; i < count; ++i)
@@ -633,7 +740,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
         internal static Array GetArray(Component component, Type elementType, bool includeInactive)
         {
-            return ArrayGetters.GetOrAdd(elementType, CreateArrayGetter)(
+            return ArrayGetters.GetOrAdd(elementType, t => CreateArrayGetter(t))(
                 component,
                 includeInactive
             );

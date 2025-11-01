@@ -406,13 +406,17 @@ namespace WallstopStudios.UnityHelpers.Core.Helper.Logging
                 RemoveDecorationInternal(existing.priority, existing.index);
             }
 
-            List<(
-                string tag,
-                bool editorOnly,
-                Func<string, bool> predicate,
-                Func<string, object, string> formatter
-            )> matchingDecorations;
-            if (!_matchingDecorations.TryGetValue(priority, out matchingDecorations))
+            if (
+                !_matchingDecorations.TryGetValue(
+                    priority,
+                    out List<(
+                        string tag,
+                        bool editorOnly,
+                        Func<string, bool> predicate,
+                        Func<string, object, string> formatter
+                    )> matchingDecorations
+                )
+            )
             {
                 matchingDecorations = new List<(
                     string tag,

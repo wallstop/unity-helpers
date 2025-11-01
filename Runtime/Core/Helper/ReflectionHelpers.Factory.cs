@@ -86,7 +86,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     Type delegateType
                 )
                 {
-                    object memberKey = key.Member is null ? NullMemberKey : (object)key.Member;
+                    object memberKey = key.Member is null ? NullMemberKey : key.Member;
                     return new StrategyHolder(key.Strategy, memberKey, delegateType);
                 }
 
@@ -479,12 +479,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     throw new ArgumentNullException(nameof(field));
                 }
 
-                Func<object, object> getter;
                 if (
                     TryGetOrCreateFieldGetter(
                         field,
                         ReflectionDelegateStrategy.Expressions,
-                        out getter
+                        out Func<object, object> getter
                     )
                 )
                 {
@@ -541,12 +540,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     throw new ArgumentException("Field must be static", nameof(field));
                 }
 
-                Func<object> getter;
                 if (
                     TryGetOrCreateStaticFieldGetter(
                         field,
                         ReflectionDelegateStrategy.Expressions,
-                        out getter
+                        out Func<object> getter
                     )
                 )
                 {
@@ -599,12 +597,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     throw new ArgumentNullException(nameof(field));
                 }
 
-                Action<object, object> setter;
                 if (
                     TryGetOrCreateFieldSetter(
                         field,
                         ReflectionDelegateStrategy.Expressions,
-                        out setter
+                        out Action<object, object> setter
                     )
                 )
                 {
@@ -661,12 +658,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     throw new ArgumentException("Field must be static", nameof(field));
                 }
 
-                Action<object> setter;
                 if (
                     TryGetOrCreateStaticFieldSetter(
                         field,
                         ReflectionDelegateStrategy.Expressions,
-                        out setter
+                        out Action<object> setter
                     )
                 )
                 {
@@ -719,12 +715,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     throw new ArgumentNullException(nameof(property));
                 }
 
-                Func<object, object> getter;
                 if (
                     TryGetOrCreatePropertyGetter(
                         property,
                         ReflectionDelegateStrategy.Expressions,
-                        out getter
+                        out Func<object, object> getter
                     )
                 )
                 {
@@ -757,12 +752,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     throw new ArgumentNullException(nameof(property));
                 }
 
-                Action<object, object> setter;
                 if (
                     TryGetOrCreatePropertySetter(
                         property,
                         ReflectionDelegateStrategy.Expressions,
-                        out setter
+                        out Action<object, object> setter
                     )
                 )
                 {
@@ -797,12 +791,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     );
                 }
 
-                Func<object, object[], object> invoker;
                 if (
                     TryGetOrCreateMethodInvoker(
                         method,
                         ReflectionDelegateStrategy.Expressions,
-                        out invoker
+                        out Func<object, object[], object> invoker
                     )
                 )
                 {
@@ -834,12 +827,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     throw new ArgumentException("Method must be static", nameof(method));
                 }
 
-                Func<object[], object> invoker;
                 if (
                     TryGetOrCreateStaticMethodInvoker(
                         method,
                         ReflectionDelegateStrategy.Expressions,
-                        out invoker
+                        out Func<object[], object> invoker
                     )
                 )
                 {
@@ -867,12 +859,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     throw new ArgumentNullException(nameof(ctor));
                 }
 
-                Func<object[], object> invoker;
                 if (
                     TryGetOrCreateConstructorInvoker(
                         ctor,
                         ReflectionDelegateStrategy.Expressions,
-                        out invoker
+                        out Func<object[], object> invoker
                     )
                 )
                 {
@@ -900,12 +891,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     throw new ArgumentNullException(nameof(ctor));
                 }
 
-                Func<object> creator;
                 if (
                     TryGetOrCreateParameterlessConstructor(
                         ctor,
                         ReflectionDelegateStrategy.Expressions,
-                        out creator
+                        out Func<object> creator
                     )
                 )
                 {
@@ -933,13 +923,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     throw new ArgumentNullException(nameof(ctor));
                 }
 
-                Func<T> creator;
                 if (
                     TryGetOrCreateTypedParameterlessConstructor(
                         ctor,
                         typeof(T),
                         ReflectionDelegateStrategy.Expressions,
-                        out creator
+                        out Func<T> creator
                     )
                 )
                 {
@@ -968,12 +957,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     throw new ArgumentNullException(nameof(property));
                 }
 
-                Func<object, object[], object> getter;
                 if (
                     TryGetOrCreateIndexerGetter(
                         property,
                         ReflectionDelegateStrategy.Expressions,
-                        out getter
+                        out Func<object, object[], object> getter
                     )
                 )
                 {
@@ -1001,12 +989,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     throw new ArgumentNullException(nameof(property));
                 }
 
-                Action<object, object, object[]> setter;
                 if (
                     TryGetOrCreateIndexerSetter(
                         property,
                         ReflectionDelegateStrategy.Expressions,
-                        out setter
+                        out Action<object, object, object[]> setter
                     )
                 )
                 {
@@ -1036,12 +1023,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     throw new ArgumentNullException(nameof(field));
                 }
 
-                Func<TInstance, TValue> getter;
                 if (
                     TryGetOrCreateTypedFieldGetter<TInstance, TValue>(
                         field,
                         ReflectionDelegateStrategy.Expressions,
-                        out getter
+                        out Func<TInstance, TValue> getter
                     )
                 )
                 {
@@ -1071,12 +1057,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     throw new ArgumentNullException(nameof(field));
                 }
 
-                FieldSetter<TInstance, TValue> setter;
                 if (
                     TryGetOrCreateTypedFieldSetter<TInstance, TValue>(
                         field,
                         ReflectionDelegateStrategy.Expressions,
-                        out setter
+                        out FieldSetter<TInstance, TValue> setter
                     )
                 )
                 {
@@ -1108,12 +1093,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     throw new ArgumentException("Field must be static", nameof(field));
                 }
 
-                Func<TValue> getter;
                 if (
                     TryGetOrCreateTypedStaticFieldGetter<TValue>(
                         field,
                         ReflectionDelegateStrategy.Expressions,
-                        out getter
+                        out Func<TValue> getter
                     )
                 )
                 {
@@ -1145,12 +1129,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     throw new ArgumentException("Field must be static", nameof(field));
                 }
 
-                Action<TValue> setter;
                 if (
                     TryGetOrCreateTypedStaticFieldSetter<TValue>(
                         field,
                         ReflectionDelegateStrategy.Expressions,
-                        out setter
+                        out Action<TValue> setter
                     )
                 )
                 {

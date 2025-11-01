@@ -95,6 +95,18 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 component.GetType(),
                 type => GetFieldMetadata<SiblingComponentAttribute>(type)
             );
+            AssignSiblingComponents(component, fields);
+        }
+
+        internal static void AssignSiblingComponents(
+            Component component,
+            FieldMetadata<SiblingComponentAttribute>[] fields
+        )
+        {
+            if (component == null || fields == null || fields.Length == 0)
+            {
+                return;
+            }
 
             foreach (FieldMetadata<SiblingComponentAttribute> metadata in fields)
             {
@@ -111,7 +123,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 }
                 else
                 {
-                    FilterParameters filters = new(metadata.attribute);
+                    FilterParameters filters = metadata.Filters;
                     if (
                         !metadata.isInterface
                         && !filters.RequiresPostProcessing
@@ -154,7 +166,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                                     correctTypedArray.SetValue(components[i], i);
                                 }
 
-                                metadata.setter(component, correctTypedArray);
+                                metadata.SetValue(component, correctTypedArray);
                                 foundSibling = filteredCount > 0;
                                 break;
                             }
@@ -182,16 +194,15 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                                             metadata.isInterface
                                         );
 
-                                object existing = metadata.getter(component);
-                                IList instance = existing as IList;
-                                if (instance != null)
+                                object existing = metadata.GetValue(component);
+                                if (existing is IList instance)
                                 {
                                     instance.Clear();
                                 }
                                 else
                                 {
                                     instance = metadata.listCreator(filteredCount);
-                                    metadata.setter(component, instance);
+                                    metadata.SetValue(component, instance);
                                 }
                                 for (int i = 0; i < filteredCount; ++i)
                                 {
@@ -225,7 +236,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                                             metadata.isInterface
                                         );
 
-                                object instance = metadata.getter(component);
+                                object instance = metadata.GetValue(component);
                                 if (instance != null && metadata.hashSetClearer != null)
                                 {
                                     metadata.hashSetClearer(instance);
@@ -233,7 +244,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                                 else
                                 {
                                     instance = metadata.hashSetCreator(filteredCount);
-                                    metadata.setter(component, instance);
+                                    metadata.SetValue(component, instance);
                                 }
                                 for (int i = 0; i < filteredCount; ++i)
                                 {
@@ -259,6 +270,11 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             }
         }
 
+        internal static FieldMetadata<SiblingComponentAttribute>[] GetOrCreateFields(Type type)
+        {
+            return FieldsByType.GetOrAdd(type, t => GetFieldMetadata<SiblingComponentAttribute>(t));
+        }
+
         private static bool TryAssignSingleSibling(
             Component component,
             FieldMetadata<SiblingComponentAttribute> metadata
@@ -280,7 +296,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             {
                 if (component.TryGetComponent(metadata.elementType, out Component sibling))
                 {
-                    metadata.setter(component, sibling);
+                    metadata.SetValue(component, sibling);
                     return true;
                 }
                 return false;
@@ -299,7 +315,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 )
             )
             {
-                metadata.setter(component, resolved);
+                metadata.SetValue(component, resolved);
                 return true;
             }
             return false;
@@ -335,20 +351,19 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             {
                 case FieldKind.Array:
                 {
-                    metadata.setter(component, componentsArray);
+                    metadata.SetValue(component, componentsArray);
                     return count > 0;
                 }
                 case FieldKind.List:
                 {
-                    IList instance = metadata.getter(component) as IList;
-                    if (instance != null)
+                    if (metadata.GetValue(component) is IList instance)
                     {
                         instance.Clear();
                     }
                     else
                     {
                         instance = metadata.listCreator(count);
-                        metadata.setter(component, instance);
+                        metadata.SetValue(component, instance);
                     }
 
                     for (int i = 0; i < count; ++i)
@@ -360,7 +375,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 }
                 case FieldKind.HashSet:
                 {
-                    object hashSet = metadata.getter(component);
+                    object hashSet = metadata.GetValue(component);
                     if (hashSet != null && metadata.hashSetClearer != null)
                     {
                         metadata.hashSetClearer(hashSet);
@@ -368,7 +383,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     else
                     {
                         hashSet = metadata.hashSetCreator(count);
-                        metadata.setter(component, hashSet);
+                        metadata.SetValue(component, hashSet);
                     }
 
                     for (int i = 0; i < count; ++i)
@@ -401,7 +416,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
         internal static Array GetArray(Component component, Type elementType)
         {
-            return ArrayGetters.GetOrAdd(elementType, CreateArrayGetter)(component);
+            return ArrayGetters.GetOrAdd(elementType, t => CreateArrayGetter(t))(component);
         }
 
         private static Func<Component, Array> CreateArrayGetter(Type elementType)

@@ -46,10 +46,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 "| Scenario | Relational Ops/s | Manual Ops/s | Rel/Manual | Iterations |";
             string opsDivider = "| --- | ---: | ---: | ---: | ---: |";
 
-            string allocHeader =
-                "| Scenario | Relational (B/op) | Manual (B/op) | Manual-Rel (B/op) |";
-            string allocDivider = "| --- | ---: | ---: | ---: |";
-
             UnityEngine.Debug.Log("### Relational Component Assignment Benchmarks");
             UnityEngine.Debug.Log(opsHeader);
             UnityEngine.Debug.Log(opsDivider);
@@ -64,7 +60,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 ),
                 string.Empty,
                 "Numbers capture repeated `Assign*Components` calls for one second per scenario.",
-                "Higher operations per second and lower bytes per operation are better.",
+                "Higher operations per second are better.",
                 string.Empty,
                 "### Operations per second (higher is better)",
                 opsHeader,
@@ -76,22 +72,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 string opsRow = FormatOpsRow(result);
                 UnityEngine.Debug.Log(opsRow);
                 sectionLines.Add(opsRow);
-            }
-
-            UnityEngine.Debug.Log(string.Empty);
-            UnityEngine.Debug.Log(allocHeader);
-            UnityEngine.Debug.Log(allocDivider);
-
-            sectionLines.Add(string.Empty);
-            sectionLines.Add("### Allocations per operation (bytes, lower is better)");
-            sectionLines.Add(allocHeader);
-            sectionLines.Add(allocDivider);
-
-            foreach (ScenarioResult result in results)
-            {
-                string allocRow = FormatAllocRow(result);
-                UnityEngine.Debug.Log(allocRow);
-                sectionLines.Add(allocRow);
             }
 
             sectionLines.Add(string.Empty);
@@ -412,7 +392,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             GC.WaitForPendingFinalizers();
             GC.Collect();
 
-            long allocStart = GetAllocatedBytes();
             Stopwatch stopwatch = Stopwatch.StartNew();
 
             int iterations = 0;
@@ -423,19 +402,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             }
 
             stopwatch.Stop();
-            long allocEnd = GetAllocatedBytes();
 
             double opsPerSecond = iterations > 0 ? iterations / stopwatch.Elapsed.TotalSeconds : 0d;
-            long allocatedBytes = allocEnd - allocStart;
-            double bytesPerOperation = iterations > 0 ? allocatedBytes / (double)iterations : 0d;
 
-            return new BenchmarkMetrics(
-                opsPerSecond,
-                bytesPerOperation,
-                iterations,
-                stopwatch.Elapsed,
-                allocatedBytes
-            );
+            return new BenchmarkMetrics(opsPerSecond, iterations, stopwatch.Elapsed);
         }
 
         private static string FormatOpsRow(ScenarioResult result)
@@ -461,20 +431,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 + " |";
         }
 
-        private static string FormatAllocRow(ScenarioResult result)
-        {
-            double delta = result.Manual.BytesPerOperation - result.Relational.BytesPerOperation;
-            return "| "
-                + result.Label
-                + " | "
-                + FormatBytes(result.Relational.BytesPerOperation)
-                + " | "
-                + FormatBytes(result.Manual.BytesPerOperation)
-                + " | "
-                + FormatBytes(delta)
-                + " |";
-        }
-
         private static string FormatOps(double value)
         {
             if (value >= 1000d)
@@ -488,34 +444,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             }
 
             return value.ToString("0.00", CultureInfo.InvariantCulture);
-        }
-
-        private static string FormatBytes(double value)
-        {
-            if (Math.Abs(value) < 0.005d)
-            {
-                return "0.00";
-            }
-
-            if (Math.Abs(value) >= 1024d)
-            {
-                double kib = value / 1024d;
-                return kib.ToString("0.00 KiB", CultureInfo.InvariantCulture);
-            }
-
-            return value.ToString("0.00", CultureInfo.InvariantCulture);
-        }
-
-        private static long GetAllocatedBytes()
-        {
-            try
-            {
-                return GC.GetAllocatedBytesForCurrentThread();
-            }
-            catch
-            {
-                return 0;
-            }
         }
 
         private static GameObject CreateGameObject(string name)
@@ -609,30 +537,18 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
 
         private readonly struct BenchmarkMetrics
         {
-            public BenchmarkMetrics(
-                double opsPerSecond,
-                double bytesPerOperation,
-                int iterations,
-                TimeSpan elapsed,
-                long allocatedBytes
-            )
+            public BenchmarkMetrics(double opsPerSecond, int iterations, TimeSpan elapsed)
             {
                 OpsPerSecond = opsPerSecond;
-                BytesPerOperation = bytesPerOperation;
                 Iterations = iterations;
                 Elapsed = elapsed;
-                AllocatedBytes = allocatedBytes;
             }
 
             public double OpsPerSecond { get; }
 
-            public double BytesPerOperation { get; }
-
             public int Iterations { get; }
 
             public TimeSpan Elapsed { get; }
-
-            public long AllocatedBytes { get; }
         }
 
         private sealed class ParentSingleRelational : MonoBehaviour

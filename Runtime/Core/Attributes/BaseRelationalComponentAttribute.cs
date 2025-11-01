@@ -84,6 +84,12 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     /// </summary>
     internal static class RelationalComponentProcessor
     {
+        private static readonly MethodInfo CreateFieldAccessorGenericMethod =
+            typeof(RelationalComponentProcessor).GetMethod(
+                nameof(CreateFieldAccessorGeneric),
+                BindingFlags.NonPublic | BindingFlags.Static
+            );
+
         internal enum FieldKind : byte
         {
             Single = 0,
@@ -168,8 +174,8 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         {
             public readonly FieldInfo field;
             public readonly TAttribute attribute;
-            public readonly Action<object, object> setter;
-            public readonly Func<object, object> getter;
+            private readonly FieldAccessor accessor;
+            private readonly FilterParameters filters;
             public readonly FieldKind kind;
             public readonly Type elementType;
             public readonly Func<int, Array> arrayCreator;
@@ -182,8 +188,8 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             public FieldMetadata(
                 FieldInfo field,
                 TAttribute attribute,
-                Action<object, object> setter,
-                Func<object, object> getter,
+                FilterParameters filters,
+                FieldAccessor accessor,
                 FieldKind kind,
                 Type elementType,
                 Func<int, Array> arrayCreator,
@@ -196,8 +202,8 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             {
                 this.field = field;
                 this.attribute = attribute;
-                this.setter = setter;
-                this.getter = getter;
+                this.accessor = accessor ?? FieldAccessor.Null;
+                this.filters = filters;
                 this.kind = kind;
                 this.elementType = elementType;
                 this.arrayCreator = arrayCreator;
@@ -207,6 +213,96 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 this.hashSetClearer = hashSetClearer;
                 this.isInterface = isInterface;
             }
+
+            public bool HasFilters => this.filters.RequiresPostProcessing;
+
+            public FilterParameters Filters => this.filters;
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public object GetValue(Component component)
+            {
+                return this.accessor.Get(component);
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void SetValue(Component component, object value)
+            {
+                this.accessor.Set(component, value);
+            }
+        }
+
+        internal abstract class FieldAccessor
+        {
+            public static readonly FieldAccessor Null = new NullFieldAccessor();
+
+            public abstract object Get(Component component);
+            public abstract void Set(Component component, object value);
+
+            private sealed class NullFieldAccessor : FieldAccessor
+            {
+                public override object Get(Component component)
+                {
+                    return null;
+                }
+
+                public override void Set(Component component, object value) { }
+            }
+        }
+
+        private sealed class FieldAccessor<TComponent, TValue> : FieldAccessor
+            where TComponent : Component
+        {
+            private readonly FieldSetter<TComponent, TValue> setter;
+            private readonly Func<TComponent, TValue> getter;
+
+            public FieldAccessor(FieldInfo field)
+            {
+                this.setter = ReflectionHelpers.GetFieldSetter<TComponent, TValue>(field);
+                this.getter = ReflectionHelpers.GetFieldGetter<TComponent, TValue>(field);
+            }
+
+            public override object Get(Component component)
+            {
+                if (component == null)
+                {
+                    return null;
+                }
+
+                TComponent typedComponent = (TComponent)component;
+                return this.getter(typedComponent);
+            }
+
+            public override void Set(Component component, object value)
+            {
+                if (component == null)
+                {
+                    return;
+                }
+
+                TComponent typedComponent = (TComponent)component;
+                TValue typedValue = value != null ? (TValue)value : default;
+                this.setter(ref typedComponent, typedValue);
+            }
+        }
+
+        private static FieldAccessor CreateFieldAccessor(Type componentType, FieldInfo field)
+        {
+            if (componentType == null || !typeof(Component).IsAssignableFrom(componentType))
+            {
+                return FieldAccessor.Null;
+            }
+
+            MethodInfo generic = CreateFieldAccessorGenericMethod.MakeGenericMethod(
+                componentType,
+                field.FieldType
+            );
+            return (FieldAccessor)generic.Invoke(null, new object[] { field });
+        }
+
+        private static FieldAccessor CreateFieldAccessorGeneric<TComponent, TValue>(FieldInfo field)
+            where TComponent : Component
+        {
+            return new FieldAccessor<TComponent, TValue>(field);
         }
 
         internal static FieldMetadata<TAttribute>[] GetFieldMetadata<TAttribute>(Type componentType)
@@ -311,12 +407,14 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                             )
                         );
 
+                    FilterParameters filters = new(attribute);
+
                     result.Add(
                         new FieldMetadata<TAttribute>(
                             field,
                             attribute,
-                            ReflectionHelpers.GetFieldSetter(field),
-                            ReflectionHelpers.GetFieldGetter(field),
+                            filters,
+                            CreateFieldAccessor(componentType, field),
                             kind,
                             resolvedElementType,
                             arrayCreator,
@@ -377,12 +475,14 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                             || (!elementType.IsSealed && elementType != typeof(Component))
                         );
 
+                    FilterParameters filters = new(attribute);
+
                     return (FieldMetadata<TAttribute>?)
                         new FieldMetadata<TAttribute>(
                             field,
                             attribute,
-                            ReflectionHelpers.GetFieldSetter(field),
-                            ReflectionHelpers.GetFieldGetter(field),
+                            filters,
+                            CreateFieldAccessor(componentType, field),
                             kind,
                             elementType,
                             arrayCreator,
@@ -425,7 +525,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
         internal static bool ShouldSkipAssignment<TAttribute>(
             FieldMetadata<TAttribute> metadata,
-            object component
+            Component component
         )
             where TAttribute : BaseRelationalComponentAttribute
         {
@@ -434,7 +534,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 return false;
             }
 
-            object currentValue = metadata.getter(component);
+            object currentValue = metadata.GetValue(component);
 
             return ValueHelpers.IsAssigned(currentValue);
         }
@@ -464,34 +564,34 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             {
                 case FieldKind.Array:
 
-                    metadata.setter(component, metadata.arrayCreator(0));
+                    metadata.SetValue(component, metadata.arrayCreator(0));
 
                     break;
 
                 case FieldKind.List:
                     {
-                        object existing = metadata.getter(component);
+                        object existing = metadata.GetValue(component);
                         if (existing is IList list)
                         {
                             list.Clear();
                         }
                         else
                         {
-                            metadata.setter(component, metadata.listCreator(0));
+                            metadata.SetValue(component, metadata.listCreator(0));
                         }
                     }
                     break;
 
                 case FieldKind.HashSet:
                     {
-                        object existing = metadata.getter(component);
+                        object existing = metadata.GetValue(component);
                         if (existing != null && metadata.hashSetClearer != null)
                         {
                             metadata.hashSetClearer(existing);
                         }
                         else
                         {
-                            metadata.setter(component, metadata.hashSetCreator(0));
+                            metadata.SetValue(component, metadata.hashSetCreator(0));
                         }
                     }
                     break;

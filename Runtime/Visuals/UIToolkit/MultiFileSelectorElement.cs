@@ -712,8 +712,8 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
             {
                 return;
             }
-            Toggle toggle = (evt.currentTarget as VisualElement)?.userData as Toggle;
-            if (toggle != null)
+
+            if ((evt.currentTarget as VisualElement)?.userData is Toggle toggle)
             {
                 toggle.value = !toggle.value;
             }

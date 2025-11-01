@@ -4575,7 +4575,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
                 Expression valueExpression =
                     field.FieldType == typeof(TValue)
-                        ? (Expression)valueParam
+                        ? valueParam
                         : Expression.Convert(valueParam, field.FieldType);
 
                 Expression assignExpression;
@@ -4641,7 +4641,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 ParameterExpression valueParam = Expression.Parameter(typeof(TValue), "value");
                 Expression valueExpression =
                     field.FieldType == typeof(TValue)
-                        ? (Expression)valueParam
+                        ? valueParam
                         : Expression.Convert(valueParam, field.FieldType);
                 Expression assignExpression = Expression.Assign(
                     Expression.Field(null, field),
@@ -4724,7 +4724,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
                 Expression valueExpression =
                     property.PropertyType == typeof(TValue)
-                        ? (Expression)valueParam
+                        ? valueParam
                         : Expression.Convert(valueParam, property.PropertyType);
 
                 MethodCallExpression callExpression;
@@ -4797,7 +4797,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
                 Expression valueExpression =
                     property.PropertyType == typeof(TValue)
-                        ? (Expression)valueParam
+                        ? valueParam
                         : Expression.Convert(valueParam, property.PropertyType);
 
                 MethodCallExpression callExpression = Expression.Call(setMethod, valueExpression);

@@ -127,6 +127,18 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 component.GetType(),
                 type => GetFieldMetadata<ParentComponentAttribute>(type)
             );
+            AssignParentComponents(component, fields);
+        }
+
+        internal static void AssignParentComponents(
+            Component component,
+            FieldMetadata<ParentComponentAttribute>[] fields
+        )
+        {
+            if (component == null || fields == null || fields.Length == 0)
+            {
+                return;
+            }
 
             foreach (FieldMetadata<ParentComponentAttribute> field in fields)
             {
@@ -135,8 +147,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     continue;
                 }
 
-                bool foundParent;
-                FilterParameters filters = new(field.attribute);
+                FilterParameters filters = field.Filters;
                 Transform root = component.transform;
                 if (field.attribute.OnlyAncestors)
                 {
@@ -146,15 +157,21 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 if (root == null)
                 {
                     SetEmptyCollection(component, field);
-                    foundParent = false;
+                    LogMissingComponentError(component, field, "parent");
+                    continue;
                 }
                 else
                 {
+                    bool foundParent;
                     if (field.kind == FieldKind.Single)
                     {
-                        Component parentComponent;
                         if (
-                            TryAssignParentSingleFast(root, field, filters, out parentComponent)
+                            TryAssignParentSingleFast(
+                                root,
+                                field,
+                                filters,
+                                out Component parentComponent
+                            )
                             || TryGetFirstParentComponent(
                                 root,
                                 filters,
@@ -165,7 +182,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                             )
                         )
                         {
-                            field.setter(component, parentComponent);
+                            field.SetValue(component, parentComponent);
                             foundParent = true;
                         }
                         else
@@ -223,7 +240,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                                     correctTypedArray.SetValue(parentComponents[i], i);
                                 }
 
-                                field.setter(component, correctTypedArray);
+                                field.SetValue(component, correctTypedArray);
                                 foundParent = filteredCount > 0;
                                 break;
                             }
@@ -267,15 +284,14 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                                             filterDisabledComponents: false
                                         );
 
-                                IList instance = field.getter(component) as IList;
-                                if (instance != null)
+                                if (field.GetValue(component) is IList instance)
                                 {
                                     instance.Clear();
                                 }
                                 else
                                 {
                                     instance = field.listCreator(filteredCount);
-                                    field.setter(component, instance);
+                                    field.SetValue(component, instance);
                                 }
 
                                 for (int i = 0; i < filteredCount; ++i)
@@ -323,7 +339,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                                     filterDisabledComponents: false
                                 );
 
-                                object instance = field.getter(component);
+                                object instance = field.GetValue(component);
                                 if (instance != null && field.hashSetClearer != null)
                                 {
                                     field.hashSetClearer(instance);
@@ -331,7 +347,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                                 else
                                 {
                                     instance = field.hashSetCreator(filteredCount);
-                                    field.setter(component, instance);
+                                    field.SetValue(component, instance);
                                 }
 
                                 for (int i = 0; i < filteredCount; ++i)
@@ -356,6 +372,11 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     }
                 }
             }
+        }
+
+        internal static FieldMetadata<ParentComponentAttribute>[] GetOrCreateFields(Type type)
+        {
+            return FieldsByType.GetOrAdd(type, t => GetFieldMetadata<ParentComponentAttribute>(t));
         }
 
         private static bool TryAssignParentCollectionFast(
@@ -390,7 +411,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 #endif
             {
                 Array parents = ParentComponentFastInvoker.GetArray(
-                    (Component)root,
+                    root,
                     metadata.elementType,
                     attribute.IncludeInactive
                 );
@@ -421,7 +442,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 return source;
             }
 
-            int limit = maxCount > 0 ? Math.Min(maxCount, source.Length) : source.Length;
+            int limit = Math.Min(maxCount, source.Length);
             Array staged = Array.CreateInstance(elementType, limit);
             int writeIndex = 0;
 
@@ -473,20 +494,19 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                         instance.SetValue(parents.GetValue(i), i);
                     }
 
-                    metadata.setter(component, instance);
+                    metadata.SetValue(component, instance);
                     return count > 0;
                 }
                 case FieldKind.List:
                 {
-                    IList list = metadata.getter(component) as IList;
-                    if (list != null)
+                    if (metadata.GetValue(component) is IList list)
                     {
                         list.Clear();
                     }
                     else
                     {
                         list = metadata.listCreator(count);
-                        metadata.setter(component, list);
+                        metadata.SetValue(component, list);
                     }
 
                     for (int i = 0; i < count; ++i)
@@ -498,7 +518,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 }
                 case FieldKind.HashSet:
                 {
-                    object hashSet = metadata.getter(component);
+                    object hashSet = metadata.GetValue(component);
                     if (hashSet != null && metadata.hashSetClearer != null)
                     {
                         metadata.hashSetClearer(hashSet);
@@ -506,7 +526,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     else
                     {
                         hashSet = metadata.hashSetCreator(count);
-                        metadata.setter(component, hashSet);
+                        metadata.SetValue(component, hashSet);
                     }
 
                     for (int i = 0; i < count; ++i)
@@ -600,6 +620,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 root == null
                 || metadata.isInterface
                 || filters.RequiresPostProcessing
+                || metadata.attribute.IncludeInactive
                 || metadata.attribute.MaxDepth > 0
             )
             {
@@ -704,7 +725,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
         internal static Array GetArray(Component component, Type elementType, bool includeInactive)
         {
-            return ArrayGetters.GetOrAdd(elementType, CreateArrayGetter)(
+            return ArrayGetters.GetOrAdd(elementType, t => CreateArrayGetter(t))(
                 component,
                 includeInactive
             );
