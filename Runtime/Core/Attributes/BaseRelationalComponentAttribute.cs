@@ -599,7 +599,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static bool PassesStateAndFilters(
+        internal static bool PassesStateAndFilters(
             Component candidate,
             FilterParameters filters,
             bool filterDisabledComponents = true

@@ -195,14 +195,17 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                             {
                                 using PooledResource<List<Component>> cacheResource =
                                     Buffers<Component>.List.Get(out List<Component> cache);
-                                CollectChildComponents(component, metadata, childBuffer, cache);
-
-                                int filteredCount = FilterComponentsInPlace(
-                                    cache,
+                                cache.Clear();
+                                int filteredCount = EnumerateFilteredChildComponents(
+                                    component,
+                                    metadata,
                                     filters,
-                                    metadata.attribute,
-                                    metadata.elementType,
-                                    metadata.isInterface
+                                    childBuffer,
+                                    candidate =>
+                                    {
+                                        cache.Add(candidate);
+                                        return true;
+                                    }
                                 );
 
                                 Array correctTypedArray = metadata.arrayCreator(filteredCount);
@@ -217,52 +220,39 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                             }
                             case FieldKind.List:
                             {
-                                using PooledResource<List<Component>> cacheResource =
-                                    Buffers<Component>.List.Get(out List<Component> cache);
-
-                                CollectChildComponents(component, metadata, childBuffer, cache);
-
-                                int filteredCount = FilterComponentsInPlace(
-                                    cache,
-                                    filters,
-                                    metadata.attribute,
-                                    metadata.elementType,
-                                    metadata.isInterface
-                                );
-
                                 object existing = metadata.GetValue(component);
-                                if (existing is IList instance)
+                                IList list = existing as IList;
+                                if (list == null)
                                 {
-                                    instance.Clear();
+                                    int initialCapacity =
+                                        metadata.attribute.MaxCount > 0
+                                            ? metadata.attribute.MaxCount
+                                            : 0;
+                                    list = metadata.listCreator(initialCapacity);
+                                    metadata.SetValue(component, list);
                                 }
                                 else
                                 {
-                                    instance = metadata.listCreator(filteredCount);
-                                    metadata.SetValue(component, instance);
-                                }
-                                for (int i = 0; i < filteredCount; ++i)
-                                {
-                                    instance.Add(cache[i]);
+                                    list.Clear();
                                 }
 
-                                foundChild = filteredCount > 0;
+                                int added = EnumerateFilteredChildComponents(
+                                    component,
+                                    metadata,
+                                    filters,
+                                    childBuffer,
+                                    candidate =>
+                                    {
+                                        list.Add(candidate);
+                                        return true;
+                                    }
+                                );
+
+                                foundChild = added > 0;
                                 break;
                             }
                             case FieldKind.HashSet:
                             {
-                                using PooledResource<List<Component>> cacheResource =
-                                    Buffers<Component>.List.Get(out List<Component> cache);
-
-                                CollectChildComponents(component, metadata, childBuffer, cache);
-
-                                int filteredCount = FilterComponentsInPlace(
-                                    cache,
-                                    filters,
-                                    metadata.attribute,
-                                    metadata.elementType,
-                                    metadata.isInterface
-                                );
-
                                 object instance = metadata.GetValue(component);
                                 if (instance != null && metadata.hashSetClearer != null)
                                 {
@@ -270,15 +260,27 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                                 }
                                 else
                                 {
-                                    instance = metadata.hashSetCreator(filteredCount);
+                                    int initialCapacity =
+                                        metadata.attribute.MaxCount > 0
+                                            ? metadata.attribute.MaxCount
+                                            : 0;
+                                    instance = metadata.hashSetCreator(initialCapacity);
                                     metadata.SetValue(component, instance);
                                 }
-                                for (int i = 0; i < filteredCount; ++i)
-                                {
-                                    metadata.hashSetAdder(instance, cache[i]);
-                                }
 
-                                foundChild = filteredCount > 0;
+                                int added = EnumerateFilteredChildComponents(
+                                    component,
+                                    metadata,
+                                    filters,
+                                    childBuffer,
+                                    candidate =>
+                                    {
+                                        metadata.hashSetAdder(instance, candidate);
+                                        return true;
+                                    }
+                                );
+
+                                foundChild = added > 0;
                                 break;
                             }
                             default:
@@ -689,22 +691,32 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             return childComponent != null;
         }
 
-        private static List<Component> CollectChildComponents(
+        private static int EnumerateFilteredChildComponents(
             Component component,
             FieldMetadata<ChildComponentAttribute> metadata,
+            FilterParameters filters,
             List<Transform> childBuffer,
-            List<Component> cache
+            Func<Component, bool> onComponent
         )
         {
-            cache.Clear();
+            if (component == null)
+            {
+                return 0;
+            }
+
+            ChildComponentAttribute attribute = metadata.attribute;
+            int maxAssignments = attribute.MaxCount > 0 ? attribute.MaxCount : int.MaxValue;
+            int added = 0;
+
             using PooledResource<List<Component>> componentBuffer = Buffers<Component>.List.Get(
                 out List<Component> components
             );
+
             foreach (
                 Transform child in component.IterateOverAllChildrenRecursivelyBreadthFirst(
                     childBuffer,
-                    includeSelf: !metadata.attribute.OnlyDescendants,
-                    maxDepth: metadata.attribute.MaxDepth
+                    includeSelf: !attribute.OnlyDescendants,
+                    maxDepth: attribute.MaxDepth
                 )
             )
             {
@@ -712,12 +724,32 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     child,
                     metadata.elementType,
                     metadata.isInterface,
-                    metadata.attribute.AllowInterfaces,
+                    attribute.AllowInterfaces,
                     components
                 );
-                cache.AddRange(components);
+
+                for (int i = 0; i < components.Count; ++i)
+                {
+                    Component candidate = components[i];
+                    if (!PassesStateAndFilters(candidate, filters, filterDisabledComponents: true))
+                    {
+                        continue;
+                    }
+
+                    if (!onComponent(candidate))
+                    {
+                        return added;
+                    }
+
+                    added++;
+                    if (added >= maxAssignments)
+                    {
+                        return added;
+                    }
+                }
             }
-            return cache;
+
+            return added;
         }
     }
 

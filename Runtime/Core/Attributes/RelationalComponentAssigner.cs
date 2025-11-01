@@ -2,7 +2,6 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 {
     using System;
     using System.Collections.Generic;
-    using System.Collections.ObjectModel;
     using System.Linq;
     using Tags;
     using UnityEngine;
