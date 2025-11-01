@@ -118,7 +118,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         }
 
         internal static string[] AllSpriteLabels { get; private set; } = Array.Empty<string>();
-        private static bool _SpriteLabelCacheInitialized;
+        private static bool SpriteLabelCacheInitialized;
 
         /// <summary>
         /// Gets all unique sprite labels in the project (Editor only).
@@ -134,7 +134,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
 
 #if UNITY_EDITOR
-            if (_SpriteLabelCacheInitialized)
+            if (SpriteLabelCacheInitialized)
             {
                 return AllSpriteLabels;
             }
@@ -169,7 +169,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
 
 #if UNITY_EDITOR
-            string[] cached = _SpriteLabelCacheInitialized
+            string[] cached = SpriteLabelCacheInitialized
                 ? AllSpriteLabels
                 : GetAllSpriteLabelNames();
 
@@ -321,7 +321,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             if (labels == null || labels.Count == 0)
             {
                 AllSpriteLabels = Array.Empty<string>();
-                _SpriteLabelCacheInitialized = true;
+                SpriteLabelCacheInitialized = true;
                 return;
             }
 
@@ -350,12 +350,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
 
             AllSpriteLabels = cache;
-            _SpriteLabelCacheInitialized = true;
+            SpriteLabelCacheInitialized = true;
         }
 
         internal static void ResetSpriteLabelCache()
         {
-            _SpriteLabelCacheInitialized = false;
+            SpriteLabelCacheInitialized = false;
             AllSpriteLabels = Array.Empty<string>();
         }
 

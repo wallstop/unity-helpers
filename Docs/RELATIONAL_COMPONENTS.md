@@ -230,8 +230,6 @@ Examples:
 [ParentComponent] private IHealth healthProvider;
 ```
 
-> **Performance note:** With the default settings (no `MaxDepth`, no interface filtering), parent assignments now use a cached `GetComponentsInParent<T>()` delegate, bypassing the pooled list path. Enabling `MaxDepth` or interface searches automatically falls back to the exhaustive traversal.
-
 ### ChildComponent
 
 - Scope: Down the transform chain (breadth-first; optionally excluding self)
