@@ -48,6 +48,12 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     /// Vector3 point = rng.NextVector3InSphere(10f); // via RandomExtensions
     /// </code>
     /// </example>
+    [RandomGeneratorMetadata(
+        RandomQuality.Excellent,
+        "20-word ARX generator derived from SHISHUA; author reports excellent PractRand performance and long periods.",
+        "wileylooper/stormdrop",
+        "https://github.com/wileylooper/stormdrop"
+    )]
     [Serializable]
     [DataContract]
     [ProtoContract(SkipConstructor = true)]

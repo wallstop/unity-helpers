@@ -1,143 +1,75 @@
 # Random Number Generator Performance Benchmarks
 
-## TL;DR — What To Use
-
-- **⭐ Use `PRNG.Instance` instead of `UnityEngine.Random` — 10-15x faster + seedable for determinism.**
-- IllusionFlow (default): Great balance of speed, quality, and thread-safety.
-- Need System.Random compatibility? Use `DotNetRandom` wrapper.
-- Chasing max speed in hot loops? `LinearCongruentialGenerator`/`RomuDuo` are fastest.
-
-### ⭐ The Speed & Determinism Killer Feature
-
-**The Problem with UnityEngine.Random:**
-
-```csharp
-// 🔴 UnityEngine.Random:
-// - Slow (~65-85M ops/sec)
-// - Not seedable (no replays, no determinism)
-// - Not thread-safe (main thread only)
-
-void GenerateLevel()
-{
-    for (int i = 0; i < 10000; i++)
-    {
-        float value = Random.value;  // Slow!
-        // Can't reproduce this exact level generation
-    }
-}
-```
-
-**The Solution - Unity Helpers Random:**
-
-```csharp
-// 🟢 Unity Helpers (PRNG.Instance):
-// - Fast (655-885M ops/sec = 10-15x faster)
-// - Seedable (perfect replays)
-// - Thread-local (safe everywhere)
-
-IRandom rng = new IllusionFlow(seed: 12345);
-
-void GenerateLevel()
-{
-    for (int i = 0; i < 10000; i++)
-    {
-        float value = rng.NextFloat();  // Fast + reproducible!
-        // Same seed = exact same level every time
-    }
-}
-```
-
-**When It Matters:**
-
-- **Procedural generation**: Thousands of random rolls per level
-- **Particle systems**: Hundreds of random values per frame
-- **Networked games**: Clients must generate identical results
-- **Replay systems**: Must reproduce exact gameplay
-- **Performance-critical loops**: Every microsecond counts
-
-**Speed Comparison:**
-
-| Generator                    | NextFloat (ops/sec) | vs UnityEngine.Random |
-| ---------------------------- | ------------------- | --------------------- |
-| UnityEngine.Random           | 65M                 | 1x (baseline)         |
-| PRNG.Instance (IllusionFlow) | 655M                | **10x faster**        |
-| LinearCongruentialGenerator  | 829M                | **13x faster**        |
-| SplitMix64                   | 739M                | **11x faster**        |
-
-Threading
-
-- Individual RNG instances are not thread‑safe.
-- Use `PRNG.Instance` or each generator’s `TypeName.Instance` for thread‑local safety, or create one instance per thread.
-
-Visual
-
-![Random Generators](Images/random_generators.svg)
-
-This document contains performance benchmarks for the various random number generators included in Unity Helpers.
-
-## Performance (Operations per Second)
+> Auto-generated via RandomPerformanceTests.Benchmark. Run the test to refresh these summary and detail tables.
 
 <!-- RANDOM_BENCHMARKS_START -->
 
-| Random                      | NextBool    | Next        | NextUInt      | NextFloat   | NextDouble  | NextUint - Range | NextInt - Range |
-| --------------------------- | ----------- | ----------- | ------------- | ----------- | ----------- | ---------------- | --------------- |
-| DotNetRandom                | 543,400,000 | 53,000,000  | 58,000,000    | 44,900,000  | 27,100,000  | 53,700,000       | 53,700,000      |
-| LinearCongruentialGenerator | 807,000,000 | 489,000,000 | 1,328,100,000 | 172,500,000 | 333,300,000 | 593,300,000      | 507,300,000     |
-| IllusionFlow                | 791,100,000 | 489,600,000 | 894,000,000   | 172,400,000 | 331,900,000 | 446,100,000      | 395,300,000     |
-| PcgRandom                   | 796,800,000 | 538,000,000 | 914,300,000   | 176,800,000 | 344,900,000 | 452,000,000      | 406,200,000     |
-| RomuDuo                     | 778,400,000 | 336,400,000 | 767,400,000   | 148,300,000 | 206,900,000 | 446,100,000      | 398,200,000     |
-| SplitMix64                  | 779,900,000 | 489,600,000 | 1,063,600,000 | 172,300,000 | 332,900,000 | 483,200,000      | 442,000,000     |
-| FlurryBurstRandom           | 778,500,000 | 487,000,000 | 951,900,000   | 172,100,000 | 335,300,000 | 456,000,000      | 410,600,000     |
-| SquirrelRandom              | 756,400,000 | 355,100,000 | 409,300,000   | 151,400,000 | 200,900,000 | 366,500,000      | 311,700,000     |
-| SystemRandom                | 148,400,000 | 147,600,000 | 64,300,000    | 131,400,000 | 137,300,000 | 58,700,000       | 57,900,000      |
-| UnityRandom                 | 645,700,000 | 79,900,000  | 83,900,000    | 61,500,000  | 41,300,000  | 76,600,000       | 75,600,000      |
-| WyRandom                    | 755,900,000 | 356,600,000 | 455,000,000   | 152,300,000 | 190,400,000 | 290,700,000      | 276,100,000     |
-| XorShiftRandom              | 784,900,000 | 531,800,000 | 603,300,000   | 178,200,000 | 294,600,000 | 486,500,000      | 392,600,000     |
-| XoroShiroRandom             | 783,900,000 | 333,000,000 | 751,900,000   | 145,900,000 | 203,000,000 | 428,000,000      | 381,800,000     |
-| PhotonSpinRandom            | 702,200,000 | 217,000,000 | 264,500,000   | 116,000,000 | 116,800,000 | 211,500,000      | 214,100,000     |
-| StormDropRandom             | 779,700,000 | 484,800,000 | 717,300,000   | 172,300,000 | 255,800,000 | 401,500,000      | 369,600,000     |
+## Summary (fastest first)
 
+<table>
+  <thead>
+    <tr>
+      <th align="left">Random</th>
+      <th align="right">NextUint (ops/s)</th>
+      <th align="left">Speed</th>
+      <th align="left">Quality</th>
+      <th align="left">Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>WaveSplatRandom</td><td align="right">1,314,600,000</td><td>Fastest</td><td>Experimental</td><td>Single-word chaotic generator; author notes period 2^64 but provides no formal test results—treat as experimental. <a href="https://github.com/wileylooper/wavesplat">wileylooper/wavesplat</a></td></tr>
+    <tr><td>LinearCongruentialGenerator</td><td align="right">1,310,800,000</td><td>Fastest</td><td>Poor</td><td>Minimal standard LCG; fails spectral tests and exhibits lattice artifacts beyond small dimensions. <a href="https://doi.org/10.1145/63039.63042">Park &amp; Miller 1988</a></td></tr>
+    <tr><td>BlastCircuitRandom</td><td align="right">1,060,400,000</td><td>Very Fast</td><td>Good</td><td>Empirical PractRand testing to 32GB shows strong diffusion; designed as a chaotic ARX mixer rather than a proven statistically optimal generator. <a href="https://github.com/wileylooper/blastcircuit">wileylooper/blastcircuit</a></td></tr>
+    <tr><td>SplitMix64</td><td align="right">959,100,000</td><td>Fast</td><td>Very Good</td><td>Well-known SplitMix64 mixer; passes TestU01 BigCrush and PractRand up to large data sizes in literature. <a href="http://xoshiro.di.unimi.it/splitmix64.c">Vigna 2014</a></td></tr>
+    <tr><td>FlurryBurstRandom</td><td align="right">948,000,000</td><td>Fast</td><td>Excellent</td><td>Hybrid Xoshiro/PCG variant tuned for all-around use; passes TestU01 BigCrush per upstream reference implementation. <a href="http://xoshiro.di.unimi.it">Blackman &amp; Vigna 2019</a></td></tr>
+    <tr><td>PcgRandom</td><td align="right">906,700,000</td><td>Fast</td><td>Excellent</td><td>PCG XSH RR 64/32 variant; passes TestU01 BigCrush and PractRand in published results. <a href="https://www.pcg-random.org/paper.html">O&#39;Neill 2014</a></td></tr>
+    <tr><td>IllusionFlow</td><td align="right">813,800,000</td><td>Fast</td><td>Excellent</td><td>Hybridized PCG + xorshift design; upstream PractRand 64GB passes with no anomalies per author. <a href="https://github.com/wileylooper/illusionflow">wileylooper/illusionflow</a></td></tr>
+    <tr><td>RomuDuo</td><td align="right">765,100,000</td><td>Fast</td><td>Very Good</td><td>ROMU family member (RomuDuo); authors report strong BigCrush results with minor low-bit weaknesses in some rotations. <a href="https://romu-random.org/">Markus &amp; Crow 2019</a></td></tr>
+    <tr><td>XoroShiroRandom</td><td align="right">759,500,000</td><td>Fast</td><td>Very Good</td><td>xoshiro128** variant; authors recommend for general-purpose use and report clean BigCrush performance with jump functions. <a href="http://xoshiro.di.unimi.it/xoshiro128starstar.c">Blackman &amp; Vigna 2019</a></td></tr>
+    <tr><td>StormDropRandom</td><td align="right">720,300,000</td><td>Moderate</td><td>Excellent</td><td>20-word ARX generator derived from SHISHUA; author reports excellent PractRand performance and long periods. <a href="https://github.com/wileylooper/stormdrop">wileylooper/stormdrop</a></td></tr>
+    <tr><td>XorShiftRandom</td><td align="right">596,100,000</td><td>Moderate</td><td>Fair</td><td>Classic 32-bit xorshift; known to fail portions of TestU01 and PractRand, acceptable for lightweight effects only. <a href="https://www.jstatsoft.org/article/view/v008i14">Marsaglia 2003</a></td></tr>
+    <tr><td>WyRandom</td><td align="right">446,500,000</td><td>Slow</td><td>Very Good</td><td>Wyhash-based generator; published testing shows it clears BigCrush/PractRand with wide seed coverage. <a href="https://github.com/wangyi-fudan/wyhash">Wang Yi 2019</a></td></tr>
+    <tr><td>SquirrelRandom</td><td align="right">414,300,000</td><td>Slow</td><td>Good</td><td>Hash-based generator built on Squirrel3; good equidistribution for table lookups but not extensively tested beyond moderate ranges. <a href="https://github.com/squirrel-org/squirrel3">Squirrel3</a></td></tr>
+    <tr><td>PhotonSpinRandom</td><td align="right">265,200,000</td><td>Slow</td><td>Excellent</td><td>SHISHUA-inspired generator; independent testing (PractRand 128GB) by author indicates excellent distribution properties. <a href="https://github.com/wileylooper/photonspin">wileylooper/photonspin</a></td></tr>
+    <tr><td>UnityRandom</td><td align="right">87,700,000</td><td>Very Slow</td><td>Fair</td><td>Mirrors UnityEngine.Random (Xorshift196 + additive); suitable for legacy compatibility but not high-stakes simulation. <a href="https://blog.unity.com/technology/random-numbers-on-the-gpu">Unity Random Internals</a></td></tr>
+    <tr><td>SystemRandom</td><td align="right">64,900,000</td><td>Very Slow</td><td>Poor</td><td>Thin wrapper over System.Random; inherits same LCG weaknesses and fails modern statistical batteries. <a href="https://nullprogram.com/blog/2017/09/21/">System.Random considered harmful</a></td></tr>
+    <tr><td>DotNetRandom</td><td align="right">57,200,000</td><td>Very Slow</td><td>Poor</td><td>Linear congruential generator (mod 2^31) with known correlation failures; unsuitable for high-quality simulations. <a href="https://nullprogram.com/blog/2017/09/21/">System.Random considered harmful</a></td></tr>
+  </tbody>
+</table>
+
+## Detailed Metrics
+
+<table>
+  <thead>
+    <tr>
+      <th align="left">Random</th>
+      <th align="right">NextBool</th>
+      <th align="right">Next</th>
+      <th align="right">NextUint</th>
+      <th align="right">NextFloat</th>
+      <th align="right">NextDouble</th>
+      <th align="right">NextUint (Range)</th>
+      <th align="right">NextInt (Range)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>WaveSplatRandom</td><td align="right">784,300,000</td><td align="right">811,100,000</td><td align="right">1,314,600,000</td><td align="right">182,500,000</td><td align="right">410,200,000</td><td align="right">536,200,000</td><td align="right">465,700,000</td></tr>
+    <tr><td>LinearCongruentialGenerator</td><td align="right">801,300,000</td><td align="right">874,300,000</td><td align="right">1,310,800,000</td><td align="right">182,700,000</td><td align="right">404,900,000</td><td align="right">578,000,000</td><td align="right">495,500,000</td></tr>
+    <tr><td>BlastCircuitRandom</td><td align="right">786,400,000</td><td align="right">704,100,000</td><td align="right">1,060,400,000</td><td align="right">182,000,000</td><td align="right">371,600,000</td><td align="right">479,500,000</td><td align="right">422,600,000</td></tr>
+    <tr><td>SplitMix64</td><td align="right">792,300,000</td><td align="right">654,300,000</td><td align="right">959,100,000</td><td align="right">182,200,000</td><td align="right">340,000,000</td><td align="right">482,100,000</td><td align="right">446,500,000</td></tr>
+    <tr><td>FlurryBurstRandom</td><td align="right">764,600,000</td><td align="right">650,400,000</td><td align="right">948,000,000</td><td align="right">183,700,000</td><td align="right">306,100,000</td><td align="right">444,800,000</td><td align="right">404,800,000</td></tr>
+    <tr><td>PcgRandom</td><td align="right">779,900,000</td><td align="right">650,300,000</td><td align="right">906,700,000</td><td align="right">182,200,000</td><td align="right">323,400,000</td><td align="right">455,000,000</td><td align="right">409,700,000</td></tr>
+    <tr><td>IllusionFlow</td><td align="right">774,700,000</td><td align="right">589,000,000</td><td align="right">813,800,000</td><td align="right">178,000,000</td><td align="right">312,200,000</td><td align="right">444,000,000</td><td align="right">391,900,000</td></tr>
+    <tr><td>RomuDuo</td><td align="right">788,500,000</td><td align="right">588,900,000</td><td align="right">765,100,000</td><td align="right">166,000,000</td><td align="right">255,200,000</td><td align="right">427,800,000</td><td align="right">395,500,000</td></tr>
+    <tr><td>XoroShiroRandom</td><td align="right">772,800,000</td><td align="right">543,800,000</td><td align="right">759,500,000</td><td align="right">167,100,000</td><td align="right">251,600,000</td><td align="right">423,500,000</td><td align="right">379,000,000</td></tr>
+    <tr><td>StormDropRandom</td><td align="right">759,400,000</td><td align="right">559,300,000</td><td align="right">720,300,000</td><td align="right">182,500,000</td><td align="right">282,600,000</td><td align="right">405,900,000</td><td align="right">366,100,000</td></tr>
+    <tr><td>XorShiftRandom</td><td align="right">783,300,000</td><td align="right">558,200,000</td><td align="right">596,100,000</td><td align="right">182,000,000</td><td align="right">257,600,000</td><td align="right">440,200,000</td><td align="right">388,000,000</td></tr>
+    <tr><td>WyRandom</td><td align="right">748,300,000</td><td align="right">384,100,000</td><td align="right">446,500,000</td><td align="right">163,200,000</td><td align="right">186,900,000</td><td align="right">293,500,000</td><td align="right">278,500,000</td></tr>
+    <tr><td>SquirrelRandom</td><td align="right">763,100,000</td><td align="right">395,600,000</td><td align="right">414,300,000</td><td align="right">172,300,000</td><td align="right">190,300,000</td><td align="right">333,200,000</td><td align="right">313,200,000</td></tr>
+    <tr><td>PhotonSpinRandom</td><td align="right">704,100,000</td><td align="right">243,500,000</td><td align="right">265,200,000</td><td align="right">120,600,000</td><td align="right">120,900,000</td><td align="right">212,800,000</td><td align="right">205,600,000</td></tr>
+    <tr><td>UnityRandom</td><td align="right">654,200,000</td><td align="right">84,800,000</td><td align="right">87,700,000</td><td align="right">61,600,000</td><td align="right">40,900,000</td><td align="right">80,900,000</td><td align="right">81,400,000</td></tr>
+    <tr><td>SystemRandom</td><td align="right">146,500,000</td><td align="right">148,500,000</td><td align="right">64,900,000</td><td align="right">129,400,000</td><td align="right">129,300,000</td><td align="right">59,500,000</td><td align="right">60,300,000</td></tr>
+    <tr><td>DotNetRandom</td><td align="right">535,800,000</td><td align="right">54,500,000</td><td align="right">57,200,000</td><td align="right">45,900,000</td><td align="right">27,200,000</td><td align="right">53,400,000</td><td align="right">53,300,000</td></tr>
+  </tbody>
+</table>
 <!-- RANDOM_BENCHMARKS_END -->
-
-## Interpreting the Results
-
-- **NextBool**: Operations per second for generating random boolean values
-- **Next**: Operations per second for generating random integers (0 to int.MaxValue)
-- **NextUInt**: Operations per second for generating random unsigned integers
-- **NextFloat**: Operations per second for generating random floats (0.0f to 1.0f)
-- **NextDouble**: Operations per second for generating random doubles (0.0d to 1.0d)
-- **NextUint - Range**: Operations per second for generating random unsigned integers within a range
-- **NextInt - Range**: Operations per second for generating random integers within a range
-
-## Recommendations
-
-Based on the benchmarks:
-
-- **For general use**: `IllusionFlow` (via `PRNG.Instance`) or `PCG` - Great balance of speed and quality
-- **For maximum speed**: `LinearCongruentialGenerator` - Fastest overall (but not recommended for statistical quality)
-- **For compatibility**: `DotNetRandom` - Uses .NET's built-in Random
-- **Avoid for performance**: `UnityRandom` - Significantly slower than alternatives
-
-All benchmarks are run for 1 second per operation type to ensure statistical significance.
-
----
-
-## 📚 Related Documentation
-
-**Core Guides:**
-
-- [Getting Started](GETTING_STARTED.md) - Your first 5 minutes with Unity Helpers
-- [Main README](../README.md) - Complete feature overview
-- [Feature Index](INDEX.md) - Alphabetical reference
-
-**Random Number Generator Features:**
-
-- [README - Random Generators](../README.md#random-number-generators) - Full API reference
-- [README - Quick Start](../README.md#random-number-generation) - 60-second tutorial
-
-**Related Features:**
-
-- [Math & Extensions](MATH_AND_EXTENSIONS.md) - Vector/color extensions and utilities
-- [Data Structures](DATA_STRUCTURES.md) - Heaps, tries, and more
-
-**Need help?** [Open an issue](https://github.com/wallstop/unity-helpers/issues)

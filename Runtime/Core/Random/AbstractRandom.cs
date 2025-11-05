@@ -73,6 +73,8 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     [ProtoInclude(112, typeof(FlurryBurstRandom))]
     [ProtoInclude(113, typeof(PhotonSpinRandom))]
     [ProtoInclude(114, typeof(StormDropRandom))]
+    [ProtoInclude(115, typeof(BlastCircuitRandom))]
+    [ProtoInclude(116, typeof(WaveSplatRandom))]
     public abstract class AbstractRandom : IRandom
     {
 #if SINGLE_THREADED

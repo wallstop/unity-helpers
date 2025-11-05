@@ -44,6 +44,12 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     /// var color = rng.NextColor(); // via RandomExtensions
     /// </code>
     /// </example>
+    [RandomGeneratorMetadata(
+        RandomQuality.VeryGood,
+        "Wyhash-based generator; published testing shows it clears BigCrush/PractRand with wide seed coverage.",
+        "Wang Yi 2019",
+        "https://github.com/wangyi-fudan/wyhash"
+    )]
     [Serializable]
     [DataContract]
     [ProtoContract(SkipConstructor = true)]

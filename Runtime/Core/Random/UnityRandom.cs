@@ -44,6 +44,12 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     /// // Note: calling UnityEngine.Random elsewhere will affect this sequence.
     /// </code>
     /// </example>
+    [RandomGeneratorMetadata(
+        RandomQuality.Fair,
+        "Mirrors UnityEngine.Random (Xorshift196 + additive); suitable for legacy compatibility but not high-stakes simulation.",
+        "Unity Random Internals",
+        "https://blog.unity.com/technology/random-numbers-on-the-gpu"
+    )]
     [Serializable]
     [DataContract]
     [ProtoContract]

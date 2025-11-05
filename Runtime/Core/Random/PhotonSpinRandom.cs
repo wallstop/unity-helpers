@@ -47,6 +47,12 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     /// Guid guid = rng.NextGuid();
     /// </code>
     /// </example>
+    [RandomGeneratorMetadata(
+        RandomQuality.Excellent,
+        "SHISHUA-inspired generator; independent testing (PractRand 128GB) by author indicates excellent distribution properties.",
+        "wileylooper/photonspin",
+        "https://github.com/wileylooper/photonspin"
+    )]
     [Serializable]
     [DataContract]
     [ProtoContract(SkipConstructor = true)]

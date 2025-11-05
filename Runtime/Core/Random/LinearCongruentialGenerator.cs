@@ -40,6 +40,12 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     /// // Prefer PCG or IllusionFlow for production gameplay.
     /// </code>
     /// </example>
+    [RandomGeneratorMetadata(
+        RandomQuality.Poor,
+        "Minimal standard LCG; fails spectral tests and exhibits lattice artifacts beyond small dimensions.",
+        "Park & Miller 1988",
+        "https://doi.org/10.1145/63039.63042"
+    )]
     [Serializable]
     [DataContract]
     [ProtoContract]

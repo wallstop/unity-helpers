@@ -49,6 +49,12 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     /// float weight = rng.NextFloat();
     /// </code>
     /// </example>
+    [RandomGeneratorMetadata(
+        RandomQuality.Excellent,
+        "Hybrid Xoshiro/PCG variant tuned for all-around use; passes TestU01 BigCrush per upstream reference implementation.",
+        "Blackman & Vigna 2019",
+        "http://xoshiro.di.unimi.it"
+    )]
     [Serializable]
     [DataContract]
     [ProtoContract]

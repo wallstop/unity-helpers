@@ -15,46 +15,41 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
         {
             TimeSpan timeout = TimeSpan.FromSeconds(1);
 
-            const string headerLine =
-                "| Random | NextBool | Next | NextUInt | NextFloat | NextDouble | NextUint - Range | NextInt - Range |";
-            const string dividerLine =
-                "| ------ | -------- | ---- | -------- | --------- | ---------- | ---------------- | --------------- |";
+            List<RandomBenchmarkResult> results = new()
+            {
+                RunBenchmark(new DotNetRandom(), timeout),
+                RunBenchmark(new LinearCongruentialGenerator(), timeout),
+                RunBenchmark(new IllusionFlow(), timeout),
+                RunBenchmark(new PcgRandom(), timeout),
+                RunBenchmark(new RomuDuo(), timeout),
+                RunBenchmark(new SplitMix64(), timeout),
+                RunBenchmark(new FlurryBurstRandom(), timeout),
+                RunBenchmark(new SquirrelRandom(), timeout),
+                RunBenchmark(new SystemRandom(), timeout),
+                RunBenchmark(new UnityRandom(), timeout),
+                RunBenchmark(new WyRandom(), timeout),
+                RunBenchmark(new XorShiftRandom(), timeout),
+                RunBenchmark(new XoroShiroRandom(), timeout),
+                RunBenchmark(new PhotonSpinRandom(), timeout),
+                RunBenchmark(new StormDropRandom(), timeout),
+                RunBenchmark(new BlastCircuitRandom(), timeout),
+                RunBenchmark(new WaveSplatRandom(), timeout),
+            };
 
-            List<string> tableLines = new() { headerLine, dividerLine };
+            ApplySpeedBuckets(results);
 
-            UnityEngine.Debug.Log(headerLine);
-            UnityEngine.Debug.Log(dividerLine);
-
-            LogRow(RunTest(new DotNetRandom(), timeout));
-            LogRow(RunTest(new LinearCongruentialGenerator(), timeout));
-            LogRow(RunTest(new IllusionFlow(), timeout));
-            LogRow(RunTest(new PcgRandom(), timeout));
-            LogRow(RunTest(new RomuDuo(), timeout));
-            LogRow(RunTest(new SplitMix64(), timeout));
-            LogRow(RunTest(new FlurryBurstRandom(), timeout));
-            LogRow(RunTest(new SquirrelRandom(), timeout));
-            LogRow(RunTest(new SystemRandom(), timeout));
-            LogRow(RunTest(new UnityRandom(), timeout));
-            LogRow(RunTest(new WyRandom(), timeout));
-            LogRow(RunTest(new XorShiftRandom(), timeout));
-            LogRow(RunTest(new XoroShiroRandom(), timeout));
-            LogRow(RunTest(new PhotonSpinRandom(), timeout));
-            LogRow(RunTest(new StormDropRandom(), timeout));
+            List<string> markdown = RandomBenchmarkMarkdownBuilder.BuildTables(results);
 
             BenchmarkReadmeUpdater.UpdateSection(
                 "RANDOM_BENCHMARKS",
-                tableLines,
+                markdown,
                 "Docs/RANDOM_PERFORMANCE.md"
             );
 
-            void LogRow(string row)
-            {
-                tableLines.Add(row);
-                UnityEngine.Debug.Log(row);
-            }
+            UnityEngine.Debug.Log("Random benchmark summary generated.");
         }
 
-        private static string RunTest<T>(T random, TimeSpan timeout)
+        private static RandomBenchmarkResult RunBenchmark<T>(T random, TimeSpan timeout)
             where T : IRandom
         {
             int nextBool = RunNextBool(timeout, random);
@@ -65,14 +60,50 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             int nextUintRange = RunNextUintRange(timeout, random);
             int nextIntRange = RunNextIntRange(timeout, random);
 
-            return $"| {random.GetType().Name} | "
-                + $"{(nextBool / timeout.TotalSeconds):N0} | "
-                + $"{(nextInt / timeout.TotalSeconds):N0} | "
-                + $"{(nextUint / timeout.TotalSeconds):N0} | "
-                + $"{(nextFloat / timeout.TotalSeconds):N0} | "
-                + $"{(nextDouble / timeout.TotalSeconds):N0} |"
-                + $"{(nextUintRange / timeout.TotalSeconds):N0} |"
-                + $"{(nextIntRange / timeout.TotalSeconds):N0} |";
+            double durationSeconds = timeout.TotalSeconds;
+
+            RandomGeneratorMetadata metadata = RandomGeneratorMetadataRegistry.Snapshot(random);
+
+            return new RandomBenchmarkResult(
+                random.GetType(),
+                nextBool / durationSeconds,
+                nextInt / durationSeconds,
+                nextUint / durationSeconds,
+                nextFloat / durationSeconds,
+                nextDouble / durationSeconds,
+                nextUintRange / durationSeconds,
+                nextIntRange / durationSeconds,
+                metadata
+            );
+        }
+
+        private static void ApplySpeedBuckets(List<RandomBenchmarkResult> results)
+        {
+            if (results == null || results.Count == 0)
+            {
+                return;
+            }
+
+            double maxNextUint = 0;
+            foreach (RandomBenchmarkResult result in results)
+            {
+                if (result.NextUintPerSecond > maxNextUint)
+                {
+                    maxNextUint = result.NextUintPerSecond;
+                }
+            }
+
+            if (maxNextUint <= 0)
+            {
+                return;
+            }
+
+            foreach (RandomBenchmarkResult result in results)
+            {
+                double ratio = result.NextUintPerSecond / maxNextUint;
+                result.SpeedRatio = ratio;
+                result.SpeedBucket = RandomSpeedBucketExtensions.FromRatio(ratio);
+            }
         }
 
         // Copy-pasta'd for maximum speed

@@ -52,6 +52,12 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     /// var replay = new XoroShiroRandom(state);
     /// </code>
     /// </example>
+    [RandomGeneratorMetadata(
+        RandomQuality.VeryGood,
+        "xoshiro128** variant; authors recommend for general-purpose use and report clean BigCrush performance with jump functions.",
+        "Blackman & Vigna 2019",
+        "http://xoshiro.di.unimi.it/xoshiro128starstar.c"
+    )]
     [Serializable]
     [DataContract]
     [ProtoContract]

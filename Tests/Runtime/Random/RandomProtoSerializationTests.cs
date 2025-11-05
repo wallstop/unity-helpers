@@ -186,6 +186,20 @@ namespace WallstopStudios.UnityHelpers.Tests.Random
         }
 
         [Test]
+        public void BlastCircuitRandomSerializesAndDeserializes()
+        {
+            BlastCircuitRandom random = new(Guid.Parse("89B35D54-4DD4-45F4-9B14-24A3A4595F6C"));
+            VerifySerializationAndGeneration(random);
+        }
+
+        [Test]
+        public void WaveSplatRandomSerializesAndDeserializes()
+        {
+            WaveSplatRandom random = new(0x1234_5678_9ABC_DEF0UL);
+            VerifySerializationAndGeneration(random);
+        }
+
+        [Test]
         public void UnityRandomSerializesAndDeserializes()
         {
             UnityRandom random = new(42);
@@ -361,6 +375,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Random
                 new RomuDuo(Guid.Parse("12345678-1234-1234-1234-123456789012")),
                 new SplitMix64(Guid.Parse("12345678-1234-1234-1234-123456789012")),
                 new IllusionFlow(Guid.Parse("12345678-1234-1234-1234-123456789012")),
+                new FlurryBurstRandom(Guid.Parse("12345678-1234-1234-1234-123456789012")),
+                new PhotonSpinRandom(Guid.Parse("12345678-1234-1234-1234-123456789012")),
+                new StormDropRandom(12345u),
+                new BlastCircuitRandom(Guid.Parse("12345678-1234-1234-1234-123456789012")),
+                new WaveSplatRandom(0xC0FFEEUL),
             };
 
             foreach (IRandom random in randoms)
@@ -409,6 +428,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Random
                 typeof(RomuDuo),
                 typeof(SplitMix64),
                 typeof(IllusionFlow),
+                typeof(FlurryBurstRandom),
+                typeof(PhotonSpinRandom),
+                typeof(StormDropRandom),
+                typeof(BlastCircuitRandom),
+                typeof(WaveSplatRandom),
             };
 
             foreach (Type randomType in randomTypes)

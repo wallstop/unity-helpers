@@ -42,6 +42,12 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     /// int v = seeded.Next(0, 10);
     /// </code>
     /// </example>
+    [RandomGeneratorMetadata(
+        RandomQuality.VeryGood,
+        "Well-known SplitMix64 mixer; passes TestU01 BigCrush and PractRand up to large data sizes in literature.",
+        "Vigna 2014",
+        "http://xoshiro.di.unimi.it/splitmix64.c"
+    )]
     [Serializable]
     [DataContract]
     [ProtoContract]

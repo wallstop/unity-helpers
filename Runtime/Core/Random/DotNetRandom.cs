@@ -43,6 +43,12 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     /// float f = compat.NextFloat();
     /// </code>
     /// </example>
+    [RandomGeneratorMetadata(
+        RandomQuality.Poor,
+        "Linear congruential generator (mod 2^31) with known correlation failures; unsuitable for high-quality simulations.",
+        "System.Random considered harmful",
+        "https://nullprogram.com/blog/2017/09/21/"
+    )]
     [Serializable]
     [DataContract]
     [ProtoContract(SkipConstructor = true)]
