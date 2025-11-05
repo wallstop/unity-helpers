@@ -317,3 +317,6 @@ package-lock.json.meta
 # Ensure Unity package samples are included
 !Samples~/
 !Samples~/**
+
+PLAN.md
+PLAN.md.meta
