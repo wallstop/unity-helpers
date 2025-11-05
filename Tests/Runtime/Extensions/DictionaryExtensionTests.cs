@@ -461,10 +461,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void TryRemoveFromConcurrentDictionary()
         {
-            System.Collections.Concurrent.ConcurrentDictionary<string, int> dictionary = new();
-            dictionary["one"] = 1;
-            dictionary["two"] = 2;
-            dictionary["three"] = 3;
+            System.Collections.Concurrent.ConcurrentDictionary<string, int> dictionary = new()
+            {
+                ["one"] = 1,
+                ["two"] = 2,
+                ["three"] = 3,
+            };
 
             bool removed = dictionary.TryRemove("two", out int value);
             Assert.IsTrue(removed);

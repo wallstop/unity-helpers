@@ -1,6 +1,8 @@
 namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 {
+    using System.Collections.Generic;
     using NUnit.Framework;
+    using ProtoBuf;
     using WallstopStudios.UnityHelpers.Core.DataStructure;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Core.Math;
@@ -213,6 +215,78 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 deserialized.TryGet(i, out bool deserVal);
                 Assert.AreEqual(origVal, deserVal, $"Bit {i} mismatch");
             }
+        }
+
+        [Test]
+        public void SerializableDictionarySerializesAndDeserializes()
+        {
+            SerializableDictionary<string, int> original = new SerializableDictionary<string, int>
+            {
+                { "alpha", 1 },
+                { "beta", 2 },
+                { "gamma", 3 },
+            };
+
+            byte[] data = Serializer.ProtoSerialize(original);
+            SerializableDictionary<string, int> deserialized = Serializer.ProtoDeserialize<
+                SerializableDictionary<string, int>
+            >(data);
+
+            Assert.AreEqual(original.Count, deserialized.Count);
+            foreach (KeyValuePair<string, int> pair in original)
+            {
+                Assert.IsTrue(deserialized.TryGetValue(pair.Key, out int value), pair.Key);
+                Assert.AreEqual(pair.Value, value, pair.Key);
+            }
+        }
+
+        [Test]
+        public void SerializableDictionaryCacheSerializesAndDeserializes()
+        {
+            SerializableDictionary<
+                int,
+                SerializablePayload,
+                SerializableDictionary.Cache<SerializablePayload>
+            > original =
+                new SerializableDictionary<
+                    int,
+                    SerializablePayload,
+                    SerializableDictionary.Cache<SerializablePayload>
+                >();
+
+            original.Add(1, new SerializablePayload { Id = 1, Name = "Primary" });
+            original.Add(2, new SerializablePayload { Id = 2, Name = "Secondary" });
+
+            byte[] data = Serializer.ProtoSerialize(original);
+            SerializableDictionary<
+                int,
+                SerializablePayload,
+                SerializableDictionary.Cache<SerializablePayload>
+            > deserialized = Serializer.ProtoDeserialize<
+                SerializableDictionary<
+                    int,
+                    SerializablePayload,
+                    SerializableDictionary.Cache<SerializablePayload>
+                >
+            >(data);
+
+            Assert.AreEqual(original.Count, deserialized.Count);
+            foreach (KeyValuePair<int, SerializablePayload> pair in original)
+            {
+                Assert.IsTrue(deserialized.TryGetValue(pair.Key, out SerializablePayload value));
+                Assert.AreEqual(pair.Value.Id, value.Id);
+                Assert.AreEqual(pair.Value.Name, value.Name);
+            }
+        }
+
+        [ProtoContract]
+        private sealed class SerializablePayload
+        {
+            [ProtoMember(1)]
+            public int Id { get; set; }
+
+            [ProtoMember(2)]
+            public string Name { get; set; }
         }
 
         [Test]

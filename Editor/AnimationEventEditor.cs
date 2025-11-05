@@ -894,8 +894,7 @@ namespace WallstopStudios.UnityHelpers.Editor
             }
 
             // Get all types, but prioritize the selected one and filter by search
-            List<Type> allTypes;
-            using (Buffers<Type>.List.Get(out allTypes))
+            using (Buffers<Type>.List.Get(out List<Type> allTypes))
             using (Buffers<Type>.List.Get(out List<Type> filteredTypes))
             {
                 foreach (Type t in lookup.Keys)
