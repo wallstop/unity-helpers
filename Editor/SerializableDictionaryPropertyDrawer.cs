@@ -14,10 +14,15 @@ namespace WallstopStudios.UnityHelpers.Editor
     {
         private readonly Dictionary<string, ReorderableList> _lists = new();
         private readonly Dictionary<string, PendingEntry> _pendingEntries = new();
+        private readonly Dictionary<string, PaginationState> _paginationStates = new();
 
         private const float PendingSectionPadding = 6f;
         private const float PendingClearButtonWidth = 80f;
         private const float PendingAddButtonWidth = 110f;
+        private const int DefaultPageSize = 15;
+        private const float PaginationButtonWidth = 24f;
+        private const float PaginationLabelWidth = 80f;
+        private const float PaginationControlSpacing = 4f;
 
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
@@ -66,6 +71,7 @@ namespace WallstopStudios.UnityHelpers.Editor
                     ref y,
                     position,
                     pending,
+                    list,
                     property,
                     keysProperty,
                     valuesProperty,
@@ -108,9 +114,12 @@ namespace WallstopStudios.UnityHelpers.Editor
         )
         {
             string key = GetListKey(dictionaryProperty);
+            PaginationState pagination = GetOrCreatePaginationState(dictionaryProperty);
+            ClampPaginationState(pagination, keysProperty.arraySize);
 
             if (_lists.TryGetValue(key, out ReorderableList cached))
             {
+                EnsureListSelectionWithinPage(cached, pagination, keysProperty);
                 return cached;
             }
 
@@ -125,14 +134,27 @@ namespace WallstopStudios.UnityHelpers.Editor
 
             list.drawHeaderCallback = rect =>
             {
-                EditorGUI.LabelField(rect, dictionaryProperty.displayName);
+                DrawListHeader(rect, dictionaryProperty, keysProperty, list, pagination);
             };
 
-            list.elementHeightCallback = _ =>
-                EditorGUIUtility.singleLineHeight + (EditorGUIUtility.standardVerticalSpacing * 2f);
+            list.elementHeightCallback = index =>
+            {
+                if (!IsIndexInCurrentPage(index, pagination, keysProperty.arraySize))
+                {
+                    return 0f;
+                }
+
+                return EditorGUIUtility.singleLineHeight
+                    + (EditorGUIUtility.standardVerticalSpacing * 2f);
+            };
 
             list.drawElementCallback = (rect, index, _, _) =>
             {
+                if (!IsIndexInCurrentPage(index, pagination, keysProperty.arraySize))
+                {
+                    return;
+                }
+
                 SerializedProperty keyProperty = keysProperty.GetArrayElementAtIndex(index);
                 SerializedProperty valueProperty = valuesProperty.GetArrayElementAtIndex(index);
 
@@ -162,12 +184,28 @@ namespace WallstopStudios.UnityHelpers.Editor
 
                 keysProperty.DeleteArrayElementAtIndex(removeIndex);
                 valuesProperty.DeleteArrayElementAtIndex(removeIndex);
+                dictionaryProperty.serializedObject.ApplyModifiedProperties();
+                SyncRuntimeDictionary(dictionaryProperty);
+                ClampPaginationState(pagination, keysProperty.arraySize);
+                EnsureListSelectionWithinPage(reorderableList, pagination, keysProperty);
+                GUI.changed = true;
             };
 
             list.onReorderCallbackWithDetails = (_, oldIndex, newIndex) =>
             {
                 valuesProperty.MoveArrayElement(oldIndex, newIndex);
             };
+
+            list.onSelectCallback = reorderableList =>
+            {
+                if (reorderableList.index >= 0)
+                {
+                    int targetPage = GetPageForIndex(reorderableList.index, pagination.PageSize);
+                    SetPageIndex(pagination, targetPage, reorderableList, keysProperty);
+                }
+            };
+
+            EnsureListSelectionWithinPage(list, pagination, keysProperty);
 
             _lists[key] = list;
             return list;
@@ -196,10 +234,236 @@ namespace WallstopStudios.UnityHelpers.Editor
             return entry;
         }
 
+        private PaginationState GetOrCreatePaginationState(SerializedProperty property)
+        {
+            string key = GetListKey(property);
+            if (_paginationStates.TryGetValue(key, out PaginationState state))
+            {
+                if (state.PageSize <= 0)
+                {
+                    state.PageSize = DefaultPageSize;
+                }
+
+                return state;
+            }
+
+            PaginationState newState = new PaginationState
+            {
+                PageIndex = 0,
+                PageSize = DefaultPageSize,
+            };
+            _paginationStates[key] = newState;
+            return newState;
+        }
+
+        private void DrawListHeader(
+            Rect rect,
+            SerializedProperty dictionaryProperty,
+            SerializedProperty keysProperty,
+            ReorderableList list,
+            PaginationState pagination
+        )
+        {
+            ClampPaginationState(pagination, keysProperty.arraySize);
+            EnsureListSelectionWithinPage(list, pagination, keysProperty);
+
+            float spacing = PaginationControlSpacing;
+            float controlsWidth =
+                (PaginationButtonWidth * 4f) + (spacing * 3f) + PaginationLabelWidth;
+            float labelWidth = Mathf.Max(0f, rect.width - controlsWidth - spacing);
+
+            Rect labelRect = new(rect.x, rect.y, labelWidth, rect.height);
+            EditorGUI.LabelField(labelRect, dictionaryProperty.displayName);
+
+            Rect controlsRect = new(rect.xMax - controlsWidth, rect.y, controlsWidth, rect.height);
+            Rect pageLabelRect = new(
+                controlsRect.x,
+                controlsRect.y,
+                PaginationLabelWidth,
+                controlsRect.height
+            );
+
+            int itemCount = keysProperty.arraySize;
+            int totalPages = GetTotalPages(itemCount, pagination.PageSize);
+            string pageLabel = string.Format("Page {0}/{1}", pagination.PageIndex + 1, totalPages);
+            EditorGUI.LabelField(pageLabelRect, pageLabel, EditorStyles.miniLabel);
+
+            float buttonX = pageLabelRect.xMax + spacing;
+            Rect firstRect = new(
+                buttonX,
+                controlsRect.y,
+                PaginationButtonWidth,
+                controlsRect.height
+            );
+            buttonX += PaginationButtonWidth + spacing;
+            Rect prevRect = new(
+                buttonX,
+                controlsRect.y,
+                PaginationButtonWidth,
+                controlsRect.height
+            );
+            buttonX += PaginationButtonWidth + spacing;
+            Rect nextRect = new(
+                buttonX,
+                controlsRect.y,
+                PaginationButtonWidth,
+                controlsRect.height
+            );
+            buttonX += PaginationButtonWidth + spacing;
+            Rect lastRect = new(
+                buttonX,
+                controlsRect.y,
+                PaginationButtonWidth,
+                controlsRect.height
+            );
+
+            using (new EditorGUI.DisabledScope(pagination.PageIndex <= 0))
+            {
+                if (GUI.Button(firstRect, "|<", EditorStyles.miniButton))
+                {
+                    SetPageIndex(pagination, 0, list, keysProperty);
+                }
+
+                if (GUI.Button(prevRect, "<", EditorStyles.miniButton))
+                {
+                    SetPageIndex(pagination, pagination.PageIndex - 1, list, keysProperty);
+                }
+            }
+
+            using (new EditorGUI.DisabledScope(pagination.PageIndex >= totalPages - 1))
+            {
+                if (GUI.Button(nextRect, ">", EditorStyles.miniButton))
+                {
+                    SetPageIndex(pagination, pagination.PageIndex + 1, list, keysProperty);
+                }
+
+                if (GUI.Button(lastRect, ">|", EditorStyles.miniButton))
+                {
+                    SetPageIndex(pagination, totalPages - 1, list, keysProperty);
+                }
+            }
+        }
+
+        private void ClampPaginationState(PaginationState pagination, int itemCount)
+        {
+            if (pagination.PageSize <= 0)
+            {
+                pagination.PageSize = DefaultPageSize;
+            }
+
+            int totalPages = GetTotalPages(itemCount, pagination.PageSize);
+            pagination.PageIndex = Mathf.Clamp(pagination.PageIndex, 0, totalPages - 1);
+        }
+
+        private static int GetTotalPages(int itemCount, int pageSize)
+        {
+            if (pageSize <= 0)
+            {
+                return 1;
+            }
+
+            if (itemCount <= 0)
+            {
+                return 1;
+            }
+
+            return Mathf.CeilToInt(itemCount / (float)pageSize);
+        }
+
+        private static bool IsIndexInCurrentPage(
+            int index,
+            PaginationState pagination,
+            int itemCount
+        )
+        {
+            if (pagination.PageSize <= 0)
+            {
+                return true;
+            }
+
+            int startIndex = pagination.PageIndex * pagination.PageSize;
+            int endIndex = Mathf.Min(startIndex + pagination.PageSize, itemCount);
+            return index >= startIndex && index < endIndex;
+        }
+
+        private static int GetPageForIndex(int index, int pageSize)
+        {
+            if (pageSize <= 0)
+            {
+                return 0;
+            }
+
+            if (index <= 0)
+            {
+                return 0;
+            }
+
+            return index / pageSize;
+        }
+
+        private void SetPageIndex(
+            PaginationState pagination,
+            int targetPage,
+            ReorderableList list,
+            SerializedProperty keysProperty
+        )
+        {
+            if (pagination.PageSize <= 0)
+            {
+                pagination.PageSize = DefaultPageSize;
+            }
+
+            int totalPages = GetTotalPages(keysProperty.arraySize, pagination.PageSize);
+            int clampedPage = Mathf.Clamp(targetPage, 0, totalPages - 1);
+            if (pagination.PageIndex == clampedPage)
+            {
+                return;
+            }
+
+            pagination.PageIndex = clampedPage;
+            EnsureListSelectionWithinPage(list, pagination, keysProperty);
+            GUI.changed = true;
+        }
+
+        private void EnsureListSelectionWithinPage(
+            ReorderableList list,
+            PaginationState pagination,
+            SerializedProperty keysProperty
+        )
+        {
+            int itemCount = keysProperty.arraySize;
+            if (itemCount <= 0)
+            {
+                list.index = -1;
+                return;
+            }
+
+            if (pagination.PageSize <= 0)
+            {
+                pagination.PageSize = DefaultPageSize;
+            }
+
+            int startIndex = pagination.PageIndex * pagination.PageSize;
+            int endIndex = Mathf.Min(startIndex + pagination.PageSize, itemCount);
+
+            if (startIndex >= itemCount)
+            {
+                pagination.PageIndex = GetTotalPages(itemCount, pagination.PageSize) - 1;
+                startIndex = pagination.PageIndex * pagination.PageSize;
+                endIndex = Mathf.Min(startIndex + pagination.PageSize, itemCount);
+            }
+
+            if (list.index < startIndex || list.index >= endIndex)
+            {
+                list.index = startIndex;
+            }
+        }
+
         private void DrawPendingEntryUI(
             ref float y,
             Rect fullPosition,
             PendingEntry pending,
+            ReorderableList list,
             SerializedProperty dictionaryProperty,
             SerializedProperty keysProperty,
             SerializedProperty valuesProperty,
@@ -273,7 +537,7 @@ namespace WallstopStudios.UnityHelpers.Editor
             {
                 if (GUI.Button(addRect, buttonLabel))
                 {
-                    bool added = CommitEntry(
+                    CommitResult result = CommitEntry(
                         keysProperty,
                         valuesProperty,
                         keyType,
@@ -282,10 +546,18 @@ namespace WallstopStudios.UnityHelpers.Editor
                         existingIndex,
                         dictionaryProperty
                     );
-                    if (added)
+                    if (result.Added)
                     {
                         pending.Key = GetDefaultValue(keyType);
                         pending.Value = GetDefaultValue(valueType);
+                    }
+
+                    if (result.Index >= 0)
+                    {
+                        PaginationState pagination = GetOrCreatePaginationState(dictionaryProperty);
+                        int targetPage = GetPageForIndex(result.Index, pagination.PageSize);
+                        SetPageIndex(pagination, targetPage, list, keysProperty);
+                        list.index = result.Index;
                     }
 
                     GUI.FocusControl(null);
@@ -341,7 +613,7 @@ namespace WallstopStudios.UnityHelpers.Editor
             return (rowHeight * 4f) + (spacing * 3f) + (PendingSectionPadding * 2f);
         }
 
-        private bool CommitEntry(
+        private CommitResult CommitEntry(
             SerializedProperty keysProperty,
             SerializedProperty valuesProperty,
             Type keyType,
@@ -361,6 +633,7 @@ namespace WallstopStudios.UnityHelpers.Editor
             }
 
             bool addedNewEntry = false;
+            int affectedIndex = existingIndex;
 
             if (existingIndex >= 0)
             {
@@ -368,6 +641,7 @@ namespace WallstopStudios.UnityHelpers.Editor
                     existingIndex
                 );
                 SetPropertyValue(valueProperty, pending.Value, valueType);
+                affectedIndex = existingIndex;
             }
             else
             {
@@ -386,12 +660,13 @@ namespace WallstopStudios.UnityHelpers.Editor
                 SetPropertyValue(keyProperty, pending.Key, keyType);
                 SetPropertyValue(valueProperty, pending.Value, valueType);
                 addedNewEntry = true;
+                affectedIndex = insertIndex;
             }
 
             serializedObject.ApplyModifiedProperties();
             SyncRuntimeDictionary(dictionaryProperty);
             GUI.changed = true;
-            return addedNewEntry;
+            return new CommitResult { Added = addedNewEntry, Index = affectedIndex };
         }
 
         private static bool TryResolveKeyValueTypes(
@@ -929,12 +1204,24 @@ namespace WallstopStudios.UnityHelpers.Editor
             return null;
         }
 
+        private struct CommitResult
+        {
+            public bool Added;
+            public int Index;
+        }
+
         private sealed class PendingEntry
         {
             public Type KeyType;
             public Type ValueType;
             public object Key;
             public object Value;
+        }
+
+        private sealed class PaginationState
+        {
+            public int PageIndex;
+            public int PageSize;
         }
 
         private void SyncRuntimeDictionary(SerializedProperty dictionaryProperty)
