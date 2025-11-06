@@ -17,7 +17,7 @@ namespace WallstopStudios.UnityHelpers.Editor
 
         private const float PendingSectionPadding = 6f;
         private const float PendingClearButtonWidth = 80f;
-        private const float PendingAddButtonWidth = 90f;
+        private const float PendingAddButtonWidth = 110f;
 
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
@@ -214,7 +214,7 @@ namespace WallstopStudios.UnityHelpers.Editor
             Rect containerRect = new(fullPosition.x, y, fullPosition.width, sectionHeight);
             Color backgroundColor = EditorGUIUtility.isProSkin
                 ? new Color(0.18f, 0.18f, 0.18f, 1f)
-                : new Color(0.9f, 0.9f, 0.9f, 1f);
+                : new Color(0.92f, 0.92f, 0.92f, 1f);
             EditorGUI.DrawRect(containerRect, backgroundColor);
 
             float innerX = containerRect.x + PendingSectionPadding;
@@ -242,16 +242,16 @@ namespace WallstopStudios.UnityHelpers.Editor
             string buttonLabel = existingIndex >= 0 ? "Overwrite" : "Add";
 
             Rect buttonsRect = new(innerX, innerY, innerWidth, rowHeight);
-            Rect clearRect = new(buttonsRect.x, buttonsRect.y, PendingClearButtonWidth, rowHeight);
-            Rect addRect = new(
-                buttonsRect.xMax - PendingAddButtonWidth,
+            Rect addRect = new(buttonsRect.x, buttonsRect.y, PendingAddButtonWidth, rowHeight);
+            Rect clearRect = new(
+                buttonsRect.xMax - PendingClearButtonWidth,
                 buttonsRect.y,
-                PendingAddButtonWidth,
+                PendingClearButtonWidth,
                 rowHeight
             );
 
-            float infoX = clearRect.xMax + spacing;
-            float availableInfoWidth = addRect.x - spacing - infoX;
+            float infoX = addRect.xMax + spacing;
+            float availableInfoWidth = clearRect.x - spacing - infoX;
             if (availableInfoWidth > 0f)
             {
                 Rect infoRect = new(infoX, buttonsRect.y, availableInfoWidth, rowHeight);
@@ -267,13 +267,6 @@ namespace WallstopStudios.UnityHelpers.Editor
                 {
                     GUI.Label(infoRect, infoMessage, EditorStyles.miniLabel);
                 }
-            }
-
-            if (GUI.Button(clearRect, "Clear"))
-            {
-                pending.Key = GetDefaultValue(keyType);
-                pending.Value = GetDefaultValue(valueType);
-                GUI.FocusControl(null);
             }
 
             using (new EditorGUI.DisabledScope(!canCommit))
@@ -297,6 +290,13 @@ namespace WallstopStudios.UnityHelpers.Editor
 
                     GUI.FocusControl(null);
                 }
+            }
+
+            if (GUI.Button(clearRect, "Clear"))
+            {
+                pending.Key = GetDefaultValue(keyType);
+                pending.Value = GetDefaultValue(valueType);
+                GUI.FocusControl(null);
             }
 
             y = containerRect.yMax;
@@ -351,14 +351,23 @@ namespace WallstopStudios.UnityHelpers.Editor
             SerializedProperty dictionaryProperty
         )
         {
+            SerializedObject serializedObject = dictionaryProperty.serializedObject;
+            UnityEngine.Object[] targets = serializedObject.targetObjects;
+            if (targets.Length > 0)
+            {
+                string undoLabel =
+                    existingIndex >= 0 ? "Overwrite Dictionary Entry" : "Add Dictionary Entry";
+                Undo.RecordObjects(targets, undoLabel);
+            }
+
+            bool addedNewEntry = false;
+
             if (existingIndex >= 0)
             {
                 SerializedProperty valueProperty = valuesProperty.GetArrayElementAtIndex(
                     existingIndex
                 );
                 SetPropertyValue(valueProperty, pending.Value, valueType);
-                SyncRuntimeDictionary(dictionaryProperty);
-                return false;
             }
             else
             {
@@ -376,9 +385,13 @@ namespace WallstopStudios.UnityHelpers.Editor
 
                 SetPropertyValue(keyProperty, pending.Key, keyType);
                 SetPropertyValue(valueProperty, pending.Value, valueType);
-                SyncRuntimeDictionary(dictionaryProperty);
-                return true;
+                addedNewEntry = true;
             }
+
+            serializedObject.ApplyModifiedProperties();
+            SyncRuntimeDictionary(dictionaryProperty);
+            GUI.changed = true;
+            return addedNewEntry;
         }
 
         private static bool TryResolveKeyValueTypes(
@@ -942,7 +955,7 @@ namespace WallstopStudios.UnityHelpers.Editor
                 }
             }
 
-            serializedObject.Update();
+            serializedObject.UpdateIfRequiredOrScript();
         }
 
         private static object GetTargetObjectOfProperty(object target, string propertyPath)
