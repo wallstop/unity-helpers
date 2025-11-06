@@ -786,10 +786,26 @@ namespace WallstopStudios.UnityHelpers.Editor
             bool keySupported = IsTypeSupported(keyType);
             bool valueSupported = IsTypeSupported(valueType);
             bool keyValid = KeyIsValid(keyType, pending.Key);
-            bool canCommit = keySupported && valueSupported && keyValid;
+            bool isEmptyStringKey =
+                keyType == typeof(string) && string.IsNullOrEmpty(pending.Key as string);
+            bool canCommit = keySupported && valueSupported && (keyValid || isEmptyStringKey);
 
             int existingIndex = FindExistingKeyIndex(keysProperty, keyType, pending.Key);
             string buttonLabel = existingIndex >= 0 ? "Overwrite" : "Add";
+            bool entryAlreadyExists =
+                existingIndex >= 0
+                && EntryMatchesExisting(
+                    keysProperty,
+                    valuesProperty,
+                    existingIndex,
+                    keyType,
+                    valueType,
+                    pending
+                );
+            if (entryAlreadyExists)
+            {
+                canCommit = false;
+            }
 
             Rect buttonsRect = new(innerX, innerY, innerWidth, rowHeight);
             float resetWidth = 70f;
@@ -798,33 +814,59 @@ namespace WallstopStudios.UnityHelpers.Editor
 
             float infoX = resetRect.xMax + spacing;
             float availableInfoWidth = Mathf.Max(0f, buttonsRect.xMax - infoX);
-            if (availableInfoWidth > 0f)
+            string infoMessage = null;
+            if (entryAlreadyExists)
             {
-                Rect infoRect = new(infoX, buttonsRect.y, availableInfoWidth, rowHeight);
-                string infoMessage = GetPendingInfoMessage(
+                infoMessage = "Entry already exists with the same value.";
+            }
+            else
+            {
+                infoMessage = GetPendingInfoMessage(
                     keySupported,
                     valueSupported,
-                    keyValid,
+                    keyValid || isEmptyStringKey,
                     existingIndex,
                     keyType,
                     valueType
                 );
-                if (!string.IsNullOrEmpty(infoMessage))
+                if (string.IsNullOrEmpty(infoMessage) && isEmptyStringKey)
                 {
-                    GUI.Label(infoRect, infoMessage, EditorStyles.miniLabel);
+                    infoMessage = "Adding entry with empty string key.";
                 }
+            }
+            if (availableInfoWidth > 0f && !string.IsNullOrEmpty(infoMessage))
+            {
+                Rect infoRect = new(infoX, buttonsRect.y, availableInfoWidth, rowHeight);
+                GUI.Label(infoRect, infoMessage, EditorStyles.miniLabel);
             }
 
             using (new EditorGUI.DisabledScope(!canCommit))
             {
-                GUIContent addContent = EditorGUIUtility.TrTextContent(
-                    buttonLabel,
-                    string.Equals(buttonLabel, "Add", StringComparison.Ordinal)
-                        ? "Add a new entry to the dictionary"
-                        : "Overwrite the existing entry with this key"
-                );
+                string tooltip;
+                if (entryAlreadyExists)
+                {
+                    tooltip = "Current item already exists in the dictionary.";
+                }
+                else if (existingIndex >= 0)
+                {
+                    tooltip = "Overwrite the existing entry with this key.";
+                }
+                else if (isEmptyStringKey)
+                {
+                    tooltip = "Add a new entry using an empty string key.";
+                }
+                else
+                {
+                    tooltip = "Add a new entry to the dictionary.";
+                }
 
-                GUIStyle addStyle = GetSolidButtonStyle(buttonLabel, GUI.enabled);
+                GUIContent addContent = EditorGUIUtility.TrTextContent(buttonLabel, tooltip);
+
+                string styleKey =
+                    existingIndex >= 0 ? "Overwrite"
+                    : isEmptyStringKey ? "AddEmpty"
+                    : "Add";
+                GUIStyle addStyle = GetSolidButtonStyle(styleKey, GUI.enabled);
 
                 if (GUI.Button(addRect, addContent, addStyle))
                 {
@@ -986,6 +1028,8 @@ namespace WallstopStudios.UnityHelpers.Editor
                 case "Add":
                     return ThemeAddColor;
                 case "Overwrite":
+                    return ThemeOverwriteColor;
+                case "AddEmpty":
                     return ThemeOverwriteColor;
                 case "Reset":
                     return ThemeResetColor;
@@ -1200,9 +1244,16 @@ namespace WallstopStudios.UnityHelpers.Editor
             object keyValue
         )
         {
-            if (!KeyIsValid(keyType, keyValue))
+            if (
+                keyType != typeof(string)
+                || !(keyValue is string stringKey)
+                || stringKey.Length > 0
+            )
             {
-                return -1;
+                if (!KeyIsValid(keyType, keyValue))
+                {
+                    return -1;
+                }
             }
 
             for (int i = 0; i < keysProperty.arraySize; i++)
@@ -1217,6 +1268,33 @@ namespace WallstopStudios.UnityHelpers.Editor
             }
 
             return -1;
+        }
+
+        private static bool EntryMatchesExisting(
+            SerializedProperty keysProperty,
+            SerializedProperty valuesProperty,
+            int existingIndex,
+            Type keyType,
+            Type valueType,
+            PendingEntry pending
+        )
+        {
+            if (existingIndex < 0 || existingIndex >= keysProperty.arraySize)
+            {
+                return false;
+            }
+
+            SerializedProperty existingKeyProperty = keysProperty.GetArrayElementAtIndex(
+                existingIndex
+            );
+            SerializedProperty existingValueProperty = valuesProperty.GetArrayElementAtIndex(
+                existingIndex
+            );
+            object existingKey = GetPropertyValue(existingKeyProperty, keyType);
+            object existingValue = GetPropertyValue(existingValueProperty, valueType);
+
+            return ValuesEqual(existingKey, pending.Key)
+                && ValuesEqual(existingValue, pending.Value);
         }
 
         private static object DrawFieldForType(Rect rect, string label, object current, Type type)
