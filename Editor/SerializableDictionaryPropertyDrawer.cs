@@ -19,7 +19,7 @@ namespace WallstopStudios.UnityHelpers.Editor
         private const float PendingSectionPadding = 6f;
         private const float PendingAddButtonWidth = 110f;
         private const int DefaultPageSize = 15;
-        private const float PaginationButtonWidth = 24f;
+        private const float PaginationButtonWidth = 28f;
         private const float PaginationLabelWidth = 80f;
         private const float PaginationControlSpacing = 4f;
         private static readonly Color LightRowColor = new(0.97f, 0.97f, 0.97f, 1f);
@@ -375,10 +375,10 @@ namespace WallstopStudios.UnityHelpers.Editor
                 controlsRect.height
             );
 
-            GUIContent firstContent = EditorGUIUtility.TrTextContent("|<", "Jump to first page");
+            GUIContent firstContent = EditorGUIUtility.TrTextContent("<<", "Jump to first page");
             GUIContent prevContent = EditorGUIUtility.TrTextContent("<", "Previous page");
             GUIContent nextContent = EditorGUIUtility.TrTextContent(">", "Next page");
-            GUIContent lastContent = EditorGUIUtility.TrTextContent(">|", "Jump to last page");
+            GUIContent lastContent = EditorGUIUtility.TrTextContent(">>", "Jump to last page");
 
             using (new EditorGUI.DisabledScope(pagination.PageIndex <= 0))
             {
