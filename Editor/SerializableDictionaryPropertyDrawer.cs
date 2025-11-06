@@ -17,7 +17,6 @@ namespace WallstopStudios.UnityHelpers.Editor
         private readonly Dictionary<string, PaginationState> _paginationStates = new();
 
         private const float PendingSectionPadding = 6f;
-        private const float PendingClearButtonWidth = 80f;
         private const float PendingAddButtonWidth = 110f;
         private const int DefaultPageSize = 15;
         private const float PaginationButtonWidth = 24f;
@@ -25,10 +24,15 @@ namespace WallstopStudios.UnityHelpers.Editor
         private const float PaginationControlSpacing = 4f;
         private static readonly Color LightRowColor = new(0.97f, 0.97f, 0.97f, 1f);
         private static readonly Color DarkRowColor = new(0.16f, 0.16f, 0.16f, 0.45f);
-        private static readonly Color LightSelectionColor = new(0.95f, 0.42f, 0.45f, 0.55f);
-        private static readonly Color DarkSelectionColor = new(0.75f, 0.22f, 0.28f, 0.6f);
-        private static readonly Color LightRemoveColor = new(0.9f, 0.3f, 0.35f, 1f);
-        private static readonly Color DarkRemoveColor = new(0.82f, 0.24f, 0.28f, 1f);
+        private static readonly Color LightSelectionColor = new(0.33f, 0.62f, 0.95f, 0.65f);
+        private static readonly Color DarkSelectionColor = new(0.2f, 0.45f, 0.85f, 0.7f);
+        private static readonly Color ThemeRemoveColor = new(0.92f, 0.29f, 0.33f, 1f);
+        private static readonly Color ThemeAddColor = new(0.25f, 0.68f, 0.38f, 1f);
+        private static readonly Color ThemeOverwriteColor = new(0.98f, 0.82f, 0.27f, 1f);
+        private static readonly Color ThemeResetColor = new(0.7f, 0.7f, 0.7f, 1f);
+        private static readonly Color ThemeDisabledColor = new(0.6f, 0.6f, 0.6f, 1f);
+        private static readonly Dictionary<string, GUIStyle> ButtonStyleCache = new();
+        private static readonly Dictionary<Color, Texture2D> ColorTextureCache = new();
 
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
@@ -63,19 +67,12 @@ namespace WallstopStudios.UnityHelpers.Editor
             if (property.isExpanded)
             {
                 ReorderableList list = GetOrCreateList(property, keysProperty, valuesProperty);
-                Rect listRect = new(position.x, y, position.width, list.GetHeight());
-
-                int previousIndent = EditorGUI.indentLevel;
-                EditorGUI.indentLevel = 0;
-                list.DoList(listRect);
-                EditorGUI.indentLevel = previousIndent;
-
-                y = listRect.yMax + EditorGUIUtility.standardVerticalSpacing;
-
                 PaginationState pagination = GetOrCreatePaginationState(property);
                 PendingEntry pending = GetOrCreatePendingEntry(property, keyType, valueType);
+
+                float pendingY = y;
                 DrawPendingEntryUI(
-                    ref y,
+                    ref pendingY,
                     position,
                     pending,
                     list,
@@ -86,6 +83,17 @@ namespace WallstopStudios.UnityHelpers.Editor
                     keyType,
                     valueType
                 );
+
+                y = pendingY + EditorGUIUtility.standardVerticalSpacing;
+
+                Rect listRect = new(position.x, y, position.width, list.GetHeight());
+
+                int previousIndent = EditorGUI.indentLevel;
+                EditorGUI.indentLevel = 0;
+                list.DoList(listRect);
+                EditorGUI.indentLevel = previousIndent;
+
+                y = listRect.yMax + EditorGUIUtility.standardVerticalSpacing;
             }
 
             serializedObject.ApplyModifiedProperties();
@@ -111,7 +119,7 @@ namespace WallstopStudios.UnityHelpers.Editor
             float spacing = EditorGUIUtility.standardVerticalSpacing;
             float pendingHeight = GetPendingSectionHeight();
 
-            height += spacing + listHeight + spacing + pendingHeight;
+            height += spacing + pendingHeight + spacing + listHeight;
             return height;
         }
 
@@ -241,7 +249,8 @@ namespace WallstopStudios.UnityHelpers.Editor
             };
 
             list.footerHeight =
-                EditorGUIUtility.singleLineHeight + (EditorGUIUtility.standardVerticalSpacing * 2f);
+                EditorGUIUtility.singleLineHeight
+                + (EditorGUIUtility.standardVerticalSpacing * 1.5f);
             list.drawFooterCallback = rect =>
             {
                 DrawListFooter(
@@ -366,14 +375,19 @@ namespace WallstopStudios.UnityHelpers.Editor
                 controlsRect.height
             );
 
+            GUIContent firstContent = EditorGUIUtility.TrTextContent("|<", "Jump to first page");
+            GUIContent prevContent = EditorGUIUtility.TrTextContent("<", "Previous page");
+            GUIContent nextContent = EditorGUIUtility.TrTextContent(">", "Next page");
+            GUIContent lastContent = EditorGUIUtility.TrTextContent(">|", "Jump to last page");
+
             using (new EditorGUI.DisabledScope(pagination.PageIndex <= 0))
             {
-                if (GUI.Button(firstRect, "|<", EditorStyles.miniButton))
+                if (GUI.Button(firstRect, firstContent, EditorStyles.miniButton))
                 {
                     SetPageIndex(pagination, 0, list, keysProperty, forceImmediateRefresh: true);
                 }
 
-                if (GUI.Button(prevRect, "<", EditorStyles.miniButton))
+                if (GUI.Button(prevRect, prevContent, EditorStyles.miniButton))
                 {
                     SetPageIndex(
                         pagination,
@@ -387,7 +401,7 @@ namespace WallstopStudios.UnityHelpers.Editor
 
             using (new EditorGUI.DisabledScope(pagination.PageIndex >= totalPages - 1))
             {
-                if (GUI.Button(nextRect, ">", EditorStyles.miniButton))
+                if (GUI.Button(nextRect, nextContent, EditorStyles.miniButton))
                 {
                     SetPageIndex(
                         pagination,
@@ -398,7 +412,7 @@ namespace WallstopStudios.UnityHelpers.Editor
                     );
                 }
 
-                if (GUI.Button(lastRect, ">|", EditorStyles.miniButton))
+                if (GUI.Button(lastRect, lastContent, EditorStyles.miniButton))
                 {
                     SetPageIndex(
                         pagination,
@@ -433,11 +447,29 @@ namespace WallstopStudios.UnityHelpers.Editor
 
             float padding = 4f;
             float buttonWidth = 26f;
+            float lineHeight = EditorGUIUtility.singleLineHeight;
+            float verticalCenter = rect.y + Mathf.Max(0f, (rect.height - lineHeight) * 0.5f);
+            float buttonSpacing = PaginationControlSpacing;
+            float clearWidth = 80f;
+
+            Rect removeRect = new(
+                rect.xMax - padding - buttonWidth,
+                verticalCenter,
+                buttonWidth,
+                lineHeight
+            );
+            Rect clearRect = new(
+                removeRect.x - buttonSpacing - clearWidth,
+                verticalCenter,
+                clearWidth,
+                lineHeight
+            );
+
             Rect labelRect = new(
                 rect.x + padding,
-                rect.y + 2f,
-                rect.width - buttonWidth - (padding * 3f),
-                rect.height - 4f
+                verticalCenter,
+                Mathf.Max(0f, clearRect.x - buttonSpacing - (rect.x + padding)),
+                lineHeight
             );
             string rangeText =
                 itemCount == 0
@@ -445,30 +477,52 @@ namespace WallstopStudios.UnityHelpers.Editor
                     : string.Format("{0}-{1} of {2}", pageStart + 1, pageEnd, itemCount);
             EditorGUI.LabelField(labelRect, rangeText, EditorStyles.miniLabel);
 
-            Rect removeRect = new(
-                rect.xMax - buttonWidth - padding,
-                rect.y + 2f,
-                buttonWidth,
-                rect.height - 4f
-            );
-
             bool canRemove =
                 list.index >= 0
                 && list.index < keysProperty.arraySize
                 && IsIndexInCurrentPage(list.index, pagination, keysProperty.arraySize);
+            bool canClear = itemCount > 0;
+
+            using (new EditorGUI.DisabledScope(!canClear))
+            {
+                GUIContent clearAllContent = EditorGUIUtility.TrTextContent(
+                    "Clear All",
+                    "Remove every entry from the dictionary"
+                );
+
+                GUIStyle clearAllStyle = GetSolidButtonStyle("ClearAll", GUI.enabled);
+
+                if (GUI.Button(clearRect, clearAllContent, clearAllStyle))
+                {
+                    bool confirmed = EditorUtility.DisplayDialog(
+                        "Clear Dictionary",
+                        "Remove all entries from this dictionary?",
+                        "Clear",
+                        "Cancel"
+                    );
+                    if (confirmed)
+                    {
+                        ClearDictionary(
+                            dictionaryProperty,
+                            keysProperty,
+                            valuesProperty,
+                            pagination,
+                            list
+                        );
+                    }
+                }
+            }
 
             using (new EditorGUI.DisabledScope(!canRemove))
             {
-                Color previousColor = GUI.backgroundColor;
-                GUI.backgroundColor = EditorGUIUtility.isProSkin
-                    ? DarkRemoveColor
-                    : LightRemoveColor;
                 GUIContent removeContent = EditorGUIUtility.TrTextContent(
                     "-",
                     "Remove selected entry"
                 );
 
-                if (GUI.Button(removeRect, removeContent, EditorStyles.miniButton))
+                GUIStyle removeStyle = GetSolidButtonStyle("Remove", GUI.enabled);
+
+                if (GUI.Button(removeRect, removeContent, removeStyle))
                 {
                     RemoveEntryAtIndex(
                         list.index,
@@ -479,8 +533,6 @@ namespace WallstopStudios.UnityHelpers.Editor
                         pagination
                     );
                 }
-
-                GUI.backgroundColor = previousColor;
             }
         }
 
@@ -510,6 +562,44 @@ namespace WallstopStudios.UnityHelpers.Editor
             serializedObject.ApplyModifiedProperties();
             SyncRuntimeDictionary(dictionaryProperty);
             ClampPaginationState(pagination, keysProperty.arraySize);
+            EnsureListSelectionWithinPage(list, pagination, keysProperty);
+            GUI.changed = true;
+
+            EditorWindow focusedWindow = EditorWindow.focusedWindow;
+            if (focusedWindow != null)
+            {
+                focusedWindow.Repaint();
+            }
+        }
+
+        private void ClearDictionary(
+            SerializedProperty dictionaryProperty,
+            SerializedProperty keysProperty,
+            SerializedProperty valuesProperty,
+            PaginationState pagination,
+            ReorderableList list
+        )
+        {
+            if (keysProperty.arraySize <= 0)
+            {
+                return;
+            }
+
+            SerializedObject serializedObject = dictionaryProperty.serializedObject;
+            UnityEngine.Object[] targets = serializedObject.targetObjects;
+            if (targets.Length > 0)
+            {
+                Undo.RecordObjects(targets, "Clear Dictionary Entries");
+            }
+
+            keysProperty.ClearArray();
+            valuesProperty.ClearArray();
+            serializedObject.ApplyModifiedProperties();
+            SyncRuntimeDictionary(dictionaryProperty);
+
+            ClampPaginationState(pagination, keysProperty.arraySize);
+            list.index = -1;
+            pagination.SelectedIndex = -1;
             EnsureListSelectionWithinPage(list, pagination, keysProperty);
             GUI.changed = true;
 
@@ -607,8 +697,6 @@ namespace WallstopStudios.UnityHelpers.Editor
                 {
                     focusedWindow.Repaint();
                 }
-
-                GUIUtility.ExitGUI();
             }
         }
 
@@ -704,16 +792,12 @@ namespace WallstopStudios.UnityHelpers.Editor
             string buttonLabel = existingIndex >= 0 ? "Overwrite" : "Add";
 
             Rect buttonsRect = new(innerX, innerY, innerWidth, rowHeight);
+            float resetWidth = 70f;
             Rect addRect = new(buttonsRect.x, buttonsRect.y, PendingAddButtonWidth, rowHeight);
-            Rect clearRect = new(
-                buttonsRect.xMax - PendingClearButtonWidth,
-                buttonsRect.y,
-                PendingClearButtonWidth,
-                rowHeight
-            );
+            Rect resetRect = new(addRect.xMax + spacing, buttonsRect.y, resetWidth, rowHeight);
 
-            float infoX = addRect.xMax + spacing;
-            float availableInfoWidth = clearRect.x - spacing - infoX;
+            float infoX = resetRect.xMax + spacing;
+            float availableInfoWidth = Mathf.Max(0f, buttonsRect.xMax - infoX);
             if (availableInfoWidth > 0f)
             {
                 Rect infoRect = new(infoX, buttonsRect.y, availableInfoWidth, rowHeight);
@@ -733,7 +817,16 @@ namespace WallstopStudios.UnityHelpers.Editor
 
             using (new EditorGUI.DisabledScope(!canCommit))
             {
-                if (GUI.Button(addRect, buttonLabel))
+                GUIContent addContent = EditorGUIUtility.TrTextContent(
+                    buttonLabel,
+                    string.Equals(buttonLabel, "Add", StringComparison.Ordinal)
+                        ? "Add a new entry to the dictionary"
+                        : "Overwrite the existing entry with this key"
+                );
+
+                GUIStyle addStyle = GetSolidButtonStyle(buttonLabel, GUI.enabled);
+
+                if (GUI.Button(addRect, addContent, addStyle))
                 {
                     CommitResult result = CommitEntry(
                         keysProperty,
@@ -762,11 +855,19 @@ namespace WallstopStudios.UnityHelpers.Editor
                 }
             }
 
-            if (GUI.Button(clearRect, "Clear"))
+            bool isPendingDefault = PendingEntryIsAtDefault(pending, keyType, valueType);
+            GUIContent resetContent = EditorGUIUtility.TrTextContent(
+                "Reset",
+                "Restore pending key/value to their defaults"
+            );
+            using (new EditorGUI.DisabledScope(isPendingDefault))
             {
-                pending.Key = GetDefaultValue(keyType);
-                pending.Value = GetDefaultValue(valueType);
-                GUI.FocusControl(null);
+                GUIStyle resetStyle = GetSolidButtonStyle("Reset", GUI.enabled);
+                if (GUI.Button(resetRect, resetContent, resetStyle))
+                {
+                    ResetPendingEntryToDefault(pending, keyType, valueType);
+                    GUI.FocusControl(null);
+                }
             }
 
             y = containerRect.yMax;
@@ -802,6 +903,138 @@ namespace WallstopStudios.UnityHelpers.Editor
             }
 
             return "Ready to add entry.";
+        }
+
+        private static bool PendingEntryIsAtDefault(
+            PendingEntry pending,
+            Type keyType,
+            Type valueType
+        )
+        {
+            object defaultKey = GetDefaultValue(keyType);
+            object defaultValue = GetDefaultValue(valueType);
+            return ValuesEqual(pending.Key, defaultKey) && ValuesEqual(pending.Value, defaultValue);
+        }
+
+        private static void ResetPendingEntryToDefault(
+            PendingEntry pending,
+            Type keyType,
+            Type valueType
+        )
+        {
+            pending.Key = GetDefaultValue(keyType);
+            pending.Value = GetDefaultValue(valueType);
+        }
+
+        private static GUIStyle GetSolidButtonStyle(string action, bool enabled)
+        {
+            if (string.IsNullOrEmpty(action))
+            {
+                action = "Default";
+            }
+
+            string cacheKey = $"{action}_{(enabled ? "Enabled" : "Disabled")}";
+            if (ButtonStyleCache.TryGetValue(cacheKey, out GUIStyle cached))
+            {
+                return cached;
+            }
+
+            GUIStyle baseStyle = new GUIStyle(GUI.skin.button)
+            {
+                alignment = TextAnchor.MiddleCenter,
+                margin = new RectOffset(0, 0, 0, 0),
+                padding = new RectOffset(8, 8, 3, 3),
+            };
+
+            Color baseColor = enabled ? GetActionColor(action) : ThemeDisabledColor;
+            Color hoverColor = enabled ? AdjustValue(baseColor, 0.08f) : baseColor;
+            Color pressedColor = enabled ? AdjustValue(baseColor, -0.08f) : baseColor;
+            Color textColor = enabled
+                ? GetLegibleTextColor(baseColor)
+                : AdjustAlpha(GetLegibleTextColor(baseColor), 0.6f);
+
+            Texture2D normalTexture = GetSolidTexture(baseColor);
+            Texture2D hoverTexture = GetSolidTexture(hoverColor);
+            Texture2D pressedTexture = GetSolidTexture(pressedColor);
+
+            baseStyle.normal.background = normalTexture;
+            baseStyle.hover.background = hoverTexture;
+            baseStyle.active.background = pressedTexture;
+            baseStyle.focused.background = normalTexture;
+            baseStyle.onNormal.background = normalTexture;
+            baseStyle.onHover.background = hoverTexture;
+            baseStyle.onActive.background = pressedTexture;
+            baseStyle.onFocused.background = normalTexture;
+
+            baseStyle.normal.textColor = textColor;
+            baseStyle.hover.textColor = textColor;
+            baseStyle.active.textColor = textColor;
+            baseStyle.focused.textColor = textColor;
+            baseStyle.onNormal.textColor = textColor;
+            baseStyle.onHover.textColor = textColor;
+            baseStyle.onActive.textColor = textColor;
+            baseStyle.onFocused.textColor = textColor;
+
+            ButtonStyleCache[cacheKey] = baseStyle;
+            return baseStyle;
+        }
+
+        private static Color GetActionColor(string action)
+        {
+            switch (action)
+            {
+                case "Add":
+                    return ThemeAddColor;
+                case "Overwrite":
+                    return ThemeOverwriteColor;
+                case "Reset":
+                    return ThemeResetColor;
+                case "Remove":
+                case "ClearAll":
+                    return ThemeRemoveColor;
+                default:
+                    return ThemeResetColor;
+            }
+        }
+
+        private static Color AdjustValue(Color color, float delta)
+        {
+            Color.RGBToHSV(color, out float h, out float s, out float v);
+            v = Mathf.Clamp01(v + delta);
+            Color result = Color.HSVToRGB(h, s, v);
+            result.a = color.a;
+            return result;
+        }
+
+        private static Color AdjustAlpha(Color color, float multiplier)
+        {
+            color.a *= multiplier;
+            return color;
+        }
+
+        private static Color GetLegibleTextColor(Color background)
+        {
+            float luminance =
+                (0.299f * background.r) + (0.587f * background.g) + (0.114f * background.b);
+            return luminance > 0.55f ? Color.black : Color.white;
+        }
+
+        private static Texture2D GetSolidTexture(Color color)
+        {
+            if (ColorTextureCache.TryGetValue(color, out Texture2D cached))
+            {
+                return cached;
+            }
+
+            Texture2D texture = new Texture2D(1, 1)
+            {
+                hideFlags = HideFlags.HideAndDontSave,
+                wrapMode = TextureWrapMode.Clamp,
+            };
+            texture.SetPixel(0, 0, color);
+            texture.Apply();
+            ColorTextureCache[color] = texture;
+            return texture;
         }
 
         private static float GetPendingSectionHeight()
