@@ -33,6 +33,7 @@ namespace WallstopStudios.UnityHelpers.Editor
         private static readonly Color ThemeDisabledColor = new(0.6f, 0.6f, 0.6f, 1f);
         private static readonly Dictionary<string, GUIStyle> ButtonStyleCache = new();
         private static readonly Dictionary<Color, Texture2D> ColorTextureCache = new();
+        private static GUIStyle _footerLabelStyle;
 
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
@@ -475,7 +476,7 @@ namespace WallstopStudios.UnityHelpers.Editor
                 itemCount == 0
                     ? "Empty"
                     : string.Format("{0}-{1} of {2}", pageStart + 1, pageEnd, itemCount);
-            EditorGUI.LabelField(labelRect, rangeText, EditorStyles.miniLabel);
+            EditorGUI.LabelField(labelRect, rangeText, GetFooterLabelStyle());
 
             bool canRemove =
                 list.index >= 0
@@ -785,10 +786,11 @@ namespace WallstopStudios.UnityHelpers.Editor
 
             bool keySupported = IsTypeSupported(keyType);
             bool valueSupported = IsTypeSupported(valueType);
+            string pendingKeyString = pending.Key as string;
             bool keyValid = KeyIsValid(keyType, pending.Key);
-            bool isEmptyStringKey =
-                keyType == typeof(string) && string.IsNullOrEmpty(pending.Key as string);
-            bool canCommit = keySupported && valueSupported && (keyValid || isEmptyStringKey);
+            bool isBlankStringKey =
+                keyType == typeof(string) && string.IsNullOrWhiteSpace(pendingKeyString);
+            bool canCommit = keySupported && valueSupported && (keyValid || isBlankStringKey);
 
             int existingIndex = FindExistingKeyIndex(keysProperty, keyType, pending.Key);
             string buttonLabel = existingIndex >= 0 ? "Overwrite" : "Add";
@@ -824,14 +826,17 @@ namespace WallstopStudios.UnityHelpers.Editor
                 infoMessage = GetPendingInfoMessage(
                     keySupported,
                     valueSupported,
-                    keyValid || isEmptyStringKey,
+                    keyValid || isBlankStringKey,
                     existingIndex,
                     keyType,
                     valueType
                 );
-                if (string.IsNullOrEmpty(infoMessage) && isEmptyStringKey)
+                if (string.IsNullOrEmpty(infoMessage) && isBlankStringKey)
                 {
-                    infoMessage = "Adding entry with empty string key.";
+                    string descriptor = string.IsNullOrEmpty(pendingKeyString)
+                        ? "empty"
+                        : "whitespace-only";
+                    infoMessage = $"Adding entry with {descriptor} string key.";
                 }
             }
             if (availableInfoWidth > 0f && !string.IsNullOrEmpty(infoMessage))
@@ -851,9 +856,12 @@ namespace WallstopStudios.UnityHelpers.Editor
                 {
                     tooltip = "Overwrite the existing entry with this key.";
                 }
-                else if (isEmptyStringKey)
+                else if (isBlankStringKey)
                 {
-                    tooltip = "Add a new entry using an empty string key.";
+                    string descriptor = string.IsNullOrEmpty(pendingKeyString)
+                        ? "empty string"
+                        : "whitespace-only string";
+                    tooltip = $"Add a new entry using a {descriptor} key.";
                 }
                 else
                 {
@@ -864,7 +872,7 @@ namespace WallstopStudios.UnityHelpers.Editor
 
                 string styleKey =
                     existingIndex >= 0 ? "Overwrite"
-                    : isEmptyStringKey ? "AddEmpty"
+                    : isBlankStringKey ? "AddEmpty"
                     : "Add";
                 GUIStyle addStyle = GetSolidButtonStyle(styleKey, GUI.enabled);
 
@@ -1247,7 +1255,7 @@ namespace WallstopStudios.UnityHelpers.Editor
             if (
                 keyType != typeof(string)
                 || !(keyValue is string stringKey)
-                || stringKey.Length > 0
+                || !string.IsNullOrWhiteSpace(stringKey)
             )
             {
                 if (!KeyIsValid(keyType, keyValue))
@@ -1295,6 +1303,24 @@ namespace WallstopStudios.UnityHelpers.Editor
 
             return ValuesEqual(existingKey, pending.Key)
                 && ValuesEqual(existingValue, pending.Value);
+        }
+
+        private static GUIStyle GetFooterLabelStyle()
+        {
+            if (_footerLabelStyle != null)
+            {
+                return _footerLabelStyle;
+            }
+
+            _footerLabelStyle = new GUIStyle(EditorStyles.miniLabel)
+            {
+                alignment = TextAnchor.MiddleLeft,
+                margin = new RectOffset(0, 0, 0, 0),
+                padding = new RectOffset(0, 0, 0, 0),
+                contentOffset = new Vector2(0f, -1f),
+            };
+
+            return _footerLabelStyle;
         }
 
         private static object DrawFieldForType(Rect rect, string label, object current, Type type)
