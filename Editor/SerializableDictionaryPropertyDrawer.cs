@@ -23,6 +23,12 @@ namespace WallstopStudios.UnityHelpers.Editor
         private const float PaginationButtonWidth = 24f;
         private const float PaginationLabelWidth = 80f;
         private const float PaginationControlSpacing = 4f;
+        private static readonly Color LightRowColor = new(0.97f, 0.97f, 0.97f, 1f);
+        private static readonly Color DarkRowColor = new(0.16f, 0.16f, 0.16f, 0.45f);
+        private static readonly Color LightSelectionColor = new(0.95f, 0.42f, 0.45f, 0.55f);
+        private static readonly Color DarkSelectionColor = new(0.75f, 0.22f, 0.28f, 0.6f);
+        private static readonly Color LightRemoveColor = new(0.9f, 0.3f, 0.35f, 1f);
+        private static readonly Color DarkRemoveColor = new(0.82f, 0.24f, 0.28f, 1f);
 
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
@@ -66,12 +72,14 @@ namespace WallstopStudios.UnityHelpers.Editor
 
                 y = listRect.yMax + EditorGUIUtility.standardVerticalSpacing;
 
+                PaginationState pagination = GetOrCreatePaginationState(property);
                 PendingEntry pending = GetOrCreatePendingEntry(property, keyType, valueType);
                 DrawPendingEntryUI(
                     ref y,
                     position,
                     pending,
                     list,
+                    pagination,
                     property,
                     keysProperty,
                     valuesProperty,
@@ -129,7 +137,7 @@ namespace WallstopStudios.UnityHelpers.Editor
                 draggable: true,
                 displayHeader: true,
                 displayAddButton: false,
-                displayRemoveButton: true
+                displayRemoveButton: false
             );
 
             list.drawHeaderCallback = rect =>
@@ -146,6 +154,37 @@ namespace WallstopStudios.UnityHelpers.Editor
 
                 return EditorGUIUtility.singleLineHeight
                     + (EditorGUIUtility.standardVerticalSpacing * 2f);
+            };
+
+            list.drawElementBackgroundCallback = (rect, index, _, _) =>
+            {
+                if (!IsIndexInCurrentPage(index, pagination, keysProperty.arraySize))
+                {
+                    return;
+                }
+
+                if (Event.current.type != EventType.Repaint)
+                {
+                    return;
+                }
+
+                float spacing = EditorGUIUtility.standardVerticalSpacing;
+                Rect backgroundRect = new(
+                    rect.x,
+                    rect.y,
+                    rect.width,
+                    EditorGUIUtility.singleLineHeight + (spacing * 2f)
+                );
+                Color rowColor = EditorGUIUtility.isProSkin ? DarkRowColor : LightRowColor;
+                EditorGUI.DrawRect(backgroundRect, rowColor);
+
+                if (list.index == index)
+                {
+                    Color selectionColor = EditorGUIUtility.isProSkin
+                        ? DarkSelectionColor
+                        : LightSelectionColor;
+                    EditorGUI.DrawRect(backgroundRect, selectionColor);
+                }
             };
 
             list.drawElementCallback = (rect, index, _, _) =>
@@ -176,19 +215,14 @@ namespace WallstopStudios.UnityHelpers.Editor
 
             list.onRemoveCallback = reorderableList =>
             {
-                int removeIndex = reorderableList.index;
-                if (removeIndex < 0 || removeIndex >= keysProperty.arraySize)
-                {
-                    return;
-                }
-
-                keysProperty.DeleteArrayElementAtIndex(removeIndex);
-                valuesProperty.DeleteArrayElementAtIndex(removeIndex);
-                dictionaryProperty.serializedObject.ApplyModifiedProperties();
-                SyncRuntimeDictionary(dictionaryProperty);
-                ClampPaginationState(pagination, keysProperty.arraySize);
-                EnsureListSelectionWithinPage(reorderableList, pagination, keysProperty);
-                GUI.changed = true;
+                RemoveEntryAtIndex(
+                    reorderableList.index,
+                    reorderableList,
+                    dictionaryProperty,
+                    keysProperty,
+                    valuesProperty,
+                    pagination
+                );
             };
 
             list.onReorderCallbackWithDetails = (_, oldIndex, newIndex) =>
@@ -202,7 +236,22 @@ namespace WallstopStudios.UnityHelpers.Editor
                 {
                     int targetPage = GetPageForIndex(reorderableList.index, pagination.PageSize);
                     SetPageIndex(pagination, targetPage, reorderableList, keysProperty);
+                    pagination.SelectedIndex = reorderableList.index;
                 }
+            };
+
+            list.footerHeight =
+                EditorGUIUtility.singleLineHeight + (EditorGUIUtility.standardVerticalSpacing * 2f);
+            list.drawFooterCallback = rect =>
+            {
+                DrawListFooter(
+                    rect,
+                    list,
+                    dictionaryProperty,
+                    keysProperty,
+                    valuesProperty,
+                    pagination
+                );
             };
 
             EnsureListSelectionWithinPage(list, pagination, keysProperty);
@@ -321,12 +370,18 @@ namespace WallstopStudios.UnityHelpers.Editor
             {
                 if (GUI.Button(firstRect, "|<", EditorStyles.miniButton))
                 {
-                    SetPageIndex(pagination, 0, list, keysProperty);
+                    SetPageIndex(pagination, 0, list, keysProperty, forceImmediateRefresh: true);
                 }
 
                 if (GUI.Button(prevRect, "<", EditorStyles.miniButton))
                 {
-                    SetPageIndex(pagination, pagination.PageIndex - 1, list, keysProperty);
+                    SetPageIndex(
+                        pagination,
+                        pagination.PageIndex - 1,
+                        list,
+                        keysProperty,
+                        forceImmediateRefresh: true
+                    );
                 }
             }
 
@@ -334,13 +389,134 @@ namespace WallstopStudios.UnityHelpers.Editor
             {
                 if (GUI.Button(nextRect, ">", EditorStyles.miniButton))
                 {
-                    SetPageIndex(pagination, pagination.PageIndex + 1, list, keysProperty);
+                    SetPageIndex(
+                        pagination,
+                        pagination.PageIndex + 1,
+                        list,
+                        keysProperty,
+                        forceImmediateRefresh: true
+                    );
                 }
 
                 if (GUI.Button(lastRect, ">|", EditorStyles.miniButton))
                 {
-                    SetPageIndex(pagination, totalPages - 1, list, keysProperty);
+                    SetPageIndex(
+                        pagination,
+                        totalPages - 1,
+                        list,
+                        keysProperty,
+                        forceImmediateRefresh: true
+                    );
                 }
+            }
+        }
+
+        private void DrawListFooter(
+            Rect rect,
+            ReorderableList list,
+            SerializedProperty dictionaryProperty,
+            SerializedProperty keysProperty,
+            SerializedProperty valuesProperty,
+            PaginationState pagination
+        )
+        {
+            if (Event.current.type == EventType.Repaint)
+            {
+                GUIStyle footerStyle =
+                    ReorderableList.defaultBehaviours.footerBackground ?? (GUIStyle)"RL Footer";
+                footerStyle.Draw(rect, GUIContent.none, false, false, false, false);
+            }
+
+            int itemCount = keysProperty.arraySize;
+            int pageStart = Mathf.Clamp(pagination.PageIndex * pagination.PageSize, 0, itemCount);
+            int pageEnd = Mathf.Min(pageStart + pagination.PageSize, itemCount);
+
+            float padding = 4f;
+            float buttonWidth = 26f;
+            Rect labelRect = new(
+                rect.x + padding,
+                rect.y + 2f,
+                rect.width - buttonWidth - (padding * 3f),
+                rect.height - 4f
+            );
+            string rangeText =
+                itemCount == 0
+                    ? "Empty"
+                    : string.Format("{0}-{1} of {2}", pageStart + 1, pageEnd, itemCount);
+            EditorGUI.LabelField(labelRect, rangeText, EditorStyles.miniLabel);
+
+            Rect removeRect = new(
+                rect.xMax - buttonWidth - padding,
+                rect.y + 2f,
+                buttonWidth,
+                rect.height - 4f
+            );
+
+            bool canRemove =
+                list.index >= 0
+                && list.index < keysProperty.arraySize
+                && IsIndexInCurrentPage(list.index, pagination, keysProperty.arraySize);
+
+            using (new EditorGUI.DisabledScope(!canRemove))
+            {
+                Color previousColor = GUI.backgroundColor;
+                GUI.backgroundColor = EditorGUIUtility.isProSkin
+                    ? DarkRemoveColor
+                    : LightRemoveColor;
+                GUIContent removeContent = EditorGUIUtility.TrTextContent(
+                    "-",
+                    "Remove selected entry"
+                );
+
+                if (GUI.Button(removeRect, removeContent, EditorStyles.miniButton))
+                {
+                    RemoveEntryAtIndex(
+                        list.index,
+                        list,
+                        dictionaryProperty,
+                        keysProperty,
+                        valuesProperty,
+                        pagination
+                    );
+                }
+
+                GUI.backgroundColor = previousColor;
+            }
+        }
+
+        private void RemoveEntryAtIndex(
+            int removeIndex,
+            ReorderableList list,
+            SerializedProperty dictionaryProperty,
+            SerializedProperty keysProperty,
+            SerializedProperty valuesProperty,
+            PaginationState pagination
+        )
+        {
+            if (removeIndex < 0 || removeIndex >= keysProperty.arraySize)
+            {
+                return;
+            }
+
+            SerializedObject serializedObject = dictionaryProperty.serializedObject;
+            UnityEngine.Object[] targets = serializedObject.targetObjects;
+            if (targets.Length > 0)
+            {
+                Undo.RecordObjects(targets, "Remove Dictionary Entry");
+            }
+
+            keysProperty.DeleteArrayElementAtIndex(removeIndex);
+            valuesProperty.DeleteArrayElementAtIndex(removeIndex);
+            serializedObject.ApplyModifiedProperties();
+            SyncRuntimeDictionary(dictionaryProperty);
+            ClampPaginationState(pagination, keysProperty.arraySize);
+            EnsureListSelectionWithinPage(list, pagination, keysProperty);
+            GUI.changed = true;
+
+            EditorWindow focusedWindow = EditorWindow.focusedWindow;
+            if (focusedWindow != null)
+            {
+                focusedWindow.Repaint();
             }
         }
 
@@ -405,7 +581,8 @@ namespace WallstopStudios.UnityHelpers.Editor
             PaginationState pagination,
             int targetPage,
             ReorderableList list,
-            SerializedProperty keysProperty
+            SerializedProperty keysProperty,
+            bool forceImmediateRefresh = false
         )
         {
             if (pagination.PageSize <= 0)
@@ -423,6 +600,16 @@ namespace WallstopStudios.UnityHelpers.Editor
             pagination.PageIndex = clampedPage;
             EnsureListSelectionWithinPage(list, pagination, keysProperty);
             GUI.changed = true;
+            if (forceImmediateRefresh)
+            {
+                EditorWindow focusedWindow = EditorWindow.focusedWindow;
+                if (focusedWindow != null)
+                {
+                    focusedWindow.Repaint();
+                }
+
+                GUIUtility.ExitGUI();
+            }
         }
 
         private void EnsureListSelectionWithinPage(
@@ -435,6 +622,7 @@ namespace WallstopStudios.UnityHelpers.Editor
             if (itemCount <= 0)
             {
                 list.index = -1;
+                pagination.SelectedIndex = -1;
                 return;
             }
 
@@ -457,6 +645,15 @@ namespace WallstopStudios.UnityHelpers.Editor
             {
                 list.index = startIndex;
             }
+
+            if (list.index >= 0 && list.index < itemCount)
+            {
+                pagination.SelectedIndex = list.index;
+            }
+            else
+            {
+                pagination.SelectedIndex = -1;
+            }
         }
 
         private void DrawPendingEntryUI(
@@ -464,6 +661,7 @@ namespace WallstopStudios.UnityHelpers.Editor
             Rect fullPosition,
             PendingEntry pending,
             ReorderableList list,
+            PaginationState pagination,
             SerializedProperty dictionaryProperty,
             SerializedProperty keysProperty,
             SerializedProperty valuesProperty,
@@ -554,10 +752,10 @@ namespace WallstopStudios.UnityHelpers.Editor
 
                     if (result.Index >= 0)
                     {
-                        PaginationState pagination = GetOrCreatePaginationState(dictionaryProperty);
                         int targetPage = GetPageForIndex(result.Index, pagination.PageSize);
                         SetPageIndex(pagination, targetPage, list, keysProperty);
                         list.index = result.Index;
+                        pagination.SelectedIndex = result.Index;
                     }
 
                     GUI.FocusControl(null);
@@ -1222,6 +1420,7 @@ namespace WallstopStudios.UnityHelpers.Editor
         {
             public int PageIndex;
             public int PageSize;
+            public int SelectedIndex = -1;
         }
 
         private void SyncRuntimeDictionary(SerializedProperty dictionaryProperty)
