@@ -65,11 +65,11 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
         [SerializeField]
         [ProtoMember(1, OverwriteList = true)]
-        private TKey[] _keys;
+        internal TKey[] _keys;
 
         [SerializeField]
         [ProtoMember(2, OverwriteList = true)]
-        private TValueCache[] _values;
+        internal TValueCache[] _values;
 
         protected SerializableDictionaryBase()
         {
