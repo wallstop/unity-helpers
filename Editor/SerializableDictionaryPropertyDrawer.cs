@@ -475,15 +475,13 @@ namespace WallstopStudios.UnityHelpers.Editor
                 && IsIndexInCurrentPage(list.index, pagination, keysProperty.arraySize);
             bool canClear = itemCount > 0;
 
-            using (new EditorGUI.DisabledScope(!canClear))
+            GUIContent clearAllContent = EditorGUIUtility.TrTextContent(
+                "Clear All",
+                "Remove every entry from the dictionary"
+            );
+            GUIStyle clearAllStyle = GetSolidButtonStyle("ClearAll", canClear);
+            if (canClear)
             {
-                GUIContent clearAllContent = EditorGUIUtility.TrTextContent(
-                    "Clear All",
-                    "Remove every entry from the dictionary"
-                );
-
-                GUIStyle clearAllStyle = GetSolidButtonStyle("ClearAll", GUI.enabled);
-
                 if (GUI.Button(clearRect, clearAllContent, clearAllStyle))
                 {
                     bool confirmed = EditorUtility.DisplayDialog(
@@ -504,16 +502,15 @@ namespace WallstopStudios.UnityHelpers.Editor
                     }
                 }
             }
-
-            using (new EditorGUI.DisabledScope(!canRemove))
+            else
             {
-                GUIContent removeContent = EditorGUIUtility.TrTextContent(
-                    "-",
-                    "Remove selected entry"
-                );
+                GUI.Button(clearRect, clearAllContent, clearAllStyle);
+            }
 
-                GUIStyle removeStyle = GetSolidButtonStyle("Remove", GUI.enabled);
-
+            GUIContent removeContent = EditorGUIUtility.TrTextContent("-", "Remove selected entry");
+            GUIStyle removeStyle = GetSolidButtonStyle("Remove", canRemove);
+            if (canRemove)
+            {
                 if (GUI.Button(removeRect, removeContent, removeStyle))
                 {
                     RemoveEntryAtIndex(
@@ -525,6 +522,10 @@ namespace WallstopStudios.UnityHelpers.Editor
                         pagination
                     );
                 }
+            }
+            else
+            {
+                GUI.Button(removeRect, removeContent, removeStyle);
             }
         }
 
