@@ -545,5 +545,175 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.AreEqual(50000f, deserialized.Length, 1f);
             Assert.IsTrue(original.Equals(deserialized));
         }
+
+        [Test]
+        public void SerializableDictionarySupportsMultipleProtobufCycles()
+        {
+            SerializableDictionary<string, int> dictionary = new SerializableDictionary<string, int>
+            {
+                { "alpha", 1 },
+                { "beta", 2 },
+            };
+
+            byte[] firstSnapshot = Serializer.ProtoSerialize(dictionary);
+
+            dictionary["alpha"] = 10;
+            dictionary.Add("gamma", 3);
+            dictionary.Remove("beta");
+
+            byte[] secondSnapshot = Serializer.ProtoSerialize(dictionary);
+
+            dictionary.Clear();
+            dictionary.Add("delta", 4);
+
+            byte[] thirdSnapshot = Serializer.ProtoSerialize(dictionary);
+
+            SerializableDictionary<string, int> firstRoundTrip = Serializer.ProtoDeserialize<
+                SerializableDictionary<string, int>
+            >(firstSnapshot);
+            SerializableDictionary<string, int> secondRoundTrip = Serializer.ProtoDeserialize<
+                SerializableDictionary<string, int>
+            >(secondSnapshot);
+            SerializableDictionary<string, int> thirdRoundTrip = Serializer.ProtoDeserialize<
+                SerializableDictionary<string, int>
+            >(thirdSnapshot);
+
+            Assert.That(firstRoundTrip.Count, Is.EqualTo(2));
+            Assert.That(firstRoundTrip["alpha"], Is.EqualTo(1));
+            Assert.That(firstRoundTrip["beta"], Is.EqualTo(2));
+
+            Assert.That(secondRoundTrip.Count, Is.EqualTo(2));
+            Assert.IsTrue(secondRoundTrip.ContainsKey("alpha"));
+            Assert.IsTrue(secondRoundTrip.ContainsKey("gamma"));
+            Assert.IsFalse(secondRoundTrip.ContainsKey("beta"));
+            Assert.That(secondRoundTrip["alpha"], Is.EqualTo(10));
+            Assert.That(secondRoundTrip["gamma"], Is.EqualTo(3));
+
+            Assert.That(thirdRoundTrip.Count, Is.EqualTo(1));
+            Assert.That(thirdRoundTrip["delta"], Is.EqualTo(4));
+
+            secondRoundTrip["alpha"] = 25;
+            secondRoundTrip.Add("epsilon", 5);
+            secondRoundTrip.Remove("gamma");
+
+            byte[] fourthSnapshot = Serializer.ProtoSerialize(secondRoundTrip);
+            SerializableDictionary<string, int> fourthRoundTrip = Serializer.ProtoDeserialize<
+                SerializableDictionary<string, int>
+            >(fourthSnapshot);
+
+            Assert.That(fourthRoundTrip.Count, Is.EqualTo(2));
+            Assert.That(fourthRoundTrip["alpha"], Is.EqualTo(25));
+            Assert.That(fourthRoundTrip["epsilon"], Is.EqualTo(5));
+
+            fourthRoundTrip.Clear();
+            fourthRoundTrip.Add("zeta", 6);
+
+            byte[] finalSnapshot = Serializer.ProtoSerialize(fourthRoundTrip);
+            SerializableDictionary<string, int> finalRoundTrip = Serializer.ProtoDeserialize<
+                SerializableDictionary<string, int>
+            >(finalSnapshot);
+
+            Assert.That(finalRoundTrip.Count, Is.EqualTo(1));
+            Assert.That(finalRoundTrip["zeta"], Is.EqualTo(6));
+        }
+
+        [Test]
+        public void CacheSerializableDictionaryHandlesMultipleProtobufMutations()
+        {
+            SerializableDictionary<
+                int,
+                SerializablePayload,
+                SerializableDictionary.Cache<SerializablePayload>
+            > dictionary =
+                new SerializableDictionary<
+                    int,
+                    SerializablePayload,
+                    SerializableDictionary.Cache<SerializablePayload>
+                >();
+
+            dictionary.Add(1, new SerializablePayload { Id = 1, Name = "First" });
+            dictionary.Add(2, new SerializablePayload { Id = 2, Name = "Second" });
+
+            byte[] firstSnapshot = Serializer.ProtoSerialize(dictionary);
+
+            dictionary[1] = new SerializablePayload { Id = 11, Name = "First Updated" };
+            dictionary.Remove(2);
+            dictionary.Add(3, new SerializablePayload { Id = 3, Name = "Third" });
+
+            byte[] secondSnapshot = Serializer.ProtoSerialize(dictionary);
+
+            dictionary.Clear();
+            dictionary.Add(4, new SerializablePayload { Id = 4, Name = "Fourth" });
+
+            byte[] thirdSnapshot = Serializer.ProtoSerialize(dictionary);
+
+            SerializableDictionary<
+                int,
+                SerializablePayload,
+                SerializableDictionary.Cache<SerializablePayload>
+            > firstRoundTrip = Serializer.ProtoDeserialize<
+                SerializableDictionary<
+                    int,
+                    SerializablePayload,
+                    SerializableDictionary.Cache<SerializablePayload>
+                >
+            >(firstSnapshot);
+
+            SerializableDictionary<
+                int,
+                SerializablePayload,
+                SerializableDictionary.Cache<SerializablePayload>
+            > secondRoundTrip = Serializer.ProtoDeserialize<
+                SerializableDictionary<
+                    int,
+                    SerializablePayload,
+                    SerializableDictionary.Cache<SerializablePayload>
+                >
+            >(secondSnapshot);
+
+            SerializableDictionary<
+                int,
+                SerializablePayload,
+                SerializableDictionary.Cache<SerializablePayload>
+            > thirdRoundTrip = Serializer.ProtoDeserialize<
+                SerializableDictionary<
+                    int,
+                    SerializablePayload,
+                    SerializableDictionary.Cache<SerializablePayload>
+                >
+            >(thirdSnapshot);
+
+            Assert.That(firstRoundTrip.Count, Is.EqualTo(2));
+            Assert.That(firstRoundTrip[1].Name, Is.EqualTo("First"));
+            Assert.That(firstRoundTrip[2].Name, Is.EqualTo("Second"));
+
+            Assert.That(secondRoundTrip.Count, Is.EqualTo(2));
+            Assert.That(secondRoundTrip[1].Name, Is.EqualTo("First Updated"));
+            Assert.That(secondRoundTrip[3].Name, Is.EqualTo("Third"));
+
+            Assert.That(thirdRoundTrip.Count, Is.EqualTo(1));
+            Assert.That(thirdRoundTrip[4].Name, Is.EqualTo("Fourth"));
+
+            secondRoundTrip[3] = new SerializablePayload { Id = 30, Name = "Third Updated" };
+            secondRoundTrip.Add(5, new SerializablePayload { Id = 5, Name = "Fifth" });
+
+            byte[] laterSnapshot = Serializer.ProtoSerialize(secondRoundTrip);
+            SerializableDictionary<
+                int,
+                SerializablePayload,
+                SerializableDictionary.Cache<SerializablePayload>
+            > laterRoundTrip = Serializer.ProtoDeserialize<
+                SerializableDictionary<
+                    int,
+                    SerializablePayload,
+                    SerializableDictionary.Cache<SerializablePayload>
+                >
+            >(laterSnapshot);
+
+            Assert.That(laterRoundTrip.Count, Is.EqualTo(3));
+            Assert.That(laterRoundTrip[1].Name, Is.EqualTo("First Updated"));
+            Assert.That(laterRoundTrip[3].Name, Is.EqualTo("Third Updated"));
+            Assert.That(laterRoundTrip[5].Name, Is.EqualTo("Fifth"));
+        }
     }
 }
