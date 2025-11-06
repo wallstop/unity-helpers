@@ -440,6 +440,8 @@ namespace WallstopStudios.UnityHelpers.Editor
             float buttonWidth = 26f;
             float lineHeight = EditorGUIUtility.singleLineHeight;
             float verticalCenter = rect.y + Mathf.Max(0f, (rect.height - lineHeight) * 0.5f);
+            float labelHeight = lineHeight + 4f;
+            float labelY = rect.y + Mathf.Max(0f, (rect.height - labelHeight) * 0.5f);
             float buttonSpacing = PaginationControlSpacing;
             float clearWidth = 80f;
 
@@ -459,9 +461,9 @@ namespace WallstopStudios.UnityHelpers.Editor
             GUIStyle footerLabelStyle = GetFooterLabelStyle();
             Rect labelRect = new(
                 rect.x + padding,
-                verticalCenter,
+                labelY,
                 Mathf.Max(0f, clearRect.x - buttonSpacing - (rect.x + padding)),
-                lineHeight
+                labelHeight
             );
             string rangeText =
                 itemCount == 0 ? "Empty" : $"{pageStart + 1}-{pageEnd} of {itemCount}";
