@@ -125,6 +125,61 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
+        public void ProtoSerializationSnapshotsValueAcrossMutations()
+        {
+            SerializableNullable<int> wrapped = new(321);
+
+            byte[] firstSnapshot;
+            using (MemoryStream snapshotStream = new())
+            {
+                Serializer.Serialize(snapshotStream, wrapped);
+                firstSnapshot = snapshotStream.ToArray();
+            }
+
+            wrapped.SetValue(654);
+
+            byte[] secondSnapshot;
+            using (MemoryStream snapshotStream = new())
+            {
+                Serializer.Serialize(snapshotStream, wrapped);
+                secondSnapshot = snapshotStream.ToArray();
+            }
+
+            wrapped.Clear();
+
+            byte[] thirdSnapshot;
+            using (MemoryStream snapshotStream = new())
+            {
+                Serializer.Serialize(snapshotStream, wrapped);
+                thirdSnapshot = snapshotStream.ToArray();
+            }
+
+            Assert.AreNotEqual(firstSnapshot, secondSnapshot);
+            Assert.AreNotEqual(secondSnapshot, thirdSnapshot);
+            Assert.AreNotEqual(firstSnapshot, thirdSnapshot);
+
+            using MemoryStream firstStream = new(firstSnapshot);
+            using MemoryStream secondStream = new(secondSnapshot);
+            using MemoryStream thirdStream = new(thirdSnapshot);
+
+            SerializableNullable<int> firstRoundTrip = Serializer.Deserialize<
+                SerializableNullable<int>
+            >(firstStream);
+            SerializableNullable<int> secondRoundTrip = Serializer.Deserialize<
+                SerializableNullable<int>
+            >(secondStream);
+            SerializableNullable<int> thirdRoundTrip = Serializer.Deserialize<
+                SerializableNullable<int>
+            >(thirdStream);
+
+            Assert.IsTrue(firstRoundTrip.HasValue);
+            Assert.AreEqual(321, firstRoundTrip.Value);
+            Assert.IsTrue(secondRoundTrip.HasValue);
+            Assert.AreEqual(654, secondRoundTrip.Value);
+            Assert.IsFalse(thirdRoundTrip.HasValue);
+        }
+
+        [Test]
         public void ImplicitConversionsAreSymmetric()
         {
             int? systemNullable = 77;
@@ -139,6 +194,39 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             SerializableNullable<int> fromValue = 88;
             Assert.IsTrue(fromValue.HasValue);
             Assert.AreEqual(88, fromValue.Value);
+        }
+
+        [Test]
+        public void JsonSerializationCapturesMutations()
+        {
+            SerializableNullable<int> wrapped = new(12);
+            string firstSnapshot = JsonSerializer.Serialize(wrapped);
+
+            wrapped.SetValue(34);
+            string secondSnapshot = JsonSerializer.Serialize(wrapped);
+
+            wrapped.Clear();
+            string thirdSnapshot = JsonSerializer.Serialize(wrapped);
+
+            Assert.AreEqual("12", firstSnapshot);
+            Assert.AreEqual("34", secondSnapshot);
+            Assert.AreEqual("null", thirdSnapshot);
+
+            SerializableNullable<int> firstRoundTrip = JsonSerializer.Deserialize<
+                SerializableNullable<int>
+            >(firstSnapshot);
+            SerializableNullable<int> secondRoundTrip = JsonSerializer.Deserialize<
+                SerializableNullable<int>
+            >(secondSnapshot);
+            SerializableNullable<int> thirdRoundTrip = JsonSerializer.Deserialize<
+                SerializableNullable<int>
+            >(thirdSnapshot);
+
+            Assert.IsTrue(firstRoundTrip.HasValue);
+            Assert.AreEqual(12, firstRoundTrip.Value);
+            Assert.IsTrue(secondRoundTrip.HasValue);
+            Assert.AreEqual(34, secondRoundTrip.Value);
+            Assert.IsFalse(thirdRoundTrip.HasValue);
         }
 
         [Test]
