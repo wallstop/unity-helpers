@@ -20,7 +20,7 @@ namespace WallstopStudios.UnityHelpers.Editor
         private const float PendingSectionPadding = 6f;
         private const float PendingAddButtonWidth = 110f;
         private const int DefaultPageSize = 15;
-        private const int MaxPageSize = 250;
+        internal const int MaxPageSize = 250;
         private const float PaginationButtonWidth = 28f;
         private const float PaginationLabelWidth = 80f;
         private const float PaginationControlSpacing = 4f;
@@ -45,8 +45,12 @@ namespace WallstopStudios.UnityHelpers.Editor
             SerializedObject serializedObject = property.serializedObject;
             serializedObject.UpdateIfRequiredOrScript();
 
-            SerializedProperty keysProperty = property.FindPropertyRelative("_keys");
-            SerializedProperty valuesProperty = property.FindPropertyRelative("_values");
+            SerializedProperty keysProperty = property.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = property.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
             EnsureParallelArraySizes(keysProperty, valuesProperty);
 
             if (!TryResolveKeyValueTypes(fieldInfo, out Type keyType, out Type valueType))
@@ -110,8 +114,12 @@ namespace WallstopStudios.UnityHelpers.Editor
                 return height;
             }
 
-            SerializedProperty keysProperty = property.FindPropertyRelative("_keys");
-            SerializedProperty valuesProperty = property.FindPropertyRelative("_values");
+            SerializedProperty keysProperty = property.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = property.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
             EnsureParallelArraySizes(keysProperty, valuesProperty);
             ReorderableList list = GetOrCreateList(property, keysProperty, valuesProperty);
 
@@ -123,7 +131,7 @@ namespace WallstopStudios.UnityHelpers.Editor
             return height;
         }
 
-        private ReorderableList GetOrCreateList(
+        internal ReorderableList GetOrCreateList(
             SerializedProperty dictionaryProperty,
             SerializedProperty keysProperty,
             SerializedProperty valuesProperty
@@ -355,7 +363,7 @@ namespace WallstopStudios.UnityHelpers.Editor
             return entry;
         }
 
-        private PaginationState GetOrCreatePaginationState(SerializedProperty property)
+        internal PaginationState GetOrCreatePaginationState(SerializedProperty property)
         {
             string key = GetListKey(property);
             if (_paginationStates.TryGetValue(key, out PaginationState state))
@@ -378,7 +386,7 @@ namespace WallstopStudios.UnityHelpers.Editor
             return newState;
         }
 
-        private ListPageCache EnsurePageCache(
+        internal ListPageCache EnsurePageCache(
             string cacheKey,
             SerializedProperty keysProperty,
             SerializedProperty valuesProperty,
@@ -456,7 +464,7 @@ namespace WallstopStudios.UnityHelpers.Editor
             }
         }
 
-        private void MarkListCacheDirty(string cacheKey)
+        internal void MarkListCacheDirty(string cacheKey)
         {
             if (_pageCaches.TryGetValue(cacheKey, out ListPageCache cache))
             {
@@ -503,7 +511,7 @@ namespace WallstopStudios.UnityHelpers.Editor
             return relativeIndex >= 0 && relativeIndex < cache.entries.Count;
         }
 
-        private static void SyncListSelectionWithPagination(
+        internal static void SyncListSelectionWithPagination(
             ReorderableList list,
             PaginationState pagination,
             ListPageCache cache
@@ -758,7 +766,7 @@ namespace WallstopStudios.UnityHelpers.Editor
             );
         }
 
-        private void RemoveEntryAtIndex(
+        internal void RemoveEntryAtIndex(
             int removeIndex,
             ReorderableList list,
             SerializedProperty dictionaryProperty,
@@ -1456,7 +1464,7 @@ namespace WallstopStudios.UnityHelpers.Editor
             valuesProperty.arraySize = size;
         }
 
-        private static string GetListKey(SerializedProperty property)
+        internal static string GetListKey(SerializedProperty property)
         {
             int targetId =
                 property.serializedObject.targetObject != null
@@ -2022,14 +2030,14 @@ namespace WallstopStudios.UnityHelpers.Editor
             public object value;
         }
 
-        private sealed class PaginationState
+        internal sealed class PaginationState
         {
             public int pageIndex;
             public int pageSize;
             public int selectedIndex = -1;
         }
 
-        private sealed class ListPageCache
+        internal sealed class ListPageCache
         {
             public readonly List<PageEntry> entries = new();
             public int startIndex;
@@ -2040,7 +2048,7 @@ namespace WallstopStudios.UnityHelpers.Editor
             public bool dirty = true;
         }
 
-        private sealed class PageEntry
+        internal sealed class PageEntry
         {
             public int arrayIndex;
         }

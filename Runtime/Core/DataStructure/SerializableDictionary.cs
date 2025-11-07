@@ -89,6 +89,18 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             _dictionary = new Dictionary<TKey, TValue>(serializationInfo, streamingContext);
         }
 
+        internal static class SerializedPropertyNames
+        {
+            private sealed class NameHolder : SerializableDictionary<TKey, TValue>
+            {
+                public static readonly string Keys = nameof(_keys);
+                public static readonly string Values = nameof(_values);
+            }
+
+            internal static readonly string Keys = NameHolder.Keys;
+            internal static readonly string Values = NameHolder.Values;
+        }
+
         public void OnAfterDeserialize()
         {
             if (_keys != null && _values != null && _keys.Length == _values.Length)
@@ -370,6 +382,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         {
             cache[index] = value;
         }
+    }
+
+    internal static class SerializableDictionarySerializedPropertyNames
+    {
+        internal static readonly string Keys = SerializableDictionary<int, int>
+            .SerializedPropertyNames
+            .Keys;
+        internal static readonly string Values = SerializableDictionary<int, int>
+            .SerializedPropertyNames
+            .Values;
     }
 
     /// <summary>

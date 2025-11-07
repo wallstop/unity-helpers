@@ -2,8 +2,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Helper
 {
     using System;
     using System.Collections;
-    using System.Collections.Generic;
-    using System.Reflection;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEditorInternal;
@@ -13,11 +11,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Helper
 
     public sealed class SerializableDictionaryPropertyDrawerTests
     {
-        private const BindingFlags InstanceFlags =
-            BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
-        private const BindingFlags StaticFlags =
-            BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public;
-
         private sealed class TestDictionaryHost : ScriptableObject
         {
             public IntStringDictionary dictionary = new();
@@ -37,50 +30,30 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Helper
                     host.dictionary.Add(i, $"Value {i}");
                 }
 
-                SerializedObject serializedObject = new SerializedObject(host);
+                SerializedObject serializedObject = new(host);
                 serializedObject.Update();
-                SerializedProperty dictionaryProperty = serializedObject.FindProperty("dictionary");
-                SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative("_keys");
+                SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                    nameof(TestDictionaryHost.dictionary)
+                );
+                SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                    SerializableDictionarySerializedPropertyNames.Keys
+                );
                 SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
-                    "_values"
+                    SerializableDictionarySerializedPropertyNames.Values
                 );
 
-                SerializableDictionaryPropertyDrawer drawer =
-                    new SerializableDictionaryPropertyDrawer();
+                SerializableDictionaryPropertyDrawer drawer = new();
 
-                MethodInfo paginationMethod =
-                    typeof(SerializableDictionaryPropertyDrawer).GetMethod(
-                        "GetOrCreatePaginationState",
-                        InstanceFlags
-                    );
-                object pagination = paginationMethod.Invoke(
-                    drawer,
-                    new object[] { dictionaryProperty }
-                );
-                Type paginationType = pagination.GetType();
-                FieldInfo pageSizeField = paginationType.GetField(
-                    "pageSize",
-                    BindingFlags.Instance | BindingFlags.Public
-                );
-                pageSizeField.SetValue(pagination, 512);
+                SerializableDictionaryPropertyDrawer.PaginationState pagination =
+                    drawer.GetOrCreatePaginationState(dictionaryProperty);
+                pagination.pageSize = 512;
 
-                MethodInfo listMethod = typeof(SerializableDictionaryPropertyDrawer).GetMethod(
-                    "GetOrCreateList",
-                    InstanceFlags
-                );
-                listMethod.Invoke(
-                    drawer,
-                    new object[] { dictionaryProperty, keysProperty, valuesProperty }
-                );
+                drawer.GetOrCreateList(dictionaryProperty, keysProperty, valuesProperty);
 
-                FieldInfo maxPageSizeField = typeof(SerializableDictionaryPropertyDrawer).GetField(
-                    "MaxPageSize",
-                    StaticFlags
+                Assert.AreEqual(
+                    SerializableDictionaryPropertyDrawer.MaxPageSize,
+                    pagination.pageSize
                 );
-                int maxPageSize = (int)maxPageSizeField.GetValue(null);
-                int clampedPageSize = (int)pageSizeField.GetValue(pagination);
-
-                Assert.AreEqual(maxPageSize, clampedPageSize);
             }
             finally
             {
@@ -99,91 +72,64 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Helper
                     host.dictionary.Add(i, $"Item {i}");
                 }
 
-                SerializedObject serializedObject = new SerializedObject(host);
+                SerializedObject serializedObject = new(host);
                 serializedObject.Update();
-                SerializedProperty dictionaryProperty = serializedObject.FindProperty("dictionary");
-                SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative("_keys");
+                SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                    nameof(TestDictionaryHost.dictionary)
+                );
+                SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                    SerializableDictionarySerializedPropertyNames.Keys
+                );
                 SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
-                    "_values"
+                    SerializableDictionarySerializedPropertyNames.Values
                 );
 
-                SerializableDictionaryPropertyDrawer drawer =
-                    new SerializableDictionaryPropertyDrawer();
+                SerializableDictionaryPropertyDrawer drawer = new();
 
-                MethodInfo paginationMethod =
-                    typeof(SerializableDictionaryPropertyDrawer).GetMethod(
-                        "GetOrCreatePaginationState",
-                        InstanceFlags
-                    );
-                object pagination = paginationMethod.Invoke(
-                    drawer,
-                    new object[] { dictionaryProperty }
-                );
-                Type paginationType = pagination.GetType();
-                FieldInfo pageIndexField = paginationType.GetField(
-                    "pageIndex",
-                    BindingFlags.Instance | BindingFlags.Public
-                );
-                FieldInfo pageSizeField = paginationType.GetField(
-                    "pageSize",
-                    BindingFlags.Instance | BindingFlags.Public
-                );
-                FieldInfo selectedIndexField = paginationType.GetField(
-                    "selectedIndex",
-                    BindingFlags.Instance | BindingFlags.Public
+                SerializableDictionaryPropertyDrawer.PaginationState pagination =
+                    drawer.GetOrCreatePaginationState(dictionaryProperty);
+                pagination.pageSize = 10;
+                pagination.pageIndex = 0;
+
+                ReorderableList list = drawer.GetOrCreateList(
+                    dictionaryProperty,
+                    keysProperty,
+                    valuesProperty
                 );
 
-                pageSizeField.SetValue(pagination, 10);
-                pageIndexField.SetValue(pagination, 0);
-
-                MethodInfo listMethod = typeof(SerializableDictionaryPropertyDrawer).GetMethod(
-                    "GetOrCreateList",
-                    InstanceFlags
-                );
-                ReorderableList list = (ReorderableList)
-                    listMethod.Invoke(
-                        drawer,
-                        new object[] { dictionaryProperty, keysProperty, valuesProperty }
-                    );
-
-                MethodInfo listKeyMethod = typeof(SerializableDictionaryPropertyDrawer).GetMethod(
-                    "GetListKey",
-                    StaticFlags
-                );
-                string listKey = (string)
-                    listKeyMethod.Invoke(null, new object[] { dictionaryProperty });
-
-                MethodInfo ensureCacheMethod =
-                    typeof(SerializableDictionaryPropertyDrawer).GetMethod(
-                        "EnsurePageCache",
-                        InstanceFlags
-                    );
-                object cache = ensureCacheMethod.Invoke(
-                    drawer,
-                    new object[] { listKey, keysProperty, valuesProperty, pagination }
+                string listKey = SerializableDictionaryPropertyDrawer.GetListKey(
+                    dictionaryProperty
                 );
 
-                MethodInfo syncMethod = typeof(SerializableDictionaryPropertyDrawer).GetMethod(
-                    "SyncListSelectionWithPagination",
-                    BindingFlags.Static | BindingFlags.NonPublic
+                SerializableDictionaryPropertyDrawer.ListPageCache cache = drawer.EnsurePageCache(
+                    listKey,
+                    keysProperty,
+                    valuesProperty,
+                    pagination
                 );
 
-                selectedIndexField.SetValue(pagination, 25);
-                pageIndexField.SetValue(pagination, 2);
-                syncMethod.Invoke(null, new object[] { list, pagination, cache });
+                pagination.selectedIndex = 25;
+                pagination.pageIndex = 2;
+                cache = drawer.EnsurePageCache(listKey, keysProperty, valuesProperty, pagination);
+                SerializableDictionaryPropertyDrawer.SyncListSelectionWithPagination(
+                    list,
+                    pagination,
+                    cache
+                );
 
                 Assert.AreEqual(5, list.index);
-                Assert.AreEqual(25, selectedIndexField.GetValue(pagination));
+                Assert.AreEqual(25, pagination.selectedIndex);
 
-                pageIndexField.SetValue(pagination, 0);
-                cache = ensureCacheMethod.Invoke(
-                    drawer,
-                    new object[] { listKey, keysProperty, valuesProperty, pagination }
+                pagination.pageIndex = 0;
+                cache = drawer.EnsurePageCache(listKey, keysProperty, valuesProperty, pagination);
+                SerializableDictionaryPropertyDrawer.SyncListSelectionWithPagination(
+                    list,
+                    pagination,
+                    cache
                 );
-                syncMethod.Invoke(null, new object[] { list, pagination, cache });
 
                 Assert.AreEqual(0, list.index);
-                Assert.AreEqual(0, selectedIndexField.GetValue(pagination));
+                Assert.AreEqual(0, pagination.selectedIndex);
             }
             finally
             {
@@ -202,75 +148,122 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Helper
                     host.dictionary.Add(i, $"Entry {i}");
                 }
 
-                SerializedObject serializedObject = new SerializedObject(host);
+                SerializedObject serializedObject = new(host);
                 serializedObject.Update();
-                SerializedProperty dictionaryProperty = serializedObject.FindProperty("dictionary");
-                SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative("_keys");
+                SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                    nameof(TestDictionaryHost.dictionary)
+                );
+                SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                    SerializableDictionarySerializedPropertyNames.Keys
+                );
                 SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
-                    "_values"
+                    SerializableDictionarySerializedPropertyNames.Values
                 );
 
-                SerializableDictionaryPropertyDrawer drawer =
-                    new SerializableDictionaryPropertyDrawer();
+                SerializableDictionaryPropertyDrawer drawer = new();
 
-                MethodInfo paginationMethod =
-                    typeof(SerializableDictionaryPropertyDrawer).GetMethod(
-                        "GetOrCreatePaginationState",
-                        InstanceFlags
-                    );
-                object pagination = paginationMethod.Invoke(
-                    drawer,
-                    new object[] { dictionaryProperty }
+                SerializableDictionaryPropertyDrawer.PaginationState pagination =
+                    drawer.GetOrCreatePaginationState(dictionaryProperty);
+
+                drawer.GetOrCreateList(dictionaryProperty, keysProperty, valuesProperty);
+
+                string listKey = SerializableDictionaryPropertyDrawer.GetListKey(
+                    dictionaryProperty
                 );
 
-                MethodInfo listMethod = typeof(SerializableDictionaryPropertyDrawer).GetMethod(
-                    "GetOrCreateList",
-                    InstanceFlags
-                );
-                listMethod.Invoke(
-                    drawer,
-                    new object[] { dictionaryProperty, keysProperty, valuesProperty }
+                SerializableDictionaryPropertyDrawer.ListPageCache cache = drawer.EnsurePageCache(
+                    listKey,
+                    keysProperty,
+                    valuesProperty,
+                    pagination
                 );
 
-                MethodInfo listKeyMethod = typeof(SerializableDictionaryPropertyDrawer).GetMethod(
-                    "GetListKey",
-                    StaticFlags
-                );
-                string listKey = (string)
-                    listKeyMethod.Invoke(null, new object[] { dictionaryProperty });
-
-                MethodInfo ensureCacheMethod =
-                    typeof(SerializableDictionaryPropertyDrawer).GetMethod(
-                        "EnsurePageCache",
-                        InstanceFlags
-                    );
-                object cache = ensureCacheMethod.Invoke(
-                    drawer,
-                    new object[] { listKey, keysProperty, valuesProperty, pagination }
-                );
-
-                Type cacheType = cache.GetType();
-                FieldInfo entriesField = cacheType.GetField(
-                    "entries",
-                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
-                );
-                FieldInfo dirtyField = cacheType.GetField(
-                    "dirty",
-                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
-                );
-
-                IList entries = (IList)entriesField.GetValue(cache);
+                IList entries = cache.entries;
                 Assert.Greater(entries.Count, 0);
-                Assert.IsFalse((bool)dirtyField.GetValue(cache));
+                Assert.IsFalse(cache.dirty);
 
-                MethodInfo markDirtyMethod = typeof(SerializableDictionaryPropertyDrawer).GetMethod(
-                    "MarkListCacheDirty",
-                    InstanceFlags
-                );
-                markDirtyMethod.Invoke(drawer, new object[] { listKey });
+                drawer.MarkListCacheDirty(listKey);
 
                 Assert.AreEqual(0, entries.Count);
-                Assert.IsTrue((bool)dirtyField.GetValue(cache));
+                Assert.IsTrue(cache.dirty);
+            }
+            finally
+            {
+                ScriptableObject.DestroyImmediate(host);
+            }
+        }
+
+        [Test]
+        public void RemoveEntryAdjustsSelectionWithinPage()
+        {
+            TestDictionaryHost host = ScriptableObject.CreateInstance<TestDictionaryHost>();
+            try
+            {
+                for (int i = 0; i < 30; i++)
+                {
+                    host.dictionary.Add(i, $"Item {i}");
+                }
+
+                SerializedObject serializedObject = new(host);
+                serializedObject.Update();
+                SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                    nameof(TestDictionaryHost.dictionary)
+                );
+                SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                    SerializableDictionarySerializedPropertyNames.Keys
+                );
+                SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                    SerializableDictionarySerializedPropertyNames.Values
+                );
+
+                SerializableDictionaryPropertyDrawer drawer = new();
+
+                SerializableDictionaryPropertyDrawer.PaginationState pagination =
+                    drawer.GetOrCreatePaginationState(dictionaryProperty);
+                pagination.pageSize = 10;
+                pagination.pageIndex = 2;
+                pagination.selectedIndex = 25;
+
+                ReorderableList list = drawer.GetOrCreateList(
+                    dictionaryProperty,
+                    keysProperty,
+                    valuesProperty
+                );
+
+                string listKey = SerializableDictionaryPropertyDrawer.GetListKey(
+                    dictionaryProperty
+                );
+                SerializableDictionaryPropertyDrawer.ListPageCache cache = drawer.EnsurePageCache(
+                    listKey,
+                    keysProperty,
+                    valuesProperty,
+                    pagination
+                );
+                SerializableDictionaryPropertyDrawer.SyncListSelectionWithPagination(
+                    list,
+                    pagination,
+                    cache
+                );
+
+                drawer.RemoveEntryAtIndex(
+                    25,
+                    list,
+                    dictionaryProperty,
+                    keysProperty,
+                    valuesProperty,
+                    pagination
+                );
+
+                cache = drawer.EnsurePageCache(listKey, keysProperty, valuesProperty, pagination);
+                SerializableDictionaryPropertyDrawer.SyncListSelectionWithPagination(
+                    list,
+                    pagination,
+                    cache
+                );
+
+                Assert.AreEqual(25, pagination.selectedIndex);
+                Assert.AreEqual(5, list.index);
+                Assert.AreEqual(2, pagination.pageIndex);
             }
             finally
             {
