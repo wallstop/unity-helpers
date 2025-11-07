@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
+namespace WallstopStudios.UnityHelpers.Tests.Windows
 {
 #if UNITY_EDITOR
     using System.Collections.Generic;
@@ -8,7 +8,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor;
-    using WallstopStudios.UnityHelpers.Tests.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Utils;
 
     public sealed class PrefabCheckerTests : CommonTestBase
     {

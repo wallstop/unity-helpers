@@ -214,20 +214,20 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 this.isInterface = isInterface;
             }
 
-            public bool HasFilters => this.filters.RequiresPostProcessing;
+            public bool HasFilters => filters.RequiresPostProcessing;
 
-            public FilterParameters Filters => this.filters;
+            public FilterParameters Filters => filters;
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public object GetValue(Component component)
             {
-                return this.accessor.Get(component);
+                return accessor.Get(component);
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void SetValue(Component component, object value)
             {
-                this.accessor.Set(component, value);
+                accessor.Set(component, value);
             }
         }
 
@@ -257,8 +257,8 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
             public FieldAccessor(FieldInfo field)
             {
-                this.setter = ReflectionHelpers.GetFieldSetter<TComponent, TValue>(field);
-                this.getter = ReflectionHelpers.GetFieldGetter<TComponent, TValue>(field);
+                setter = ReflectionHelpers.GetFieldSetter<TComponent, TValue>(field);
+                getter = ReflectionHelpers.GetFieldGetter<TComponent, TValue>(field);
             }
 
             public override object Get(Component component)
@@ -269,7 +269,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 }
 
                 TComponent typedComponent = (TComponent)component;
-                return this.getter(typedComponent);
+                return getter(typedComponent);
             }
 
             public override void Set(Component component, object value)
@@ -281,7 +281,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
                 TComponent typedComponent = (TComponent)component;
                 TValue typedValue = value != null ? (TValue)value : default;
-                this.setter(ref typedComponent, typedValue);
+                setter(ref typedComponent, typedValue);
             }
         }
 

@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
     using NUnit.Framework;
     using ProtoBuf;
     using WallstopStudios.UnityHelpers.Core.DataStructure;
+    using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using Serializer = WallstopStudios.UnityHelpers.Core.Serialization.Serializer;
 
     public sealed class SerializableDictionaryJsonTests

@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using System.Reflection;
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.DataStructure;
+    using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
 
     public sealed class SerializableDictionaryTests
     {

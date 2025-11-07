@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Tests.Editor.Attributes
+namespace WallstopStudios.UnityHelpers.Tests.Attributes
 {
     using System.Reflection;
     using NUnit.Framework;
@@ -7,7 +7,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Attributes
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
     using WallstopStudios.UnityHelpers.Tags;
-    using WallstopStudios.UnityHelpers.Tests.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Utils;
 
     [TestFixture]
     public sealed class WShowIfPropertyDrawerTests : CommonTestBase

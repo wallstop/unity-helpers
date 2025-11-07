@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Editor
+namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 {
     using System;
     using System.Collections.Generic;
@@ -6,7 +6,7 @@ namespace WallstopStudios.UnityHelpers.Editor
     using UnityEditor;
     using UnityEditorInternal;
     using UnityEngine;
-    using WallstopStudios.UnityHelpers.Core.DataStructure;
+    using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
 
     [CustomPropertyDrawer(typeof(SerializableDictionary<,>), true)]
     public sealed class SerializableDictionaryPropertyDrawer : PropertyDrawer
@@ -2061,19 +2061,29 @@ namespace WallstopStudios.UnityHelpers.Editor
 
         private sealed class KeyEqualityComparer : IEqualityComparer<object>
         {
-            public bool Equals(object x, object y)
+            bool IEqualityComparer<object>.Equals(object x, object y)
+            {
+                return EqualsCore(x, y);
+            }
+
+            int IEqualityComparer<object>.GetHashCode(object obj)
+            {
+                return GetHashCodeCore(obj);
+            }
+
+            private static bool EqualsCore(object x, object y)
             {
                 if (ReferenceEquals(x, y))
                 {
                     return true;
                 }
 
-                if (x == NullKeySentinel)
+                if (ReferenceEquals(x, NullKeySentinel))
                 {
                     x = null;
                 }
 
-                if (y == NullKeySentinel)
+                if (ReferenceEquals(y, NullKeySentinel))
                 {
                     y = null;
                 }
@@ -2101,9 +2111,9 @@ namespace WallstopStudios.UnityHelpers.Editor
                 return x.Equals(y);
             }
 
-            public int GetHashCode(object obj)
+            private static int GetHashCodeCore(object obj)
             {
-                if (obj == NullKeySentinel || obj == null)
+                if (ReferenceEquals(obj, NullKeySentinel) || obj == null)
                 {
                     return 0;
                 }

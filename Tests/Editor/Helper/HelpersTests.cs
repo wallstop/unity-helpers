@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Tests.Editor.Helper
+namespace WallstopStudios.UnityHelpers.Tests.Helper
 {
     using System;
     using System.Collections.Generic;
@@ -9,7 +9,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Helper
     using UnityEditorInternal;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
-    using WallstopStudios.UnityHelpers.Tests.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Utils;
     using WallstopStudios.UnityHelpers.Utils;
 
     public sealed class HelpersTests : CommonTestBase

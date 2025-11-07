@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
+namespace WallstopStudios.UnityHelpers.Tests.Windows
 {
 #if UNITY_EDITOR
     using System.IO;
@@ -6,7 +6,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Editor;
-    using WallstopStudios.UnityHelpers.Tests.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Utils;
 
     public sealed class FitTextureSizeWindowTests : CommonTestBase
     {

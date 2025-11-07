@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils
+namespace WallstopStudios.UnityHelpers.Tests.Utils
 {
 #if UNITY_EDITOR
     using System.Collections;

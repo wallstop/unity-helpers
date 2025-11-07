@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Tests.Editor.Attributes
+namespace WallstopStudios.UnityHelpers.Tests.Attributes
 {
     using System;
     using System.Collections.Generic;
@@ -8,7 +8,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Attributes
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Editor.Core.Helper;
-    using WallstopStudios.UnityHelpers.Tests.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Utils;
 
     [TestFixture]
     public sealed class AnimationEventHelpersTests : CommonTestBase

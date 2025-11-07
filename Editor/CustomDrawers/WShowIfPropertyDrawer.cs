@@ -42,6 +42,19 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             SerializedProperty conditionProperty = property.serializedObject.FindProperty(
                 showIf.conditionField
             );
+            if (conditionProperty == null)
+            {
+                string propertyPath = property.propertyPath;
+                if (!string.IsNullOrEmpty(propertyPath))
+                {
+                    int separatorIndex = propertyPath.LastIndexOf('.');
+                    string siblingPath =
+                        separatorIndex == -1
+                            ? showIf.conditionField
+                            : propertyPath.Substring(0, separatorIndex + 1) + showIf.conditionField;
+                    conditionProperty = property.serializedObject.FindProperty(siblingPath);
+                }
+            }
             if (conditionProperty != null)
             {
                 if (TryEvaluateCondition(conditionProperty, showIf, out bool serializedResult))

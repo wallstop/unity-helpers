@@ -1,12 +1,12 @@
-namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
+namespace WallstopStudios.UnityHelpers.Tests.Windows
 {
 #if UNITY_EDITOR
+    using System.IO;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
-    using System.IO;
     using WallstopStudios.UnityHelpers.Editor;
-    using WallstopStudios.UnityHelpers.Tests.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Utils;
 
     public sealed class PrefabCheckerFolderAdditionTests : CommonTestBase
     {

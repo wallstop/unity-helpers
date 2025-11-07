@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils
+namespace WallstopStudios.UnityHelpers.Tests.Utils
 {
 #if UNITY_EDITOR
     using System.Collections;
@@ -159,25 +159,27 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils
 }
 
 // Name collision types in different namespaces
-
-#if UNITY_EDITOR
 namespace A
 {
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Utils;
 
+#if UNITY_EDITOR
     [ScriptableSingletonPath("CreatorTests/Collision")]
     internal sealed class NameCollision : ScriptableObjectSingleton<NameCollision> { }
-}
+
 #endif
-#if UNITY_EDITOR
+}
+
+// Name collision types in different namespaces
 namespace B
 {
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Utils;
 
+#if UNITY_EDITOR
     [ScriptableSingletonPath("CreatorTests/Collision")]
     internal sealed class NameCollision : ScriptableObjectSingleton<NameCollision> { }
-}
 
 #endif
+}

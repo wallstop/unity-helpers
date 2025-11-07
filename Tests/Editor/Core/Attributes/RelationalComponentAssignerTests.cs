@@ -6,7 +6,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Core.Attributes
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Tags;
-    using WallstopStudios.UnityHelpers.Tests.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Utils;
 
     public sealed class RelationalComponentAssignerTests : CommonTestBase
     {

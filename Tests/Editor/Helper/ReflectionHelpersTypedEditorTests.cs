@@ -1,5 +1,5 @@
 #if UNITY_EDITOR
-namespace WallstopStudios.UnityHelpers.Tests.Editor.Helper
+namespace WallstopStudios.UnityHelpers.Tests.Helper
 {
     using System;
     using System.Reflection;

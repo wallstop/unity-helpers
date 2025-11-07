@@ -7,7 +7,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Integrations.VContainer;
     using WallstopStudios.UnityHelpers.Tags;
-    using WallstopStudios.UnityHelpers.Tests.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Utils;
 
     public sealed class VContainerRelationalHelpersTests : CommonTestBase
     {

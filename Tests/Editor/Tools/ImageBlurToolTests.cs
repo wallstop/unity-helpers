@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Tests.Editor.Tools
+namespace WallstopStudios.UnityHelpers.Tests.Tools
 {
 #if UNITY_EDITOR
     using NUnit.Framework;

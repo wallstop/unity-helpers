@@ -103,7 +103,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// <summary>
         /// Posts an action to run on the main thread and returns a Task that completes after execution.
         /// </summary>
-        public System.Threading.Tasks.Task RunAsync(Action action)
+        public Task RunAsync(Action action)
         {
             TaskCompletionSource<bool> tcs = new();
             RunOnMainThread(() =>
@@ -124,7 +124,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// <summary>
         /// Posts a function to run on the main thread and returns its result via Task.
         /// </summary>
-        public System.Threading.Tasks.Task<T> Post<T>(Func<T> func)
+        public Task<T> Post<T>(Func<T> func)
         {
             TaskCompletionSource<T> tcs = new();
             RunOnMainThread(() =>

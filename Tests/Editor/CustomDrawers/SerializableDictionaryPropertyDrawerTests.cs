@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Tests.Editor.Helper
+namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 {
     using System;
     using System.Collections;
@@ -6,8 +6,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Helper
     using UnityEditor;
     using UnityEditorInternal;
     using UnityEngine;
-    using WallstopStudios.UnityHelpers.Core.DataStructure;
-    using WallstopStudios.UnityHelpers.Editor;
+    using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
+    using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
 
     public sealed class SerializableDictionaryPropertyDrawerTests
     {

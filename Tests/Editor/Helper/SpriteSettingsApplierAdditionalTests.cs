@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Tests.Editor.Helper
+namespace WallstopStudios.UnityHelpers.Tests.Helper
 {
 #if UNITY_EDITOR
     using System.Collections.Generic;
@@ -7,7 +7,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Helper
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
-    using WallstopStudios.UnityHelpers.Tests.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Utils;
 
     public sealed class SpriteSettingsApplierAdditionalTests : CommonTestBase
     {

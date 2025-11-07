@@ -1,11 +1,11 @@
-namespace WallstopStudios.UnityHelpers.Tests.Editor.Helper
+namespace WallstopStudios.UnityHelpers.Tests.Helper
 {
     using System.IO;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
-    using WallstopStudios.UnityHelpers.Tests.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Utils;
 
     [TestFixture]
     public sealed class SpriteHelpersTests : CommonTestBase

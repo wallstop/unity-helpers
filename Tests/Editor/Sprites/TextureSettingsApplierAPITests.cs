@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
+namespace WallstopStudios.UnityHelpers.Tests.Sprites
 {
 #if UNITY_EDITOR
     using System.IO;
@@ -7,7 +7,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
-    using WallstopStudios.UnityHelpers.Tests.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Utils;
 
     public sealed class TextureSettingsApplierAPITests : CommonTestBase
     {

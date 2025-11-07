@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Tests.Editor.Extensions
+namespace WallstopStudios.UnityHelpers.Tests.Extensions
 {
 #if UNITY_EDITOR
     using System;
@@ -8,7 +8,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Extensions
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Editor.Extensions;
-    using WallstopStudios.UnityHelpers.Tests.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Utils;
 
     /// <summary>
     /// Comprehensive tests for SerializedPropertyExtensions covering simple fields,

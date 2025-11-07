@@ -444,7 +444,7 @@ namespace WallstopStudios.UnityHelpers.Tags
                     return type != null;
                 }
 
-                type = Core.Helper.ReflectionHelpers.TryResolveType(typeName);
+                type = ReflectionHelpers.TryResolveType(typeName);
                 _resolvedTypeCache[typeName] = type;
                 return type != null;
             }

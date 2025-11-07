@@ -1,10 +1,10 @@
-namespace WallstopStudios.UnityHelpers.Tests.Editor.Tags
+namespace WallstopStudios.UnityHelpers.Tests.Tags
 {
     using System;
     using System.Reflection;
     using NUnit.Framework;
     using UnityEngine;
-    using UnityHelpers.Tags;
+    using WallstopStudios.UnityHelpers.Tags;
 
     [TestFixture]
     public sealed class AttributeMetadataCacheTests

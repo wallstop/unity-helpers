@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
+namespace WallstopStudios.UnityHelpers.Tests.Sprites
 {
 #if UNITY_EDITOR
     using NUnit.Framework;

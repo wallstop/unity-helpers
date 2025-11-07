@@ -1,17 +1,15 @@
-namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils
+namespace WallstopStudios.UnityHelpers.Tests.Utils
 {
     using System;
     using System.Collections;
     using System.Collections.Generic;
     using System.Reflection;
     using NUnit.Framework;
+    using UnityEditor.SceneManagement;
     using UnityEngine;
     using UnityEngine.SceneManagement;
     using UnityEngine.TestTools;
     using Object = UnityEngine.Object;
-#if UNITY_EDITOR
-    using UnityEditor.SceneManagement;
-#endif
 
     /// <summary>
     /// Common test base that tracks spawned Unity objects and disposables

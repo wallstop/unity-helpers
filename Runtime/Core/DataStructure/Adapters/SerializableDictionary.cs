@@ -1,7 +1,7 @@
 // Portions of this file are adapted from JDSherbert's Unity-Serializable-Dictionary (MIT License):
 // https://github.com/JDSherbert/Unity-Serializable-Dictionary
 
-namespace WallstopStudios.UnityHelpers.Core.DataStructure
+namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 {
     using System;
     using System.Collections;
@@ -93,12 +93,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         {
             private sealed class NameHolder : SerializableDictionary<TKey, TValue>
             {
-                public static readonly string Keys = nameof(_keys);
-                public static readonly string Values = nameof(_values);
+                public static readonly string KeysName = nameof(_keys);
+                public static readonly string ValuesName = nameof(_values);
             }
 
-            internal static readonly string Keys = NameHolder.Keys;
-            internal static readonly string Values = NameHolder.Values;
+            internal static readonly string KeysName = NameHolder.KeysName;
+            internal static readonly string ValuesName = NameHolder.ValuesName;
         }
 
         public void OnAfterDeserialize()
@@ -388,10 +388,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     {
         internal static readonly string Keys = SerializableDictionary<int, int>
             .SerializedPropertyNames
-            .Keys;
+            .KeysName;
         internal static readonly string Values = SerializableDictionary<int, int>
             .SerializedPropertyNames
-            .Values;
+            .ValuesName;
     }
 
     /// <summary>
