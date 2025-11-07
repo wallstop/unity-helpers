@@ -20,6 +20,7 @@ namespace WallstopStudios.UnityHelpers.Editor
         private const float PendingSectionPadding = 6f;
         private const float PendingAddButtonWidth = 110f;
         private const int DefaultPageSize = 15;
+        private const int MaxPageSize = 250;
         private const float PaginationButtonWidth = 28f;
         private const float PaginationLabelWidth = 80f;
         private const float PaginationControlSpacing = 4f;
@@ -166,14 +167,17 @@ namespace WallstopStudios.UnityHelpers.Editor
                 );
             };
 
-            list.elementHeightCallback = index =>
-            {
-                return EditorGUIUtility.singleLineHeight
-                    + (EditorGUIUtility.standardVerticalSpacing * 2f);
-            };
+            list.elementHeightCallback = _ =>
+                EditorGUIUtility.singleLineHeight + (EditorGUIUtility.standardVerticalSpacing * 2f);
 
             list.drawElementBackgroundCallback = (rect, index, _, _) =>
             {
+                ListPageCache currentCache = cacheProvider();
+                if (!RelativeIndexIsValid(currentCache, index))
+                {
+                    return;
+                }
+
                 if (Event.current.type != EventType.Repaint)
                 {
                     return;
@@ -201,24 +205,24 @@ namespace WallstopStudios.UnityHelpers.Editor
             list.drawElementCallback = (rect, index, _, _) =>
             {
                 ListPageCache currentCache = cacheProvider();
-                if (index < 0 || index >= currentCache.entries.Count)
+                if (!RelativeIndexIsValid(currentCache, index))
                 {
                     return;
                 }
 
-                int entryIndex = currentCache.entries[index].arrayIndex;
+                int globalIndex = currentCache.entries[index].arrayIndex;
                 if (
-                    entryIndex < 0
-                    || entryIndex >= keysProperty.arraySize
-                    || entryIndex >= valuesProperty.arraySize
+                    globalIndex < 0
+                    || globalIndex >= keysProperty.arraySize
+                    || globalIndex >= valuesProperty.arraySize
                 )
                 {
                     return;
                 }
 
-                SerializedProperty keyProperty = keysProperty.GetArrayElementAtIndex(entryIndex);
+                SerializedProperty keyProperty = keysProperty.GetArrayElementAtIndex(globalIndex);
                 SerializedProperty valueProperty = valuesProperty.GetArrayElementAtIndex(
-                    entryIndex
+                    globalIndex
                 );
 
                 rect.y += EditorGUIUtility.standardVerticalSpacing;
@@ -251,7 +255,12 @@ namespace WallstopStudios.UnityHelpers.Editor
             list.onRemoveCallback = reorderableList =>
             {
                 ListPageCache currentCache = cacheProvider();
-                int globalIndex = GetGlobalIndex(currentCache, reorderableList.index);
+                if (!RelativeIndexIsValid(currentCache, reorderableList.index))
+                {
+                    return;
+                }
+
+                int globalIndex = currentCache.entries[reorderableList.index].arrayIndex;
                 RemoveEntryAtIndex(
                     globalIndex,
                     reorderableList,
@@ -265,17 +274,28 @@ namespace WallstopStudios.UnityHelpers.Editor
             list.onReorderCallbackWithDetails = (_, oldIndex, newIndex) =>
             {
                 ListPageCache currentCache = cacheProvider();
-                int oldGlobalIndex = GetGlobalIndex(currentCache, oldIndex);
-                int newGlobalIndex = GetGlobalIndex(currentCache, newIndex);
-                if (oldGlobalIndex < 0 || newGlobalIndex < 0)
+                if (
+                    !RelativeIndexIsValid(currentCache, oldIndex)
+                    || !RelativeIndexIsValid(currentCache, newIndex)
+                )
                 {
                     return;
                 }
 
+                int oldGlobalIndex = currentCache.entries[oldIndex].arrayIndex;
+                int newGlobalIndex = currentCache.entries[newIndex].arrayIndex;
                 keysProperty.MoveArrayElement(oldGlobalIndex, newGlobalIndex);
                 valuesProperty.MoveArrayElement(oldGlobalIndex, newGlobalIndex);
                 pagination.selectedIndex = newGlobalIndex;
                 InvalidateKeyCache(key);
+
+                ListPageCache refreshedCache = EnsurePageCache(
+                    key,
+                    keysProperty,
+                    valuesProperty,
+                    pagination
+                );
+                SyncListSelectionWithPagination(list, pagination, refreshedCache);
             };
 
             list.onSelectCallback = reorderableList =>
@@ -283,10 +303,11 @@ namespace WallstopStudios.UnityHelpers.Editor
                 if (reorderableList.index >= 0)
                 {
                     ListPageCache currentCache = cacheProvider();
-                    int globalIndex = GetGlobalIndex(currentCache, reorderableList.index);
-                    if (globalIndex >= 0)
+                    if (RelativeIndexIsValid(currentCache, reorderableList.index))
                     {
-                        pagination.selectedIndex = globalIndex;
+                        pagination.selectedIndex = currentCache
+                            .entries[reorderableList.index]
+                            .arrayIndex;
                     }
                 }
             };
@@ -401,7 +422,9 @@ namespace WallstopStudios.UnityHelpers.Editor
             cache.entries.Clear();
             cache.itemCount = keysProperty.arraySize;
             cache.pageIndex = pagination.pageIndex;
-            cache.pageSize = pagination.pageSize;
+            int effectivePageSize = Mathf.Clamp(pagination.pageSize, 1, MaxPageSize);
+            cache.pageSize = effectivePageSize;
+            pagination.pageSize = effectivePageSize;
             cache.dirty = false;
 
             if (cache.itemCount <= 0)
@@ -413,14 +436,14 @@ namespace WallstopStudios.UnityHelpers.Editor
 
             int startIndex = 0;
             int endIndex = cache.itemCount;
-            if (pagination.pageSize > 0)
+            if (effectivePageSize > 0)
             {
                 startIndex = Mathf.Clamp(
-                    pagination.pageIndex * pagination.pageSize,
+                    pagination.pageIndex * effectivePageSize,
                     0,
                     cache.itemCount
                 );
-                endIndex = Mathf.Min(startIndex + pagination.pageSize, cache.itemCount);
+                endIndex = Mathf.Min(startIndex + effectivePageSize, cache.itemCount);
             }
 
             cache.startIndex = startIndex;
@@ -465,14 +488,19 @@ namespace WallstopStudios.UnityHelpers.Editor
             return -1;
         }
 
-        private static int GetGlobalIndex(ListPageCache cache, int relativeIndex)
+        private static bool IndexIsInCacheRange(ListPageCache cache, int index)
         {
-            if (relativeIndex < 0 || relativeIndex >= cache.entries.Count)
+            if (cache.entries.Count == 0)
             {
-                return -1;
+                return false;
             }
 
-            return cache.entries[relativeIndex].arrayIndex;
+            return index >= cache.startIndex && index < cache.endIndex;
+        }
+
+        private static bool RelativeIndexIsValid(ListPageCache cache, int relativeIndex)
+        {
+            return relativeIndex >= 0 && relativeIndex < cache.entries.Count;
         }
 
         private static void SyncListSelectionWithPagination(
@@ -771,9 +799,17 @@ namespace WallstopStudios.UnityHelpers.Editor
                 pagination.pageIndex = 0;
             }
 
-            list.index = -1;
             GUI.changed = true;
             InvalidateKeyCache(GetListKey(dictionaryProperty));
+
+            string cacheKey = GetListKey(dictionaryProperty);
+            ListPageCache cache = EnsurePageCache(
+                cacheKey,
+                keysProperty,
+                valuesProperty,
+                pagination
+            );
+            SyncListSelectionWithPagination(list, pagination, cache);
 
             EditorWindow focusedWindow = EditorWindow.focusedWindow;
             if (focusedWindow != null)
@@ -808,11 +844,19 @@ namespace WallstopStudios.UnityHelpers.Editor
             SyncRuntimeDictionary(dictionaryProperty);
 
             ClampPaginationState(pagination, keysProperty.arraySize);
-            list.index = -1;
             pagination.selectedIndex = -1;
             pagination.pageIndex = 0;
             GUI.changed = true;
             InvalidateKeyCache(GetListKey(dictionaryProperty));
+
+            string cacheKey = GetListKey(dictionaryProperty);
+            ListPageCache cache = EnsurePageCache(
+                cacheKey,
+                keysProperty,
+                valuesProperty,
+                pagination
+            );
+            SyncListSelectionWithPagination(list, pagination, cache);
 
             EditorWindow focusedWindow = EditorWindow.focusedWindow;
             if (focusedWindow != null)
@@ -849,6 +893,8 @@ namespace WallstopStudios.UnityHelpers.Editor
             {
                 pagination.pageSize = DefaultPageSize;
             }
+
+            pagination.pageSize = Mathf.Clamp(pagination.pageSize, 1, MaxPageSize);
 
             int totalPages = GetTotalPages(itemCount, pagination.pageSize);
             pagination.pageIndex = Mathf.Clamp(pagination.pageIndex, 0, totalPages - 1);
@@ -895,6 +941,8 @@ namespace WallstopStudios.UnityHelpers.Editor
             {
                 pagination.pageSize = DefaultPageSize;
             }
+
+            pagination.pageSize = Mathf.Clamp(pagination.pageSize, 1, MaxPageSize);
 
             int totalPages = GetTotalPages(keysProperty.arraySize, pagination.pageSize);
             int clampedPage = Mathf.Clamp(targetPage, 0, totalPages - 1);
