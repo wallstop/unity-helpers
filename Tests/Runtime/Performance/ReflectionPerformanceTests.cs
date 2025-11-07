@@ -110,12 +110,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
 
                 foreach (ScenarioResult result in run.TypedResults)
                 {
-                    double reflectionOps = reflectionBaselineLookup.TryGetValue(
+                    double reflectionOps = reflectionBaselineLookup.GetValueOrDefault(
                         GetScenarioKey(result.Name),
-                        out double value
-                    )
-                        ? value
-                        : double.NaN;
+                        double.NaN
+                    );
                     double speedupVsReflection =
                         reflectionOps <= 0.0
                             ? double.PositiveInfinity

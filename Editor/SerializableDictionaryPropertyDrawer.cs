@@ -14,6 +14,7 @@ namespace WallstopStudios.UnityHelpers.Editor
         private readonly Dictionary<string, ReorderableList> _lists = new();
         private readonly Dictionary<string, PendingEntry> _pendingEntries = new();
         private readonly Dictionary<string, PaginationState> _paginationStates = new();
+        private readonly Dictionary<string, KeyIndexCache> _keyIndexCaches = new();
 
         private const float PendingSectionPadding = 6f;
         private const float PendingAddButtonWidth = 110f;
@@ -33,6 +34,7 @@ namespace WallstopStudios.UnityHelpers.Editor
         private static readonly Dictionary<string, GUIStyle> ButtonStyleCache = new();
         private static readonly Dictionary<Color, Texture2D> ColorTextureCache = new();
         private static GUIStyle _footerLabelStyle;
+        private static readonly object NullKeySentinel = new();
 
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
@@ -90,8 +92,6 @@ namespace WallstopStudios.UnityHelpers.Editor
                 EditorGUI.indentLevel = 0;
                 list.DoList(listRect);
                 EditorGUI.indentLevel = previousIndent;
-
-                y = listRect.yMax + EditorGUIUtility.standardVerticalSpacing;
             }
 
             serializedObject.ApplyModifiedProperties();
@@ -215,7 +215,13 @@ namespace WallstopStudios.UnityHelpers.Editor
                     EditorGUIUtility.singleLineHeight
                 );
 
+                EditorGUI.BeginChangeCheck();
                 EditorGUI.PropertyField(keyRect, keyProperty, GUIContent.none, true);
+                if (EditorGUI.EndChangeCheck())
+                {
+                    InvalidateKeyCache(key);
+                }
+
                 EditorGUI.PropertyField(valueRect, valueProperty, GUIContent.none, true);
             };
 
@@ -234,6 +240,7 @@ namespace WallstopStudios.UnityHelpers.Editor
             list.onReorderCallbackWithDetails = (_, oldIndex, newIndex) =>
             {
                 valuesProperty.MoveArrayElement(oldIndex, newIndex);
+                InvalidateKeyCache(GetListKey(dictionaryProperty));
             };
 
             list.onSelectCallback = reorderableList =>
@@ -479,10 +486,12 @@ namespace WallstopStudios.UnityHelpers.Editor
                 "Clear All",
                 "Remove every entry from the dictionary"
             );
-            GUIStyle clearAllStyle = GetSolidButtonStyle("ClearAll", canClear);
-            if (canClear)
-            {
-                if (GUI.Button(clearRect, clearAllContent, clearAllStyle))
+            DrawFooterButton(
+                clearRect,
+                clearAllContent,
+                "ClearAll",
+                canClear,
+                () =>
                 {
                     bool confirmed = EditorUtility.DisplayDialog(
                         "Clear Dictionary",
@@ -501,17 +510,15 @@ namespace WallstopStudios.UnityHelpers.Editor
                         );
                     }
                 }
-            }
-            else
-            {
-                GUI.Button(clearRect, clearAllContent, clearAllStyle);
-            }
+            );
 
             GUIContent removeContent = EditorGUIUtility.TrTextContent("-", "Remove selected entry");
-            GUIStyle removeStyle = GetSolidButtonStyle("Remove", canRemove);
-            if (canRemove)
-            {
-                if (GUI.Button(removeRect, removeContent, removeStyle))
+            DrawFooterButton(
+                removeRect,
+                removeContent,
+                "Remove",
+                canRemove,
+                () =>
                 {
                     RemoveEntryAtIndex(
                         list.index,
@@ -522,11 +529,7 @@ namespace WallstopStudios.UnityHelpers.Editor
                         pagination
                     );
                 }
-            }
-            else
-            {
-                GUI.Button(removeRect, removeContent, removeStyle);
-            }
+            );
         }
 
         private void RemoveEntryAtIndex(
@@ -557,6 +560,7 @@ namespace WallstopStudios.UnityHelpers.Editor
             ClampPaginationState(pagination, keysProperty.arraySize);
             EnsureListSelectionWithinPage(list, pagination, keysProperty);
             GUI.changed = true;
+            InvalidateKeyCache(GetListKey(dictionaryProperty));
 
             EditorWindow focusedWindow = EditorWindow.focusedWindow;
             if (focusedWindow != null)
@@ -594,11 +598,34 @@ namespace WallstopStudios.UnityHelpers.Editor
             list.index = -1;
             EnsureListSelectionWithinPage(list, pagination, keysProperty);
             GUI.changed = true;
+            InvalidateKeyCache(GetListKey(dictionaryProperty));
 
             EditorWindow focusedWindow = EditorWindow.focusedWindow;
             if (focusedWindow != null)
             {
                 focusedWindow.Repaint();
+            }
+        }
+
+        private void DrawFooterButton(
+            Rect rect,
+            GUIContent content,
+            string actionKey,
+            bool enabled,
+            Action onClick
+        )
+        {
+            GUIStyle style = GetSolidButtonStyle(actionKey, enabled);
+            if (!enabled)
+            {
+                EditorGUI.DrawRect(rect, ThemeDisabledColor);
+                GUI.Label(rect, content, style);
+                return;
+            }
+
+            if (GUI.Button(rect, content, style))
+            {
+                onClick?.Invoke();
             }
         }
 
@@ -659,7 +686,7 @@ namespace WallstopStudios.UnityHelpers.Editor
             return index / pageSize;
         }
 
-        private void SetPageIndex(
+        private static void SetPageIndex(
             PaginationState pagination,
             int targetPage,
             ReorderableList list,
@@ -692,7 +719,7 @@ namespace WallstopStudios.UnityHelpers.Editor
             }
         }
 
-        private void EnsureListSelectionWithinPage(
+        private static void EnsureListSelectionWithinPage(
             ReorderableList list,
             PaginationState pagination,
             SerializedProperty keysProperty
@@ -724,9 +751,6 @@ namespace WallstopStudios.UnityHelpers.Editor
             {
                 list.index = startIndex;
             }
-
-            if (list.index >= 0 && list.index < itemCount) { }
-            else { }
         }
 
         private void DrawPendingEntryUI(
@@ -776,7 +800,12 @@ namespace WallstopStudios.UnityHelpers.Editor
                 keyType == typeof(string) && string.IsNullOrWhiteSpace(pendingKeyString);
             bool canCommit = keySupported && valueSupported && (keyValid || isBlankStringKey);
 
-            int existingIndex = FindExistingKeyIndex(keysProperty, keyType, pending.key);
+            int existingIndex = FindExistingKeyIndex(
+                dictionaryProperty,
+                keysProperty,
+                keyType,
+                pending.key
+            );
             string buttonLabel = existingIndex >= 0 ? "Overwrite" : "Add";
             bool entryAlreadyExists =
                 existingIndex >= 0
@@ -800,7 +829,7 @@ namespace WallstopStudios.UnityHelpers.Editor
 
             float infoX = resetRect.xMax + spacing;
             float availableInfoWidth = Mathf.Max(0f, buttonsRect.xMax - infoX);
-            string infoMessage = null;
+            string infoMessage;
             if (entryAlreadyExists)
             {
                 infoMessage = "Entry already exists with the same value.";
@@ -1132,6 +1161,7 @@ namespace WallstopStudios.UnityHelpers.Editor
             serializedObject.ApplyModifiedProperties();
             SyncRuntimeDictionary(dictionaryProperty);
             GUI.changed = true;
+            InvalidateKeyCache(GetListKey(dictionaryProperty));
             return new CommitResult { added = addedNewEntry, index = affectedIndex };
         }
 
@@ -1229,36 +1259,17 @@ namespace WallstopStudios.UnityHelpers.Editor
             return keyValue != null || keyType.IsValueType;
         }
 
-        private static int FindExistingKeyIndex(
+        private int FindExistingKeyIndex(
+            SerializedProperty dictionaryProperty,
             SerializedProperty keysProperty,
             Type keyType,
             object keyValue
         )
         {
-            if (
-                keyType != typeof(string)
-                || !(keyValue is string stringKey)
-                || !string.IsNullOrWhiteSpace(stringKey)
-            )
-            {
-                if (!KeyIsValid(keyType, keyValue))
-                {
-                    return -1;
-                }
-            }
-
-            for (int i = 0; i < keysProperty.arraySize; i++)
-            {
-                SerializedProperty element = keysProperty.GetArrayElementAtIndex(i);
-                object existingValue = GetPropertyValue(element, keyType);
-
-                if (ValuesEqual(existingValue, keyValue))
-                {
-                    return i;
-                }
-            }
-
-            return -1;
+            string cacheKey = GetListKey(dictionaryProperty);
+            KeyIndexCache cache = GetOrBuildKeyIndexCache(cacheKey, keysProperty, keyType);
+            object lookupKey = keyValue ?? NullKeySentinel;
+            return cache.indices.GetValueOrDefault(lookupKey, -1);
         }
 
         private static bool EntryMatchesExisting(
@@ -1286,6 +1297,49 @@ namespace WallstopStudios.UnityHelpers.Editor
 
             return ValuesEqual(existingKey, pending.key)
                 && ValuesEqual(existingValue, pending.value);
+        }
+
+        private KeyIndexCache GetOrBuildKeyIndexCache(
+            string cacheKey,
+            SerializedProperty keysProperty,
+            Type keyType
+        )
+        {
+            if (_keyIndexCaches.TryGetValue(cacheKey, out KeyIndexCache cache))
+            {
+                if (cache.arraySize != keysProperty.arraySize)
+                {
+                    PopulateKeyIndexCache(cache, keysProperty, keyType);
+                }
+                return cache;
+            }
+
+            cache = new KeyIndexCache();
+            PopulateKeyIndexCache(cache, keysProperty, keyType);
+            _keyIndexCaches[cacheKey] = cache;
+            return cache;
+        }
+
+        private static void PopulateKeyIndexCache(
+            KeyIndexCache cache,
+            SerializedProperty keysProperty,
+            Type keyType
+        )
+        {
+            cache.indices.Clear();
+            cache.arraySize = keysProperty.arraySize;
+            int count = keysProperty.arraySize;
+            for (int i = 0; i < count; i++)
+            {
+                SerializedProperty element = keysProperty.GetArrayElementAtIndex(i);
+                object keyValue = GetPropertyValue(element, keyType) ?? NullKeySentinel;
+                cache.indices.TryAdd(keyValue, i);
+            }
+        }
+
+        private void InvalidateKeyCache(string cacheKey)
+        {
+            _keyIndexCaches.Remove(cacheKey);
         }
 
         private static GUIStyle GetFooterLabelStyle()
@@ -1683,6 +1737,19 @@ namespace WallstopStudios.UnityHelpers.Editor
 
         private static bool ValuesEqual(object left, object right)
         {
+            if (left is UnityEngine.Object leftObj && right is UnityEngine.Object rightObj)
+            {
+                if (leftObj == null && rightObj == null)
+                {
+                    return true;
+                }
+
+                if (leftObj == null || rightObj == null)
+                {
+                    return false;
+                }
+            }
+
             if (left == null && right == null)
             {
                 return true;
@@ -1739,7 +1806,71 @@ namespace WallstopStudios.UnityHelpers.Editor
             public int pageSize;
         }
 
-        private void SyncRuntimeDictionary(SerializedProperty dictionaryProperty)
+        private sealed class KeyIndexCache
+        {
+            public readonly Dictionary<object, int> indices = new(new KeyEqualityComparer());
+            public int arraySize;
+        }
+
+        private sealed class KeyEqualityComparer : IEqualityComparer<object>
+        {
+            public bool Equals(object x, object y)
+            {
+                if (ReferenceEquals(x, y))
+                {
+                    return true;
+                }
+
+                if (x == NullKeySentinel)
+                {
+                    x = null;
+                }
+
+                if (y == NullKeySentinel)
+                {
+                    y = null;
+                }
+
+                if (x is UnityEngine.Object xObj)
+                {
+                    if (y is UnityEngine.Object yObj)
+                    {
+                        return xObj == yObj;
+                    }
+
+                    return false;
+                }
+
+                if (y is UnityEngine.Object)
+                {
+                    return false;
+                }
+
+                if (x == null || y == null)
+                {
+                    return x == y;
+                }
+
+                return x.Equals(y);
+            }
+
+            public int GetHashCode(object obj)
+            {
+                if (obj == NullKeySentinel || obj == null)
+                {
+                    return 0;
+                }
+
+                if (obj is UnityEngine.Object objObj && objObj == null)
+                {
+                    return 0;
+                }
+
+                return obj.GetHashCode();
+            }
+        }
+
+        private static void SyncRuntimeDictionary(SerializedProperty dictionaryProperty)
         {
             SerializedObject serializedObject = dictionaryProperty.serializedObject;
             UnityEngine.Object[] targets = serializedObject.targetObjects;
