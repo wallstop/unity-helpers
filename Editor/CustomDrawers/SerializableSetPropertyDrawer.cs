@@ -70,8 +70,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             bool hasItemsArray = itemsProperty != null && itemsProperty.isArray;
             int totalCount = hasItemsArray ? itemsProperty.arraySize : 0;
 
-            string foldoutLabel = BuildFoldoutLabel(label, totalCount);
             string propertyPath = property.propertyPath;
+            object setInstanceForLabel = GetSetInstance(property, propertyPath);
+            int uniqueCount =
+                setInstanceForLabel != null ? CountSetElements(setInstanceForLabel) : totalCount;
+            string foldoutLabel = BuildFoldoutLabel(label, uniqueCount);
 
             EditorGUI.BeginProperty(position, label, property);
 
@@ -326,9 +329,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             Rect clearRect = new Rect(addRect.xMax + ButtonSpacing, rect.y, 80f, lineHeight);
             float nextX = clearRect.xMax + ButtonSpacing;
 
+            Color originalColor = GUI.backgroundColor;
+
+            GUI.backgroundColor = new Color(0.28f, 0.64f, 0.32f);
             if (GUI.Button(addRect, AddEntryContent, EditorStyles.miniButton))
             {
-                if (TryAddNewElement(ref property, propertyPath, ref itemsProperty))
+                if (TryAddNewElement(ref property, propertyPath, ref itemsProperty, pagination))
                 {
                     serializedObject = property.serializedObject;
                     itemsProperty = property.FindPropertyRelative(
@@ -341,9 +347,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     EnsurePaginationBounds(pagination, totalCount);
                 }
             }
+            GUI.backgroundColor = originalColor;
 
             using (new EditorGUI.DisabledScope(totalCount == 0))
             {
+                if (totalCount > 0)
+                {
+                    GUI.backgroundColor = new Color(0.78f, 0.28f, 0.28f);
+                }
+
                 if (GUI.Button(clearRect, ClearAllContent, EditorStyles.miniButton))
                 {
                     if (TryClearSet(ref property, propertyPath, ref itemsProperty))
@@ -360,7 +372,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         EnsurePaginationBounds(pagination, totalCount);
                     }
                 }
+
+                GUI.backgroundColor = originalColor;
             }
+            GUI.backgroundColor = originalColor;
 
             Rect sortRect = Rect.zero;
             if (isSortedSet)
@@ -396,8 +411,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             nextX = entriesRect.xMax + ButtonSpacing;
 
             float navigationWidth = PaginationButtonWidth * 4f + ButtonSpacing * 3f;
-            float pageSizeWidth = 130f;
-            float pageInfoWidth = totalCount > 0 ? 90f : 0f;
+            float pageSizeWidth = Mathf.Max(
+                170f,
+                EditorStyles.miniLabel.CalcSize(PageSizeContent).x + 60f
+            );
+            float pageInfoWidth = totalCount > 0 ? 110f : 0f;
 
             Rect navigationRect = new Rect(
                 rect.xMax - navigationWidth,
@@ -448,29 +466,25 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private void DrawPageSizeField(Rect rect, PaginationState pagination, int totalCount)
         {
-            float labelWidth = 60f;
+            float padding = 4f;
+            float requiredLabelWidth = EditorStyles.miniLabel.CalcSize(PageSizeContent).x + padding;
+            float labelWidth = Mathf.Min(requiredLabelWidth, rect.width * 0.6f);
             Rect labelRect = new Rect(rect.x, rect.y, labelWidth, rect.height);
-            Rect fieldRect = new Rect(
-                rect.x + labelWidth + 2f,
-                rect.y,
-                rect.width - labelWidth - 2f,
-                rect.height
-            );
+            float fieldWidth = Mathf.Max(0f, rect.width - labelWidth - padding);
+            Rect fieldRect = new Rect(labelRect.xMax + padding, rect.y, fieldWidth, rect.height);
 
             EditorGUI.LabelField(labelRect, PageSizeContent, EditorStyles.miniLabel);
 
-            using (new EditorGUI.DisabledScope(totalCount == 0))
+            EditorGUI.BeginChangeCheck();
+            int newSize = EditorGUI.IntField(fieldRect, GUIContent.none, pagination.pageSize);
+            if (EditorGUI.EndChangeCheck())
             {
-                int newSize = EditorGUI.IntField(fieldRect, pagination.pageSize);
-                if (newSize != pagination.pageSize)
-                {
-                    pagination.pageSize = Mathf.Clamp(
-                        newSize,
-                        UnityHelpersSettings.MinPageSize,
-                        MaxPageSize
-                    );
-                    pagination.page = 0;
-                }
+                pagination.pageSize = Mathf.Clamp(
+                    newSize,
+                    UnityHelpersSettings.MinPageSize,
+                    MaxPageSize
+                );
+                pagination.page = 0;
             }
         }
 
@@ -673,7 +687,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return false;
             }
 
-            if (property.type.IndexOf("SerializableSortedHashSet", StringComparison.Ordinal) >= 0)
+            if (property.type.IndexOf("SerializableSortedSet", StringComparison.Ordinal) >= 0)
             {
                 return true;
             }
@@ -780,7 +794,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         internal bool TryAddNewElement(
             ref SerializedProperty property,
             string propertyPath,
-            ref SerializedProperty itemsProperty
+            ref SerializedProperty itemsProperty,
+            PaginationState pagination
         )
         {
             object setInstance = GetSetInstance(property, propertyPath);
@@ -805,6 +820,24 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return false;
             }
 
+            FieldInfo itemsField = setType.GetField(
+                "_items",
+                BindingFlags.Instance | BindingFlags.NonPublic
+            );
+            FieldInfo preserveField = setType.BaseType?.GetField(
+                "_preserveSerializedEntries",
+                BindingFlags.Instance | BindingFlags.NonPublic
+            );
+
+            Array existingItems = itemsField?.GetValue(setInstance) as Array;
+            int existingSerializedCount = existingItems?.Length ?? 0;
+            int serializedArrayCount =
+                itemsProperty != null && itemsProperty.isArray
+                    ? itemsProperty.arraySize
+                    : existingSerializedCount;
+            int currentUniqueCount = CountSetElements(setInstance);
+            bool hasSerializedDuplicates = serializedArrayCount > currentUniqueCount;
+
             foreach (object candidate in GenerateCandidateValues(elementType, setInstance))
             {
                 object boxed = candidate;
@@ -821,12 +854,70 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     continue;
                 }
 
+                SerializedObject serializedObject = property.serializedObject;
+
+                if (hasSerializedDuplicates && itemsField != null)
+                {
+                    int copyCount = Math.Max(serializedArrayCount, existingSerializedCount);
+                    Array expanded = Array.CreateInstance(elementType, copyCount + 1);
+
+                    if (itemsProperty != null && itemsProperty.isArray)
+                    {
+                        int propertyCount = itemsProperty.arraySize;
+                        for (int index = 0; index < propertyCount; index++)
+                        {
+                            SerializedProperty elementProperty =
+                                itemsProperty.GetArrayElementAtIndex(index);
+                            SetElementData elementData = ReadElementData(elementProperty);
+                            expanded.SetValue(elementData.Value, index);
+                        }
+
+                        if (existingItems != null && existingSerializedCount > propertyCount)
+                        {
+                            Array.Copy(
+                                existingItems,
+                                propertyCount,
+                                expanded,
+                                propertyCount,
+                                existingSerializedCount - propertyCount
+                            );
+                        }
+                    }
+                    else if (existingItems != null)
+                    {
+                        Array.Copy(existingItems, expanded, existingSerializedCount);
+                    }
+
+                    expanded.SetValue(boxed, copyCount);
+                    itemsField.SetValue(setInstance, expanded);
+                    if (preserveField != null)
+                    {
+                        preserveField.SetValue(setInstance, true);
+                    }
+
+                    serializedObject.Update();
+                    property = serializedObject.FindProperty(propertyPath);
+                    itemsProperty = property?.FindPropertyRelative(
+                        SerializableHashSetSerializedPropertyNames.Items
+                    );
+                    int totalCount =
+                        itemsProperty != null && itemsProperty.isArray
+                            ? itemsProperty.arraySize
+                            : copyCount + 1;
+                    EnsurePaginationBounds(pagination, totalCount);
+                    EvaluateDuplicateState(property, itemsProperty, force: true);
+                    return true;
+                }
+
                 InvokeOnBeforeSerialize(setType, setInstance);
-                property.serializedObject.Update();
-                property = property.serializedObject.FindProperty(propertyPath);
+                serializedObject.Update();
+                property = serializedObject.FindProperty(propertyPath);
                 itemsProperty = property?.FindPropertyRelative(
                     SerializableHashSetSerializedPropertyNames.Items
                 );
+                int refreshedCount =
+                    itemsProperty != null && itemsProperty.isArray ? itemsProperty.arraySize : 0;
+                EnsurePaginationBounds(pagination, refreshedCount);
                 return true;
             }
 

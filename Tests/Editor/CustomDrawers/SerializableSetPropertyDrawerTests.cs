@@ -16,7 +16,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             public SerializableHashSet<int> set = new SerializableHashSet<int>();
         }
 
-        private sealed class SortedHashSetHost : ScriptableObject
+        private sealed class SortedSetHost : ScriptableObject
         {
             public SerializableSortedSet<int> set = new SerializableSortedSet<int>();
         }
@@ -92,10 +92,13 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
 
             SerializableSetPropertyDrawer drawer = new SerializableSetPropertyDrawer();
+            SerializableSetPropertyDrawer.PaginationState pagination =
+                drawer.GetOrCreatePaginationState(setProperty);
             bool added = drawer.TryAddNewElement(
                 ref setProperty,
                 setProperty.propertyPath,
-                ref itemsProperty
+                ref itemsProperty,
+                pagination
             );
 
             Assert.IsTrue(added, "Drawer failed to append a new element.");
@@ -113,9 +116,115 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [Test]
+        public void TryAddNewElementPreservesSerializedDuplicates()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            FieldInfo itemsField = typeof(SerializableHashSet<int>).GetField(
+                "_items",
+                BindingFlags.Instance | BindingFlags.NonPublic
+            );
+            Assert.IsNotNull(itemsField);
+
+            itemsField.SetValue(host.set, new int[] { 1, 1, 2 });
+            host.set.OnAfterDeserialize();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+            Assert.IsNotNull(itemsProperty);
+            Assert.AreEqual(3, itemsProperty.arraySize);
+
+            SerializableSetPropertyDrawer drawer = new SerializableSetPropertyDrawer();
+            SerializableSetPropertyDrawer.PaginationState pagination =
+                drawer.GetOrCreatePaginationState(setProperty);
+            bool added = drawer.TryAddNewElement(
+                ref setProperty,
+                setProperty.propertyPath,
+                ref itemsProperty,
+                pagination
+            );
+
+            Assert.IsTrue(
+                added,
+                "Drawer failed to append a new element when duplicates were present."
+            );
+
+            serializedObject.Update();
+            setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            Assert.AreEqual(4, itemsProperty.arraySize);
+            Assert.AreEqual(1, itemsProperty.GetArrayElementAtIndex(0).intValue);
+            Assert.AreEqual(1, itemsProperty.GetArrayElementAtIndex(1).intValue);
+            Assert.AreEqual(3, host.set.Count);
+            SerializableSetPropertyDrawer.DuplicateState duplicateState =
+                drawer.EvaluateDuplicateState(setProperty, itemsProperty, force: true);
+            CollectionAssert.AreEquivalent(new int[] { 0, 1 }, duplicateState.DuplicateIndices);
+        }
+
+        [Test]
+        public void TryAddNewElementPreservesSerializedDuplicatesForSortedSet()
+        {
+            SortedSetHost host = CreateScriptableObject<SortedSetHost>();
+            FieldInfo itemsField = typeof(SerializableSortedSet<int>).GetField(
+                "_items",
+                BindingFlags.Instance | BindingFlags.NonPublic
+            );
+            Assert.IsNotNull(itemsField);
+
+            itemsField.SetValue(host.set, new int[] { 3, 3, 5 });
+            host.set.OnAfterDeserialize();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(SortedSetHost.set)
+            );
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+            Assert.IsNotNull(itemsProperty);
+            Assert.AreEqual(3, itemsProperty.arraySize);
+
+            SerializableSetPropertyDrawer drawer = new SerializableSetPropertyDrawer();
+            SerializableSetPropertyDrawer.PaginationState pagination =
+                drawer.GetOrCreatePaginationState(setProperty);
+            bool added = drawer.TryAddNewElement(
+                ref setProperty,
+                setProperty.propertyPath,
+                ref itemsProperty,
+                pagination
+            );
+
+            Assert.IsTrue(
+                added,
+                "Drawer failed to append a new element to the sorted set when duplicates were present."
+            );
+
+            serializedObject.Update();
+            setProperty = serializedObject.FindProperty(nameof(SortedSetHost.set));
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            Assert.AreEqual(4, itemsProperty.arraySize);
+            Assert.AreEqual(3, itemsProperty.GetArrayElementAtIndex(0).intValue);
+            Assert.AreEqual(3, itemsProperty.GetArrayElementAtIndex(1).intValue);
+            Assert.AreEqual(3, host.set.Count);
+            SerializableSetPropertyDrawer.DuplicateState duplicateState =
+                drawer.EvaluateDuplicateState(setProperty, itemsProperty, force: true);
+            CollectionAssert.AreEquivalent(new int[] { 0, 1 }, duplicateState.DuplicateIndices);
+        }
+
+        [Test]
         public void SortElementsOrdersSerializedIntegers()
         {
-            SortedHashSetHost host = CreateScriptableObject<SortedHashSetHost>();
+            SortedSetHost host = CreateScriptableObject<SortedSetHost>();
             host.set.Add(5);
             host.set.Add(1);
             host.set.Add(3);
@@ -124,7 +233,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
             SerializedProperty setProperty = serializedObject.FindProperty(
-                nameof(SortedHashSetHost.set)
+                nameof(SortedSetHost.set)
             );
             SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
                 SerializableHashSetSerializedPropertyNames.Items
@@ -140,7 +249,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             drawer.SortElements(setProperty, itemsProperty);
 
             serializedObject.Update();
-            setProperty = serializedObject.FindProperty(nameof(SortedHashSetHost.set));
+            setProperty = serializedObject.FindProperty(nameof(SortedSetHost.set));
             itemsProperty = setProperty.FindPropertyRelative(
                 SerializableHashSetSerializedPropertyNames.Items
             );

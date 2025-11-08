@@ -56,7 +56,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         }
     }
 
-    internal static class SerializableSortedHashSetSerializedPropertyNames
+    internal static class SerializableSortedSetSerializedPropertyNames
     {
         internal static readonly string Items = SerializableHashSetSerializedPropertyNames.Items;
     }
