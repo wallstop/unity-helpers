@@ -71,6 +71,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         [ProtoMember(2, OverwriteList = true)]
         internal TValueCache[] _values;
 
+        [NonSerialized]
+        private bool _preserveSerializedEntries;
+
         protected SerializableDictionaryBase()
         {
             _dictionary = new Dictionary<TKey, TValue>();
@@ -103,15 +106,40 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
         public void OnAfterDeserialize()
         {
-            if (_keys != null && _values != null && _keys.Length == _values.Length)
+            bool keysAndValuesPresent =
+                _keys != null && _values != null && _keys.Length == _values.Length;
+
+            _preserveSerializedEntries = false;
+
+            if (!keysAndValuesPresent)
             {
-                _dictionary.Clear();
-                int length = _keys.Length;
-                for (int index = 0; index < length; index++)
+                _keys = null;
+                _values = null;
+                return;
+            }
+
+            _dictionary.Clear();
+            HashSet<TKey> observedKeys = new HashSet<TKey>();
+            bool hasDuplicateKeys = false;
+            int length = _keys.Length;
+
+            for (int index = 0; index < length; index++)
+            {
+                TKey key = _keys[index];
+                TValue value = GetValue(_values, index);
+
+                if (!hasDuplicateKeys && !observedKeys.Add(key))
                 {
-                    _dictionary[_keys[index]] = GetValue(_values, index);
+                    hasDuplicateKeys = true;
                 }
 
+                _dictionary[key] = value;
+            }
+
+            _preserveSerializedEntries = hasDuplicateKeys;
+
+            if (!hasDuplicateKeys)
+            {
                 _keys = null;
                 _values = null;
             }
@@ -119,6 +147,13 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
         public void OnBeforeSerialize()
         {
+            bool arraysIntact = _keys != null && _values != null && _keys.Length == _values.Length;
+
+            if (_preserveSerializedEntries && arraysIntact)
+            {
+                return;
+            }
+
             int count = _dictionary.Count;
             _keys = new TKey[count];
             _values = new TValueCache[count];
@@ -130,6 +165,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 SetValue(_values, index, pair.Value);
                 index++;
             }
+
+            _preserveSerializedEntries = false;
         }
 
         [ProtoBeforeSerialization]
@@ -141,6 +178,11 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         [ProtoAfterSerialization]
         private void OnProtoAfterSerialization()
         {
+            if (_preserveSerializedEntries)
+            {
+                return;
+            }
+
             _keys = null;
             _values = null;
         }
@@ -166,6 +208,15 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             {
                 _dictionary[pair.Key] = pair.Value;
             }
+
+            MarkSerializationCacheDirty();
+        }
+
+        private void MarkSerializationCacheDirty()
+        {
+            _preserveSerializedEntries = false;
+            _keys = null;
+            _values = null;
         }
 
         public ICollection<TKey> Keys => _dictionary.Keys;
@@ -182,17 +233,28 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         public TValue this[TKey key]
         {
             get => _dictionary[key];
-            set => _dictionary[key] = value;
+            set
+            {
+                _dictionary[key] = value;
+                MarkSerializationCacheDirty();
+            }
         }
 
         public void Add(TKey key, TValue value)
         {
             _dictionary.Add(key, value);
+            MarkSerializationCacheDirty();
         }
 
         public bool TryAdd(TKey key, TValue value)
         {
-            return _dictionary.TryAdd(key, value);
+            bool added = _dictionary.TryAdd(key, value);
+            if (added)
+            {
+                MarkSerializationCacheDirty();
+            }
+
+            return added;
         }
 
         public bool ContainsKey(TKey key)
@@ -202,12 +264,24 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
         public bool Remove(TKey key)
         {
-            return _dictionary.Remove(key);
+            bool removed = _dictionary.Remove(key);
+            if (removed)
+            {
+                MarkSerializationCacheDirty();
+            }
+
+            return removed;
         }
 
         public bool Remove(TKey key, out TValue value)
         {
-            return _dictionary.Remove(key, out value);
+            bool removed = _dictionary.Remove(key, out value);
+            if (removed)
+            {
+                MarkSerializationCacheDirty();
+            }
+
+            return removed;
         }
 
         public bool TryGetValue(TKey key, out TValue value)
@@ -218,11 +292,13 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         public void Add(KeyValuePair<TKey, TValue> item)
         {
             ((IDictionary<TKey, TValue>)_dictionary).Add(item);
+            MarkSerializationCacheDirty();
         }
 
         public void Clear()
         {
             _dictionary.Clear();
+            MarkSerializationCacheDirty();
         }
 
         public bool Contains(KeyValuePair<TKey, TValue> item)
@@ -237,7 +313,13 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
         public bool Remove(KeyValuePair<TKey, TValue> item)
         {
-            return ((IDictionary<TKey, TValue>)_dictionary).Remove(item);
+            bool removed = ((IDictionary<TKey, TValue>)_dictionary).Remove(item);
+            if (removed)
+            {
+                MarkSerializationCacheDirty();
+            }
+
+            return removed;
         }
 
         public Enumerator GetEnumerator()
@@ -270,12 +352,17 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         public object this[object key]
         {
             get => ((IDictionary)_dictionary)[key];
-            set => ((IDictionary)_dictionary)[key] = value;
+            set
+            {
+                ((IDictionary)_dictionary)[key] = value;
+                MarkSerializationCacheDirty();
+            }
         }
 
         public void Add(object key, object value)
         {
             ((IDictionary)_dictionary).Add(key, value);
+            MarkSerializationCacheDirty();
         }
 
         public bool Contains(object key)
@@ -290,7 +377,13 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
         public void Remove(object key)
         {
-            ((IDictionary)_dictionary).Remove(key);
+            IDictionary dictionary = _dictionary;
+            bool existed = dictionary.Contains(key);
+            dictionary.Remove(key);
+            if (existed)
+            {
+                MarkSerializationCacheDirty();
+            }
         }
 
         public void CopyTo(Array array, int index)

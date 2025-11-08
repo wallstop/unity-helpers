@@ -2,6 +2,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 {
     using System;
     using System.Collections.Generic;
+    using System.Globalization;
     using System.Reflection;
     using UnityEditor;
     using UnityEditorInternal;
@@ -16,6 +17,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private readonly Dictionary<string, PaginationState> _paginationStates = new();
         private readonly Dictionary<string, ListPageCache> _pageCaches = new();
         private readonly Dictionary<string, KeyIndexCache> _keyIndexCaches = new();
+        private readonly Dictionary<string, DuplicateKeyState> _duplicateStates = new();
 
         private const float PendingSectionPadding = 6f;
         private const float PendingAddButtonWidth = 110f;
@@ -24,6 +26,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private const float PaginationButtonWidth = 28f;
         private const float PaginationLabelWidth = 80f;
         private const float PaginationControlSpacing = 4f;
+        private const float DuplicateShakeAmplitude = 2f;
+        private const float DuplicateShakeFrequency = 7f;
+        private const float DuplicateBorderThickness = 1f;
         private static readonly Color LightRowColor = new(0.97f, 0.97f, 0.97f, 1f);
         private static readonly Color DarkRowColor = new(0.16f, 0.16f, 0.16f, 0.45f);
         private static readonly Color LightSelectionColor = new(0.33f, 0.62f, 0.95f, 0.65f);
@@ -33,8 +38,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static readonly Color ThemeOverwriteColor = new(0.98f, 0.82f, 0.27f, 1f);
         private static readonly Color ThemeResetColor = new(0.7f, 0.7f, 0.7f, 1f);
         private static readonly Color ThemeDisabledColor = new(0.6f, 0.6f, 0.6f, 1f);
+        private static readonly Color DuplicatePrimaryColor = new(0.99f, 0.82f, 0.35f, 0.55f);
+        private static readonly Color DuplicateSecondaryColor = new(0.96f, 0.45f, 0.45f, 0.65f);
+        private static readonly Color DuplicateOutlineColor = new(0.65f, 0.18f, 0.18f, 0.9f);
         private static readonly Dictionary<string, GUIStyle> ButtonStyleCache = new();
         private static readonly Dictionary<Color, Texture2D> ColorTextureCache = new();
+        private static readonly GUIContent DuplicateTooltipContent = new();
+        private static readonly GUIContent DuplicateIconContentCache = new();
+        private static readonly GUIContent DuplicateIconTemplate = EditorGUIUtility.IconContent(
+            "console.warnicon.sml"
+        );
         private static GUIStyle _footerLabelStyle;
         private static readonly object NullKeySentinel = new();
 
@@ -60,6 +73,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return;
             }
 
+            string cacheKey = GetListKey(property);
+            DuplicateKeyState duplicateState = RefreshDuplicateState(
+                cacheKey,
+                keysProperty,
+                keyType
+            );
+
             Rect foldoutRect = new(
                 position.x,
                 position.y,
@@ -67,6 +87,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 EditorGUIUtility.singleLineHeight
             );
             property.isExpanded = EditorGUI.Foldout(foldoutRect, property.isExpanded, label, true);
+
+            if (duplicateState != null && duplicateState.HasDuplicates)
+            {
+                DrawDuplicateFoldoutBadge(position, foldoutRect, duplicateState.SummaryTooltip);
+            }
 
             float y = foldoutRect.yMax + EditorGUIUtility.standardVerticalSpacing;
 
@@ -100,7 +125,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 EditorGUI.indentLevel = previousIndent;
             }
 
-            serializedObject.ApplyModifiedProperties();
+            bool applied = serializedObject.ApplyModifiedProperties();
+            if (applied)
+            {
+                SyncRuntimeDictionary(property);
+            }
 
             EditorGUI.EndProperty();
         }
@@ -191,6 +220,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     return;
                 }
 
+                int globalIndex = currentCache.entries[index].arrayIndex;
+                if (
+                    globalIndex < 0
+                    || globalIndex >= keysProperty.arraySize
+                    || globalIndex >= valuesProperty.arraySize
+                )
+                {
+                    return;
+                }
+
                 float spacing = EditorGUIUtility.standardVerticalSpacing;
                 Rect backgroundRect = new(
                     rect.x,
@@ -201,12 +240,31 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 Color rowColor = EditorGUIUtility.isProSkin ? DarkRowColor : LightRowColor;
                 EditorGUI.DrawRect(backgroundRect, rowColor);
 
+                DuplicateKeyInfo duplicateInfo;
+                bool hasDuplicate = TryGetDuplicateInfo(key, globalIndex, out duplicateInfo);
+                float shakeOffset = 0f;
+                if (hasDuplicate)
+                {
+                    shakeOffset = GetDuplicateShakeOffset(globalIndex);
+                    Rect highlightRect = backgroundRect;
+                    highlightRect.x += shakeOffset;
+
+                    Color highlightColor = duplicateInfo.IsPrimary
+                        ? DuplicatePrimaryColor
+                        : DuplicateSecondaryColor;
+                    EditorGUI.DrawRect(highlightRect, highlightColor);
+                    DrawDuplicateOutline(highlightRect);
+                    DrawDuplicateTooltip(highlightRect, duplicateInfo.Tooltip);
+                }
+
                 if (list.index == index)
                 {
+                    Rect selectionRect = backgroundRect;
+                    selectionRect.x += shakeOffset;
                     Color selectionColor = EditorGUIUtility.isProSkin
                         ? DarkSelectionColor
                         : LightSelectionColor;
-                    EditorGUI.DrawRect(backgroundRect, selectionColor);
+                    EditorGUI.DrawRect(selectionRect, selectionColor);
                 }
             };
 
@@ -234,6 +292,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 );
 
                 rect.y += EditorGUIUtility.standardVerticalSpacing;
+                DuplicateKeyInfo duplicateInfo;
+                bool hasDuplicate = TryGetDuplicateInfo(key, globalIndex, out duplicateInfo);
+                if (hasDuplicate)
+                {
+                    rect.x += GetDuplicateShakeOffset(globalIndex);
+                }
+
                 float gap = 6f;
                 float halfWidth = (rect.width - gap) * 0.5f;
 
@@ -244,6 +309,22 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     halfWidth,
                     EditorGUIUtility.singleLineHeight
                 );
+
+                if (hasDuplicate)
+                {
+                    float iconSize = EditorGUIUtility.singleLineHeight;
+                    float iconSpacing = 3f;
+                    Rect iconRect = new(keyRect.x, keyRect.y, iconSize, iconSize);
+                    GUIContent iconContent = GetDuplicateIconContent(duplicateInfo.Tooltip);
+                    GUI.Label(iconRect, iconContent);
+
+                    keyRect.x += iconSize + iconSpacing;
+                    keyRect.width -= iconSize + iconSpacing;
+                    if (keyRect.width < 0f)
+                    {
+                        keyRect.width = 0f;
+                    }
+                }
 
                 EditorGUI.BeginChangeCheck();
                 EditorGUI.PropertyField(keyRect, keyProperty, GUIContent.none, true);
@@ -340,6 +421,202 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             _lists[key] = list;
             return list;
+        }
+
+        private void DrawDuplicateFoldoutBadge(Rect positionRect, Rect foldoutRect, string tooltip)
+        {
+            float iconSize = EditorGUIUtility.singleLineHeight;
+            float padding = 4f;
+            Rect iconRect = new(
+                Mathf.Max(positionRect.x, positionRect.xMax - iconSize - padding),
+                foldoutRect.y,
+                iconSize,
+                iconSize
+            );
+
+            GUIContent iconContent = GetDuplicateIconContent(
+                string.IsNullOrEmpty(tooltip)
+                    ? "Duplicate keys detected. Resolve conflicts to prevent silent overwrites. The last entry wins at runtime."
+                    : tooltip
+            );
+            GUI.Label(iconRect, iconContent);
+        }
+
+        private DuplicateKeyState RefreshDuplicateState(
+            string cacheKey,
+            SerializedProperty keysProperty,
+            Type keyType
+        )
+        {
+            if (string.IsNullOrEmpty(cacheKey))
+            {
+                return null;
+            }
+
+            DuplicateKeyState state;
+            if (!_duplicateStates.TryGetValue(cacheKey, out state))
+            {
+                state = new DuplicateKeyState();
+                _duplicateStates[cacheKey] = state;
+            }
+
+            bool changed = state.Refresh(keysProperty, keyType);
+            if (!state.HasDuplicates && state.IsEmpty)
+            {
+                _duplicateStates.Remove(cacheKey);
+            }
+
+            if (state.HasDuplicates)
+            {
+                EditorWindow focusedWindow = EditorWindow.focusedWindow;
+                if (focusedWindow != null)
+                {
+                    focusedWindow.Repaint();
+                }
+            }
+            else if (changed)
+            {
+                MarkListCacheDirty(cacheKey);
+            }
+
+            return state;
+        }
+
+        private bool TryGetDuplicateInfo(string cacheKey, int arrayIndex, out DuplicateKeyInfo info)
+        {
+            info = null;
+            if (string.IsNullOrEmpty(cacheKey))
+            {
+                return false;
+            }
+
+            if (!_duplicateStates.TryGetValue(cacheKey, out DuplicateKeyState state))
+            {
+                return false;
+            }
+
+            return state.TryGetInfo(arrayIndex, out info);
+        }
+
+        private static void DrawDuplicateTooltip(Rect rect, string tooltip)
+        {
+            if (string.IsNullOrEmpty(tooltip) || Event.current.type != EventType.Repaint)
+            {
+                return;
+            }
+
+            DuplicateTooltipContent.text = string.Empty;
+            DuplicateTooltipContent.image = null;
+            DuplicateTooltipContent.tooltip = tooltip;
+            GUI.Label(rect, DuplicateTooltipContent, GUIStyle.none);
+        }
+
+        private static GUIContent GetDuplicateIconContent(string tooltip)
+        {
+            if (DuplicateIconTemplate != null)
+            {
+                DuplicateIconContentCache.image = DuplicateIconTemplate.image;
+                DuplicateIconContentCache.text = string.Empty;
+            }
+            else
+            {
+                DuplicateIconContentCache.image = null;
+                DuplicateIconContentCache.text = "!";
+            }
+
+            DuplicateIconContentCache.tooltip = tooltip;
+            return DuplicateIconContentCache;
+        }
+
+        private static float GetDuplicateShakeOffset(int arrayIndex)
+        {
+            double time = EditorApplication.timeSinceStartup;
+            float phase = (float)(time * DuplicateShakeFrequency);
+            float seed = arrayIndex * 0.35f;
+            return Mathf.Sin(phase + seed) * DuplicateShakeAmplitude;
+        }
+
+        private static void DrawDuplicateOutline(Rect rect)
+        {
+            Rect top = new(rect.x, rect.y, rect.width, DuplicateBorderThickness);
+            Rect bottom = new(
+                rect.x,
+                rect.yMax - DuplicateBorderThickness,
+                rect.width,
+                DuplicateBorderThickness
+            );
+            Rect left = new(rect.x, rect.y, DuplicateBorderThickness, rect.height);
+            Rect right = new(
+                rect.xMax - DuplicateBorderThickness,
+                rect.y,
+                DuplicateBorderThickness,
+                rect.height
+            );
+
+            EditorGUI.DrawRect(top, DuplicateOutlineColor);
+            EditorGUI.DrawRect(bottom, DuplicateOutlineColor);
+            EditorGUI.DrawRect(left, DuplicateOutlineColor);
+            EditorGUI.DrawRect(right, DuplicateOutlineColor);
+        }
+
+        private static string FormatDuplicateKeyDisplay(object keyValue, Type keyType)
+        {
+            object actualKey = ReferenceEquals(keyValue, NullKeySentinel) ? null : keyValue;
+
+            if (actualKey == null)
+            {
+                return "<null>";
+            }
+
+            if (actualKey is string stringKey)
+            {
+                if (string.IsNullOrWhiteSpace(stringKey))
+                {
+                    return "<empty>";
+                }
+
+                return stringKey;
+            }
+
+            if (actualKey is UnityEngine.Object unityObject)
+            {
+                if (unityObject == null)
+                {
+                    return "<missing object>";
+                }
+
+                return string.IsNullOrEmpty(unityObject.name)
+                    ? unityObject.GetType().Name
+                    : unityObject.name;
+            }
+
+            return actualKey.ToString() ?? keyType.Name;
+        }
+
+        private static string BuildDuplicateTooltip(string formattedKey, List<int> indices)
+        {
+            if (indices == null || indices.Count == 0)
+            {
+                return $"Duplicate key \"{formattedKey}\" detected.";
+            }
+
+            int count = indices.Count;
+            int[] positions = new int[count];
+            for (int index = 0; index < count; index++)
+            {
+                positions[index] = indices[index] + 1;
+            }
+
+            Array.Sort(positions);
+
+            string[] parts = new string[count];
+            for (int index = 0; index < count; index++)
+            {
+                parts[index] = positions[index].ToString(CultureInfo.InvariantCulture);
+            }
+
+            string joinedPositions = string.Join(", ", parts);
+            return $"Duplicate key \"{formattedKey}\" is assigned to entries {joinedPositions}. The last entry will be used at runtime.";
         }
 
         private PendingEntry GetOrCreatePendingEntry(
@@ -2028,6 +2305,106 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         {
             public object key;
             public object value;
+        }
+
+        private sealed class DuplicateKeyInfo
+        {
+            public string Tooltip = string.Empty;
+            public string KeyLabel = string.Empty;
+            public bool IsPrimary;
+            public int DuplicateCount;
+        }
+
+        private sealed class DuplicateKeyState
+        {
+            private readonly Dictionary<int, DuplicateKeyInfo> _duplicateLookup = new();
+            private bool _lastHadDuplicates;
+
+            public bool HasDuplicates { get; private set; }
+            public string SummaryTooltip { get; private set; } = string.Empty;
+
+            public bool IsEmpty => _duplicateLookup.Count == 0;
+
+            public bool Refresh(SerializedProperty keysProperty, Type keyType)
+            {
+                _duplicateLookup.Clear();
+                HasDuplicates = false;
+                SummaryTooltip = string.Empty;
+
+                if (keysProperty == null || keyType == null)
+                {
+                    bool previouslyDuplicated = _lastHadDuplicates;
+                    _lastHadDuplicates = false;
+                    return previouslyDuplicated;
+                }
+
+                int count = keysProperty.arraySize;
+                Dictionary<object, List<int>> grouping = new Dictionary<object, List<int>>(
+                    new KeyEqualityComparer()
+                );
+
+                for (int index = 0; index < count; index++)
+                {
+                    SerializedProperty keyProperty = keysProperty.GetArrayElementAtIndex(index);
+                    object keyValue =
+                        keyProperty != null ? GetPropertyValue(keyProperty, keyType) : null;
+                    object lookupKey = keyValue ?? NullKeySentinel;
+
+                    if (!grouping.TryGetValue(lookupKey, out List<int> indices))
+                    {
+                        indices = new List<int>();
+                        grouping.Add(lookupKey, indices);
+                    }
+
+                    indices.Add(index);
+                }
+
+                int duplicateGroupCount = 0;
+
+                foreach (KeyValuePair<object, List<int>> entry in grouping)
+                {
+                    List<int> indices = entry.Value;
+                    if (indices.Count <= 1)
+                    {
+                        continue;
+                    }
+
+                    duplicateGroupCount++;
+                    HasDuplicates = true;
+                    string formattedKey = FormatDuplicateKeyDisplay(entry.Key, keyType);
+                    string tooltip = BuildDuplicateTooltip(formattedKey, indices);
+
+                    for (int occurrence = 0; occurrence < indices.Count; occurrence++)
+                    {
+                        int arrayIndex = indices[occurrence];
+                        DuplicateKeyInfo info = new DuplicateKeyInfo
+                        {
+                            Tooltip = tooltip,
+                            KeyLabel = formattedKey,
+                            IsPrimary = occurrence == 0,
+                            DuplicateCount = indices.Count,
+                        };
+                        _duplicateLookup[arrayIndex] = info;
+                    }
+                }
+
+                if (duplicateGroupCount > 0)
+                {
+                    SummaryTooltip =
+                        duplicateGroupCount == 1
+                            ? "Duplicate key detected. Resolve conflicts to prevent silent overwrites. The last entry wins at runtime."
+                            : $"{duplicateGroupCount} duplicate keys detected. Resolve conflicts to prevent silent overwrites. The last entry wins at runtime.";
+                }
+
+                bool changed = HasDuplicates != _lastHadDuplicates;
+                _lastHadDuplicates = HasDuplicates;
+                return changed;
+            }
+
+            public bool TryGetInfo(int arrayIndex, out DuplicateKeyInfo info)
+            {
+                return _duplicateLookup.TryGetValue(arrayIndex, out info);
+            }
         }
 
         internal sealed class PaginationState

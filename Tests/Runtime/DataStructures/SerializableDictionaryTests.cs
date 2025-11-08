@@ -161,6 +161,106 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.AreEqual(new KeyValuePair<int, string>(1, "one"), enumerator.Current);
         }
 
+        [Test]
+        public void DuplicateKeysRemainSerializedForInspector()
+        {
+            SerializableDictionary<int, string> dictionary = new();
+
+            Type baseType = typeof(SerializableDictionary<int, string>).BaseType;
+            Assert.IsNotNull(baseType, "Base type lookup failed.");
+
+            BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
+            FieldInfo keysField = baseType.GetField("_keys", flags);
+            FieldInfo valuesField = baseType.GetField("_values", flags);
+            FieldInfo preserveField = baseType.GetField("_preserveSerializedEntries", flags);
+
+            Assert.IsNotNull(keysField, "Keys backing field lookup failed.");
+            Assert.IsNotNull(valuesField, "Values backing field lookup failed.");
+            Assert.IsNotNull(preserveField, "Preserve flag field lookup failed.");
+
+            int[] serializedKeys = new int[] { 1, 1 };
+            string[] serializedValues = new string[] { "first", "second" };
+            keysField.SetValue(dictionary, serializedKeys);
+            valuesField.SetValue(dictionary, serializedValues);
+
+            dictionary.OnAfterDeserialize();
+
+            Assert.AreEqual(1, dictionary.Count);
+            Assert.AreEqual("second", dictionary[1]);
+
+            int[] storedKeys = (int[])keysField.GetValue(dictionary);
+            string[] storedValues = (string[])valuesField.GetValue(dictionary);
+            bool preserveFlag = (bool)preserveField.GetValue(dictionary);
+
+            Assert.IsNotNull(storedKeys, "Serialized keys were unexpectedly cleared.");
+            Assert.IsNotNull(storedValues, "Serialized values were unexpectedly cleared.");
+            Assert.AreEqual(2, storedKeys.Length);
+            Assert.AreEqual(2, storedValues.Length);
+            Assert.IsTrue(preserveFlag, "Preserve flag should remain true while duplicates exist.");
+
+            dictionary.OnBeforeSerialize();
+
+            int[] roundTripKeys = (int[])keysField.GetValue(dictionary);
+            string[] roundTripValues = (string[])valuesField.GetValue(dictionary);
+            bool roundTripPreserve = (bool)preserveField.GetValue(dictionary);
+
+            Assert.IsNotNull(roundTripKeys, "Round-trip keys should stay populated.");
+            Assert.IsNotNull(roundTripValues, "Round-trip values should stay populated.");
+            Assert.AreEqual(2, roundTripKeys.Length);
+            Assert.AreEqual(2, roundTripValues.Length);
+            Assert.AreEqual("first", roundTripValues[0]);
+            Assert.AreEqual("second", roundTripValues[1]);
+            Assert.IsTrue(
+                roundTripPreserve,
+                "Preserve flag should remain true after serialization skip."
+            );
+        }
+
+        [Test]
+        public void DictionaryMutationsClearPreservedSerializedEntries()
+        {
+            SerializableDictionary<int, string> dictionary = new();
+
+            Type baseType = typeof(SerializableDictionary<int, string>).BaseType;
+            Assert.IsNotNull(baseType, "Base type lookup failed.");
+
+            BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
+            FieldInfo keysField = baseType.GetField("_keys", flags);
+            FieldInfo valuesField = baseType.GetField("_values", flags);
+            FieldInfo preserveField = baseType.GetField("_preserveSerializedEntries", flags);
+
+            Assert.IsNotNull(keysField, "Keys backing field lookup failed.");
+            Assert.IsNotNull(valuesField, "Values backing field lookup failed.");
+            Assert.IsNotNull(preserveField, "Preserve flag field lookup failed.");
+
+            int[] serializedKeys = new int[] { 3, 3 };
+            string[] serializedValues = new string[] { "old", "new" };
+            keysField.SetValue(dictionary, serializedKeys);
+            valuesField.SetValue(dictionary, serializedValues);
+
+            dictionary.OnAfterDeserialize();
+            Assert.IsTrue((bool)preserveField.GetValue(dictionary));
+
+            dictionary.Add(4, "fresh");
+
+            bool preserveAfterAdd = (bool)preserveField.GetValue(dictionary);
+            int[] storedKeysAfterAdd = (int[])keysField.GetValue(dictionary);
+            string[] storedValuesAfterAdd = (string[])valuesField.GetValue(dictionary);
+
+            Assert.IsFalse(
+                preserveAfterAdd,
+                "Preserve flag should clear after dictionary mutation."
+            );
+            Assert.IsNull(
+                storedKeysAfterAdd,
+                "Serialized keys should reset after dictionary mutation."
+            );
+            Assert.IsNull(
+                storedValuesAfterAdd,
+                "Serialized values should reset after dictionary mutation."
+            );
+        }
+
         [Serializable]
         private sealed class IntCache : SerializableDictionary.Cache<int> { }
     }
