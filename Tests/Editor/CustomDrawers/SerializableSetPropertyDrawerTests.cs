@@ -9,7 +9,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
     using WallstopStudios.UnityHelpers.Tests.Utils;
 
-    public sealed class SerializableHashSetPropertyDrawerTests : CommonTestBase
+    public sealed class SerializableSetPropertyDrawerTests : CommonTestBase
     {
         private sealed class HashSetHost : ScriptableObject
         {
@@ -34,15 +34,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             serializedObject.Update();
             SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
 
-            SerializableHashSetPropertyDrawer drawer = new SerializableHashSetPropertyDrawer();
-            SerializableHashSetPropertyDrawer.PaginationState pagination =
+            SerializableSetPropertyDrawer drawer = new SerializableSetPropertyDrawer();
+            SerializableSetPropertyDrawer.PaginationState pagination =
                 drawer.GetOrCreatePaginationState(setProperty);
             pagination.pageSize = 4096;
 
             drawer.GetPropertyHeight(setProperty, GUIContent.none);
 
             Assert.AreEqual(
-                SerializableHashSetPropertyDrawer.MaxPageSize,
+                SerializableSetPropertyDrawer.MaxPageSize,
                 pagination.pageSize,
                 "Page size should clamp to drawer maximum."
             );
@@ -68,8 +68,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 SerializableHashSetSerializedPropertyNames.Items
             );
 
-            SerializableHashSetPropertyDrawer drawer = new SerializableHashSetPropertyDrawer();
-            SerializableHashSetPropertyDrawer.DuplicateState state = drawer.EvaluateDuplicateState(
+            SerializableSetPropertyDrawer drawer = new SerializableSetPropertyDrawer();
+            SerializableSetPropertyDrawer.DuplicateState state = drawer.EvaluateDuplicateState(
                 setProperty,
                 itemsProperty,
                 force: true
@@ -78,6 +78,38 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.IsTrue(state.HasDuplicates);
             CollectionAssert.AreEquivalent(new int[] { 0, 1 }, state.DuplicateIndices);
             StringAssert.Contains("Value 2", state.Summary);
+        }
+
+        [Test]
+        public void TryAddNewElementAppendsDefaultValue()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new SerializableSetPropertyDrawer();
+            bool added = drawer.TryAddNewElement(
+                ref setProperty,
+                setProperty.propertyPath,
+                ref itemsProperty
+            );
+
+            Assert.IsTrue(added, "Drawer failed to append a new element.");
+
+            serializedObject.ApplyModifiedProperties();
+            serializedObject.Update();
+            setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            Assert.IsNotNull(itemsProperty);
+            Assert.AreEqual(1, itemsProperty.arraySize);
+            Assert.AreEqual(1, host.set.Count);
         }
 
         [Test]
@@ -104,16 +136,22 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             serializedObject.ApplyModifiedProperties();
             serializedObject.Update();
 
-            SerializableHashSetPropertyDrawer drawer = new SerializableHashSetPropertyDrawer();
+            SerializableSetPropertyDrawer drawer = new SerializableSetPropertyDrawer();
             drawer.SortElements(setProperty, itemsProperty);
 
             serializedObject.Update();
-            int[] result = Enumerable
+            setProperty = serializedObject.FindProperty(nameof(SortedHashSetHost.set));
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            int[] serialized = Enumerable
                 .Range(0, itemsProperty.arraySize)
                 .Select(i => itemsProperty.GetArrayElementAtIndex(i).intValue)
                 .ToArray();
 
-            CollectionAssert.AreEqual(new int[] { 1, 3, 5 }, result);
+            CollectionAssert.AreEqual(new int[] { 1, 3, 5 }, serialized);
+            CollectionAssert.AreEqual(new int[] { 1, 3, 5 }, host.set.ToArray());
         }
 
         [Test]
@@ -132,15 +170,32 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 SerializableHashSetSerializedPropertyNames.Items
             );
 
-            MethodInfo removeEntry = typeof(SerializableHashSetPropertyDrawer).GetMethod(
+            MethodInfo removeEntry = typeof(SerializableSetPropertyDrawer).GetMethod(
                 "RemoveEntry",
                 BindingFlags.Static | BindingFlags.NonPublic
             );
             Assert.IsNotNull(removeEntry);
 
+            SerializableSetPropertyDrawer drawer = new SerializableSetPropertyDrawer();
+            MethodInfo removeValue = typeof(SerializableSetPropertyDrawer).GetMethod(
+                "RemoveValueFromSet",
+                BindingFlags.Instance | BindingFlags.NonPublic
+            );
+            Assert.IsNotNull(removeValue);
+
+            int removedValue = itemsProperty.GetArrayElementAtIndex(1).intValue;
             removeEntry.Invoke(null, new object[] { itemsProperty, 1 });
+            removeValue.Invoke(
+                drawer,
+                new object[] { setProperty, setProperty.propertyPath, removedValue }
+            );
             serializedObject.ApplyModifiedProperties();
             serializedObject.Update();
+
+            setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
 
             Assert.AreEqual(2, itemsProperty.arraySize);
             int[] remaining = Enumerable
@@ -148,6 +203,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 .Select(i => itemsProperty.GetArrayElementAtIndex(i).intValue)
                 .ToArray();
             CollectionAssert.AreEquivalent(new int[] { 10, 30 }, remaining);
+            Assert.AreEqual(2, host.set.Count);
         }
     }
 }

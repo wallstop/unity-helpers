@@ -1,6 +1,7 @@
 namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 {
     using System;
+    using System.Collections;
     using System.Collections.Generic;
     using System.Reflection;
     using System.Text;
@@ -11,20 +12,22 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
     [CustomPropertyDrawer(typeof(SerializableHashSet<>), true)]
     [CustomPropertyDrawer(typeof(SerializableSortedSet<>), true)]
-    public sealed class SerializableHashSetPropertyDrawer : PropertyDrawer
+    public sealed class SerializableSetPropertyDrawer : PropertyDrawer
     {
         private const float RowSpacing = 2f;
         private const float SectionSpacing = 4f;
         private const float ButtonSpacing = 4f;
         private const float RemoveButtonWidth = 20f;
-        private const float PaginationButtonWidth = 24f;
+        private const float PaginationButtonWidth = 28f;
         private const float ToolbarHeight = 18f;
         private const int DefaultPageSize = 15;
         internal const int MaxPageSize = 250;
+        private const int MaxAutoAddAttempts = 256;
 
+        private static readonly GUIContent AddEntryContent = new GUIContent("Add");
         private static readonly GUIContent ClearAllContent = new GUIContent("Clear All");
         private static readonly GUIContent SortContent = new GUIContent("Sort");
-        private static readonly GUIContent PageSizeContent = new GUIContent("Size");
+        private static readonly GUIContent PageSizeContent = new GUIContent("Page Size");
         private static readonly GUIContent FirstPageContent = new GUIContent("<<", "First Page");
         private static readonly GUIContent PreviousPageContent = new GUIContent(
             "<",
@@ -68,6 +71,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             int totalCount = hasItemsArray ? itemsProperty.arraySize : 0;
 
             string foldoutLabel = BuildFoldoutLabel(label, totalCount);
+            string propertyPath = property.propertyPath;
 
             EditorGUI.BeginProperty(position, label, property);
 
@@ -97,14 +101,29 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             bool isSortedSet = IsSortedSet(property);
             DuplicateState duplicateState = EvaluateDuplicateState(property, itemsProperty);
-            bool drawHelpBox =
-                duplicateState.HasDuplicates && !string.IsNullOrEmpty(duplicateState.Summary);
 
             EditorGUI.indentLevel++;
 
             Rect toolbarRect = new Rect(position.x, y, position.width, ToolbarHeight);
-            DrawToolbar(toolbarRect, property, itemsProperty, pagination, isSortedSet);
+            DrawToolbar(
+                toolbarRect,
+                ref property,
+                propertyPath,
+                ref itemsProperty,
+                pagination,
+                isSortedSet
+            );
             y = toolbarRect.yMax + SectionSpacing;
+
+            itemsProperty = property.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+            hasItemsArray = itemsProperty != null && itemsProperty.isArray;
+            totalCount = hasItemsArray ? itemsProperty.arraySize : 0;
+            EnsurePaginationBounds(pagination, totalCount);
+            duplicateState = EvaluateDuplicateState(property, itemsProperty);
+            bool drawHelpBox =
+                duplicateState.HasDuplicates && !string.IsNullOrEmpty(duplicateState.Summary);
 
             if (drawHelpBox)
             {
@@ -171,9 +190,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     {
                         if (GUI.Button(removeRect, "-", EditorStyles.miniButton))
                         {
+                            SetElementData elementData = ReadElementData(element);
                             RemoveEntry(itemsProperty, index);
+                            RemoveValueFromSet(property, propertyPath, elementData.Value);
                             property.serializedObject.ApplyModifiedProperties();
                             property.serializedObject.Update();
+                            property = property.serializedObject.FindProperty(propertyPath);
+                            itemsProperty = property.FindPropertyRelative(
+                                SerializableHashSetSerializedPropertyNames.Items
+                            );
+                            hasItemsArray = itemsProperty != null && itemsProperty.isArray;
                             totalCount = hasItemsArray ? itemsProperty.arraySize : 0;
                             EnsurePaginationBounds(pagination, totalCount);
                             EvaluateDuplicateState(property, itemsProperty, force: true);
@@ -284,8 +310,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private void DrawToolbar(
             Rect rect,
-            SerializedProperty property,
-            SerializedProperty itemsProperty,
+            ref SerializedProperty property,
+            string propertyPath,
+            ref SerializedProperty itemsProperty,
             PaginationState pagination,
             bool isSortedSet
         )
@@ -294,70 +321,134 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             int totalCount =
                 itemsProperty != null && itemsProperty.isArray ? itemsProperty.arraySize : 0;
 
-            Rect clearRect = new Rect(rect.x, rect.y, 80f, EditorGUIUtility.singleLineHeight);
-            Rect sortRect = new Rect(
-                clearRect.xMax + ButtonSpacing,
-                rect.y,
-                60f,
-                EditorGUIUtility.singleLineHeight
-            );
+            float lineHeight = EditorGUIUtility.singleLineHeight;
+            Rect addRect = new Rect(rect.x, rect.y, 60f, lineHeight);
+            Rect clearRect = new Rect(addRect.xMax + ButtonSpacing, rect.y, 80f, lineHeight);
+            float nextX = clearRect.xMax + ButtonSpacing;
+
+            if (GUI.Button(addRect, AddEntryContent, EditorStyles.miniButton))
+            {
+                if (TryAddNewElement(ref property, propertyPath, ref itemsProperty))
+                {
+                    serializedObject = property.serializedObject;
+                    itemsProperty = property.FindPropertyRelative(
+                        SerializableHashSetSerializedPropertyNames.Items
+                    );
+                    totalCount =
+                        itemsProperty != null && itemsProperty.isArray
+                            ? itemsProperty.arraySize
+                            : 0;
+                    EnsurePaginationBounds(pagination, totalCount);
+                }
+            }
 
             using (new EditorGUI.DisabledScope(totalCount == 0))
             {
                 if (GUI.Button(clearRect, ClearAllContent, EditorStyles.miniButton))
                 {
-                    if (itemsProperty != null)
+                    if (TryClearSet(ref property, propertyPath, ref itemsProperty))
                     {
-                        itemsProperty.ClearArray();
+                        serializedObject = property.serializedObject;
+                        itemsProperty = property.FindPropertyRelative(
+                            SerializableHashSetSerializedPropertyNames.Items
+                        );
+                        totalCount =
+                            itemsProperty != null && itemsProperty.isArray
+                                ? itemsProperty.arraySize
+                                : 0;
+                        pagination.page = 0;
+                        EnsurePaginationBounds(pagination, totalCount);
                     }
-
-                    serializedObject.ApplyModifiedProperties();
-                    serializedObject.Update();
-                    EvaluateDuplicateState(property, itemsProperty, force: true);
-                    pagination.page = 0;
-                    return;
                 }
             }
 
+            Rect sortRect = Rect.zero;
             if (isSortedSet)
             {
+                sortRect = new Rect(nextX, rect.y, 60f, lineHeight);
                 using (new EditorGUI.DisabledScope(!CanSortElements(itemsProperty)))
                 {
                     if (GUI.Button(sortRect, SortContent, EditorStyles.miniButton))
                     {
-                        SortElements(property, itemsProperty);
-                        serializedObject.ApplyModifiedProperties();
-                        serializedObject.Update();
-                        EvaluateDuplicateState(property, itemsProperty, force: true);
+                        if (TrySortElements(ref property, propertyPath, itemsProperty))
+                        {
+                            serializedObject = property.serializedObject;
+                            itemsProperty = property.FindPropertyRelative(
+                                SerializableHashSetSerializedPropertyNames.Items
+                            );
+                            totalCount =
+                                itemsProperty != null && itemsProperty.isArray
+                                    ? itemsProperty.arraySize
+                                    : 0;
+                            EnsurePaginationBounds(pagination, totalCount);
+                        }
                     }
                 }
+                nextX = sortRect.xMax + ButtonSpacing;
+            }
+            else
+            {
+                nextX = clearRect.xMax + ButtonSpacing;
             }
 
+            Rect entriesRect = new Rect(nextX, rect.y, 100f, lineHeight);
+            EditorGUI.LabelField(entriesRect, $"Entries: {totalCount}", EditorStyles.miniLabel);
+            nextX = entriesRect.xMax + ButtonSpacing;
+
             float navigationWidth = PaginationButtonWidth * 4f + ButtonSpacing * 3f;
-            float pageSizeWidth = 110f;
-            float controlsRight = rect.xMax;
+            float pageSizeWidth = 130f;
+            float pageInfoWidth = totalCount > 0 ? 90f : 0f;
 
             Rect navigationRect = new Rect(
-                controlsRight - navigationWidth,
+                rect.xMax - navigationWidth,
                 rect.y,
                 navigationWidth,
-                EditorGUIUtility.singleLineHeight
+                lineHeight
             );
 
             Rect pageSizeRect = new Rect(
                 navigationRect.x - ButtonSpacing - pageSizeWidth,
                 rect.y,
                 pageSizeWidth,
-                EditorGUIUtility.singleLineHeight
+                lineHeight
             );
 
-            DrawPageSizeField(pageSizeRect, pagination);
-            DrawPaginationButtons(navigationRect, pagination, totalCount);
+            Rect pageInfoRect =
+                totalCount > 0
+                    ? new Rect(
+                        pageSizeRect.x - ButtonSpacing - pageInfoWidth,
+                        rect.y,
+                        pageInfoWidth,
+                        lineHeight
+                    )
+                    : Rect.zero;
+
+            if (totalCount > 0)
+            {
+                int pageSize = Mathf.Max(1, pagination.pageSize);
+                int pageCount = Mathf.Max(1, (totalCount + pageSize - 1) / pageSize);
+                int currentPage = Mathf.Clamp(pagination.page + 1, 1, pageCount);
+                EditorGUI.LabelField(
+                    pageInfoRect,
+                    $"Page {currentPage}/{pageCount}",
+                    EditorStyles.miniLabel
+                );
+                DrawPageSizeField(pageSizeRect, pagination, totalCount);
+                DrawPaginationButtons(navigationRect, pagination, totalCount);
+            }
+            else
+            {
+                DrawPageSizeField(pageSizeRect, pagination, totalCount);
+                using (new EditorGUI.DisabledScope(true))
+                {
+                    DrawPaginationButtons(navigationRect, pagination, totalCount);
+                }
+            }
         }
 
-        private void DrawPageSizeField(Rect rect, PaginationState pagination)
+        private void DrawPageSizeField(Rect rect, PaginationState pagination, int totalCount)
         {
-            float labelWidth = 32f;
+            float labelWidth = 60f;
             Rect labelRect = new Rect(rect.x, rect.y, labelWidth, rect.height);
             Rect fieldRect = new Rect(
                 rect.x + labelWidth + 2f,
@@ -368,15 +459,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             EditorGUI.LabelField(labelRect, PageSizeContent, EditorStyles.miniLabel);
 
-            int newSize = EditorGUI.IntField(fieldRect, pagination.pageSize);
-            if (newSize != pagination.pageSize)
+            using (new EditorGUI.DisabledScope(totalCount == 0))
             {
-                pagination.pageSize = Mathf.Clamp(
-                    newSize,
-                    UnityHelpersSettings.MinPageSize,
-                    MaxPageSize
-                );
-                pagination.page = 0;
+                int newSize = EditorGUI.IntField(fieldRect, pagination.pageSize);
+                if (newSize != pagination.pageSize)
+                {
+                    pagination.pageSize = Mathf.Clamp(
+                        newSize,
+                        UnityHelpersSettings.MinPageSize,
+                        MaxPageSize
+                    );
+                    pagination.page = 0;
+                }
             }
         }
 
@@ -609,6 +703,39 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return false;
         }
 
+        private static Type GetElementType(SerializedProperty property)
+        {
+            Type managedType = property.GetManagedType();
+            if (managedType == null)
+            {
+                return null;
+            }
+
+            Type current = managedType;
+            while (current != null)
+            {
+                if (current.IsGenericType)
+                {
+                    Type definition = current.GetGenericTypeDefinition();
+                    if (
+                        definition == typeof(SerializableHashSet<>)
+                        || definition == typeof(SerializableSortedSet<>)
+                    )
+                    {
+                        Type[] arguments = current.GetGenericArguments();
+                        if (arguments.Length == 1)
+                        {
+                            return arguments[0];
+                        }
+                    }
+                }
+
+                current = current.BaseType;
+            }
+
+            return null;
+        }
+
         private static bool CanSortElements(SerializedProperty itemsProperty)
         {
             if (itemsProperty == null || !itemsProperty.isArray || itemsProperty.arraySize <= 1)
@@ -650,11 +777,101 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
         }
 
-        internal void SortElements(SerializedProperty property, SerializedProperty itemsProperty)
+        internal bool TryAddNewElement(
+            ref SerializedProperty property,
+            string propertyPath,
+            ref SerializedProperty itemsProperty
+        )
+        {
+            object setInstance = GetSetInstance(property, propertyPath);
+            if (setInstance == null)
+            {
+                return false;
+            }
+
+            Type setType = setInstance.GetType();
+            Type elementType = GetElementType(property);
+
+            if (elementType == null)
+            {
+                return false;
+            }
+
+            MethodInfo addMethod = setType.GetMethod("Add", new[] { elementType });
+            MethodInfo containsMethod = setType.GetMethod("Contains", new[] { elementType });
+
+            if (addMethod == null || containsMethod == null)
+            {
+                return false;
+            }
+
+            foreach (object candidate in GenerateCandidateValues(elementType, setInstance))
+            {
+                object boxed = candidate;
+                bool alreadyExists = (bool)
+                    containsMethod.Invoke(setInstance, new object[] { boxed });
+                if (alreadyExists)
+                {
+                    continue;
+                }
+
+                bool added = (bool)addMethod.Invoke(setInstance, new object[] { boxed });
+                if (!added)
+                {
+                    continue;
+                }
+
+                InvokeOnBeforeSerialize(setType, setInstance);
+                property.serializedObject.Update();
+                property = property.serializedObject.FindProperty(propertyPath);
+                itemsProperty = property?.FindPropertyRelative(
+                    SerializableHashSetSerializedPropertyNames.Items
+                );
+                return true;
+            }
+
+            Debug.LogWarning("Unable to generate a unique value for this set element type.");
+            return false;
+        }
+
+        private bool TryClearSet(
+            ref SerializedProperty property,
+            string propertyPath,
+            ref SerializedProperty itemsProperty
+        )
+        {
+            object setInstance = GetSetInstance(property, propertyPath);
+            if (setInstance == null)
+            {
+                return false;
+            }
+
+            Type setType = setInstance.GetType();
+            MethodInfo clearMethod = setType.GetMethod("Clear", Type.EmptyTypes);
+            if (clearMethod == null)
+            {
+                return false;
+            }
+
+            clearMethod.Invoke(setInstance, null);
+            InvokeOnBeforeSerialize(setType, setInstance);
+            property.serializedObject.Update();
+            property = property.serializedObject.FindProperty(propertyPath);
+            itemsProperty = property?.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+            return true;
+        }
+
+        private bool TrySortElements(
+            ref SerializedProperty property,
+            string propertyPath,
+            SerializedProperty itemsProperty
+        )
         {
             if (itemsProperty == null || !itemsProperty.isArray || itemsProperty.arraySize <= 1)
             {
-                return;
+                return false;
             }
 
             int count = itemsProperty.arraySize;
@@ -688,8 +905,407 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 WriteElementValue(elementProperty, elements[index]);
             }
 
-            property.serializedObject.ApplyModifiedProperties();
+            object setInstance = GetSetInstance(property, propertyPath);
+            Type elementType = GetElementType(property);
+            if (setInstance != null && elementType != null)
+            {
+                Type setType = setInstance.GetType();
+                MethodInfo clearMethod = setType.GetMethod("Clear", Type.EmptyTypes);
+                MethodInfo addMethod = setType.GetMethod("Add", new[] { elementType });
+                if (clearMethod != null && addMethod != null)
+                {
+                    clearMethod.Invoke(setInstance, null);
+                    foreach (SetElementData element in elements)
+                    {
+                        addMethod.Invoke(setInstance, new[] { element.Value });
+                    }
+                }
+
+                InvokeOnBeforeSerialize(setType, setInstance);
+            }
+
             property.serializedObject.Update();
+            property = property.serializedObject.FindProperty(propertyPath);
+            return true;
+        }
+
+        private void RemoveValueFromSet(
+            SerializedProperty property,
+            string propertyPath,
+            object value
+        )
+        {
+            object setInstance = GetSetInstance(property, propertyPath);
+            if (setInstance == null)
+            {
+                return;
+            }
+
+            Type setType = setInstance.GetType();
+            Type elementType = GetElementType(property);
+            if (elementType == null)
+            {
+                return;
+            }
+
+            MethodInfo removeMethod = setType.GetMethod("Remove", new[] { elementType });
+            if (removeMethod == null)
+            {
+                return;
+            }
+
+            removeMethod.Invoke(setInstance, new[] { value });
+            InvokeOnBeforeSerialize(setType, setInstance);
+        }
+
+        private static object GetSetInstance(SerializedProperty property, string propertyPath)
+        {
+            return GetTargetObjectOfProperty(property.serializedObject.targetObject, propertyPath);
+        }
+
+        private static void InvokeOnBeforeSerialize(Type setType, object setInstance)
+        {
+            MethodInfo method = setType.GetMethod(
+                "OnBeforeSerialize",
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+            );
+            method?.Invoke(setInstance, null);
+        }
+
+        private static IEnumerable<object> GenerateCandidateValues(
+            Type elementType,
+            object setInstance
+        )
+        {
+            int existingCount = CountSetElements(setInstance);
+
+            if (elementType == typeof(string))
+            {
+                yield return "New Entry";
+                for (int i = 1; i < MaxAutoAddAttempts; i++)
+                {
+                    yield return $"New Entry ({i})";
+                }
+                yield break;
+            }
+
+            if (IsSignedIntegral(elementType))
+            {
+                for (long i = 0; i < MaxAutoAddAttempts; i++)
+                {
+                    yield return Convert.ChangeType(i, elementType);
+                    if (i > 0)
+                    {
+                        yield return Convert.ChangeType(-i, elementType);
+                    }
+                }
+                yield break;
+            }
+
+            if (IsUnsignedIntegral(elementType))
+            {
+                for (long i = 0; i < MaxAutoAddAttempts; i++)
+                {
+                    yield return Convert.ChangeType(i, elementType);
+                }
+                yield break;
+            }
+
+            if (
+                elementType == typeof(float)
+                || elementType == typeof(double)
+                || elementType == typeof(decimal)
+            )
+            {
+                for (int i = 0; i < MaxAutoAddAttempts; i++)
+                {
+                    yield return Convert.ChangeType(i, elementType);
+                }
+                yield break;
+            }
+
+            if (elementType == typeof(bool))
+            {
+                yield return false;
+                yield return true;
+                yield break;
+            }
+
+            if (elementType == typeof(char))
+            {
+                for (int i = 0; i < MaxAutoAddAttempts; i++)
+                {
+                    yield return (char)('A' + (i % 26));
+                }
+                yield break;
+            }
+
+            if (elementType.IsEnum)
+            {
+                foreach (object value in Enum.GetValues(elementType))
+                {
+                    yield return value;
+                }
+                yield break;
+            }
+
+            if (elementType == typeof(Vector2))
+            {
+                for (int i = 0; i < MaxAutoAddAttempts; i++)
+                {
+                    yield return new Vector2(i + 1f, 0f);
+                }
+                yield break;
+            }
+
+            if (elementType == typeof(Vector3))
+            {
+                for (int i = 0; i < MaxAutoAddAttempts; i++)
+                {
+                    yield return new Vector3(i + 1f, 0f, 0f);
+                }
+                yield break;
+            }
+
+            if (elementType == typeof(Vector4))
+            {
+                for (int i = 0; i < MaxAutoAddAttempts; i++)
+                {
+                    yield return new Vector4(i + 1f, 0f, 0f, 0f);
+                }
+                yield break;
+            }
+
+            if (elementType == typeof(Vector2Int))
+            {
+                for (int i = 0; i < MaxAutoAddAttempts; i++)
+                {
+                    yield return new Vector2Int(i + 1, 0);
+                }
+                yield break;
+            }
+
+            if (elementType == typeof(Vector3Int))
+            {
+                for (int i = 0; i < MaxAutoAddAttempts; i++)
+                {
+                    yield return new Vector3Int(i + 1, 0, 0);
+                }
+                yield break;
+            }
+
+            if (elementType == typeof(Rect))
+            {
+                for (int i = 0; i < MaxAutoAddAttempts; i++)
+                {
+                    yield return new Rect(i + 1f, 0f, 1f, 1f);
+                }
+                yield break;
+            }
+
+            if (elementType == typeof(RectInt))
+            {
+                for (int i = 0; i < MaxAutoAddAttempts; i++)
+                {
+                    yield return new RectInt(i + 1, 0, 1, 1);
+                }
+                yield break;
+            }
+
+            if (elementType == typeof(Bounds))
+            {
+                for (int i = 0; i < MaxAutoAddAttempts; i++)
+                {
+                    Bounds bounds = new Bounds(new Vector3(i + 1f, 0f, 0f), Vector3.one);
+                    yield return bounds;
+                }
+                yield break;
+            }
+
+            if (elementType == typeof(BoundsInt))
+            {
+                for (int i = 0; i < MaxAutoAddAttempts; i++)
+                {
+                    BoundsInt bounds = new BoundsInt(new Vector3Int(i + 1, 0, 0), Vector3Int.one);
+                    yield return bounds;
+                }
+                yield break;
+            }
+
+            if (elementType == typeof(Color))
+            {
+                for (int i = 0; i < MaxAutoAddAttempts; i++)
+                {
+                    float hue =
+                        (existingCount + i) % MaxAutoAddAttempts / (float)MaxAutoAddAttempts;
+                    yield return Color.HSVToRGB(hue, 0.8f, 1f);
+                }
+                yield break;
+            }
+
+            if (elementType == typeof(Quaternion))
+            {
+                for (int i = 0; i < MaxAutoAddAttempts; i++)
+                {
+                    yield return Quaternion.Euler((existingCount + i) * 10f, 0f, 0f);
+                }
+                yield break;
+            }
+
+            if (elementType == typeof(Hash128))
+            {
+                for (uint i = 1; i <= MaxAutoAddAttempts; i++)
+                {
+                    yield return new Hash128(i, 0u, 0u, 0u);
+                }
+                yield break;
+            }
+
+            if (typeof(UnityEngine.Object).IsAssignableFrom(elementType))
+            {
+                yield return null;
+                yield break;
+            }
+
+            if (!elementType.IsAbstract && elementType.GetConstructor(Type.EmptyTypes) != null)
+            {
+                for (int i = 0; i < MaxAutoAddAttempts; i++)
+                {
+                    yield return Activator.CreateInstance(elementType);
+                }
+                yield break;
+            }
+
+            if (elementType.IsValueType)
+            {
+                yield return Activator.CreateInstance(elementType);
+            }
+            else
+            {
+                yield return null;
+            }
+        }
+
+        private static bool IsSignedIntegral(Type type)
+        {
+            return type == typeof(int)
+                || type == typeof(long)
+                || type == typeof(short)
+                || type == typeof(sbyte);
+        }
+
+        private static bool IsUnsignedIntegral(Type type)
+        {
+            return type == typeof(uint)
+                || type == typeof(ulong)
+                || type == typeof(ushort)
+                || type == typeof(byte);
+        }
+
+        private static int CountSetElements(object setInstance)
+        {
+            if (setInstance is not IEnumerable enumerable)
+            {
+                return 0;
+            }
+
+            int count = 0;
+            foreach (object _ in enumerable)
+            {
+                count++;
+            }
+
+            return count;
+        }
+
+        private static object GetTargetObjectOfProperty(object target, string propertyPath)
+        {
+            if (target == null || string.IsNullOrEmpty(propertyPath))
+            {
+                return null;
+            }
+
+            object currentTarget = target;
+            string[] elements = propertyPath.Replace(".Array.data[", "[").Split('.');
+            foreach (string element in elements)
+            {
+                if (currentTarget == null)
+                {
+                    return null;
+                }
+
+                if (element.Contains("["))
+                {
+                    int leftBracket = element.IndexOf('[');
+                    string elementName = element.Substring(0, leftBracket);
+                    string indexPart = element
+                        .Substring(leftBracket)
+                        .Replace("[", string.Empty)
+                        .Replace("]", string.Empty);
+                    if (!int.TryParse(indexPart, out int index))
+                    {
+                        return null;
+                    }
+
+                    currentTarget = GetIndexedValue(currentTarget, elementName, index);
+                }
+                else
+                {
+                    currentTarget = GetMemberValue(currentTarget, element);
+                }
+            }
+
+            return currentTarget;
+        }
+
+        private static object GetMemberValue(object source, string name)
+        {
+            if (source == null)
+            {
+                return null;
+            }
+
+            Type type = source.GetType();
+
+            FieldInfo field = type.GetField(
+                name,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+            );
+            if (field != null)
+            {
+                return field.GetValue(source);
+            }
+
+            PropertyInfo property = type.GetProperty(
+                name,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+            );
+            return property?.GetValue(source);
+        }
+
+        private static object GetIndexedValue(object source, string name, int index)
+        {
+            object collection = GetMemberValue(source, name);
+            if (collection is not IEnumerable enumerable)
+            {
+                return null;
+            }
+
+            IEnumerator enumerator = enumerable.GetEnumerator();
+            for (int i = 0; i <= index; i++)
+            {
+                if (!enumerator.MoveNext())
+                {
+                    return null;
+                }
+            }
+
+            return enumerator.Current;
+        }
+
+        internal void SortElements(SerializedProperty property, SerializedProperty itemsProperty)
+        {
+            TrySortElements(ref property, property.propertyPath, itemsProperty);
         }
 
         private static int CompareComparableValues(object left, object right)
@@ -943,7 +1559,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         }
     }
 
-    internal static class SerializableHashSetPropertyDrawerExtensions
+    internal static class SerializableSetPropertyDrawerExtensions
     {
         public static Type GetManagedType(this SerializedProperty property)
         {
