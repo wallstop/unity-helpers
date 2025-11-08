@@ -79,6 +79,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             private readonly DropdownField dropdown;
             private readonly Label noResultsLabel;
             private readonly Label suggestionHintLabel;
+            private readonly VisualElement inputContainer;
             private TextElement searchTextInput;
             private readonly List<int> filteredIndices = new List<int>();
             private readonly List<int> pageOptionIndices = new List<int>();
@@ -105,12 +106,23 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 suggestionOptionIndex = -1;
 
                 AddToClassList("unity-base-field");
+                AddToClassList("unity-base-field__aligned");
                 style.flexDirection = FlexDirection.Column;
+                style.marginLeft = 0f;
+
+                inputContainer = new VisualElement();
+                inputContainer.AddToClassList("unity-base-field__input");
+                inputContainer.style.flexGrow = 1f;
+                inputContainer.style.marginLeft = 0f;
+                inputContainer.style.paddingLeft = 0f;
+                Add(inputContainer);
 
                 searchRow = new VisualElement();
                 searchRow.style.flexDirection = FlexDirection.Row;
                 searchRow.style.alignItems = Align.Center;
                 searchRow.style.marginBottom = 4f;
+                searchRow.style.marginLeft = 0f;
+                searchRow.style.paddingLeft = 0f;
 
                 VisualElement searchWrapper = new VisualElement();
                 searchWrapper.style.flexGrow = 1f;
@@ -163,7 +175,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 searchRow.Add(searchWrapper);
                 searchRow.Add(clearButton);
                 searchRow.Add(paginationContainer);
-                Add(searchRow);
+                inputContainer.Add(searchRow);
 
                 suggestionHintLabel = new Label();
                 suggestionHintLabel.style.display = DisplayStyle.None;
@@ -173,18 +185,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 suggestionHintLabel.style.unityFontStyleAndWeight = FontStyle.Italic;
                 suggestionHintLabel.style.fontSize = 11f;
                 suggestionHintLabel.pickingMode = PickingMode.Ignore;
-                Add(suggestionHintLabel);
+                inputContainer.Add(suggestionHintLabel);
 
                 dropdown = new DropdownField { choices = new List<string>() };
                 dropdown.style.flexGrow = 1f;
                 dropdown.RegisterValueChangedCallback(OnDropdownValueChanged);
-                Add(dropdown);
+                inputContainer.Add(dropdown);
 
                 noResultsLabel = new Label("No results match the current search.");
                 noResultsLabel.style.display = DisplayStyle.None;
                 noResultsLabel.style.color = new StyleColor(new Color(1f, 0.4f, 0.4f));
                 noResultsLabel.style.marginLeft = 2f;
-                Add(noResultsLabel);
+                inputContainer.Add(noResultsLabel);
 
                 ApplySearchVisibility(ShouldShowSearch(lastResolvedPageSize));
 
