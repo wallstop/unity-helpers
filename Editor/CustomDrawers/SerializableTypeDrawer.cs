@@ -8,7 +8,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
 
     /// <summary>
-    /// Property drawer that provides search and pagination for <see cref="SerializableType"/>.
+    /// Property drawer that provides search, paging, and lightweight autocomplete for SerializableType.
     /// </summary>
     [CustomPropertyDrawer(typeof(SerializableType))]
     public sealed class SerializableTypeDrawer : PropertyDrawer
@@ -28,7 +28,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static readonly Dictionary<string, DrawerState> States =
             new Dictionary<string, DrawerState>();
 
-        /// <inheritdoc/>
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {
             float lineHeight = EditorGUIUtility.singleLineHeight;
@@ -36,13 +35,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return (lineHeight * 2f) + spacing;
         }
 
-        /// <inheritdoc/>
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
-            SerializedProperty nameProperty = property.FindPropertyRelative(
+            SerializedProperty assemblyQualifiedName = property.FindPropertyRelative(
                 "_assemblyQualifiedName"
             );
-            if (nameProperty == null)
+            if (assemblyQualifiedName == null)
             {
                 EditorGUI.PropertyField(position, property, label, true);
                 return;
@@ -53,69 +51,97 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             float lineHeight = EditorGUIUtility.singleLineHeight;
             float spacing = EditorGUIUtility.standardVerticalSpacing;
 
-            Rect typeRect = new Rect(position.x, position.y, position.width, lineHeight);
-
-            float reservedWidth = ClearWidth + (ButtonWidth * 2f) + PageLabelWidth + (spacing * 4f);
-            float searchWidth = Math.Max(0f, position.width - reservedWidth);
-            Rect searchRect = new Rect(
+            Rect searchRow = new Rect(position.x, position.y, position.width, lineHeight);
+            Rect popupRow = new Rect(
                 position.x,
-                typeRect.yMax + spacing,
-                searchWidth,
+                searchRow.yMax + spacing,
+                position.width,
+                lineHeight
+            );
+
+            Rect searchRowIndented = EditorGUI.IndentedRect(searchRow);
+            Rect popupRowIndented = EditorGUI.IndentedRect(popupRow);
+
+            float buttonSpacing = spacing;
+            float controlsWidth =
+                ClearWidth + (ButtonWidth * 2f) + PageLabelWidth + (buttonSpacing * 3f);
+
+            float searchLabelWidth = Mathf.Min(
+                EditorGUIUtility.labelWidth,
+                Math.Max(0f, searchRowIndented.width - controlsWidth - 10f)
+            );
+
+            Rect searchLabelRect = new Rect(
+                searchRowIndented.x,
+                searchRowIndented.y,
+                searchLabelWidth,
+                lineHeight
+            );
+
+            float searchFieldWidth = Mathf.Max(
+                0f,
+                searchRowIndented.width - searchLabelWidth - controlsWidth
+            );
+
+            Rect searchFieldRect = new Rect(
+                searchLabelRect.xMax,
+                searchRowIndented.y,
+                searchFieldWidth,
                 lineHeight
             );
 
             Rect clearRect = new Rect(
-                searchRect.xMax + spacing,
-                searchRect.y,
+                searchFieldRect.xMax + buttonSpacing,
+                searchRowIndented.y,
                 ClearWidth,
                 lineHeight
             );
+
             Rect prevRect = new Rect(
-                clearRect.xMax + spacing,
-                searchRect.y,
+                clearRect.xMax + buttonSpacing,
+                searchRowIndented.y,
                 ButtonWidth,
                 lineHeight
             );
+
             Rect pageInfoRect = new Rect(
-                prevRect.xMax + spacing,
-                searchRect.y,
+                prevRect.xMax + buttonSpacing,
+                searchRowIndented.y,
                 PageLabelWidth,
                 lineHeight
             );
+
             Rect nextRect = new Rect(
-                pageInfoRect.xMax + spacing,
-                searchRect.y,
+                pageInfoRect.xMax + buttonSpacing,
+                searchRowIndented.y,
                 ButtonWidth,
                 lineHeight
             );
 
-            EditorGUI.BeginProperty(position, label, property);
-            int originalIndent = EditorGUI.indentLevel;
-            EditorGUI.indentLevel = 0;
-            try
+            using (new EditorGUI.PropertyScope(position, GUIContent.none, property))
             {
-                string searchInput = state.Search;
-                if (searchRect.width > 0f)
-                {
-                    searchInput = EditorGUI.TextField(searchRect, "Search", state.Search);
-                }
-                else
-                {
-                    EditorGUI.LabelField(searchRect, GUIContent.none);
-                }
+                EditorGUI.LabelField(searchLabelRect, "Search");
 
-                if (!string.Equals(searchInput, state.Search, StringComparison.Ordinal))
+                string controlName = $"SerializableTypeSearch_{property.propertyPath}";
+                GUI.SetNextControlName(controlName);
+                string incomingSearch = EditorGUI.TextField(
+                    searchFieldRect,
+                    GUIContent.none,
+                    state.Search ?? string.Empty
+                );
+                if (!string.Equals(incomingSearch, state.Search, StringComparison.Ordinal))
                 {
-                    state.Search = searchInput;
+                    state.Search = incomingSearch ?? string.Empty;
                     state.Page = 0;
                 }
 
                 IReadOnlyList<SerializableTypeCatalog.SerializableTypeDescriptor> filtered =
-                    SerializableTypeCatalog.GetFilteredDescriptors(state.Search);
+                    SerializableTypeCatalog.GetFilteredDescriptors(state.Search ?? string.Empty);
 
                 int pageCount = Math.Max(1, (filtered.Count + PageSize - 1) / PageSize);
+                state.Page = Mathf.Clamp(state.Page, 0, pageCount - 1);
 
-                string currentValue = nameProperty.stringValue ?? string.Empty;
+                string currentValue = assemblyQualifiedName.stringValue ?? string.Empty;
                 int globalIndex = FindDescriptorIndex(filtered, currentValue);
 
                 if (!string.Equals(state.LastValue, currentValue, StringComparison.Ordinal))
@@ -127,16 +153,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     }
                 }
 
-                state.Page = Mathf.Clamp(state.Page, 0, pageCount - 1);
-
                 int startIndex = state.Page * PageSize;
-                int endIndex = Math.Min(filtered.Count, startIndex + PageSize);
-                if (endIndex <= startIndex && filtered.Count > 0)
+                if (startIndex >= filtered.Count && filtered.Count > 0)
                 {
+                    state.Page = 0;
                     startIndex = 0;
-                    endIndex = Math.Min(filtered.Count, PageSize);
                 }
 
+                int endIndex = Math.Min(filtered.Count, startIndex + PageSize);
                 int pageLength = Math.Max(0, endIndex - startIndex);
                 if (pageLength == 0 && filtered.Count > 0)
                 {
@@ -145,15 +169,137 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     endIndex = pageLength;
                 }
 
-                string[] optionLabels = new string[pageLength];
-                string[] optionValues = new string[pageLength];
-                for (int index = 0; index < pageLength; index++)
+                bool hasSuggestion = false;
+                bool acceptedSuggestion = false;
+                string suggestion = string.Empty;
+                string focusedControl = GUI.GetNameOfFocusedControl();
+                if (focusedControl == controlName && filtered.Count > 0)
                 {
-                    SerializableTypeCatalog.SerializableTypeDescriptor descriptor = filtered[
-                        startIndex + index
-                    ];
-                    optionLabels[index] = descriptor.DisplayName;
-                    optionValues[index] = descriptor.AssemblyQualifiedName;
+                    suggestion = filtered[0].DisplayName;
+                    if (
+                        !string.IsNullOrEmpty(state.Search)
+                        && !string.IsNullOrEmpty(suggestion)
+                        && suggestion.StartsWith(state.Search, StringComparison.OrdinalIgnoreCase)
+                        && suggestion.Length > state.Search.Length
+                        && searchFieldRect.width > 0f
+                    )
+                    {
+                        hasSuggestion = true;
+                        Event evt = Event.current;
+                        if (
+                            evt.type == EventType.KeyDown
+                            && (evt.keyCode == KeyCode.Tab || evt.keyCode == KeyCode.Return)
+                        )
+                        {
+                            state.Search = suggestion;
+                            GUI.changed = true;
+                            acceptedSuggestion = true;
+                            evt.Use();
+                            filtered = SerializableTypeCatalog.GetFilteredDescriptors(state.Search);
+                            pageCount = Math.Max(1, (filtered.Count + PageSize - 1) / PageSize);
+                            state.Page = Mathf.Clamp(state.Page, 0, pageCount - 1);
+                            startIndex = state.Page * PageSize;
+                            endIndex = Math.Min(filtered.Count, startIndex + PageSize);
+                            pageLength = Math.Max(0, endIndex - startIndex);
+                            globalIndex = FindDescriptorIndex(filtered, currentValue);
+                            GUI.FocusControl(controlName);
+                        }
+                    }
+                }
+
+                if (hasSuggestion)
+                {
+                    if (filtered.Count > 0)
+                    {
+                        suggestion = filtered[0].DisplayName;
+                        if (
+                            string.IsNullOrEmpty(state.Search)
+                            || !suggestion.StartsWith(
+                                state.Search,
+                                StringComparison.OrdinalIgnoreCase
+                            )
+                            || suggestion.Length <= state.Search.Length
+                            || searchFieldRect.width <= 0f
+                        )
+                        {
+                            hasSuggestion = false;
+                        }
+                    }
+                    else
+                    {
+                        hasSuggestion = false;
+                    }
+
+                    if (acceptedSuggestion)
+                    {
+                        hasSuggestion = false;
+                    }
+                }
+
+                if (hasSuggestion && Event.current.type == EventType.Repaint)
+                {
+                    Color originalColor = GUI.color;
+                    GUI.color = new Color(originalColor.r, originalColor.g, originalColor.b, 0.35f);
+                    EditorGUI.LabelField(searchFieldRect, suggestion, EditorStyles.label);
+                    GUI.color = originalColor;
+                }
+
+                GUI.enabled = filtered.Count > 0;
+                EditorGUI.LabelField(pageInfoRect, $"Page {state.Page + 1}/{pageCount}");
+
+                GUI.enabled =
+                    !string.IsNullOrEmpty(state.Search) || !string.IsNullOrEmpty(currentValue);
+                if (GUI.Button(clearRect, "Clear"))
+                {
+                    assemblyQualifiedName.stringValue = string.Empty;
+                    currentValue = string.Empty;
+                    globalIndex = -1;
+                    state.LastValue = string.Empty;
+                    state.Search = string.Empty;
+                    state.Page = 0;
+                    filtered = SerializableTypeCatalog.GetFilteredDescriptors(string.Empty);
+                    pageCount = Math.Max(1, (filtered.Count + PageSize - 1) / PageSize);
+                    startIndex = 0;
+                    endIndex = Math.Min(filtered.Count, PageSize);
+                    pageLength = Math.Max(0, endIndex - startIndex);
+                    GUI.FocusControl(controlName);
+                }
+
+                GUI.enabled = state.Page > 0;
+                if (GUI.Button(prevRect, "<"))
+                {
+                    state.Page = Math.Max(0, state.Page - 1);
+                }
+
+                GUI.enabled = state.Page < (pageCount - 1);
+                if (GUI.Button(nextRect, ">"))
+                {
+                    state.Page = Math.Min(pageCount - 1, state.Page + 1);
+                }
+                GUI.enabled = true;
+
+                GUIContent[] optionContents;
+                string[] optionValues;
+                if (pageLength == 0)
+                {
+                    optionContents = new[]
+                    {
+                        new GUIContent(SerializableTypeCatalog.NoneDisplayName),
+                    };
+                    optionValues = new[] { string.Empty };
+                }
+                else
+                {
+                    optionContents = new GUIContent[pageLength];
+                    optionValues = new string[pageLength];
+                    for (int index = 0; index < pageLength; index++)
+                    {
+                        SerializableTypeCatalog.SerializableTypeDescriptor descriptor = filtered[
+                            startIndex + index
+                        ];
+                        optionContents[index] = new GUIContent(descriptor.DisplayName);
+                        optionValues[index] = descriptor.AssemblyQualifiedName;
+                    }
                 }
 
                 int localIndex = -1;
@@ -162,58 +308,24 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     localIndex = globalIndex - startIndex;
                 }
 
-                if (optionLabels.Length == 0)
+                if (localIndex < 0)
                 {
-                    optionLabels = new[] { SerializableTypeCatalog.NoneDisplayName };
-                    optionValues = new[] { string.Empty };
                     localIndex = 0;
                 }
 
-                int initialIndex = localIndex >= 0 ? localIndex : 0;
+                Rect popupRect = popupRowIndented;
                 EditorGUI.BeginChangeCheck();
-                int selectedIndex = EditorGUI.Popup(
-                    typeRect,
-                    label.text,
-                    initialIndex,
-                    optionLabels
-                );
+                int selectedIndex = EditorGUI.Popup(popupRect, localIndex, optionContents);
                 if (EditorGUI.EndChangeCheck())
                 {
+                    selectedIndex = Mathf.Clamp(selectedIndex, 0, optionValues.Length - 1);
                     string selectedValue = optionValues[selectedIndex];
                     if (!string.Equals(selectedValue, currentValue, StringComparison.Ordinal))
                     {
-                        nameProperty.stringValue = selectedValue;
+                        assemblyQualifiedName.stringValue = selectedValue;
                         state.LastValue = selectedValue;
                     }
                 }
-
-                GUI.enabled = !string.IsNullOrEmpty(currentValue);
-                if (GUI.Button(clearRect, "Clear"))
-                {
-                    nameProperty.stringValue = string.Empty;
-                    state.LastValue = string.Empty;
-                    state.Page = 0;
-                }
-                GUI.enabled = true;
-
-                EditorGUI.LabelField(pageInfoRect, $"Page {state.Page + 1}/{pageCount}");
-
-                GUI.enabled = state.Page > 0;
-                if (GUI.Button(prevRect, "<"))
-                {
-                    state.Page = Math.Max(0, state.Page - 1);
-                }
-                GUI.enabled = state.Page < (pageCount - 1);
-                if (GUI.Button(nextRect, ">"))
-                {
-                    state.Page = Math.Min(pageCount - 1, state.Page + 1);
-                }
-                GUI.enabled = true;
-            }
-            finally
-            {
-                EditorGUI.indentLevel = originalIndent;
-                EditorGUI.EndProperty();
             }
         }
 
