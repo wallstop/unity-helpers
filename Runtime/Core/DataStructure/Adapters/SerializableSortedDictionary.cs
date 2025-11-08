@@ -40,6 +40,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         [NonSerialized]
         private bool _preserveSerializedEntries;
 
+        [NonSerialized]
+        private bool _arraysDirty = true;
+
         protected SerializableSortedDictionaryBase()
             : this((IComparer<TKey>)null) { }
 
@@ -207,7 +210,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         {
             bool arraysIntact = _keys != null && _values != null && _keys.Length == _values.Length;
 
-            if (_preserveSerializedEntries && arraysIntact)
+            if ((_preserveSerializedEntries || !_arraysDirty) && arraysIntact)
             {
                 return;
             }
@@ -225,6 +228,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             }
 
             _preserveSerializedEntries = false;
+            _arraysDirty = false;
         }
 
         public void OnAfterDeserialize()
@@ -233,11 +237,13 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 _keys != null && _values != null && _keys.Length == _values.Length;
 
             _preserveSerializedEntries = false;
+            _arraysDirty = false;
 
             if (!keysAndValuesPresent)
             {
                 _keys = null;
                 _values = null;
+                _arraysDirty = true;
                 return;
             }
 
@@ -259,12 +265,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             }
 
             _preserveSerializedEntries = hasDuplicateKeys;
-
-            if (!hasDuplicateKeys)
-            {
-                _keys = null;
-                _values = null;
-            }
+            _arraysDirty = false;
         }
 
         [ProtoBeforeSerialization]
@@ -316,6 +317,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             _preserveSerializedEntries = false;
             _keys = null;
             _values = null;
+            _arraysDirty = true;
         }
 
         public Enumerator GetEnumerator()
