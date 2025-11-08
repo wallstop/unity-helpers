@@ -231,5 +231,76 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.AreEqual(5, list.index);
             Assert.AreEqual(2, pagination.pageIndex);
         }
+
+        [Test]
+        public void EvaluateDuplicateTweenOffsetHonorsCycleLimit()
+        {
+            const double startTime = 0d;
+            const double activeTime = 0.1432d;
+
+            float activeOffset = SerializableDictionaryPropertyDrawer.EvaluateDuplicateTweenOffset(
+                0,
+                startTime,
+                activeTime,
+                2
+            );
+
+            Assert.That(Mathf.Abs(activeOffset), Is.GreaterThan(1e-3f));
+
+            float exhaustedOffset =
+                SerializableDictionaryPropertyDrawer.EvaluateDuplicateTweenOffset(
+                    0,
+                    startTime,
+                    startTime + 10d,
+                    1
+                );
+
+            Assert.AreEqual(0f, exhaustedOffset);
+        }
+
+        [Test]
+        public void EvaluateDuplicateTweenOffsetSupportsInfiniteCycles()
+        {
+            float offset = SerializableDictionaryPropertyDrawer.EvaluateDuplicateTweenOffset(
+                2,
+                0d,
+                100d,
+                -1
+            );
+
+            Assert.That(Mathf.Abs(offset), Is.GreaterThan(1e-3f));
+        }
+
+        [Test]
+        public void EvaluateDuplicateTweenOffsetHandlesCurrentTimeBeforeStart()
+        {
+            float offset = SerializableDictionaryPropertyDrawer.EvaluateDuplicateTweenOffset(
+                1,
+                10d,
+                9d,
+                3
+            );
+            float baseline = SerializableDictionaryPropertyDrawer.EvaluateDuplicateTweenOffset(
+                1,
+                9d,
+                9d,
+                3
+            );
+
+            Assert.AreEqual(baseline, offset);
+        }
+
+        [Test]
+        public void EvaluateDuplicateTweenOffsetReturnsZeroWhenCycleLimitZero()
+        {
+            float offset = SerializableDictionaryPropertyDrawer.EvaluateDuplicateTweenOffset(
+                0,
+                0d,
+                1d,
+                0
+            );
+
+            Assert.AreEqual(0f, offset);
+        }
     }
 }

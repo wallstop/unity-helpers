@@ -10,6 +10,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Editor.Settings;
 
     [CustomPropertyDrawer(typeof(SerializableDictionary<,>), true)]
     public sealed class SerializableDictionaryPropertyDrawer : PropertyDrawer
@@ -256,20 +257,43 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 bool hasDuplicate = TryGetDuplicateInfo(
                     key,
                     globalIndex,
-                    out DuplicateKeyInfo duplicateInfo
+                    out DuplicateKeyInfo duplicateInfo,
+                    out DuplicateKeyState duplicateState
                 );
+
+                UnityHelpersSettings.DuplicateRowAnimationMode animationMode =
+                    UnityHelpersSettings.GetDuplicateRowAnimationMode();
+                bool highlightDuplicates =
+                    animationMode != UnityHelpersSettings.DuplicateRowAnimationMode.None;
+                bool animateDuplicates =
+                    animationMode == UnityHelpersSettings.DuplicateRowAnimationMode.Tween;
+                int tweenCycleLimit = UnityHelpersSettings.GetDuplicateRowTweenCycleLimit();
+                double currentTime = animateDuplicates ? EditorApplication.timeSinceStartup : 0d;
+
                 float shakeOffset = 0f;
+                if (hasDuplicate && animateDuplicates && duplicateState != null)
+                {
+                    shakeOffset = duplicateState.GetAnimationOffset(
+                        globalIndex,
+                        currentTime,
+                        tweenCycleLimit
+                    );
+                }
+
+                Rect highlightRect = backgroundRect;
+                highlightRect.x += shakeOffset;
+
                 if (hasDuplicate)
                 {
-                    shakeOffset = GetDuplicateShakeOffset(globalIndex);
-                    Rect highlightRect = backgroundRect;
-                    highlightRect.x += shakeOffset;
+                    if (highlightDuplicates)
+                    {
+                        Color highlightColor = duplicateInfo.isPrimary
+                            ? DuplicatePrimaryColor
+                            : DuplicateSecondaryColor;
+                        EditorGUI.DrawRect(highlightRect, highlightColor);
+                        DrawDuplicateOutline(highlightRect);
+                    }
 
-                    Color highlightColor = duplicateInfo.isPrimary
-                        ? DuplicatePrimaryColor
-                        : DuplicateSecondaryColor;
-                    EditorGUI.DrawRect(highlightRect, highlightColor);
-                    DrawDuplicateOutline(highlightRect);
                     DrawDuplicateTooltip(highlightRect, duplicateInfo.tooltip);
                 }
 
@@ -311,11 +335,24 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 bool hasDuplicate = TryGetDuplicateInfo(
                     key,
                     globalIndex,
-                    out DuplicateKeyInfo duplicateInfo
+                    out DuplicateKeyInfo duplicateInfo,
+                    out DuplicateKeyState duplicateState
                 );
-                if (hasDuplicate)
+
+                UnityHelpersSettings.DuplicateRowAnimationMode animationMode =
+                    UnityHelpersSettings.GetDuplicateRowAnimationMode();
+                bool animateDuplicates =
+                    animationMode == UnityHelpersSettings.DuplicateRowAnimationMode.Tween;
+                int tweenCycleLimit = UnityHelpersSettings.GetDuplicateRowTweenCycleLimit();
+                double currentTime = animateDuplicates ? EditorApplication.timeSinceStartup : 0d;
+
+                if (hasDuplicate && animateDuplicates && duplicateState != null)
                 {
-                    rect.x += GetDuplicateShakeOffset(globalIndex);
+                    rect.x += duplicateState.GetAnimationOffset(
+                        globalIndex,
+                        currentTime,
+                        tweenCycleLimit
+                    );
                 }
 
                 float gap = 6f;
@@ -491,15 +528,21 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return state;
         }
 
-        private bool TryGetDuplicateInfo(string cacheKey, int arrayIndex, out DuplicateKeyInfo info)
+        private bool TryGetDuplicateInfo(
+            string cacheKey,
+            int arrayIndex,
+            out DuplicateKeyInfo info,
+            out DuplicateKeyState state
+        )
         {
             info = null;
+            state = null;
             if (string.IsNullOrEmpty(cacheKey))
             {
                 return false;
             }
 
-            if (!_duplicateStates.TryGetValue(cacheKey, out DuplicateKeyState state))
+            if (!_duplicateStates.TryGetValue(cacheKey, out state))
             {
                 return false;
             }
@@ -537,10 +580,35 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return DuplicateIconContentCache;
         }
 
-        private static float GetDuplicateShakeOffset(int arrayIndex)
+        internal static float EvaluateDuplicateTweenOffset(
+            int arrayIndex,
+            double startTime,
+            double currentTime,
+            int cycleLimit
+        )
         {
-            double time = EditorApplication.timeSinceStartup;
-            float phase = (float)(time * DuplicateShakeFrequency);
+            if (cycleLimit == 0)
+            {
+                return 0f;
+            }
+
+            if (currentTime < startTime)
+            {
+                startTime = currentTime;
+            }
+
+            if (cycleLimit > 0)
+            {
+                double cycleDuration = (2d * Math.PI) / DuplicateShakeFrequency;
+                double elapsed = currentTime - startTime;
+                double maxDuration = cycleDuration * cycleLimit;
+                if (elapsed >= maxDuration)
+                {
+                    return 0f;
+                }
+            }
+
+            float phase = (float)(currentTime * DuplicateShakeFrequency);
             float seed = arrayIndex * 0.35f;
             return Mathf.Sin(phase + seed) * DuplicateShakeAmplitude;
         }
@@ -2622,6 +2690,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private sealed class DuplicateKeyState
         {
             private readonly Dictionary<int, DuplicateKeyInfo> _duplicateLookup = new();
+            private readonly Dictionary<int, double> _duplicateAnimationStartTimes = new();
+            private readonly List<int> _animationKeysScratch = new();
             private bool _lastHadDuplicates;
 
             public bool HasDuplicates { get; private set; }
@@ -2639,6 +2709,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 {
                     bool previouslyDuplicated = _lastHadDuplicates;
                     _lastHadDuplicates = false;
+                    if (_duplicateAnimationStartTimes.Count > 0)
+                    {
+                        _duplicateAnimationStartTimes.Clear();
+                    }
                     return previouslyDuplicated;
                 }
 
@@ -2691,14 +2765,70 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                             : $"{duplicateGroupCount} duplicate keys detected. Resolve conflicts to prevent silent overwrites. The last entry wins at runtime.";
                 }
 
+                UpdateAnimationTracking();
+
                 bool changed = HasDuplicates != _lastHadDuplicates;
                 _lastHadDuplicates = HasDuplicates;
                 return changed;
             }
 
+            public float GetAnimationOffset(int arrayIndex, double currentTime, int cycleLimit)
+            {
+                if (!_duplicateAnimationStartTimes.TryGetValue(arrayIndex, out double startTime))
+                {
+                    startTime = currentTime;
+                    _duplicateAnimationStartTimes[arrayIndex] = startTime;
+                }
+
+                return EvaluateDuplicateTweenOffset(arrayIndex, startTime, currentTime, cycleLimit);
+            }
+
             public bool TryGetInfo(int arrayIndex, out DuplicateKeyInfo info)
             {
                 return _duplicateLookup.TryGetValue(arrayIndex, out info);
+            }
+
+            private void UpdateAnimationTracking()
+            {
+                if (!HasDuplicates || _duplicateLookup.Count == 0)
+                {
+                    if (_duplicateAnimationStartTimes.Count > 0)
+                    {
+                        _duplicateAnimationStartTimes.Clear();
+                    }
+
+                    return;
+                }
+
+                double now = EditorApplication.timeSinceStartup;
+
+                foreach (int index in _duplicateLookup.Keys)
+                {
+                    if (!_duplicateAnimationStartTimes.ContainsKey(index))
+                    {
+                        _duplicateAnimationStartTimes[index] = now;
+                    }
+                }
+
+                if (_duplicateAnimationStartTimes.Count == 0)
+                {
+                    return;
+                }
+
+                _animationKeysScratch.Clear();
+
+                foreach (KeyValuePair<int, double> entry in _duplicateAnimationStartTimes)
+                {
+                    if (!_duplicateLookup.ContainsKey(entry.Key))
+                    {
+                        _animationKeysScratch.Add(entry.Key);
+                    }
+                }
+
+                for (int i = 0; i < _animationKeysScratch.Count; i++)
+                {
+                    _duplicateAnimationStartTimes.Remove(_animationKeysScratch[i]);
+                }
             }
         }
 

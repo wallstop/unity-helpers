@@ -8,6 +8,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
     using System.Text;
     using System.Text.Json;
     using System.Text.Json.Serialization;
+    using System.Text.RegularExpressions;
     using ProtoBuf;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
@@ -376,6 +377,254 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         private static readonly Dictionary<string, SerializableTypeDescriptor[]> FilterCache = new(
             StringComparer.OrdinalIgnoreCase
         );
+
+        private static readonly string[] DefaultIgnorePatternStrings =
+        {
+            @"^\$",
+            @"<>",
+            @"AnonymousType",
+            @"DisplayClass",
+            @"PrivateImplementationDetails",
+        };
+
+        private static Regex[] _defaultIgnoreRegexes;
+        private static Regex[] _configuredIgnoreRegexes;
+        private static string[] _configuredIgnorePatterns;
+
+        /// <summary>
+        /// Exposes the default ignore patterns used when no explicit configuration is provided.
+        /// </summary>
+        internal static IReadOnlyList<string> GetDefaultIgnorePatterns()
+        {
+            return DefaultIgnorePatternStrings;
+        }
+
+        /// <summary>
+        /// Retrieves the currently active ignore pattern strings. Falls back to defaults when no overrides exist.
+        /// </summary>
+        internal static IReadOnlyList<string> GetActiveIgnorePatterns()
+        {
+            return _configuredIgnorePatterns ?? DefaultIgnorePatternStrings;
+        }
+
+        /// <summary>
+        /// Replaces the ignore pattern set used to filter candidate SerializableTypes. A <c>null</c> input reverts to defaults.
+        /// </summary>
+        /// <param name="patterns">Patterns to apply. Empty strings are discarded.</param>
+        internal static void ConfigureTypeNameIgnorePatterns(IEnumerable<string> patterns)
+        {
+            string[] sanitized = SanitizePatternInput(patterns);
+
+            lock (SyncRoot)
+            {
+                if (PatternsEqual(_configuredIgnorePatterns, sanitized))
+                {
+                    return;
+                }
+
+                _configuredIgnorePatterns = sanitized;
+                _configuredIgnoreRegexes = sanitized == null ? null : CompilePatterns(sanitized);
+
+                _descriptors = null;
+                _descriptorByName = null;
+                _assemblyQualifiedNames = null;
+                FilterCache.Clear();
+            }
+        }
+
+        /// <summary>
+        /// Provides statistics for the supplied pattern, including validity and match counts.
+        /// </summary>
+        internal static PatternStats GetPatternStats(string pattern)
+        {
+            if (string.IsNullOrWhiteSpace(pattern))
+            {
+                return new PatternStats(string.Empty, true, 0, null);
+            }
+
+            string trimmed = pattern.Trim();
+            try
+            {
+                Regex regex = new(trimmed, RegexOptions.Compiled | RegexOptions.CultureInvariant);
+                int count = CountTypesMatchingRegex(regex);
+                return new PatternStats(trimmed, true, count, null);
+            }
+            catch (ArgumentException exception)
+            {
+                return new PatternStats(trimmed, false, 0, exception.Message);
+            }
+        }
+
+        private static Regex[] GetActiveIgnoreRegexes()
+        {
+            Regex[] configured = _configuredIgnoreRegexes;
+            if (configured != null)
+            {
+                return configured;
+            }
+
+            return _defaultIgnoreRegexes ??= CompilePatterns(DefaultIgnorePatternStrings);
+        }
+
+        private static Regex[] CompilePatterns(IEnumerable<string> patterns)
+        {
+            if (patterns == null)
+            {
+                return null;
+            }
+
+            List<Regex> compiled = new();
+            foreach (string pattern in patterns)
+            {
+                if (string.IsNullOrWhiteSpace(pattern))
+                {
+                    continue;
+                }
+
+                string trimmed = pattern.Trim();
+                try
+                {
+                    compiled.Add(
+                        new Regex(trimmed, RegexOptions.Compiled | RegexOptions.CultureInvariant)
+                    );
+                }
+                catch (ArgumentException exception)
+                {
+                    Debug.LogWarning(
+                        $"SerializableTypeCatalog ignore pattern '{trimmed}' is invalid: {exception.Message}"
+                    );
+                }
+            }
+
+            return compiled.ToArray();
+        }
+
+        private static string[] SanitizePatternInput(IEnumerable<string> patterns)
+        {
+            if (patterns == null)
+            {
+                return null;
+            }
+
+            List<string> sanitized = new();
+            foreach (string pattern in patterns)
+            {
+                if (string.IsNullOrWhiteSpace(pattern))
+                {
+                    continue;
+                }
+
+                sanitized.Add(pattern.Trim());
+            }
+
+            return sanitized.Count == 0 ? Array.Empty<string>() : sanitized.ToArray();
+        }
+
+        private static bool PatternsEqual(string[] left, string[] right)
+        {
+            if (ReferenceEquals(left, right))
+            {
+                return true;
+            }
+
+            if (left == null || right == null)
+            {
+                return false;
+            }
+
+            if (left.Length != right.Length)
+            {
+                return false;
+            }
+
+            for (int index = 0; index < left.Length; index++)
+            {
+                if (!string.Equals(left[index], right[index], StringComparison.Ordinal))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private static bool MatchesConfiguredIgnorePattern(Type type)
+        {
+            Regex[] patterns = GetActiveIgnoreRegexes();
+            if (patterns == null || patterns.Length == 0)
+            {
+                return false;
+            }
+
+            for (int index = 0; index < patterns.Length; index++)
+            {
+                Regex regex = patterns[index];
+                if (regex == null)
+                {
+                    continue;
+                }
+
+                if (RegexMatchesType(type, regex))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool RegexMatchesType(Type type, Regex regex)
+        {
+            if (type == null || regex == null)
+            {
+                return false;
+            }
+
+            string fullName = type.FullName;
+            if (!string.IsNullOrEmpty(fullName) && regex.IsMatch(fullName))
+            {
+                return true;
+            }
+
+            string name = type.Name;
+            if (!string.IsNullOrEmpty(name) && regex.IsMatch(name))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        private static int CountTypesMatchingRegex(Regex regex)
+        {
+            if (regex == null)
+            {
+                return 0;
+            }
+
+            int matches = 0;
+            Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
+            for (int assemblyIndex = 0; assemblyIndex < assemblies.Length; assemblyIndex++)
+            {
+                Assembly assembly = assemblies[assemblyIndex];
+                if (assembly == null || assembly.IsDynamic)
+                {
+                    continue;
+                }
+
+                Type[] exportedTypes = GetAssemblyTypes(assembly);
+                for (int typeIndex = 0; typeIndex < exportedTypes.Length; typeIndex++)
+                {
+                    Type type = exportedTypes[typeIndex];
+                    if (RegexMatchesType(type, regex))
+                    {
+                        matches++;
+                    }
+                }
+            }
+
+            return matches;
+        }
 
         /// <summary>
         /// Resolves a type from an assembly qualified name.
@@ -755,6 +1004,28 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         }
 
         /// <summary>
+        /// Provides quick insight into a regex ignore pattern.
+        /// </summary>
+        internal readonly struct PatternStats
+        {
+            public PatternStats(string pattern, bool isValid, int matchCount, string errorMessage)
+            {
+                Pattern = pattern ?? string.Empty;
+                IsValid = isValid;
+                MatchCount = matchCount;
+                ErrorMessage = errorMessage;
+            }
+
+            public string Pattern { get; }
+
+            public bool IsValid { get; }
+
+            public int MatchCount { get; }
+
+            public string ErrorMessage { get; }
+        }
+
+        /// <summary>
         /// Descriptor for inspector presentation.
         /// </summary>
         public readonly struct SerializableTypeDescriptor
@@ -807,61 +1078,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 return true;
             }
 
-            string name = type.Name ?? string.Empty;
-            string fullName = type.FullName ?? string.Empty;
-
-            if (!string.IsNullOrEmpty(name))
-            {
-                if (name.Length > 0 && name[0] == '$')
-                {
-                    return true;
-                }
-
-                if (name.IndexOf("<>", StringComparison.Ordinal) >= 0)
-                {
-                    return true;
-                }
-
-                if (name.IndexOf("AnonymousType", StringComparison.Ordinal) >= 0)
-                {
-                    return true;
-                }
-
-                if (name.IndexOf("DisplayClass", StringComparison.Ordinal) >= 0)
-                {
-                    return true;
-                }
-            }
-
-            if (!string.IsNullOrWhiteSpace(fullName))
-            {
-                if (fullName.Length > 0 && fullName[0] == '$')
-                {
-                    return true;
-                }
-
-                if (fullName.IndexOf("<>", StringComparison.Ordinal) >= 0)
-                {
-                    return true;
-                }
-
-                if (fullName.IndexOf("AnonymousType", StringComparison.Ordinal) >= 0)
-                {
-                    return true;
-                }
-
-                if (fullName.IndexOf("PrivateImplementationDetails", StringComparison.Ordinal) >= 0)
-                {
-                    return true;
-                }
-
-                if (fullName.IndexOf("DisplayClass", StringComparison.Ordinal) >= 0)
-                {
-                    return true;
-                }
-            }
-
-            return false;
+            return MatchesConfiguredIgnorePattern(type);
         }
     }
 

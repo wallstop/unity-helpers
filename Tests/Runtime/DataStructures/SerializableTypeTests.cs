@@ -3,6 +3,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using System;
     using System.Collections.Generic;
     using System.IO;
+    using System.Linq;
     using System.Text.Json;
     using NUnit.Framework;
     using ProtoBuf;
@@ -233,6 +234,53 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.IsNull(resolvedType);
             Assert.IsNull(unresolved.Value);
             Assert.IsFalse(unresolved.IsEmpty);
+        }
+
+        [Test]
+        public void ConfigureTypeNameIgnorePatternsOverridesDefaults()
+        {
+            IReadOnlyList<string> original = SerializableTypeCatalog.GetActiveIgnorePatterns();
+            bool wasConfigured = !ReferenceEquals(
+                original,
+                SerializableTypeCatalog.GetDefaultIgnorePatterns()
+            );
+            string[] backup = original.ToArray();
+
+            try
+            {
+                SerializableTypeCatalog.ConfigureTypeNameIgnorePatterns(
+                    new[] { "^System\\.Int32$" }
+                );
+
+                Assert.IsTrue(
+                    SerializableTypeCatalog.ShouldSkipType(typeof(int)),
+                    "Configured regex should cause System.Int32 to be skipped."
+                );
+                Assert.IsFalse(
+                    SerializableTypeCatalog.ShouldSkipType(typeof(string)),
+                    "Other types must remain discoverable when only System.Int32 is ignored."
+                );
+            }
+            finally
+            {
+                SerializableTypeCatalog.ConfigureTypeNameIgnorePatterns(
+                    wasConfigured ? backup : null
+                );
+            }
+        }
+
+        [Test]
+        public void PatternStatsReportsInvalidExpressions()
+        {
+            SerializableTypeCatalog.PatternStats stats = SerializableTypeCatalog.GetPatternStats(
+                "["
+            );
+
+            Assert.IsFalse(stats.IsValid, "Invalid regex should be marked as invalid.");
+            Assert.IsTrue(
+                !string.IsNullOrEmpty(stats.ErrorMessage),
+                "Invalid regex should provide an explanatory error message."
+            );
         }
     }
 }
