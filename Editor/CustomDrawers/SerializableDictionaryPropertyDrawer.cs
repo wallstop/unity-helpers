@@ -169,6 +169,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             string key = GetListKey(dictionaryProperty);
             PaginationState pagination = GetOrCreatePaginationState(dictionaryProperty);
             ClampPaginationState(pagination, keysProperty.arraySize);
+            float rowHeight =
+                EditorGUIUtility.singleLineHeight + (EditorGUIUtility.standardVerticalSpacing * 2f);
+            float emptyHeight = Mathf.Max(
+                EditorGUIUtility.standardVerticalSpacing * 2f,
+                EditorGUIUtility.standardVerticalSpacing
+            );
 
             Func<ListPageCache> cacheProvider = () =>
                 EnsurePageCache(key, keysProperty, valuesProperty, pagination);
@@ -178,6 +184,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             if (_lists.TryGetValue(key, out ReorderableList cached))
             {
                 SyncListSelectionWithPagination(cached, pagination, cache);
+                cached.drawNoneElementCallback = _ => { };
+                cached.elementHeight = keysProperty.arraySize == 0 ? emptyHeight : rowHeight;
                 return cached;
             }
 
@@ -204,8 +212,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 );
             };
 
-            list.elementHeightCallback = _ =>
-                EditorGUIUtility.singleLineHeight + (EditorGUIUtility.standardVerticalSpacing * 2f);
+            list.elementHeightCallback = _ => rowHeight;
+            list.drawNoneElementCallback = _ => { };
 
             list.drawElementBackgroundCallback = (rect, index, _, _) =>
             {
@@ -418,6 +426,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             };
 
             SyncListSelectionWithPagination(list, pagination, cache);
+            list.elementHeight = keysProperty.arraySize == 0 ? emptyHeight : rowHeight;
 
             _lists[key] = list;
             return list;
