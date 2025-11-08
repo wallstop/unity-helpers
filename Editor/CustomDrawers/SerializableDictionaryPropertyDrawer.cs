@@ -836,11 +836,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             float spacing = PaginationControlSpacing;
             float controlsWidth =
                 (PaginationButtonWidth * 4f) + (spacing * 3f) + PaginationLabelWidth;
-            float labelWidth = Mathf.Max(0f, rect.width - controlsWidth - spacing);
-
-            Rect labelRect = new(rect.x, rect.y, labelWidth, rect.height);
-            EditorGUI.LabelField(labelRect, dictionaryProperty.displayName);
-
             Rect controlsRect = new(rect.xMax - controlsWidth, rect.y, controlsWidth, rect.height);
             Rect pageLabelRect = new(
                 controlsRect.x,
