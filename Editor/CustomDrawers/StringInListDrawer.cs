@@ -81,8 +81,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             private readonly Label suggestionHintLabel;
             private readonly VisualElement inputContainer;
             private TextElement searchTextInput;
-            private string measuredSearchText = string.Empty;
-            private float measuredSearchWidth;
             private readonly List<int> filteredIndices = new List<int>();
             private readonly List<int> pageOptionIndices = new List<int>();
             private readonly List<string> pageChoices = new List<string>();
@@ -106,8 +104,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     UnityHelpersSettings.GetStringInListPageLimit()
                 );
                 suggestionOptionIndex = -1;
-                measuredSearchText = string.Empty;
-                measuredSearchWidth = 0f;
 
                 AddToClassList("unity-base-field");
                 AddToClassList("unity-base-field__aligned");
@@ -221,8 +217,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 suggestion = string.Empty;
 
                 searchField.SetValueWithoutNotify(string.Empty);
-                measuredSearchText = string.Empty;
-                measuredSearchWidth = 0f;
                 UpdateClearButton(searchVisible);
                 UpdateSuggestionDisplay(string.Empty, -1, -1);
 
@@ -285,8 +279,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 searchText = string.Empty;
                 searchField.SetValueWithoutNotify(string.Empty);
-                measuredSearchText = string.Empty;
-                measuredSearchWidth = 0f;
 
                 pageIndex = 0;
                 UpdateClearButton(searchVisible);
@@ -574,65 +566,19 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 bool visible =
                     searchVisible && !string.IsNullOrEmpty(suggestionValue) && optionIndex >= 0;
-                bool overlayActive = visible && matchPosition == 0;
 
-                if (overlayActive)
+                if (visible)
                 {
+                    suggestionLabel.style.marginLeft = 2f;
+                    suggestionLabel.text = suggestionValue;
+                    suggestionLabel.style.display = DisplayStyle.Flex;
                     suggestionLabel.BringToFront();
-
-                    float offset = 2f;
-                    if (!string.IsNullOrEmpty(searchText) && searchTextInput != null)
-                    {
-                        if (
-                            !string.Equals(searchText, measuredSearchText, StringComparison.Ordinal)
-                        )
-                        {
-                            Vector2 measured = searchTextInput.MeasureTextSize(
-                                searchText,
-                                float.NaN,
-                                VisualElement.MeasureMode.Undefined,
-                                float.NaN,
-                                VisualElement.MeasureMode.Undefined
-                            );
-                            measuredSearchText = searchText;
-                            measuredSearchWidth = measured.x;
-                        }
-                        offset += measuredSearchWidth;
-                    }
-                    else
-                    {
-                        measuredSearchText = string.Empty;
-                        measuredSearchWidth = 0f;
-                    }
-
-                    string suffix = string.Empty;
-                    if (
-                        !string.IsNullOrEmpty(searchText)
-                        && suggestionValue.Length > searchText.Length
-                    )
-                    {
-                        suffix = suggestionValue.Substring(searchText.Length);
-                    }
-
-                    if (!string.IsNullOrEmpty(suffix))
-                    {
-                        suggestionLabel.style.marginLeft = offset;
-                        suggestionLabel.text = suffix;
-                        suggestionLabel.style.display = DisplayStyle.Flex;
-                    }
-                    else
-                    {
-                        overlayActive = false;
-                    }
                 }
-
-                if (!overlayActive)
+                else
                 {
                     suggestionLabel.style.marginLeft = 2f;
                     suggestionLabel.text = string.Empty;
                     suggestionLabel.style.display = DisplayStyle.None;
-                    measuredSearchText = string.Empty;
-                    measuredSearchWidth = 0f;
                 }
 
                 if (suggestionHintLabel != null)
