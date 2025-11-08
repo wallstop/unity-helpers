@@ -199,55 +199,43 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         }
 
         /// <summary>
-        /// Equality comparison between a <see cref="SerializableType"/> and a <see cref="Type"/>.
+        /// Equality comparison between a <see cref="SerializableType"/> and a nullable wrapper.
         /// </summary>
-        public static bool operator ==(SerializableType left, Type right)
+        public static bool operator ==(SerializableType left, SerializableType? right)
         {
-            Type leftType = left.Value;
-            if (right == null)
+            if (!right.HasValue)
             {
-                return leftType == null;
+                return left.IsEmpty;
             }
 
-            if (leftType != null)
-            {
-                return leftType == right;
-            }
-
-            return left.EqualsType(right);
+            return left.Equals(right.Value);
         }
 
         /// <summary>
-        /// Inequality comparison between a <see cref="SerializableType"/> and a <see cref="Type"/>.
+        /// Inequality comparison between a <see cref="SerializableType"/> and a nullable wrapper.
         /// </summary>
-        public static bool operator !=(SerializableType left, Type right)
+        public static bool operator !=(SerializableType left, SerializableType? right)
         {
             return !(left == right);
         }
 
         /// <summary>
-        /// Equality comparison between a <see cref="Type"/> and a <see cref="SerializableType"/>.
+        /// Equality comparison between a nullable wrapper and a <see cref="SerializableType"/>.
         /// </summary>
-        public static bool operator ==(Type left, SerializableType right)
+        public static bool operator ==(SerializableType? left, SerializableType right)
         {
-            Type rightType = right.Value;
-            if (left == null)
+            if (!left.HasValue)
             {
-                return rightType == null;
+                return right.IsEmpty;
             }
 
-            if (rightType != null)
-            {
-                return rightType == left;
-            }
-
-            return right.EqualsType(left);
+            return left.Value.Equals(right);
         }
 
         /// <summary>
-        /// Inequality comparison between a <see cref="Type"/> and a <see cref="SerializableType"/>.
+        /// Inequality comparison between a nullable wrapper and a <see cref="SerializableType"/>.
         /// </summary>
-        public static bool operator !=(Type left, SerializableType right)
+        public static bool operator !=(SerializableType? left, SerializableType right)
         {
             return !(left == right);
         }

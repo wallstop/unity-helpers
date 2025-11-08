@@ -18,6 +18,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.IsTrue(serializable.IsEmpty);
             Assert.IsNull(serializable.Value);
             Assert.IsNull((Type)serializable);
+            Assert.IsTrue(serializable == null);
+            Assert.IsTrue(null == serializable);
+            Assert.IsFalse(serializable != null);
             Assert.IsTrue(serializable.Equals(null));
             Assert.IsTrue(serializable.EqualsType(null));
             Assert.AreEqual(string.Empty, serializable.AssemblyQualifiedName);
@@ -40,6 +43,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.AreEqual(typeof(List<int>), extracted);
             Assert.IsFalse(serializable.Equals(null));
             Assert.IsFalse(serializable.EqualsType(null));
+            Assert.IsTrue(serializable.EqualsType(typeof(List<int>)));
+            Assert.IsFalse(serializable.EqualsType(typeof(float)));
         }
 
         [Test]
@@ -51,6 +56,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             Assert.IsTrue(first.EqualsType(typeof(int)));
             Assert.IsFalse(first.EqualsType(typeof(float)));
+            Assert.IsFalse(first.Equals(different));
+            Assert.IsTrue(first.Equals(second));
+            Assert.IsTrue(second.Equals(first));
             Assert.IsFalse(first.Equals(different));
         }
 
@@ -67,6 +75,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 serializable.AssemblyQualifiedName,
                 reconstructed.AssemblyQualifiedName
             );
+            Assert.IsTrue(serializable.EqualsType(typeof(string)));
+            Assert.IsFalse(serializable.EqualsType(typeof(int)));
         }
 
         [Test]
@@ -81,12 +91,15 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.IsTrue(implicitNone.IsEmpty);
             Assert.IsNull(implicitNone.Value);
             Assert.AreEqual(string.Empty, implicitNone.AssemblyQualifiedName);
+            Assert.IsTrue(none == null);
+            Assert.IsTrue(null == none);
+            Assert.IsTrue(implicitNone == null);
+            Assert.IsTrue(null == implicitNone);
             Assert.IsTrue(implicitNone.Equals(null));
             Assert.IsTrue(implicitNone.EqualsType(null));
-            Assert.IsTrue(none.Equals(default(SerializableType)));
-            Assert.IsTrue(default(SerializableType).Equals(none));
             Assert.IsTrue(none.EqualsType(null));
             Assert.IsNull((Type)none);
+            Assert.IsNull((Type)implicitNone);
         }
 
         [Test]
