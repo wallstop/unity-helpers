@@ -560,27 +560,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     suggestionLabel.style.display = DisplayStyle.Flex;
                     suggestionLabel.BringToFront();
 
-                    string suffix;
-                    float offset = 2f;
-
-                    if (string.IsNullOrEmpty(searchText))
+                    if (matchPosition == 0)
                     {
-                        suffix = suggestionValue;
-                    }
-                    else
-                    {
-                        int suffixStart = matchPosition + searchText.Length;
-                        if (suffixStart < suggestionValue.Length)
-                        {
-                            suffix = suggestionValue.Substring(suffixStart);
-                        }
-                        else
-                        {
-                            overlayActive = false;
-                            suffix = string.Empty;
-                        }
-
-                        if (searchTextInput != null)
+                        float offset = 2f;
+                        if (!string.IsNullOrEmpty(searchText) && searchTextInput != null)
                         {
                             Vector2 measured = searchTextInput.MeasureTextSize(
                                 searchText,
@@ -591,16 +574,30 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                             );
                             offset += measured.x;
                         }
-                    }
 
-                    if (overlayActive && !string.IsNullOrEmpty(suffix))
-                    {
-                        suggestionLabel.style.marginLeft = offset;
-                        suggestionLabel.text = suffix;
+                        string suffix = string.Empty;
+                        if (
+                            !string.IsNullOrEmpty(searchText)
+                            && suggestionValue.Length > searchText.Length
+                        )
+                        {
+                            suffix = suggestionValue.Substring(searchText.Length);
+                        }
+
+                        if (!string.IsNullOrEmpty(suffix))
+                        {
+                            suggestionLabel.style.marginLeft = offset;
+                            suggestionLabel.text = suffix;
+                        }
+                        else
+                        {
+                            overlayActive = false;
+                        }
                     }
                     else
                     {
-                        overlayActive = false;
+                        suggestionLabel.style.marginLeft = 2f;
+                        suggestionLabel.text = suggestionValue;
                     }
                 }
                 else

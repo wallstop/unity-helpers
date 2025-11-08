@@ -3,6 +3,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
     using System;
     using System.Collections.Generic;
     using System.Reflection;
+    using System.Runtime.CompilerServices;
     using System.Runtime.Serialization;
     using System.Text;
     using System.Text.Json;
@@ -371,6 +372,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         private static SerializableTypeDescriptor[] _descriptors;
         private static Dictionary<string, SerializableTypeDescriptor> _descriptorByName;
         private static string[] _assemblyQualifiedNames;
+
         private static readonly Dictionary<string, SerializableTypeDescriptor[]> FilterCache = new(
             StringComparer.OrdinalIgnoreCase
         );
@@ -550,6 +552,11 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                     {
                         Type type = exportedTypes[typeIndex];
                         if (type == null)
+                        {
+                            continue;
+                        }
+
+                        if (ShouldSkipType(type))
                         {
                             continue;
                         }
@@ -770,6 +777,65 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
                 return false;
             }
+        }
+
+        internal static bool ShouldSkipType(Type type)
+        {
+            if (type == null)
+            {
+                return true;
+            }
+
+            if (type.IsDefined(typeof(CompilerGeneratedAttribute), inherit: false))
+            {
+                return true;
+            }
+
+            string name = type.Name ?? string.Empty;
+            string fullName = type.FullName ?? string.Empty;
+
+            if (!string.IsNullOrEmpty(name))
+            {
+                if (name.Length > 0 && name[0] == '$')
+                {
+                    return true;
+                }
+
+                if (name.IndexOf("<>", StringComparison.Ordinal) >= 0)
+                {
+                    return true;
+                }
+
+                if (name.IndexOf("AnonymousType", StringComparison.Ordinal) >= 0)
+                {
+                    return true;
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(fullName))
+            {
+                if (fullName.Length > 0 && fullName[0] == '$')
+                {
+                    return true;
+                }
+
+                if (fullName.IndexOf("<>", StringComparison.Ordinal) >= 0)
+                {
+                    return true;
+                }
+
+                if (fullName.IndexOf("AnonymousType", StringComparison.Ordinal) >= 0)
+                {
+                    return true;
+                }
+
+                if (fullName.IndexOf("PrivateImplementationDetails", StringComparison.Ordinal) >= 0)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
     }
 

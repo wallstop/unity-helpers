@@ -183,6 +183,31 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
+        public void CatalogExcludesCompilerGeneratedAndAnonymousTypes()
+        {
+            string[] names = SerializableTypeCatalog.GetAssemblyQualifiedNames();
+            for (int i = 0; i < names.Length; i++)
+            {
+                string name = names[i];
+                if (string.IsNullOrEmpty(name))
+                {
+                    continue;
+                }
+
+                Assert.IsFalse(
+                    name.StartsWith("$", StringComparison.Ordinal),
+                    $"Type '{name}' should not start with '$'."
+                );
+                StringAssert.DoesNotContain("<>", name, $"Type '{name}' should not contain '<>'.");
+                StringAssert.DoesNotContain(
+                    "AnonymousType",
+                    name,
+                    $"Type '{name}' should not contain 'AnonymousType'."
+                );
+            }
+        }
+
+        [Test]
         public void TryGetValueFailsForUnknownType()
         {
             SerializableType unresolved = SerializableType.FromSerializedName(

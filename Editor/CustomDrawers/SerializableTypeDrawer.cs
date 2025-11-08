@@ -66,10 +66,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             float controlsWidth =
                 ClearWidth + (ButtonWidth * 2f) + PageLabelWidth + (buttonSpacing * 3f);
 
-            float searchLabelWidth = Mathf.Min(
-                EditorGUIUtility.labelWidth,
-                Math.Max(0f, searchRowIndented.width - controlsWidth - 10f)
-            );
+            // float searchLabelWidth = Mathf.Min(
+            //     EditorGUIUtility.labelWidth,
+            //     Math.Max(0f, searchRowIndented.width - controlsWidth - 10f)
+            // );
+
+            bool showSearchLabel = (searchRowIndented.width - controlsWidth) > 60f;
+            float searchLabelWidth = showSearchLabel
+                ? Mathf.Min(60f, searchRowIndented.width - controlsWidth - 10f)
+                : 0f;
 
             Rect searchLabelRect = new Rect(
                 searchRowIndented.x,
@@ -84,7 +89,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             );
 
             Rect searchFieldRect = new Rect(
-                searchLabelRect.xMax,
+                showSearchLabel ? searchLabelRect.xMax : searchRowIndented.x,
                 searchRowIndented.y,
                 searchFieldWidth,
                 lineHeight
@@ -120,9 +125,19 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             int pageSize = Mathf.Max(1, UnityHelpersSettings.GetStringInListPageLimit());
 
-            using (new EditorGUI.PropertyScope(position, GUIContent.none, property))
+            using (
+                EditorGUI.PropertyScope scope = new EditorGUI.PropertyScope(
+                    position,
+                    label,
+                    property
+                )
+            )
             {
-                EditorGUI.LabelField(searchLabelRect, "Search");
+                GUIContent propertyLabel = scope.content;
+                if (showSearchLabel)
+                {
+                    EditorGUI.LabelField(searchLabelRect, "Search");
+                }
 
                 string controlName = $"SerializableTypeSearch_{property.propertyPath}";
                 GUI.SetNextControlName(controlName);
@@ -381,7 +396,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 Rect popupRect = popupRowIndented;
                 EditorGUI.BeginChangeCheck();
-                int selectedIndex = EditorGUI.Popup(popupRect, localIndex, optionContents);
+                int selectedIndex = EditorGUI.Popup(
+                    popupRect,
+                    propertyLabel,
+                    localIndex,
+                    optionContents
+                );
                 if (EditorGUI.EndChangeCheck())
                 {
                     selectedIndex = Mathf.Clamp(selectedIndex, 0, optionValues.Length - 1);
