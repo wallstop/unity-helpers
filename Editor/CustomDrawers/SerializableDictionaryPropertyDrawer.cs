@@ -1060,29 +1060,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             float buttonSpacing = PaginationControlSpacing;
             float clearWidth = 80f;
 
-            Rect removeRect = new(
-                rect.xMax - padding - buttonWidth,
-                verticalCenter,
-                buttonWidth,
-                lineHeight
-            );
-            Rect clearRect = new(
-                removeRect.x - buttonSpacing - clearWidth,
-                verticalCenter,
-                clearWidth,
-                lineHeight
-            );
-
             GUIStyle footerLabelStyle = GetFooterLabelStyle();
-            Rect labelRect = new(
-                rect.x + padding,
-                labelY,
-                Mathf.Max(0f, clearRect.x - buttonSpacing - (rect.x + padding)),
-                labelHeight
-            );
             string rangeText =
                 itemCount == 0 ? "Empty" : $"{pageStart + 1}-{pageEnd} of {itemCount}";
-            EditorGUI.LabelField(labelRect, rangeText, footerLabelStyle);
+            Vector2 rangeSize = footerLabelStyle.CalcSize(new GUIContent(rangeText));
 
             ListPageCache cache = cacheProvider();
             int selectedGlobalIndex = pagination.selectedIndex;
@@ -1098,50 +1079,152 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 "Clear All",
                 "Remove every entry from the dictionary"
             );
-            DrawFooterButton(
-                clearRect,
-                clearAllContent,
-                "ClearAll",
-                canClear,
-                () =>
+            GUIContent removeContent = EditorGUIUtility.TrTextContent("-", "Remove selected entry");
+
+            bool showRange = itemCount > 0 || rangeText == "Empty";
+            bool showClear = true;
+            bool showRemove = true;
+
+            float requiredWidth = float.PositiveInfinity;
+
+            float CalculateRequiredWidth(bool includeRange, bool includeClear, bool includeRemove)
+            {
+                float width = padding + padding;
+
+                if (includeRange)
                 {
-                    bool confirmed = EditorUtility.DisplayDialog(
-                        "Clear Dictionary",
-                        "Remove all entries from this dictionary?",
-                        "Clear",
-                        "Cancel"
-                    );
-                    if (confirmed)
+                    width += rangeSize.x;
+                }
+
+                bool hasRightControls = includeClear || includeRemove;
+                if (includeRange && hasRightControls)
+                {
+                    width += buttonSpacing;
+                }
+
+                float rightWidth = 0f;
+                if (includeClear)
+                {
+                    rightWidth += clearWidth;
+                }
+                if (includeRemove)
+                {
+                    if (includeClear)
                     {
-                        ClearDictionary(
+                        rightWidth += buttonSpacing;
+                    }
+                    rightWidth += buttonWidth;
+                }
+
+                width += rightWidth;
+                return width;
+            }
+
+            requiredWidth = CalculateRequiredWidth(showRange, showClear, showRemove);
+            if (requiredWidth > rect.width && showRange)
+            {
+                showRange = false;
+            }
+
+            requiredWidth = CalculateRequiredWidth(showRange, showClear, showRemove);
+            if (requiredWidth > rect.width && showClear)
+            {
+                showClear = false;
+            }
+
+            requiredWidth = CalculateRequiredWidth(showRange, showClear, showRemove);
+            if (requiredWidth > rect.width && showRemove)
+            {
+                showRemove = false;
+            }
+
+            if (!showRange && !showClear && !showRemove)
+            {
+                return;
+            }
+
+            Rect removeRect = default;
+            Rect clearRect = default;
+
+            float currentX = rect.xMax - padding;
+
+            if (showRemove)
+            {
+                currentX -= buttonWidth;
+                removeRect = new Rect(currentX, verticalCenter, buttonWidth, lineHeight);
+                if (showClear || showRange)
+                {
+                    currentX -= buttonSpacing;
+                }
+            }
+
+            if (showClear)
+            {
+                currentX -= clearWidth;
+                clearRect = new Rect(currentX, verticalCenter, clearWidth, lineHeight);
+                if (showRange)
+                {
+                    currentX -= buttonSpacing;
+                }
+            }
+
+            if (showRange)
+            {
+                float labelLeft = rect.x + padding;
+                float labelWidth = Mathf.Max(0f, currentX - labelLeft);
+                Rect labelRect = new(labelLeft, labelY, labelWidth, labelHeight);
+                EditorGUI.LabelField(labelRect, rangeText, footerLabelStyle);
+            }
+
+            if (showClear)
+            {
+                DrawFooterButton(
+                    clearRect,
+                    clearAllContent,
+                    "ClearAll",
+                    canClear,
+                    () =>
+                    {
+                        bool confirmed = EditorUtility.DisplayDialog(
+                            "Clear Dictionary",
+                            "Remove all entries from this dictionary?",
+                            "Clear",
+                            "Cancel"
+                        );
+                        if (confirmed)
+                        {
+                            ClearDictionary(
+                                dictionaryProperty,
+                                keysProperty,
+                                valuesProperty,
+                                pagination,
+                                list
+                            );
+                        }
+                    }
+                );
+            }
+
+            if (showRemove)
+            {
+                DrawFooterButton(
+                    removeRect,
+                    removeContent,
+                    "Remove",
+                    canRemove,
+                    () =>
+                    {
+                        RemoveEntryAtIndex(
+                            selectedGlobalIndex,
+                            list,
                             dictionaryProperty,
                             keysProperty,
                             valuesProperty,
-                            pagination,
-                            list
+                            pagination
                         );
                     }
-                }
-            );
-
-            GUIContent removeContent = EditorGUIUtility.TrTextContent("-", "Remove selected entry");
-            DrawFooterButton(
-                removeRect,
-                removeContent,
-                "Remove",
-                canRemove,
-                () =>
-                {
-                    RemoveEntryAtIndex(
-                        selectedGlobalIndex,
-                        list,
-                        dictionaryProperty,
-                        keysProperty,
-                        valuesProperty,
-                        pagination
-                    );
-                }
-            );
+                );
+            }
         }
 
         internal void RemoveEntryAtIndex(
