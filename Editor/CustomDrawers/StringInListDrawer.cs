@@ -65,7 +65,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 || string.Equals(elementType, "int", StringComparison.Ordinal);
         }
 
-        private sealed class StringInListSelector : VisualElement
+        private sealed class StringInListSelector : BaseField<string>
         {
             private readonly string[] options;
             private readonly VisualElement searchRow;
@@ -94,7 +94,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             private bool searchVisible;
             private int suggestionOptionIndex = -1;
 
+            private static VisualElement CreateInputElement(out VisualElement element)
+            {
+                element = new VisualElement();
+                return element;
+            }
+
             public StringInListSelector(string[] options)
+                : base(string.Empty, CreateInputElement(out VisualElement baseInput))
             {
                 this.options = options ?? Array.Empty<string>();
                 lastResolvedPageSize = Mathf.Max(
@@ -105,16 +112,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 AddToClassList("unity-base-field");
                 AddToClassList("unity-base-field__aligned");
-                style.flexDirection = FlexDirection.Column;
-                style.marginLeft = 0f;
+                labelElement.AddToClassList("unity-base-field__label");
+                labelElement.AddToClassList("unity-label");
 
-                inputContainer = new VisualElement();
+                inputContainer = baseInput;
                 inputContainer.AddToClassList("unity-base-field__input");
                 inputContainer.style.flexGrow = 1f;
                 inputContainer.style.marginLeft = 0f;
                 inputContainer.style.paddingLeft = 0f;
                 inputContainer.style.flexDirection = FlexDirection.Column;
-                Add(inputContainer);
 
                 searchRow = new VisualElement();
                 searchRow.style.flexDirection = FlexDirection.Row;
@@ -172,6 +178,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 dropdown = new DropdownField { choices = new List<string>() };
                 dropdown.style.flexGrow = 1f;
+                dropdown.style.marginLeft = 0f;
+                dropdown.style.paddingLeft = 0f;
+                dropdown.label = string.Empty;
+                dropdown.labelElement.style.display = DisplayStyle.None;
                 dropdown.RegisterValueChangedCallback(OnDropdownValueChanged);
                 inputContainer.Add(dropdown);
 
@@ -193,7 +203,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 propertyPath = property.propertyPath;
                 isStringProperty = property.propertyType == SerializedPropertyType.String;
                 isIntegerProperty = property.propertyType == SerializedPropertyType.Integer;
-                dropdown.label = labelText;
+                UpdateLabel(labelText, property.tooltip);
                 pageIndex = 0;
                 searchText = string.Empty;
                 suggestion = string.Empty;
@@ -209,6 +219,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 boundObject = null;
                 propertyPath = string.Empty;
+                UpdateLabel(string.Empty, string.Empty);
+            }
+
+            private void UpdateLabel(string labelText, string tooltip)
+            {
+                bool hasLabel = !string.IsNullOrWhiteSpace(labelText);
+                label = hasLabel ? labelText : string.Empty;
+                labelElement.style.display = hasLabel ? DisplayStyle.Flex : DisplayStyle.None;
+                labelElement.tooltip = tooltip;
+                dropdown.tooltip = tooltip;
             }
 
             private void OnUndoRedo()
@@ -360,6 +380,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 {
                     dropdown.choices = new List<string>();
                     dropdown.SetValueWithoutNotify(string.Empty);
+                    SetValueWithoutNotify(string.Empty);
                     dropdown.SetEnabled(false);
                     noResultsLabel.style.display = DisplayStyle.Flex;
                     UpdatePagination(searchActive, 0, pageSize, 0);
@@ -424,6 +445,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
 
                 dropdown.SetValueWithoutNotify(dropdownValue);
+                SetValueWithoutNotify(dropdownValue);
                 dropdown.SetEnabled(pageChoices.Count > 0);
 
                 UpdateSuggestion(searchActive);
@@ -685,15 +707,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     return;
                 }
 
+                string selectedValue = options[optionIndex] ?? string.Empty;
+
                 if (isStringProperty)
                 {
-                    property.stringValue = options[optionIndex] ?? string.Empty;
+                    property.stringValue = selectedValue;
                 }
                 else if (isIntegerProperty)
                 {
                     property.intValue = optionIndex;
                 }
 
+                SetValueWithoutNotify(selectedValue);
                 serializedObject.ApplyModifiedProperties();
                 UpdateFromProperty();
             }
