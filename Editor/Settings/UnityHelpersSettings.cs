@@ -222,9 +222,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
         private void ApplyRuntimeConfiguration()
         {
-            SerializableTypeCatalog.ConfigureTypeNameIgnorePatterns(
-                GetSerializableTypeIgnorePatterns()
-            );
+            IReadOnlyList<string> patterns = GetSerializableTypeIgnorePatterns();
+            SerializableTypeCatalog.ConfigureTypeNameIgnorePatterns(patterns);
+            SerializableTypeCatalog.WarmPatternStats(patterns);
         }
 
         private bool EnsureSerializableTypePatternDefaults()

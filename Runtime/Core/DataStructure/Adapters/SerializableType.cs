@@ -390,6 +390,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         private static Regex[] _defaultIgnoreRegexes;
         private static Regex[] _configuredIgnoreRegexes;
         private static string[] _configuredIgnorePatterns;
+        private static readonly Dictionary<string, PatternStats> PatternStatsCache = new(
+            StringComparer.Ordinal
+        );
 
         /// <summary>
         /// Exposes the default ignore patterns used when no explicit configuration is provided.
@@ -425,6 +428,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 _configuredIgnorePatterns = sanitized;
                 _configuredIgnoreRegexes = sanitized == null ? null : CompilePatterns(sanitized);
 
+                PatternStatsCache.Clear();
                 _descriptors = null;
                 _descriptorByName = null;
                 _assemblyQualifiedNames = null;
@@ -443,16 +447,32 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             }
 
             string trimmed = pattern.Trim();
+            lock (SyncRoot)
+            {
+                if (PatternStatsCache.TryGetValue(trimmed, out PatternStats cached))
+                {
+                    return cached;
+                }
+            }
+
+            PatternStats stats;
             try
             {
                 Regex regex = new(trimmed, RegexOptions.Compiled | RegexOptions.CultureInvariant);
                 int count = CountTypesMatchingRegex(regex);
-                return new PatternStats(trimmed, true, count, null);
+                stats = new PatternStats(trimmed, true, count, null);
             }
             catch (ArgumentException exception)
             {
-                return new PatternStats(trimmed, false, 0, exception.Message);
+                stats = new PatternStats(trimmed, false, 0, exception.Message);
             }
+
+            lock (SyncRoot)
+            {
+                PatternStatsCache[trimmed] = stats;
+            }
+
+            return stats;
         }
 
         private static Regex[] GetActiveIgnoreRegexes()
@@ -464,6 +484,35 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             }
 
             return _defaultIgnoreRegexes ??= CompilePatterns(DefaultIgnorePatternStrings);
+        }
+
+        internal static void WarmPatternStats(IEnumerable<string> patterns)
+        {
+            if (patterns == null)
+            {
+                return;
+            }
+
+            HashSet<string> unique = new(StringComparer.Ordinal);
+            foreach (string pattern in patterns)
+            {
+                if (string.IsNullOrWhiteSpace(pattern))
+                {
+                    continue;
+                }
+
+                unique.Add(pattern.Trim());
+            }
+
+            if (unique.Count == 0)
+            {
+                return;
+            }
+
+            foreach (string pattern in unique)
+            {
+                GetPatternStats(pattern);
+            }
         }
 
         private static Regex[] CompilePatterns(IEnumerable<string> patterns)
@@ -592,6 +641,33 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 return true;
             }
 
+            string assemblyQualifiedName = type.AssemblyQualifiedName;
+            if (
+                !string.IsNullOrEmpty(assemblyQualifiedName) && regex.IsMatch(assemblyQualifiedName)
+            )
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool RegexMatchesDescriptor(
+            SerializableTypeDescriptor descriptor,
+            Regex regex
+        )
+        {
+            if (descriptor.Type != null && RegexMatchesType(descriptor.Type, regex))
+            {
+                return true;
+            }
+
+            string qualifiedName = descriptor.AssemblyQualifiedName;
+            if (!string.IsNullOrEmpty(qualifiedName) && regex.IsMatch(qualifiedName))
+            {
+                return true;
+            }
+
             return false;
         }
 
@@ -602,24 +678,29 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 return 0;
             }
 
-            int matches = 0;
-            Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
-            for (int assemblyIndex = 0; assemblyIndex < assemblies.Length; assemblyIndex++)
+            EnsureCache();
+
+            SerializableTypeDescriptor[] descriptorsSnapshot = _descriptors;
+            if (descriptorsSnapshot == null || descriptorsSnapshot.Length == 0)
             {
-                Assembly assembly = assemblies[assemblyIndex];
-                if (assembly == null || assembly.IsDynamic)
+                return 0;
+            }
+
+            int matches = 0;
+            for (int index = 0; index < descriptorsSnapshot.Length; index++)
+            {
+                SerializableTypeDescriptor descriptor = descriptorsSnapshot[index];
+                if (
+                    descriptor.Type == null
+                    && string.IsNullOrEmpty(descriptor.AssemblyQualifiedName)
+                )
                 {
                     continue;
                 }
 
-                Type[] exportedTypes = GetAssemblyTypes(assembly);
-                for (int typeIndex = 0; typeIndex < exportedTypes.Length; typeIndex++)
+                if (RegexMatchesDescriptor(descriptor, regex))
                 {
-                    Type type = exportedTypes[typeIndex];
-                    if (RegexMatchesType(type, regex))
-                    {
-                        matches++;
-                    }
+                    matches++;
                 }
             }
 
