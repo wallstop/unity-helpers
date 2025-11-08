@@ -393,6 +393,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         private static readonly Dictionary<string, PatternStats> PatternStatsCache = new(
             StringComparer.Ordinal
         );
+        private static TypeSignature[] _typeSignatures;
 
         /// <summary>
         /// Exposes the default ignore patterns used when no explicit configuration is provided.
@@ -652,25 +653,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             return false;
         }
 
-        private static bool RegexMatchesDescriptor(
-            SerializableTypeDescriptor descriptor,
-            Regex regex
-        )
-        {
-            if (descriptor.Type != null && RegexMatchesType(descriptor.Type, regex))
-            {
-                return true;
-            }
-
-            string qualifiedName = descriptor.AssemblyQualifiedName;
-            if (!string.IsNullOrEmpty(qualifiedName) && regex.IsMatch(qualifiedName))
-            {
-                return true;
-            }
-
-            return false;
-        }
-
         private static int CountTypesMatchingRegex(Regex regex)
         {
             if (regex == null)
@@ -678,27 +660,18 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 return 0;
             }
 
-            EnsureCache();
+            EnsureTypeSignatures();
 
-            SerializableTypeDescriptor[] descriptorsSnapshot = _descriptors;
-            if (descriptorsSnapshot == null || descriptorsSnapshot.Length == 0)
+            TypeSignature[] signatures = _typeSignatures;
+            if (signatures == null || signatures.Length == 0)
             {
                 return 0;
             }
 
             int matches = 0;
-            for (int index = 0; index < descriptorsSnapshot.Length; index++)
+            for (int index = 0; index < signatures.Length; index++)
             {
-                SerializableTypeDescriptor descriptor = descriptorsSnapshot[index];
-                if (
-                    descriptor.Type == null
-                    && string.IsNullOrEmpty(descriptor.AssemblyQualifiedName)
-                )
-                {
-                    continue;
-                }
-
-                if (RegexMatchesDescriptor(descriptor, regex))
+                if (RegexMatchesSignature(signatures[index], regex))
                 {
                     matches++;
                 }
@@ -1084,6 +1057,92 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             builder.Append(name.Replace('+', '.'));
         }
 
+        private static bool RegexMatchesSignature(TypeSignature signature, Regex regex)
+        {
+            if (regex == null)
+            {
+                return false;
+            }
+
+            if (!string.IsNullOrEmpty(signature.FullName) && regex.IsMatch(signature.FullName))
+            {
+                return true;
+            }
+
+            if (!string.IsNullOrEmpty(signature.Name) && regex.IsMatch(signature.Name))
+            {
+                return true;
+            }
+
+            if (
+                !string.IsNullOrEmpty(signature.AssemblyQualifiedName)
+                && regex.IsMatch(signature.AssemblyQualifiedName)
+            )
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        private static void EnsureTypeSignatures()
+        {
+            if (_typeSignatures != null)
+            {
+                return;
+            }
+
+            lock (SyncRoot)
+            {
+                if (_typeSignatures != null)
+                {
+                    return;
+                }
+
+                List<TypeSignature> signatures = new();
+                HashSet<string> seenTypes = new(StringComparer.Ordinal);
+
+                Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
+                for (int assemblyIndex = 0; assemblyIndex < assemblies.Length; assemblyIndex++)
+                {
+                    Assembly assembly = assemblies[assemblyIndex];
+                    if (assembly == null || assembly.IsDynamic)
+                    {
+                        continue;
+                    }
+
+                    Type[] exportedTypes = GetAssemblyTypes(assembly);
+                    for (int typeIndex = 0; typeIndex < exportedTypes.Length; typeIndex++)
+                    {
+                        Type type = exportedTypes[typeIndex];
+                        if (type == null)
+                        {
+                            continue;
+                        }
+
+                        string assemblyQualifiedName = type.AssemblyQualifiedName ?? string.Empty;
+                        string uniquenessKey = string.IsNullOrEmpty(assemblyQualifiedName)
+                            ? $"{type.FullName ?? type.Name}|{assembly.GetName()?.Name ?? string.Empty}"
+                            : assemblyQualifiedName;
+                        if (!seenTypes.Add(uniquenessKey))
+                        {
+                            continue;
+                        }
+
+                        signatures.Add(
+                            new TypeSignature(
+                                type.Name ?? string.Empty,
+                                type.FullName ?? string.Empty,
+                                assemblyQualifiedName
+                            )
+                        );
+                    }
+                }
+
+                _typeSignatures = signatures.ToArray();
+            }
+        }
+
         /// <summary>
         /// Provides quick insight into a regex ignore pattern.
         /// </summary>
@@ -1160,6 +1219,22 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             }
 
             return MatchesConfiguredIgnorePattern(type);
+        }
+
+        private readonly struct TypeSignature
+        {
+            public TypeSignature(string name, string fullName, string assemblyQualifiedName)
+            {
+                Name = name ?? string.Empty;
+                FullName = fullName ?? string.Empty;
+                AssemblyQualifiedName = assemblyQualifiedName ?? string.Empty;
+            }
+
+            public string Name { get; }
+
+            public string FullName { get; }
+
+            public string AssemblyQualifiedName { get; }
         }
     }
 
