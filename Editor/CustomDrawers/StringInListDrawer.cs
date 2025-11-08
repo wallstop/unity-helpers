@@ -544,8 +544,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 {
                     suggestionLabel.BringToFront();
                     float offset = 2f + MeasurePrefixWidth(searchText);
+                    string suffix = suggestionValue.Substring(searchText.Length);
+                    suffix = AdjustSuffixCasing(searchText, suffix);
                     suggestionLabel.style.marginLeft = offset;
-                    suggestionLabel.text = suggestionValue.Substring(searchText.Length);
+                    suggestionLabel.text = suffix;
                     suggestionLabel.style.display = DisplayStyle.Flex;
                 }
                 else
@@ -602,6 +604,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 prefixWidthCache[text] = measured;
                 return measured;
+            }
+
+            private static string AdjustSuffixCasing(string prefix, string suffix)
+            {
+                if (string.IsNullOrEmpty(prefix) || string.IsNullOrEmpty(suffix))
+                {
+                    return suffix;
+                }
+
+                bool lowercase = char.IsLower(prefix[prefix.Length - 1]);
+                return lowercase ? suffix.ToLowerInvariant() : suffix;
             }
 
             private void AcceptSuggestion(bool commitSelection)
