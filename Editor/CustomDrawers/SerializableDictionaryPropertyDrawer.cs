@@ -48,6 +48,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static readonly GUIContent DuplicateIconTemplate = EditorGUIUtility.IconContent(
             "console.warnicon.sml"
         );
+        private static readonly GUIContent PendingFoldoutContent = EditorGUIUtility.TrTextContent(
+            "New Entry"
+        );
         private static GUIStyle _footerLabelStyle;
         private static readonly object NullKeySentinel = new();
 
@@ -143,6 +146,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return height;
             }
 
+            PendingEntry pending = null;
+            if (TryResolveKeyValueTypes(fieldInfo, out Type keyType, out Type valueType))
+            {
+                pending = GetOrCreatePendingEntry(property, keyType, valueType);
+            }
+
             SerializedProperty keysProperty = property.FindPropertyRelative(
                 SerializableDictionarySerializedPropertyNames.Keys
             );
@@ -154,7 +163,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             float listHeight = list.GetHeight();
             float spacing = EditorGUIUtility.standardVerticalSpacing;
-            float pendingHeight = GetPendingSectionHeight();
+            float pendingHeight = GetPendingSectionHeight(pending);
 
             height += spacing + pendingHeight + spacing + listHeight;
             return height;
@@ -644,6 +653,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 key = GetDefaultValue(keyType),
                 value = GetDefaultValue(valueType),
+                IsExpanded = false,
             };
             _pendingEntries[key] = entry;
             return entry;
@@ -1268,20 +1278,46 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         {
             float rowHeight = EditorGUIUtility.singleLineHeight;
             float spacing = EditorGUIUtility.standardVerticalSpacing;
-            float sectionHeight = GetPendingSectionHeight();
+            float sectionHeight = GetPendingSectionHeight(pending);
 
             Rect containerRect = new(fullPosition.x, y, fullPosition.width, sectionHeight);
             Color backgroundColor = EditorGUIUtility.isProSkin
                 ? new Color(0.18f, 0.18f, 0.18f, 1f)
                 : new Color(0.92f, 0.92f, 0.92f, 1f);
-            EditorGUI.DrawRect(containerRect, backgroundColor);
+            if (Event.current.type == EventType.Repaint)
+            {
+                EditorGUI.DrawRect(containerRect, backgroundColor);
+            }
 
             float innerX = containerRect.x + PendingSectionPadding;
             float innerWidth = containerRect.width - (PendingSectionPadding * 2f);
             float innerY = containerRect.y + PendingSectionPadding;
 
             Rect headerRect = new(innerX, innerY, innerWidth, rowHeight);
-            EditorGUI.LabelField(headerRect, "New Entry", EditorStyles.boldLabel);
+            EditorGUI.BeginChangeCheck();
+            FontStyle originalFoldoutFontStyle = EditorStyles.foldout.fontStyle;
+            EditorStyles.foldout.fontStyle = FontStyle.Bold;
+            bool expanded = EditorGUI.Foldout(
+                headerRect,
+                pending.IsExpanded,
+                PendingFoldoutContent,
+                true
+            );
+            EditorStyles.foldout.fontStyle = originalFoldoutFontStyle;
+            if (EditorGUI.EndChangeCheck())
+            {
+                pending.IsExpanded = expanded;
+                GUI.changed = true;
+                sectionHeight = GetPendingSectionHeight(pending);
+                containerRect.height = sectionHeight;
+            }
+
+            if (!pending.IsExpanded)
+            {
+                y = containerRect.yMax;
+                return;
+            }
+
             innerY += rowHeight + spacing;
 
             Rect keyRect = new(innerX, innerY, innerWidth, rowHeight);
@@ -1611,11 +1647,19 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return texture;
         }
 
-        private static float GetPendingSectionHeight()
+        private static float GetPendingSectionHeight(PendingEntry pending)
         {
             float rowHeight = EditorGUIUtility.singleLineHeight;
             float spacing = EditorGUIUtility.standardVerticalSpacing;
-            return (rowHeight * 4f) + (spacing * 3f) + (PendingSectionPadding * 2f);
+            float baseHeight = (rowHeight * 1f) + (PendingSectionPadding * 2f);
+            if (pending == null || !pending.IsExpanded)
+            {
+                return baseHeight;
+            }
+
+            float expandedRows = rowHeight * 3f;
+            float expandedSpacing = spacing * 3f;
+            return baseHeight + expandedRows + expandedSpacing;
         }
 
         private CommitResult CommitEntry(
@@ -2309,6 +2353,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         {
             public object key;
             public object value;
+            public bool IsExpanded;
         }
 
         private sealed class DuplicateKeyInfo
