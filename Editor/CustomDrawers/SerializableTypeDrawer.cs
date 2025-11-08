@@ -6,6 +6,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
+    using WallstopStudios.UnityHelpers.Editor.Settings;
 
     /// <summary>
     /// Property drawer that provides search, paging, and lightweight autocomplete for SerializableType.
@@ -20,7 +21,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public int Page;
         }
 
-        private const int PageSize = 25;
         private const float ClearWidth = 50f;
         private const float ButtonWidth = 24f;
         private const float PageLabelWidth = 90f;
@@ -118,6 +118,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 lineHeight
             );
 
+            int pageSize = Mathf.Max(1, UnityHelpersSettings.GetStringInListPageLimit());
+
             using (new EditorGUI.PropertyScope(position, GUIContent.none, property))
             {
                 EditorGUI.LabelField(searchLabelRect, "Search");
@@ -138,7 +140,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 IReadOnlyList<SerializableTypeCatalog.SerializableTypeDescriptor> filtered =
                     SerializableTypeCatalog.GetFilteredDescriptors(state.Search ?? string.Empty);
 
-                int pageCount = Math.Max(1, (filtered.Count + PageSize - 1) / PageSize);
+                int pageCount = Math.Max(1, (filtered.Count + pageSize - 1) / pageSize);
                 state.Page = Mathf.Clamp(state.Page, 0, pageCount - 1);
 
                 string currentValue = assemblyQualifiedName.stringValue ?? string.Empty;
@@ -149,22 +151,22 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     state.LastValue = currentValue;
                     if (globalIndex >= 0)
                     {
-                        state.Page = globalIndex / PageSize;
+                        state.Page = globalIndex / pageSize;
                     }
                 }
 
-                int startIndex = state.Page * PageSize;
+                int startIndex = state.Page * pageSize;
                 if (startIndex >= filtered.Count && filtered.Count > 0)
                 {
                     state.Page = 0;
                     startIndex = 0;
                 }
 
-                int endIndex = Math.Min(filtered.Count, startIndex + PageSize);
+                int endIndex = Math.Min(filtered.Count, startIndex + pageSize);
                 int pageLength = Math.Max(0, endIndex - startIndex);
                 if (pageLength == 0 && filtered.Count > 0)
                 {
-                    pageLength = Math.Min(PageSize, filtered.Count);
+                    pageLength = Math.Min(pageSize, filtered.Count);
                     startIndex = 0;
                     endIndex = pageLength;
                 }
@@ -196,10 +198,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                             acceptedSuggestion = true;
                             evt.Use();
                             filtered = SerializableTypeCatalog.GetFilteredDescriptors(state.Search);
-                            pageCount = Math.Max(1, (filtered.Count + PageSize - 1) / PageSize);
+                            pageCount = Math.Max(1, (filtered.Count + pageSize - 1) / pageSize);
                             state.Page = Mathf.Clamp(state.Page, 0, pageCount - 1);
-                            startIndex = state.Page * PageSize;
-                            endIndex = Math.Min(filtered.Count, startIndex + PageSize);
+                            startIndex = state.Page * pageSize;
+                            endIndex = Math.Min(filtered.Count, startIndex + pageSize);
                             pageLength = Math.Max(0, endIndex - startIndex);
                             globalIndex = FindDescriptorIndex(filtered, currentValue);
                             GUI.FocusControl(controlName);
@@ -244,8 +246,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     GUI.color = originalColor;
                 }
 
-                GUI.enabled = filtered.Count > 0;
-                EditorGUI.LabelField(pageInfoRect, $"Page {state.Page + 1}/{pageCount}");
+                bool showPagination = filtered.Count > pageSize;
+                GUI.enabled = filtered.Count > 0 && showPagination;
+                if (showPagination)
+                {
+                    EditorGUI.LabelField(pageInfoRect, $"Page {state.Page + 1}/{pageCount}");
+                }
+                else
+                {
+                    EditorGUI.LabelField(pageInfoRect, GUIContent.none);
+                }
 
                 GUI.enabled =
                     !string.IsNullOrEmpty(state.Search) || !string.IsNullOrEmpty(currentValue);
@@ -258,20 +268,20 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     state.Search = string.Empty;
                     state.Page = 0;
                     filtered = SerializableTypeCatalog.GetFilteredDescriptors(string.Empty);
-                    pageCount = Math.Max(1, (filtered.Count + PageSize - 1) / PageSize);
+                    pageCount = Math.Max(1, (filtered.Count + pageSize - 1) / pageSize);
                     startIndex = 0;
-                    endIndex = Math.Min(filtered.Count, PageSize);
+                    endIndex = Math.Min(filtered.Count, pageSize);
                     pageLength = Math.Max(0, endIndex - startIndex);
                     GUI.FocusControl(controlName);
                 }
 
-                GUI.enabled = state.Page > 0;
+                GUI.enabled = showPagination && state.Page > 0;
                 if (GUI.Button(prevRect, "<"))
                 {
                     state.Page = Math.Max(0, state.Page - 1);
                 }
 
-                GUI.enabled = state.Page < (pageCount - 1);
+                GUI.enabled = showPagination && state.Page < (pageCount - 1);
                 if (GUI.Button(nextRect, ">"))
                 {
                     state.Page = Math.Min(pageCount - 1, state.Page + 1);
