@@ -307,14 +307,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     }
                 }
 
-                if (hasSuggestion && Event.current.type == EventType.Repaint)
-                {
-                    Color originalColor = GUI.color;
-                    GUI.color = new Color(originalColor.r, originalColor.g, originalColor.b, 0.35f);
-                    EditorGUI.LabelField(searchFieldRect, suggestion, EditorStyles.label);
-                    GUI.color = originalColor;
-                }
-
                 bool showPagination = filtered.Count > pageSize;
                 GUI.enabled = filtered.Count > 0 && showPagination;
                 if (showPagination)

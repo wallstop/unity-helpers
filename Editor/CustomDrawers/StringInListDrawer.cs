@@ -70,7 +70,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             private readonly string[] options;
             private readonly VisualElement searchRow;
             private readonly TextField searchField;
-            private readonly Label suggestionLabel;
             private readonly Button clearButton;
             private readonly VisualElement paginationContainer;
             private readonly Button previousButton;
@@ -80,9 +79,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             private readonly Label noResultsLabel;
             private readonly Label suggestionHintLabel;
             private readonly VisualElement inputContainer;
-            private TextElement searchTextInput;
-            private readonly Dictionary<string, float> prefixWidthCache =
-                new Dictionary<string, float>();
             private readonly List<int> filteredIndices = new List<int>();
             private readonly List<int> pageOptionIndices = new List<int>();
             private readonly List<string> pageChoices = new List<string>();
@@ -106,7 +102,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     UnityHelpersSettings.GetStringInListPageLimit()
                 );
                 suggestionOptionIndex = -1;
-                prefixWidthCache.Clear();
 
                 AddToClassList("unity-base-field");
                 AddToClassList("unity-base-field__aligned");
@@ -137,22 +132,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 searchField.RegisterValueChangedCallback(OnSearchChanged);
                 searchField.RegisterCallback<KeyDownEvent>(OnSearchKeyDown);
                 searchWrapper.Add(searchField);
-                searchField.schedule.Execute(() =>
-                    searchTextInput = searchField.Q<TextElement>("unity-text-input")
-                );
-
-                suggestionLabel = new Label();
-                suggestionLabel.style.position = Position.Absolute;
-                suggestionLabel.style.left = 4f;
-                suggestionLabel.style.top = 2f;
-                suggestionLabel.style.unityFontStyleAndWeight = FontStyle.Italic;
-                suggestionLabel.style.color = new Color(1f, 1f, 1f, 0.7f);
-                suggestionLabel.style.opacity = 0.5f;
-                suggestionLabel.style.paddingLeft = 2f;
-                suggestionLabel.pickingMode = PickingMode.Ignore;
-                suggestionLabel.style.display = DisplayStyle.None;
-                searchWrapper.Add(suggestionLabel);
-                suggestionLabel.BringToFront();
 
                 clearButton = new Button(OnClearClicked) { text = "Clear" };
                 clearButton.style.marginLeft = 4f;
@@ -220,7 +199,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 suggestion = string.Empty;
 
                 searchField.SetValueWithoutNotify(string.Empty);
-                prefixWidthCache.Clear();
                 UpdateClearButton(searchVisible);
                 UpdateSuggestionDisplay(string.Empty, -1, -1);
 
@@ -246,7 +224,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
 
                 searchText = evt.newValue ?? string.Empty;
-                prefixWidthCache.Clear();
                 pageIndex = 0;
                 UpdateClearButton(searchVisible);
                 UpdateFromProperty();
@@ -284,7 +261,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 searchText = string.Empty;
                 searchField.SetValueWithoutNotify(string.Empty);
-                prefixWidthCache.Clear();
 
                 pageIndex = 0;
                 UpdateClearButton(searchVisible);
@@ -526,36 +502,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 suggestion = suggestionValue;
                 suggestionOptionIndex = optionIndex;
-                if (suggestionLabel == null)
-                {
-                    return;
-                }
-
                 bool visible =
-                    searchVisible && !string.IsNullOrEmpty(suggestionValue) && optionIndex >= 0;
-
-                bool showOverlay =
-                    visible
-                    && matchPosition == 0
-                    && !string.IsNullOrEmpty(searchText)
-                    && suggestionValue.Length > searchText.Length;
-
-                if (showOverlay)
-                {
-                    suggestionLabel.BringToFront();
-                    float offset = 2f + MeasurePrefixWidth(searchText);
-                    string suffix = suggestionValue.Substring(searchText.Length);
-                    suffix = AdjustSuffixCasing(searchText, suffix);
-                    suggestionLabel.style.marginLeft = offset;
-                    suggestionLabel.text = suffix;
-                    suggestionLabel.style.display = DisplayStyle.Flex;
-                }
-                else
-                {
-                    suggestionLabel.style.marginLeft = 2f;
-                    suggestionLabel.text = string.Empty;
-                    suggestionLabel.style.display = DisplayStyle.None;
-                }
+                    searchVisible
+                    && !string.IsNullOrEmpty(suggestionValue)
+                    && optionIndex >= 0
+                    && matchPosition == 0;
 
                 if (suggestionHintLabel != null)
                 {
@@ -573,53 +524,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
             }
 
-            private float MeasurePrefixWidth(string text)
-            {
-                if (string.IsNullOrEmpty(text))
-                {
-                    return 0f;
-                }
-
-                if (prefixWidthCache.TryGetValue(text, out float cached))
-                {
-                    return cached;
-                }
-
-                float measured = 0f;
-                if (searchTextInput != null)
-                {
-                    Vector2 size = searchTextInput.MeasureTextSize(
-                        text,
-                        float.NaN,
-                        VisualElement.MeasureMode.Undefined,
-                        float.NaN,
-                        VisualElement.MeasureMode.Undefined
-                    );
-                    measured = size.x;
-                }
-                else
-                {
-                    measured = EditorStyles.label.CalcSize(new GUIContent(text)).x;
-                }
-
-                prefixWidthCache[text] = measured;
-                return measured;
-            }
-
-            private static string AdjustSuffixCasing(string prefix, string suffix)
-            {
-                if (string.IsNullOrEmpty(prefix) || string.IsNullOrEmpty(suffix))
-                {
-                    return suffix;
-                }
-
-                bool lowercase = char.IsLower(prefix[prefix.Length - 1]);
-                return lowercase ? suffix.ToLowerInvariant() : suffix;
-            }
-
             private void AcceptSuggestion(bool commitSelection)
             {
-                if (!searchVisible || string.IsNullOrEmpty(suggestion) || searchField == null)
+                if (
+                    !searchVisible
+                    || string.IsNullOrEmpty(suggestion)
+                    || searchField == null
+                    || suggestionOptionIndex < 0
+                )
                 {
                     return;
                 }
@@ -688,7 +600,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                     UpdateSuggestionDisplay(string.Empty, -1, -1);
                     suggestionOptionIndex = -1;
-                    prefixWidthCache.Clear();
 
                     if (paginationContainer != null)
                     {
