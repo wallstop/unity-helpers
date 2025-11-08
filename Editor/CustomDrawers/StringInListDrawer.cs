@@ -81,6 +81,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             private readonly Label suggestionHintLabel;
             private readonly VisualElement inputContainer;
             private TextElement searchTextInput;
+            private readonly Dictionary<string, float> prefixWidthCache =
+                new Dictionary<string, float>();
             private readonly List<int> filteredIndices = new List<int>();
             private readonly List<int> pageOptionIndices = new List<int>();
             private readonly List<string> pageChoices = new List<string>();
@@ -104,6 +106,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     UnityHelpersSettings.GetStringInListPageLimit()
                 );
                 suggestionOptionIndex = -1;
+                prefixWidthCache.Clear();
 
                 AddToClassList("unity-base-field");
                 AddToClassList("unity-base-field__aligned");
@@ -217,6 +220,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 suggestion = string.Empty;
 
                 searchField.SetValueWithoutNotify(string.Empty);
+                prefixWidthCache.Clear();
                 UpdateClearButton(searchVisible);
                 UpdateSuggestionDisplay(string.Empty, -1, -1);
 
@@ -242,6 +246,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
 
                 searchText = evt.newValue ?? string.Empty;
+                prefixWidthCache.Clear();
                 pageIndex = 0;
                 UpdateClearButton(searchVisible);
                 UpdateFromProperty();
@@ -279,6 +284,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 searchText = string.Empty;
                 searchField.SetValueWithoutNotify(string.Empty);
+                prefixWidthCache.Clear();
 
                 pageIndex = 0;
                 UpdateClearButton(searchVisible);
@@ -367,7 +373,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     string option = options[i] ?? string.Empty;
                     if (
                         !hasSearch
-                        || option.IndexOf(effectiveSearch, StringComparison.OrdinalIgnoreCase) >= 0
+                        || option.StartsWith(effectiveSearch, StringComparison.OrdinalIgnoreCase)
                     )
                     {
                         filteredIndices.Add(i);
@@ -496,59 +502,20 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             private void UpdateSuggestion(bool searchActive)
             {
-                if (!searchActive || filteredIndices.Count == 0)
+                if (filteredIndices.Count == 0)
                 {
                     UpdateSuggestionDisplay(string.Empty, -1, -1);
                     return;
                 }
 
-                if (string.IsNullOrEmpty(searchText))
-                {
-                    int firstIndex = filteredIndices[0];
-                    UpdateSuggestionDisplay(options[firstIndex] ?? string.Empty, firstIndex, 0);
-                    return;
-                }
+                bool hasSearch = searchActive && !string.IsNullOrEmpty(searchText);
+                int optionIndex = filteredIndices[0];
+                string optionValue = options[optionIndex] ?? string.Empty;
+                bool prefixMatch =
+                    hasSearch
+                    && optionValue.StartsWith(searchText, StringComparison.OrdinalIgnoreCase);
 
-                int bestOption = -1;
-                int bestMatchPos = int.MaxValue;
-                int bestLength = int.MaxValue;
-
-                for (int i = 0; i < filteredIndices.Count; i++)
-                {
-                    int optionIndex = filteredIndices[i];
-                    string optionValue = options[optionIndex] ?? string.Empty;
-                    int matchPos = optionValue.IndexOf(
-                        searchText,
-                        StringComparison.OrdinalIgnoreCase
-                    );
-                    if (matchPos < 0)
-                    {
-                        continue;
-                    }
-
-                    if (
-                        matchPos < bestMatchPos
-                        || (matchPos == bestMatchPos && optionValue.Length < bestLength)
-                    )
-                    {
-                        bestOption = optionIndex;
-                        bestMatchPos = matchPos;
-                        bestLength = optionValue.Length;
-                        if (bestMatchPos == 0 && bestLength == searchText.Length)
-                        {
-                            break;
-                        }
-                    }
-                }
-
-                if (bestOption >= 0)
-                {
-                    string value = options[bestOption] ?? string.Empty;
-                    UpdateSuggestionDisplay(value, bestOption, bestMatchPos);
-                    return;
-                }
-
-                UpdateSuggestionDisplay(string.Empty, -1, -1);
+                UpdateSuggestionDisplay(optionValue, optionIndex, prefixMatch ? 0 : -1);
             }
 
             private void UpdateSuggestionDisplay(
@@ -567,12 +534,19 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 bool visible =
                     searchVisible && !string.IsNullOrEmpty(suggestionValue) && optionIndex >= 0;
 
-                if (visible)
+                bool showOverlay =
+                    visible
+                    && matchPosition == 0
+                    && !string.IsNullOrEmpty(searchText)
+                    && suggestionValue.Length > searchText.Length;
+
+                if (showOverlay)
                 {
-                    suggestionLabel.style.marginLeft = 2f;
-                    suggestionLabel.text = suggestionValue;
-                    suggestionLabel.style.display = DisplayStyle.Flex;
                     suggestionLabel.BringToFront();
+                    float offset = 2f + MeasurePrefixWidth(searchText);
+                    suggestionLabel.style.marginLeft = offset;
+                    suggestionLabel.text = suggestionValue.Substring(searchText.Length);
+                    suggestionLabel.style.display = DisplayStyle.Flex;
                 }
                 else
                 {
@@ -595,6 +569,39 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 {
                     suggestionOptionIndex = -1;
                 }
+            }
+
+            private float MeasurePrefixWidth(string text)
+            {
+                if (string.IsNullOrEmpty(text))
+                {
+                    return 0f;
+                }
+
+                if (prefixWidthCache.TryGetValue(text, out float cached))
+                {
+                    return cached;
+                }
+
+                float measured = 0f;
+                if (searchTextInput != null)
+                {
+                    Vector2 size = searchTextInput.MeasureTextSize(
+                        text,
+                        float.NaN,
+                        VisualElement.MeasureMode.Undefined,
+                        float.NaN,
+                        VisualElement.MeasureMode.Undefined
+                    );
+                    measured = size.x;
+                }
+                else
+                {
+                    measured = EditorStyles.label.CalcSize(new GUIContent(text)).x;
+                }
+
+                prefixWidthCache[text] = measured;
+                return measured;
             }
 
             private void AcceptSuggestion(bool commitSelection)
@@ -668,6 +675,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                     UpdateSuggestionDisplay(string.Empty, -1, -1);
                     suggestionOptionIndex = -1;
+                    prefixWidthCache.Clear();
 
                     if (paginationContainer != null)
                     {

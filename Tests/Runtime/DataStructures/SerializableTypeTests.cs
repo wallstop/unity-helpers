@@ -213,6 +213,15 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
+        public void CatalogMatchesPrefixOnly()
+        {
+            IReadOnlyList<SerializableTypeCatalog.SerializableTypeDescriptor> filtered =
+                SerializableTypeCatalog.GetFilteredDescriptors("ictionary");
+
+            Assert.IsEmpty(filtered);
+        }
+
+        [Test]
         public void TryGetValueFailsForUnknownType()
         {
             SerializableType unresolved = SerializableType.FromSerializedName(

@@ -467,7 +467,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         {
             EnsureCache();
 
-            string key = string.IsNullOrWhiteSpace(search) ? string.Empty : search.Trim();
+            string key = string.IsNullOrWhiteSpace(search)
+                ? string.Empty
+                : search.Trim().ToLowerInvariant();
             if (FilterCache.TryGetValue(key, out SerializableTypeDescriptor[] cached))
             {
                 return cached;
@@ -782,9 +784,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 }
 
                 if (
-                    DisplayName.IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0
-                    || AssemblyQualifiedName.IndexOf(search, StringComparison.OrdinalIgnoreCase)
-                        >= 0
+                    DisplayName.StartsWith(search, StringComparison.OrdinalIgnoreCase)
+                    || AssemblyQualifiedName.StartsWith(search, StringComparison.OrdinalIgnoreCase)
                 )
                 {
                     return true;
