@@ -98,6 +98,76 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         }
 
         [Test]
+        public void SerializableSortedDictionaryRoundTripsJson()
+        {
+            SerializableSortedDictionary<int, string> original =
+                new SerializableSortedDictionary<int, string>();
+            original.Add(5, "five");
+            original.Add(1, "one");
+            original.Add(3, "three");
+
+            string json = Serializer.JsonStringify(original);
+            SerializableSortedDictionary<int, string> deserialized = Serializer.JsonDeserialize<
+                SerializableSortedDictionary<int, string>
+            >(json);
+
+            int[] expectedKeys = new int[] { 1, 3, 5 };
+            int index = 0;
+            foreach (KeyValuePair<int, string> pair in deserialized)
+            {
+                Assert.Less(index, expectedKeys.Length);
+                Assert.AreEqual(expectedKeys[index], pair.Key);
+                index++;
+            }
+
+            Assert.AreEqual(expectedKeys.Length, index);
+        }
+
+        [Test]
+        public void SerializableSortedDictionaryCacheRoundTripsJson()
+        {
+            SerializableSortedDictionary<
+                string,
+                SerializablePayload,
+                SerializableDictionary.Cache<SerializablePayload>
+            > original =
+                new SerializableSortedDictionary<
+                    string,
+                    SerializablePayload,
+                    SerializableDictionary.Cache<SerializablePayload>
+                >();
+
+            original.Add("delta", new SerializablePayload { Id = 4, Name = "Delta" });
+            original.Add("alpha", new SerializablePayload { Id = 1, Name = "Alpha" });
+            original.Add("charlie", new SerializablePayload { Id = 3, Name = "Charlie" });
+
+            JsonSerializerOptions options = Serializer.CreatePrettyJsonOptions();
+            string json = Serializer.JsonStringify(original, options);
+            SerializableSortedDictionary<
+                string,
+                SerializablePayload,
+                SerializableDictionary.Cache<SerializablePayload>
+            > deserialized = Serializer.JsonDeserialize<
+                SerializableSortedDictionary<
+                    string,
+                    SerializablePayload,
+                    SerializableDictionary.Cache<SerializablePayload>
+                >
+            >(json, null, options);
+
+            string[] expectedKeys = new string[] { "alpha", "charlie", "delta" };
+            int index = 0;
+            foreach (KeyValuePair<string, SerializablePayload> pair in deserialized)
+            {
+                Assert.Less(index, expectedKeys.Length);
+                Assert.AreEqual(expectedKeys[index], pair.Key);
+                index++;
+            }
+
+            Assert.AreEqual(expectedKeys.Length, index);
+        }
+
+        [Test]
         public void SerializableDictionaryHandlesMultipleJsonMutations()
         {
             SerializableDictionary<string, int> dictionary = new SerializableDictionary<string, int>

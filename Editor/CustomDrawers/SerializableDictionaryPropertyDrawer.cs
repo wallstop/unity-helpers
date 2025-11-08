@@ -13,6 +13,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using WallstopStudios.UnityHelpers.Editor.Settings;
 
     [CustomPropertyDrawer(typeof(SerializableDictionary<,>), true)]
+    [CustomPropertyDrawer(typeof(SerializableSortedDictionary<,>), true)]
+    [CustomPropertyDrawer(typeof(SerializableSortedDictionary<,,>), true)]
     public sealed class SerializableDictionaryPropertyDrawer : PropertyDrawer
     {
         private readonly Dictionary<string, ReorderableList> _lists = new();
@@ -73,7 +75,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             );
             EnsureParallelArraySizes(keysProperty, valuesProperty);
 
-            if (!TryResolveKeyValueTypes(fieldInfo, out Type keyType, out Type valueType))
+            if (
+                !TryResolveKeyValueTypes(
+                    fieldInfo,
+                    out Type keyType,
+                    out Type valueType,
+                    out bool _
+                )
+            )
             {
                 EditorGUI.LabelField(position, label.text, "Unsupported dictionary type");
                 EditorGUI.EndProperty();
@@ -151,7 +160,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             PendingEntry pending = null;
-            if (TryResolveKeyValueTypes(fieldInfo, out Type keyType, out Type valueType))
+            if (
+                TryResolveKeyValueTypes(fieldInfo, out Type keyType, out Type valueType, out bool _)
+            )
             {
                 pending = GetOrCreatePendingEntry(property, keyType, valueType);
             }
@@ -264,7 +275,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 UnityHelpersSettings.DuplicateRowAnimationMode animationMode =
                     UnityHelpersSettings.GetDuplicateRowAnimationMode();
                 bool highlightDuplicates =
+#pragma warning disable CS0618 // Type or member is obsolete
                     animationMode != UnityHelpersSettings.DuplicateRowAnimationMode.None;
+#pragma warning restore CS0618 // Type or member is obsolete
                 bool animateDuplicates =
                     animationMode == UnityHelpersSettings.DuplicateRowAnimationMode.Tween;
                 int tweenCycleLimit = UnityHelpersSettings.GetDuplicateRowTweenCycleLimit();
@@ -1127,6 +1140,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             float labelY = rect.y + Mathf.Max(0f, (rect.height - labelHeight) * 0.5f);
             float buttonSpacing = PaginationControlSpacing;
             float clearWidth = 80f;
+            float sortWidth = 60f;
 
             GUIStyle footerLabelStyle = GetFooterLabelStyle();
             string rangeText =
@@ -1143,19 +1157,92 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 && selectedGlobalIndex < keysProperty.arraySize;
             bool canClear = itemCount > 0;
 
+            Type keyType = null;
+            Type valueType = null;
+            bool isSortedDictionary = false;
+            bool resolvedTypes = TryResolveKeyValueTypes(
+                fieldInfo,
+                out keyType,
+                out valueType,
+                out isSortedDictionary
+            );
+
+            object dictionaryInstance = null;
+            if (!resolvedTypes || keyType == null || valueType == null)
+            {
+                dictionaryInstance = GetDictionaryInstance(dictionaryProperty);
+                Type runtimeKeyType;
+                Type runtimeValueType;
+                bool runtimeSorted;
+                if (
+                    TryResolveKeyValueTypesFromInstance(
+                        dictionaryInstance,
+                        out runtimeKeyType,
+                        out runtimeValueType,
+                        out runtimeSorted
+                    )
+                )
+                {
+                    if (keyType == null)
+                    {
+                        keyType = runtimeKeyType;
+                    }
+
+                    if (valueType == null)
+                    {
+                        valueType = runtimeValueType;
+                    }
+
+                    isSortedDictionary = runtimeSorted;
+                }
+            }
+            else
+            {
+                dictionaryInstance = GetDictionaryInstance(dictionaryProperty);
+            }
+
+            Func<object, object, int> comparison = null;
+            bool canSort = false;
+            bool sortEnabled = false;
+            if (isSortedDictionary && keyType != null && valueType != null)
+            {
+                object comparerInstance = ResolveComparerInstance(
+                    dictionaryProperty,
+                    dictionaryInstance,
+                    keyType
+                );
+                comparison = CreateComparisonDelegate(comparerInstance, keyType);
+                if (comparison != null)
+                {
+                    canSort = itemCount > 1;
+                    bool alreadySorted = KeysAreSorted(keysProperty, keyType, comparison);
+                    sortEnabled = canSort && !alreadySorted;
+                }
+            }
+
             GUIContent clearAllContent = EditorGUIUtility.TrTextContent(
                 "Clear All",
                 "Remove every entry from the dictionary"
             );
             GUIContent removeContent = EditorGUIUtility.TrTextContent("-", "Remove selected entry");
+            GUIContent sortContent = EditorGUIUtility.TrTextContent(
+                "Sort",
+                "Sort entries by key using the dictionary comparer"
+            );
 
             bool showRange = itemCount > 0 || rangeText == "Empty";
             bool showClear = true;
+            bool showSort = isSortedDictionary && comparison != null;
             bool showRemove = true;
 
             float requiredWidth = float.PositiveInfinity;
 
-            float CalculateRequiredWidth(bool includeRange, bool includeClear, bool includeRemove)
+            float CalculateRequiredWidth(
+                bool includeRange,
+                bool includeClear,
+                bool includeSort,
+                bool includeRemove
+            )
             {
                 float width = padding + padding;
 
@@ -1164,55 +1251,70 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     width += rangeSize.x;
                 }
 
-                bool hasRightControls = includeClear || includeRemove;
+                bool hasRightControls = includeClear || includeSort || includeRemove;
                 if (includeRange && hasRightControls)
                 {
                     width += buttonSpacing;
                 }
 
                 float rightWidth = 0f;
-                if (includeClear)
-                {
-                    rightWidth += clearWidth;
-                }
                 if (includeRemove)
                 {
-                    if (includeClear)
+                    rightWidth += buttonWidth;
+                }
+                if (includeClear)
+                {
+                    if (rightWidth > 0f)
                     {
                         rightWidth += buttonSpacing;
                     }
-                    rightWidth += buttonWidth;
+                    rightWidth += clearWidth;
+                }
+                if (includeSort)
+                {
+                    if (rightWidth > 0f)
+                    {
+                        rightWidth += buttonSpacing;
+                    }
+                    rightWidth += sortWidth;
                 }
 
                 width += rightWidth;
                 return width;
             }
 
-            requiredWidth = CalculateRequiredWidth(showRange, showClear, showRemove);
+            requiredWidth = CalculateRequiredWidth(showRange, showClear, showSort, showRemove);
             if (requiredWidth > rect.width && showRange)
             {
                 showRange = false;
             }
 
-            requiredWidth = CalculateRequiredWidth(showRange, showClear, showRemove);
+            requiredWidth = CalculateRequiredWidth(showRange, showClear, showSort, showRemove);
             if (requiredWidth > rect.width && showClear)
             {
                 showClear = false;
             }
 
-            requiredWidth = CalculateRequiredWidth(showRange, showClear, showRemove);
+            requiredWidth = CalculateRequiredWidth(showRange, showClear, showSort, showRemove);
+            if (requiredWidth > rect.width && showSort)
+            {
+                showSort = false;
+            }
+
+            requiredWidth = CalculateRequiredWidth(showRange, showClear, showSort, showRemove);
             if (requiredWidth > rect.width && showRemove)
             {
                 showRemove = false;
             }
 
-            if (!showRange && !showClear && !showRemove)
+            if (!showRange && !showClear && !showSort && !showRemove)
             {
                 return;
             }
 
             Rect removeRect = default;
             Rect clearRect = default;
+            Rect sortRect = default;
 
             float currentX = rect.xMax - padding;
 
@@ -1220,7 +1322,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 currentX -= buttonWidth;
                 removeRect = new Rect(currentX, verticalCenter, buttonWidth, lineHeight);
-                if (showClear || showRange)
+                if (showClear || showSort || showRange)
                 {
                     currentX -= buttonSpacing;
                 }
@@ -1230,6 +1332,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 currentX -= clearWidth;
                 clearRect = new Rect(currentX, verticalCenter, clearWidth, lineHeight);
+                if (showSort || showRange)
+                {
+                    currentX -= buttonSpacing;
+                }
+            }
+
+            if (showSort)
+            {
+                currentX -= sortWidth;
+                sortRect = new Rect(currentX, verticalCenter, sortWidth, lineHeight);
                 if (showRange)
                 {
                     currentX -= buttonSpacing;
@@ -1242,6 +1354,35 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 float labelWidth = Mathf.Max(0f, currentX - labelLeft);
                 Rect labelRect = new(labelLeft, labelY, labelWidth, labelHeight);
                 EditorGUI.LabelField(labelRect, rangeText, footerLabelStyle);
+            }
+
+            if (showSort)
+            {
+                DrawFooterButton(
+                    sortRect,
+                    sortContent,
+                    "Sort",
+                    sortEnabled,
+                    () =>
+                    {
+                        if (!sortEnabled)
+                        {
+                            return;
+                        }
+
+                        SortDictionaryEntries(
+                            dictionaryProperty,
+                            keysProperty,
+                            valuesProperty,
+                            keyType,
+                            valueType,
+                            comparison,
+                            pagination,
+                            list,
+                            cacheProvider
+                        );
+                    }
+                );
             }
 
             if (showClear)
@@ -1870,6 +2011,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     return ThemeOverwriteColor;
                 case "Reset":
                     return ThemeResetColor;
+                case "Sort":
+                    return ThemeAddColor;
                 case "Remove":
                 case "ClearAll":
                     return ThemeRemoveColor;
@@ -1991,11 +2134,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static bool TryResolveKeyValueTypes(
             FieldInfo fieldInfo,
             out Type keyType,
-            out Type valueType
+            out Type valueType,
+            out bool isSortedDictionary
         )
         {
             keyType = null;
             valueType = null;
+            isSortedDictionary = false;
             if (fieldInfo == null)
             {
                 return false;
@@ -2007,11 +2152,25 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 if (type.IsGenericType)
                 {
                     Type genericDefinition = type.GetGenericTypeDefinition();
+                    if (
+                        genericDefinition == typeof(SerializableSortedDictionary<,>)
+                        || genericDefinition == typeof(SerializableSortedDictionary<,,>)
+                        || genericDefinition == typeof(SerializableSortedDictionaryBase<,,>)
+                    )
+                    {
+                        Type[] args = type.GetGenericArguments();
+                        keyType = args[0];
+                        valueType = args[1];
+                        isSortedDictionary = true;
+                        return true;
+                    }
+
                     if (genericDefinition == typeof(SerializableDictionary<,>))
                     {
                         Type[] args = type.GetGenericArguments();
                         keyType = args[0];
                         valueType = args[1];
+                        isSortedDictionary = false;
                         return true;
                     }
 
@@ -2023,6 +2182,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         Type[] args = type.GetGenericArguments();
                         keyType = args[0];
                         valueType = args[1];
+                        isSortedDictionary = false;
                         return true;
                     }
                 }
@@ -2031,6 +2191,384 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             return false;
+        }
+
+        private static object GetDictionaryInstance(SerializedProperty dictionaryProperty)
+        {
+            if (dictionaryProperty == null)
+            {
+                return null;
+            }
+
+            SerializedObject serializedObject = dictionaryProperty.serializedObject;
+            if (serializedObject == null || serializedObject.targetObject == null)
+            {
+                return null;
+            }
+
+            return GetTargetObjectOfProperty(
+                serializedObject.targetObject,
+                dictionaryProperty.propertyPath
+            );
+        }
+
+        private static bool TryResolveKeyValueTypesFromInstance(
+            object dictionaryInstance,
+            out Type keyType,
+            out Type valueType,
+            out bool isSortedDictionary
+        )
+        {
+            keyType = null;
+            valueType = null;
+            isSortedDictionary = false;
+
+            if (dictionaryInstance == null)
+            {
+                return false;
+            }
+
+            Type type = dictionaryInstance.GetType();
+            while (type != null)
+            {
+                if (type.IsGenericType)
+                {
+                    Type genericDefinition = type.GetGenericTypeDefinition();
+                    if (
+                        genericDefinition == typeof(SerializableSortedDictionary<,>)
+                        || genericDefinition == typeof(SerializableSortedDictionary<,,>)
+                        || genericDefinition == typeof(SerializableSortedDictionaryBase<,,>)
+                    )
+                    {
+                        Type[] args = type.GetGenericArguments();
+                        keyType = args[0];
+                        valueType = args[1];
+                        isSortedDictionary = true;
+                        return true;
+                    }
+
+                    if (
+                        genericDefinition == typeof(SerializableDictionary<,>)
+                        || genericDefinition == typeof(SerializableDictionary<,,>)
+                        || genericDefinition == typeof(SerializableDictionaryBase<,,>)
+                    )
+                    {
+                        Type[] args = type.GetGenericArguments();
+                        keyType = args[0];
+                        valueType = args[1];
+                        isSortedDictionary = false;
+                        return true;
+                    }
+                }
+
+                type = type.BaseType;
+            }
+
+            return false;
+        }
+
+        private static object ResolveComparerInstance(
+            SerializedProperty dictionaryProperty,
+            object dictionaryInstance,
+            Type keyType
+        )
+        {
+            object instance = dictionaryInstance ?? GetDictionaryInstance(dictionaryProperty);
+            if (instance == null)
+            {
+                return CreateDefaultComparer(keyType);
+            }
+
+            PropertyInfo comparerProperty = instance
+                .GetType()
+                .GetProperty("Comparer", BindingFlags.Public | BindingFlags.Instance);
+            if (comparerProperty != null)
+            {
+                object comparerValue = comparerProperty.GetValue(instance);
+                if (comparerValue != null)
+                {
+                    return comparerValue;
+                }
+            }
+
+            return CreateDefaultComparer(keyType);
+        }
+
+        private static object CreateDefaultComparer(Type keyType)
+        {
+            if (keyType == null)
+            {
+                return null;
+            }
+
+            Type comparerType = typeof(Comparer<>).MakeGenericType(keyType);
+            PropertyInfo defaultProperty = comparerType.GetProperty(
+                "Default",
+                BindingFlags.Public | BindingFlags.Static
+            );
+            return defaultProperty != null ? defaultProperty.GetValue(null) : null;
+        }
+
+        private static Func<object, object, int> CreateComparisonDelegate(
+            object comparer,
+            Type keyType
+        )
+        {
+            object comparerInstance = comparer ?? CreateDefaultComparer(keyType);
+            if (comparerInstance == null || keyType == null)
+            {
+                return null;
+            }
+
+            MethodInfo compareMethod = comparerInstance
+                .GetType()
+                .GetMethod("Compare", new[] { keyType, keyType });
+            if (compareMethod == null)
+            {
+                return null;
+            }
+
+            return delegate(object left, object right)
+            {
+                object leftValue = ConvertKeyForComparison(left, keyType);
+                object rightValue = ConvertKeyForComparison(right, keyType);
+                object result = compareMethod.Invoke(
+                    comparerInstance,
+                    new[] { leftValue, rightValue }
+                );
+                return result != null ? Convert.ToInt32(result, CultureInfo.InvariantCulture) : 0;
+            };
+        }
+
+        private static object ConvertKeyForComparison(object key, Type keyType)
+        {
+            if (key == null)
+            {
+                return null;
+            }
+
+            if (keyType.IsInstanceOfType(key))
+            {
+                return key;
+            }
+
+            if (keyType.IsEnum)
+            {
+                return Enum.ToObject(keyType, key);
+            }
+
+            try
+            {
+                return Convert.ChangeType(key, keyType, CultureInfo.InvariantCulture);
+            }
+            catch
+            {
+                return key;
+            }
+        }
+
+        internal static bool KeysAreSorted(
+            SerializedProperty keysProperty,
+            Type keyType,
+            Func<object, object, int> comparison
+        )
+        {
+            if (keysProperty == null || comparison == null)
+            {
+                return false;
+            }
+
+            int count = keysProperty.arraySize;
+            if (count <= 1)
+            {
+                return true;
+            }
+
+            SerializedProperty firstProperty = keysProperty.GetArrayElementAtIndex(0);
+            object previous = GetPropertyValue(firstProperty, keyType);
+
+            for (int index = 1; index < count; index++)
+            {
+                SerializedProperty currentProperty = keysProperty.GetArrayElementAtIndex(index);
+                object currentKey = GetPropertyValue(currentProperty, keyType);
+                int compareResult = comparison(previous, currentKey);
+                if (compareResult > 0)
+                {
+                    return false;
+                }
+
+                previous = currentKey;
+            }
+
+            return true;
+        }
+
+        internal void SortDictionaryEntries(
+            SerializedProperty dictionaryProperty,
+            SerializedProperty keysProperty,
+            SerializedProperty valuesProperty,
+            Type keyType,
+            Type valueType,
+            Func<object, object, int> comparison,
+            PaginationState pagination,
+            ReorderableList list,
+            Func<ListPageCache> cacheProvider
+        )
+        {
+            if (comparison == null)
+            {
+                return;
+            }
+
+            int count = keysProperty.arraySize;
+            if (count <= 1)
+            {
+                return;
+            }
+
+            SerializedObject serializedObject = dictionaryProperty.serializedObject;
+            UnityEngine.Object[] targets = serializedObject.targetObjects;
+            if (targets.Length > 0)
+            {
+                Undo.RecordObjects(targets, "Sort Dictionary Keys");
+            }
+
+            object selectedKey = null;
+            int selectedIndex = pagination.selectedIndex;
+            if (selectedIndex >= 0 && selectedIndex < count)
+            {
+                SerializedProperty selectedProperty = keysProperty.GetArrayElementAtIndex(
+                    selectedIndex
+                );
+                selectedKey = GetPropertyValue(selectedProperty, keyType);
+            }
+
+            List<KeyValueSnapshot> entries = new List<KeyValueSnapshot>(count);
+            for (int index = 0; index < count; index++)
+            {
+                SerializedProperty keyProperty = keysProperty.GetArrayElementAtIndex(index);
+                SerializedProperty valueProperty = valuesProperty.GetArrayElementAtIndex(index);
+                KeyValueSnapshot snapshot = new KeyValueSnapshot
+                {
+                    key = GetPropertyValue(keyProperty, keyType),
+                    value = GetPropertyValue(valueProperty, valueType),
+                    originalIndex = index,
+                };
+                entries.Add(snapshot);
+            }
+
+            KeyValueSnapshotComparer comparer = new KeyValueSnapshotComparer(comparison);
+            entries.Sort(comparer);
+
+            for (int index = 0; index < entries.Count; index++)
+            {
+                KeyValueSnapshot snapshot = entries[index];
+                SerializedProperty keyProperty = keysProperty.GetArrayElementAtIndex(index);
+                SerializedProperty valueProperty = valuesProperty.GetArrayElementAtIndex(index);
+                SetPropertyValue(keyProperty, snapshot.key, keyType);
+                SetPropertyValue(valueProperty, snapshot.value, valueType);
+            }
+
+            serializedObject.ApplyModifiedProperties();
+            SyncRuntimeDictionary(dictionaryProperty);
+
+            string listKey = GetListKey(dictionaryProperty);
+            InvalidateKeyCache(listKey);
+            MarkListCacheDirty(listKey);
+
+            int newSelectedIndex = -1;
+            if (selectedKey != null)
+            {
+                for (int index = 0; index < entries.Count; index++)
+                {
+                    if (ValuesEqual(entries[index].key, selectedKey))
+                    {
+                        newSelectedIndex = index;
+                        break;
+                    }
+                }
+            }
+
+            if (newSelectedIndex >= 0)
+            {
+                pagination.selectedIndex = newSelectedIndex;
+                int totalPages = GetTotalPages(keysProperty.arraySize, pagination.pageSize);
+                int targetPage = GetPageForIndex(newSelectedIndex, pagination.pageSize);
+                pagination.pageIndex = Mathf.Clamp(targetPage, 0, totalPages - 1);
+            }
+            else
+            {
+                pagination.selectedIndex = Mathf.Min(
+                    keysProperty.arraySize - 1,
+                    pagination.selectedIndex
+                );
+                pagination.selectedIndex = Mathf.Max(pagination.selectedIndex, -1);
+                int totalPages = GetTotalPages(keysProperty.arraySize, pagination.pageSize);
+                int targetPage = GetPageForIndex(
+                    Mathf.Max(pagination.selectedIndex, 0),
+                    pagination.pageSize
+                );
+                pagination.pageIndex = Mathf.Clamp(targetPage, 0, totalPages - 1);
+            }
+
+            ListPageCache updatedCache = EnsurePageCache(listKey, keysProperty, pagination);
+            SyncListSelectionWithPagination(list, pagination, updatedCache);
+
+            GUI.changed = true;
+
+            EditorWindow focusedWindow = EditorWindow.focusedWindow;
+            if (focusedWindow != null)
+            {
+                focusedWindow.Repaint();
+            }
+        }
+
+        private sealed class KeyValueSnapshot
+        {
+            public object key;
+            public object value;
+            public int originalIndex;
+        }
+
+        private sealed class KeyValueSnapshotComparer : IComparer<KeyValueSnapshot>
+        {
+            private readonly Func<object, object, int> _comparison;
+
+            public KeyValueSnapshotComparer(Func<object, object, int> comparison)
+            {
+                _comparison = comparison;
+            }
+
+            public int Compare(KeyValueSnapshot x, KeyValueSnapshot y)
+            {
+                if (ReferenceEquals(x, y))
+                {
+                    return 0;
+                }
+
+                if (x == null)
+                {
+                    return y == null ? 0 : -1;
+                }
+
+                if (y == null)
+                {
+                    return 1;
+                }
+
+                if (_comparison == null)
+                {
+                    return 0;
+                }
+
+                int comparisonResult = _comparison(x.key, y.key);
+                if (comparisonResult != 0)
+                {
+                    return comparisonResult;
+                }
+
+                return x.originalIndex.CompareTo(y.originalIndex);
+            }
         }
 
         private static void EnsureParallelArraySizes(

@@ -2,6 +2,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 {
     using System;
     using System.Collections;
+    using System.Collections.Generic;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEditorInternal;
@@ -15,6 +16,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         private sealed class TestDictionaryHost : ScriptableObject
         {
             public IntStringDictionary dictionary = new();
+        }
+
+        private sealed class TestSortedDictionaryHost : ScriptableObject
+        {
+            public SerializableSortedDictionary<int, string> dictionary =
+                new SerializableSortedDictionary<int, string>();
         }
 
         [Serializable]
@@ -269,6 +276,137 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
 
             Assert.That(Mathf.Abs(offset), Is.GreaterThan(1e-3f));
+        }
+
+        [Test]
+        public void SortDictionaryEntriesReordersKeysAscending()
+        {
+            TestSortedDictionaryHost host = CreateScriptableObject<TestSortedDictionaryHost>();
+            host.dictionary.Add(5, "five");
+            host.dictionary.Add(1, "one");
+            host.dictionary.Add(3, "three");
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(TestSortedDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            keysProperty.GetArrayElementAtIndex(0).intValue = 5;
+            valuesProperty.GetArrayElementAtIndex(0).stringValue = "five";
+            keysProperty.GetArrayElementAtIndex(1).intValue = 1;
+            valuesProperty.GetArrayElementAtIndex(1).stringValue = "one";
+            keysProperty.GetArrayElementAtIndex(2).intValue = 3;
+            valuesProperty.GetArrayElementAtIndex(2).stringValue = "three";
+            serializedObject.ApplyModifiedProperties();
+
+            SerializableDictionaryPropertyDrawer drawer =
+                new SerializableDictionaryPropertyDrawer();
+            SerializableDictionaryPropertyDrawer.PaginationState pagination =
+                drawer.GetOrCreatePaginationState(dictionaryProperty);
+            pagination.selectedIndex = 0;
+
+            ReorderableList list = drawer.GetOrCreateList(
+                dictionaryProperty,
+                keysProperty,
+                valuesProperty
+            );
+            string listKey = SerializableDictionaryPropertyDrawer.GetListKey(dictionaryProperty);
+            Func<object, object, int> comparison = delegate(object left, object right)
+            {
+                int leftValue = left is int leftInt ? leftInt : Convert.ToInt32(left);
+                int rightValue = right is int rightInt ? rightInt : Convert.ToInt32(right);
+                return Comparer<int>.Default.Compare(leftValue, rightValue);
+            };
+            Func<SerializableDictionaryPropertyDrawer.ListPageCache> cacheProvider = () =>
+                drawer.EnsurePageCache(listKey, keysProperty, pagination);
+
+            drawer.SortDictionaryEntries(
+                dictionaryProperty,
+                keysProperty,
+                valuesProperty,
+                typeof(int),
+                typeof(string),
+                comparison,
+                pagination,
+                list,
+                cacheProvider
+            );
+
+            serializedObject.Update();
+
+            Assert.AreEqual(1, keysProperty.GetArrayElementAtIndex(0).intValue);
+            Assert.AreEqual("one", valuesProperty.GetArrayElementAtIndex(0).stringValue);
+            Assert.AreEqual(3, keysProperty.GetArrayElementAtIndex(1).intValue);
+            Assert.AreEqual("three", valuesProperty.GetArrayElementAtIndex(1).stringValue);
+            Assert.AreEqual(5, keysProperty.GetArrayElementAtIndex(2).intValue);
+            Assert.AreEqual("five", valuesProperty.GetArrayElementAtIndex(2).stringValue);
+
+            int[] expectedKeys = new int[] { 1, 3, 5 };
+            int index = 0;
+            foreach (KeyValuePair<int, string> pair in host.dictionary)
+            {
+                Assert.Less(index, expectedKeys.Length);
+                Assert.AreEqual(expectedKeys[index], pair.Key);
+                index++;
+            }
+
+            Assert.AreEqual(expectedKeys.Length, index);
+            Assert.AreEqual(2, pagination.selectedIndex);
+        }
+
+        [Test]
+        public void KeysAreSortedDetectsOrderedState()
+        {
+            TestSortedDictionaryHost host = CreateScriptableObject<TestSortedDictionaryHost>();
+            host.dictionary.Add(2, "two");
+            host.dictionary.Add(4, "four");
+            host.dictionary.Add(6, "six");
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(TestSortedDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            Func<object, object, int> comparison = delegate(object left, object right)
+            {
+                int leftValue = left is int leftInt ? leftInt : Convert.ToInt32(left);
+                int rightValue = right is int rightInt ? rightInt : Convert.ToInt32(right);
+                return Comparer<int>.Default.Compare(leftValue, rightValue);
+            };
+
+            bool initiallySorted = SerializableDictionaryPropertyDrawer.KeysAreSorted(
+                keysProperty,
+                typeof(int),
+                comparison
+            );
+            Assert.IsTrue(initiallySorted);
+
+            keysProperty.GetArrayElementAtIndex(0).intValue = 6;
+            valuesProperty.GetArrayElementAtIndex(0).stringValue = "six";
+            keysProperty.GetArrayElementAtIndex(2).intValue = 2;
+            valuesProperty.GetArrayElementAtIndex(2).stringValue = "two";
+            serializedObject.ApplyModifiedProperties();
+
+            bool sortedAfterSwap = SerializableDictionaryPropertyDrawer.KeysAreSorted(
+                keysProperty,
+                typeof(int),
+                comparison
+            );
+            Assert.IsFalse(sortedAfterSwap);
         }
 
         [Test]
