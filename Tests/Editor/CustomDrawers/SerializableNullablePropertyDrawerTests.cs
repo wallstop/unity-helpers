@@ -30,7 +30,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void HeightExpandsWhenValuePresent()
+        public void HeightStaysSingleLineWhenValuePresent()
         {
             NullableContainer container = CreateScriptableObject<NullableContainer>();
             container.integerValue.SetValue(10);
@@ -45,12 +45,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             SerializableNullablePropertyDrawer drawer = new();
             float height = drawer.GetPropertyHeight(property, new GUIContent("integerValue"));
-            float expectedHeight =
-                EditorGUIUtility.singleLineHeight
-                + EditorGUIUtility.standardVerticalSpacing
-                + EditorGUIUtility.singleLineHeight;
 
-            Assert.AreEqual(expectedHeight, height);
+            Assert.AreEqual(EditorGUIUtility.singleLineHeight, height);
         }
 
         private sealed class NullableContainer : ScriptableObject

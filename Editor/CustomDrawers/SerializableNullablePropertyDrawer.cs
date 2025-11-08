@@ -14,28 +14,22 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             SerializedProperty hasValueProperty = property.FindPropertyRelative(
                 SerializableNullableSerializedPropertyNames.HasValue
             );
+            SerializedProperty valueProperty = property.FindPropertyRelative(
+                SerializableNullableSerializedPropertyNames.Value
+            );
             if (hasValueProperty == null)
             {
                 return EditorGUI.GetPropertyHeight(property, label, true);
             }
 
             float lineHeight = EditorGUIUtility.singleLineHeight;
-            float spacing = EditorGUIUtility.standardVerticalSpacing;
-            float totalHeight = lineHeight;
-
-            if (hasValueProperty.boolValue)
+            if (!hasValueProperty.boolValue || valueProperty == null)
             {
-                SerializedProperty valueProperty = property.FindPropertyRelative(
-                    SerializableNullableSerializedPropertyNames.Value
-                );
-                float valueHeight =
-                    valueProperty != null
-                        ? EditorGUI.GetPropertyHeight(valueProperty, label, true)
-                        : lineHeight;
-                totalHeight += spacing + valueHeight;
+                return lineHeight;
             }
 
-            return totalHeight;
+            float valueHeight = EditorGUI.GetPropertyHeight(valueProperty, true);
+            return Mathf.Max(lineHeight, valueHeight);
         }
 
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
@@ -47,36 +41,50 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 SerializableNullableSerializedPropertyNames.Value
             );
 
+            if (hasValueProperty == null || valueProperty == null)
+            {
+                EditorGUI.PropertyField(position, property, label, true);
+                return;
+            }
+
             EditorGUI.BeginProperty(position, label, property);
 
-            Rect toggleRect = new Rect(
-                position.x,
-                position.y,
-                position.width,
-                EditorGUIUtility.singleLineHeight
+            Rect fieldRect = EditorGUI.PrefixLabel(
+                position,
+                GUIUtility.GetControlID(FocusType.Passive),
+                label
             );
+            int previousIndent = EditorGUI.indentLevel;
+            EditorGUI.indentLevel = 0;
+
+            float toggleWidth = EditorGUIUtility.singleLineHeight;
+            float toggleHeight = EditorGUIUtility.singleLineHeight;
+            float spacing = EditorGUIUtility.standardVerticalSpacing;
+            float toggleY = position.y + (position.height - toggleHeight) * 0.5f;
+
+            Rect toggleRect = new Rect(fieldRect.x, toggleY, toggleWidth, toggleHeight);
 
             EditorGUI.BeginChangeCheck();
-            bool hasValue = hasValueProperty != null && hasValueProperty.boolValue;
-            bool updatedHasValue = EditorGUI.ToggleLeft(toggleRect, label, hasValue);
-            if (EditorGUI.EndChangeCheck() && hasValueProperty != null)
+            bool hasValue = hasValueProperty.boolValue;
+            bool updatedHasValue = EditorGUI.Toggle(toggleRect, hasValue);
+            if (EditorGUI.EndChangeCheck())
             {
                 hasValueProperty.boolValue = updatedHasValue;
             }
 
-            if (updatedHasValue && valueProperty != null)
+            if (updatedHasValue)
             {
-                float spacing = EditorGUIUtility.standardVerticalSpacing;
+                float valueWidth = Mathf.Max(0f, fieldRect.width - toggleWidth - spacing);
                 Rect valueRect = new Rect(
-                    position.x,
-                    toggleRect.yMax + spacing,
-                    position.width,
-                    EditorGUI.GetPropertyHeight(valueProperty, true)
+                    toggleRect.xMax + spacing,
+                    position.y,
+                    valueWidth,
+                    position.height
                 );
-                EditorGUI.indentLevel++;
-                EditorGUI.PropertyField(valueRect, valueProperty, new GUIContent("Value"), true);
-                EditorGUI.indentLevel--;
+                EditorGUI.PropertyField(valueRect, valueProperty, GUIContent.none, true);
             }
+
+            EditorGUI.indentLevel = previousIndent;
 
             EditorGUI.EndProperty();
         }
