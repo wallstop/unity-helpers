@@ -224,11 +224,10 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void CatalogSearchFindsTypeBySubstring()
+        public void CatalogSearchFindsTypeByTypeName()
         {
-            string search = "rializabletype";
             IReadOnlyList<SerializableTypeCatalog.SerializableTypeDescriptor> filtered =
-                SerializableTypeCatalog.GetFilteredDescriptors(search);
+                SerializableTypeCatalog.GetFilteredDescriptors("SerializableType");
 
             bool found = false;
             for (int index = 0; index < filtered.Count; index++)
@@ -241,25 +240,17 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 }
             }
 
-            Assert.IsTrue(found, "Substring search should locate SerializableType.");
+            Assert.IsTrue(found, "Type name prefix search should locate SerializableType.");
         }
 
         [Test]
-        public void CatalogSearchMatchesAssemblyQualifiedNameSubstring()
+        public void CatalogSearchMatchesAssemblyQualifiedNamePrefix()
         {
-            string assemblyName = typeof(SerializableType).Assembly.GetName().Name;
-            Assert.IsFalse(string.IsNullOrEmpty(assemblyName));
-            Assert.Greater(
-                assemblyName.Length,
-                3,
-                "Assembly name must be long enough for this test."
-            );
-
-            int startIndex = 1;
-            string search = assemblyName.Substring(startIndex, assemblyName.Length - startIndex);
+            string assemblyQualifiedName = typeof(SerializableType).AssemblyQualifiedName;
+            Assert.IsFalse(string.IsNullOrEmpty(assemblyQualifiedName));
 
             IReadOnlyList<SerializableTypeCatalog.SerializableTypeDescriptor> filtered =
-                SerializableTypeCatalog.GetFilteredDescriptors(search);
+                SerializableTypeCatalog.GetFilteredDescriptors(assemblyQualifiedName);
 
             bool found = false;
             for (int index = 0; index < filtered.Count; index++)
@@ -272,14 +263,17 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 }
             }
 
-            Assert.IsTrue(found, "Assembly name substring search should locate SerializableType.");
+            Assert.IsTrue(
+                found,
+                "Assembly qualified name prefix search should locate SerializableType."
+            );
         }
 
         [Test]
         public void CatalogSearchReflectsUpdatedIgnorePatterns()
         {
             IReadOnlyList<SerializableTypeCatalog.SerializableTypeDescriptor> initial =
-                SerializableTypeCatalog.GetFilteredDescriptors("rializabletype");
+                SerializableTypeCatalog.GetFilteredDescriptors("SerializableType");
             bool initiallyFound = false;
             for (int index = 0; index < initial.Count; index++)
             {
@@ -307,7 +301,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 );
 
                 IReadOnlyList<SerializableTypeCatalog.SerializableTypeDescriptor> filtered =
-                    SerializableTypeCatalog.GetFilteredDescriptors("rializabletype");
+                    SerializableTypeCatalog.GetFilteredDescriptors("SerializableType");
 
                 bool found = false;
                 for (int index = 0; index < filtered.Count; index++)
@@ -333,7 +327,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             }
 
             IReadOnlyList<SerializableTypeCatalog.SerializableTypeDescriptor> restored =
-                SerializableTypeCatalog.GetFilteredDescriptors("rializabletype");
+                SerializableTypeCatalog.GetFilteredDescriptors("SerializableType");
 
             bool restoredFound = false;
             for (int index = 0; index < restored.Count; index++)

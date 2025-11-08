@@ -1195,12 +1195,30 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 }
 
                 if (
-                    DisplayName.IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0
-                    || AssemblyQualifiedName.IndexOf(search, StringComparison.OrdinalIgnoreCase)
-                        >= 0
+                    DisplayName.StartsWith(search, StringComparison.OrdinalIgnoreCase)
+                    || AssemblyQualifiedName.StartsWith(search, StringComparison.OrdinalIgnoreCase)
                 )
                 {
                     return true;
+                }
+
+                if (Type != null)
+                {
+                    if (
+                        !string.IsNullOrEmpty(Type.FullName)
+                        && Type.FullName.StartsWith(search, StringComparison.OrdinalIgnoreCase)
+                    )
+                    {
+                        return true;
+                    }
+
+                    if (
+                        !string.IsNullOrEmpty(Type.Name)
+                        && Type.Name.StartsWith(search, StringComparison.OrdinalIgnoreCase)
+                    )
+                    {
+                        return true;
+                    }
                 }
 
                 return false;
