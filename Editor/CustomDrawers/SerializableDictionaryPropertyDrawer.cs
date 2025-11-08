@@ -817,101 +817,216 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             SyncListSelectionWithPagination(list, pagination, cache);
 
             float spacing = PaginationControlSpacing;
-            float controlsWidth = PaginationButtonWidth * 4f + spacing * 3f + PaginationLabelWidth;
+            float buttonWidth = PaginationButtonWidth;
+            float navWidthFull = (buttonWidth * 4f) + (spacing * 3f);
+            float navWidthPrevNext = (buttonWidth * 2f) + spacing;
+
+            float ComputeControlsWidth(float navWidth, bool includePageLabel)
+            {
+                float width = navWidth;
+                if (includePageLabel)
+                {
+                    width += PaginationLabelWidth;
+                    if (navWidth > 0f)
+                    {
+                        width += spacing;
+                    }
+                }
+
+                return width;
+            }
+
+            PaginationControlLayout layout = PaginationControlLayout.Full;
+            bool showPageLabel = true;
+            float navWidth = navWidthFull;
+            float controlsWidth = ComputeControlsWidth(navWidth, showPageLabel);
+
+            if (controlsWidth > rect.width)
+            {
+                showPageLabel = false;
+                controlsWidth = ComputeControlsWidth(navWidth, showPageLabel);
+            }
+
+            if (controlsWidth > rect.width)
+            {
+                layout = PaginationControlLayout.PrevNext;
+                navWidth = navWidthPrevNext;
+                controlsWidth = ComputeControlsWidth(navWidth, showPageLabel);
+            }
+
+            if (controlsWidth > rect.width)
+            {
+                layout = PaginationControlLayout.None;
+                navWidth = 0f;
+                showPageLabel = false;
+                controlsWidth = 0f;
+            }
+
+            if (controlsWidth <= 0f)
+            {
+                return;
+            }
+
             Rect controlsRect = new(rect.xMax - controlsWidth, rect.y, controlsWidth, rect.height);
-            Rect pageLabelRect = new(
-                controlsRect.x,
-                controlsRect.y,
-                PaginationLabelWidth,
-                controlsRect.height
-            );
 
             int itemCount = keysProperty.arraySize;
             int totalPages = GetTotalPages(itemCount, pagination.pageSize);
-            string pageLabel = $"Page {pagination.pageIndex + 1}/{totalPages}";
-            EditorGUI.LabelField(pageLabelRect, pageLabel, EditorStyles.miniLabel);
+            float navStartX = controlsRect.x;
 
-            float buttonX = pageLabelRect.xMax + spacing;
-            Rect firstRect = new(
-                buttonX,
-                controlsRect.y,
-                PaginationButtonWidth,
-                controlsRect.height
-            );
-            buttonX += PaginationButtonWidth + spacing;
-            Rect prevRect = new(
-                buttonX,
-                controlsRect.y,
-                PaginationButtonWidth,
-                controlsRect.height
-            );
-            buttonX += PaginationButtonWidth + spacing;
-            Rect nextRect = new(
-                buttonX,
-                controlsRect.y,
-                PaginationButtonWidth,
-                controlsRect.height
-            );
-            buttonX += PaginationButtonWidth + spacing;
-            Rect lastRect = new(
-                buttonX,
-                controlsRect.y,
-                PaginationButtonWidth,
-                controlsRect.height
-            );
-
-            GUIContent firstContent = EditorGUIUtility.TrTextContent("<<", "Jump to first page");
-            GUIContent prevContent = EditorGUIUtility.TrTextContent("<", "Previous page");
-            GUIContent nextContent = EditorGUIUtility.TrTextContent(">", "Next page");
-            GUIContent lastContent = EditorGUIUtility.TrTextContent(">>", "Jump to last page");
-
-            using (new EditorGUI.DisabledScope(pagination.pageIndex <= 0))
+            if (showPageLabel)
             {
-                if (GUI.Button(firstRect, firstContent, EditorStyles.miniButton))
-                {
-                    SetPageIndex(pagination, 0, keysProperty, forceImmediateRefresh: true);
-                    cache = cacheProvider();
-                    SyncListSelectionWithPagination(list, pagination, cache);
-                }
-
-                if (GUI.Button(prevRect, prevContent, EditorStyles.miniButton))
-                {
-                    SetPageIndex(
-                        pagination,
-                        pagination.pageIndex - 1,
-                        keysProperty,
-                        forceImmediateRefresh: true
-                    );
-                    cache = cacheProvider();
-                    SyncListSelectionWithPagination(list, pagination, cache);
-                }
+                Rect pageLabelRect = new(
+                    controlsRect.x,
+                    controlsRect.y,
+                    PaginationLabelWidth,
+                    controlsRect.height
+                );
+                string pageLabel = $"Page {pagination.pageIndex + 1}/{totalPages}";
+                EditorGUI.LabelField(pageLabelRect, pageLabel, EditorStyles.miniLabel);
+                navStartX = pageLabelRect.xMax + (navWidth > 0f ? spacing : 0f);
             }
 
-            using (new EditorGUI.DisabledScope(pagination.pageIndex >= totalPages - 1))
+            if (layout == PaginationControlLayout.None)
             {
-                if (GUI.Button(nextRect, nextContent, EditorStyles.miniButton))
-                {
-                    SetPageIndex(
-                        pagination,
-                        pagination.pageIndex + 1,
-                        keysProperty,
-                        forceImmediateRefresh: true
-                    );
-                    cache = cacheProvider();
-                    SyncListSelectionWithPagination(list, pagination, cache);
-                }
+                return;
+            }
 
-                if (GUI.Button(lastRect, lastContent, EditorStyles.miniButton))
-                {
-                    SetPageIndex(
-                        pagination,
-                        totalPages - 1,
-                        keysProperty,
-                        forceImmediateRefresh: true
+            GUIContent prevContent = EditorGUIUtility.TrTextContent("<", "Previous page");
+            GUIContent nextContent = EditorGUIUtility.TrTextContent(">", "Next page");
+
+            switch (layout)
+            {
+                case PaginationControlLayout.Full:
+                    GUIContent firstContent = EditorGUIUtility.TrTextContent(
+                        "<<",
+                        "Jump to first page"
                     );
-                    cache = cacheProvider();
-                    SyncListSelectionWithPagination(list, pagination, cache);
-                }
+                    GUIContent lastContent = EditorGUIUtility.TrTextContent(
+                        ">>",
+                        "Jump to last page"
+                    );
+
+                    Rect firstRect = new(
+                        navStartX,
+                        controlsRect.y,
+                        buttonWidth,
+                        controlsRect.height
+                    );
+                    Rect prevRect = new(
+                        firstRect.xMax + spacing,
+                        controlsRect.y,
+                        buttonWidth,
+                        controlsRect.height
+                    );
+                    Rect nextRect = new(
+                        prevRect.xMax + spacing,
+                        controlsRect.y,
+                        buttonWidth,
+                        controlsRect.height
+                    );
+                    Rect lastRect = new(
+                        nextRect.xMax + spacing,
+                        controlsRect.y,
+                        buttonWidth,
+                        controlsRect.height
+                    );
+
+                    using (new EditorGUI.DisabledScope(pagination.pageIndex <= 0))
+                    {
+                        if (GUI.Button(firstRect, firstContent, EditorStyles.miniButton))
+                        {
+                            SetPageIndex(pagination, 0, keysProperty, forceImmediateRefresh: true);
+                            cache = cacheProvider();
+                            SyncListSelectionWithPagination(list, pagination, cache);
+                        }
+
+                        if (GUI.Button(prevRect, prevContent, EditorStyles.miniButton))
+                        {
+                            SetPageIndex(
+                                pagination,
+                                pagination.pageIndex - 1,
+                                keysProperty,
+                                forceImmediateRefresh: true
+                            );
+                            cache = cacheProvider();
+                            SyncListSelectionWithPagination(list, pagination, cache);
+                        }
+                    }
+
+                    using (new EditorGUI.DisabledScope(pagination.pageIndex >= totalPages - 1))
+                    {
+                        if (GUI.Button(nextRect, nextContent, EditorStyles.miniButton))
+                        {
+                            SetPageIndex(
+                                pagination,
+                                pagination.pageIndex + 1,
+                                keysProperty,
+                                forceImmediateRefresh: true
+                            );
+                            cache = cacheProvider();
+                            SyncListSelectionWithPagination(list, pagination, cache);
+                        }
+
+                        if (GUI.Button(lastRect, lastContent, EditorStyles.miniButton))
+                        {
+                            SetPageIndex(
+                                pagination,
+                                totalPages - 1,
+                                keysProperty,
+                                forceImmediateRefresh: true
+                            );
+                            cache = cacheProvider();
+                            SyncListSelectionWithPagination(list, pagination, cache);
+                        }
+                    }
+
+                    break;
+
+                case PaginationControlLayout.PrevNext:
+                    Rect prevOnlyRect = new(
+                        navStartX,
+                        controlsRect.y,
+                        buttonWidth,
+                        controlsRect.height
+                    );
+                    Rect nextOnlyRect = new(
+                        prevOnlyRect.xMax + spacing,
+                        controlsRect.y,
+                        buttonWidth,
+                        controlsRect.height
+                    );
+
+                    using (new EditorGUI.DisabledScope(pagination.pageIndex <= 0))
+                    {
+                        if (GUI.Button(prevOnlyRect, prevContent, EditorStyles.miniButton))
+                        {
+                            SetPageIndex(
+                                pagination,
+                                pagination.pageIndex - 1,
+                                keysProperty,
+                                forceImmediateRefresh: true
+                            );
+                            cache = cacheProvider();
+                            SyncListSelectionWithPagination(list, pagination, cache);
+                        }
+                    }
+
+                    using (new EditorGUI.DisabledScope(pagination.pageIndex >= totalPages - 1))
+                    {
+                        if (GUI.Button(nextOnlyRect, nextContent, EditorStyles.miniButton))
+                        {
+                            SetPageIndex(
+                                pagination,
+                                pagination.pageIndex + 1,
+                                keysProperty,
+                                forceImmediateRefresh: true
+                            );
+                            cache = cacheProvider();
+                            SyncListSelectionWithPagination(list, pagination, cache);
+                        }
+                    }
+
+                    break;
             }
         }
 
@@ -2398,6 +2513,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         {
             public bool added;
             public int index;
+        }
+
+        private enum PaginationControlLayout
+        {
+            None,
+            PrevNext,
+            Full,
         }
 
         private sealed class PendingEntry
