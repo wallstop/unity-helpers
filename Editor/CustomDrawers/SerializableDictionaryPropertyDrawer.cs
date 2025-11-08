@@ -5,9 +5,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using System.Globalization;
     using System.Reflection;
     using UnityEditor;
+    using UnityEditor.AnimatedValues;
     using UnityEditorInternal;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
+    using WallstopStudios.UnityHelpers.Core.Extension;
 
     [CustomPropertyDrawer(typeof(SerializableDictionary<,>), true)]
     public sealed class SerializableDictionaryPropertyDrawer : PropertyDrawer
@@ -21,6 +23,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private const float PendingSectionPadding = 6f;
         private const float PendingAddButtonWidth = 110f;
+        private const float PendingFoldoutAnimationSpeed = 2f;
         private const int DefaultPageSize = 15;
         internal const int MaxPageSize = 250;
         private const float PaginationButtonWidth = 28f;
@@ -91,7 +94,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             );
             property.isExpanded = EditorGUI.Foldout(foldoutRect, property.isExpanded, label, true);
 
-            if (duplicateState != null && duplicateState.HasDuplicates)
+            if (duplicateState is { HasDuplicates: true })
             {
                 DrawDuplicateFoldoutBadge(position, foldoutRect, duplicateState.SummaryTooltip);
             }
@@ -179,14 +182,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             PaginationState pagination = GetOrCreatePaginationState(dictionaryProperty);
             ClampPaginationState(pagination, keysProperty.arraySize);
             float rowHeight =
-                EditorGUIUtility.singleLineHeight + (EditorGUIUtility.standardVerticalSpacing * 2f);
+                EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing * 2f;
             float emptyHeight = Mathf.Max(
                 EditorGUIUtility.standardVerticalSpacing * 2f,
                 EditorGUIUtility.standardVerticalSpacing
             );
 
             Func<ListPageCache> cacheProvider = () =>
-                EnsurePageCache(key, keysProperty, valuesProperty, pagination);
+                EnsurePageCache(key, keysProperty, pagination);
 
             ListPageCache cache = cacheProvider();
 
@@ -211,14 +214,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 ListPageCache currentCache = cacheProvider();
                 SyncListSelectionWithPagination(list, pagination, currentCache);
-                DrawListHeader(
-                    rect,
-                    dictionaryProperty,
-                    keysProperty,
-                    list,
-                    pagination,
-                    cacheProvider
-                );
+                DrawListHeader(rect, keysProperty, list, pagination, cacheProvider);
             };
 
             list.elementHeightCallback = _ => rowHeight;
@@ -252,13 +248,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     rect.x,
                     rect.y,
                     rect.width,
-                    EditorGUIUtility.singleLineHeight + (spacing * 2f)
+                    EditorGUIUtility.singleLineHeight + spacing * 2f
                 );
                 Color rowColor = EditorGUIUtility.isProSkin ? DarkRowColor : LightRowColor;
                 EditorGUI.DrawRect(backgroundRect, rowColor);
 
-                DuplicateKeyInfo duplicateInfo;
-                bool hasDuplicate = TryGetDuplicateInfo(key, globalIndex, out duplicateInfo);
+                bool hasDuplicate = TryGetDuplicateInfo(
+                    key,
+                    globalIndex,
+                    out DuplicateKeyInfo duplicateInfo
+                );
                 float shakeOffset = 0f;
                 if (hasDuplicate)
                 {
@@ -266,12 +265,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     Rect highlightRect = backgroundRect;
                     highlightRect.x += shakeOffset;
 
-                    Color highlightColor = duplicateInfo.IsPrimary
+                    Color highlightColor = duplicateInfo.isPrimary
                         ? DuplicatePrimaryColor
                         : DuplicateSecondaryColor;
                     EditorGUI.DrawRect(highlightRect, highlightColor);
                     DrawDuplicateOutline(highlightRect);
-                    DrawDuplicateTooltip(highlightRect, duplicateInfo.Tooltip);
+                    DrawDuplicateTooltip(highlightRect, duplicateInfo.tooltip);
                 }
 
                 if (list.index == index)
@@ -309,8 +308,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 );
 
                 rect.y += EditorGUIUtility.standardVerticalSpacing;
-                DuplicateKeyInfo duplicateInfo;
-                bool hasDuplicate = TryGetDuplicateInfo(key, globalIndex, out duplicateInfo);
+                bool hasDuplicate = TryGetDuplicateInfo(
+                    key,
+                    globalIndex,
+                    out DuplicateKeyInfo duplicateInfo
+                );
                 if (hasDuplicate)
                 {
                     rect.x += GetDuplicateShakeOffset(globalIndex);
@@ -332,7 +334,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     float iconSize = EditorGUIUtility.singleLineHeight;
                     float iconSpacing = 3f;
                     Rect iconRect = new(keyRect.x, keyRect.y, iconSize, iconSize);
-                    GUIContent iconContent = GetDuplicateIconContent(duplicateInfo.Tooltip);
+                    GUIContent iconContent = GetDuplicateIconContent(duplicateInfo.tooltip);
                     GUI.Label(iconRect, iconContent);
 
                     keyRect.x += iconSize + iconSpacing;
@@ -395,12 +397,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 pagination.selectedIndex = newGlobalIndex;
                 InvalidateKeyCache(key);
 
-                ListPageCache refreshedCache = EnsurePageCache(
-                    key,
-                    keysProperty,
-                    valuesProperty,
-                    pagination
-                );
+                ListPageCache refreshedCache = EnsurePageCache(key, keysProperty, pagination);
                 SyncListSelectionWithPagination(list, pagination, refreshedCache);
             };
 
@@ -419,8 +416,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             };
 
             list.footerHeight =
-                EditorGUIUtility.singleLineHeight
-                + (EditorGUIUtility.standardVerticalSpacing * 1.5f);
+                EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing * 1.5f;
             list.drawFooterCallback = rect =>
             {
                 DrawListFooter(
@@ -471,12 +467,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return null;
             }
 
-            DuplicateKeyState state;
-            if (!_duplicateStates.TryGetValue(cacheKey, out state))
-            {
-                state = new DuplicateKeyState();
-                _duplicateStates[cacheKey] = state;
-            }
+            DuplicateKeyState state = _duplicateStates.GetOrAdd(cacheKey);
 
             bool changed = state.Refresh(keysProperty, keyType);
             if (!state.HasDuplicates && state.IsEmpty)
@@ -577,7 +568,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             EditorGUI.DrawRect(right, DuplicateOutlineColor);
         }
 
-        private static string FormatDuplicateKeyDisplay(object keyValue, Type keyType)
+        private static string FormatDuplicateKeyDisplay(object keyValue)
         {
             object actualKey = ReferenceEquals(keyValue, NullKeySentinel) ? null : keyValue;
 
@@ -608,7 +599,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     : unityObject.name;
             }
 
-            return actualKey.ToString() ?? keyType.Name;
+            return actualKey.ToString();
         }
 
         private static string BuildDuplicateTooltip(string formattedKey, List<int> indices)
@@ -646,6 +637,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             string key = GetListKey(property);
             if (_pendingEntries.TryGetValue(key, out PendingEntry entry))
             {
+                EnsurePendingFoldoutAnim(entry);
                 return entry;
             }
 
@@ -653,8 +645,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 key = GetDefaultValue(keyType),
                 value = GetDefaultValue(valueType),
-                IsExpanded = false,
+                isExpanded = false,
             };
+            entry.foldoutAnim = CreatePendingFoldoutAnim(entry.isExpanded);
             _pendingEntries[key] = entry;
             return entry;
         }
@@ -685,7 +678,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         internal ListPageCache EnsurePageCache(
             string cacheKey,
             SerializedProperty keysProperty,
-            SerializedProperty valuesProperty,
             PaginationState pagination
         )
         {
@@ -698,7 +690,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 || cache.itemCount != itemCount
             )
             {
-                RefreshPageCache(cache, keysProperty, valuesProperty, pagination);
+                RefreshPageCache(cache, keysProperty, pagination);
             }
 
             return cache;
@@ -719,7 +711,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static void RefreshPageCache(
             ListPageCache cache,
             SerializedProperty keysProperty,
-            SerializedProperty valuesProperty,
             PaginationState pagination
         )
         {
@@ -733,8 +724,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             if (cache.itemCount <= 0)
             {
-                cache.startIndex = 0;
-                cache.endIndex = 0;
                 return;
             }
 
@@ -750,9 +739,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 endIndex = Mathf.Min(startIndex + effectivePageSize, cache.itemCount);
             }
 
-            cache.startIndex = startIndex;
-            cache.endIndex = endIndex;
-
             for (int i = startIndex; i < endIndex; i++)
             {
                 PageEntry entry = new() { arrayIndex = i };
@@ -766,8 +752,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 cache.entries.Clear();
                 cache.dirty = true;
-                cache.startIndex = 0;
-                cache.endIndex = 0;
                 cache.pageIndex = -1;
                 cache.pageSize = -1;
                 cache.itemCount = -1;
@@ -790,16 +774,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             return -1;
-        }
-
-        private static bool IndexIsInCacheRange(ListPageCache cache, int index)
-        {
-            if (cache.entries.Count == 0)
-            {
-                return false;
-            }
-
-            return index >= cache.startIndex && index < cache.endIndex;
         }
 
         private static bool RelativeIndexIsValid(ListPageCache cache, int relativeIndex)
@@ -832,7 +806,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private void DrawListHeader(
             Rect rect,
-            SerializedProperty dictionaryProperty,
             SerializedProperty keysProperty,
             ReorderableList list,
             PaginationState pagination,
@@ -844,8 +817,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             SyncListSelectionWithPagination(list, pagination, cache);
 
             float spacing = PaginationControlSpacing;
-            float controlsWidth =
-                (PaginationButtonWidth * 4f) + (spacing * 3f) + PaginationLabelWidth;
+            float controlsWidth = PaginationButtonWidth * 4f + spacing * 3f + PaginationLabelWidth;
             Rect controlsRect = new(rect.xMax - controlsWidth, rect.y, controlsWidth, rect.height);
             Rect pageLabelRect = new(
                 controlsRect.x,
@@ -956,7 +928,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             if (Event.current.type == EventType.Repaint)
             {
                 GUIStyle footerStyle =
-                    ReorderableList.defaultBehaviours.footerBackground ?? (GUIStyle)"RL Footer";
+                    ReorderableList.defaultBehaviours.footerBackground ?? "RL Footer";
                 footerStyle.Draw(rect, GUIContent.none, false, false, false, false);
             }
 
@@ -1102,12 +1074,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             InvalidateKeyCache(GetListKey(dictionaryProperty));
 
             string cacheKey = GetListKey(dictionaryProperty);
-            ListPageCache cache = EnsurePageCache(
-                cacheKey,
-                keysProperty,
-                valuesProperty,
-                pagination
-            );
+            ListPageCache cache = EnsurePageCache(cacheKey, keysProperty, pagination);
             SyncListSelectionWithPagination(list, pagination, cache);
 
             EditorWindow focusedWindow = EditorWindow.focusedWindow;
@@ -1149,12 +1116,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             InvalidateKeyCache(GetListKey(dictionaryProperty));
 
             string cacheKey = GetListKey(dictionaryProperty);
-            ListPageCache cache = EnsurePageCache(
-                cacheKey,
-                keysProperty,
-                valuesProperty,
-                pagination
-            );
+            ListPageCache cache = EnsurePageCache(cacheKey, keysProperty, pagination);
             SyncListSelectionWithPagination(list, pagination, cache);
 
             EditorWindow focusedWindow = EditorWindow.focusedWindow;
@@ -1276,9 +1238,21 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             Type valueType
         )
         {
+            AnimBool foldoutAnim = EnsurePendingFoldoutAnim(pending);
+            float foldoutProgress;
+            if (foldoutAnim != null)
+            {
+                foldoutAnim.target = pending.isExpanded;
+                foldoutProgress = foldoutAnim.faded;
+            }
+            else
+            {
+                foldoutProgress = pending.isExpanded ? 1f : 0f;
+            }
+
+            float sectionHeight = GetPendingSectionHeight(foldoutProgress);
             float rowHeight = EditorGUIUtility.singleLineHeight;
             float spacing = EditorGUIUtility.standardVerticalSpacing;
-            float sectionHeight = GetPendingSectionHeight(pending);
 
             Rect containerRect = new(fullPosition.x, y, fullPosition.width, sectionHeight);
             Color backgroundColor = EditorGUIUtility.isProSkin
@@ -1289,9 +1263,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 EditorGUI.DrawRect(containerRect, backgroundColor);
             }
 
-            float innerX = containerRect.x + PendingSectionPadding;
-            float innerWidth = containerRect.width - (PendingSectionPadding * 2f);
-            float innerY = containerRect.y + PendingSectionPadding;
+            GUI.BeginGroup(containerRect);
+
+            float innerX = PendingSectionPadding;
+            float innerWidth = Mathf.Max(0f, containerRect.width - PendingSectionPadding * 2f);
+            float innerY = PendingSectionPadding;
 
             Rect headerRect = new(innerX, innerY, innerWidth, rowHeight);
             EditorGUI.BeginChangeCheck();
@@ -1299,26 +1275,53 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             EditorStyles.foldout.fontStyle = FontStyle.Bold;
             bool expanded = EditorGUI.Foldout(
                 headerRect,
-                pending.IsExpanded,
+                pending.isExpanded,
                 PendingFoldoutContent,
                 true
             );
             EditorStyles.foldout.fontStyle = originalFoldoutFontStyle;
             if (EditorGUI.EndChangeCheck())
             {
-                pending.IsExpanded = expanded;
+                pending.isExpanded = expanded;
                 GUI.changed = true;
-                sectionHeight = GetPendingSectionHeight(pending);
-                containerRect.height = sectionHeight;
+                foldoutAnim = EnsurePendingFoldoutAnim(pending);
+                if (foldoutAnim != null)
+                {
+                    foldoutAnim.target = expanded;
+                    foldoutProgress = foldoutAnim.faded;
+                }
+                else
+                {
+                    foldoutProgress = expanded ? 1f : 0f;
+                }
+
+                sectionHeight = GetPendingSectionHeight(foldoutProgress);
+                RequestRepaint();
             }
 
-            if (!pending.IsExpanded)
+            containerRect.height = sectionHeight;
+
+            float contentFade = Mathf.Clamp01(foldoutProgress);
+            if (contentFade <= 0f && !pending.isExpanded)
             {
+                GUI.EndGroup();
                 y = containerRect.yMax;
                 return;
             }
 
             innerY += rowHeight + spacing;
+
+            Color previousColor = GUI.color;
+            bool adjustColor = !Mathf.Approximately(contentFade, 1f);
+            if (adjustColor)
+            {
+                GUI.color = new Color(
+                    previousColor.r,
+                    previousColor.g,
+                    previousColor.b,
+                    previousColor.a * contentFade
+                );
+            }
 
             Rect keyRect = new(innerX, innerY, innerWidth, rowHeight);
             pending.key = DrawFieldForType(keyRect, "Key", pending.key, keyType);
@@ -1450,12 +1453,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         pagination.selectedIndex = result.index;
 
                         string listKey = GetListKey(dictionaryProperty);
-                        ListPageCache cache = EnsurePageCache(
-                            listKey,
-                            keysProperty,
-                            valuesProperty,
-                            pagination
-                        );
+                        ListPageCache cache = EnsurePageCache(listKey, keysProperty, pagination);
                         SyncListSelectionWithPagination(list, pagination, cache);
                     }
 
@@ -1477,6 +1475,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     GUI.FocusControl(null);
                 }
             }
+
+            if (adjustColor)
+            {
+                GUI.color = previousColor;
+            }
+
+            GUI.EndGroup();
 
             y = containerRect.yMax;
         }
@@ -1624,8 +1629,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private static Color GetLegibleTextColor(Color background)
         {
-            float luminance =
-                (0.299f * background.r) + (0.587f * background.g) + (0.114f * background.b);
+            float luminance = 0.299f * background.r + 0.587f * background.g + 0.114f * background.b;
             return luminance > 0.55f ? Color.black : Color.white;
         }
 
@@ -1647,19 +1651,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return texture;
         }
 
-        private static float GetPendingSectionHeight(PendingEntry pending)
+        private static float GetPendingSectionHeight(float foldoutProgress)
         {
             float rowHeight = EditorGUIUtility.singleLineHeight;
             float spacing = EditorGUIUtility.standardVerticalSpacing;
-            float baseHeight = (rowHeight * 1f) + (PendingSectionPadding * 2f);
-            if (pending == null || !pending.IsExpanded)
-            {
-                return baseHeight;
-            }
+            float baseHeight = rowHeight * 1f + PendingSectionPadding * 2f;
+            float expandedExtraHeight = rowHeight * 3f + spacing * 3f;
+            return baseHeight + expandedExtraHeight * Mathf.Clamp01(foldoutProgress);
+        }
 
-            float expandedRows = rowHeight * 3f;
-            float expandedSpacing = spacing * 3f;
-            return baseHeight + expandedRows + expandedSpacing;
+        private static float GetPendingSectionHeight(PendingEntry pending)
+        {
+            return GetPendingSectionHeight(GetPendingFoldoutProgress(pending));
         }
 
         private CommitResult CommitEntry(
@@ -1895,6 +1898,54 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         {
             _keyIndexCaches.Remove(cacheKey);
             MarkListCacheDirty(cacheKey);
+        }
+
+        private static AnimBool CreatePendingFoldoutAnim(bool initialValue)
+        {
+            AnimBool anim = new(initialValue) { speed = PendingFoldoutAnimationSpeed };
+            anim.valueChanged.AddListener(RequestRepaint);
+            return anim;
+        }
+
+        private static AnimBool EnsurePendingFoldoutAnim(PendingEntry pending)
+        {
+            if (pending == null)
+            {
+                return null;
+            }
+
+            if (pending.foldoutAnim == null)
+            {
+                pending.foldoutAnim = CreatePendingFoldoutAnim(pending.isExpanded);
+            }
+            else
+            {
+                pending.foldoutAnim.speed = PendingFoldoutAnimationSpeed;
+            }
+
+            return pending.foldoutAnim;
+        }
+
+        private static void RequestRepaint()
+        {
+            InternalEditorUtility.RepaintAllViews();
+        }
+
+        private static float GetPendingFoldoutProgress(PendingEntry pending)
+        {
+            if (pending == null)
+            {
+                return 0f;
+            }
+
+            AnimBool anim = EnsurePendingFoldoutAnim(pending);
+            if (anim == null)
+            {
+                return pending.isExpanded ? 1f : 0f;
+            }
+
+            anim.target = pending.isExpanded;
+            return anim.faded;
         }
 
         private static GUIStyle GetFooterLabelStyle()
@@ -2353,15 +2404,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         {
             public object key;
             public object value;
-            public bool IsExpanded;
+            public bool isExpanded;
+            public AnimBool foldoutAnim;
         }
 
         private sealed class DuplicateKeyInfo
         {
-            public string Tooltip = string.Empty;
-            public string KeyLabel = string.Empty;
-            public bool IsPrimary;
-            public int DuplicateCount;
+            public string tooltip = string.Empty;
+            public bool isPrimary;
         }
 
         private sealed class DuplicateKeyState
@@ -2388,9 +2438,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
 
                 int count = keysProperty.arraySize;
-                Dictionary<object, List<int>> grouping = new Dictionary<object, List<int>>(
-                    new KeyEqualityComparer()
-                );
+                Dictionary<object, List<int>> grouping = new(new KeyEqualityComparer());
 
                 for (int index = 0; index < count; index++)
                 {
@@ -2399,12 +2447,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         keyProperty != null ? GetPropertyValue(keyProperty, keyType) : null;
                     object lookupKey = keyValue ?? NullKeySentinel;
 
-                    if (!grouping.TryGetValue(lookupKey, out List<int> indices))
-                    {
-                        indices = new List<int>();
-                        grouping.Add(lookupKey, indices);
-                    }
-
+                    List<int> indices = grouping.GetOrAdd(lookupKey);
                     indices.Add(index);
                 }
 
@@ -2420,18 +2463,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                     duplicateGroupCount++;
                     HasDuplicates = true;
-                    string formattedKey = FormatDuplicateKeyDisplay(entry.Key, keyType);
+                    string formattedKey = FormatDuplicateKeyDisplay(entry.Key);
                     string tooltip = BuildDuplicateTooltip(formattedKey, indices);
 
                     for (int occurrence = 0; occurrence < indices.Count; occurrence++)
                     {
                         int arrayIndex = indices[occurrence];
-                        DuplicateKeyInfo info = new DuplicateKeyInfo
+                        DuplicateKeyInfo info = new()
                         {
-                            Tooltip = tooltip,
-                            KeyLabel = formattedKey,
-                            IsPrimary = occurrence == 0,
-                            DuplicateCount = indices.Count,
+                            tooltip = tooltip,
+                            isPrimary = occurrence == 0,
                         };
                         _duplicateLookup[arrayIndex] = info;
                     }
@@ -2466,8 +2507,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         internal sealed class ListPageCache
         {
             public readonly List<PageEntry> entries = new();
-            public int startIndex;
-            public int endIndex;
             public int pageIndex = -1;
             public int pageSize = -1;
             public int itemCount = -1;

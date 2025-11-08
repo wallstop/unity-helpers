@@ -104,13 +104,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 SerializableDictionaryPropertyDrawer.ListPageCache cache = drawer.EnsurePageCache(
                     listKey,
                     keysProperty,
-                    valuesProperty,
                     pagination
                 );
 
                 pagination.selectedIndex = 25;
                 pagination.pageIndex = 2;
-                cache = drawer.EnsurePageCache(listKey, keysProperty, valuesProperty, pagination);
+                cache = drawer.EnsurePageCache(listKey, keysProperty, pagination);
                 SerializableDictionaryPropertyDrawer.SyncListSelectionWithPagination(
                     list,
                     pagination,
@@ -121,7 +120,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 Assert.AreEqual(25, pagination.selectedIndex);
 
                 pagination.pageIndex = 0;
-                cache = drawer.EnsurePageCache(listKey, keysProperty, valuesProperty, pagination);
+                cache = drawer.EnsurePageCache(listKey, keysProperty, pagination);
                 SerializableDictionaryPropertyDrawer.SyncListSelectionWithPagination(
                     list,
                     pagination,
@@ -174,7 +173,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 SerializableDictionaryPropertyDrawer.ListPageCache cache = drawer.EnsurePageCache(
                     listKey,
                     keysProperty,
-                    valuesProperty,
                     pagination
                 );
 
@@ -236,7 +234,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 SerializableDictionaryPropertyDrawer.ListPageCache cache = drawer.EnsurePageCache(
                     listKey,
                     keysProperty,
-                    valuesProperty,
                     pagination
                 );
                 SerializableDictionaryPropertyDrawer.SyncListSelectionWithPagination(
@@ -254,7 +251,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     pagination
                 );
 
-                cache = drawer.EnsurePageCache(listKey, keysProperty, valuesProperty, pagination);
+                cache = drawer.EnsurePageCache(listKey, keysProperty, pagination);
                 SerializableDictionaryPropertyDrawer.SyncListSelectionWithPagination(
                     list,
                     pagination,
