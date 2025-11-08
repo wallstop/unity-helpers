@@ -204,6 +204,11 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                     name,
                     $"Type '{name}' should not contain 'AnonymousType'."
                 );
+                StringAssert.DoesNotContain(
+                    "DisplayClass",
+                    name,
+                    $"Type '{name}' should not contain 'DisplayClass'."
+                );
             }
         }
 

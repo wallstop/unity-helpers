@@ -479,10 +479,25 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 return _descriptors;
             }
 
-            List<SerializableTypeDescriptor> filtered = new();
-            for (int index = 0; index < _descriptors.Length; index++)
+            SerializableTypeDescriptor[] source = _descriptors;
+            int keyLength = key.Length;
+            if (keyLength > 1)
             {
-                SerializableTypeDescriptor descriptor = _descriptors[index];
+                for (int length = keyLength - 1; length > 0; length--)
+                {
+                    string parentKey = key.Substring(0, length);
+                    if (FilterCache.TryGetValue(parentKey, out SerializableTypeDescriptor[] parent))
+                    {
+                        source = parent;
+                        break;
+                    }
+                }
+            }
+
+            List<SerializableTypeDescriptor> filtered = new(source.Length);
+            for (int index = 0; index < source.Length; index++)
+            {
+                SerializableTypeDescriptor descriptor = source[index];
                 if (descriptor.Matches(key))
                 {
                     filtered.Add(descriptor);
@@ -810,6 +825,11 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 {
                     return true;
                 }
+
+                if (name.IndexOf("DisplayClass", StringComparison.Ordinal) >= 0)
+                {
+                    return true;
+                }
             }
 
             if (!string.IsNullOrWhiteSpace(fullName))
@@ -830,6 +850,11 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 }
 
                 if (fullName.IndexOf("PrivateImplementationDetails", StringComparison.Ordinal) >= 0)
+                {
+                    return true;
+                }
+
+                if (fullName.IndexOf("DisplayClass", StringComparison.Ordinal) >= 0)
                 {
                     return true;
                 }
