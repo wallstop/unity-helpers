@@ -174,16 +174,53 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 bool hasSuggestion = false;
                 bool acceptedSuggestion = false;
                 string suggestion = string.Empty;
+                SerializableTypeCatalog.SerializableTypeDescriptor chosenDescriptor =
+                    filtered.Count > 0 ? filtered[0] : default;
+                int suggestionMatchPos = string.IsNullOrEmpty(state.Search) ? 0 : -1;
                 string focusedControl = GUI.GetNameOfFocusedControl();
                 if (focusedControl == controlName && filtered.Count > 0)
                 {
-                    suggestion = filtered[0].DisplayName;
+                    if (!string.IsNullOrEmpty(state.Search))
+                    {
+                        int bestPos = int.MaxValue;
+                        int bestLength = int.MaxValue;
+                        for (int i = 0; i < filtered.Count; i++)
+                        {
+                            SerializableTypeCatalog.SerializableTypeDescriptor descriptor =
+                                filtered[i];
+                            string displayName = descriptor.DisplayName ?? string.Empty;
+                            int matchPos = displayName.IndexOf(
+                                state.Search,
+                                StringComparison.OrdinalIgnoreCase
+                            );
+                            if (matchPos < 0)
+                            {
+                                continue;
+                            }
+
+                            if (
+                                matchPos < bestPos
+                                || (matchPos == bestPos && displayName.Length < bestLength)
+                            )
+                            {
+                                bestPos = matchPos;
+                                bestLength = displayName.Length;
+                                chosenDescriptor = descriptor;
+                            }
+                        }
+                        suggestionMatchPos = bestPos == int.MaxValue ? -1 : bestPos;
+                    }
+
+                    suggestion = chosenDescriptor.DisplayName;
                     if (
                         !string.IsNullOrEmpty(state.Search)
                         && !string.IsNullOrEmpty(suggestion)
-                        && suggestion.StartsWith(state.Search, StringComparison.OrdinalIgnoreCase)
-                        && suggestion.Length > state.Search.Length
-                        && searchFieldRect.width > 0f
+                        && suggestionMatchPos >= 0
+                        && !string.Equals(
+                            suggestion,
+                            state.Search,
+                            StringComparison.OrdinalIgnoreCase
+                        )
                     )
                     {
                         hasSuggestion = true;
@@ -193,9 +230,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                             && (evt.keyCode == KeyCode.Tab || evt.keyCode == KeyCode.Return)
                         )
                         {
+                            bool commitSelection = evt.keyCode == KeyCode.Tab && !evt.shift;
                             state.Search = suggestion;
                             GUI.changed = true;
                             acceptedSuggestion = true;
+                            GUI.FocusControl(controlName);
+                            EditorGUI.FocusTextInControl(controlName);
                             evt.Use();
                             filtered = SerializableTypeCatalog.GetFilteredDescriptors(state.Search);
                             pageCount = Math.Max(1, (filtered.Count + pageSize - 1) / pageSize);
@@ -204,7 +244,21 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                             endIndex = Math.Min(filtered.Count, startIndex + pageSize);
                             pageLength = Math.Max(0, endIndex - startIndex);
                             globalIndex = FindDescriptorIndex(filtered, currentValue);
-                            GUI.FocusControl(controlName);
+                            if (commitSelection)
+                            {
+                                SerializableTypeCatalog.SerializableTypeDescriptor descriptor =
+                                    FindDescriptorIndex(
+                                        filtered,
+                                        chosenDescriptor.AssemblyQualifiedName
+                                    ) >= 0
+                                        ? chosenDescriptor
+                                        : filtered[0];
+                                assemblyQualifiedName.stringValue =
+                                    descriptor.AssemblyQualifiedName;
+                                currentValue = descriptor.AssemblyQualifiedName;
+                                state.LastValue = currentValue;
+                                globalIndex = FindDescriptorIndex(filtered, currentValue);
+                            }
                         }
                     }
                 }
@@ -213,15 +267,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 {
                     if (filtered.Count > 0)
                     {
-                        suggestion = filtered[0].DisplayName;
+                        suggestion = chosenDescriptor.DisplayName;
                         if (
                             string.IsNullOrEmpty(state.Search)
-                            || !suggestion.StartsWith(
+                            || suggestionMatchPos < 0
+                            || string.Equals(
+                                suggestion,
                                 state.Search,
                                 StringComparison.OrdinalIgnoreCase
                             )
-                            || suggestion.Length <= state.Search.Length
-                            || searchFieldRect.width <= 0f
                         )
                         {
                             hasSuggestion = false;
@@ -257,31 +311,33 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     EditorGUI.LabelField(pageInfoRect, GUIContent.none);
                 }
 
-                GUI.enabled =
-                    !string.IsNullOrEmpty(state.Search) || !string.IsNullOrEmpty(currentValue);
+                GUI.enabled = !string.IsNullOrEmpty(state.Search);
                 if (GUI.Button(clearRect, "Clear"))
                 {
-                    assemblyQualifiedName.stringValue = string.Empty;
-                    currentValue = string.Empty;
-                    globalIndex = -1;
-                    state.LastValue = string.Empty;
                     state.Search = string.Empty;
                     state.Page = 0;
+                    GUI.changed = true;
                     filtered = SerializableTypeCatalog.GetFilteredDescriptors(string.Empty);
                     pageCount = Math.Max(1, (filtered.Count + pageSize - 1) / pageSize);
-                    startIndex = 0;
-                    endIndex = Math.Min(filtered.Count, pageSize);
+                    globalIndex = FindDescriptorIndex(filtered, currentValue);
+                    if (globalIndex >= 0)
+                    {
+                        state.Page = Mathf.Clamp(globalIndex / pageSize, 0, pageCount - 1);
+                    }
+                    startIndex = state.Page * pageSize;
+                    endIndex = Math.Min(filtered.Count, startIndex + pageSize);
                     pageLength = Math.Max(0, endIndex - startIndex);
+                    showPagination = filtered.Count > pageSize;
                     GUI.FocusControl(controlName);
                 }
 
-                GUI.enabled = showPagination && state.Page > 0;
+                GUI.enabled = showPagination && filtered.Count > 0 && state.Page > 0;
                 if (GUI.Button(prevRect, "<"))
                 {
                     state.Page = Math.Max(0, state.Page - 1);
                 }
 
-                GUI.enabled = showPagination && state.Page < (pageCount - 1);
+                GUI.enabled = showPagination && filtered.Count > 0 && state.Page < (pageCount - 1);
                 if (GUI.Button(nextRect, ">"))
                 {
                     state.Page = Math.Min(pageCount - 1, state.Page + 1);

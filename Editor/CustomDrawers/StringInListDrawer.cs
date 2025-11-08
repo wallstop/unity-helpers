@@ -78,6 +78,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             private readonly Button nextButton;
             private readonly DropdownField dropdown;
             private readonly Label noResultsLabel;
+            private readonly Label suggestionHintLabel;
+            private TextElement searchTextInput;
             private readonly List<int> filteredIndices = new List<int>();
             private readonly List<int> pageOptionIndices = new List<int>();
             private readonly List<string> pageChoices = new List<string>();
@@ -91,6 +93,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             private int pageIndex;
             private int lastResolvedPageSize = -1;
             private bool searchVisible;
+            private int suggestionOptionIndex = -1;
 
             public StringInListSelector(string[] options)
             {
@@ -99,6 +102,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     1,
                     UnityHelpersSettings.GetStringInListPageLimit()
                 );
+                suggestionOptionIndex = -1;
 
                 AddToClassList("unity-base-field");
                 style.flexDirection = FlexDirection.Column;
@@ -117,16 +121,22 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 searchField.RegisterValueChangedCallback(OnSearchChanged);
                 searchField.RegisterCallback<KeyDownEvent>(OnSearchKeyDown);
                 searchWrapper.Add(searchField);
+                searchField.schedule.Execute(() =>
+                    searchTextInput = searchField.Q<TextElement>("unity-text-input")
+                );
 
                 suggestionLabel = new Label();
                 suggestionLabel.style.position = Position.Absolute;
-                suggestionLabel.style.left = 6f;
+                suggestionLabel.style.left = 4f;
                 suggestionLabel.style.top = 2f;
                 suggestionLabel.style.unityFontStyleAndWeight = FontStyle.Italic;
-                suggestionLabel.style.color = new Color(1f, 1f, 1f, 0.35f);
+                suggestionLabel.style.color = new Color(1f, 1f, 1f, 0.7f);
+                suggestionLabel.style.opacity = 0.5f;
+                suggestionLabel.style.paddingLeft = 2f;
                 suggestionLabel.pickingMode = PickingMode.Ignore;
                 suggestionLabel.style.display = DisplayStyle.None;
                 searchWrapper.Add(suggestionLabel);
+                suggestionLabel.BringToFront();
 
                 clearButton = new Button(OnClearClicked) { text = "Clear" };
                 clearButton.style.marginLeft = 4f;
@@ -154,6 +164,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 searchRow.Add(clearButton);
                 searchRow.Add(paginationContainer);
                 Add(searchRow);
+
+                suggestionHintLabel = new Label();
+                suggestionHintLabel.style.display = DisplayStyle.None;
+                suggestionHintLabel.style.marginLeft = 4f;
+                suggestionHintLabel.style.marginBottom = 2f;
+                suggestionHintLabel.style.color = new Color(0.7f, 0.85f, 1f, 0.75f);
+                suggestionHintLabel.style.unityFontStyleAndWeight = FontStyle.Italic;
+                suggestionHintLabel.style.fontSize = 11f;
+                suggestionHintLabel.pickingMode = PickingMode.Ignore;
+                Add(suggestionHintLabel);
 
                 dropdown = new DropdownField { choices = new List<string>() };
                 dropdown.style.flexGrow = 1f;
@@ -185,7 +205,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 searchField.SetValueWithoutNotify(string.Empty);
                 UpdateClearButton(searchVisible);
-                UpdateSuggestionDisplay(string.Empty);
+                UpdateSuggestionDisplay(string.Empty, -1, -1);
 
                 UpdateFromProperty();
             }
@@ -229,9 +249,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     ) && !string.IsNullOrEmpty(suggestion)
                 )
                 {
-                    evt.StopPropagation();
                     evt.PreventDefault();
-                    AcceptSuggestion();
+                    evt.StopPropagation();
+                    evt.StopImmediatePropagation();
+                    bool commitSelection = evt.keyCode == KeyCode.Tab && !evt.shiftKey;
+                    AcceptSuggestion(commitSelection);
                 }
             }
 
@@ -247,7 +269,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 pageIndex = 0;
                 UpdateClearButton(searchVisible);
-                UpdateSuggestionDisplay(string.Empty);
+                UpdateSuggestionDisplay(string.Empty, -1, -1);
                 UpdateFromProperty();
             }
 
@@ -346,7 +368,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     dropdown.SetEnabled(false);
                     noResultsLabel.style.display = DisplayStyle.Flex;
                     UpdatePagination(searchActive, 0, pageSize, 0);
-                    UpdateSuggestionDisplay(string.Empty);
+                    UpdateSuggestionDisplay(string.Empty, -1, -1);
                     return;
                 }
 
@@ -461,69 +483,179 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             private void UpdateSuggestion(bool searchActive)
             {
-                if (!searchActive || suggestionLabel == null)
+                if (!searchActive || filteredIndices.Count == 0)
                 {
-                    UpdateSuggestionDisplay(string.Empty);
+                    UpdateSuggestionDisplay(string.Empty, -1, -1);
                     return;
                 }
 
                 if (string.IsNullOrEmpty(searchText))
                 {
-                    UpdateSuggestionDisplay(string.Empty);
+                    int firstIndex = filteredIndices[0];
+                    UpdateSuggestionDisplay(options[firstIndex] ?? string.Empty, firstIndex, 0);
                     return;
                 }
 
-                string bestMatch = string.Empty;
+                int bestOption = -1;
+                int bestMatchPos = int.MaxValue;
+                int bestLength = int.MaxValue;
+
                 for (int i = 0; i < filteredIndices.Count; i++)
                 {
-                    string option = options[filteredIndices[i]] ?? string.Empty;
-                    if (option.StartsWith(searchText, StringComparison.OrdinalIgnoreCase))
+                    int optionIndex = filteredIndices[i];
+                    string optionValue = options[optionIndex] ?? string.Empty;
+                    int matchPos = optionValue.IndexOf(
+                        searchText,
+                        StringComparison.OrdinalIgnoreCase
+                    );
+                    if (matchPos < 0)
                     {
-                        bestMatch = option;
-                        break;
+                        continue;
+                    }
+
+                    if (
+                        matchPos < bestMatchPos
+                        || (matchPos == bestMatchPos && optionValue.Length < bestLength)
+                    )
+                    {
+                        bestOption = optionIndex;
+                        bestMatchPos = matchPos;
+                        bestLength = optionValue.Length;
+                        if (bestMatchPos == 0 && bestLength == searchText.Length)
+                        {
+                            break;
+                        }
                     }
                 }
 
-                if (
-                    string.IsNullOrEmpty(bestMatch)
-                    || string.Equals(bestMatch, searchText, StringComparison.Ordinal)
-                )
+                if (bestOption >= 0)
                 {
-                    UpdateSuggestionDisplay(string.Empty);
+                    string value = options[bestOption] ?? string.Empty;
+                    UpdateSuggestionDisplay(value, bestOption, bestMatchPos);
                     return;
                 }
 
-                UpdateSuggestionDisplay(bestMatch);
+                UpdateSuggestionDisplay(string.Empty, -1, -1);
             }
 
-            private void UpdateSuggestionDisplay(string suggestionValue)
+            private void UpdateSuggestionDisplay(
+                string suggestionValue,
+                int optionIndex,
+                int matchPosition
+            )
             {
                 suggestion = suggestionValue;
+                suggestionOptionIndex = optionIndex;
                 if (suggestionLabel == null)
                 {
                     return;
                 }
 
                 bool visible =
-                    !string.IsNullOrEmpty(suggestionValue)
-                    && !string.Equals(suggestionValue, searchText, StringComparison.Ordinal);
-                suggestionLabel.text = suggestionValue;
-                suggestionLabel.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
+                    searchVisible && !string.IsNullOrEmpty(suggestionValue) && optionIndex >= 0;
+                bool overlayActive = visible && matchPosition >= 0;
+
+                if (overlayActive)
+                {
+                    suggestionLabel.style.display = DisplayStyle.Flex;
+                    suggestionLabel.BringToFront();
+
+                    string suffix;
+                    float offset = 2f;
+
+                    if (string.IsNullOrEmpty(searchText))
+                    {
+                        suffix = suggestionValue;
+                    }
+                    else
+                    {
+                        int suffixStart = matchPosition + searchText.Length;
+                        if (suffixStart < suggestionValue.Length)
+                        {
+                            suffix = suggestionValue.Substring(suffixStart);
+                        }
+                        else
+                        {
+                            overlayActive = false;
+                            suffix = string.Empty;
+                        }
+
+                        if (searchTextInput != null)
+                        {
+                            Vector2 measured = searchTextInput.MeasureTextSize(
+                                searchText,
+                                float.NaN,
+                                VisualElement.MeasureMode.Undefined,
+                                float.NaN,
+                                VisualElement.MeasureMode.Undefined
+                            );
+                            offset += measured.x;
+                        }
+                    }
+
+                    if (overlayActive && !string.IsNullOrEmpty(suffix))
+                    {
+                        suggestionLabel.style.marginLeft = offset;
+                        suggestionLabel.text = suffix;
+                    }
+                    else
+                    {
+                        overlayActive = false;
+                    }
+                }
+                else
+                {
+                    suggestionLabel.style.marginLeft = 2f;
+                    suggestionLabel.text = string.Empty;
+                }
+
+                suggestionLabel.style.display = overlayActive
+                    ? DisplayStyle.Flex
+                    : DisplayStyle.None;
+
+                if (suggestionHintLabel != null)
+                {
+                    suggestionHintLabel.text = visible
+                        ? $"↹ Tab selects: {suggestionValue}"
+                        : string.Empty;
+                    suggestionHintLabel.style.display = visible
+                        ? DisplayStyle.Flex
+                        : DisplayStyle.None;
+                }
+
+                if (!visible)
+                {
+                    suggestionOptionIndex = -1;
+                }
             }
 
-            private void AcceptSuggestion()
+            private void AcceptSuggestion(bool commitSelection)
             {
                 if (!searchVisible || string.IsNullOrEmpty(suggestion) || searchField == null)
                 {
                     return;
                 }
 
+                string previous = searchText ?? string.Empty;
+                int originalLength = previous.Length;
+                int optionIndexToApply = commitSelection ? suggestionOptionIndex : -1;
+
                 searchText = suggestion;
                 searchField.SetValueWithoutNotify(suggestion);
-                searchField.SelectRange(suggestion.Length, suggestion.Length);
+                int selectionStart = Mathf.Clamp(originalLength, 0, suggestion.Length);
+                searchField.schedule.Execute(() =>
+                {
+                    searchField.Focus();
+                    searchField.SelectRange(selectionStart, suggestion.Length);
+                });
                 UpdateClearButton(searchVisible);
-                UpdateSuggestionDisplay(string.Empty);
+                UpdateSuggestionDisplay(string.Empty, -1, -1);
                 UpdateFromProperty();
+
+                if (commitSelection && optionIndexToApply >= 0)
+                {
+                    ApplySelection(optionIndexToApply);
+                }
             }
 
             private int ResolvePageSize()
@@ -566,7 +698,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         searchField.SetValueWithoutNotify(string.Empty);
                     }
 
-                    UpdateSuggestionDisplay(string.Empty);
+                    UpdateSuggestionDisplay(string.Empty, -1, -1);
+                    suggestionOptionIndex = -1;
 
                     if (paginationContainer != null)
                     {
@@ -585,6 +718,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
 
                 UpdateClearButton(visible);
+                if (!visible && suggestionHintLabel != null)
+                {
+                    suggestionHintLabel.text = string.Empty;
+                    suggestionHintLabel.style.display = DisplayStyle.None;
+                }
             }
 
             private int ResolveOptionIndex(string optionValue)

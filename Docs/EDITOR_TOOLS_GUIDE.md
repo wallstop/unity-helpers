@@ -1252,9 +1252,14 @@ public class MySettings
 
 - String fields: Dropdown with string values
 - Int fields: Dropdown with indices
-- Arrays/Lists: Shows size field + dropdown per element
+- Arrays/Lists: UI Toolkit list view with per-element dropdowns, add/remove, and drag-to-reorder
 - Dynamic lists via static method reference
+- Search/filter with lightweight autocomplete (Tab auto-completes and assigns, Enter just fills the search)
+- Inline hint beneath the search box shows the current best match for quick Tab acceptance
+- Pagination automatically appears when the option count exceeds the configured page size
+- Page size configurable via **Project Settings ▸ Wallstop Studios ▸ Unity Helpers ▸ StringInList Page Size**
 - Auto-finds current value in list
+- The same search + pagination experience is reused by `SerializableType`, so adjusting the page size updates both drawers
 
 **Best For:**
 
