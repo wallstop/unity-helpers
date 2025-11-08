@@ -70,6 +70,198 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
+        public void TryAddWhenKeyExistsDoesNotInvalidateCache()
+        {
+            SerializableSortedDictionary<int, string> dictionary =
+                new SerializableSortedDictionary<int, string>();
+            dictionary.Add(5, "five");
+
+            Type baseType = typeof(SerializableSortedDictionary<int, string>).BaseType;
+            Assert.IsNotNull(baseType, "Base type lookup failed.");
+
+            BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
+            FieldInfo keysField = baseType.GetField("_keys", flags);
+            FieldInfo valuesField = baseType.GetField("_values", flags);
+            FieldInfo arraysDirtyField = baseType.GetField("_arraysDirty", flags);
+            Assert.IsNotNull(keysField, "Serialized keys field was not found.");
+            Assert.IsNotNull(valuesField, "Serialized values field was not found.");
+            Assert.IsNotNull(arraysDirtyField, "Array dirty flag field was not found.");
+
+            dictionary.OnBeforeSerialize();
+
+            object serializedKeys = keysField.GetValue(dictionary);
+            object serializedValues = valuesField.GetValue(dictionary);
+
+            Assert.IsNotNull(serializedKeys, "Serialized keys should be generated.");
+            Assert.IsNotNull(serializedValues, "Serialized values should be generated.");
+            Assert.IsFalse((bool)arraysDirtyField.GetValue(dictionary));
+
+            bool added = dictionary.TryAdd(5, "duplicate");
+
+            Assert.IsFalse(added);
+            Assert.AreSame(
+                serializedKeys,
+                keysField.GetValue(dictionary),
+                "Failed TryAdd must not clear the cached keys."
+            );
+            Assert.AreSame(
+                serializedValues,
+                valuesField.GetValue(dictionary),
+                "Failed TryAdd must not clear the cached values."
+            );
+            Assert.IsFalse(
+                (bool)arraysDirtyField.GetValue(dictionary),
+                "Failed TryAdd must not mark arrays dirty."
+            );
+            Assert.AreEqual("five", dictionary[5]);
+        }
+
+        [Test]
+        public void IndexerUpdateClearsSerializationArrays()
+        {
+            SerializableSortedDictionary<int, string> dictionary =
+                new SerializableSortedDictionary<int, string>();
+            dictionary.Add(7, "seven");
+
+            Type baseType = typeof(SerializableSortedDictionary<int, string>).BaseType;
+            Assert.IsNotNull(baseType, "Base type lookup failed.");
+
+            BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
+            FieldInfo keysField = baseType.GetField("_keys", flags);
+            FieldInfo valuesField = baseType.GetField("_values", flags);
+            FieldInfo arraysDirtyField = baseType.GetField("_arraysDirty", flags);
+            Assert.IsNotNull(keysField, "Serialized keys field was not found.");
+            Assert.IsNotNull(valuesField, "Serialized values field was not found.");
+            Assert.IsNotNull(arraysDirtyField, "Array dirty flag field was not found.");
+
+            dictionary.OnBeforeSerialize();
+
+            Assert.IsNotNull(keysField.GetValue(dictionary));
+            Assert.IsNotNull(valuesField.GetValue(dictionary));
+            Assert.IsFalse((bool)arraysDirtyField.GetValue(dictionary));
+
+            dictionary[7] = "updated";
+
+            Assert.IsNull(
+                keysField.GetValue(dictionary),
+                "Indexer mutations must clear cached keys."
+            );
+            Assert.IsNull(
+                valuesField.GetValue(dictionary),
+                "Indexer mutations must clear cached values."
+            );
+            Assert.IsTrue(
+                (bool)arraysDirtyField.GetValue(dictionary),
+                "Indexer mutations must mark arrays dirty."
+            );
+            Assert.AreEqual("updated", dictionary[7]);
+        }
+
+        [Test]
+        public void OnBeforeSerializeSkipsRebuildWhenCacheFresh()
+        {
+            SerializableSortedDictionary<int, string> dictionary =
+                new SerializableSortedDictionary<int, string>();
+            dictionary.Add(2, "two");
+            dictionary.Add(4, "four");
+
+            Type baseType = typeof(SerializableSortedDictionary<int, string>).BaseType;
+            Assert.IsNotNull(baseType, "Base type lookup failed.");
+
+            BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
+            FieldInfo keysField = baseType.GetField("_keys", flags);
+            FieldInfo valuesField = baseType.GetField("_values", flags);
+            FieldInfo arraysDirtyField = baseType.GetField("_arraysDirty", flags);
+            Assert.IsNotNull(keysField, "Serialized keys field was not found.");
+            Assert.IsNotNull(valuesField, "Serialized values field was not found.");
+            Assert.IsNotNull(arraysDirtyField, "Array dirty flag field was not found.");
+
+            dictionary.OnBeforeSerialize();
+
+            object initialKeys = keysField.GetValue(dictionary);
+            object initialValues = valuesField.GetValue(dictionary);
+
+            Assert.IsNotNull(initialKeys);
+            Assert.IsNotNull(initialValues);
+            Assert.IsFalse((bool)arraysDirtyField.GetValue(dictionary));
+
+            dictionary.OnBeforeSerialize();
+
+            Assert.AreSame(initialKeys, keysField.GetValue(dictionary));
+            Assert.AreSame(initialValues, valuesField.GetValue(dictionary));
+            Assert.IsFalse((bool)arraysDirtyField.GetValue(dictionary));
+        }
+
+        [Test]
+        public void CopyFromNullThrowsArgumentNullException()
+        {
+            SerializableSortedDictionary<int, string> dictionary =
+                new SerializableSortedDictionary<int, string>();
+
+            Assert.Throws<ArgumentNullException>(() => dictionary.CopyFrom(null));
+        }
+
+        [Test]
+        public void ProtoSerializationPreservesTemporaryArraysWhenNoDuplicatesExist()
+        {
+            SerializableSortedDictionary<int, string> dictionary =
+                new SerializableSortedDictionary<int, string>();
+            dictionary.Add(1, "one");
+            dictionary.Add(3, "three");
+
+            Type baseType = typeof(SerializableSortedDictionary<int, string>).BaseType;
+            Assert.IsNotNull(baseType, "Base type lookup failed.");
+
+            BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
+            FieldInfo keysField = baseType.GetField("_keys", flags);
+            FieldInfo valuesField = baseType.GetField("_values", flags);
+            Assert.IsNotNull(keysField, "Serialized keys field was not found.");
+            Assert.IsNotNull(valuesField, "Serialized values field was not found.");
+
+            dictionary.OnBeforeSerialize();
+
+            int[] serializedKeysBefore = (int[])keysField.GetValue(dictionary);
+            string[] serializedValuesBefore = (string[])valuesField.GetValue(dictionary);
+            Assert.IsNotNull(serializedKeysBefore);
+            Assert.IsNotNull(serializedValuesBefore);
+
+            byte[] payload = Serializer.ProtoSerialize(dictionary);
+
+            int[] serializedKeysAfter = (int[])keysField.GetValue(dictionary);
+            string[] serializedValuesAfter = (string[])valuesField.GetValue(dictionary);
+
+            Assert.AreSame(
+                serializedKeysBefore,
+                serializedKeysAfter,
+                "Proto serialization should not replace the serialized keys array."
+            );
+            Assert.AreSame(
+                serializedValuesBefore,
+                serializedValuesAfter,
+                "Proto serialization should not replace the serialized values array."
+            );
+            Assert.AreEqual(2, serializedKeysAfter.Length);
+            Assert.AreEqual(2, serializedValuesAfter.Length);
+            Assert.AreEqual("one", dictionary[1]);
+            Assert.AreEqual("three", dictionary[3]);
+
+            SerializableSortedDictionary<int, string> roundTripped = Serializer.ProtoDeserialize<
+                SerializableSortedDictionary<int, string>
+            >(payload);
+
+            int[] expectedKeys = new int[] { 1, 3 };
+            int index = 0;
+            foreach (KeyValuePair<int, string> pair in roundTripped)
+            {
+                Assert.Less(index, expectedKeys.Length);
+                Assert.AreEqual(expectedKeys[index], pair.Key);
+                index++;
+            }
+
+            Assert.AreEqual(expectedKeys.Length, index);
+        }
+
+        [Test]
         public void OnBeforeSerializeProducesSortedArrays()
         {
             SerializableSortedDictionary<int, string> dictionary =

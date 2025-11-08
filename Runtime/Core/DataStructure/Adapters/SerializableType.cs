@@ -1195,8 +1195,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 }
 
                 if (
-                    DisplayName.StartsWith(search, StringComparison.OrdinalIgnoreCase)
-                    || AssemblyQualifiedName.StartsWith(search, StringComparison.OrdinalIgnoreCase)
+                    DisplayName.IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0
+                    || AssemblyQualifiedName.IndexOf(search, StringComparison.OrdinalIgnoreCase)
+                        >= 0
                 )
                 {
                     return true;

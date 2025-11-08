@@ -4,6 +4,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;
+    using System.Runtime.CompilerServices;
     using System.Text.Json;
     using NUnit.Framework;
     using ProtoBuf;
@@ -223,6 +224,141 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
+        public void CatalogSearchFindsTypeBySubstring()
+        {
+            string search = "rializabletype";
+            IReadOnlyList<SerializableTypeCatalog.SerializableTypeDescriptor> filtered =
+                SerializableTypeCatalog.GetFilteredDescriptors(search);
+
+            bool found = false;
+            for (int index = 0; index < filtered.Count; index++)
+            {
+                SerializableTypeCatalog.SerializableTypeDescriptor descriptor = filtered[index];
+                if (descriptor.Type == typeof(SerializableType))
+                {
+                    found = true;
+                    break;
+                }
+            }
+
+            Assert.IsTrue(found, "Substring search should locate SerializableType.");
+        }
+
+        [Test]
+        public void CatalogSearchMatchesAssemblyQualifiedNameSubstring()
+        {
+            string assemblyName = typeof(SerializableType).Assembly.GetName().Name;
+            Assert.IsFalse(string.IsNullOrEmpty(assemblyName));
+            Assert.Greater(
+                assemblyName.Length,
+                3,
+                "Assembly name must be long enough for this test."
+            );
+
+            int startIndex = 1;
+            string search = assemblyName.Substring(startIndex, assemblyName.Length - startIndex);
+
+            IReadOnlyList<SerializableTypeCatalog.SerializableTypeDescriptor> filtered =
+                SerializableTypeCatalog.GetFilteredDescriptors(search);
+
+            bool found = false;
+            for (int index = 0; index < filtered.Count; index++)
+            {
+                SerializableTypeCatalog.SerializableTypeDescriptor descriptor = filtered[index];
+                if (descriptor.Type == typeof(SerializableType))
+                {
+                    found = true;
+                    break;
+                }
+            }
+
+            Assert.IsTrue(found, "Assembly name substring search should locate SerializableType.");
+        }
+
+        [Test]
+        public void CatalogSearchReflectsUpdatedIgnorePatterns()
+        {
+            IReadOnlyList<SerializableTypeCatalog.SerializableTypeDescriptor> initial =
+                SerializableTypeCatalog.GetFilteredDescriptors("rializabletype");
+            bool initiallyFound = false;
+            for (int index = 0; index < initial.Count; index++)
+            {
+                SerializableTypeCatalog.SerializableTypeDescriptor descriptor = initial[index];
+                if (descriptor.Type == typeof(SerializableType))
+                {
+                    initiallyFound = true;
+                    break;
+                }
+            }
+
+            Assert.IsTrue(initiallyFound, "Baseline search should include SerializableType.");
+
+            IReadOnlyList<string> original = SerializableTypeCatalog.GetActiveIgnorePatterns();
+            bool wasConfigured = !ReferenceEquals(
+                original,
+                SerializableTypeCatalog.GetDefaultIgnorePatterns()
+            );
+            string[] backup = original.ToArray();
+
+            try
+            {
+                SerializableTypeCatalog.ConfigureTypeNameIgnorePatterns(
+                    new[] { "SerializableType" }
+                );
+
+                IReadOnlyList<SerializableTypeCatalog.SerializableTypeDescriptor> filtered =
+                    SerializableTypeCatalog.GetFilteredDescriptors("rializabletype");
+
+                bool found = false;
+                for (int index = 0; index < filtered.Count; index++)
+                {
+                    SerializableTypeCatalog.SerializableTypeDescriptor descriptor = filtered[index];
+                    if (descriptor.Type == typeof(SerializableType))
+                    {
+                        found = true;
+                        break;
+                    }
+                }
+
+                Assert.IsFalse(
+                    found,
+                    "Configured ignore pattern should remove SerializableType from results."
+                );
+            }
+            finally
+            {
+                SerializableTypeCatalog.ConfigureTypeNameIgnorePatterns(
+                    wasConfigured ? backup : null
+                );
+            }
+
+            IReadOnlyList<SerializableTypeCatalog.SerializableTypeDescriptor> restored =
+                SerializableTypeCatalog.GetFilteredDescriptors("rializabletype");
+
+            bool restoredFound = false;
+            for (int index = 0; index < restored.Count; index++)
+            {
+                SerializableTypeCatalog.SerializableTypeDescriptor descriptor = restored[index];
+                if (descriptor.Type == typeof(SerializableType))
+                {
+                    restoredFound = true;
+                    break;
+                }
+            }
+
+            Assert.IsTrue(restoredFound, "Restored patterns should reintroduce SerializableType.");
+        }
+
+        [Test]
+        public void ShouldSkipTypeRecognizesCompilerGeneratedAttribute()
+        {
+            Assert.IsTrue(
+                SerializableTypeCatalog.ShouldSkipType(typeof(CompilerGeneratedProbe)),
+                "Compiler generated types should be excluded from catalog results."
+            );
+        }
+
+        [Test]
         public void TryGetValueFailsForUnknownType()
         {
             SerializableType unresolved = SerializableType.FromSerializedName(
@@ -282,5 +418,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 "Invalid regex should provide an explanatory error message."
             );
         }
+
+        [CompilerGenerated]
+        private sealed class CompilerGeneratedProbe { }
     }
 }
