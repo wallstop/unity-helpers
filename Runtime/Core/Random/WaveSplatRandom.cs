@@ -93,7 +93,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             unchecked
             {
                 _state += Increment;
-                int shift = (int)((_state & (ulong)ShiftMask) + ShiftBase);
+                int shift = (int)((_state & ShiftMask) + ShiftBase);
                 ulong value = _state >> shift;
                 return (uint)value;
             }

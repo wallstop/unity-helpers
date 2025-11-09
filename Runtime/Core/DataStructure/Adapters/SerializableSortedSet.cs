@@ -50,9 +50,39 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
         public IComparer<T> Comparer => Set.Comparer;
 
+        public SortedSet<T>.Enumerator GetEnumerator()
+        {
+            return Set.GetEnumerator();
+        }
+
+        public T Min
+        {
+            get { return Set.Min; }
+        }
+
+        public T Max
+        {
+            get { return Set.Max; }
+        }
+
+        public IEnumerable<T> Reverse()
+        {
+            return Set.Reverse();
+        }
+
+        public SortedSet<T> GetViewBetween(T lowerValue, T upperValue)
+        {
+            return Set.GetViewBetween(lowerValue, upperValue);
+        }
+
         protected override int RemoveWhereInternal(Predicate<T> match)
         {
             return Set.RemoveWhere(match);
+        }
+
+        protected override bool TryGetValueCore(T equalValue, out T actualValue)
+        {
+            return Set.TryGetValue(equalValue, out actualValue);
         }
     }
 

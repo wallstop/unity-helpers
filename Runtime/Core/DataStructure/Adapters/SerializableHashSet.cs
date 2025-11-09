@@ -40,9 +40,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
     [ProtoContract]
     public abstract class SerializableSetBase<T, TSet>
         : ISet<T>,
-            ICollection<T>,
-            IEnumerable<T>,
-            IEnumerable,
             IReadOnlyCollection<T>,
             ISerializationCallbackReceiver,
             IDeserializationCallback,
@@ -63,12 +60,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
         protected SerializableSetBase(TSet set)
         {
-            if (set == null)
-            {
-                throw new ArgumentNullException(nameof(set));
-            }
-
-            _set = set;
+            _set = set ?? throw new ArgumentNullException(nameof(set));
         }
 
         protected SerializableSetBase(
@@ -99,15 +91,15 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         {
             private sealed class NameHolder : SerializableHashSet<T>
             {
-                public static readonly string ItemsName = nameof(_items);
+                public const string ItemsName = nameof(_items);
             }
 
-            internal static readonly string ItemsName = NameHolder.ItemsName;
+            internal const string ItemsName = NameHolder.ItemsName;
         }
 
         public int Count => _set.Count;
 
-        bool ICollection<T>.IsReadOnly => ((ICollection<T>)_set).IsReadOnly;
+        bool ICollection<T>.IsReadOnly => _set.IsReadOnly;
 
         public bool Add(T item)
         {
@@ -215,6 +207,39 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             return _set.Contains(item);
         }
 
+        public bool TryGetValue(T equalValue, out T actualValue)
+        {
+            if (TryGetValueCore(equalValue, out T resolved))
+            {
+                actualValue = resolved;
+                return true;
+            }
+
+            EqualityComparer<T> comparer = EqualityComparer<T>.Default;
+            foreach (T value in _set)
+            {
+                if (comparer.Equals(value, equalValue))
+                {
+                    actualValue = value;
+                    return true;
+                }
+            }
+
+            actualValue = default;
+            return false;
+        }
+
+        protected virtual bool TryGetValueCore(T equalValue, out T actualValue)
+        {
+            actualValue = default;
+            return false;
+        }
+
+        public void CopyTo(T[] array)
+        {
+            CopyTo(array, 0);
+        }
+
         public void CopyTo(T[] array, int arrayIndex)
         {
             _set.CopyTo(array, arrayIndex);
@@ -249,7 +274,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
         protected virtual int RemoveWhereInternal(Predicate<T> match)
         {
-            List<T> buffer = new List<T>();
+            List<T> buffer = new();
             foreach (T value in _set)
             {
                 if (match(value))
@@ -264,11 +289,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             }
 
             return buffer.Count;
-        }
-
-        public Enumerator GetEnumerator()
-        {
-            return new Enumerator(_set.GetEnumerator());
         }
 
         IEnumerator<T> IEnumerable<T>.GetEnumerator()
@@ -443,7 +463,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
             if (_set.Count == 0)
             {
-                return Array.CreateInstance(typeof(T), 0);
+                return Array.Empty<T>();
             }
 
             T[] snapshot = new T[_set.Count];
@@ -554,35 +574,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             result = default;
             return false;
         }
-
-        public struct Enumerator : IEnumerator<T>
-        {
-            private IEnumerator<T> _enumerator;
-
-            internal Enumerator(IEnumerator<T> enumerator)
-            {
-                _enumerator = enumerator;
-            }
-
-            public T Current => _enumerator.Current;
-
-            object IEnumerator.Current => _enumerator.Current;
-
-            public bool MoveNext()
-            {
-                return _enumerator.MoveNext();
-            }
-
-            public void Dispose()
-            {
-                _enumerator.Dispose();
-            }
-
-            void IEnumerator.Reset()
-            {
-                throw new NotSupportedException("Reset is not supported.");
-            }
-        }
     }
 
     /// <summary>
@@ -633,9 +624,29 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
         public IEqualityComparer<T> Comparer => Set.Comparer;
 
+        public HashSet<T>.Enumerator GetEnumerator()
+        {
+            return Set.GetEnumerator();
+        }
+
+        public void CopyTo(T[] array, int arrayIndex, int count)
+        {
+            Set.CopyTo(array, arrayIndex, count);
+        }
+
+        public void TrimExcess()
+        {
+            Set.TrimExcess();
+        }
+
         protected override int RemoveWhereInternal(Predicate<T> match)
         {
             return Set.RemoveWhere(match);
+        }
+
+        protected override bool TryGetValueCore(T equalValue, out T actualValue)
+        {
+            return Set.TryGetValue(equalValue, out actualValue);
         }
     }
 

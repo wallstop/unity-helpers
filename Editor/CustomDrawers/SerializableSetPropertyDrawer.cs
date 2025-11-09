@@ -443,6 +443,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         {
             float height = EditorGUIUtility.singleLineHeight;
 
+            PaginationState pagination = GetOrCreatePaginationState(property);
+
             if (!property.isExpanded)
             {
                 return height;
@@ -457,7 +459,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             height += SectionSpacing + GetToolbarHeight() + SectionSpacing;
 
-            PaginationState pagination = GetOrCreatePaginationState(property);
             EnsurePaginationBounds(pagination, totalCount);
 
             DuplicateState duplicateState = EvaluateDuplicateState(property, itemsProperty);

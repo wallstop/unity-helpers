@@ -582,7 +582,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void NextWeightedIndexThrowsOnEmpty()
         {
-            Assert.Throws<ArgumentException>(() => PRNG.Instance.NextWeightedIndex(new float[0]));
+            Assert.Throws<ArgumentException>(() =>
+                PRNG.Instance.NextWeightedIndex(Array.Empty<float>())
+            );
         }
 
         [Test]
