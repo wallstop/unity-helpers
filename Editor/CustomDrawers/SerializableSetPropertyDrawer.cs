@@ -33,7 +33,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         );
         private static readonly GUIContent NextPageContent = new GUIContent(">", "Next Page");
         private static readonly GUIContent LastPageContent = new GUIContent(">>", "Last Page");
-        private static readonly Color DuplicateHighlightColor = new Color(1f, 0.78f, 0.65f, 0.4f);
         private static readonly object NullComparable = new object();
 
         private static readonly GUIStyle AddButtonStyle = CreateSolidButtonStyle(
@@ -41,6 +40,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         );
         private static readonly GUIStyle ClearAllActiveButtonStyle = CreateSolidButtonStyle(
             new Color(0.82f, 0.27f, 0.27f)
+        );
+        private static readonly GUIStyle ClearAllInactiveButtonStyle = CreateSolidButtonStyle(
+            new Color(0.55f, 0.55f, 0.55f)
         );
         private static readonly GUIStyle RemoveButtonStyle = CreateSolidButtonStyle(
             new Color(0.86f, 0.23f, 0.23f)
@@ -88,6 +90,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public object Value;
         }
 
+        private sealed class RowRenderInfo
+        {
+            public SerializedProperty Property;
+            public float Height;
+            public int Index;
+            public bool IsDuplicate;
+            public bool IsPrimaryDuplicate;
+            public bool IsSelected;
+            public float ShakeOffset;
+        }
+
         private static float GetToolbarHeight()
         {
             float lineHeight = EditorGUIUtility.singleLineHeight;
@@ -99,6 +112,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             float lineHeight = EditorGUIUtility.singleLineHeight;
             ConfigureButtonStyle(AddButtonStyle, lineHeight);
             ConfigureButtonStyle(ClearAllActiveButtonStyle, lineHeight);
+            ConfigureButtonStyle(ClearAllInactiveButtonStyle, lineHeight);
             ConfigureButtonStyle(RemoveButtonStyle, lineHeight);
         }
 
@@ -185,11 +199,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             int totalCount = hasItemsArray ? itemsProperty.arraySize : 0;
 
             string propertyPath = property.propertyPath;
-            ISerializableSetInspector inspectorForLabel;
-            int uniqueCount = TryGetSetInspector(property, propertyPath, out inspectorForLabel)
-                ? inspectorForLabel.UniqueCount
-                : totalCount;
-            string foldoutLabel = BuildFoldoutLabel(label, uniqueCount);
+            string foldoutLabel = BuildFoldoutLabel(label);
 
             EditorGUI.BeginProperty(position, label, property);
 
@@ -254,14 +264,30 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             if (!hasItemsArray || totalCount == 0)
             {
-                Rect emptyRect = new Rect(
-                    position.x,
-                    y,
-                    position.width,
-                    EditorGUIUtility.singleLineHeight
+                float blockPadding = 6f;
+                float headerHeight = EditorGUIUtility.singleLineHeight;
+                float messageHeight = EditorGUIUtility.singleLineHeight;
+                float blockHeight = blockPadding * 2f + headerHeight + RowSpacing + messageHeight;
+                Rect blockRect = new Rect(position.x, y, position.width, blockHeight);
+                GUI.Box(blockRect, GUIContent.none, EditorStyles.helpBox);
+
+                Rect headerRect = new Rect(
+                    blockRect.x + blockPadding,
+                    blockRect.y + blockPadding - 2f,
+                    blockRect.width - blockPadding * 2f,
+                    headerHeight
                 );
-                EditorGUI.LabelField(emptyRect, GUIContent.none, new GUIContent("Set is empty."));
-                y = emptyRect.yMax + SectionSpacing;
+                EditorGUI.LabelField(headerRect, "Entries", EditorStyles.boldLabel);
+
+                Rect messageRect = new Rect(
+                    blockRect.x + blockPadding,
+                    headerRect.yMax + RowSpacing,
+                    blockRect.width - blockPadding * 2f,
+                    messageHeight
+                );
+                EditorGUI.LabelField(messageRect, "Set is empty.", EditorStyles.miniLabel);
+
+                y = blockRect.yMax + SectionSpacing;
             }
             else
             {
@@ -273,6 +299,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     animationMode == UnityHelpersSettings.DuplicateRowAnimationMode.Tween;
                 int tweenCycleLimit = UnityHelpersSettings.GetDuplicateRowTweenCycleLimit();
 
+                List<RowRenderInfo> rows = new List<RowRenderInfo>(endIndex - startIndex);
+                float rowsHeight = 0f;
+
                 for (int index = startIndex; index < endIndex; index++)
                 {
                     SerializedProperty element = itemsProperty.GetArrayElementAtIndex(index);
@@ -282,37 +311,81 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         true
                     );
 
-                    Rect rowRect = new Rect(position.x, y, position.width, elementHeight);
-                    Rect backgroundRect = new Rect(
-                        rowRect.x,
-                        rowRect.y,
-                        rowRect.width,
-                        elementHeight
-                    );
-
-                    bool isSelected = pagination.selectedIndex == index;
                     bool isDuplicate = duplicateState.DuplicateIndices.Contains(index);
+                    if (
+                        isDuplicate
+                        && animateDuplicates
+                        && !duplicateState.AnimationStartTimes.ContainsKey(index)
+                    )
+                    {
+                        duplicateState.AnimationStartTimes[index] =
+                            EditorApplication.timeSinceStartup;
+                    }
+
+                    float shakeOffset =
+                        isDuplicate && animateDuplicates
+                            ? GetDuplicateShakeOffset(duplicateState, index, tweenCycleLimit)
+                            : 0f;
+
+                    RowRenderInfo info = new RowRenderInfo
+                    {
+                        Property = element.Copy(),
+                        Height = elementHeight,
+                        Index = index,
+                        IsDuplicate = isDuplicate,
+                        IsPrimaryDuplicate = duplicateState.PrimaryFlags.TryGetValue(
+                            index,
+                            out bool primaryFlag
+                        )
+                            ? primaryFlag
+                            : false,
+                        IsSelected = pagination.selectedIndex == index,
+                        ShakeOffset = shakeOffset,
+                    };
+
+                    rows.Add(info);
+                    rowsHeight += elementHeight;
+                    if (index < endIndex - 1)
+                    {
+                        rowsHeight += RowSpacing;
+                    }
+                }
+
+                float blockPadding = 6f;
+                float headerHeight = EditorGUIUtility.singleLineHeight;
+                float rowsSpacing = rows.Count > 0 ? RowSpacing : 0f;
+                float blockHeight = blockPadding * 2f + headerHeight + rowsSpacing + rowsHeight;
+                Rect blockRect = new Rect(position.x, y, position.width, blockHeight);
+                GUI.Box(blockRect, GUIContent.none, EditorStyles.helpBox);
+
+                Rect headerRect = new Rect(
+                    blockRect.x + blockPadding,
+                    blockRect.y + blockPadding - 2f,
+                    blockRect.width - blockPadding * 2f,
+                    headerHeight
+                );
+                EditorGUI.LabelField(headerRect, "Entries", EditorStyles.boldLabel);
+
+                float contentY = headerRect.yMax + rowsSpacing;
+                float contentX = blockRect.x + blockPadding;
+                float contentWidth = blockRect.width - blockPadding * 2f;
+
+                for (int rowIndex = 0; rowIndex < rows.Count; rowIndex++)
+                {
+                    RowRenderInfo row = rows[rowIndex];
+
+                    Rect backgroundRect = new Rect(contentX, contentY, contentWidth, row.Height);
 
                     Color baseRowColor = EditorGUIUtility.isProSkin ? DarkRowColor : LightRowColor;
                     EditorGUI.DrawRect(backgroundRect, baseRowColor);
 
-                    float shakeOffset = 0f;
-                    if (isDuplicate && animateDuplicates)
-                    {
-                        shakeOffset = GetDuplicateShakeOffset(
-                            duplicateState,
-                            index,
-                            tweenCycleLimit
-                        );
-                    }
-
                     Rect outlineRect = Rect.zero;
                     bool shouldDrawOutline = false;
 
-                    if (isDuplicate)
+                    if (row.IsDuplicate)
                     {
                         Rect duplicateRect = new Rect(
-                            backgroundRect.x + shakeOffset,
+                            backgroundRect.x + row.ShakeOffset,
                             backgroundRect.y,
                             backgroundRect.width,
                             backgroundRect.height
@@ -322,13 +395,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         duplicateRect.yMin += 1f;
                         duplicateRect.yMax -= 1f;
 
-                        bool isPrimary = duplicateState.PrimaryFlags.TryGetValue(
-                            index,
-                            out bool primaryFlag
-                        )
-                            ? primaryFlag
-                            : false;
-                        Color duplicateColor = isPrimary
+                        Color duplicateColor = row.IsPrimaryDuplicate
                             ? DuplicatePrimaryColor
                             : DuplicateSecondaryColor;
                         EditorGUI.DrawRect(duplicateRect, duplicateColor);
@@ -336,7 +403,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         shouldDrawOutline = true;
                     }
 
-                    if (isSelected)
+                    if (row.IsSelected)
                     {
                         Color selectionColor = EditorGUIUtility.isProSkin
                             ? DarkSelectionColor
@@ -348,12 +415,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         backgroundRect.x + 6f,
                         backgroundRect.y + 1f,
                         backgroundRect.width - 12f,
-                        elementHeight - 2f
+                        row.Height - 2f
                     );
-                    if (Mathf.Abs(shakeOffset) > Mathf.Epsilon)
+                    if (Mathf.Abs(row.ShakeOffset) > Mathf.Epsilon)
                     {
-                        contentRect.x += shakeOffset;
-                        contentRect.width -= Mathf.Abs(shakeOffset);
+                        contentRect.x += row.ShakeOffset;
+                        contentRect.width -= Mathf.Abs(row.ShakeOffset);
                     }
 
                     if (
@@ -361,18 +428,20 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         && backgroundRect.Contains(Event.current.mousePosition)
                     )
                     {
-                        pagination.selectedIndex = index;
+                        pagination.selectedIndex = row.Index;
                     }
 
-                    EditorGUI.PropertyField(contentRect, element, GUIContent.none, true);
+                    EditorGUI.PropertyField(contentRect, row.Property, GUIContent.none, true);
 
                     if (shouldDrawOutline)
                     {
                         DrawDuplicateOutline(outlineRect);
                     }
 
-                    y = backgroundRect.yMax + RowSpacing;
+                    contentY += row.Height + RowSpacing;
                 }
+
+                y = blockRect.yMax + SectionSpacing;
             }
 
             EditorGUI.indentLevel = previousIndentLevel;
@@ -408,21 +477,41 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             if (!hasItemsArray || totalCount == 0)
             {
-                height += EditorGUIUtility.singleLineHeight + SectionSpacing;
+                float blockPadding = 6f;
+                float headerHeight = EditorGUIUtility.singleLineHeight;
+                float messageHeight = EditorGUIUtility.singleLineHeight;
+                height +=
+                    blockPadding * 2f + headerHeight + RowSpacing + messageHeight + SectionSpacing;
                 return height;
             }
-
-            int startIndex = pagination.page * pagination.pageSize;
-            int endIndex = Mathf.Min(startIndex + pagination.pageSize, totalCount);
-
-            for (int index = startIndex; index < endIndex; index++)
+            else
             {
-                SerializedProperty element = itemsProperty.GetArrayElementAtIndex(index);
-                float elementHeight = EditorGUI.GetPropertyHeight(element, GUIContent.none, true);
-                height += elementHeight + RowSpacing;
-            }
+                int startIndex = pagination.page * pagination.pageSize;
+                int endIndex = Mathf.Min(startIndex + pagination.pageSize, totalCount);
+                float rowsHeight = 0f;
+                for (int index = startIndex; index < endIndex; index++)
+                {
+                    SerializedProperty element = itemsProperty.GetArrayElementAtIndex(index);
+                    float elementHeight = EditorGUI.GetPropertyHeight(
+                        element,
+                        GUIContent.none,
+                        true
+                    );
+                    rowsHeight += elementHeight;
+                    if (index < endIndex - 1)
+                    {
+                        rowsHeight += RowSpacing;
+                    }
+                }
 
-            return height;
+                float blockPadding = 6f;
+                float headerHeight = EditorGUIUtility.singleLineHeight;
+                float rowsSpacing = (endIndex - startIndex) > 0 ? RowSpacing : 0f;
+                height +=
+                    blockPadding * 2f + headerHeight + rowsSpacing + rowsHeight + SectionSpacing;
+
+                return height;
+            }
         }
 
         internal PaginationState GetOrCreatePaginationState(SerializedProperty property)
@@ -544,26 +633,23 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             bool hasEntries = totalCount > 0;
             GUIStyle clearButtonStyle = hasEntries
                 ? ClearAllActiveButtonStyle
-                : EditorStyles.miniButton;
+                : ClearAllInactiveButtonStyle;
 
-            using (new EditorGUI.DisabledScope(!hasEntries))
+            if (GUI.Button(clearRect, ClearAllContent, clearButtonStyle) && hasEntries)
             {
-                if (GUI.Button(clearRect, ClearAllContent, clearButtonStyle))
+                if (TryClearSet(ref property, propertyPath, ref itemsProperty))
                 {
-                    if (TryClearSet(ref property, propertyPath, ref itemsProperty))
-                    {
-                        serializedObject = property.serializedObject;
-                        itemsProperty = property.FindPropertyRelative(
-                            SerializableHashSetSerializedPropertyNames.Items
-                        );
-                        totalCount =
-                            itemsProperty != null && itemsProperty.isArray
-                                ? itemsProperty.arraySize
-                                : 0;
-                        pagination.page = 0;
-                        pagination.selectedIndex = -1;
-                        EnsurePaginationBounds(pagination, totalCount);
-                    }
+                    serializedObject = property.serializedObject;
+                    itemsProperty = property.FindPropertyRelative(
+                        SerializableHashSetSerializedPropertyNames.Items
+                    );
+                    totalCount =
+                        itemsProperty != null && itemsProperty.isArray
+                            ? itemsProperty.arraySize
+                            : 0;
+                    pagination.page = 0;
+                    pagination.selectedIndex = -1;
+                    EnsurePaginationBounds(pagination, totalCount);
                 }
             }
 
@@ -688,22 +774,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 );
                 EditorGUI.LabelField(pageInfoRect, pageInfoContent, EditorStyles.miniLabel);
                 rightCursor = pageInfoRect.x - ButtonSpacing;
-                availableWidth = Mathf.Max(0f, rightCursor - rect.x);
-            }
-
-            GUIContent pageSizeContent = new GUIContent($"Page Size: {pagination.pageSize}");
-            float pageSizeWidth = EditorStyles.miniLabel.CalcSize(pageSizeContent).x;
-            bool showPageSize = availableWidth >= pageSizeWidth;
-            if (showPageSize)
-            {
-                Rect pageSizeRect = new Rect(
-                    rightCursor - pageSizeWidth,
-                    rect.y,
-                    pageSizeWidth,
-                    lineHeight
-                );
-                EditorGUI.LabelField(pageSizeRect, pageSizeContent, EditorStyles.miniLabel);
-                rightCursor = pageSizeRect.x - ButtonSpacing;
                 availableWidth = Mathf.Max(0f, rightCursor - rect.x);
             }
 
@@ -1327,10 +1397,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         {
             if (elementType == typeof(string))
             {
-                yield return "New Entry";
+                yield return string.Empty;
                 for (int i = 1; i < MaxAutoAddAttempts; i++)
                 {
-                    yield return $"New Entry ({i})";
+                    yield return $"New Entry {i}";
                 }
                 yield break;
             }
@@ -1882,10 +1952,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
         }
 
-        private static string BuildFoldoutLabel(GUIContent label, int count)
+        private static string BuildFoldoutLabel(GUIContent label)
         {
             string baseLabel = label != null ? label.text : "Serialized HashSet";
-            return $"{baseLabel} ({count})";
+            return baseLabel;
         }
     }
 
