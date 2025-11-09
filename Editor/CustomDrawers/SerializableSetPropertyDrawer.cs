@@ -687,7 +687,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 && pagination.selectedIndex >= 0
                 && pagination.selectedIndex < totalCount;
 
-            float removeButtonWidth = 32f;
+            float removeButtonWidth = PaginationButtonWidth;
             if (hasSelection)
             {
                 Rect removeRect = new Rect(
@@ -797,11 +797,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 if (GUI.Button(firstRect, FirstPageContent, EditorStyles.miniButton))
                 {
                     pagination.page = 0;
+                    SnapSelectionToPage(pagination, totalCount);
                 }
 
                 if (GUI.Button(prevRect, PreviousPageContent, EditorStyles.miniButton))
                 {
                     pagination.page = Mathf.Max(0, pagination.page - 1);
+                    SnapSelectionToPage(pagination, totalCount);
                 }
             }
 
@@ -810,13 +812,33 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 if (GUI.Button(nextRect, NextPageContent, EditorStyles.miniButton))
                 {
                     pagination.page = Mathf.Min(pageCount - 1, pagination.page + 1);
+                    SnapSelectionToPage(pagination, totalCount);
                 }
 
                 if (GUI.Button(lastRect, LastPageContent, EditorStyles.miniButton))
                 {
                     pagination.page = pageCount - 1;
+                    SnapSelectionToPage(pagination, totalCount);
                 }
             }
+        }
+
+        private static void SnapSelectionToPage(PaginationState pagination, int totalCount)
+        {
+            if (totalCount <= 0)
+            {
+                pagination.selectedIndex = -1;
+                return;
+            }
+
+            int pageSize = Mathf.Max(1, pagination.pageSize);
+            int pageStart = pagination.page * pageSize;
+            if (pageStart >= totalCount)
+            {
+                pageStart = Mathf.Max(0, totalCount - 1);
+            }
+
+            pagination.selectedIndex = Mathf.Clamp(pageStart, 0, totalCount - 1);
         }
 
         private static float GetDuplicateShakeOffset(
