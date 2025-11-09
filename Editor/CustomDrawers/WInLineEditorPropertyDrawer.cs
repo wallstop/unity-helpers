@@ -40,7 +40,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private sealed class InlineInspectorElement : VisualElement
         {
             private const float FoldoutIndent = 2.5f;
-            private const float HeaderIndent = 0f;
+            private const float HeaderIndent = 2.5f;
 
             private readonly SerializedObject serializedObject;
             private readonly string propertyPath;
@@ -75,9 +75,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 style.flexDirection = FlexDirection.Column;
 
-                ObjectField objectField = settings.drawObjectField
-                    ? CreateObjectField(property.displayName)
-                    : null;
+                ObjectField objectField = settings.drawObjectField ? CreateObjectField() : null;
 
                 VisualElement inlineParent = this;
                 if (settings.mode == WInLineEditorMode.AlwaysExpanded)
@@ -85,7 +83,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     foldout = null;
                     if (objectField != null)
                     {
-                        // For always-expanded mode show label on object field
                         objectField.label = property.displayName;
                         objectField.style.marginBottom = 2f;
                         Add(objectField);
@@ -125,35 +122,20 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     Toggle toggle = foldout.Q<Toggle>();
                     toggle.style.flexDirection = FlexDirection.Row;
                     toggle.style.alignItems = Align.Center;
+                    toggle.style.justifyContent = Justify.FlexStart;
                     toggle.style.paddingLeft = 0f;
                     toggle.style.paddingRight = 0f;
                     toggle.style.marginLeft = 0f;
-                    toggle.style.justifyContent = Justify.FlexStart;
+                    toggle.style.flexGrow = 1f;
 
                     Label toggleLabel = toggle.Q<Label>();
                     if (toggleLabel != null)
                     {
                         toggleLabel.style.flexGrow = 0f;
                         toggleLabel.style.flexShrink = 0f;
+                        toggleLabel.style.marginLeft = 1f;
                         toggleLabel.style.marginRight = 6f;
                     }
-
-                    // Compose label row manually so preview icon & text align nicely.
-                    VisualElement labelRow = new VisualElement
-                    {
-                        style =
-                        {
-                            flexDirection = FlexDirection.Row,
-                            alignItems = Align.Center,
-                            flexGrow = 1f,
-                        },
-                    };
-
-                    Label nameLabel = new Label(property.displayName)
-                    {
-                        style = { flexShrink = 0f, marginRight = 6f },
-                    };
-                    labelRow.Add(nameLabel);
 
                     if (objectField != null)
                     {
@@ -162,10 +144,27 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         objectField.style.flexShrink = 1f;
                         objectField.style.minWidth = 0f;
                         objectField.style.marginLeft = 0f;
-                        labelRow.Add(objectField);
-                    }
 
-                    toggle.Add(labelRow);
+                        VisualElement display = objectField.Q<VisualElement>(
+                            className: "unity-object-field-display"
+                        );
+                        if (display != null)
+                        {
+                            display.style.flexGrow = 1f;
+                            display.style.minWidth = 0f;
+                            display.style.marginLeft = 0f;
+                            display.style.alignItems = Align.Center;
+                        }
+
+                        Label valueLabel = objectField.Q<Label>();
+                        if (valueLabel != null)
+                        {
+                            valueLabel.style.marginLeft = 6f;
+                            valueLabel.style.flexShrink = 1f;
+                        }
+
+                        toggle.Add(objectField);
+                    }
                 }
 
                 if (settings.drawHeader)
@@ -264,9 +263,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 UpdateInlineVisibility();
             }
 
-            private ObjectField CreateObjectField(string label)
+            private ObjectField CreateObjectField()
             {
-                ObjectField field = new(label)
+                ObjectField field = new()
                 {
                     bindingPath = propertyPath,
                     objectType = referenceType,
@@ -517,59 +516,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 return referenceType == typeof(UnityEngine.Object);
             }
-        }
-
-        private static Type ResolveObjectReferenceType(FieldInfo drawerField)
-        {
-            if (drawerField == null)
-            {
-                return typeof(UnityEngine.Object);
-            }
-
-            Type fieldType = drawerField.FieldType;
-            if (fieldType.IsArray)
-            {
-                return fieldType.GetElementType();
-            }
-
-            if (fieldType.IsGenericType)
-            {
-                Type[] arguments = fieldType.GetGenericArguments();
-                if (
-                    arguments.Length == 1
-                    && typeof(UnityEngine.Object).IsAssignableFrom(arguments[0])
-                )
-                {
-                    return arguments[0];
-                }
-            }
-
-            return typeof(UnityEngine.Object).IsAssignableFrom(fieldType)
-                ? fieldType
-                : typeof(UnityEngine.Object);
-        }
-
-        private static bool ShouldAllowSceneObjects(Type referenceType)
-        {
-            if (referenceType == null)
-            {
-                return true;
-            }
-
-            if (typeof(ScriptableObject).IsAssignableFrom(referenceType))
-            {
-                return false;
-            }
-
-            if (
-                typeof(Component).IsAssignableFrom(referenceType)
-                || typeof(GameObject).IsAssignableFrom(referenceType)
-            )
-            {
-                return true;
-            }
-
-            return referenceType == typeof(UnityEngine.Object);
         }
     }
 #endif
