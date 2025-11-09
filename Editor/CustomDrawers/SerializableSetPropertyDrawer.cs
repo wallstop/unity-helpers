@@ -1390,8 +1390,78 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return true;
             }
 
+            if (ElementTypeSupportsNull(elementType))
+            {
+                if (
+                    AppendNullPlaceholderEntry(
+                        ref property,
+                        propertyPath,
+                        ref itemsProperty,
+                        pagination,
+                        inspector
+                    )
+                )
+                {
+                    return true;
+                }
+            }
+
             Debug.LogWarning("Unable to generate a unique value for this set element type.");
             return false;
+        }
+
+        private bool AppendNullPlaceholderEntry(
+            ref SerializedProperty property,
+            string propertyPath,
+            ref SerializedProperty itemsProperty,
+            PaginationState pagination,
+            ISerializableSetInspector inspector
+        )
+        {
+            Type elementType = inspector.ElementType;
+            SerializedObject serializedObject = property.serializedObject;
+
+            Array snapshot = inspector.GetSerializedItemsSnapshot();
+            int existingCount = snapshot?.Length ?? inspector.SerializedCount;
+            Array expanded = Array.CreateInstance(elementType, existingCount + 1);
+
+            if (snapshot != null && snapshot.Length > 0)
+            {
+                Array.Copy(snapshot, expanded, snapshot.Length);
+            }
+            else if (itemsProperty is { isArray: true })
+            {
+                for (
+                    int index = 0;
+                    index < itemsProperty.arraySize && index < existingCount;
+                    index++
+                )
+                {
+                    SerializedProperty element = itemsProperty.GetArrayElementAtIndex(index);
+                    expanded.SetValue(ReadElementData(element).value, index);
+                }
+            }
+
+            expanded.SetValue(null, existingCount);
+            inspector.SetSerializedItemsSnapshot(expanded, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            serializedObject.Update();
+            property = serializedObject.FindProperty(propertyPath);
+            itemsProperty = property?.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            int totalCount = itemsProperty is { isArray: true } ? itemsProperty.arraySize : 0;
+            EnsurePaginationBounds(pagination, totalCount);
+            EvaluateDuplicateState(property, itemsProperty, force: true);
+            EvaluateNullEntryState(property, itemsProperty);
+            if (totalCount > 0)
+            {
+                pagination.selectedIndex = totalCount - 1;
+            }
+
+            return true;
         }
 
         private bool TryClearSet(

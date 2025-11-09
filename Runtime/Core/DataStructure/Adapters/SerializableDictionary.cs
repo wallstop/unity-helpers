@@ -238,7 +238,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         [ProtoAfterDeserialization]
         private void OnProtoAfterDeserialization()
         {
-            OnAfterDeserialize();
+            OnAfterDeserializeInternal(suppressWarnings: false);
         }
 
         protected abstract void SetValue(TValueCache[] cache, int index, TValue value);

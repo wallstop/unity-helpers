@@ -119,6 +119,67 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [Test]
+        public void TryAddNewElementAllowsMultipleNullPlaceholders()
+        {
+            StringSetHost host = CreateScriptableObject<StringSetHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(StringSetHost.set)
+            );
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new SerializableSetPropertyDrawer();
+            SerializableSetPropertyDrawer.PaginationState pagination =
+                drawer.GetOrCreatePaginationState(setProperty);
+
+            Assert.IsTrue(
+                drawer.TryAddNewElement(
+                    ref setProperty,
+                    setProperty.propertyPath,
+                    ref itemsProperty,
+                    pagination
+                )
+            );
+
+            serializedObject.ApplyModifiedProperties();
+            serializedObject.Update();
+            setProperty = serializedObject.FindProperty(nameof(StringSetHost.set));
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            Assert.IsTrue(
+                drawer.TryAddNewElement(
+                    ref setProperty,
+                    setProperty.propertyPath,
+                    ref itemsProperty,
+                    pagination
+                )
+            );
+
+            serializedObject.ApplyModifiedProperties();
+            serializedObject.Update();
+            setProperty = serializedObject.FindProperty(nameof(StringSetHost.set));
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            Assert.IsNotNull(itemsProperty);
+            Assert.AreEqual(2, itemsProperty.arraySize);
+            Assert.IsTrue(
+                itemsProperty.GetArrayElementAtIndex(0).objectReferenceValue == null,
+                "First placeholder should be null."
+            );
+            Assert.IsTrue(
+                itemsProperty.GetArrayElementAtIndex(1).objectReferenceValue == null,
+                "Second placeholder should be null."
+            );
+        }
+
+        [Test]
         public void TryAddNewElementAppendsDefaultValue()
         {
             HashSetHost host = CreateScriptableObject<HashSetHost>();
