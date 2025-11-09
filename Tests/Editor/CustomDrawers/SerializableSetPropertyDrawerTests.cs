@@ -161,6 +161,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.AreEqual(4, itemsProperty.arraySize);
             Assert.AreEqual(1, itemsProperty.GetArrayElementAtIndex(0).intValue);
             Assert.AreEqual(1, itemsProperty.GetArrayElementAtIndex(1).intValue);
+            Assert.AreEqual(0, itemsProperty.GetArrayElementAtIndex(3).intValue);
             Assert.AreEqual(3, host.set.Count);
             SerializableSetPropertyDrawer.DuplicateState duplicateState =
                 drawer.EvaluateDuplicateState(setProperty, itemsProperty, force: true);
@@ -215,6 +216,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.AreEqual(4, itemsProperty.arraySize);
             Assert.AreEqual(3, itemsProperty.GetArrayElementAtIndex(0).intValue);
             Assert.AreEqual(3, itemsProperty.GetArrayElementAtIndex(1).intValue);
+            Assert.AreEqual(0, itemsProperty.GetArrayElementAtIndex(3).intValue);
             Assert.AreEqual(3, host.set.Count);
             SerializableSetPropertyDrawer.DuplicateState duplicateState =
                 drawer.EvaluateDuplicateState(setProperty, itemsProperty, force: true);

@@ -3,6 +3,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using System;
     using System.Collections;
     using System.Collections.Generic;
+    using System.Globalization;
     using System.Reflection;
     using System.Text;
     using UnityEditor;
@@ -38,6 +39,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static readonly Color DuplicateHighlightColor = new Color(1f, 0.78f, 0.65f, 0.4f);
         private static readonly object NullComparable = new object();
 
+        private static readonly GUIStyle AddButtonStyle = CreateSolidButtonStyle(
+            new Color(0.22f, 0.62f, 0.29f)
+        );
+        private static readonly GUIStyle ClearAllActiveButtonStyle = CreateSolidButtonStyle(
+            new Color(0.82f, 0.27f, 0.27f)
+        );
+        private static readonly GUIStyle RemoveButtonStyle = CreateSolidButtonStyle(
+            new Color(0.86f, 0.23f, 0.23f)
+        );
+
         private readonly Dictionary<string, PaginationState> _paginationStates = new();
         private readonly Dictionary<string, DuplicateState> _duplicateStates = new();
 
@@ -59,6 +70,67 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public SerializedPropertyType PropertyType;
             public object Comparable;
             public object Value;
+        }
+
+        private static GUIStyle CreateSolidButtonStyle(Color baseColor)
+        {
+            Color hoverColor = AdjustColorBrightness(baseColor, 0.12f);
+            Color activeColor = AdjustColorBrightness(baseColor, -0.18f);
+
+            GUIStyle style = new GUIStyle(EditorStyles.miniButton);
+            Texture2D normalTexture = CreateSolidTexture(baseColor);
+            Texture2D hoverTexture = CreateSolidTexture(hoverColor);
+            Texture2D activeTexture = CreateSolidTexture(activeColor);
+
+            style.normal.background = normalTexture;
+            style.normal.textColor = Color.white;
+            style.hover.background = hoverTexture;
+            style.hover.textColor = Color.white;
+            style.active.background = activeTexture;
+            style.active.textColor = Color.white;
+
+            style.onNormal.background = normalTexture;
+            style.onNormal.textColor = Color.white;
+            style.onHover.background = hoverTexture;
+            style.onHover.textColor = Color.white;
+            style.onActive.background = activeTexture;
+            style.onActive.textColor = Color.white;
+
+            style.focused.background = normalTexture;
+            style.focused.textColor = Color.white;
+            style.onFocused.background = normalTexture;
+            style.onFocused.textColor = Color.white;
+
+            return style;
+        }
+
+        private static Texture2D CreateSolidTexture(Color color)
+        {
+            Texture2D texture = new Texture2D(1, 1)
+            {
+                hideFlags = HideFlags.HideAndDontSave,
+                wrapMode = TextureWrapMode.Repeat,
+                filterMode = FilterMode.Point,
+            };
+            Color opaque = new Color(color.r, color.g, color.b, 1f);
+            texture.SetPixel(0, 0, opaque);
+            texture.Apply();
+            return texture;
+        }
+
+        private static Color AdjustColorBrightness(Color color, float amount)
+        {
+            if (amount > 0f)
+            {
+                return Color.Lerp(color, Color.white, Mathf.Clamp01(amount));
+            }
+
+            if (amount < 0f)
+            {
+                return Color.Lerp(color, Color.black, Mathf.Clamp01(-amount));
+            }
+
+            return color;
         }
 
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
@@ -191,7 +263,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                     using (new EditorGUI.DisabledScope(totalCount == 0))
                     {
-                        if (GUI.Button(removeRect, "-", EditorStyles.miniButton))
+                        GUIStyle removeButtonStyle =
+                            totalCount > 0 ? RemoveButtonStyle : EditorStyles.miniButton;
+                        if (GUI.Button(removeRect, "-", removeButtonStyle))
                         {
                             SetElementData elementData = ReadElementData(element);
                             RemoveEntry(itemsProperty, index);
@@ -329,10 +403,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             Rect clearRect = new Rect(addRect.xMax + ButtonSpacing, rect.y, 80f, lineHeight);
             float nextX = clearRect.xMax + ButtonSpacing;
 
-            Color originalColor = GUI.backgroundColor;
-
-            GUI.backgroundColor = new Color(0.28f, 0.64f, 0.32f);
-            if (GUI.Button(addRect, AddEntryContent, EditorStyles.miniButton))
+            if (GUI.Button(addRect, AddEntryContent, AddButtonStyle))
             {
                 if (TryAddNewElement(ref property, propertyPath, ref itemsProperty, pagination))
                 {
@@ -347,16 +418,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     EnsurePaginationBounds(pagination, totalCount);
                 }
             }
-            GUI.backgroundColor = originalColor;
 
+            GUIStyle clearButtonStyle =
+                totalCount > 0 ? ClearAllActiveButtonStyle : EditorStyles.miniButton;
             using (new EditorGUI.DisabledScope(totalCount == 0))
             {
-                if (totalCount > 0)
-                {
-                    GUI.backgroundColor = new Color(0.78f, 0.28f, 0.28f);
-                }
-
-                if (GUI.Button(clearRect, ClearAllContent, EditorStyles.miniButton))
+                if (GUI.Button(clearRect, ClearAllContent, clearButtonStyle))
                 {
                     if (TryClearSet(ref property, propertyPath, ref itemsProperty))
                     {
@@ -372,10 +439,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         EnsurePaginationBounds(pagination, totalCount);
                     }
                 }
-
-                GUI.backgroundColor = originalColor;
             }
-            GUI.backgroundColor = originalColor;
 
             Rect sortRect = Rect.zero;
             if (isSortedSet)
@@ -869,7 +933,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                             SerializedProperty elementProperty =
                                 itemsProperty.GetArrayElementAtIndex(index);
                             SetElementData elementData = ReadElementData(elementProperty);
-                            expanded.SetValue(elementData.Value, index);
+                            expanded.SetValue(
+                                ConvertValueForElementType(elementType, elementData.Value),
+                                index
+                            );
                         }
 
                         if (existingItems != null && existingSerializedCount > propertyCount)
@@ -888,7 +955,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         Array.Copy(existingItems, expanded, existingSerializedCount);
                     }
 
-                    expanded.SetValue(boxed, copyCount);
+                    expanded.SetValue(ConvertValueForElementType(elementType, boxed), copyCount);
                     itemsField.SetValue(setInstance, expanded);
                     if (preserveField != null)
                     {
@@ -1307,6 +1374,48 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             return count;
+        }
+
+        private static object ConvertValueForElementType(Type elementType, object value)
+        {
+            if (elementType == null)
+            {
+                return value;
+            }
+
+            if (value == null)
+            {
+                return elementType.IsValueType ? Activator.CreateInstance(elementType) : null;
+            }
+
+            if (elementType.IsInstanceOfType(value))
+            {
+                return value;
+            }
+
+            try
+            {
+                if (elementType.IsEnum)
+                {
+                    if (value is string stringValue)
+                    {
+                        return Enum.Parse(elementType, stringValue);
+                    }
+
+                    return Enum.ToObject(elementType, value);
+                }
+
+                if (value is IConvertible)
+                {
+                    return Convert.ChangeType(value, elementType, CultureInfo.InvariantCulture);
+                }
+            }
+            catch
+            {
+                // Fallback handled below.
+            }
+
+            return elementType.IsValueType ? Activator.CreateInstance(elementType) : null;
         }
 
         private static object GetTargetObjectOfProperty(object target, string propertyPath)
