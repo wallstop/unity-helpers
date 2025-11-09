@@ -265,23 +265,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             if (!hasItemsArray || totalCount == 0)
             {
                 float blockPadding = 6f;
-                float headerHeight = EditorGUIUtility.singleLineHeight;
                 float messageHeight = EditorGUIUtility.singleLineHeight;
-                float blockHeight = blockPadding * 2f + headerHeight + RowSpacing + messageHeight;
+                float blockHeight = blockPadding * 2f + messageHeight;
                 Rect blockRect = new Rect(position.x, y, position.width, blockHeight);
                 GUI.Box(blockRect, GUIContent.none, EditorStyles.helpBox);
 
-                Rect headerRect = new Rect(
-                    blockRect.x + blockPadding,
-                    blockRect.y + blockPadding - 2f,
-                    blockRect.width - blockPadding * 2f,
-                    headerHeight
-                );
-                EditorGUI.LabelField(headerRect, "Entries", EditorStyles.boldLabel);
-
                 Rect messageRect = new Rect(
                     blockRect.x + blockPadding,
-                    headerRect.yMax + RowSpacing,
+                    blockRect.y + blockPadding,
                     blockRect.width - blockPadding * 2f,
                     messageHeight
                 );
@@ -352,21 +343,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
 
                 float blockPadding = 6f;
-                float headerHeight = EditorGUIUtility.singleLineHeight;
-                float rowsSpacing = rows.Count > 0 ? RowSpacing : 0f;
-                float blockHeight = blockPadding * 2f + headerHeight + rowsSpacing + rowsHeight;
+                float blockHeight = blockPadding * 2f + rowsHeight;
                 Rect blockRect = new Rect(position.x, y, position.width, blockHeight);
                 GUI.Box(blockRect, GUIContent.none, EditorStyles.helpBox);
 
-                Rect headerRect = new Rect(
-                    blockRect.x + blockPadding,
-                    blockRect.y + blockPadding - 2f,
-                    blockRect.width - blockPadding * 2f,
-                    headerHeight
-                );
-                EditorGUI.LabelField(headerRect, "Entries", EditorStyles.boldLabel);
-
-                float contentY = headerRect.yMax + rowsSpacing;
+                float contentY = blockRect.y + blockPadding;
                 float contentX = blockRect.x + blockPadding;
                 float contentWidth = blockRect.width - blockPadding * 2f;
 
@@ -438,7 +419,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         DrawDuplicateOutline(outlineRect);
                     }
 
-                    contentY += row.Height + RowSpacing;
+                    contentY += row.Height;
+                    if (rowIndex < rows.Count - 1)
+                    {
+                        contentY += RowSpacing;
+                    }
                 }
 
                 y = blockRect.yMax + SectionSpacing;
@@ -478,10 +463,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             if (!hasItemsArray || totalCount == 0)
             {
                 float blockPadding = 6f;
-                float headerHeight = EditorGUIUtility.singleLineHeight;
                 float messageHeight = EditorGUIUtility.singleLineHeight;
-                height +=
-                    blockPadding * 2f + headerHeight + RowSpacing + messageHeight + SectionSpacing;
+                height += blockPadding * 2f + messageHeight + SectionSpacing;
                 return height;
             }
             else
@@ -505,10 +488,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
 
                 float blockPadding = 6f;
-                float headerHeight = EditorGUIUtility.singleLineHeight;
-                float rowsSpacing = (endIndex - startIndex) > 0 ? RowSpacing : 0f;
-                height +=
-                    blockPadding * 2f + headerHeight + rowsSpacing + rowsHeight + SectionSpacing;
+                height += blockPadding * 2f + rowsHeight + SectionSpacing;
 
                 return height;
             }
